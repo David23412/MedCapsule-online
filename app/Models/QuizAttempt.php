@@ -90,9 +90,11 @@ class QuizAttempt extends Model
             }
 
             // Add timestamp to question_data for better tracking
-            foreach ($model->question_data as &$data) {
-                $data['answered_at'] = now()->toIso8601String();
+            $questionData = $model->question_data;
+            foreach ($questionData as $key => $data) {
+                $questionData[$key]['answered_at'] = now()->toIso8601String();
             }
+            $model->question_data = $questionData;
         });
 
         static::updating(function ($model) {

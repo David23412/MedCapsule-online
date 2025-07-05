@@ -229,13 +229,20 @@
                                 </div>
                             </div>
 
-                            <div class="d-flex justify-content-end gap-2">
-                                <a href="{{ route('courses.index') }}" class="btn btn-secondary">
-                                    Cancel
-                                </a>
-                                <button type="submit" class="btn btn-primary">
-                                    <i class="fas fa-plus"></i> Create Course
-                                </button>
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <a href="{{ route('admin.delete.index') }}" class="btn btn-outline-danger">
+                                        <i class="fas fa-trash-alt me-1"></i>Delete Management
+                                    </a>
+                                </div>
+                                <div class="d-flex gap-2">
+                                    <a href="{{ route('courses.index') }}" class="btn btn-secondary">
+                                        Cancel
+                                    </a>
+                                    <button type="submit" class="btn btn-primary">
+                                        <i class="fas fa-plus"></i> Create Course
+                                    </button>
+                                </div>
                             </div>
                         </form>
                     </div>

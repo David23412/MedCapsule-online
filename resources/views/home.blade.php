@@ -2251,7 +2251,7 @@
                                     </a>
                                 </li>
                                 <li>
-                                    <form method="POST" action="{{ route('logout') }}" class="dropdown-item p-0">
+                                    <form method="POST" action="{{ secure_url(route('logout', [], false)) }}" class="dropdown-item p-0">
                                         @csrf
                                         <button type="submit" class="dropdown-item w-100">
                                             <i class="fas fa-sign-out-alt me-2"></i>Logout
@@ -2355,7 +2355,7 @@
                         <li class="nav-item">
                             <a href="{{ route('profile') }}" class="nav-link">
                                 <div class="profile-circle {{ !Auth::user()->profile_picture_url ? 'no-image' : '' }}" 
-                                     style="{{ Auth::user()->profile_picture_url ? 'background-image: url(' . Auth::user()->profile_picture_url . ');' : '' }}">
+                                     style="{{ Auth::user()->profile_picture_url ? 'background-image: url(' . secure_url(Auth::user()->profile_picture_url) . ');' : '' }}">
                                     @if(!Auth::user()->profile_picture_url)
                                         {{ substr(Auth::user()->name, 0, 1) }}
                                     @endif

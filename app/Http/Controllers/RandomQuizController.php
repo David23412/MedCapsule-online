@@ -10,19 +10,22 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\DB;
 use App\Models\Course;
 use Illuminate\Support\Facades\Cache;
-use App\Models\SpacedRepetition;
 use App\Models\StudySession;
 use App\Models\QuizAttempt;
 use App\Models\UserTopicProgress;
 use Illuminate\Support\Facades\Auth;
 use App\Services\NotificationService;
 use App\Models\User;
+use App\Services\UserStatsService;
 
 class RandomQuizController extends Controller
 {
-    public function __construct()
+    protected $userStatsService;
+
+    public function __construct(UserStatsService $userStatsService)
     {
         $this->middleware('auth');
+        $this->userStatsService = $userStatsService;
     }
 
     public function generateRandomQuiz(Request $request)
@@ -170,19 +173,6 @@ class RandomQuizController extends Controller
 
             $percentageGrade = ($score / $totalQuestions) * 100;
 
-            // Update user stats with error handling
-            try {
-                $user->increment('correct_answers_count', $score);
-                $user->increment('total_questions_attempted', $totalQuestions);
-                $user->increment('study_time_seconds', $timeTaken);
-            } catch (\Exception $e) {
-                \Log::error('Failed to update user stats', [
-                    'error' => $e->getMessage(),
-                    'user_id' => $user->id
-                ]);
-                // Continue execution as this is not critical
-            }
-
             // Create quiz attempt with validation
             try {
                 $quizAttempt = QuizAttempt::create([
@@ -197,8 +187,10 @@ class RandomQuizController extends Controller
                     'total_questions' => $totalQuestions,
                     'question_data' => $questionData
                 ]);
-            } catch (\Illuminate\Validation\ValidationException $e) {
-                throw new \Exception('Invalid quiz attempt data: ' . json_encode($e->errors()));
+                // Update user stats after quiz attempt
+                $this->userStatsService->updateAfterQuizAttempt($user, $totalQuestions, $score, $timeTaken);
+            } catch (\Exception $e) {
+                throw new \Exception('Invalid quiz attempt data: ' . json_encode($e->getMessage()));
             }
 
             // Create mistake records with error handling

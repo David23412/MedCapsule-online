@@ -53,6 +53,27 @@ class Question extends Model
     }
 
     /**
+     * Get all mistakes associated with this question.
+     */
+    public function mistakes()
+    {
+        return $this->hasMany(Mistake::class);
+    }
+
+    /**
+     * Get all quiz attempts that reference this question.
+     * Since quiz_attempts doesn't have a question_id column,
+     * we need to query through the question_data JSON field.
+     */
+    public function quizAttempts()
+    {
+        // This is a complex relationship since quiz_attempts stores question data in JSON
+        // For now, return an empty collection to prevent errors
+        // In a real implementation, you'd need to query the JSON field
+        return collect();
+    }
+
+    /**
      * Get the detailed explanation for this question.
      */
     public function detailedExplanation()
@@ -442,86 +463,34 @@ class Question extends Model
                 return false;
             }
             
-            // Convert submitted answer to space-padded with spaces for whole word matching
-            $paddedSubmittedAnswer = ' ' . $submittedAnswer . ' ';
-            
-            // Count matched key terms and check their relative positions
+            // Simple word matching without complex position checking
             $matchCount = 0;
-            $keyTermPositions = [];
+            $submittedLower = strtolower($submittedAnswer);
             
-            // First pass: find positions of all key terms in submitted answer (with word boundary check)
             foreach ($keyTerms as $term) {
-                $term = trim($term);
-                if (empty($term)) continue;
-                
-                // Check for word boundary - term should be surrounded by spaces or punctuation
-                $pattern = '/\b' . preg_quote($term, '/') . '\b/i';
-                if (preg_match($pattern, $submittedAnswer, $matches, PREG_OFFSET_CAPTURE)) {
+                if (strpos($submittedLower, strtolower($term)) !== false) {
                     $matchCount++;
-                    $keyTermPositions[$term] = $matches[0][1]; // position where term was found
                 }
             }
             
-            // Log matched terms for debugging
-            Log::debug('Key term matches', [
-                'question_id' => $this->id,
-                'total_terms' => count($keyTerms),
-                'matched_terms' => $matchCount,
-                'matched' => array_keys($keyTermPositions)
-            ]);
+            // Require at least 60% of key terms to be present
+            $requiredMatchRatio = 0.6;
+            $actualMatchRatio = count($keyTerms) > 0 ? $matchCount / count($keyTerms) : 0;
             
-            // Second pass: check if the order of found terms is preserved
-            // Only do this check if we found a significant number of terms
-            if ($matchCount >= 2) {
-                // Get original order of terms
-                $originalOrder = array_values(array_filter($keyTerms, function($term) use ($keyTermPositions) {
-                    return isset($keyTermPositions[$term]);
-                }));
-                
-                // Compare with order in submitted answer
-                $submittedOrder = $originalOrder; // Copy the array
-                usort($submittedOrder, function($a, $b) use ($keyTermPositions) {
-                    return $keyTermPositions[$a] - $keyTermPositions[$b];
-                });
-                
-                // If orders don't match, reduce the match count to make passing less likely
-                if ($originalOrder !== $submittedOrder) {
-                    // Penalty for incorrect order - reduce match count but don't eliminate completely
-                    $matchCount = (int) ($matchCount * 0.7);
-                    Log::debug('Order mismatch penalty applied', [
-                        'question_id' => $this->id,
-                        'original_order' => $originalOrder,
-                        'submitted_order' => $submittedOrder,
-                        'adjusted_match_count' => $matchCount
-                    ]);
-                }
-            }
+            return $actualMatchRatio >= $requiredMatchRatio;
             
-            // Require at least 70% of key terms to match
-            $requiredMatches = ceil(count($keyTerms) * 0.7);
-            $isMatch = $matchCount >= $requiredMatches;
-            
-            Log::debug('Key terms match result', [
-                'question_id' => $this->id,
-                'is_match' => $isMatch,
-                'match_count' => $matchCount,
-                'required_matches' => $requiredMatches
-            ]);
-            
-            return $isMatch;
         } catch (\Exception $e) {
-            // Log error but don't crash
             Log::error('Error in key terms check', [
-                'question_id' => $this->id,
                 'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
+                'question_id' => $this->id
             ]);
             return false;
         }
     }
     
     /**
-     * Calculate text similarity using a combination of methods for better accuracy
+     * Calculate text similarity using a simple, reliable approach
+     * This method is designed to work in both local and production environments
      * 
      * @param string $text1
      * @param string $text2
@@ -537,17 +506,25 @@ class Question extends Model
             
             // Quick length check - if lengths are dramatically different, they're likely not similar
             $lengthRatio = min(strlen($text1), strlen($text2)) / max(strlen($text1), strlen($text2));
-            if ($lengthRatio < 0.5) {
-                return $lengthRatio; // Return low similarity score for very different lengths
+            if ($lengthRatio < 0.3) {
+                return 0.0; // Return 0 for very different lengths
             }
             
             // Calculate word overlap ratio (Jaccard similarity)
             $words1 = explode(' ', $text1);
             $words2 = explode(' ', $text2);
             
-            // Filter out single character words
-            $words1 = array_filter($words1, function($word) { return strlen($word) > 1; });
-            $words2 = array_filter($words2, function($word) { return strlen($word) > 1; });
+            // Filter out single character words and common words
+            $commonWords = ['the', 'a', 'an', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for', 'of', 'with', 'by', 'is', 'are', 'was', 'were', 'be', 'been', 'have', 'has', 'had', 'do', 'does', 'did', 'will', 'would', 'could', 'should', 'may', 'might', 'can', 'this', 'that', 'these', 'those'];
+            
+            $words1 = array_filter($words1, function($word) use ($commonWords) { 
+                $word = strtolower(trim($word));
+                return strlen($word) > 2 && !in_array($word, $commonWords); 
+            });
+            $words2 = array_filter($words2, function($word) use ($commonWords) { 
+                $word = strtolower(trim($word)); 
+                return strlen($word) > 2 && !in_array($word, $commonWords); 
+            });
             
             // Empty after filtering?
             if (empty($words1) || empty($words2)) {
@@ -559,125 +536,34 @@ class Question extends Model
             
             $wordOverlapRatio = count($intersection) / (count($union) ?: 1);
             
-            // Calculate sequence similarity (to account for word order)
-            $sequenceSimilarity = $this->calculateSequenceSimilarity($words1, $words2);
-            
-            // Calculate Levenshtein similarity for overall text similarity
-            // But protect against PHP's levenshtein limitations
-            $levenshteinSimilarity = 0;
-            try {
-                // PHP's levenshtein has a character limit and memory constraints
-                $maxLen = 255;
-                $truncated1 = substr($text1, 0, $maxLen);
-                $truncated2 = substr($text2, 0, $maxLen);
-                
-                // Only calculate if strings aren't too long (avoid memory issues)
-                $totalLen = strlen($truncated1) + strlen($truncated2);
-                if ($totalLen <= 2000) { // Conservative limit to avoid PHP crashes
-                    $distance = levenshtein($truncated1, $truncated2);
-                    $maxLength = max(strlen($truncated1), strlen($truncated2));
-                    
-                    if ($maxLength > 0) {
-                        $levenshteinSimilarity = 1 - ($distance / $maxLength);
-                    }
-                } else {
-                    // For very long strings, use a simpler string similarity estimate
-                    // Count the same characters in both strings
-                    $chars1 = count_chars($truncated1, 1);
-                    $chars2 = count_chars($truncated2, 1);
-                    $commonChars = 0;
-                    
-                    foreach ($chars1 as $char => $count) {
-                        if (isset($chars2[$char])) {
-                            $commonChars += min($count, $chars2[$char]);
-                        }
-                    }
-                    
-                    $levenshteinSimilarity = $commonChars / max(strlen($truncated1), strlen($truncated2));
-                }
-            } catch (\Exception $e) {
-                // If levenshtein fails, use a simpler text comparison
-                Log::warning('Levenshtein calculation failed, using fallback', [
-                    'error' => $e->getMessage()
-                ]);
-                
-                // Simple fallback: compare first N characters
-                $shortLen = min(100, min(strlen($text1), strlen($text2)));
+            // Simple character-based similarity for short strings
+            $charSimilarity = 0;
+            if (strlen($text1) <= 100 && strlen($text2) <= 100) {
                 $same = 0;
-                for ($i = 0; $i < $shortLen; $i++) {
+                $maxLen = min(strlen($text1), strlen($text2));
+                for ($i = 0; $i < $maxLen; $i++) {
                     if ($text1[$i] === $text2[$i]) {
                         $same++;
                     }
                 }
-                $levenshteinSimilarity = $same / $shortLen;
+                $charSimilarity = $maxLen > 0 ? $same / $maxLen : 0;
             }
             
-            // Weighted combination with sequence similarity
-            // More emphasis on word overlap and sequence for medical answers
-            return ($wordOverlapRatio * 0.5) + ($sequenceSimilarity * 0.3) + ($levenshteinSimilarity * 0.2);
+            // Weighted combination: 70% word overlap, 30% character similarity
+            return ($wordOverlapRatio * 0.7) + ($charSimilarity * 0.3);
+            
         } catch (\Exception $e) {
             Log::error('Error in similarity calculation', [
                 'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
+                'text1_length' => strlen($text1),
+                'text2_length' => strlen($text2)
             ]);
             // Return low similarity on error to be conservative
-            return 0.2;
+            return 0.1;
         }
     }
     
-    /**
-     * Calculate similarity between two word sequences, accounting for word order
-     * 
-     * @param array $words1 Array of words from first text
-     * @param array $words2 Array of words from second text
-     * @return float Sequence similarity score between 0 and 1
-     */
-    protected function calculateSequenceSimilarity(array $words1, array $words2): float
-    {
-        // If either array is empty, return 0
-        if (empty($words1) || empty($words2)) {
-            return 0.0;
-        }
-        
-        // Get the longest common subsequence length
-        $lcsMatrix = $this->getLCSMatrix($words1, $words2);
-        $lcsLength = end(end($lcsMatrix));
-        
-        // Normalize by the length of the shorter sequence
-        $maxPossibleLength = min(count($words1), count($words2));
-        
-        return $maxPossibleLength > 0 ? $lcsLength / $maxPossibleLength : 0;
-    }
-    
-    /**
-     * Build matrix for Longest Common Subsequence algorithm
-     * This helps detect if words appear in the same order
-     * 
-     * @param array $words1
-     * @param array $words2
-     * @return array Matrix of LCS lengths
-     */
-    protected function getLCSMatrix(array $words1, array $words2): array
-    {
-        $m = count($words1);
-        $n = count($words2);
-        
-        // Initialize matrix with zeros
-        $matrix = array_fill(0, $m + 1, array_fill(0, $n + 1, 0));
-        
-        // Fill the matrix
-        for ($i = 1; $i <= $m; $i++) {
-            for ($j = 1; $j <= $n; $j++) {
-                if (strtolower($words1[$i-1]) === strtolower($words2[$j-1])) {
-                    $matrix[$i][$j] = $matrix[$i-1][$j-1] + 1;
-                } else {
-                    $matrix[$i][$j] = max($matrix[$i-1][$j], $matrix[$i][$j-1]);
-                }
-            }
-        }
-        
-        return $matrix;
-    }
+
 
     /**
      * Get all incorrect answers (mistakes) for a user.

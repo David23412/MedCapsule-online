@@ -15,19 +15,19 @@
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
-    <script src="{{ asset('js/notification-bell.js') }}"></script>
+    <script src="{{ secure_asset('js/notification-bell.js') }}"></script>
     
     <!-- Styles -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" />
     
     <!-- Custom Styles -->
-    <link rel="stylesheet" href="{{ asset('css/app.css') }}">
-    <link rel="stylesheet" href="{{ asset('css/notifications.css') }}">
+    <link rel="stylesheet" href="{{ secure_asset('css/app.css') }}">
+    <link rel="stylesheet" href="{{ secure_asset('css/notifications.css') }}">
 </head>
 <body>
     <div id="app">
-        @include('layouts.navigation')
+        @include('partials.navigation')
 
         <!-- Page Content -->
         <main class="py-4">

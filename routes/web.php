@@ -16,7 +16,8 @@ use App\Http\Controllers\{
     NotificationController,
     PaymentController,
     PaymentSettingsController,
-    PaymentLogController
+    PaymentLogController,
+    DeleteController
 };
 use Illuminate\Support\Facades\DB;
 
@@ -54,6 +55,23 @@ Route::middleware('auth')->group(function () {
     Route::get('/manage-access/search-users', [UserCourseController::class, 'searchUsers'])->name('admin.user-course.search');
     Route::post('/manage-access/toggle-admin', [UserCourseController::class, 'toggleAdmin'])->name('admin.user-course.toggle-admin');
     Route::post('/manage-access/payment-settings', [UserCourseController::class, 'updatePaymentSettings'])->name('admin.payment-settings.update');
+    
+    // Delete Management Routes
+    Route::get('/admin/delete', [DeleteController::class, 'index'])->name('admin.delete.index');
+    Route::get('/admin/delete/courses', [DeleteController::class, 'showCourses'])->name('admin.delete.courses');
+    Route::get('/admin/delete/topics', [DeleteController::class, 'showTopics'])->name('admin.delete.topics');
+    Route::get('/admin/delete/questions', [DeleteController::class, 'showQuestions'])->name('admin.delete.questions');
+    Route::get('/admin/delete/users', [DeleteController::class, 'showUsers'])->name('admin.delete.users');
+    
+    // Delete Action Routes
+    Route::delete('/admin/delete/course/{id}', [DeleteController::class, 'deleteCourse'])->name('admin.delete.course');
+    Route::delete('/admin/delete/topic/{id}', [DeleteController::class, 'deleteTopic'])->name('admin.delete.topic');
+    Route::delete('/admin/delete/question/{id}', [DeleteController::class, 'deleteQuestion'])->name('admin.delete.question');
+    Route::delete('/admin/delete/user/{id}', [DeleteController::class, 'deleteUser'])->name('admin.delete.user');
+    Route::post('/admin/delete/questions/bulk', [DeleteController::class, 'bulkDeleteQuestions'])->name('admin.delete.questions.bulk');
+    
+    // Delete Preview API
+    Route::get('/admin/delete/preview', [DeleteController::class, 'getDeletionPreview'])->name('admin.delete.preview');
     
     // Course enrollment and topic routes
     Route::post('/courses/{course}/enroll', [CourseController::class, 'enroll'])->name('courses.enroll');

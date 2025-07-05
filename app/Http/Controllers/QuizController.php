@@ -10,26 +10,27 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\DB;
 use App\Models\Course;
 use Illuminate\Support\Facades\Cache;
-use App\Models\SpacedRepetition;
 use App\Models\StudySession;
 use App\Models\QuizAttempt;
 use App\Models\UserTopicProgress;
 use Illuminate\Support\Facades\Auth;
 use App\Services\NotificationService;
 use App\Models\User;
-use App\Models\SourceProgress;
 use App\Models\QuestionAttempt;
 use Carbon\Carbon;
 use App\Services\CacheService;
+use App\Services\UserStatsService;
 
 class QuizController extends Controller 
 {
     protected $cacheService;
+    protected $userStatsService;
 
-    public function __construct(CacheService $cacheService)
+    public function __construct(CacheService $cacheService, UserStatsService $userStatsService)
     {
         $this->middleware('auth');
         $this->cacheService = $cacheService;
+        $this->userStatsService = $userStatsService;
     }
 
     /**
@@ -60,12 +61,13 @@ class QuizController extends Controller
                     ->with('error', 'Invalid topic for this course.');
             }
 
-            // Check if user has access to the course
-            if (!$user->hasAccessToCourse($course->id)) {
+            // Check if user has access to the course (admin, enrolled, or free course)
+            if (!$user->is_admin && !$user->hasAccessToCourse($course->id) && $course->is_paid) {
                 Log::error('Access denied: User does not have access to course', [
                     'user_id' => $user->id,
                     'course_id' => $course->id,
-                    'is_admin' => $user->is_admin
+                    'is_admin' => $user->is_admin,
+                    'course_is_paid' => $course->is_paid
                 ]);
                 return redirect()->route('topics.forCourse', ['course' => $course->id])
                     ->with('error', 'You must be granted access to this course to take quizzes. Please contact an administrator.');
@@ -288,6 +290,7 @@ class QuizController extends Controller
 
             // Create a quiz attempt for each source while maintaining the same session time
             $totalQuestionsAcrossSources = array_sum(array_column($sourceData, 'total'));
+            $totalCorrectAcrossSources = array_sum(array_column($sourceData, 'score'));
             foreach ($sourceData as $source => $data) {
                 $sourcePercentage = $data['total'] > 0 ? min(100, ($data['score'] / $data['total']) * 100) : 0;
                 
@@ -309,6 +312,8 @@ class QuizController extends Controller
                     'question_data' => $data['question_data']
                 ]);
             }
+            // Update user stats after all attempts
+            $this->userStatsService->updateAfterQuizAttempt($user, $totalQuestionsAcrossSources, $totalCorrectAcrossSources, $duration);
 
             // Calculate XP and check for level up
             $this->calculateAndAwardXP($user, $score, $duration, $percentageGrade);
@@ -494,11 +499,12 @@ class QuizController extends Controller
         try {
             $user = auth()->user();
             
-            if (!$user->hasAccessToCourse($course->id)) {
+            if (!$user->is_admin && !$user->hasAccessToCourse($course->id) && $course->is_paid) {
                 Log::error('Access denied: User does not have access to course', [
                     'user_id' => $user->id,
                     'course_id' => $course->id,
-                    'is_admin' => $user->is_admin
+                    'is_admin' => $user->is_admin,
+                    'course_is_paid' => $course->is_paid
                 ]);
                 return redirect()->route('topics.forCourse', ['course' => $course->id])
                     ->with('error', 'You must be granted access to this course to take quizzes.');
@@ -576,40 +582,92 @@ class QuizController extends Controller
         try {
             $user = auth()->user();
             
-            Log::info('Checking tutor answer', [
+            // Enhanced logging for debugging HTTPS/ngrok issues
+            Log::info('Checking tutor answer - Environment Details', [
                 'question_id' => $question->id,
                 'user_id' => $user->id,
-                'request_data' => $request->all()
+                'request_method' => $request->method(),
+                'request_url' => $request->fullUrl(),
+                'request_host' => $request->getHost(),
+                'request_scheme' => $request->getScheme(),
+                'is_secure' => $request->secure(),
+                'headers' => [
+                    'x-forwarded-proto' => $request->header('X-Forwarded-Proto'),
+                    'x-forwarded-host' => $request->header('X-Forwarded-Host'),
+                    'user-agent' => $request->header('User-Agent'),
+                    'origin' => $request->header('Origin'),
+                    'referer' => $request->header('Referer'),
+                ],
+                'request_data' => $request->all(),
+                'session_id' => session()->getId(),
+                'csrf_token' => csrf_token()
             ]);
+
+            // CSRF protection is handled by Laravel's VerifyCsrfToken middleware
+            // No need for explicit validation here
 
             $answer = $request->input('answer');
             if (empty($answer)) {
+                Log::error('Empty answer provided', [
+                    'question_id' => $question->id,
+                    'user_id' => $user->id,
+                    'request_data' => $request->all()
+                ]);
                 throw new \Exception('Answer is required');
             }
 
             // Check if the answer is correct using the Question model's method
             $isCorrect = $question->isAnswerCorrect($answer);
             
+            Log::info('Answer evaluation result', [
+                'question_id' => $question->id,
+                'user_id' => $user->id,
+                'answer' => $answer,
+                'is_correct' => $isCorrect,
+                'correct_answer' => $question->correct_answer
+            ]);
+            
             // Track mistake if answer is incorrect
             if (!$isCorrect) {
-                Mistake::updateOrCreate(
-                    [
+                try {
+                    Mistake::updateOrCreate(
+                        [
+                            'user_id' => $user->id,
+                            'question_id' => $question->id
+                        ],
+                        [
+                            'submitted_answer' => $answer,
+                            'question_text' => $question->question,
+                            'correct_answer' => $question->correct_answer,
+                            'image_path' => $question->image_url,
+                            'correct_streak' => 0,
+                            'last_attempt_date' => now()
+                        ]
+                    );
+                    
+                    Log::info('Mistake recorded successfully', [
+                        'question_id' => $question->id,
+                        'user_id' => $user->id
+                    ]);
+                } catch (\Exception $e) {
+                    Log::error('Failed to record mistake', [
+                        'question_id' => $question->id,
                         'user_id' => $user->id,
-                        'question_id' => $question->id
-                    ],
-                    [
-                        'submitted_answer' => $answer,
-                        'question_text' => $question->question,
-                        'correct_answer' => $question->correct_answer,
-                        'image_path' => $question->image_url,
-                        'correct_streak' => 0,
-                        'last_attempt_date' => now()
-                    ]
-                );
+                        'error' => $e->getMessage()
+                    ]);
+                    // Continue execution even if mistake recording fails
+                }
             }
             
             // Get the topic
             $topic = $question->topic;
+            if (!$topic) {
+                Log::error('Question has no associated topic', [
+                    'question_id' => $question->id,
+                    'user_id' => $user->id
+                ]);
+                throw new \Exception('Question has no associated topic');
+            }
 
             // Get or create session data for tracking progress by source
             $tutorProgress = session()->get('tutor_progress', [
@@ -627,15 +685,26 @@ class QuizController extends Controller
                 ];
             }
 
-            // Update source-specific progress
-            $tutorProgress['sources'][$source]['total']++;
-            if ($isCorrect) {
-                $tutorProgress['sources'][$source]['correct']++;
+            // Only update progress if this question hasn't been completed yet
+            if (!in_array($question->id, $tutorProgress['sources'][$source]['completed_questions'])) {
+                $tutorProgress['sources'][$source]['total']++;
+                if ($isCorrect) {
+                    $tutorProgress['sources'][$source]['correct']++;
+                }
+                $tutorProgress['sources'][$source]['completed_questions'][] = $question->id;
             }
-            $tutorProgress['sources'][$source]['completed_questions'][] = $question->id;
 
             // Store updated progress in session
             session(['tutor_progress' => $tutorProgress]);
+
+            // Debug logging
+            Log::info('Tutor progress update', [
+                'question_id' => $question->id,
+                'source' => $source,
+                'completed_questions' => $tutorProgress['sources'][$source]['completed_questions'],
+                'total' => $tutorProgress['sources'][$source]['total'],
+                'correct' => $tutorProgress['sources'][$source]['correct']
+            ]);
 
             // Calculate progress percentage for the source
             $totalQuestionsInSource = Question::where('topic_id', $topic->id)
@@ -643,7 +712,17 @@ class QuizController extends Controller
                 ->count();
 
             $completedQuestionsInSource = count(array_unique($tutorProgress['sources'][$source]['completed_questions']));
-            $progressPercentage = ($completedQuestionsInSource / $totalQuestionsInSource) * 100;
+            $progressPercentage = $totalQuestionsInSource > 0 ? ($completedQuestionsInSource / $totalQuestionsInSource) * 100 : 0;
+
+            // Debug logging for progress calculation
+            Log::info('Progress calculation', [
+                'question_id' => $question->id,
+                'source' => $source,
+                'completed_questions' => $completedQuestionsInSource,
+                'total_questions_in_source' => $totalQuestionsInSource,
+                'progress_percentage' => $progressPercentage,
+                'session_data' => $tutorProgress['sources'][$source]
+            ]);
 
             // If this was the last question in the source, create the final attempt record
             $remainingQuestions = Question::where('topic_id', $topic->id)
@@ -652,46 +731,68 @@ class QuizController extends Controller
                 ->count();
 
             if ($remainingQuestions === 0) {
-                // Calculate source-specific duration
-                $sourceDuration = time() - $tutorProgress['sources'][$source]['start_time'];
-                
-                // Create question data array
-                $questionData = [];
-                foreach ($tutorProgress['sources'][$source]['completed_questions'] as $questionId) {
-                    $questionData[] = [
-                        'question_id' => $questionId,
-                        'is_correct' => in_array($questionId, array_unique($tutorProgress['sources'][$source]['completed_questions']))
-                    ];
-                }
-                
-                // Create the final quiz attempt for this source
-                $attempt = QuizAttempt::create([
-                    'user_id' => $user->id,
-                    'topic_id' => $topic->id,
-                    'score' => $tutorProgress['sources'][$source]['correct'],
-                    'total_questions' => $tutorProgress['sources'][$source]['total'],
-                    'percentage_grade' => ($tutorProgress['sources'][$source]['correct'] / $tutorProgress['sources'][$source]['total']) * 100,
-                    'duration_seconds' => $sourceDuration,
-                    'quiz_type' => 'tutor',
-                    'study_mode' => 'tutor',
-                    'source' => $source,
-                    'question_data' => [
-                        'completed_questions' => array_unique($tutorProgress['sources'][$source]['completed_questions']),
-                        'correct_count' => $tutorProgress['sources'][$source]['correct'],
-                        'questions' => $questionData
-                    ]
-                ]);
+                try {
+                    // Calculate source-specific duration
+                    $sourceDuration = time() - $tutorProgress['sources'][$source]['start_time'];
+                    
+                    // Create question data array with proper structure
+                    $questionData = [];
+                    foreach (array_unique($tutorProgress['sources'][$source]['completed_questions']) as $questionId) {
+                        $questionData[] = [
+                            'question_id' => $questionId,
+                            'user_answer' => null, // We don't track individual answers in tutor mode
+                            'is_correct' => true // Assume correct for completed questions
+                        ];
+                    }
+                    
+                    // Create the final quiz attempt for this source
+                    $attempt = QuizAttempt::create([
+                        'user_id' => $user->id,
+                        'topic_id' => $topic->id,
+                        'score' => $tutorProgress['sources'][$source]['correct'],
+                        'total_questions' => $tutorProgress['sources'][$source]['total'],
+                        'percentage_grade' => ($tutorProgress['sources'][$source]['correct'] / $tutorProgress['sources'][$source]['total']) * 100,
+                        'duration_seconds' => $sourceDuration,
+                        'quiz_type' => 'tutor',
+                        'study_mode' => 'tutor',
+                        'source' => $source,
+                        'question_data' => $questionData
+                    ]);
+                    // Update user stats after tutor quiz attempt
+                    $this->userStatsService->updateAfterQuizAttempt(
+                        $user,
+                        $tutorProgress['sources'][$source]['total'],
+                        $tutorProgress['sources'][$source]['correct'],
+                        $sourceDuration
+                    );
 
-                // Remove this source's progress from session
-                unset($tutorProgress['sources'][$source]);
-                if (empty($tutorProgress['sources'])) {
-                    session()->forget('tutor_progress');
-                } else {
-                    session(['tutor_progress' => $tutorProgress]);
+                    Log::info('Quiz attempt created successfully', [
+                        'attempt_id' => $attempt->id,
+                        'user_id' => $user->id,
+                        'topic_id' => $topic->id,
+                        'source' => $source
+                    ]);
+
+                    // Remove this source's progress from session
+                    unset($tutorProgress['sources'][$source]);
+                    if (empty($tutorProgress['sources'])) {
+                        session()->forget('tutor_progress');
+                    } else {
+                        session(['tutor_progress' => $tutorProgress]);
+                    }
+                } catch (\Exception $e) {
+                    Log::error('Failed to create quiz attempt', [
+                        'question_id' => $question->id,
+                        'user_id' => $user->id,
+                        'topic_id' => $topic->id,
+                        'source' => $source,
+                        'error' => $e->getMessage()
+                    ]);
+                    // Continue execution even if quiz attempt creation fails
                 }
             }
 
-            return response()->json([
+            $response = [
                 'success' => true,
                 'is_correct' => $isCorrect,
                 'correct_answer' => $question->correct_answer,
@@ -701,16 +802,37 @@ class QuizController extends Controller
                     'total' => $totalQuestionsInSource,
                     'percentage' => round($progressPercentage, 2)
                 ]
+            ];
+
+            Log::info('Tutor answer check completed successfully', [
+                'question_id' => $question->id,
+                'user_id' => $user->id,
+                'response' => $response
             ]);
+
+            return response()->json($response);
 
         } catch (\Exception $e) {
             Log::error('Error in checkTutorAnswer:', [
                 'error' => $e->getMessage(),
-                'question_id' => $question->id,
-                'user_id' => auth()->id()
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+                'question_id' => $question->id ?? null,
+                'user_id' => auth()->id(),
+                'request_url' => request()->fullUrl(),
+                'request_method' => request()->method(),
+                'request_data' => request()->all(),
+                'stack_trace' => $e->getTraceAsString()
             ]);
+            
             return response()->json([
-                'error' => 'An error occurred while checking your answer. Please try again.'
+                'success' => false,
+                'error' => 'An error occurred while checking your answer. Please try again.',
+                'debug_info' => app()->environment('local') ? [
+                    'error' => $e->getMessage(),
+                    'file' => $e->getFile(),
+                    'line' => $e->getLine()
+                ] : null
             ], 500);
         }
     }

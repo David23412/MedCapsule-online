@@ -140,7 +140,12 @@
                         <textarea name="description" class="form-control" rows="3"></textarea>
                     </div>
 
-                    <button type="submit" class="btn btn-success w-100">Add Topic</button>
+                    <div class="d-flex justify-content-between align-items-center">
+                        <a href="{{ route('admin.delete.index') }}" class="btn btn-outline-danger">
+                            <i class="fas fa-trash-alt me-1"></i>Delete Management
+                        </a>
+                        <button type="submit" class="btn btn-success">Add Topic</button>
+                    </div>
                 </form>
             </div>
         </div>

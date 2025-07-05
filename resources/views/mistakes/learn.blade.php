@@ -716,7 +716,7 @@
             </div>
             @auth
             <a href="{{ route('profile') }}" class="profile-circle {{ !Auth::user()->profile_picture_url ? 'no-image' : '' }}" 
-                style="{{ Auth::user()->profile_picture_url ? 'background-image: url(' . asset(Auth::user()->profile_picture_url) . ');' : '' }}">
+                style="{{ Auth::user()->profile_picture_url ? 'background-image: url(' . secure_url(Auth::user()->profile_picture_url) . ');' : '' }}">
                 @if(!Auth::user()->profile_picture_url)
                     {{ substr(Auth::user()->name, 0, 1) }}
                 @endif
@@ -1320,7 +1320,7 @@
                 timeSpent.textContent = `${minutes}:${seconds < 10 ? '0' : ''}${seconds}`;
                 
                 // Save the study time to the database
-                fetch('/learn/save-time', {
+                fetch('{{ secure_url("/learn/save-time") }}', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',

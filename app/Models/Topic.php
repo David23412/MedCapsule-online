@@ -53,6 +53,11 @@ class Topic extends Model
         return $this->hasMany(Question::class)->orderBy('id'); // Ensure questions are ordered
     }
 
+    public function quizAttempts(): HasMany
+    {
+        return $this->hasMany(QuizAttempt::class);
+    }
+
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);

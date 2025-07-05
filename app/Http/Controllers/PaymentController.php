@@ -360,7 +360,7 @@ class PaymentController extends Controller
     /**
      * Admin verify payment
      */
-    public function adminVerifyPayment(Request $request, \App\Models\Payment $payment)
+    public function adminVerifyPayment(Request $request, Payment $payment)
     {
         if (!auth()->user()->is_admin) {
             return response()->json(['success' => false, 'message' => 'Unauthorized'], 403);
@@ -371,14 +371,13 @@ class PaymentController extends Controller
             $activePayment = Payment::where('user_id', $payment->user_id)
                 ->where('course_id', $payment->course_id)
                 ->where('status', 'completed')
-                ->whereNull('expired_at')
                 ->where('id', '!=', $payment->id)
                 ->first();
 
             if ($activePayment) {
-                // If there's an active payment, expire it before activating the new one
-                $activePayment->expired_at = now();
+                // If there's an active payment, mark it as expired in payment_data
                 $activePayment->payment_data = array_merge($activePayment->payment_data ?? [], [
+                    'expired_at' => now()->toDateTimeString(),
                     'expired_by' => auth()->id(),
                     'expiry_reason' => 'New payment verification'
                 ]);

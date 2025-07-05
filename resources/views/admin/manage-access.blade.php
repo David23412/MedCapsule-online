@@ -492,6 +492,9 @@
             <div class="container-fluid">
                 <a class="navbar-brand" href="/">MedCapsule</a>
                 <div class="d-flex">
+                    <a href="{{ route('admin.delete.index') }}" class="btn btn-outline-danger me-2">
+                        <i class="fas fa-trash-alt"></i> Delete Management
+                    </a>
                     <a href="{{ route('courses.index') }}" class="btn btn-outline-primary me-2">
                         <i class="fas fa-arrow-left"></i> Back to Courses
                     </a>
@@ -604,6 +607,63 @@
                                         </div>
                                     </div>
                                 </form>
+                            </div>
+                        </div>
+
+                        <!-- Admin Management -->
+                        <div class="card mt-4">
+                            <div class="card-header bg-warning text-dark">
+                                <i class="fas fa-user-shield me-2"></i> Admin Privileges Management
+                            </div>
+                            <div class="card-body">
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <label class="form-label">Select User to Manage Admin Status</label>
+                                        <select class="form-select admin-user-select" id="admin_user_id">
+                                            <option value="">Search for a user...</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="d-flex gap-2" id="adminActionButtons" style="display: none;">
+                                            <button type="button" class="btn btn-success flex-fill" id="promoteAdminBtn">
+                                                <i class="fas fa-user-shield me-2"></i>Promote to Admin
+                                            </button>
+                                            <button type="button" class="btn btn-danger flex-fill" id="revokeAdminBtn">
+                                                <i class="fas fa-user-times me-2"></i>Remove Admin
+                                            </button>
+                                        </div>
+                                        <div id="noUserSelected" class="text-muted text-center py-3">
+                                            <i class="fas fa-user-slash fa-2x mb-2"></i>
+                                            <div>Select a user to manage admin privileges</div>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <!-- User Info Display -->
+                                <div id="selectedUserInfo" class="mt-3" style="display: none;">
+                                    <div class="card bg-light">
+                                        <div class="card-body p-3">
+                                            <div class="row">
+                                                <div class="col-md-6">
+                                                    <strong>User:</strong> <span id="selectedUserName"></span><br>
+                                                    <strong>Email:</strong> <span id="selectedUserEmail"></span>
+                                                </div>
+                                                <div class="col-md-6">
+                                                    <strong>Current Status:</strong> 
+                                                    <span id="selectedUserStatus" class="badge"></span><br>
+                                                    <strong>Registered:</strong> <span id="selectedUserRegistered"></span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div class="mt-3">
+                                    <small class="text-muted">
+                                        <i class="fas fa-info-circle me-1"></i>
+                                        This allows you to promote regular users to admin or revoke admin privileges from existing admins.
+                                    </small>
+                                </div>
                             </div>
                         </div>
 
@@ -874,16 +934,45 @@
                 return user.text;
             }
 
+            // Initialize admin user select
+            $('.admin-user-select').select2({
+                placeholder: 'Search for a user...',
+                allowClear: true,
+                ajax: {
+                    url: '{{ secure_url("/manage-access/search-users") }}',
+                    dataType: 'json',
+                    delay: 250,
+                    data: function(params) {
+                        return {
+                            query: params.term
+                        };
+                    },
+                    processResults: function(data) {
+                        return {
+                            results: data.map(function(user) {
+                                return {
+                                    id: user.id,
+                                    text: user.email + ' (' + user.name + ')' + (user.is_admin ? ' - ADMIN' : '')
+                                };
+                            })
+                        };
+                    },
+                    cache: true
+                }
+            });
+
             // Handle admin toggle button
             let selectedUserId = null;
             let isAdmin = false;
+            let selectedAdminUserId = null;
+            let selectedAdminIsAdmin = false;
 
             $('.user-select').on('select2:select', function(e) {
                 selectedUserId = e.params.data.id;
                 $('#toggleAdminBtn').prop('disabled', false);
                 
                 // Update button text based on admin status
-                $.get(`/manage-access/search-users?query=${e.params.data.text}`, function(users) {
+                $.get('{{ secure_url("/manage-access/search-users") }}?query=' + e.params.data.text, function(users) {
                     if (users.length > 0) {
                         isAdmin = users[0].is_admin;
                         updateToggleButton();
@@ -894,6 +983,35 @@
             $('.user-select').on('select2:unselect', function() {
                 selectedUserId = null;
                 $('#toggleAdminBtn').prop('disabled', true);
+            });
+
+            // Handle admin user select
+            $('.admin-user-select').on('select2:select', function(e) {
+                selectedAdminUserId = e.params.data.id;
+                const userText = e.params.data.text;
+                
+                // Show action buttons and hide placeholder
+                $('#adminActionButtons').show();
+                $('#noUserSelected').hide();
+                
+                // Get user details and update interface
+                $.get('{{ secure_url("/manage-access/search-users") }}?query=' + userText, function(users) {
+                    if (users.length > 0) {
+                        const user = users[0];
+                        selectedAdminIsAdmin = user.is_admin;
+                        updateAdminInterface(user);
+                    }
+                });
+            });
+
+            $('.admin-user-select').on('select2:unselect', function() {
+                selectedAdminUserId = null;
+                selectedAdminIsAdmin = false;
+                
+                // Hide action buttons and show placeholder
+                $('#adminActionButtons').hide();
+                $('#noUserSelected').show();
+                $('#selectedUserInfo').hide();
             });
 
             function updateToggleButton() {
@@ -907,11 +1025,35 @@
                 }
             }
 
+            function updateAdminInterface(user) {
+                // Update user info display
+                $('#selectedUserName').text(user.name);
+                $('#selectedUserEmail').text(user.email);
+                
+                if (user.is_admin) {
+                    $('#selectedUserStatus').text('ADMIN').removeClass('bg-secondary').addClass('bg-danger');
+                } else {
+                    $('#selectedUserStatus').text('USER').removeClass('bg-danger').addClass('bg-secondary');
+                }
+                
+                // Show/hide appropriate buttons
+                if (user.is_admin) {
+                    $('#promoteAdminBtn').hide();
+                    $('#revokeAdminBtn').show();
+                } else {
+                    $('#promoteAdminBtn').show();
+                    $('#revokeAdminBtn').hide();
+                }
+                
+                // Show user info
+                $('#selectedUserInfo').show();
+            }
+
             $('#toggleAdminBtn').click(function() {
                 if (!selectedUserId) return;
 
                 $.ajax({
-                    url: '{{ route("admin.user-course.toggle-admin") }}',
+                    url: '{{ secure_url("/manage-access/toggle-admin") }}',
                     method: 'POST',
                     data: {
                         user_id: selectedUserId,
@@ -942,13 +1084,97 @@
                 });
             });
 
+            $('#promoteAdminBtn').click(function() {
+                if (!selectedAdminUserId) return;
+
+                if (!confirm('Are you sure you want to promote this user to admin?')) {
+                    return;
+                }
+
+                $.ajax({
+                    url: '{{ secure_url("/manage-access/toggle-admin") }}',
+                    method: 'POST',
+                    data: {
+                        user_id: selectedAdminUserId,
+                        _token: '{{ csrf_token() }}'
+                    },
+                    success: function(response) {
+                        if (response.success) {
+                            // Update the interface to show admin status
+                            selectedAdminIsAdmin = true;
+                            $('#selectedUserStatus').text('ADMIN').removeClass('bg-secondary').addClass('bg-danger');
+                            $('#promoteAdminBtn').hide();
+                            $('#revokeAdminBtn').show();
+                            
+                            // Show success message
+                            const alert = $('<div class="alert alert-success alert-dismissible fade show" role="alert">' +
+                                response.message +
+                                '<button type="button" class="btn-close" data-bs-dismiss="alert"></button>' +
+                                '</div>');
+                            $('.container').prepend(alert);
+                        }
+                    },
+                    error: function(xhr) {
+                        // Show error message
+                        const message = xhr.responseJSON?.message || 'An error occurred while promoting user to admin';
+                        const alert = $('<div class="alert alert-danger alert-dismissible fade show" role="alert">' +
+                            message +
+                            '<button type="button" class="btn-close" data-bs-dismiss="alert"></button>' +
+                            '</div>');
+                        $('.container').prepend(alert);
+                    }
+                });
+            });
+
+            $('#revokeAdminBtn').click(function() {
+                if (!selectedAdminUserId) return;
+
+                if (!confirm('Are you sure you want to remove admin privileges from this user?')) {
+                    return;
+                }
+
+                $.ajax({
+                    url: '{{ secure_url("/manage-access/toggle-admin") }}',
+                    method: 'POST',
+                    data: {
+                        user_id: selectedAdminUserId,
+                        _token: '{{ csrf_token() }}'
+                    },
+                    success: function(response) {
+                        if (response.success) {
+                            // Update the interface to show user status
+                            selectedAdminIsAdmin = false;
+                            $('#selectedUserStatus').text('USER').removeClass('bg-danger').addClass('bg-secondary');
+                            $('#revokeAdminBtn').hide();
+                            $('#promoteAdminBtn').show();
+                            
+                            // Show success message
+                            const alert = $('<div class="alert alert-success alert-dismissible fade show" role="alert">' +
+                                response.message +
+                                '<button type="button" class="btn-close" data-bs-dismiss="alert"></button>' +
+                                '</div>');
+                            $('.container').prepend(alert);
+                        }
+                    },
+                    error: function(xhr) {
+                        // Show error message
+                        const message = xhr.responseJSON?.message || 'An error occurred while removing admin privileges';
+                        const alert = $('<div class="alert alert-danger alert-dismissible fade show" role="alert">' +
+                            message +
+                            '<button type="button" class="btn-close" data-bs-dismiss="alert"></button>' +
+                            '</div>');
+                        $('.container').prepend(alert);
+                    }
+                });
+            });
+
             function updateUserAccess(userId) {
                 if (!userId) {
                     $('#userAccessSection').hide();
                     return;
                 }
 
-                $.get(`/manage-access/search-users?query=${userId}`, function(users) {
+                $.get('{{ secure_url("/manage-access/search-users") }}?query=' + userId, function(users) {
                     if (users.length > 0) {
                         const user = users[0];
                         const accessList = $('#userAccessList');
@@ -991,7 +1217,7 @@
                 if (!userId || !courseId) return;
 
                 $.ajax({
-                    url: '{{ route("admin.user-course.enroll") }}',
+                    url: '{{ secure_url("/manage-access/enroll") }}',
                     method: 'POST',
                     data: {
                         user_id: userId,
@@ -1040,7 +1266,7 @@
 
             window.revokeAccess = function(userId, courseId) {
                 $.ajax({
-                    url: '{{ route("admin.user-course.enroll") }}',
+                    url: '{{ secure_url("/manage-access/enroll") }}',
                     method: 'POST',
                     data: {
                         user_id: userId,
@@ -1069,7 +1295,7 @@
                 }
 
                 $.ajax({
-                    url: '{{ route("admin.user-course.enroll") }}',
+                    url: '{{ secure_url("/manage-access/enroll") }}',
                     method: 'POST',
                     data: {
                         user_id: userId,
@@ -1174,7 +1400,7 @@
     <script>
         function loadPaymentHistory(page = 1, filters = {}) {
             const searchQuery = document.getElementById('payment-search').value.trim();
-            let url = `/admin/payment-history?page=${page}`;
+            let url = '{{ secure_url("/admin/payment-history") }}?page=' + page;
             
             if (searchQuery) {
                 url += `&search=${encodeURIComponent(searchQuery)}`;
@@ -1635,7 +1861,7 @@
                 btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
             });
 
-            fetch(`/admin/payments/${paymentId}/reject`, {
+            fetch('{{ secure_url("/admin/payments") }}/' + paymentId + '/reject', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -1691,7 +1917,7 @@
             
             const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
             
-            fetch(`/admin/payments/${paymentId}/verify`, {
+            fetch('{{ secure_url("/admin/payments") }}/' + paymentId + '/verify', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -1741,7 +1967,7 @@
 
                 const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
 
-                fetch(`/admin/payments/${paymentId}/verify`, {
+                fetch('{{ secure_url("/admin/payments") }}/' + paymentId + '/verify', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',

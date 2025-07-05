@@ -14,6 +14,7 @@ class Kernel extends HttpKernel
      * @var array<int, class-string|string>
      */
     protected $middleware = [
+        \App\Http\Middleware\HttpsRedirectMiddleware::class,
         \Fruitcake\Cors\HandleCors::class,
         //
     ];
@@ -61,5 +62,6 @@ class Kernel extends HttpKernel
         'verified' => \Illuminate\Auth\Middleware\EnsureEmailIsVerified::class,
         'admin' => \App\Http\Middleware\AdminMiddleware::class,
         'check.course.access' => \App\Http\Middleware\CheckCourseAccess::class,
+        'force.https' => \App\Http\Middleware\HttpsRedirectMiddleware::class,
     ];
 } 

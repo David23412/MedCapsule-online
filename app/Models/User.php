@@ -79,6 +79,30 @@ class User extends Authenticatable
     }
 
     /**
+     * Get the user's quiz attempts.
+     */
+    public function quizAttempts()
+    {
+        return $this->hasMany(QuizAttempt::class);
+    }
+
+    /**
+     * Get the user's mistakes.
+     */
+    public function mistakes()
+    {
+        return $this->hasMany(Mistake::class);
+    }
+
+    /**
+     * Get the user's topic progress.
+     */
+    public function userTopicProgress()
+    {
+        return $this->hasMany(UserTopicProgress::class);
+    }
+
+    /**
      * Get the user's unread notifications.
      */
     public function unreadNotifications()

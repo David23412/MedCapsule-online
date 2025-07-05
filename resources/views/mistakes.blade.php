@@ -945,7 +945,7 @@
             <div class="nav-links">
                 <a href="javascript:history.back()" class="nav-link">← Back</a>
                 <a href="{{ route('profile') }}" class="profile-circle {{ !Auth::user()->profile_picture_url ? 'no-image' : '' }}" 
-                     style="{{ Auth::user()->profile_picture_url ? 'background-image: url(' . asset(Auth::user()->profile_picture_url) . ');' : '' }}">
+                     style="{{ Auth::user()->profile_picture_url ? 'background-image: url(' . secure_url(Auth::user()->profile_picture_url) . ');' : '' }}">
                     @if(!Auth::user()->profile_picture_url)
                         {{ substr(Auth::user()->name, 0, 1) }}
                     @endif
@@ -974,7 +974,7 @@
 
             <!-- Course Filter Dropdown -->
             <div class="filter-section">
-                <form action="{{ route('review.index') }}" method="GET" class="d-flex align-items-center w-100 gap-3">
+                <form action="{{ secure_url(route('review.index', [], false)) }}" method="GET" class="d-flex align-items-center w-100 gap-3">
                     <div class="d-flex align-items-center flex-grow-1 flex-wrap">
                         <label for="courseFilter" class="me-3">
                             <i class="fas fa-filter me-2 text-primary"></i>

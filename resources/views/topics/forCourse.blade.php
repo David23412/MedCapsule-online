@@ -14,7 +14,7 @@
             
             <p class="text-muted">Challenge yourself with questions from multiple courses!</p>
             
-            <form action="{{ route('quiz.random') }}" method="POST" class="row g-3">
+            <form action="{{ secure_url(route('quiz.random', [], false)) }}" method="POST" class="row g-3">
                 @csrf
                 <div class="col-md-6">
                     <label class="form-label">Select Courses:</label>

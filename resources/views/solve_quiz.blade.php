@@ -704,7 +704,7 @@
             <div class="nav-links">
                 <a href="javascript:history.back()" class="nav-link">← Back</a>
                 <a href="{{ route('profile') }}" class="profile-circle {{ !Auth::user()->profile_picture_url ? 'no-image' : '' }}" 
-                     style="{{ Auth::user()->profile_picture_url ? 'background-image: url(' . asset(Auth::user()->profile_picture_url) . ');' : '' }}">
+                     style="{{ Auth::user()->profile_picture_url ? 'background-image: url(' . secure_url(Auth::user()->profile_picture_url) . ');' : '' }}">
                     @if(!Auth::user()->profile_picture_url)
                         {{ substr(Auth::user()->name, 0, 1) }}
                     @endif
@@ -738,7 +738,7 @@
                     <div class="progress-text" id="progress-text">0 of {{ $questions->count() }} questions answered</div>
                 </div>
 
-                <form id="quiz-form" action="{{ route('quiz.grade', ['course' => $course->id, 'topic' => $topic->id]) }}" method="POST">
+                <form id="quiz-form" action="{{ secure_url(route('quiz.grade', ['course' => $course->id, 'topic' => $topic->id], false)) }}" method="POST">
                     @csrf
                     @foreach($questions as $question)
                         @if($question->question_type === 'written')
@@ -1161,17 +1161,44 @@
                 }
             });
 
-            try {
+            // Function to safely play audio with user interaction check
+            function safePlayAudio(audioElement, soundName) {
+                if (!audioElement) {
+                    console.warn(`${soundName} audio element not found`);
+                    return;
+                }
+                
+                // Check if user has interacted with the page
+                if (document.visibilityState === 'visible') {
+                    // Try to play with user interaction context
+                    const playPromise = audioElement.play();
+                    
+                    if (playPromise !== undefined) {
+                        playPromise
+                            .then(() => {
+                                console.log(`${soundName} played successfully`);
+                            })
+                            .catch(error => {
+                                // Handle autoplay policy restrictions
+                                if (error.name === 'NotAllowedError') {
+                                    console.log(`${soundName} blocked by autoplay policy - user interaction required`);
+                                } else {
+                                    console.error(`${soundName} play failed:`, error);
+                                }
+                            });
+                    }
+                } else {
+                    console.log(`${soundName} skipped - page not visible`);
+                }
+            }
+
             // Play appropriate sound based on score
             if (percentage === 100) {
-                    perfectSound.play().catch(e => console.error('Perfect sound play failed:', e));
+                safePlayAudio(perfectSound, 'Perfect');
                 } else if (score === 0) {
-                    wrongSound.play().catch(e => console.error('Wrong sound play failed:', e));
+                safePlayAudio(wrongSound, 'Wrong');
             } else {
-                    partialSound.play().catch(e => console.error('Partial sound play failed:', e));
-                }
-            } catch (error) {
-                console.error('Error playing sound:', error);
+                safePlayAudio(partialSound, 'Partial');
             }
         }
 

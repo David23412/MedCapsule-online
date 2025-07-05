@@ -1474,10 +1474,13 @@
                                     <li><a class="dropdown-item" href="{{ route('add-course.form') }}">
                                         <i class="fas fa-plus-square me-2"></i>Add Course
                                     </a></li>
+                                    <li><a class="dropdown-item text-danger" href="{{ route('admin.delete.index') }}">
+                                        <i class="fas fa-trash-alt me-2"></i>Delete Management
+                                    </a></li>
                                 @endif
                                 <li><hr class="dropdown-divider"></li>
                                 <li>
-                                    <form method="POST" action="{{ route('logout') }}">
+                                    <form method="POST" action="{{ secure_url(route('logout', [], false)) }}">
                                         @csrf
                                         <button type="submit" class="dropdown-item text-danger">
                                             <i class="fas fa-sign-out-alt me-2"></i>Logout
@@ -1488,7 +1491,7 @@
                         </li>
                         <li class="nav-item">
                             <a href="{{ route('profile') }}" class="profile-circle {{ !Auth::user()->profile_picture_url ? 'no-image' : '' }}" 
-                                style="{{ Auth::user()->profile_picture_url ? 'background-image: url(' . asset(Auth::user()->profile_picture_url) . ');' : '' }}">
+                                style="{{ Auth::user()->profile_picture_url ? 'background-image: url(' . secure_url(Auth::user()->profile_picture_url) . ');' : '' }}">
                                 @if(!Auth::user()->profile_picture_url)
                                     {{ substr(Auth::user()->name, 0, 1) }}
                                 @endif
@@ -1595,6 +1598,11 @@
                                     <i class="fas fa-play"></i>
                                     Continue Learning
                                 </a>
+                            @elseif (!$course->is_paid)
+                                <a href="{{ route('topics.forCourse', $course) }}" class="action-btn enroll">
+                                    <i class="fas fa-play"></i>
+                                    Start Learning (Free)
+                                </a>
                             @else
                                 <button type="button" class="action-btn enroll show-payment-modal" id="paymentBtn_{{ $course->id }}" data-course-id="{{ $course->id }}" @if($course->has_pending_payment) disabled @endif>
                                     @if($course->has_pending_payment)
@@ -1607,10 +1615,17 @@
                                 </button>
                             @endif
                         @else
-                            <a href="{{ route('login') }}" class="action-btn enroll">
-                                <i class="fas fa-lock"></i>
-                                Sign in to Access
-                            </a>
+                            @if (!$course->is_paid)
+                                <a href="{{ route('login') }}" class="action-btn enroll">
+                                    <i class="fas fa-play"></i>
+                                    Sign in to Start (Free)
+                                </a>
+                            @else
+                                <a href="{{ route('login') }}" class="action-btn enroll">
+                                    <i class="fas fa-lock"></i>
+                                    Sign in to Access
+                                </a>
+                            @endif
                         @endif
                     </div>
                 </div>
@@ -2362,6 +2377,27 @@
     <!-- Bundle Purchase Feature Script -->
     <script>
         document.addEventListener('DOMContentLoaded', function() {
+            // Check for pending payments and update buttons
+            function updatePaymentButtonsForPendingPayments() {
+                // Update buttons for any pending payments from localStorage
+                Object.keys(localStorage).forEach(key => {
+                    if (key.startsWith('payment_pending_')) {
+                        const courseId = key.replace('payment_pending_', '');
+                        const button = document.querySelector(`#paymentBtn_${courseId}`);
+                        if (button) {
+                            button.innerHTML = '<i class="fas fa-clock"></i><span style="color: #c2410c;">Payment Pending</span>';
+                            button.classList.remove('btn-primary', 'show-payment-modal');
+                            button.classList.add('btn-warning');
+                            button.disabled = true;
+                            button.style.cursor = 'default';
+                        }
+                    }
+                });
+            }
+
+            // Run the check when page loads
+            updatePaymentButtonsForPendingPayments();
+
             // Initialize the bundle modal
             const bundleModal = new bootstrap.Modal(document.getElementById('bundleModal'));
             

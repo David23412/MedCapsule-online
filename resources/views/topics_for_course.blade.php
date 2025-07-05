@@ -1268,7 +1268,7 @@
                 </a>
                 
                 <a href="{{ route('profile') }}" class="profile-circle {{ !Auth::user()->profile_picture_url ? 'no-image' : '' }}" 
-                     style="{{ Auth::user()->profile_picture_url ? 'background-image: url(' . asset(Auth::user()->profile_picture_url) . ');' : '' }}">
+                     style="{{ Auth::user()->profile_picture_url ? 'background-image: url(' . secure_url(Auth::user()->profile_picture_url) . ');' : '' }}">
                     @if(!Auth::user()->profile_picture_url)
                         {{ substr(Auth::user()->name, 0, 1) }}
                     @endif
@@ -1294,7 +1294,7 @@
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">
-                    <form action="{{ route('quiz.random') }}" method="POST" id="randomQuizForm">
+                    <form action="{{ secure_url(route('quiz.random', [], false)) }}" method="POST" id="randomQuizForm">
                         @csrf
                         <div class="mb-4">
                             <div class="setting-header">
@@ -1549,7 +1549,7 @@
                         </div>
                         
                         @php
-                            $quizUrl = route('quiz.start', ['course' => $topic->course_id, 'topic' => $topic->id]);
+                            $quizUrl = secure_url(route('quiz.start', ['course' => $topic->course_id, 'topic' => $topic->id], false));
                         @endphp
                         <a href="{{ $quizUrl }}" class="start-quiz-btn" data-topic-id="{{ $topic->id }}" data-course-id="{{ $topic->course_id }}">
                             @if($topic->percentage_grade !== null)

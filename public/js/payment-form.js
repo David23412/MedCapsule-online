@@ -12,7 +12,7 @@ window.onerror = function(msg, url, lineNo, columnNo, error) {
 function updatePaymentButton(courseId) {
     const button = document.querySelector(`#paymentBtn_${courseId}`);
     if (button) {
-        button.innerHTML = '<i class="fas fa-clock"></i><span>Pending Verification</span>';
+        button.innerHTML = '<i class="fas fa-clock"></i><span style="color: #c2410c;">Payment Pending</span>';
         button.classList.remove('btn-primary', 'show-payment-modal');
         button.classList.add('btn-warning');
         button.disabled = true;
@@ -111,6 +111,65 @@ function showSuccessMessage() {
     }, 2500);
 }
 
+function showErrorMessage(message) {
+    // Create error message container
+    const container = document.createElement('div');
+    container.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(255,255,255,0.98);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 999998;
+        backdrop-filter: blur(5px);
+    `;
+
+    // Add error message content
+    container.innerHTML = `
+        <style>
+            @keyframes modal-in {
+                0% { transform: scale(0.8); opacity: 0; }
+                100% { transform: scale(1); opacity: 1; }
+            }
+            @keyframes text-fade {
+                0% { opacity: 0; transform: translateY(15px); }
+                100% { opacity: 1; transform: translateY(0); }
+            }
+        </style>
+        <div style="text-align: center; padding: 50px; background: white; border-radius: 24px; box-shadow: 0 20px 50px rgba(0,0,0,0.1); transform: scale(0.8); opacity: 0; animation: modal-in 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;">
+            <div style="color: #dc3545; font-size: 140px;">
+                <i class="fas fa-exclamation-triangle" style="filter: drop-shadow(0 6px 8px rgba(220, 53, 69, 0.2));"></i>
+            </div>
+            <h3 style="margin-top: 30px; color: #dc3545; font-size: 32px; font-weight: bold; animation: text-fade 0.6s ease forwards 0.6s; opacity: 0;">
+                Payment Submission Failed
+            </h3>
+            <p style="margin-top: 15px; color: #666; font-size: 18px; animation: text-fade 0.6s ease forwards 0.8s; opacity: 0;">
+                ${message}
+            </p>
+            <div style="margin-top: 25px; animation: text-fade 0.6s ease forwards 1s; opacity: 0;">
+                <button onclick="location.reload()" style="
+                    background: #dc3545;
+                    color: white;
+                    padding: 12px 24px;
+                    border: none;
+                    border-radius: 50px;
+                    font-size: 18px;
+                    font-weight: 500;
+                    cursor: pointer;
+                ">
+                    <i class="fas fa-redo"></i> Try Again
+                </button>
+            </div>
+        </div>
+    `;
+
+    document.body.appendChild(container);
+}
+
 // Check for pending payments on page load
 document.addEventListener('DOMContentLoaded', function() {
     // Update buttons for any pending payments
@@ -149,10 +208,37 @@ document.addEventListener('DOMContentLoaded', function() {
                 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || ''
             },
             body: new URLSearchParams(formData)
+        })
+        .then(response => response.json())
+        .then(data => {
+            console.log('Payment submission response:', data);
+            
+            if (data.success) {
+                // Show success message
+                showSuccessMessage();
+            } else {
+                // Show error message
+                showErrorMessage(data.message || 'An error occurred while submitting your payment. Please try again.');
+                
+                // Re-enable submit button
+                if (submitBtn) {
+                    submitBtn.disabled = false;
+                    submitBtn.textContent = 'Submit Payment';
+                }
+            }
+        })
+        .catch(error => {
+            console.error('Payment submission error:', error);
+            
+            // Show error message
+            showErrorMessage('An error occurred while submitting your payment. Please try again.');
+            
+            // Re-enable submit button
+            if (submitBtn) {
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Submit Payment';
+            }
         });
-
-        // Show success message
-        showSuccessMessage();
     });
 });
 

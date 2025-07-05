@@ -516,7 +516,7 @@
             <div class="nav-links">
                 <a href="javascript:history.back()" class="nav-link">← Back</a>
                 <a href="{{ route('profile') }}" class="profile-circle {{ !Auth::user()->profile_picture_url ? 'no-image' : '' }}" 
-                     style="{{ Auth::user()->profile_picture_url ? 'background-image: url(' . asset(Auth::user()->profile_picture_url) . ');' : '' }}">
+                     style="{{ Auth::user()->profile_picture_url ? 'background-image: url(' . secure_url(Auth::user()->profile_picture_url) . ');' : '' }}">
                     @if(!Auth::user()->profile_picture_url)
                         {{ substr(Auth::user()->name, 0, 1) }}
                     @endif
@@ -718,11 +718,12 @@
             // Disable the check button
             checkButton.disabled = true;
 
-            fetch(`/quiz/tutor/check/${questionId}`, {
+            const baseUrl = '{{ secure_url("/") }}';
+            fetch(`${baseUrl}/quiz/tutor/check/${questionId}`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                    'X-CSRF-TOKEN': '{{ csrf_token() }}',
                     'Accept': 'application/json'
                 },
                 body: JSON.stringify({ 
@@ -805,11 +806,11 @@
                 document.getElementById('progress-fill').style.width = `${progressPercentage}%`;
             } else {
                 // No more questions, save total study time
-                fetch('/learn/save-time', {
+                fetch('{{ secure_url("/learn/save-time") }}', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                        'X-CSRF-TOKEN': '{{ csrf_token() }}',
                         'Accept': 'application/json'
                     },
                     body: JSON.stringify({
@@ -955,27 +956,54 @@
                 }
             });
 
-            try {
-                // For individual answer checks, just use perfect for correct and wrong for incorrect
-                if (typeof isCorrect === 'boolean') {
-                    if (isCorrect) {
-                        perfectSound.play().catch(e => console.error('Perfect sound play failed:', e));
-                    } else {
-                        wrongSound.play().catch(e => console.error('Wrong sound play failed:', e));
+            // Function to safely play audio with user interaction check
+            function safePlayAudio(audioElement, soundName) {
+                if (!audioElement) {
+                    console.warn(`${soundName} audio element not found`);
+                    return;
+                }
+                
+                // Check if user has interacted with the page
+                if (document.visibilityState === 'visible') {
+                    // Try to play with user interaction context
+                    const playPromise = audioElement.play();
+                    
+                    if (playPromise !== undefined) {
+                        playPromise
+                            .then(() => {
+                                console.log(`${soundName} played successfully`);
+                            })
+                            .catch(error => {
+                                // Handle autoplay policy restrictions
+                                if (error.name === 'NotAllowedError') {
+                                    console.log(`${soundName} blocked by autoplay policy - user interaction required`);
+                                } else {
+                                    console.error(`${soundName} play failed:`, error);
+                                }
+                            });
                     }
                 } else {
-                    // For quiz completion, use the percentage logic
-                    const percentage = (isCorrect.correct / isCorrect.total) * 100;
-                    if (percentage === 100) {
-                        perfectSound.play().catch(e => console.error('Perfect sound play failed:', e));
-                    } else if (percentage >= 70) {
-                        partialSound.play().catch(e => console.error('Partial sound play failed:', e));
-                    } else {
-                        wrongSound.play().catch(e => console.error('Wrong sound play failed:', e));
-                    }
+                    console.log(`${soundName} skipped - page not visible`);
                 }
-            } catch (error) {
-                console.error('Error playing sound:', error);
+            }
+
+            // For individual answer checks, just use perfect for correct and wrong for incorrect
+            if (typeof isCorrect === 'boolean') {
+                if (isCorrect) {
+                    safePlayAudio(perfectSound, 'Perfect');
+                } else {
+                    safePlayAudio(wrongSound, 'Wrong');
+                }
+            } else {
+                // For quiz completion, use the percentage logic
+                const percentage = (isCorrect.correct / isCorrect.total) * 100;
+                if (percentage === 100) {
+                    safePlayAudio(perfectSound, 'Perfect');
+                } else if (percentage >= 70) {
+                    safePlayAudio(partialSound, 'Partial');
+                } else {
+                    safePlayAudio(wrongSound, 'Wrong');
+                }
             }
         }
 

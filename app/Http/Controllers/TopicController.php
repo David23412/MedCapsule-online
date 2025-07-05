@@ -12,9 +12,6 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Collection;
 use App\Models\Mistake;
-use App\Models\SpacedRepetition;
-use Illuminate\Support\Facades\Auth;
-use App\Models\SourceProgress;
 
 class TopicController extends Controller
 {
@@ -37,7 +34,8 @@ class TopicController extends Controller
         // Check if user has access to the course
         $user = auth()->user();
         
-        if (!$user->is_admin && !$user->hasAccessToCourse($course->id)) {
+        // Allow access if user is admin, enrolled, or if course is free
+        if (!$user->is_admin && !$user->hasAccessToCourse($course->id) && $course->is_paid) {
             // Check if user has a pending payment
             $pendingPayment = Payment::where('user_id', $user->id)
                 ->where('course_id', $course->id)
@@ -138,7 +136,7 @@ class TopicController extends Controller
         }
 
         // Count incorrect answers using spaced_repetitions
-        $incorrectAnswers = SpacedRepetition::whereHas('question', function ($query) use ($topicId) {
+        $incorrectAnswers = QuizAttempt::whereHas('question', function ($query) use ($topicId) {
             $query->where('topic_id', $topicId);
         })
         ->whereColumn('submitted_answer', '!=', 'questions.correct_answer')

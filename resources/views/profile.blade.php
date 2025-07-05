@@ -1284,7 +1284,7 @@
                 <i class="fas fa-graduation-cap"></i> Add Course
             </a>
             @endif
-            <form method="POST" action="{{ route('logout') }}" class="mt-auto">
+            <form method="POST" action="{{ secure_url(route('logout', [], false)) }}" class="mt-auto">
                 @csrf
                 <button type="submit" class="nav-link border-0 bg-transparent w-100 text-start">
                     <i class="fas fa-sign-out-alt"></i> Logout
@@ -1315,13 +1315,13 @@
             </div>
             <div class="wire-curve"></div>
             <div class="profile-picture">
-                <img src="{{ auth()->user()->profile_picture_url ? asset(auth()->user()->profile_picture_url) : 'https://ui-avatars.com/api/?name=' . urlencode(auth()->user()->name) }}" 
+                <img src="{{ auth()->user()->profile_picture_url ? secure_url(auth()->user()->profile_picture_url) : 'https://ui-avatars.com/api/?name=' . urlencode(auth()->user()->name) }}" 
                      alt="Profile Picture" id="profileImage">
                 <div class="upload-overlay">
                     <i class="fas fa-camera"></i>
                 </div>
             </div>
-            <form action="{{ route('profile.update-picture') }}" method="POST" enctype="multipart/form-data" id="profileForm" style="display: none;">
+            <form action="{{ secure_url(route('profile.update-picture', [], false)) }}" method="POST" enctype="multipart/form-data" id="profileForm" style="display: none;">
                 @csrf
                 <input type="file" 
                        name="profile_picture" 
@@ -1497,7 +1497,7 @@
                                         </div>
                                         <small class="text-muted">Grade: {{ number_format($grade, 1) }}%</small>
                                     </div>
-                                    <a href="{{ route('quiz.start', ['course' => $topic->course->id, 'topic' => $topic->id]) }}" 
+                                    <a href="{{ secure_url(route('quiz.start', ['course' => $topic->course->id, 'topic' => $topic->id], false)) }}" 
                                        class="btn btn-sm {{ $buttonClass }}">
                                         Practice <i class="fas fa-arrow-right ms-1"></i>
                                     </a>

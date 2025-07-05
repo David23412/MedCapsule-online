@@ -1,0 +1,14 @@
+/* Copied from resources/css/app.css */
+@import url('https://fonts.bunny.net/css?family=Nunito');
+
+body {
+    font-family: 'Nunito', sans-serif;
+    background-color: #f8fafc;
+    color: #1a202c;
+}
+
+.container {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 2rem 1rem;
+} 

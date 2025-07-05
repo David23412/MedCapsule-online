@@ -1249,7 +1249,7 @@
                                 @endif
                                 <li><hr class="dropdown-divider"></li>
                                 <li>
-                                    <form method="POST" action="{{ route('logout') }}">
+                                    <form method="POST" action="{{ secure_url(route('logout', [], false)) }}">
                                         @csrf
                                         <button type="submit" class="dropdown-item text-danger">
                                             <i class="fas fa-sign-out-alt me-2"></i>Logout
@@ -1359,7 +1359,7 @@
                         <li class="nav-item">
                             <a href="{{ route('profile') }}" class="nav-link">
                                 <div class="profile-circle {{ !Auth::user()->profile_picture_url ? 'no-image' : '' }}" 
-                                     style="{{ Auth::user()->profile_picture_url ? 'background-image: url(' . Auth::user()->profile_picture_url . ');' : '' }}">
+                                     style="{{ Auth::user()->profile_picture_url ? 'background-image: url(' . secure_url(Auth::user()->profile_picture_url) . ');' : '' }}">
                                     @if(!Auth::user()->profile_picture_url)
                                         {{ substr(Auth::user()->name, 0, 1) }}
                                     @endif
@@ -1458,6 +1458,11 @@
                                     <i class="fas fa-play"></i>
                                     Continue Learning
                                 </a>
+                            @elseif (!$course->is_paid)
+                                <a href="{{ route('topics.forCourse', $course) }}" class="action-btn enroll">
+                                    <i class="fas fa-play"></i>
+                                    Start Learning (Free)
+                                </a>
                             @else
                                 <button type="button" class="action-btn enroll show-payment-modal" data-course-id="{{ $course->id }}">
                                     <i class="fas fa-unlock"></i>
@@ -1465,10 +1470,17 @@
                                 </button>
                             @endif
                         @else
-                            <a href="{{ route('login') }}" class="action-btn enroll">
-                                <i class="fas fa-lock"></i>
-                                Sign in to Access
-                            </a>
+                            @if (!$course->is_paid)
+                                <a href="{{ route('login') }}" class="action-btn enroll">
+                                    <i class="fas fa-play"></i>
+                                    Sign in to Start (Free)
+                                </a>
+                            @else
+                                <a href="{{ route('login') }}" class="action-btn enroll">
+                                    <i class="fas fa-lock"></i>
+                                    Sign in to Access
+                                </a>
+                            @endif
                         @endif
                     </div>
                 </div>
