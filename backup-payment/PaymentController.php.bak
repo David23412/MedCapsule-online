@@ -1,0 +1,744 @@
+<?php
+
+namespace App\Http\Controllers;
+
+use App\Models\Course;
+use App\Models\Payment;
+use App\Services\PaymentService;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Auth;
+
+class PaymentController extends Controller
+{
+    protected $paymentService;
+
+    public function __construct(PaymentService $paymentService)
+    {
+        $this->paymentService = $paymentService;
+        $this->middleware('auth')->except(['fawryCallback', 'vodafoneCashCallback']);
+    }
+
+    /**
+     * Get payment options for a course (for AJAX modal display)
+     */
+    public function getPaymentOptions(Course $course)
+    {
+        // Check if the user already has access to the course
+        if (Auth::user()->hasAccessToCourse($course->id)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'You already have access to this course.',
+                'redirect' => route('topics.forCourse', $course->id)
+            ]);
+        }
+        
+        // Return HTML for the payment options modal with course info
+        // Even for free courses, we'll show the payment modal but with free enrollment option
+        $html = view('payments.options_modal', compact('course'))->render();
+        
+        return response()->json([
+            'success' => true,
+            'html' => $html
+        ]);
+    }
+
+    /**
+     * Process a payment request
+     */
+    public function processPayment(Request $request, Course $course)
+    {
+        $validated = $request->validate([
+            'payment_method' => 'required|in:fawry,vodafone_cash',
+        ]);
+
+        $user = Auth::user();
+        $paymentMethod = $validated['payment_method'];
+        
+        // Check if user already has access
+        if ($user->hasAccessToCourse($course->id)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'You already have access to this course.',
+                'redirect' => route('topics.forCourse', $course->id)
+            ]);
+        }
+        
+        // Set a default price for courses that don't have one
+        $amount = $course->is_paid ? $course->price : 0;
+        
+        // Create a payment record
+        $payment = $this->paymentService->createPaymentRequest($user, $course, $paymentMethod, $amount);
+        
+        if ($paymentMethod === 'fawry') {
+            // Generate Fawry payment code - same as Vodafone Cash for consistency in demo
+            $paymentCode = $this->paymentService->generateFawryCode($payment);
+            
+            // Return the Fawry modal content 
+            $html = view('payments.fawry_modal', compact('payment', 'paymentCode', 'course'))->render();
+            
+            // Add immediate execution script to initialize polling
+            $html .= '<script>
+                // Immediately initialize and execute the polling function
+                console.log("Direct initFawryPolling execution with ID: ' . $payment->id . '");
+                if (typeof window.simulatePaymentSuccess !== "function") {
+                    window.simulatePaymentSuccess = function(paymentId) {
+                        console.log("Simulating payment success for ID:", paymentId);
+                        const csrfToken = document.querySelector("meta[name=\'csrf-token\']")?.getAttribute("content");
+                        if (!csrfToken) { alert("CSRF token not found!"); return; }
+                        
+                        const simButton = document.querySelector("button[onclick^=\'simulatePaymentSuccess\']");
+                        if (simButton) {
+                            simButton.innerHTML = "<span class=\'spinner-border spinner-border-sm\' role=\'status\'></span> Processing...";
+                            simButton.disabled = true;
+                        }
+                        
+                        fetch("/payments/" + paymentId + "/simulate-success", {
+                            method: "GET",
+                            headers: {
+                                "Accept": "application/json",
+                                "X-CSRF-TOKEN": csrfToken,
+                                "X-Requested-With": "XMLHttpRequest"
+                            }
+                        })
+                        .then(response => response.json())
+                        .then(data => {
+                            if (data.success) {
+                                const statusAlert = document.querySelector(".alert");
+                                if (statusAlert) statusAlert.classList.replace("alert-info", "alert-success");
+                                
+                                const statusIcon = document.querySelector(".status-icon i");
+                                if (statusIcon) {
+                                    statusIcon.classList.remove("fa-spinner", "fa-spin");
+                                    statusIcon.classList.add("fa-check-circle");
+                                }
+                                
+                                const statusMessage = document.getElementById("status-message");
+                                if (statusMessage) statusMessage.innerHTML = "Payment successful! Redirecting...";
+                                
+                                setTimeout(() => { window.location.href = data.redirect; }, 2000);
+                            } else {
+                                alert("Payment simulation failed");
+                                if (simButton) {
+                                    simButton.innerHTML = "<i class=\'fas fa-vial me-2\'></i>Simulate Success";
+                                    simButton.disabled = false;
+                                }
+                            }
+                        })
+                        .catch(error => {
+                            alert("Error: " + error.message);
+                            if (simButton) {
+                                simButton.innerHTML = "<i class=\'fas fa-vial me-2\'></i>Simulate Success";
+                                simButton.disabled = false;
+                            }
+                        });
+                    };
+                }
+                
+                setTimeout(function() {
+                    if (typeof initFawryPolling === "function") {
+                        initFawryPolling("' . $payment->id . '");
+                    } else {
+                        console.log("Creating fallback polling function");
+                        
+                        window.initFawryPolling = function(paymentId) {
+                            console.log("Fallback Fawry polling executed for ID:", paymentId);
+                            
+                            const statusInterval = setInterval(() => {
+                                const csrfToken = document.querySelector("meta[name=\'csrf-token\']")?.getAttribute("content");
+                                
+                                fetch(`/payments/${paymentId}/check-status`, {
+                                    method: "GET",
+                                    headers: {
+                                        "Accept": "application/json",
+                                        "X-CSRF-TOKEN": csrfToken,
+                                        "X-Requested-With": "XMLHttpRequest"
+                                    }
+                                })
+                                .then(response => response.json())
+                                .then(data => {
+                                    if (data.status === "completed") {
+                                        clearInterval(statusInterval);
+                                        const statusAlert = document.querySelector(".alert");
+                                        if (statusAlert) statusAlert.classList.replace("alert-info", "alert-success");
+                                        
+                                        const statusIcon = document.querySelector(".status-icon i");
+                                        if (statusIcon) {
+                                            statusIcon.classList.remove("fa-spinner", "fa-spin");
+                                            statusIcon.classList.add("fa-check-circle");
+                                        }
+                                        
+                                        const statusMessage = document.getElementById("status-message");
+                                        if (statusMessage) statusMessage.innerHTML = "Payment successful! Redirecting...";
+                                        
+                                        setTimeout(() => { window.location.href = data.redirect; }, 2000);
+                                    }
+                                })
+                                .catch(error => console.error("Error checking payment status:", error));
+                            }, 5000);
+                        };
+                        
+                        window.initFawryPolling("' . $payment->id . '");
+                    }
+                }, 300);
+            </script>';
+            
+            return response()->json([
+                'success' => true,
+                'html' => $html,
+                'payment_id' => $payment->id,
+                'payment_method' => 'fawry'
+            ]);
+        } elseif ($paymentMethod === 'vodafone_cash') {
+            // Generate Vodafone Cash payment code
+            $paymentCode = $this->paymentService->generateVodafoneCashCode($payment);
+            
+            // Return the Vodafone Cash modal content
+            $html = view('payments.vodafone_cash_modal', compact('payment', 'paymentCode', 'course'))->render();
+            
+            // Add immediate execution script to initialize polling
+            $html .= '<script>
+                // Immediately initialize and execute the polling function
+                console.log("Direct initVodafoneCashPolling execution with ID: ' . $payment->id . '");
+                if (typeof window.simulatePaymentSuccess !== "function") {
+                    window.simulatePaymentSuccess = function(paymentId) {
+                        console.log("Simulating payment success for ID:", paymentId);
+                        const csrfToken = document.querySelector("meta[name=\'csrf-token\']")?.getAttribute("content");
+                        if (!csrfToken) { alert("CSRF token not found!"); return; }
+                        
+                        const simButton = document.querySelector("button[onclick^=\'simulatePaymentSuccess\']");
+                        if (simButton) {
+                            simButton.innerHTML = "<span class=\'spinner-border spinner-border-sm\' role=\'status\'></span> Processing...";
+                            simButton.disabled = true;
+                        }
+                        
+                        fetch("/payments/" + paymentId + "/simulate-success", {
+                            method: "GET",
+                            headers: {
+                                "Accept": "application/json",
+                                "X-CSRF-TOKEN": csrfToken,
+                                "X-Requested-With": "XMLHttpRequest"
+                            }
+                        })
+                        .then(response => response.json())
+                        .then(data => {
+                            if (data.success) {
+                                const statusAlert = document.querySelector(".alert");
+                                if (statusAlert) statusAlert.classList.replace("alert-info", "alert-success");
+                                
+                                const statusIcon = document.querySelector(".status-icon i");
+                                if (statusIcon) {
+                                    statusIcon.classList.remove("fa-spinner", "fa-spin");
+                                    statusIcon.classList.add("fa-check-circle");
+                                }
+                                
+                                const statusMessage = document.getElementById("status-message");
+                                if (statusMessage) statusMessage.innerHTML = "Payment successful! Redirecting...";
+                                
+                                setTimeout(() => { window.location.href = data.redirect; }, 2000);
+                            } else {
+                                alert("Payment simulation failed");
+                                if (simButton) {
+                                    simButton.innerHTML = "<i class=\'fas fa-vial me-2\'></i>Simulate Success";
+                                    simButton.disabled = false;
+                                }
+                            }
+                        })
+                        .catch(error => {
+                            alert("Error: " + error.message);
+                            if (simButton) {
+                                simButton.innerHTML = "<i class=\'fas fa-vial me-2\'></i>Simulate Success";
+                                simButton.disabled = false;
+                            }
+                        });
+                    };
+                }
+                
+                setTimeout(function() {
+                    if (typeof initVodafoneCashPolling === "function") {
+                        initVodafoneCashPolling("' . $payment->id . '");
+                    } else {
+                        console.log("Creating fallback polling function");
+                        
+                        window.initVodafoneCashPolling = function(paymentId) {
+                            console.log("Fallback Vodafone Cash polling executed for ID:", paymentId);
+                            
+                            const statusInterval = setInterval(() => {
+                                const csrfToken = document.querySelector("meta[name=\'csrf-token\']")?.getAttribute("content");
+                                
+                                fetch(`/payments/${paymentId}/check-status`, {
+                                    method: "GET",
+                                    headers: {
+                                        "Accept": "application/json",
+                                        "X-CSRF-TOKEN": csrfToken,
+                                        "X-Requested-With": "XMLHttpRequest"
+                                    }
+                                })
+                                .then(response => response.json())
+                                .then(data => {
+                                    if (data.status === "completed") {
+                                        clearInterval(statusInterval);
+                                        const statusAlert = document.querySelector(".alert");
+                                        if (statusAlert) statusAlert.classList.replace("alert-info", "alert-success");
+                                        
+                                        const statusIcon = document.querySelector(".status-icon i");
+                                        if (statusIcon) {
+                                            statusIcon.classList.remove("fa-spinner", "fa-spin");
+                                            statusIcon.classList.add("fa-check-circle");
+                                        }
+                                        
+                                        const statusMessage = document.getElementById("status-message");
+                                        if (statusMessage) statusMessage.innerHTML = "Payment successful! Redirecting...";
+                                        
+                                        setTimeout(() => { window.location.href = data.redirect; }, 2000);
+                                    }
+                                })
+                                .catch(error => console.error("Error checking payment status:", error));
+                            }, 5000);
+                        };
+                        
+                        window.initVodafoneCashPolling("' . $payment->id . '");
+                    }
+                }, 300);
+            </script>';
+            
+            return response()->json([
+                'success' => true,
+                'html' => $html,
+                'payment_id' => $payment->id,
+                'payment_method' => 'vodafone_cash'
+            ]);
+        }
+        
+        return response()->json([
+            'success' => false,
+            'message' => 'Invalid payment method.'
+        ]);
+    }
+
+    /**
+     * Handle Fawry payment callback
+     */
+    public function fawryCallback(Request $request)
+    {
+        Log::info('Fawry callback received', $request->all());
+        
+        $payment = $this->paymentService->processFawryCallback($request->all());
+        
+        if ($payment && $payment->status === 'completed') {
+            return redirect()->route('topics.forCourse', $payment->course_id)
+                ->with('success', 'Payment successful! You now have access to the course.');
+        }
+        
+        return redirect()->route('courses.index')
+            ->with('error', 'Payment processing failed. Please try again or contact support.');
+    }
+
+    /**
+     * Handle Vodafone Cash payment callback
+     */
+    public function vodafoneCashCallback(Request $request)
+    {
+        Log::info('Vodafone Cash callback received', $request->all());
+        
+        $payment = $this->paymentService->processVodafoneCashCallback($request->all());
+        
+        if ($payment && $payment->status === 'completed') {
+            return response()->json(['success' => true]);
+        }
+        
+        return response()->json(['success' => false]);
+    }
+
+    /**
+     * Check the status of any payment
+     */
+    public function checkPaymentStatus(Payment $payment)
+    {
+        if ($payment->status === 'completed') {
+            return response()->json([
+                'status' => 'completed',
+                'redirect' => route('topics.forCourse', $payment->course_id)
+            ]);
+        }
+        
+        return response()->json(['status' => $payment->status]);
+    }
+
+    /**
+     * Display payment history for the authenticated user
+     */
+    public function history()
+    {
+        if (Auth::user()->is_admin) {
+            return redirect()->route('admin.user-course', ['tab' => 'payment-history']);
+        }
+
+        // We don't want a separate payment history page for regular users
+        // Just redirect them to the courses page with a message
+        return redirect()->route('courses.index')
+            ->with('info', 'Your courses reflect your payment history. Courses you have paid for are accessible.');
+    }
+    
+    /**
+     * Get payment history for admin dashboard
+     */
+    public function adminPaymentHistory(Request $request)
+    {
+        // Check if user is admin
+        if (!Auth::user()->is_admin) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Unauthorized access'
+            ], 403);
+        }
+        
+        $query = Payment::with(['user', 'course'])
+            ->select('payments.*');
+            
+        // Handle search if provided
+        if ($request->has('search') && !empty($request->search)) {
+            $search = $request->search;
+            $query->where(function($q) use ($search) {
+                $q->where('reference_number', 'like', "%{$search}%")
+                  ->orWhere('status', 'like', "%{$search}%")
+                  ->orWhere('payment_method', 'like', "%{$search}%")
+                  ->orWhereHas('user', function($query) use ($search) {
+                      $query->where('name', 'like', "%{$search}%")
+                            ->orWhere('email', 'like', "%{$search}%");
+                  })
+                  ->orWhereHas('course', function($query) use ($search) {
+                      $query->where('name', 'like', "%{$search}%");
+                  });
+            });
+        }
+        
+        $payments = $query->latest()->paginate(10);
+        
+        // Create a custom paginator structure with transformed payment data
+        $transformedPayments = [
+            'current_page' => $payments->currentPage(),
+            'data' => $payments->items(),
+            'first_page_url' => $payments->url(1),
+            'from' => $payments->firstItem(),
+            'last_page' => $payments->lastPage(),
+            'last_page_url' => $payments->url($payments->lastPage()),
+            'next_page_url' => $payments->nextPageUrl(),
+            'path' => $payments->path(),
+            'per_page' => $payments->perPage(),
+            'prev_page_url' => $payments->previousPageUrl(),
+            'to' => $payments->lastItem(),
+            'total' => $payments->total(),
+        ];
+
+        // Transform each payment item in the data array
+        $transformedPayments['data'] = array_map(function ($payment) {
+            return [
+                'id' => $payment->id,
+                'user_id' => $payment->user_id,
+                'user_name' => $payment->user->name,
+                'user_email' => $payment->user->email,
+                'course_id' => $payment->course_id,
+                'course_name' => $payment->course->name,
+                'reference_number' => $payment->reference_number,
+                'amount' => $payment->amount,
+                'currency' => $payment->course->currency,
+                'payment_method' => $payment->payment_method,
+                'status' => $payment->status,
+                'created_at' => $payment->created_at,
+                'paid_at' => $payment->paid_at
+            ];
+        }, $payments->items());
+        
+        return response()->json([
+            'success' => true,
+            'payments' => $transformedPayments
+        ]);
+    }
+    
+    /**
+     * Get detailed payment information for admin
+     */
+    public function adminPaymentDetails(Payment $payment)
+    {
+        // Check if user is admin
+        if (!Auth::user()->is_admin) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Unauthorized access'
+            ], 403);
+        }
+        
+        $payment->load(['user', 'course']);
+        
+        $paymentDetails = [
+            'id' => $payment->id,
+            'user_id' => $payment->user_id,
+            'user_name' => $payment->user->name,
+            'user_email' => $payment->user->email,
+            'course_id' => $payment->course_id,
+            'course_name' => $payment->course->name,
+            'reference_number' => $payment->reference_number,
+            'amount' => $payment->amount,
+            'currency' => $payment->course->currency,
+            'payment_method' => $payment->payment_method,
+            'status' => $payment->status,
+            'payment_data' => $payment->payment_data,
+            'created_at' => $payment->created_at,
+            'paid_at' => $payment->paid_at
+        ];
+        
+        return response()->json([
+            'success' => true,
+            'payment' => $paymentDetails
+        ]);
+    }
+
+    /**
+     * Simulate a successful payment (for testing only)
+     * This endpoint would be removed in production
+     */
+    public function simulatePaymentSuccess(Payment $payment)
+    {
+        // Only allow in local/testing environment
+        if (!app()->environment('local', 'testing')) {
+            abort(404);
+        }
+        
+        $payment->status = 'completed';
+        $payment->paid_at = now();
+        $payment->save();
+        
+        // Enroll the user in the course
+        $payment->user->enrollInCourse($payment->course_id);
+        
+        return response()->json([
+            'success' => true,
+            'message' => 'Payment marked as successful',
+            'redirect' => route('topics.forCourse', $payment->course_id)
+        ]);
+    }
+
+    /**
+     * Process a manual payment request and verify it automatically
+     */
+    public function processManualPayment(Request $request, Course $course)
+    {
+        $validated = $request->validate([
+            'payment_method_used' => 'required|in:vodafone_cash,fawry,instapay',
+            'transaction_id' => 'required|string|max:255',
+            'payment_date' => 'required|date',
+            'payment_proof' => 'nullable|image|max:5120', // 5MB max
+        ]);
+
+        $user = Auth::user();
+        $paymentMethod = $validated['payment_method_used'];
+        
+        // Check if user already has access
+        if ($user->hasAccessToCourse($course->id)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'You already have access to this course.',
+                'redirect' => route('topics.forCourse', $course->id)
+            ]);
+        }
+        
+        // Set a default price for courses that don't have one
+        $amount = $course->is_paid ? $course->price : 0;
+        
+        // Create a payment record
+        $payment = $this->paymentService->createPaymentRequest($user, $course, $paymentMethod, $amount);
+        
+        // Process the payment proof if provided
+        if ($request->hasFile('payment_proof')) {
+            $proofPath = $request->file('payment_proof')->store('payment_proofs', 'public');
+            $payment->payment_data = array_merge($payment->payment_data ?? [], [
+                'proof_path' => $proofPath,
+            ]);
+        }
+        
+        // Store transaction details
+        $payment->payment_data = array_merge($payment->payment_data ?? [], [
+            'transaction_id' => $validated['transaction_id'],
+            'payment_date' => $validated['payment_date'],
+            'submission_date' => now()->toDateTimeString(),
+            'verification_status' => 'pending_verification'
+        ]);
+        
+        $payment->save();
+        
+        // Attempt automatic verification
+        $verificationResult = $this->paymentService->verifyManualPayment($payment);
+        
+        if ($verificationResult['success']) {
+            // Payment verified automatically
+            $payment->markAsPaid();
+            
+            return response()->json([
+                'success' => true,
+                'message' => 'Payment verified successfully! You now have access to the course.',
+                'redirect' => route('topics.forCourse', $course->id),
+                'verified' => true
+            ]);
+        }
+        
+        // If automatic verification fails, queue it for manual verification
+        return response()->json([
+            'success' => true,
+            'message' => 'Your payment has been submitted for verification. We will process it shortly.',
+            'redirect' => route('payments.history'),
+            'verified' => false
+        ]);
+    }
+
+    /**
+     * Submit proof of payment for an existing payment record
+     */
+    public function submitPaymentProof(Request $request, Payment $payment)
+    {
+        // Ensure the payment belongs to the authenticated user
+        if ($payment->user_id !== Auth::id()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Unauthorized access'
+            ], 403);
+        }
+        
+        $validated = $request->validate([
+            'transaction_id' => 'required|string|max:255',
+            'payment_method_used' => 'required|in:vodafone_cash,fawry,instapay',
+            'payment_date' => 'required|date',
+            'payment_proof' => 'nullable|image|max:5120', // 5MB max
+        ]);
+        
+        // Process the payment proof if provided
+        if ($request->hasFile('payment_proof')) {
+            $proofPath = $request->file('payment_proof')->store('payment_proofs', 'public');
+            $payment->payment_data = array_merge($payment->payment_data ?? [], [
+                'proof_path' => $proofPath,
+            ]);
+        }
+        
+        // Store transaction details
+        $payment->payment_data = array_merge($payment->payment_data ?? [], [
+            'transaction_id' => $validated['transaction_id'],
+            'payment_date' => $validated['payment_date'],
+            'submission_date' => now()->toDateTimeString(),
+            'verification_status' => 'pending_verification'
+        ]);
+        
+        $payment->save();
+        
+        // Attempt automatic verification
+        $verificationResult = $this->paymentService->verifyManualPayment($payment);
+        
+        if ($verificationResult['success']) {
+            // Payment verified automatically
+            $payment->markAsPaid();
+            
+            return response()->json([
+                'success' => true,
+                'message' => 'Payment verified successfully! You now have access to the course.',
+                'verified' => true
+            ]);
+        }
+        
+        // If automatic verification fails, queue it for manual verification
+        return response()->json([
+            'success' => true,
+            'message' => 'Your payment has been submitted for verification. We will process it shortly.',
+            'verified' => false
+        ]);
+    }
+
+    /**
+     * Get manual payment options for a course
+     */
+    public function getManualPaymentOptions(Course $course)
+    {
+        // Check if the user already has access to the course
+        if (Auth::user()->hasAccessToCourse($course->id)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'You already have access to this course.',
+                'redirect' => route('topics.forCourse', $course->id)
+            ]);
+        }
+        
+        // Create a new pending payment record
+        $user = Auth::user();
+        $payment = $this->paymentService->createPaymentRequest($user, $course, 'manual_payment', $course->price);
+        
+        // Generate payment instructions
+        $instructions = $this->paymentService->generateManualPaymentInstructions($payment);
+        
+        // Return HTML for the manual payment modal
+        $html = view('payments.manual_payment_modal', compact('payment', 'instructions'))->render();
+        
+        return response()->json([
+            'success' => true,
+            'html' => $html,
+            'payment_id' => $payment->id
+        ]);
+    }
+
+    /**
+     * Admin verify a payment
+     */
+    public function adminVerifyPayment(Request $request, Payment $payment)
+    {
+        // Ensure user is admin
+        if (!Auth::user()->is_admin) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Unauthorized access'
+            ], 403);
+        }
+        
+        // Add admin verification info
+        $payment->payment_data = array_merge($payment->payment_data ?? [], [
+            'verified_by' => Auth::user()->id,
+            'verified_at' => now()->toDateTimeString(),
+            'admin_notes' => $request->input('admin_notes', '')
+        ]);
+        
+        // Mark as paid which also enrolls the user in the course
+        $payment->markAsPaid();
+        
+        return response()->json([
+            'success' => true,
+            'message' => 'Payment verified successfully'
+        ]);
+    }
+
+    /**
+     * Admin reject a payment
+     */
+    public function adminRejectPayment(Request $request, Payment $payment)
+    {
+        // Ensure user is admin
+        if (!Auth::user()->is_admin) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Unauthorized access'
+            ], 403);
+        }
+        
+        $reason = $request->input('reason', 'Payment verification failed');
+        
+        // Update payment status
+        $payment->status = 'rejected';
+        $payment->payment_data = array_merge($payment->payment_data ?? [], [
+            'rejected_by' => Auth::user()->id,
+            'rejected_at' => now()->toDateTimeString(),
+            'rejection_reason' => $reason,
+            'admin_notes' => $request->input('admin_notes', '')
+        ]);
+        $payment->save();
+        
+        return response()->json([
+            'success' => true,
+            'message' => 'Payment rejected'
+        ]);
+    }
+}

@@ -1,0 +1,31 @@
+.progress-container {
+    margin-top: 10px;
+    margin-bottom: 10px;
+}
+
+.progress {
+    height: 10px;
+    border-radius: 5px;
+    background-color: #e9ecef;
+    overflow: hidden;
+}
+
+.progress-bar {
+    transition: width 0.6s ease;
+}
+
+.progress-text {
+    font-size: 0.8rem;
+    color: #6c757d;
+    margin-top: 5px;
+    display: inline-block;
+}
+
+.topic-card {
+    transition: all 0.3s ease;
+}
+
+.topic-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+} 

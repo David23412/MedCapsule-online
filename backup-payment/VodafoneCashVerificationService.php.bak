@@ -1,0 +1,177 @@
+<?php
+
+namespace App\Services;
+
+use App\Models\Payment;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Http;
+
+class VodafoneCashVerificationService
+{
+    /**
+     * Verify a payment via Vodafone Cash API
+     * 
+     * @param Payment $payment
+     * @return array
+     */
+    public function verifyViaApi(Payment $payment)
+    {
+        $apiKey = config('payment.vodafone_cash.api_key');
+        $apiEndpoint = config('payment.vodafone_cash.verification_endpoint');
+        
+        // Skip if API credentials are not configured
+        if (!$apiKey || !$apiEndpoint) {
+            return [
+                'success' => false,
+                'message' => 'Vodafone Cash API not configured'
+            ];
+        }
+        
+        $paymentData = $payment->payment_data ?? [];
+        $transactionId = $paymentData['transaction_id'] ?? null;
+        
+        if (!$transactionId) {
+            return [
+                'success' => false,
+                'message' => 'No transaction ID provided'
+            ];
+        }
+        
+        try {
+            // This would be replaced with actual API call to Vodafone Cash
+            // Mocked API response for demo purposes
+            /*
+            $response = Http::withToken($apiKey)
+                ->post($apiEndpoint, [
+                    'transaction_id' => $transactionId,
+                    'amount' => $payment->amount,
+                ]);
+                
+            if ($response->successful()) {
+                $data = $response->json();
+                
+                if ($data['status'] === 'SUCCESS') {
+                    return [
+                        'success' => true,
+                        'message' => 'Payment verified through Vodafone Cash API',
+                        'data' => $data
+                    ];
+                }
+            }
+            */
+            
+            // For now, simulate failed API verification to move to pattern matching
+            return [
+                'success' => false,
+                'message' => 'Payment not verified through API'
+            ];
+        } catch (\Exception $e) {
+            Log::error('Vodafone Cash API verification error', [
+                'error' => $e->getMessage(),
+                'payment_id' => $payment->id
+            ]);
+            
+            return [
+                'success' => false,
+                'message' => 'Error during API verification'
+            ];
+        }
+    }
+    
+    /**
+     * Verify payment using pattern matching
+     * 
+     * @param Payment $payment
+     * @return array
+     */
+    public function verifyViaPattern(Payment $payment)
+    {
+        $paymentData = $payment->payment_data ?? [];
+        $transactionId = $paymentData['transaction_id'] ?? null;
+        $paymentMethod = $payment->payment_method;
+        
+        if (!$transactionId) {
+            return [
+                'success' => false,
+                'message' => 'No transaction ID provided'
+            ];
+        }
+        
+        // Get the appropriate patterns based on payment method
+        $patterns = $this->getPatternsByPaymentMethod($paymentMethod);
+        
+        foreach ($patterns as $pattern) {
+            if (preg_match($pattern, $transactionId)) {
+                // Basic validation passed - could be a valid transaction ID
+                
+                // Additional validation - check length (most transaction IDs are between 6 and 20 chars)
+                if (strlen($transactionId) < 6 || strlen($transactionId) > 20) {
+                    continue; // Skip this pattern if length doesn't make sense
+                }
+                
+                // Check for obvious fake patterns (like 123456, 111111)
+                if (preg_match('/^(.)\1+$/', $transactionId) || preg_match('/^(12345|54321|abcde|abc123)/', $transactionId)) {
+                    return [
+                        'success' => false,
+                        'message' => 'Transaction ID appears to be invalid (too simple)'
+                    ];
+                }
+                
+                return [
+                    'success' => true,
+                    'message' => 'Payment verified through pattern matching',
+                    'confidence' => 'medium',
+                    'pattern' => $pattern
+                ];
+            }
+        }
+        
+        return [
+            'success' => false,
+            'message' => 'Transaction ID does not match any known pattern'
+        ];
+    }
+    
+    /**
+     * Get transaction ID patterns based on payment method
+     * 
+     * @param string $paymentMethod
+     * @return array
+     */
+    private function getPatternsByPaymentMethod($paymentMethod)
+    {
+        switch ($paymentMethod) {
+            case 'vodafone_cash':
+                return [
+                    // Vodafone Cash common patterns - update with real ones
+                    '/^VC[0-9]{10}$/',       // VC followed by 10 digits
+                    '/^[0-9]{12}$/',         // 12 digits
+                    '/^[0-9]{6,12}$/',       // 6-12 digits
+                    '/^[A-Z0-9]{8,12}$/'     // 8-12 alphanumeric characters
+                ];
+                
+            case 'fawry':
+                return [
+                    // Fawry common patterns - update with real ones
+                    '/^F[0-9]{10,15}$/',     // F followed by 10-15 digits
+                    '/^[0-9]{13,16}$/',      // 13-16 digits
+                    '/^[A-Z0-9]{10,16}$/'    // 10-16 alphanumeric characters
+                ];
+                
+            case 'instapay':
+                return [
+                    // Instapay common patterns - update with real ones
+                    '/^IP[0-9]{8,12}$/',     // IP followed by 8-12 digits
+                    '/^[0-9]{14,18}$/',      // 14-18 digits
+                    '/^[A-Z0-9]{10,18}$/'    // 10-18 alphanumeric characters
+                ];
+                
+            default:
+                // Generic patterns for any other payment method
+                return [
+                    '/^[A-Z0-9]{6,20}$/',    // 6-20 alphanumeric characters
+                    '/^[0-9]{6,16}$/'        // 6-16 digits
+                ];
+        }
+    }
+} 

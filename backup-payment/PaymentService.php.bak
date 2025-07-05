@@ -1,0 +1,500 @@
+<?php
+
+namespace App\Services;
+
+use App\Models\Course;
+use App\Models\Payment;
+use App\Models\User;
+use Illuminate\Support\Str;
+use Illuminate\Support\Facades\Log;
+
+class PaymentService
+{
+    /**
+     * Create a new payment request for a course enrollment
+     *
+     * @param User $user
+     * @param Course $course
+     * @param string $paymentMethod
+     * @param float|null $amount Optional amount to override course price
+     * @return Payment
+     */
+    public function createPaymentRequest(User $user, Course $course, string $paymentMethod, float $amount = null)
+    {
+        $referenceNumber = $this->generateReferenceNumber();
+        
+        $payment = Payment::create([
+            'user_id' => $user->id,
+            'course_id' => $course->id,
+            'reference_number' => $referenceNumber,
+            'amount' => $amount ?? $course->price,
+            'payment_method' => $paymentMethod,
+            'status' => 'pending',
+        ]);
+
+        return $payment;
+    }
+
+    /**
+     * Generate a payment URL for Fawry
+     *
+     * @param Payment $payment
+     * @return string The payment URL
+     */
+    public function generateFawryPaymentUrl(Payment $payment)
+    {
+        // Here we would use the Fawry SDK or API to generate a payment URL
+        $fawryParams = [
+            'merchantCode' => config('payment.fawry.merchant_code'),
+            'merchantRefNum' => $payment->reference_number,
+            'customerProfileId' => $payment->user_id,
+            'customerName' => $payment->user->name,
+            'customerEmail' => $payment->user->email,
+            'customerMobile' => $payment->user->phone ?? '',
+            'amount' => $payment->amount,
+            'currencyCode' => 'EGP',
+            'description' => 'Enrollment in course: ' . $payment->course->name,
+            'chargeItems' => [
+                [
+                    'itemId' => $payment->course_id,
+                    'description' => $payment->course->name,
+                    'price' => $payment->amount,
+                    'quantity' => 1,
+                ]
+            ],
+            'returnUrl' => config('payment.fawry.return_url'),
+        ];
+
+        // In a real implementation, we would make an API call to Fawry here
+        // For demo purposes, we're just returning a placeholder URL
+        $paymentUrl = "https://atfawry.fawrystaging.com/ECommercePlugin/FawryPayment.jsp?" . http_build_query($fawryParams);
+        
+        // Store the payment data for future reference
+        $payment->payment_data = [
+            'payment_url' => $paymentUrl,
+            'params' => $fawryParams,
+        ];
+        $payment->save();
+        
+        Log::info('Generated Fawry payment URL', [
+            'payment_id' => $payment->id,
+            'reference_number' => $payment->reference_number,
+            'url' => $paymentUrl
+        ]);
+        
+        return $paymentUrl;
+    }
+
+    /**
+     * Generate a payment code for Vodafone Cash
+     *
+     * @param Payment $payment
+     * @return string The payment code
+     */
+    public function generateVodafoneCashCode(Payment $payment)
+    {
+        // In a real implementation, we would make an API call to Vodafone Cash
+        // For demo purposes, we're generating a random code
+        $code = strtoupper(Str::random(8));
+        
+        // Update the payment with the generated code
+        $payment->payment_data = [
+            'payment_code' => $code,
+            'expires_at' => now()->addHours(24)->toIso8601String(),
+        ];
+        $payment->save();
+        
+        Log::info('Generated Vodafone Cash payment code', [
+            'payment_id' => $payment->id,
+            'reference_number' => $payment->reference_number,
+            'code' => $code
+        ]);
+        
+        return $code;
+    }
+
+    /**
+     * Generate a payment code for Fawry
+     *
+     * @param Payment $payment
+     * @return string The payment code
+     */
+    public function generateFawryCode(Payment $payment)
+    {
+        // In a real implementation, we would make an API call to Fawry here
+        // For demo purposes, we're generating a random code
+        $code = strtoupper(Str::random(8));
+        
+        // Update the payment with the generated code
+        $payment->payment_data = [
+            'payment_code' => $code,
+            'expires_at' => now()->addHours(24)->toIso8601String(),
+        ];
+        $payment->save();
+        
+        Log::info('Generated Fawry payment code', [
+            'payment_id' => $payment->id,
+            'reference_number' => $payment->reference_number,
+            'code' => $code
+        ]);
+        
+        return $code;
+    }
+
+    /**
+     * Process a payment callback from Fawry
+     *
+     * @param array $data The callback data from Fawry
+     * @return Payment|false
+     */
+    public function processFawryCallback($data)
+    {
+        Log::info('Processing Fawry callback', $data);
+        
+        $referenceNumber = $data['merchantRefNumber'] ?? null;
+        
+        if (!$referenceNumber) {
+            Log::error('Fawry callback missing reference number', $data);
+            return false;
+        }
+        
+        $payment = Payment::where('reference_number', $referenceNumber)
+            ->where('payment_method', 'fawry')
+            ->first();
+            
+        if (!$payment) {
+            Log::error('Fawry callback: payment not found', [
+                'reference_number' => $referenceNumber
+            ]);
+            return false;
+        }
+        
+        // Verify the callback signature
+        if (!$this->verifyFawrySignature($data)) {
+            Log::error('Fawry callback: invalid signature', $data);
+            return false;
+        }
+        
+        $status = $data['paymentStatus'] ?? '';
+        
+        if ($status === 'PAID' || $status === 'SUCCESS') {
+            Log::info('Fawry payment successful', [
+                'payment_id' => $payment->id,
+                'reference_number' => $payment->reference_number
+            ]);
+            return $payment->markAsPaid();
+        } elseif ($status === 'FAILED' || $status === 'FAILURE') {
+            $payment->status = 'failed';
+            $payment->payment_data = array_merge($payment->payment_data ?? [], [
+                'fawry_callback' => $data
+            ]);
+            $payment->save();
+            
+            Log::warning('Fawry payment failed', [
+                'payment_id' => $payment->id,
+                'reference_number' => $payment->reference_number
+            ]);
+        } elseif ($status === 'EXPIRED') {
+            $payment->status = 'expired';
+            $payment->payment_data = array_merge($payment->payment_data ?? [], [
+                'fawry_callback' => $data
+            ]);
+            $payment->save();
+            
+            Log::warning('Fawry payment expired', [
+                'payment_id' => $payment->id,
+                'reference_number' => $payment->reference_number
+            ]);
+        }
+        
+        return $payment;
+    }
+
+    /**
+     * Process a payment callback from Vodafone Cash
+     *
+     * @param array $data The callback data from Vodafone Cash
+     * @return Payment|false
+     */
+    public function processVodafoneCashCallback($data)
+    {
+        Log::info('Processing Vodafone Cash callback', $data);
+        
+        $referenceNumber = $data['reference'] ?? null;
+        
+        if (!$referenceNumber) {
+            Log::error('Vodafone Cash callback missing reference number', $data);
+            return false;
+        }
+        
+        $payment = Payment::where('reference_number', $referenceNumber)
+            ->where('payment_method', 'vodafone_cash')
+            ->first();
+            
+        if (!$payment) {
+            Log::error('Vodafone Cash callback: payment not found', [
+                'reference_number' => $referenceNumber
+            ]);
+            return false;
+        }
+        
+        // Verify the callback signature
+        if (!$this->verifyVodafoneCashSignature($data)) {
+            Log::error('Vodafone Cash callback: invalid signature', $data);
+            return false;
+        }
+        
+        $status = $data['status'] ?? '';
+        
+        if ($status === 'SUCCESS') {
+            Log::info('Vodafone Cash payment successful', [
+                'payment_id' => $payment->id,
+                'reference_number' => $payment->reference_number
+            ]);
+            return $payment->markAsPaid();
+        } else {
+            $payment->status = 'failed';
+            $payment->payment_data = array_merge($payment->payment_data ?? [], [
+                'vodafone_callback' => $data
+            ]);
+            $payment->save();
+            
+            Log::warning('Vodafone Cash payment failed', [
+                'payment_id' => $payment->id,
+                'reference_number' => $payment->reference_number,
+                'status' => $status
+            ]);
+        }
+        
+        return $payment;
+    }
+
+    /**
+     * Verify Fawry callback signature
+     *
+     * @param array $data
+     * @return bool
+     */
+    protected function verifyFawrySignature($data)
+    {
+        // In a real implementation, we would verify the signature using Fawry's algorithm
+        // For demo purposes, we're always returning true
+        
+        return true;
+    }
+
+    /**
+     * Verify Vodafone Cash callback signature
+     *
+     * @param array $data
+     * @return bool
+     */
+    protected function verifyVodafoneCashSignature($data)
+    {
+        // In a real implementation, we would verify the signature using Vodafone Cash's algorithm
+        // For demo purposes, we're always returning true
+        
+        return true;
+    }
+
+    /**
+     * Check the status of a payment
+     *
+     * @param Payment $payment
+     * @return string
+     */
+    public function checkPaymentStatus(Payment $payment)
+    {
+        // In a real implementation, we might poll the payment gateway API
+        // For demo purposes, we're just returning the current status
+        
+        return $payment->status;
+    }
+
+    /**
+     * Generate a unique reference number for the payment
+     *
+     * @return string
+     */
+    private function generateReferenceNumber()
+    {
+        return 'MC' . time() . strtoupper(Str::random(6));
+    }
+
+    /**
+     * Verify a manual payment using various verification methods
+     *
+     * @param Payment $payment
+     * @return array Response with success status and message
+     */
+    public function verifyManualPayment(Payment $payment)
+    {
+        $paymentData = $payment->payment_data ?? [];
+        $transactionId = $paymentData['transaction_id'] ?? null;
+        $paymentMethod = $payment->payment_method;
+        
+        if (!$transactionId) {
+            return [
+                'success' => false,
+                'message' => 'No transaction ID provided for verification'
+            ];
+        }
+
+        // Initialize verification service based on payment method
+        $verificationService = null;
+        
+        switch ($paymentMethod) {
+            case 'vodafone_cash':
+                $verificationService = app(VodafoneCashVerificationService::class);
+                break;
+            case 'fawry':
+                $verificationService = app(FawryVerificationService::class);
+                break;
+            case 'instapay':
+                $verificationService = app(InstapayVerificationService::class);
+                break;
+            default:
+                return [
+                    'success' => false,
+                    'message' => 'Unsupported payment method for verification'
+                ];
+        }
+        
+        try {
+            // Try to use API-based verification if available
+            $apiVerificationResult = $verificationService->verifyViaApi($payment);
+            
+            if ($apiVerificationResult['success']) {
+                return $apiVerificationResult;
+            }
+            
+            // Fallback to database verification for known transactions
+            $dbVerificationResult = $this->verifyViaDatabase($payment);
+            
+            if ($dbVerificationResult['success']) {
+                return $dbVerificationResult;
+            }
+            
+            // Fallback to pattern-based verification as a last resort
+            $patternVerificationResult = $verificationService->verifyViaPattern($payment);
+            
+            if ($patternVerificationResult['success']) {
+                return $patternVerificationResult;
+            }
+            
+            // If all verification methods fail, return failure
+            return [
+                'success' => false,
+                'message' => 'Could not automatically verify payment. It will be reviewed manually.'
+            ];
+        } catch (\Exception $e) {
+            Log::error('Payment verification error', [
+                'payment_id' => $payment->id,
+                'reference_number' => $payment->reference_number,
+                'error' => $e->getMessage()
+            ]);
+            
+            return [
+                'success' => false,
+                'message' => 'Error during payment verification: ' . $e->getMessage()
+            ];
+        }
+    }
+
+    /**
+     * Verify payment against a database of known transactions
+     * 
+     * @param Payment $payment
+     * @return array
+     */
+    protected function verifyViaDatabase(Payment $payment)
+    {
+        $paymentData = $payment->payment_data ?? [];
+        $transactionId = $paymentData['transaction_id'] ?? null;
+        $paymentDate = $paymentData['payment_date'] ?? null;
+        $amount = $payment->amount;
+        
+        if (!$transactionId || !$paymentDate) {
+            return [
+                'success' => false,
+                'message' => 'Missing transaction data for verification'
+            ];
+        }
+        
+        // Check for duplicate transaction IDs in successful payments
+        $existingPayment = Payment::where('payment_data->transaction_id', $transactionId)
+            ->where('id', '!=', $payment->id)
+            ->where('status', 'completed')
+            ->first();
+            
+        if ($existingPayment) {
+            return [
+                'success' => false,
+                'message' => 'This transaction ID has already been used for another payment'
+            ];
+        }
+        
+        // Check with transaction database (this would be replaced with real verification logic)
+        // For example, you could check a table that stores all transactions from your payment providers
+        try {
+            $matchedTransaction = \DB::table('verified_transactions')
+                ->where('transaction_id', $transactionId)
+                ->where('amount', $amount)
+                ->whereDate('transaction_date', $paymentDate)
+                ->where('payment_method', $payment->payment_method)
+                ->first();
+                
+            if ($matchedTransaction) {
+                return [
+                    'success' => true,
+                    'message' => 'Payment verified through transaction database',
+                    'transaction' => $matchedTransaction
+                ];
+            }
+            
+            return [
+                'success' => false,
+                'message' => 'Transaction not found in database'
+            ];
+        } catch (\Exception $e) {
+            Log::error('Database verification error', [
+                'error' => $e->getMessage(),
+                'payment_id' => $payment->id
+            ]);
+            
+            return [
+                'success' => false,
+                'message' => 'Error during database verification'
+            ];
+        }
+    }
+    
+    /**
+     * Fetch payment methods info for display in manual payment modal
+     */
+    public function getPaymentMethodsInfo()
+    {
+        // These would normally be retrieved from database or config
+        return [
+            'vodafone_cash' => config('payment.vodafone_cash.number', '01XXXXXXXXX'),
+            'fawry' => config('payment.fawry.number', 'FAWRY-ACCOUNT-NUMBER'),
+            'instapay' => config('payment.instapay.username', 'INSTAPAY-USERNAME')
+        ];
+    }
+    
+    /**
+     * Generate instructions for manual payment
+     */
+    public function generateManualPaymentInstructions(Payment $payment)
+    {
+        $paymentOptions = $this->getPaymentMethodsInfo();
+        
+        return [
+            'reference_number' => $payment->reference_number,
+            'amount' => $payment->amount,
+            'course_name' => $payment->course->name,
+            'payment_options' => $paymentOptions,
+            'expires_at' => now()->addDays(3)->toDateTimeString()
+        ];
+    }
+} 

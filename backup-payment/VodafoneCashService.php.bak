@@ -1,0 +1,609 @@
+<?php
+
+namespace App\Services;
+
+use App\Models\Payment;
+use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\DB;
+use GuzzleHttp\Client;
+
+class VodafoneCashService
+{
+    /**
+     * Create a new Vodafone Cash service instance.
+     * 
+     * @return void
+     */
+    public function __construct()
+    {
+        // Constructor can be used for any service-wide configuration or dependencies
+    }
+
+    /**
+     * Check if the Vodafone Cash API is properly configured
+     * 
+     * @return bool
+     */
+    public function isConfigured()
+    {
+        // Check if in debug mode
+        if (config('payment.vodafone_cash.debug_mode', false)) {
+            return true;
+        }
+        
+        // Check all required configuration values are present
+        return !empty(config('payment.vodafone_cash.merchant_id')) &&
+               !empty(config('payment.vodafone_cash.api_key')) &&
+               !empty(config('payment.vodafone_cash.consumer_key')) &&
+               !empty(config('payment.vodafone_cash.consumer_secret')) &&
+               !empty(config('payment.vodafone_cash.callback_url')) &&
+               config('payment.vodafone_cash.api_enabled') === true;
+    }
+
+    /**
+     * Generate a payment request to Vodafone Cash
+     *
+     * @param Payment $payment
+     * @return array Payment data including instructions
+     */
+    public function generatePaymentRequest(Payment $payment)
+    {
+        DB::beginTransaction();
+        
+        try {
+            // First check if the MEC-EDS API is enabled
+            if (!config('payment.vodafone_cash.api_enabled')) {
+                throw new \Exception('Vodafone Cash API is not enabled');
+            }
+            
+            // Check if all required configuration is available
+            if (!$this->isConfigured()) {
+                throw new \Exception('Vodafone Cash API is not properly configured');
+            }
+            
+            // Check if we're in debug mode - return fake success response for testing
+            if (config('payment.vodafone_cash.debug_mode', false)) {
+                Log::info('Vodafone Cash API in DEBUG MODE - returning mock data', [
+                    'payment_id' => $payment->id
+                ]);
+                
+                // Generate test payment instructions
+                $instructions = $this->generateTestPaymentInstructions($payment);
+                
+                // Store in payment data
+                $payment->payment_data = $payment->payment_data ?? [];
+                $payment->payment_data['debug_mode'] = true;
+                $payment->payment_data['instructions'] = $instructions;
+                $payment->save();
+                
+                DB::commit();
+                
+                return [
+                    'success' => true,
+                    'instructions' => $instructions,
+                    'reference' => $payment->reference_number,
+                    'expires_at' => now()->addHours(24)->toIso8601String()
+                ];
+            }
+            
+            // Initialize the HTTP client with authentication
+            $client = new Client([
+                'headers' => [
+                    'Content-Type' => 'application/json',
+                    'Accept' => 'application/json',
+                    'Authorization' => 'Basic ' . base64_encode(
+                        config('payment.vodafone_cash.consumer_key') . ':' . 
+                        config('payment.vodafone_cash.consumer_secret')
+                    )
+                ]
+            ]);
+            
+            // Prepare the payment request data
+            $customerPhone = $payment->user->phone ?? '';
+            
+            // Clean and format the phone number - Vodafone API may require a specific format
+            $customerPhone = preg_replace('/[^0-9]/', '', $customerPhone);
+            
+            // Ensure it's an Egyptian number with proper format
+            if (strlen($customerPhone) >= 11 && preg_match('/^(20)?01[0-9]{9}$/', $customerPhone)) {
+                // If it starts with country code (20), ensure it's in the right format
+                if (preg_match('/^20/', $customerPhone)) {
+                    // Already has country code, keep as is
+                } else if (preg_match('/^01/', $customerPhone)) {
+                    // Add country code if it's just a mobile number
+                    $customerPhone = '20' . $customerPhone;
+                }
+            }
+            
+            $requestData = [
+                'orderId' => $payment->reference_number,
+                'amount' => $payment->amount,
+                'customerName' => $payment->user->name,
+                'customerMobile' => $customerPhone,
+                'customerEmail' => $payment->user->email,
+                'callbackUrl' => config('payment.vodafone_cash.callback_url'),
+                'description' => 'Payment for ' . $payment->course->name,
+                'merchantId' => config('payment.vodafone_cash.merchant_id'),
+                'timestamp' => now()->timestamp,
+            ];
+            
+            // Add signature to the request
+            $requestData['signature'] = $this->generateSignature($requestData);
+            
+            // Store the request data in the payment record
+            $payment->payment_data = $payment->payment_data ?? [];
+            $payment->payment_data['vodafone_request'] = $this->redactSensitiveData($requestData);
+            $payment->save();
+            
+            // Make API request
+            $apiUrl = config('payment.vodafone_cash.sandbox_mode') 
+                ? 'https://api-sandbox.vodafone.com.eg/payment/initiate' 
+                : 'https://api.vodafone.com.eg/payment/initiate';
+            
+            try {
+                $response = $client->post($apiUrl, [
+                    'json' => $requestData,
+                    'timeout' => 10, // 10 second timeout
+                    'connect_timeout' => 5 // 5 second connect timeout
+                ]);
+                
+                // Parse response
+                $responseData = json_decode($response->getBody(), true);
+            } catch (\GuzzleHttp\Exception\ConnectException $e) {
+                Log::error('Vodafone Cash API connection error', [
+                    'payment_id' => $payment->id,
+                    'error' => $e->getMessage(),
+                    'url' => $apiUrl,
+                    'request_data' => $this->redactSensitiveData($requestData)
+                ]);
+                
+                // Record error in payment data
+                $payment->payment_data['error'] = 'Cannot connect to payment gateway. Please try again later.';
+                $payment->payment_data['error_details'] = [
+                    'message' => $e->getMessage(),
+                    'type' => 'connection_error',
+                    'time' => now()->toIso8601String()
+                ];
+                $payment->save();
+                
+                DB::commit();
+                
+                return [
+                    'success' => false,
+                    'error' => 'Cannot connect to payment gateway. Please try again later.'
+                ];
+            } catch (\GuzzleHttp\Exception\RequestException $e) {
+                // Try to get response body if available
+                $responseBody = '';
+                if ($e->hasResponse()) {
+                    $responseBody = $e->getResponse()->getBody()->getContents();
+                }
+                
+                Log::error('Vodafone Cash API request error', [
+                    'payment_id' => $payment->id,
+                    'error' => $e->getMessage(),
+                    'url' => $apiUrl,
+                    'request_data' => $this->redactSensitiveData($requestData),
+                    'response_body' => $responseBody
+                ]);
+                
+                // Record error in payment data
+                $payment->payment_data['error'] = 'Payment gateway error. Please try again later.';
+                $payment->payment_data['error_details'] = [
+                    'message' => $e->getMessage(),
+                    'type' => 'request_error',
+                    'response' => $responseBody,
+                    'time' => now()->toIso8601String()
+                ];
+                $payment->save();
+                
+                DB::commit();
+                
+                return [
+                    'success' => false,
+                    'error' => 'Payment gateway error. Please try again later.'
+                ];
+            }
+            
+            // Check for errors in response
+            if (isset($responseData['error']) || isset($responseData['errorCode']) || 
+                (isset($responseData['status']) && $responseData['status'] !== 'SUCCESS')) {
+                $errorMessage = $responseData['errorMessage'] ?? $responseData['error'] ?? 'Unknown error';
+                
+                Log::error('Vodafone Cash API error', [
+                    'payment_id' => $payment->id,
+                    'error' => $errorMessage,
+                    'response' => $this->redactSensitiveData($responseData)
+                ]);
+                
+                // Record error in payment data
+                $payment->payment_data['vodafone_response'] = $this->redactSensitiveData($responseData);
+                $payment->payment_data['error'] = $errorMessage;
+                $payment->save();
+                
+                DB::commit();
+                
+                throw new \Exception('Payment request failed: ' . $errorMessage);
+            }
+            
+            // Store successful response in payment record
+            $payment->payment_data['vodafone_response'] = $this->redactSensitiveData($responseData);
+            
+            // If there's a transaction ID, store it
+            if (isset($responseData['transactionId'])) {
+                $payment->payment_data['transactionId'] = $responseData['transactionId'];
+            }
+            
+            // Generate payment instructions for the user
+            $instructions = $this->generatePaymentInstructions($payment, $responseData);
+            $payment->payment_data['instructions'] = $instructions;
+            
+            $payment->save();
+            
+            DB::commit();
+            
+            Log::info('Vodafone Cash payment request created', [
+                'payment_id' => $payment->id,
+                'reference' => $payment->reference_number
+            ]);
+            
+            return [
+                'success' => true,
+                'instructions' => $instructions,
+                'reference' => $payment->reference_number,
+                'expires_at' => now()->addHours(24)->toIso8601String()
+            ];
+            
+        } catch (\Exception $e) {
+            DB::rollBack();
+            
+            Log::error('Vodafone Cash payment request failed', [
+                'payment_id' => $payment->id,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            
+            return [
+                'success' => false,
+                'error' => $e->getMessage()
+            ];
+        }
+    }
+    
+    /**
+     * Generate payment instructions for the user
+     *
+     * @param Payment $payment
+     * @param array $responseData
+     * @return array
+     */
+    protected function generatePaymentInstructions(Payment $payment, array $responseData)
+    {
+        return [
+            'steps' => [
+                '1. Dial *9# from your Vodafone mobile number',
+                '2. Select "Pay Bills" or "Payments" option',
+                '3. Enter merchant code when prompted',
+                "4. Enter the amount: {$payment->amount} EGP",
+                '5. Confirm with your Vodafone Cash PIN',
+                "6. Keep the confirmation code for your reference"
+            ],
+            'reference_number' => $payment->reference_number,
+            'amount' => $payment->amount,
+            'currency' => 'EGP',
+            'expires_at' => now()->addHours(24)->format('Y-m-d H:i:s')
+        ];
+    }
+    
+    /**
+     * Generate a signature for the request
+     *
+     * @param array $data
+     * @return string
+     */
+    protected function generateSignature(array $data)
+    {
+        // Different payment providers have different signature calculation methods
+        // This is a sample implementation based on common practices
+        
+        // Sort data alphabetically by key
+        ksort($data);
+        
+        // Create a string of all values
+        $signatureString = '';
+        foreach ($data as $key => $value) {
+            // Skip signature field if it exists
+            if ($key !== 'signature') {
+                $signatureString .= $value;
+            }
+        }
+        
+        // Append the API key at the end
+        $signatureString .= config('payment.vodafone_cash.consumer_secret');
+        
+        // Generate SHA-256 hash
+        return hash('sha256', $signatureString);
+    }
+    
+    /**
+     * Process callback from Vodafone Cash
+     *
+     * @param array $data
+     * @return bool Success status
+     */
+    public function processCallback(array $data)
+    {
+        Log::info('Received Vodafone Cash callback', $this->redactSensitiveData($data));
+        
+        // Verify the signature if provided
+        if (isset($data['signature']) && !$this->verifyCallbackSignature($data)) {
+            Log::warning('Invalid Vodafone Cash callback signature', [
+                'data' => $this->redactSensitiveData($data)
+            ]);
+            return false;
+        }
+        
+        try {
+            DB::beginTransaction();
+            
+            // Find the payment by reference number
+            $payment = Payment::where('reference_number', $data['orderId'] ?? '')->first();
+            
+            if (!$payment) {
+                Log::warning('Vodafone Cash callback received for unknown payment', [
+                    'data' => $this->redactSensitiveData($data)
+                ]);
+                DB::rollBack();
+                return false;
+            }
+            
+            // Store callback data in payment record
+            $payment->payment_data = $payment->payment_data ?? [];
+            $payment->payment_data['callback_received'] = now()->toIso8601String();
+            $payment->payment_data['callback_data'] = $this->redactSensitiveData($data);
+            
+            // Update payment status based on callback status
+            if (isset($data['status'])) {
+                $newStatus = $this->mapVodafoneStatusToPaymentStatus($data['status']);
+                
+                // Only update if status is changing
+                if ($payment->status !== $newStatus) {
+                    $payment->status = $newStatus;
+                    
+                    // If payment is successful, record the payment time
+                    if ($newStatus === 'completed') {
+                        $payment->paid_at = now();
+                    }
+                    
+                    // If transaction ID is provided, store it
+                    if (isset($data['transactionId'])) {
+                        $payment->payment_data['transactionId'] = $data['transactionId'];
+                    }
+                    
+                    Log::info('Vodafone Cash payment status updated', [
+                        'payment_id' => $payment->id,
+                        'reference' => $payment->reference_number,
+                        'old_status' => $payment->getOriginal('status'),
+                        'new_status' => $newStatus
+                    ]);
+                }
+            }
+            
+            $payment->save();
+            
+            DB::commit();
+            return true;
+            
+        } catch (\Exception $e) {
+            DB::rollBack();
+            
+            Log::error('Error processing Vodafone Cash callback', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+                'data' => $this->redactSensitiveData($data)
+            ]);
+            
+            return false;
+        }
+    }
+    
+    /**
+     * Map Vodafone Cash status to our payment status
+     *
+     * @param string $vodafoneStatus
+     * @return string
+     */
+    protected function mapVodafoneStatusToPaymentStatus(string $vodafoneStatus)
+    {
+        $statusMap = [
+            'SUCCESS' => 'completed',
+            'CONFIRMED' => 'completed',
+            'FAILED' => 'failed',
+            'EXPIRED' => 'expired',
+            'CANCELLED' => 'cancelled',
+            'PENDING' => 'pending'
+        ];
+        
+        return $statusMap[strtoupper($vodafoneStatus)] ?? 'pending';
+    }
+    
+    /**
+     * Verify the callback signature
+     *
+     * @param array $data
+     * @return bool
+     */
+    protected function verifyCallbackSignature(array $data)
+    {
+        if (!isset($data['signature'])) {
+            return false;
+        }
+        
+        $receivedSignature = $data['signature'];
+        
+        // Create a copy of data without the signature
+        $dataForSignature = $data;
+        unset($dataForSignature['signature']);
+        
+        // Sort data alphabetically by key
+        ksort($dataForSignature);
+        
+        // Create a string of all values
+        $signatureString = '';
+        foreach ($dataForSignature as $value) {
+            $signatureString .= $value;
+        }
+        
+        // Append the API key at the end
+        $signatureString .= config('payment.vodafone_cash.consumer_secret');
+        
+        // Generate SHA-256 hash
+        $calculatedSignature = hash('sha256', $signatureString);
+        
+        return hash_equals($calculatedSignature, $receivedSignature);
+    }
+    
+    /**
+     * Check payment status from Vodafone Cash API
+     *
+     * @param Payment $payment
+     * @return array Status information
+     */
+    public function checkPaymentStatus(Payment $payment)
+    {
+        try {
+            // Initialize HTTP client with authentication
+            $client = new Client([
+                'headers' => [
+                    'Content-Type' => 'application/json',
+                    'Accept' => 'application/json',
+                    'Authorization' => 'Basic ' . base64_encode(
+                        config('payment.vodafone_cash.consumer_key') . ':' . 
+                        config('payment.vodafone_cash.consumer_secret')
+                    )
+                ]
+            ]);
+            
+            // Prepare status check request
+            $requestData = [
+                'orderId' => $payment->reference_number,
+                'merchantId' => config('payment.vodafone_cash.merchant_id'),
+                'timestamp' => now()->timestamp
+            ];
+            
+            // Add signature
+            $requestData['signature'] = $this->generateSignature($requestData);
+            
+            // Make API request
+            $apiUrl = config('payment.vodafone_cash.sandbox_mode') 
+                ? 'https://api-sandbox.vodafone.com.eg/payment/status' 
+                : 'https://api.vodafone.com.eg/payment/status';
+            
+            $response = $client->get($apiUrl, [
+                'query' => $requestData
+            ]);
+            
+            // Parse response
+            $responseData = json_decode($response->getBody(), true);
+            
+            // Store status check in payment record
+            $payment->payment_data = $payment->payment_data ?? [];
+            $payment->payment_data['status_check'] = [
+                'time' => now()->toIso8601String(),
+                'response' => $this->redactSensitiveData($responseData)
+            ];
+            
+            // Update payment status if needed
+            if (isset($responseData['status'])) {
+                $newStatus = $this->mapVodafoneStatusToPaymentStatus($responseData['status']);
+                
+                if ($payment->status !== $newStatus) {
+                    $payment->status = $newStatus;
+                    
+                    if ($newStatus === 'completed' && !$payment->paid_at) {
+                        $payment->paid_at = now();
+                    }
+                    
+                    Log::info('Payment status updated from status check', [
+                        'payment_id' => $payment->id,
+                        'reference' => $payment->reference_number,
+                        'old_status' => $payment->getOriginal('status'),
+                        'new_status' => $newStatus
+                    ]);
+                }
+            }
+            
+            $payment->save();
+            
+            return [
+                'success' => true,
+                'status' => $payment->status,
+                'details' => $responseData
+            ];
+            
+        } catch (\Exception $e) {
+            Log::error('Error checking Vodafone Cash payment status', [
+                'payment_id' => $payment->id,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            
+            return [
+                'success' => false,
+                'status' => $payment->status,
+                'error' => $e->getMessage()
+            ];
+        }
+    }
+    
+    /**
+     * Redact sensitive data for logging
+     *
+     * @param array $data
+     * @return array
+     */
+    protected function redactSensitiveData(array $data)
+    {
+        $sensitiveFields = ['signature', 'token', 'key', 'secret', 'password', 'pin'];
+        
+        $redactedData = [];
+        
+        foreach ($data as $key => $value) {
+            if (is_array($value)) {
+                $redactedData[$key] = $this->redactSensitiveData($value);
+            } else {
+                if (in_array(strtolower($key), $sensitiveFields)) {
+                    $redactedData[$key] = '[REDACTED]';
+                } else {
+                    $redactedData[$key] = $value;
+                }
+            }
+        }
+        
+        return $redactedData;
+    }
+
+    /**
+     * Generate test payment instructions for debug mode
+     *
+     * @param Payment $payment
+     * @return array
+     */
+    protected function generateTestPaymentInstructions(Payment $payment)
+    {
+        return [
+            'steps' => [
+                '1. This is a DEBUG MODE payment',
+                '2. No actual connection to Vodafone Cash was made',
+                '3. Use the simulate success button to complete this payment',
+                '4. In production, you would follow real Vodafone Cash steps'
+            ],
+            'reference_number' => $payment->reference_number,
+            'amount' => $payment->amount,
+            'currency' => 'EGP',
+            'debug_code' => 'DEBUG-' . strtoupper(substr(md5($payment->reference_number), 0, 6)),
+            'expires_at' => now()->addHours(24)->format('Y-m-d H:i:s')
+        ];
+    }
+} 
