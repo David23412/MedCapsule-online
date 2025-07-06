@@ -16,7 +16,6 @@ class Course extends Model
         'description',
         'image',
         'color',
-        'is_paid',
         'price',
         'currency',
     ];
@@ -25,7 +24,6 @@ class Course extends Model
 
     protected $casts = [
         'completion_percentage' => 'float',
-        'is_paid' => 'boolean',
         'price' => 'decimal:2',
     ];
 
@@ -184,7 +182,7 @@ class Course extends Model
     // Format price with currency
     public function getFormattedPriceAttribute()
     {
-        if (!$this->is_paid || $this->price <= 0) {
+        if (!$this->price || $this->price <= 0) {
             return 'Free';
         }
         

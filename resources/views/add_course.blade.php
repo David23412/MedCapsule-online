@@ -197,14 +197,13 @@
                             <!-- Course Pricing -->
                             <div class="mb-4">
                                 <div class="form-check form-switch">
-                                    <input class="form-check-input" type="checkbox" id="is_paid" name="is_paid" value="1" {{ old('is_paid') ? 'checked' : '' }}>
-                                    <label class="form-check-label" for="is_paid">Paid Course</label>
+                                                        <label class="form-label">Course Price (leave empty for free course)</label>
                                 </div>
                                 <div class="form-text text-muted mb-3">
                                     Enable if this is a paid course requiring payment before enrollment
                                 </div>
                                 
-                                <div id="pricing_options" class="border p-3 rounded mt-2" style="{{ old('is_paid') ? '' : 'display: none;' }}">
+                                <div id="pricing_options" class="border p-3 rounded mt-2">
                                     <div class="row">
                                         <div class="col-md-6">
                                             <label for="price" class="form-label">Price</label>
@@ -263,9 +262,6 @@
         const previewTitle = document.getElementById('previewTitle');
         const colorPreview = document.getElementById('colorPreview');
         const titleColorPreview = document.getElementById('titleColorPreview');
-        const isPaidCheckbox = document.getElementById('is_paid');
-        const pricingOptions = document.getElementById('pricing_options');
-
         function updatePreview() {
             // Update title text
             previewTitle.textContent = nameInput.value || 'Course Preview';
@@ -290,24 +286,15 @@
             titleColorPreview.style.backgroundColor = titleColor;
         }
 
-        function togglePricing() {
-            if (isPaidCheckbox.checked) {
-                pricingOptions.style.display = 'block';
-            } else {
-                pricingOptions.style.display = 'none';
-            }
-        }
+
 
         // Add event listeners
         [nameInput, imageInput, colorInput, titleColorInput].forEach(input => {
             input.addEventListener('input', updatePreview);
         });
-        
-        isPaidCheckbox.addEventListener('change', togglePricing);
 
         // Initial setup
         updatePreview();
-        togglePricing();
     </script>
 </body>
 </html> 

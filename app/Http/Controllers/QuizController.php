@@ -62,12 +62,12 @@ class QuizController extends Controller
             }
 
             // Check if user has access to the course (admin, enrolled, or free course)
-            if (!$user->is_admin && !$user->hasAccessToCourse($course->id) && $course->is_paid) {
+            if (!$user->is_admin && !$user->hasAccessToCourse($course->id) && $course->price && $course->price > 0) {
                 Log::error('Access denied: User does not have access to course', [
                     'user_id' => $user->id,
                     'course_id' => $course->id,
                     'is_admin' => $user->is_admin,
-                    'course_is_paid' => $course->is_paid
+                    'course_price' => $course->price
                 ]);
                 return redirect()->route('topics.forCourse', ['course' => $course->id])
                     ->with('error', 'You must be granted access to this course to take quizzes. Please contact an administrator.');
@@ -519,12 +519,12 @@ class QuizController extends Controller
         try {
             $user = auth()->user();
             
-            if (!$user->is_admin && !$user->hasAccessToCourse($course->id) && $course->is_paid) {
+            if (!$user->is_admin && !$user->hasAccessToCourse($course->id) && $course->price && $course->price > 0) {
                 Log::error('Access denied: User does not have access to course', [
                     'user_id' => $user->id,
                     'course_id' => $course->id,
                     'is_admin' => $user->is_admin,
-                    'course_is_paid' => $course->is_paid
+                    'course_price' => $course->price
                 ]);
                 return redirect()->route('topics.forCourse', ['course' => $course->id])
                     ->with('error', 'You must be granted access to this course to take quizzes.');

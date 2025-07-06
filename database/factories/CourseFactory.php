@@ -42,8 +42,7 @@ class CourseFactory extends Factory
             'description' => $this->faker->paragraph(3),
             'image' => 'courses/' . Str::slug($courseName) . '.jpg',
             'color' => $this->faker->randomElement(['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#06B6D4']),
-            'is_paid' => $this->faker->boolean(70), // 70% chance of being paid
-            'price' => $this->faker->randomFloat(2, 0, 299.99),
+            'price' => $this->faker->boolean(70) ? $this->faker->randomFloat(2, 50, 500) : null, // 70% chance of being paid
             'currency' => 'USD',
             'created_at' => $this->faker->dateTimeBetween('-1 year', 'now'),
             'updated_at' => $this->faker->dateTimeBetween('-1 month', 'now'),
@@ -56,8 +55,7 @@ class CourseFactory extends Factory
     public function free(): static
     {
         return $this->state(fn (array $attributes) => [
-            'is_paid' => false,
-            'price' => 0.00,
+            'price' => null,
         ]);
     }
 
@@ -67,7 +65,6 @@ class CourseFactory extends Factory
     public function paid(): static
     {
         return $this->state(fn (array $attributes) => [
-            'is_paid' => true,
             'price' => $this->faker->randomFloat(2, 29.99, 299.99),
         ]);
     }

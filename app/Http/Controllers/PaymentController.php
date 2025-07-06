@@ -79,7 +79,7 @@ class PaymentController extends Controller
             }
             
             // Check if course has a valid price
-            if ($course->is_paid && (!isset($course->price) || $course->price <= 0)) {
+            if ($course->price && $course->price > 0 && (!isset($course->price) || $course->price <= 0)) {
                 return response()->json([
                     'success' => false,
                     'message' => 'This course has an invalid price configuration. Please contact support.',
@@ -565,7 +565,7 @@ class PaymentController extends Controller
     private function createPayment(User $user, Course $course, string $paymentMethod)
     {
         // Ensure course price is valid
-        $price = $course->is_paid ? ($course->price ?? 0) : 0;
+        $price = $course->price ?? 0;
         
         // Generate a more secure reference number including user ID and course ID for better traceability
         $refNumber = 'MC' . 

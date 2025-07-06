@@ -35,7 +35,7 @@ class TopicController extends Controller
         $user = auth()->user();
         
         // Allow access if user is admin, enrolled, or if course is free
-        if (!$user->is_admin && !$user->hasAccessToCourse($course->id) && $course->is_paid) {
+        if (!$user->is_admin && !$user->hasAccessToCourse($course->id) && $course->price && $course->price > 0) {
             // Check if user has a pending payment
             $pendingPayment = Payment::where('user_id', $user->id)
                 ->where('course_id', $course->id)

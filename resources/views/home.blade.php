@@ -34,6 +34,11 @@
 
     <!-- Custom Styles -->
     <style>
+        /* Home page zoom fix - 80% scale */
+        html {
+            font-size: 12.8px; /* 80% of 16px */
+        }
+        
         body {
             background-color: #f8f9fa;
             font-family: 'Poppins', sans-serif;

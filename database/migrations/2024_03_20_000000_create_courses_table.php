@@ -20,6 +20,8 @@ return new class extends Migration
             $table->string('title_color')->default('#FFFFFF'); // Title color for the course
             $table->float('progress')->default(0); // Progress in the course based on mastered topics
             $table->string('image_path')->nullable();
+            $table->decimal('price', 10, 2)->nullable(); // Course price (null for free courses)
+            $table->string('currency')->default('EGP'); // Currency for the price
             $table->timestamps();
         });
     }

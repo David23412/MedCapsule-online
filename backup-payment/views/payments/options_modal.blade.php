@@ -17,7 +17,7 @@
                     <h5 class="course-title fw-bold mb-1">{{ $course->name }}</h5>
                     <div class="course-badges mb-2">
                         <span class="badge bg-primary">Premium</span>
-                        @if($course->is_paid)
+                        @if($course->price && $course->price > 0)
                         <span class="badge bg-success">{{ $course->formatted_price }}</span>
                         @endif
                     </div>

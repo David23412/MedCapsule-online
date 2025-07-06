@@ -1458,7 +1458,7 @@
                                     <i class="fas fa-play"></i>
                                     Continue Learning
                                 </a>
-                            @elseif (!$course->is_paid)
+                            @elseif (!$course->price || $course->price <= 0)
                                 <a href="{{ route('topics.forCourse', $course) }}" class="action-btn enroll">
                                     <i class="fas fa-play"></i>
                                     Start Learning (Free)
@@ -1470,7 +1470,7 @@
                                 </button>
                             @endif
                         @else
-                            @if (!$course->is_paid)
+                            @if (!$course->price || $course->price <= 0)
                                 <a href="{{ route('login') }}" class="action-btn enroll">
                                     <i class="fas fa-play"></i>
                                     Sign in to Start (Free)

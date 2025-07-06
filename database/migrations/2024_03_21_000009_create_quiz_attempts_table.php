@@ -11,7 +11,7 @@ return new class extends Migration
         Schema::create('quiz_attempts', function (Blueprint $table) {
             $table->id();
             $table->foreignId('user_id')->constrained()->onDelete('cascade');
-            $table->foreignId('topic_id')->constrained()->onDelete('cascade');
+            $table->foreignId('topic_id')->nullable()->constrained()->onDelete('cascade');
             $table->string('quiz_type')->default('normal'); // normal, random, etc.
             $table->string('study_mode')->default('quiz'); // quiz or tutor
             $table->string('source')->nullable(); // Which source this attempt is for (Assuit, Cairo, etc.)
@@ -30,6 +30,9 @@ return new class extends Migration
             $table->index(['user_id', 'topic_id']);
             $table->index(['source', 'study_mode']);
             $table->index('created_at'); // For getting latest attempts efficiently
+            $table->index(['user_id', 'topic_id', 'study_mode'], 'idx_user_topic_mode');
+            $table->index(['user_id', 'source'], 'idx_user_source');
+            $table->index(['user_id', 'percentage_grade'], 'idx_user_performance');
             
             $table->timestamps();
         });

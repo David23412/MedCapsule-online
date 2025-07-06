@@ -1048,7 +1048,7 @@
                                     @endphp
                                     
                                     <!-- Submitted Answer (if incorrect) -->
-                                    @if($submittedOption !== $correctOption)
+                                    @if($submittedOption !== $correctOption && $mistake->question->question_type !== 'written')
                                         <div class="answer-section">
                                             <h4 class="answer-label">Your answer:</h4>
                                             <div class="form-check">
@@ -1058,16 +1058,31 @@
                                                 </label>
                                             </div>
                                         </div>
+                                    @elseif($submittedOption !== $correctOption && $mistake->question->question_type === 'written')
+                                        <div class="answer-section">
+                                            <h4 class="answer-label">Your answer:</h4>
+                                            <div class="form-check">
+                                                <label class="form-check-label incorrect">
+                                                    {{ $submittedOption }}
+                                                </label>
+                                            </div>
+                                        </div>
                                     @endif
 
                                     <!-- Correct Answer -->
                                     <div class="answer-section">
                                         <h4 class="answer-label">Correct answer:</h4>
                                         <div class="form-check">
-                                            <input class="form-check-input" type="radio" disabled>
-                                            <label class="form-check-label correct">
-                                                {{ $mistake->question->{'option_'.strtolower($correctOption)} }}
-                                            </label>
+                                            @if($mistake->question->question_type === 'written')
+                                                <span class="written-correct-answer d-none">{{ $mistake->question->correct_answer }}</span>
+                                                <label class="form-check-label correct">
+                                                    {{ $mistake->question->correct_answer }}
+                                                </label>
+                                            @else
+                                                <label class="form-check-label correct">
+                                                    {{ $mistake->question->{'option_'.strtolower($correctOption)} }}
+                                                </label>
+                                            @endif
                                         </div>
                                     </div>
                                 </div>
@@ -1127,8 +1142,15 @@
                     // Get content from original card
                     const questionText = card.querySelector('.normal-mode-content .question-text p').textContent;
                     const questionImage = card.querySelector('.normal-mode-content .question-image');
-                    const correctAnswer = card.querySelector('.normal-mode-content .form-check-label.correct').textContent;
-                    
+                    let correctAnswer = '';
+                    // Prefer written-correct-answer if present
+                    const writtenCorrect = card.querySelector('.normal-mode-content .written-correct-answer');
+                    if (writtenCorrect) {
+                        correctAnswer = writtenCorrect.textContent;
+                    } else {
+                        const correctLabel = card.querySelector('.normal-mode-content .form-check-label.correct');
+                        correctAnswer = correctLabel ? correctLabel.textContent : '';
+                    }
                     // Get flashcard faces
                     const cardFront = card.querySelector('.flashcard-content .card-front');
                     const cardBack = card.querySelector('.flashcard-content .card-back');

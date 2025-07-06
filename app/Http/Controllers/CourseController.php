@@ -157,9 +157,8 @@ class CourseController extends Controller
             'image' => 'nullable|url',
             'color' => 'required|string|regex:/^#[a-fA-F0-9]{6}$/',
             'title_color' => 'required|string|regex:/^#[a-fA-F0-9]{6}$/',
-            'is_paid' => 'sometimes|boolean',
-            'price' => 'required_if:is_paid,1|numeric|min:0',
-            'currency' => 'required_if:is_paid,1|string|max:3'
+            'price' => 'nullable|numeric|min:0',
+            'currency' => 'required_with:price|string|max:3'
         ]);
 
         Course::create([
@@ -168,9 +167,8 @@ class CourseController extends Controller
             'image' => $validated['image'] ?? null,
             'color' => $validated['color'],
             'title_color' => $validated['title_color'],
-            'is_paid' => $request->has('is_paid'),
-            'price' => $request->has('is_paid') ? $validated['price'] : 0,
-            'currency' => $request->has('is_paid') ? $validated['currency'] : 'EGP'
+            'price' => $validated['price'] ?? null,
+            'currency' => $validated['price'] ? $validated['currency'] : 'EGP'
         ]);
 
         return redirect()->route('courses.index')->with('success', 'Course created successfully!');

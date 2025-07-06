@@ -12,6 +12,11 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 
     <style>
+        /* Course page zoom fix - 80% scale */
+        html {
+            font-size: 12.8px; /* 80% of 16px */
+        }
+        
         body {
             font-family: 'Poppins', sans-serif;
             background-color: #f8f9fa;
@@ -1598,7 +1603,7 @@
                                     <i class="fas fa-play"></i>
                                     Continue Learning
                                 </a>
-                            @elseif (!$course->is_paid)
+                            @elseif (!$course->price || $course->price <= 0)
                                 <a href="{{ route('topics.forCourse', $course) }}" class="action-btn enroll">
                                     <i class="fas fa-play"></i>
                                     Start Learning (Free)
@@ -1615,7 +1620,7 @@
                                 </button>
                             @endif
                         @else
-                            @if (!$course->is_paid)
+                            @if (!$course->price || $course->price <= 0)
                                 <a href="{{ route('login') }}" class="action-btn enroll">
                                     <i class="fas fa-play"></i>
                                     Sign in to Start (Free)

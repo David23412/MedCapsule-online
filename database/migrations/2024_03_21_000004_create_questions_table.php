@@ -26,6 +26,12 @@ return new class extends Migration {
             
             // Store correct answer (e.g., 'A', 'B', 'C', 'D' for multiple choice, or full text for written)
             $table->text('correct_answer');
+            
+            // Add question_type field and default existing questions to 'multiple_choice'
+            $table->string('question_type')->default('multiple_choice');
+            
+            // Add field for alternative correct answers (JSON field to store variations)
+            $table->json('alternative_answers')->nullable();
 
             // Correct answer and attempt tracking
             $table->integer('total_attempts')->default(0);

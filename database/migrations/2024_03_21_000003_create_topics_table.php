@@ -17,6 +17,7 @@ return new class extends Migration {
             $table->integer('display_order')->default(0); // Order of topics within a course
             $table->float('percentage_grade')->nullable(); // Track percentage grade for the topic
             $table->timestamp('last_attempt_date')->nullable(); // Store the last attempt date for review
+            $table->unsignedInteger('cache_version')->default(1); // Cache version for invalidation
             $table->timestamps();
 
             // Add necessary indexes for optimized querying
