@@ -6,6 +6,7 @@ use App\Models\Question;
 use App\Services\PatternMatcherService;
 use App\Services\TextProcessingService;
 use App\Services\WrittenAnswerEvaluationService;
+use App\Services\MedicalKnowledgeService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
 use Mockery;
@@ -15,6 +16,7 @@ class WrittenAnswerEvaluationServiceTest extends TestCase
 {
     protected $textProcessingService;
     protected $patternMatcherService;
+    protected $medicalKnowledgeService;
     protected $evaluationService;
 
     protected function setUp(): void
@@ -24,15 +26,18 @@ class WrittenAnswerEvaluationServiceTest extends TestCase
         // Create real instances of dependencies
         $this->textProcessingService = new TextProcessingService();
         $this->patternMatcherService = new PatternMatcherService();
+        $this->medicalKnowledgeService = new MedicalKnowledgeService();
         
         // Turn off caching for tests
         $this->textProcessingService->setCacheConfig(false);
         $this->patternMatcherService->setCacheConfig(false);
+        $this->medicalKnowledgeService->setCacheConfig(false);
         
         // Create the service with real dependencies
         $this->evaluationService = new WrittenAnswerEvaluationService(
             $this->textProcessingService,
-            $this->patternMatcherService
+            $this->patternMatcherService,
+            $this->medicalKnowledgeService
         );
         $this->evaluationService->setCacheConfig(false);
     }

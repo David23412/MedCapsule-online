@@ -122,11 +122,28 @@ class PaymentSettingsController extends Controller
     private function checkOcrAvailability()
     {
         try {
-            $output = null;
-            $returnVar = null;
-            exec('which tesseract 2>/dev/null', $output, $returnVar);
+            // Check if tesseract is available
+            $tesseractPath = '/usr/bin/tesseract';
+            $isAvailable = file_exists($tesseractPath) && is_executable($tesseractPath);
             
-            return $returnVar === 0;
+            if (!$isAvailable) {
+                // Try common alternative paths
+                $alternativePaths = [
+                    '/usr/local/bin/tesseract',
+                    '/opt/homebrew/bin/tesseract',
+                    '/usr/bin/tesseract-ocr'
+                ];
+                
+                foreach ($alternativePaths as $path) {
+                    if (file_exists($path) && is_executable($path)) {
+                        $tesseractPath = $path;
+                        $isAvailable = true;
+                        break;
+                    }
+                }
+            }
+
+            return $isAvailable;
         } catch (\Exception $e) {
             return false;
         }
