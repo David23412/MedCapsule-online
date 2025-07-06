@@ -11,6 +11,11 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
     <style>
+        /* Profile page zoom fix - 80% scale */
+        html {
+            font-size: 12.8px; /* 80% of 16px */
+        }
+        
         body {
             font-family: 'Poppins', sans-serif;
             background-color: #f8f9fa;

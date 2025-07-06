@@ -9,6 +9,11 @@
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
+        /* Topics page zoom fix - 80% scale */
+        html {
+            font-size: 12.8px; /* 80% of 16px */
+        }
+        
         body {
             font-family: 'Poppins', sans-serif;
             background-color: #f8f9fa;
