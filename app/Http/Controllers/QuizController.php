@@ -156,6 +156,26 @@ class QuizController extends Controller
             $duration = $request->input('time_taken', 0);
             $mode = $request->input('mode', 'quiz');
 
+            // Robust input validation for oversized payloads
+            $maxAnswerLength = 2000;
+            $maxTotalLength = 20000;
+            $totalLength = 0;
+            foreach ($answers as $qid => $answer) {
+                if (is_string($answer) && mb_strlen($answer) > $maxAnswerLength) {
+                    return response()->json([
+                        'error' => "Answer for question $qid exceeds maximum allowed length of $maxAnswerLength characters."
+                    ], 422);
+                }
+                if (is_string($answer)) {
+                    $totalLength += mb_strlen($answer);
+                }
+            }
+            if ($totalLength > $maxTotalLength) {
+                return response()->json([
+                    'error' => "Total answer payload exceeds maximum allowed length of $maxTotalLength characters."
+                ], 422);
+            }
+
             // Log the received mode for debugging
             Log::info('Quiz mode received:', [
                 'mode' => $mode,

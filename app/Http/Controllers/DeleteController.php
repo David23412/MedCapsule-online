@@ -22,7 +22,7 @@ class DeleteController extends Controller
         $this->middleware('auth');
         $this->middleware(function ($request, $next) {
             if (!auth()->user()->is_admin) {
-                return redirect()->route('home')->with('error', 'Unauthorized access.');
+                abort(403, 'Unauthorized access.');
             }
             return $next($request);
         });

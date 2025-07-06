@@ -192,3 +192,8 @@ Route::middleware(['auth'])->group(function () {
 Route::middleware('auth:sanctum')->group(function () {
     // API routes that require Sanctum auth would go here
 });
+
+// Healthcheck route for monitoring
+Route::get('/health', function() {
+    return response()->json(['status' => 'ok'], 200);
+});

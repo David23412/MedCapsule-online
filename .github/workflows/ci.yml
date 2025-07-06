@@ -1,0 +1,26 @@
+name: CI
+
+on:
+  push:
+    branches: [ main, most-stable-recovered ]
+  pull_request:
+    branches: [ main, most-stable-recovered ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Set up PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: mbstring, pdo, pdo_mysql, xml, ctype, json, tokenizer, bcmath
+      - name: Install dependencies
+        run: composer install --prefer-dist --no-progress --no-suggest
+      - name: Lint
+        run: ./vendor/bin/php-cs-fixer fix --dry-run --diff || true
+      - name: Run tests
+        run: php artisan test --testsuite=Unit
+      - name: Build
+        run: php artisan config:cache && php artisan route:cache && php artisan view:cache 
