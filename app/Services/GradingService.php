@@ -671,7 +671,7 @@ class GradingService
             $attempt = QuizAttempt::create([
                 'user_id' => $user->id,
                 'topic_id' => $topic->id,
-                'quiz_type' => 'normal',
+                'quiz_type' => 'tutor',
                 'study_mode' => 'tutor',
                 'source' => $source,
                 'score' => $sourceProgress['correct'],

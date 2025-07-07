@@ -279,10 +279,11 @@ class RandomQuizController extends Controller
             return response()->json([
                 'success' => true,
                 'score' => $score,
+                'total' => $totalQuestions,
                 'total_questions' => $totalQuestions,
                 'percentage_grade' => $percentageGrade,
                 'incorrect_answers' => $incorrectAnswers,
-                'correct_answers_map' => $correctAnswersMap,
+                'correct_answers' => $correctAnswersMap,
                 'message' => $this->getScoreMessage($percentageGrade),
                 'quiz_attempt_id' => $quizAttempt->id
             ]);
