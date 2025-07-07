@@ -37,25 +37,18 @@ class ProfileController extends Controller
         // Calculate study time breakdowns
         $studyTimeBreakdown = [
             'quiz' => QuizAttempt::where('user_id', $user->id)
-                ->where(function($query) {
-                    $query->where('quiz_type', 'topic')
-                          ->orWhere('quiz_type', 'quiz')
-                          ->orWhere('quiz_type', 'tutor');
-                })
-                ->where('topic_id', '!=', null)  // Ensure it's a topic quiz
+                ->where('quiz_type', 'normal')
+                ->where('study_mode', 'quiz')
+                ->where('topic_id', '!=', null)
+                ->sum('duration_seconds'),
+            'tutor' => QuizAttempt::where('user_id', $user->id)
+                ->where('quiz_type', 'tutor')
                 ->sum('duration_seconds'),
             'random_quiz' => QuizAttempt::where('user_id', $user->id)
                 ->where('quiz_type', 'random')
                 ->sum('duration_seconds'),
             'mistake_review' => QuizAttempt::where('user_id', $user->id)
-                ->where(function($query) {
-                    $query->where('quiz_type', 'mistake_review')
-                          ->orWhere('source', 'mistakes')
-                          ->orWhere(function($q) {
-                              $q->where('quiz_type', 'review')
-                                ->where('study_mode', 'review');
-                          });
-                })
+                ->where('quiz_type', 'mistake_review')
                 ->sum('duration_seconds')
         ];
 
@@ -66,6 +59,7 @@ class ProfileController extends Controller
         $formattedStudyTimes = [
             'total' => $this->formatStudyTime($studyTimeBreakdown['total']),
             'quiz' => $this->formatStudyTime($studyTimeBreakdown['quiz']),
+            'tutor' => $this->formatStudyTime($studyTimeBreakdown['tutor']),
             'random_quiz' => $this->formatStudyTime($studyTimeBreakdown['random_quiz']),
             'mistake_review' => $this->formatStudyTime($studyTimeBreakdown['mistake_review'])
         ];

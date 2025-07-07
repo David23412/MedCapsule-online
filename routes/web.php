@@ -36,12 +36,18 @@ Route::middleware('auth')->group(function () {
     Route::get('/courses', [CourseController::class, 'index'])->name('courses.index');
     Route::get('/courses/{course}', [CourseController::class, 'show'])->name('courses.show');
     
-    // Review routes
+    // Review routes with CSRF and rate limiting
     Route::get('/review', [QuizController::class, 'showMistakes'])->name('review.index');
     Route::get('/review/learn', [LearnController::class, 'learnMistakes'])->name('review.learn');
-    Route::post('/review/remove/{question_id}', [MistakeController::class, 'removeMistake'])->name('review.remove');
-    Route::post('/learn/review/{question_id}', [LearnController::class, 'reviewMistake'])->name('learn.review');
-    Route::post('/learn/save-time', [LearnController::class, 'saveStudyTime'])->name('learn.save-time');
+    Route::post('/review/remove/{question_id}', [MistakeController::class, 'removeMistake'])
+        ->name('review.remove')
+        ->middleware(['throttle:60,1']); // 60 requests per minute
+    Route::post('/learn/review/{question_id}', [LearnController::class, 'reviewMistake'])
+        ->name('learn.review')
+        ->middleware(['throttle:120,1']); // 120 requests per minute
+    Route::post('/learn/save-time', [LearnController::class, 'saveStudyTime'])
+        ->name('learn.save-time')
+        ->middleware(['throttle:60,1']); // 60 requests per minute
     
     // Admin routes
     Route::get('/add-topic', [TopicController::class, 'showAddTopicForm'])->name('add-topic.form');
@@ -83,25 +89,31 @@ Route::middleware('auth')->group(function () {
     Route::get('/courses/{course}/cases', [TopicController::class, 'casesForCourse'])->name('cases.forCourse');
     Route::get('/courses/{course}/cases-count', [TopicController::class, 'casesCount'])->name('cases.count');
 
-    // Quiz routes
+    // Quiz routes with CSRF and rate limiting
     Route::get('/quiz/{course}/{topic}', [QuizController::class, 'startQuiz'])
         ->name('quiz.start')
         ->where(['course' => '[0-9]+', 'topic' => '[0-9]+']);
     Route::post('/quiz/{course}/{topic}/grade', [QuizController::class, 'gradeQuiz'])
         ->name('quiz.grade')
-        ->where(['course' => '[0-9]+', 'topic' => '[0-9]+']);
+        ->where(['course' => '[0-9]+', 'topic' => '[0-9]+'])
+        ->middleware(['throttle:30,1']); // 30 quiz submissions per minute
 
-    // Tutor mode routes
+    // Tutor mode routes with CSRF and rate limiting
     Route::get('/quiz/{course}/{topic}/tutor', [QuizController::class, 'startTutorQuiz'])
         ->name('quiz.tutor')
         ->where(['course' => '[0-9]+', 'topic' => '[0-9]+']);
     Route::post('/quiz/tutor/check/{question}', [QuizController::class, 'checkTutorAnswer'])
         ->name('quiz.tutor.check-answer')
-        ->where(['question' => '[0-9]+']);
+        ->where(['question' => '[0-9]+'])
+        ->middleware(['throttle:60,1']); // 60 tutor answer checks per minute
 
-    // Random Quiz Routes
-    Route::post('/quiz/random', [App\Http\Controllers\RandomQuizController::class, 'generateRandomQuiz'])->name('quiz.random');
-    Route::post('/quiz/grade-random', [App\Http\Controllers\RandomQuizController::class, 'gradeRandomQuiz'])->name('quiz.grade-random');
+    // Random Quiz Routes with CSRF and rate limiting
+    Route::post('/quiz/random', [App\Http\Controllers\RandomQuizController::class, 'generateRandomQuiz'])
+        ->name('quiz.random')
+        ->middleware(['throttle:10,1']); // 10 random quiz generations per minute
+    Route::post('/quiz/grade-random', [App\Http\Controllers\RandomQuizController::class, 'gradeRandomQuiz'])
+        ->name('quiz.grade-random')
+        ->middleware(['throttle:30,1']); // 30 random quiz submissions per minute
 
     // Settings and profile routes
     Route::get('/settings', [SettingsController::class, 'index'])->name('settings.index');

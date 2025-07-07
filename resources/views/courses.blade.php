@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token() }}">
-    <title>Available Courses - MedCapsule</title>
+    <title>MedCapsule</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Crimson+Pro:wght@700;800;900&display=swap" rel="stylesheet">
@@ -425,6 +425,23 @@
 
         .action-btn.enroll i {
             color: #9ca3af;
+        }
+
+        /* Free course button styling */
+        .action-btn.enroll.free {
+            background: #16a34a;
+            color: white;
+            border: 1px solid #16a34a;
+        }
+
+        .action-btn.enroll.free:hover {
+            background: #15803d;
+            border-color: #15803d;
+            transform: translateY(-2px);
+        }
+
+        .action-btn.enroll.free i {
+            color: white;
         }
 
         .action-btn.enroll[disabled] {
@@ -1549,7 +1566,7 @@
                 <div class="course-card {{ strtolower($course->name) }}" 
                      style="border-left: 8px solid {{ $course->color }}; border-color: {{ $course->color }}"
                      data-semester="{{ $course->semester }}">
-                    <div class="course-image" style="background-image: url('{{ $course->image_url }}')" onerror="this.style.backgroundImage = 'linear-gradient(135deg, #f5f7fa 0%, #e9ecef 100%)'">
+                    <div class="course-image" style="background-image: url('{{ asset($course->image_url) }}')" onerror="this.style.backgroundImage = 'linear-gradient(135deg, #f5f7fa 0%, #e9ecef 100%)'">
                         <div class="info-icon">
                             <i class="fas fa-info"></i>
                             <div class="info-tooltip">
@@ -1604,7 +1621,7 @@
                                     Continue Learning
                                 </a>
                             @elseif (!$course->price || $course->price <= 0)
-                                <a href="{{ route('topics.forCourse', $course) }}" class="action-btn enroll">
+                                <a href="{{ route('topics.forCourse', $course) }}" class="action-btn enroll free">
                                     <i class="fas fa-play"></i>
                                     Start Learning (Free)
                                 </a>
@@ -1621,7 +1638,7 @@
                             @endif
                         @else
                             @if (!$course->price || $course->price <= 0)
-                                <a href="{{ route('login') }}" class="action-btn enroll">
+                                <a href="{{ route('login') }}" class="action-btn enroll free">
                                     <i class="fas fa-play"></i>
                                     Sign in to Start (Free)
                                 </a>

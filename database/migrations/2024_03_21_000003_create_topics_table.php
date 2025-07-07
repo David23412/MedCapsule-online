@@ -15,8 +15,6 @@ return new class extends Migration {
             $table->text('description')->nullable(); // Description for the topic (optional)
             $table->string('case_type')->default('quiz'); // Type: quiz (regular topic), cases, or practical
             $table->integer('display_order')->default(0); // Order of topics within a course
-            $table->float('percentage_grade')->nullable(); // Track percentage grade for the topic
-            $table->timestamp('last_attempt_date')->nullable(); // Store the last attempt date for review
             $table->unsignedInteger('cache_version')->default(1); // Cache version for invalidation
             $table->timestamps();
 
@@ -25,7 +23,6 @@ return new class extends Migration {
             $table->index('course_id'); // For fast look-up of all topics by course
             $table->index('display_order'); // To speed up ordering within courses
             $table->index('case_type'); // For filtering by case type
-            $table->index('percentage_grade'); // For filtering by performance level
         });
     }
 

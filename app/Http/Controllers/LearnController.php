@@ -27,10 +27,19 @@ class LearnController extends Controller
      */
     public function learnMistakes()
     {
+        $startTime = microtime(true);
+        $requestId = uniqid('learn_mistakes_');
+        
         try {
             $userId = auth()->id();
             $mode = session('learn_mode', 'quiz');
-            Log::info('Starting learnMistakes for user', ['user_id' => $userId, 'mode' => $mode]);
+            
+            Log::info('Starting learnMistakes for user', [
+                'request_id' => $requestId,
+                'user_id' => $userId, 
+                'mode' => $mode,
+                'ip_address' => request()->ip()
+            ]);
 
             // Get all mistakes for the user (including mastered ones)
             $mistakes = Mistake::where('user_id', $userId)
@@ -59,8 +68,10 @@ class LearnController extends Controller
             })->filter()->unique('id')->values();
 
             Log::info('Fetched mistakes for user', [
+                'request_id' => $requestId,
                 'user_id' => $userId,
                 'mistake_count' => $mistakes->count(),
+                'courses_count' => $courses->count(),
                 'mistakes' => $mistakes->map(function($mistake) use ($mode) {
                     return [
                         'id' => $mistake->id,
@@ -74,6 +85,10 @@ class LearnController extends Controller
 
             // If no mistakes found, redirect with a message
             if ($mistakes->isEmpty()) {
+                Log::info('No mistakes found for user', [
+                    'request_id' => $requestId,
+                    'user_id' => $userId
+                ]);
                 return redirect()->route('review.index')
                     ->with('info', 'No mistakes to review! Add some mistakes first.');
             }
@@ -81,6 +96,7 @@ class LearnController extends Controller
             // If mistakes exist but no valid questions found
             if ($mistakes->every(function($mistake) { return $mistake->question === null; })) {
                 Log::error('No valid questions found for mistakes', [
+                    'request_id' => $requestId,
                     'user_id' => $userId,
                     'mistake_ids' => $mistakes->pluck('id')
                 ]);
@@ -88,11 +104,22 @@ class LearnController extends Controller
                     ->with('error', 'Error loading questions. Please try again.');
             }
 
+            $executionTime = (microtime(true) - $startTime) * 1000;
+            Log::info('✅ Learn mistakes loaded successfully', [
+                'request_id' => $requestId,
+                'execution_time_ms' => round($executionTime, 2),
+                'mistakes_count' => $mistakes->count(),
+                'courses_count' => $courses->count()
+            ]);
+
             return view('mistakes.learn', compact('mistakes', 'courses'));
         } catch (\Exception $e) {
-            Log::error('Error in learnMistakes', [
+            $executionTime = (microtime(true) - $startTime) * 1000;
+            Log::error('❌ Error in learnMistakes', [
+                'request_id' => $requestId,
                 'user_id' => auth()->id(),
                 'error' => $e->getMessage(),
+                'execution_time_ms' => round($executionTime, 2),
                 'trace' => $e->getTraceAsString()
             ]);
             return redirect()->route('review.index')
@@ -105,18 +132,48 @@ class LearnController extends Controller
      */
     public function getUpdatedMistakes(Request $request)
     {
-        $userId = auth()->id();
+        $startTime = microtime(true);
+        $requestId = uniqid('get_mistakes_');
+        
+        try {
+            $userId = auth()->id();
 
-        $mistakes = Mistake::where('user_id', $userId)
-            ->where('correct_streak', '<', 3) // Changed from mastered to correct_streak
-            ->with('question')
-            ->get();
+            Log::info('Getting updated mistakes for user', [
+                'request_id' => $requestId,
+                'user_id' => $userId,
+                'ip_address' => request()->ip()
+            ]);
 
-        return response()->json([
-            'success' => true,
-            'mistakes_count' => $mistakes->count(),
-            'has_mistakes' => $mistakes->isNotEmpty()
-        ]);
+            $mistakes = Mistake::where('user_id', $userId)
+                ->where('correct_streak', '<', 3) // Changed from mastered to correct_streak
+                ->with('question')
+                ->get();
+
+            $executionTime = (microtime(true) - $startTime) * 1000;
+            Log::info('✅ Updated mistakes retrieved successfully', [
+                'request_id' => $requestId,
+                'execution_time_ms' => round($executionTime, 2),
+                'mistakes_count' => $mistakes->count()
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'mistakes_count' => $mistakes->count(),
+                'has_mistakes' => $mistakes->isNotEmpty()
+            ]);
+        } catch (\Exception $e) {
+            $executionTime = (microtime(true) - $startTime) * 1000;
+            Log::error('❌ Error getting updated mistakes', [
+                'request_id' => $requestId,
+                'user_id' => auth()->id(),
+                'error' => $e->getMessage(),
+                'execution_time_ms' => round($executionTime, 2)
+            ]);
+            return response()->json([
+                'success' => false,
+                'error' => 'Failed to retrieve mistakes'
+            ], 500);
+        }
     }
 
     /**
@@ -124,15 +181,20 @@ class LearnController extends Controller
      */
     public function reviewMistake(Request $request, $questionId)
     {
+        $startTime = microtime(true);
+        $requestId = uniqid('review_mistake_');
+        
         try {
             $userId = auth()->id();
             $mode = $request->input('mode', 'quiz');
             
             Log::info('📌 Starting review process', [
+                'request_id' => $requestId,
                 'question_id' => $questionId,
                 'user_id' => $userId,
                 'selected_answer' => $request->input('selected_answer'),
-                'mode' => $mode
+                'mode' => $mode,
+                'ip_address' => request()->ip()
             ]);
             
             DB::beginTransaction();
@@ -144,6 +206,7 @@ class LearnController extends Controller
 
             if (!$mistake) {
                 Log::error('❌ Mistake not found', [
+                    'request_id' => $requestId,
                     'question_id' => $questionId,
                     'user_id' => $userId
                 ]);
@@ -158,6 +221,7 @@ class LearnController extends Controller
 
             if (!$selectedAnswer) {
                 Log::error('❌ Missing required data', [
+                    'request_id' => $requestId,
                     'selected_answer' => $selectedAnswer,
                     'mode' => $mode
                 ]);
@@ -169,6 +233,7 @@ class LearnController extends Controller
             }
 
             Log::info('📝 Processing review', [
+                'request_id' => $requestId,
                 'mistake_id' => $mistake->id,
                 'question_id' => $questionId,
                 'selected_answer' => $selectedAnswer,
@@ -184,47 +249,17 @@ class LearnController extends Controller
             $isCorrect = false;
             
             if (isset($mistake->question->question_type) && $mistake->question->question_type === 'written') {
-                // Manual override for very short answers - single letter answers should never be correct for written questions
-                if (strlen(trim($selectedAnswer)) <= 1) {
-                    $isCorrect = false;
-                    Log::warning('Single letter answer rejected forcefully', [
-                        'question_id' => $questionId,
-                        'submitted' => $selectedAnswer,
-                        'correct' => $mistake->question->correct_answer
-                    ]);
-                } else {
-                    // For written questions, use the proper grading method
-                    $isCorrect = $mistake->question->isAnswerCorrect($selectedAnswer);
-                }
-                
-                // Double-check: Even if somehow the grading marked a very short answer as correct,
-                // we'll override it here for safety since the UI showed it was a problem
-                if ($isCorrect && strlen(trim($selectedAnswer)) <= 2 && strlen($mistake->question->correct_answer) > 4) {
-                    $isCorrect = false;
-                    Log::warning('Very short answer incorrectly marked as correct - overriding', [
-                        'question_id' => $questionId,
-                        'submitted' => $selectedAnswer,
-                        'correct' => $mistake->question->correct_answer
-                    ]);
-                }
-                
-                // Log additional info for written answers
-                Log::info('Written answer grading result', [
-                    'question_id' => $questionId,
-                    'submitted' => $selectedAnswer,
-                    'correct' => $mistake->question->correct_answer,
-                    'is_correct' => $isCorrect,
-                    'submitted_length' => strlen($selectedAnswer),
-                    'correct_length' => strlen($mistake->question->correct_answer)
-                ]);
+                // For written questions, use the proper grading method
+                $isCorrect = $mistake->question->isAnswerCorrect($selectedAnswer);
             } else {
-                // For multiple choice questions, exact match is fine
-                $isCorrect = $selectedAnswer === $mistake->question->correct_answer;
+                // For multiple choice questions, use direct comparison
+                $isCorrect = strtolower(trim($selectedAnswer)) === strtolower(trim($mistake->question->correct_answer));
             }
             
             $mistake->updateTracking($isCorrect, $mode);
 
             Log::info('✅ Review processed', [
+                'request_id' => $requestId,
                 'mistake_id' => $mistake->id,
                 'is_correct' => $isCorrect,
                 'new_streak' => $mistake->correct_streak,
@@ -233,122 +268,139 @@ class LearnController extends Controller
 
             DB::commit();
 
-            // Prepare the response message
-            $message = '';
-            if ($isCorrect) {
-                $message = 'Correct!';
-            } else {
-                // For written questions, provide more detailed feedback
-                if (isset($mistake->question->question_type) && $mistake->question->question_type === 'written') {
-                    // If answer is very short, provide specific feedback
-                    if (strlen($selectedAnswer) <= 1 && strlen($mistake->question->correct_answer) > 3) {
-                        $message = 'Incorrect. Your answer is too short. Please provide a complete answer.';
-                    } 
-                    // If answer length is significantly different, mention it
-                    elseif (strlen($selectedAnswer) < (strlen($mistake->question->correct_answer) * 0.5)) {
-                        $message = 'Incorrect. Your answer seems incomplete. Try to be more specific.';
-                    }
-                    else {
-                        $message = 'Incorrect. Try again!';
-                    }
-                } else {
-                    $message = 'Incorrect. Try again!';
-                }
-            }
+            $executionTime = (microtime(true) - $startTime) * 1000;
+            Log::info('✅ Review completed successfully', [
+                'request_id' => $requestId,
+                'execution_time_ms' => round($executionTime, 2),
+                'is_correct' => $isCorrect,
+                'new_streak' => $mistake->correct_streak
+            ]);
 
             return response()->json([
                 'success' => true,
-                'mastered' => $mistake->isMastered($mode),
-                'progress' => $mistake->correct_streak,
-                'message' => $message,
                 'is_correct' => $isCorrect,
-                'correct_answer' => !$isCorrect ? $mistake->question->correct_answer : null
+                'correct_answer' => $mistake->question->correct_answer,
+                'explanation' => $mistake->question->explanation,
+                'new_streak' => $mistake->correct_streak,
+                'is_mastered' => $mistake->isMastered($mode),
+                'message' => $isCorrect ? 'Correct!' : 'Incorrect. Try again!'
             ]);
+
         } catch (\Exception $e) {
             DB::rollBack();
-            Log::error('❌ Error in reviewMistake', [
-                'question_id' => $questionId,
-                'user_id' => $userId,
+            $executionTime = (microtime(true) - $startTime) * 1000;
+            Log::error('❌ Error in reviewMistake:', [
+                'request_id' => $requestId,
                 'error' => $e->getMessage(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+                'question_id' => $questionId,
+                'user_id' => auth()->id(),
+                'execution_time_ms' => round($executionTime, 2),
                 'trace' => $e->getTraceAsString()
             ]);
+            
             return response()->json([
                 'success' => false,
-                'message' => 'An error occurred while processing your review: ' . $e->getMessage()
+                'message' => 'An error occurred while processing your review.'
             ], 500);
         }
     }
 
     /**
-     * Start a review session for mistakes
+     * Start a review session
      */
     public function startReview(Request $request)
     {
+        $startTime = microtime(true);
+        $requestId = uniqid('start_review_');
+        
         try {
-            $mode = $request->query('mode', 'quiz');
-            $mistakes = Mistake::where('user_id', auth()->id())
-                ->where('correct_streak', '<', 3) // Changed from mastered to correct_streak
-                ->join('questions', 'mistakes.question_id', '=', 'questions.id')
-                ->select(
-                    'mistakes.id as mistake_id',
-                    'mistakes.submitted_answer',
-                    'questions.id as question_id',
-                    'questions.question',
-                    'questions.image_url',
-                    'questions.option_a',
-                    'questions.option_b',
-                    'questions.option_c',
-                    'questions.option_d',
-                    'questions.correct_answer'
-                )
-                ->inRandomOrder()
-                ->take(10)
+            $userId = auth()->id();
+            $mode = $request->input('mode', 'quiz');
+            
+            Log::info('Starting review session', [
+                'request_id' => $requestId,
+                'user_id' => $userId,
+                'mode' => $mode,
+                'ip_address' => request()->ip()
+            ]);
+
+            // Store the mode in session
+            session(['learn_mode' => $mode]);
+
+            // Get mistakes that need review
+            $mistakes = Mistake::where('user_id', $userId)
+                ->where('correct_streak', '<', 3)
+                ->with('question.topic.course')
+                ->orderBy('last_attempt_date', 'asc')
+                ->limit(10)
                 ->get();
 
             if ($mistakes->isEmpty()) {
+                Log::info('No mistakes available for review', [
+                    'request_id' => $requestId,
+                    'user_id' => $userId
+                ]);
                 return redirect()->route('review.index')
-                    ->with('info', 'No mistakes found to review!');
+                    ->with('info', 'No mistakes available for review!');
             }
 
-            $questions = $mistakes->map(function ($mistake) {
-                return [
-                    'id' => $mistake->mistake_id,
-                    'question' => $mistake->question,
-                    'image_url' => $mistake->image_url,
-                    'options' => [
-                        'A' => $mistake->option_a,
-                        'B' => $mistake->option_b,
-                        'C' => $mistake->option_c,
-                        'D' => $mistake->option_d
-                    ],
-                    'correct_answer' => $mistake->correct_answer,
-                    'your_answer' => $mistake->submitted_answer,
-                    'progress' => $mistake->quick_correct_count // For quick mode progress tracking
-                ];
-            });
+            $executionTime = (microtime(true) - $startTime) * 1000;
+            Log::info('✅ Review session started successfully', [
+                'request_id' => $requestId,
+                'execution_time_ms' => round($executionTime, 2),
+                'mistakes_count' => $mistakes->count(),
+                'mode' => $mode
+            ]);
 
-            session(['review_questions' => $questions, 'review_mode' => $mode]);
-            return view('mistakes.review', compact('questions', 'mode'));
+            return view('mistakes.review', compact('mistakes', 'mode'));
+
         } catch (\Exception $e) {
-            Log::error('Error in startReview', [
-                'user_id' => auth()->id(),
+            $executionTime = (microtime(true) - $startTime) * 1000;
+            Log::error('❌ Error starting review session:', [
+                'request_id' => $requestId,
                 'error' => $e->getMessage(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+                'user_id' => auth()->id(),
+                'execution_time_ms' => round($executionTime, 2),
                 'trace' => $e->getTraceAsString()
             ]);
+            
             return redirect()->route('review.index')
-                ->with('error', 'An error occurred while starting the review.');
+                ->with('error', 'An error occurred while starting the review session.');
         }
     }
 
+    /**
+     * Remove a mistake from the user's list
+     */
     public function removeMistake($questionId)
     {
+        $startTime = microtime(true);
+        $requestId = uniqid('remove_mistake_');
+        
         try {
             $userId = auth()->id();
+            
+            Log::info('Removing mistake', [
+                'request_id' => $requestId,
+                'question_id' => $questionId,
+                'user_id' => $userId,
+                'ip_address' => request()->ip()
+            ]);
+
             $mistake = Mistake::where('user_id', $userId)
-                            ->where('question_id', $questionId)
-                            ->first();
+                ->where('question_id', $questionId)
+                ->first();
 
             if (!$mistake) {
+                Log::warning('Mistake not found for removal', [
+                    'request_id' => $requestId,
+                    'question_id' => $questionId,
+                    'user_id' => $userId
+                ]);
                 return response()->json([
                     'success' => false,
                     'message' => 'Mistake not found'
@@ -357,92 +409,90 @@ class LearnController extends Controller
 
             $mistake->delete();
 
+            $executionTime = (microtime(true) - $startTime) * 1000;
+            Log::info('✅ Mistake removed successfully', [
+                'request_id' => $requestId,
+                'execution_time_ms' => round($executionTime, 2),
+                'question_id' => $questionId,
+                'user_id' => $userId
+            ]);
+
             return response()->json([
                 'success' => true,
-                'message' => 'Question removed from mistakes list'
+                'message' => 'Mistake removed successfully'
             ]);
+
         } catch (\Exception $e) {
-            \Log::error('Error removing mistake: ' . $e->getMessage());
+            $executionTime = (microtime(true) - $startTime) * 1000;
+            Log::error('❌ Error removing mistake:', [
+                'request_id' => $requestId,
+                'error' => $e->getMessage(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+                'question_id' => $questionId,
+                'user_id' => auth()->id(),
+                'execution_time_ms' => round($executionTime, 2),
+                'trace' => $e->getTraceAsString()
+            ]);
+            
             return response()->json([
                 'success' => false,
-                'message' => 'Error removing question'
+                'message' => 'An error occurred while removing the mistake.'
             ], 500);
         }
     }
 
     /**
-     * Save the study time from a mistake learning session
+     * Save study time for analytics
      */
     public function saveStudyTime(Request $request)
     {
+        $startTime = microtime(true);
+        $requestId = uniqid('save_study_time_');
+        
         try {
-            $request->validate([
-                'duration_seconds' => 'required|integer|min:1',
-                'total_questions' => 'required|integer|min:1',
-                'completed_questions' => 'required|integer|min:0'
+            $userId = auth()->id();
+            $studyTime = $request->input('study_time', 0);
+            
+            Log::info('Saving study time', [
+                'request_id' => $requestId,
+                'user_id' => $userId,
+                'study_time_seconds' => $studyTime,
+                'ip_address' => request()->ip()
             ]);
 
+            // Update user's total study time
             $user = auth()->user();
-            
-            // Get the first mistake's topic_id to associate with this attempt
-            $firstMistake = Mistake::where('user_id', $user->id)
-                ->with('question:id,topic_id')
-                ->first();
-                
-            // If no topic_id is found, use a default topic for mistake reviews
-            $topicId = $firstMistake && $firstMistake->question 
-                ? $firstMistake->question->topic_id 
-                : Topic::firstOrCreate(
-                    ['name' => 'Mistake Reviews'],
-                    [
-                        'description' => 'Auto-generated topic for tracking mistake reviews',
-                        'user_id' => $user->id,
-                        'course_id' => Course::firstOrCreate([
-                            'name' => 'Review Sessions'
-                        ], [
-                            'description' => 'Auto-generated course for tracking review sessions',
-                            'user_id' => $user->id
-                        ])->id
-                    ]
-                )->id;
-            
-            // Create a quiz attempt record for the mistake review session
-            QuizAttempt::create([
-                'user_id' => $user->id,
-                'topic_id' => $topicId,
-                'quiz_type' => 'normal', // Use valid quiz type
-                'study_mode' => 'quiz', // Use valid study mode
-                'source' => 'mistakes',
-                'score' => $request->completed_questions,
-                'total_questions' => $request->total_questions,
-                'percentage_grade' => ($request->completed_questions / $request->total_questions) * 100,
-                'duration_seconds' => $request->duration_seconds,
-                'question_data' => [
-                    [
-                        'question_id' => 1, // Use valid question ID
-                        'user_answer' => null,
-                        'is_correct' => true
-                    ]
-                ]
+            $user->increment('total_study_time', $studyTime);
+
+            $executionTime = (microtime(true) - $startTime) * 1000;
+            Log::info('✅ Study time saved successfully', [
+                'request_id' => $requestId,
+                'execution_time_ms' => round($executionTime, 2),
+                'study_time_seconds' => $studyTime,
+                'user_id' => $userId
             ]);
-            // Update user stats after mistake review
-            $this->userStatsService->updateAfterQuizAttempt($user, $request->total_questions, $request->completed_questions, $request->duration_seconds);
 
             return response()->json([
                 'success' => true,
-                'message' => 'Study time saved successfully'
-            ]);
-        } catch (\Exception $e) {
-            Log::error('Error saving study time', [
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString(),
-                'user_id' => auth()->id(),
-                'request_data' => $request->all()
+                'message' => 'Study time recorded'
             ]);
 
+        } catch (\Exception $e) {
+            $executionTime = (microtime(true) - $startTime) * 1000;
+            Log::error('❌ Error saving study time:', [
+                'request_id' => $requestId,
+                'error' => $e->getMessage(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+                'user_id' => auth()->id(),
+                'execution_time_ms' => round($executionTime, 2),
+                'trace' => $e->getTraceAsString()
+            ]);
+            
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to save study time: ' . $e->getMessage()
+                'message' => 'Failed to record study time'
             ], 500);
         }
     }

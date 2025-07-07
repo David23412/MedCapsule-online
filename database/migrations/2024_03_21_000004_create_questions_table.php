@@ -30,6 +30,9 @@ return new class extends Migration {
             // Add question_type field and default existing questions to 'multiple_choice'
             $table->string('question_type')->default('multiple_choice');
             
+            // Add difficulty column for filtering and analytics
+            $table->string('difficulty')->nullable();
+            
             // Add field for alternative correct answers (JSON field to store variations)
             $table->json('alternative_answers')->nullable();
 

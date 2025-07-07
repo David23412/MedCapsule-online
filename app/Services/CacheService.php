@@ -94,4 +94,24 @@ class CacheService
             Cache::forget("user_{$userId}_topic_{$topicId}_mistakes");
         }
     }
+
+    public function get($key, $default = null)
+    {
+        return cache()->get($key, $default);
+    }
+
+    public function put($key, $value, $seconds = null)
+    {
+        return cache()->put($key, $value, $seconds);
+    }
+
+    public function forget($key)
+    {
+        return cache()->forget($key);
+    }
+
+    public function remember($key, $seconds, \Closure $callback)
+    {
+        return cache()->remember($key, $seconds, $callback);
+    }
 } 

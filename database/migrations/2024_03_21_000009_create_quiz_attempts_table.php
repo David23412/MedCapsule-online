@@ -13,7 +13,7 @@ return new class extends Migration
             $table->foreignId('user_id')->constrained()->onDelete('cascade');
             $table->foreignId('topic_id')->nullable()->constrained()->onDelete('cascade');
             $table->string('quiz_type')->default('normal'); // normal, random, etc.
-            $table->string('study_mode')->default('quiz'); // quiz or tutor
+            $table->string('study_mode')->nullable(); // quiz or tutor, now nullable
             $table->string('source')->nullable(); // Which source this attempt is for (Assuit, Cairo, etc.)
             
             // Progress tracking
@@ -23,7 +23,6 @@ return new class extends Migration
             $table->unsignedInteger('duration_seconds'); // Duration in seconds
             
             // Mistake tracking (as JSON)
-            $table->json('missed_questions')->nullable(); // Array of question IDs that were wrong
             $table->json('question_data')->nullable(); // Detailed attempt data if needed for review
             
             // Add indexes for efficient querying

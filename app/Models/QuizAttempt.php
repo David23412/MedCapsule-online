@@ -38,8 +38,8 @@ class QuizAttempt extends Model
     ];
 
     protected $attributes = [
-        'study_mode' => 'normal',
-        'source' => 'all'
+        'study_mode' => null,
+        'source' => null
     ];
 
     /**
@@ -48,8 +48,8 @@ class QuizAttempt extends Model
     public static $rules = [
         'user_id' => 'required|exists:users,id',
         'topic_id' => 'nullable|exists:topics,id',
-        'quiz_type' => 'required|in:normal,random,tutor',
-        'study_mode' => 'required|in:normal,quiz,tutor,random',
+        'quiz_type' => 'required|in:normal,random,tutor,mistake_review',
+        'study_mode' => 'nullable|in:quiz,tutor,random',
         'source' => 'nullable|string',
         'score' => 'required|integer|min:0',
         'total_questions' => 'required|integer|min:1',

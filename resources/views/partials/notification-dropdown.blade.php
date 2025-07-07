@@ -210,7 +210,7 @@
                                     class="notification-icon me-2"
                                     :class="{'icon-pulse': notification.isUrgent && !notification.is_read}"
                                 >
-                                    <i :class="getTypeIcon(notification.type)"></i>
+                                    <i class="medcapsule-type-icon">MedCapsule</i>
                                 </div>
                                 <div class="notification-content">
                                     <div class="notification-title">

@@ -44,18 +44,17 @@ class RegisterController extends Controller
 
             Log::info('User created', ['user_id' => $user->id]);
 
-            // Auto-enroll the user in the FREE course if it exists
+            // Auto-enroll the user in ALL free courses
             try {
-                $freeCourse = \App\Models\Course::where('name', 'FREE')->first();
-                if ($freeCourse) {
-                    $user->enrollInCourse($freeCourse->id);
-                    Log::info('User auto-enrolled in FREE course', [
-                        'user_id' => $user->id, 
-                        'course_id' => $freeCourse->id
+                $enrolledCount = $user->enrollInAllFreeCourses();
+                if ($enrolledCount > 0) {
+                    Log::info('User auto-enrolled in free courses', [
+                        'user_id' => $user->id,
+                        'courses_enrolled' => $enrolledCount
                     ]);
                 }
             } catch (\Exception $e) {
-                Log::warning('Failed to auto-enroll user in FREE course', [
+                Log::warning('Failed to auto-enroll user in free courses', [
                     'user_id' => $user->id,
                     'error' => $e->getMessage()
                 ]);

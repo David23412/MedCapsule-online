@@ -41,8 +41,20 @@ class QuestionController extends Controller
             'explanation' => 'nullable|string',
             'question_type' => 'required|string|in:multiple_choice,written',
             'image_url' => 'nullable|url',
+            'question_image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048', // 2MB max
             'source' => 'required|string|in:Assuit,Cairo,Alexandria,Other'
         ]);
+
+        // Handle image upload
+        $imageUrl = null;
+        if ($request->hasFile('question_image')) {
+            $file = $request->file('question_image');
+            $filename = time() . '_' . $file->getClientOriginalName();
+            $path = $file->storeAs('questions', $filename, 'public');
+            $imageUrl = 'storage/' . $path;
+        } elseif ($request->filled('image_url')) {
+            $imageUrl = $request->image_url;
+        }
 
         // Validate based on question type
         if ($request->question_type === 'multiple_choice') {
@@ -97,7 +109,7 @@ class QuestionController extends Controller
             'option_d' => $optionD,
             'correct_answer' => $correctAnswer,
             'alternative_answers' => $alternativeAnswers,
-            'image_url' => $request->image_url,
+            'image_url' => $imageUrl,
             'source' => $request->source
         ]);
 

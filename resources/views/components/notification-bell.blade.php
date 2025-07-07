@@ -81,7 +81,7 @@
                                         class="notification-icon me-2"
                                         :class="{'icon-pulse': ['weak_topics', 'weak_topic_added', 'review_mistakes'].includes(notification.type) && !notification.is_read}"
                                     >
-                                        <i :class="getTypeIcon(notification.type)"></i>
+                                        <i class="medcapsule-type-icon">MedCapsule</i>
                                     </div>
                                     <div class="notification-content">
                                         <div class="notification-title">

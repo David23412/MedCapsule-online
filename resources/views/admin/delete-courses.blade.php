@@ -66,7 +66,7 @@
                                             <td>
                                                 <div class="d-flex align-items-center">
                                                     @if($course->image_url)
-                                                        <img src="{{ $course->image_url }}" 
+                                                        <img src="{{ asset($course->image_url) }}" 
                                                              alt="{{ $course->name }}" 
                                                              class="rounded me-2" 
                                                              style="width: 40px; height: 40px; object-fit: cover;">

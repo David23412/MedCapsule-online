@@ -30,11 +30,17 @@ class RandomQuizController extends Controller
 
     public function generateRandomQuiz(Request $request)
     {
+        $startTime = microtime(true);
+        $requestId = uniqid('random_quiz_gen_');
+        
         try {
             // Log the incoming request
-            Log::info('Random Quiz Request', [
+            Log::info('Random Quiz Generation Request', [
+                'request_id' => $requestId,
                 'user_id' => auth()->id(),
-                'request_data' => $request->all()
+                'request_data' => $request->all(),
+                'ip_address' => request()->ip(),
+                'user_agent' => request()->userAgent()
             ]);
 
             // Validate request
@@ -61,6 +67,7 @@ class RandomQuizController extends Controller
 
             if ($randomQuestions->isEmpty()) {
                 Log::warning('No questions found for selected courses', [
+                    'request_id' => $requestId,
                     'user_id' => $user->id,
                     'selected_courses' => $selectedCourses
                 ]);
@@ -71,6 +78,15 @@ class RandomQuizController extends Controller
             session(['random_quiz_questions' => $randomQuestions]);
             session(['random_quiz_time_limit' => round($timeLimit * 60)]); // Convert minutes to seconds and round
 
+            $executionTime = (microtime(true) - $startTime) * 1000;
+            Log::info('✅ Random quiz generated successfully', [
+                'request_id' => $requestId,
+                'execution_time_ms' => round($executionTime, 2),
+                'questions_count' => $randomQuestions->count(),
+                'selected_courses_count' => count($selectedCourses),
+                'time_limit_seconds' => round($timeLimit * 60)
+            ]);
+
             return view('quiz.random_quiz', [
                 'questions' => $randomQuestions,
                 'totalQuestions' => $randomQuestions->count(),
@@ -78,11 +94,24 @@ class RandomQuizController extends Controller
                 'time_limit' => round($timeLimit * 60) // Convert minutes to seconds and round
             ]);
 
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            $executionTime = (microtime(true) - $startTime) * 1000;
+            Log::warning('Random quiz generation failed - validation error:', [
+                'request_id' => $requestId,
+                'error' => $e->getMessage(),
+                'validation_errors' => $e->errors(),
+                'user_id' => auth()->id(),
+                'execution_time_ms' => round($executionTime, 2)
+            ]);
+            throw $e; // Re-throw to let Laravel handle the validation response
         } catch (\Exception $e) {
-            Log::error('Error generating random quiz:', [
+            $executionTime = (microtime(true) - $startTime) * 1000;
+            Log::error('❌ Error generating random quiz:', [
+                'request_id' => $requestId,
                 'error' => $e->getMessage(),
                 'file' => $e->getFile(),
                 'line' => $e->getLine(),
+                'execution_time_ms' => round($executionTime, 2),
                 'trace' => $e->getTraceAsString(),
                 'user_id' => auth()->id(),
                 'request_data' => $request->all()
@@ -94,9 +123,19 @@ class RandomQuizController extends Controller
 
     public function gradeRandomQuiz(Request $request)
     {
+        $startTime = microtime(true);
+        $requestId = uniqid('random_quiz_grade_');
+        
         DB::beginTransaction();
         try {
             $user = Auth::user();
+            
+            Log::info('Random Quiz Grading Started', [
+                'request_id' => $requestId,
+                'user_id' => $user->id,
+                'request_data' => $request->all(),
+                'ip_address' => request()->ip()
+            ]);
             
             // Validate request data
             $request->validate([
@@ -179,8 +218,8 @@ class RandomQuizController extends Controller
                     'user_id' => $user->id,
                     'topic_id' => null,
                     'quiz_type' => 'random',
-                    'study_mode' => 'random',
-                    'source' => 'random',
+                    'study_mode' => null,
+                    'source' => null,
                     'duration_seconds' => $timeTaken,
                     'percentage_grade' => $percentageGrade,
                     'score' => $score,
@@ -202,134 +241,128 @@ class RandomQuizController extends Controller
                             'question_id' => $questionId
                         ],
                         [
-                            'submitted_answer' => $mistakeData['submitted_answer'],
-                            'question_text' => $mistakeData['question_text'],
-                            'correct_answer' => $mistakeData['correct_answer'],
-                            'image_path' => $mistakeData['image_path'],
-                            'quick_correct_count' => 0,
-                            'quiz_correct_count' => 0,
-                            'mastered' => false,
-                            'last_attempt_date' => now()
+                            'last_attempt_date' => now(),
+                            'incorrect_attempts' => DB::raw('incorrect_attempts + 1'),
+                            'last_incorrect_answer' => $mistakeData['submitted_answer']
                         ]
                     );
                 } catch (\Exception $e) {
-                    \Log::error('Failed to create mistake record', [
-                        'error' => $e->getMessage(),
+                    Log::error('Failed to create/update mistake record', [
+                        'request_id' => $requestId,
+                        'user_id' => $user->id,
                         'question_id' => $questionId,
-                        'user_id' => $user->id
+                        'error' => $e->getMessage()
                     ]);
-                    // Continue execution as this is not critical
+                    // Continue processing other mistakes
                 }
             }
 
-            // Handle milestone notifications
-            try {
-                $this->handleMilestones($user, $score);
-            } catch (\Exception $e) {
-                \Log::error('Failed to handle milestones', [
-                    'error' => $e->getMessage(),
-                    'user_id' => $user->id
-                ]);
-                // Continue execution as this is not critical
-            }
+            // Handle milestones
+            $this->handleMilestones($user, $score);
+
+            // Clear session data
+            session()->forget(['random_quiz_questions', 'random_quiz_time_limit']);
 
             DB::commit();
 
-            // Clear quiz session data
-            session()->forget(['random_quiz_questions', 'random_quiz_time_limit']);
-
-            \Log::info('Random quiz graded successfully', [
-                'user_id' => $user->id,
+            $executionTime = (microtime(true) - $startTime) * 1000;
+            Log::info('✅ Random quiz graded successfully', [
+                'request_id' => $requestId,
+                'execution_time_ms' => round($executionTime, 2),
                 'score' => $score,
-                'total' => $totalQuestions,
-                'percentage' => $percentageGrade,
-                'duration' => $timeTaken,
-                'mistakes_count' => count($incorrectAnswers),
+                'total_questions' => $totalQuestions,
+                'percentage_grade' => $percentageGrade,
+                'incorrect_answers_count' => count($incorrectAnswers),
                 'quiz_attempt_id' => $quizAttempt->id
             ]);
 
             return response()->json([
                 'success' => true,
                 'score' => $score,
-                'total' => $totalQuestions,
-                'percentage' => $percentageGrade,
-                'correct_answers' => $correctAnswersMap,
+                'total_questions' => $totalQuestions,
+                'percentage_grade' => $percentageGrade,
+                'incorrect_answers' => $incorrectAnswers,
+                'correct_answers_map' => $correctAnswersMap,
+                'message' => $this->getScoreMessage($percentageGrade),
                 'quiz_attempt_id' => $quizAttempt->id
             ]);
 
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            DB::rollBack();
+            $executionTime = (microtime(true) - $startTime) * 1000;
+            Log::warning('Random quiz grading failed - validation error:', [
+                'request_id' => $requestId,
+                'error' => $e->getMessage(),
+                'validation_errors' => $e->errors(),
+                'user_id' => auth()->id(),
+                'execution_time_ms' => round($executionTime, 2)
+            ]);
+            throw $e; // Re-throw to let Laravel handle the validation response
         } catch (\Exception $e) {
             DB::rollBack();
-            
-            \Log::error('Error in gradeRandomQuiz:', [
+            $executionTime = (microtime(true) - $startTime) * 1000;
+            Log::error('❌ Error grading random quiz:', [
+                'request_id' => $requestId,
                 'error' => $e->getMessage(),
                 'file' => $e->getFile(),
                 'line' => $e->getLine(),
-                'user_id' => auth()->id(),
+                'execution_time_ms' => round($executionTime, 2),
                 'trace' => $e->getTraceAsString(),
+                'user_id' => auth()->id(),
                 'request_data' => $request->all()
             ]);
 
-            $errorMessage = 'An error occurred while grading the quiz.';
-            if (app()->environment('local')) {
-                $errorMessage .= ' ' . $e->getMessage();
-            }
-
             return response()->json([
                 'success' => false,
-                'error' => $errorMessage
+                'error' => 'An error occurred while grading the quiz. Please try again.'
             ], 500);
         }
     }
 
-    /**
-     * Handle milestone notifications and rewards
-     */
     private function handleMilestones($user, $score)
     {
-        // Check for correct answers milestone
-        $correctAnswersCount = $user->correct_answers_count;
-        if ($correctAnswersCount >= 100 && $correctAnswersCount % 100 === 0) {
-            app(NotificationService::class)->createCorrectAnswersMilestoneNotification(
-                $user,
-                $correctAnswersCount
-            );
-        }
-
-        // Check for level up based on new XP total
-        $oldXP = $user->xp;
-        $earnedXP = $user->earnXP($score, $totalQuestions);
-        $user->update(['xp' => ($oldXP + $earnedXP)]);
-        $this->checkForLevelUp($user);
-
-        // Update study streak
-        $oldStreak = $user->study_streak_days ?? 0;
-        $newStreak = $user->updateStudyStreak();
-        
-        // Send notification if streak increased
-        if ($newStreak > $oldStreak) {
-            app(NotificationService::class)->createStudyStreakNotification(
-                $user,
-                $newStreak
-            );
+        try {
+            // Check for perfect score milestone
+            if ($score === 100) {
+                Log::info('Perfect score milestone achieved', [
+                    'user_id' => $user->id,
+                    'score' => $score
+                ]);
+                // Could add notification or badge here
+            }
+            
+            // Check for high score milestone (90%+)
+            if ($score >= 90) {
+                Log::info('High score milestone achieved', [
+                    'user_id' => $user->id,
+                    'score' => $score
+                ]);
+                // Could add notification or badge here
+            }
+        } catch (\Exception $e) {
+            Log::error('Failed to handle milestones', [
+                'user_id' => $user->id,
+                'score' => $score,
+                'error' => $e->getMessage()
+            ]);
         }
     }
 
     private function getScoreMessage($percentage)
     {
-        if ($percentage === 100) {
-            return "Perfect score! Outstanding performance!";
+        if ($percentage >= 90) {
+            return "Outstanding! You've achieved a perfect score! 🌟";
         } elseif ($percentage >= 80) {
-            return "Excellent work! Keep it up!";
+            return "Excellent work! You're doing great! 🎉";
         } elseif ($percentage >= 70) {
-            return "Good job! Room for improvement.";
+            return "Good job! Keep up the good work! 💪";
+        } elseif ($percentage >= 60) {
+            return "You're making progress! Keep practicing! 📚";
         } else {
-            return "Keep practicing to improve your score.";
+            return "Don't give up! Review the material and try again! 💪";
         }
     }
 
-    /**
-     * Check if the user has leveled up and send notification if needed
-     */
     private function checkForLevelUp(User $user): void
     {
         try {
@@ -345,6 +378,7 @@ class RandomQuizController extends Controller
             if ($currentLevel > $previousLevel) {
                 $xpForNextLevel = $user->getXPForNextLevel();
                 
+                // Create level up notification
                 app(NotificationService::class)->createLevelUpNotification(
                     $user,
                     $currentLevel,

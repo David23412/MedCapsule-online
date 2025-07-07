@@ -19,15 +19,32 @@
                 <div class="col-md-6">
                     <label class="form-label">Select Courses:</label>
                     <div class="border rounded p-3" style="max-height: 150px; overflow-y: auto;">
-                        @foreach(auth()->user()->courses as $course)
+                        @php
+                            // Get all free courses
+                            $freeCourses = \App\Models\Course::where(function($query) {
+                                $query->where('price', 0)
+                                      ->orWhereNull('price');
+                            })->get();
+                            
+                            // Get user's enrolled courses
+                            $enrolledCourses = auth()->user()->courses;
+                            
+                            // Combine free courses and enrolled courses, avoiding duplicates
+                            $allAvailableCourses = $freeCourses->merge($enrolledCourses)->unique('id');
+                        @endphp
+                        
+                        @foreach($allAvailableCourses as $course)
                             <div class="form-check">
                                 <input class="form-check-input" type="checkbox" 
                                     name="selected_courses[]" 
                                     value="{{ $course->id }}" 
                                     id="course{{ $course->id }}"
-                                    checked>
+                                    @if($freeCourses->contains('id', $course->id) || $enrolledCourses->contains('id', $course->id)) checked @endif>
                                 <label class="form-check-label" for="course{{ $course->id }}">
                                     {{ $course->name }}
+                                    @if($freeCourses->contains('id', $course->id))
+                                        <span class="badge bg-success ms-1">Free</span>
+                                    @endif
                                 </label>
                             </div>
                         @endforeach

@@ -29,6 +29,24 @@ class LoginController extends Controller
                 ->where('id', $request->session()->getId())
                 ->update(['is_visitor' => false]);
 
+            // Auto-enroll in all free courses
+            $user = Auth::user();
+            try {
+                $enrolledCount = $user->enrollInAllFreeCourses();
+                if ($enrolledCount > 0) {
+                    \Log::info('User auto-enrolled in free courses on login', [
+                        'user_id' => $user->id,
+                        'courses_enrolled' => $enrolledCount
+                    ]);
+                }
+            } catch (\Exception $e) {
+                \Log::warning('Failed to auto-enroll user in free courses on login', [
+                    'user_id' => $user->id,
+                    'error' => $e->getMessage()
+                ]);
+                // Continue with login even if auto-enrollment fails
+            }
+
             return redirect()->intended('/courses');
         }
 

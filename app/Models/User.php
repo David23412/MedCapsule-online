@@ -126,11 +126,48 @@ class User extends Authenticatable
      */
     public function enrollInCourse($courseId)
     {
-        if (!$this->courses()->where('course_id', $courseId)->exists()) {
-            $this->courses()->attach($courseId, [
-                'enrollment_status' => 'active',
-                'enrolled_at' => now()
+        // Use syncWithoutDetaching to ensure proper pivot data and avoid duplicates
+        $this->courses()->syncWithoutDetaching([$courseId => [
+            'enrollment_status' => 'active',
+            'enrolled_at' => now()
+        ]]);
+    }
+
+    /**
+     * Enroll the user in all free courses (price 0 or NULL).
+     * Ensures 'active' status and correct timestamp.
+     * This method is idempotent - safe to run multiple times.
+     */
+    public function enrollInAllFreeCourses()
+    {
+        try {
+            // Get all free course IDs (price = 0 OR price IS NULL)
+            $freeCourseIds = \App\Models\Course::where(function($query) {
+                $query->where('price', 0)
+                      ->orWhereNull('price');
+            })->pluck('id');
+
+            if ($freeCourseIds->isEmpty()) {
+                return 0; // No free courses to enroll in
+            }
+
+            // Use syncWithoutDetaching to ensure proper pivot data and avoid duplicates
+            $this->courses()->syncWithoutDetaching(
+                $freeCourseIds->mapWithKeys(function($courseId) {
+                    return [$courseId => [
+                        'enrollment_status' => 'active',
+                        'enrolled_at' => now()
+                    ]];
+                })->toArray()
+            );
+
+            return $freeCourseIds->count();
+        } catch (\Exception $e) {
+            \Log::error('Failed to enroll user in free courses', [
+                'user_id' => $this->id,
+                'error' => $e->getMessage()
             ]);
+            return 0;
         }
     }
 

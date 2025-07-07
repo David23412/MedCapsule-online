@@ -3,10 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Add Question - MedCapsule</title>
+    <title>MedCapsule</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <!-- Favicon -->
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 50'%3E%3Crect fill='%23007bff' x='10' y='15' width='80' height='20' rx='10' ry='10' /%3E%3Crect x='50' y='15' width='40' height='20' fill='%23ff0000' rx='0 10 10 0' ry='10'/%3E%3Cline x1='50' y1='15' x2='50' y2='35' stroke='white' stroke-width='1.5' stroke-dasharray='2,1'/%3E%3C/svg%3E">
+    <link rel="shortcut icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 50'%3E%3Crect fill='%23007bff' x='10' y='15' width='80' height='20' rx='10' ry='10' /%3E%3Crect x='50' y='15' width='40' height='20' fill='%23ff0000' rx='0 10 10 0' ry='10'/%3E%3Cline x1='50' y1='15' x2='50' y2='35' stroke='white' stroke-width='1.5' stroke-dasharray='2,1'/%3E%3C/svg%3E">
+    <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 50'%3E%3Crect fill='%23007bff' x='10' y='15' width='80' height='20' rx='10' ry='10' /%3E%3Crect x='50' y='15' width='40' height='20' fill='%23ff0000' rx='0 10 10 0' ry='10'/%3E%3Cline x1='50' y1='15' x2='50' y2='35' stroke='white' stroke-width='1.5' stroke-dasharray='2,1'/%3E%3C/svg%3E">
     <style>
         body {
             font-family: 'Poppins', sans-serif;
@@ -43,6 +47,27 @@
             border-radius: 8px;
             display: none;
             margin-top: 10px;
+            border: 2px solid #e9ecef;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        .image-upload-section {
+            background: #f8f9fa;
+            border: 2px dashed #dee2e6;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 10px;
+        }
+        
+        .image-upload-section:hover {
+            border-color: #007bff;
+            background: #f0f8ff;
+        }
+        
+        .upload-info {
+            font-size: 0.875rem;
+            color: #6c757d;
+            margin-top: 5px;
         }
     </style>
 </head>
@@ -80,7 +105,7 @@
                             </div>
                         @endif
 
-                        <form method="POST" action="{{ route('add-question') }}">
+                        <form method="POST" action="{{ secure_url('add-question') }}" enctype="multipart/form-data">
                             @csrf
 
                             <div class="mb-4">
@@ -119,15 +144,39 @@
 
                             <div class="mb-4">
                                 <label class="form-label">Question Image (Optional)</label>
-                                <input type="url" 
-                                       class="form-control" 
-                                       name="image_url" 
-                                       id="image_url" 
-                                       placeholder="https://example.com/image.jpg">
-                                <div class="form-text text-muted">
-                                    Add an image URL if the question includes a visual element
+                                <div class="image-upload-section">
+                                    <div class="row">
+                                        <div class="col-md-6">
+                                            <label class="form-label small text-muted">
+                                                <i class="fas fa-upload me-1"></i>Upload Image
+                                            </label>
+                                            <input type="file" 
+                                                   class="form-control" 
+                                                   name="question_image" 
+                                                   id="question_image" 
+                                                   accept="image/*">
+                                            <div class="upload-info">
+                                                Supported: JPG, PNG, GIF (max 2MB)
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <label class="form-label small text-muted">
+                                                <i class="fas fa-link me-1"></i>Or Enter Image URL
+                                            </label>
+                                            <input type="url" 
+                                                   class="form-control" 
+                                                   name="image_url" 
+                                                   id="image_url" 
+                                                   placeholder="https://example.com/image.jpg">
+                                            <div class="upload-info">
+                                                Or provide an external image URL
+                                            </div>
+                                        </div>
+                                    </div>
                                 </div>
-                                <img id="preview" class="preview-image">
+                                <div class="text-center">
+                                    <img id="preview" class="preview-image">
+                                </div>
                             </div>
 
                             <!-- Multiple Choice Options -->
@@ -217,10 +266,12 @@
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
-        // Image preview functionality
+        // Image preview functionality for both file upload and URL input
         const imageUrlInput = document.getElementById('image_url');
+        const imageFileInput = document.getElementById('question_image');
         const previewImage = document.getElementById('preview');
 
+        // Handle URL input
         imageUrlInput.addEventListener('input', function() {
             if (this.value) {
                 previewImage.src = this.value;
@@ -232,6 +283,32 @@
                 };
             } else {
                 previewImage.style.display = 'none';
+            }
+        });
+
+        // Handle file upload
+        imageFileInput.addEventListener('change', function() {
+            const file = this.files[0];
+            if (file) {
+                // Clear URL input when file is selected
+                imageUrlInput.value = '';
+                
+                // Create a preview URL for the uploaded file
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    previewImage.src = e.target.result;
+                    previewImage.style.display = 'block';
+                };
+                reader.readAsDataURL(file);
+            } else {
+                previewImage.style.display = 'none';
+            }
+        });
+
+        // Clear file input when URL is entered
+        imageUrlInput.addEventListener('input', function() {
+            if (this.value) {
+                imageFileInput.value = '';
             }
         });
 

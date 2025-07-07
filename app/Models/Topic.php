@@ -26,8 +26,6 @@ class Topic extends Model
         'user_id',
         'description',
         'display_order',
-        'percentage_grade',
-        'last_attempt_date',
         'case_type',
         'cache_version'
     ];

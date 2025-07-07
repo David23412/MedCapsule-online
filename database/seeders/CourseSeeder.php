@@ -12,18 +12,33 @@ class CourseSeeder extends Seeder
         $courses = [
             [
                 'name' => 'Internal Medicine',
-                'description' => 'Comprehensive course covering internal medicine topics',
+                'description' => 'Comprehensive course covering internal medicine topics including cardiology, pulmonology, gastroenterology, and more.',
                 'image_path' => 'courses/internal-medicine.jpg',
+                'price' => 99.99,
             ],
             [
                 'name' => 'Surgery',
-                'description' => 'Essential surgical concepts and procedures',
+                'description' => 'Essential surgical concepts and procedures for medical students and residents.',
                 'image_path' => 'courses/surgery.jpg',
+                'price' => 149.99,
             ],
             [
                 'name' => 'Pediatrics',
-                'description' => 'Child health and pediatric medicine',
+                'description' => 'Child health and pediatric medicine fundamentals - free introductory course.',
                 'image_path' => 'courses/pediatrics.jpg',
+                'price' => 0.00, // Free course
+            ],
+            [
+                'name' => 'Emergency Medicine',
+                'description' => 'Critical care and emergency procedures for acute medical situations.',
+                'image_path' => 'courses/emergency-medicine.jpg',
+                'price' => 129.99,
+            ],
+            [
+                'name' => 'Obstetrics & Gynecology',
+                'description' => 'Women\'s health, pregnancy, and reproductive medicine.',
+                'image_path' => 'courses/obgyn.jpg',
+                'price' => 119.99,
             ]
         ];
 

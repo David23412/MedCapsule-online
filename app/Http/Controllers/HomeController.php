@@ -27,7 +27,7 @@ class HomeController extends Controller
                 ->count('user_id')
         ];
 
-        // Get featured courses with their counts
+        // Get ALL courses with their counts (not just featured ones)
         $featuredCourses = Course::select('courses.*')
             ->selectRaw('
                 COUNT(DISTINCT CASE WHEN topics.case_type = "quiz" THEN topics.id END) as quiz_count,
@@ -43,7 +43,8 @@ class HomeController extends Controller
                 $query->whereNull('course_user.enrollment_status')
                     ->orWhere('course_user.enrollment_status', '=', 'active');
             })
-            ->groupBy('courses.id')
+            ->groupBy('courses.id', 'courses.name', 'courses.description', 'courses.image', 'courses.color', 'courses.price', 'courses.currency', 'courses.created_at', 'courses.updated_at')
+            ->orderBy('courses.name')
             ->get();
 
         return view('home', compact('statistics', 'featuredCourses'));
