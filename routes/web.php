@@ -93,7 +93,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/quiz/{course}/{topic}', [QuizController::class, 'startQuiz'])
         ->name('quiz.start')
         ->where(['course' => '[0-9]+', 'topic' => '[0-9]+']);
-    Route::post('/quiz/{course}/{topic}/grade', [QuizController::class, 'gradeQuiz'])
+    Route::post('/quiz/{course}/{topic}/grade', [QuizController::class, 'grade'])
         ->name('quiz.grade')
         ->where(['course' => '[0-9]+', 'topic' => '[0-9]+'])
         ->middleware(['throttle:30,1']); // 30 quiz submissions per minute

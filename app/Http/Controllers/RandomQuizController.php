@@ -258,7 +258,7 @@ class RandomQuizController extends Controller
             }
 
             // Handle milestones
-            $this->handleMilestones($user, $score);
+                $this->handleMilestones($user, $score);
 
             // Clear session data
             session()->forget(['random_quiz_questions', 'random_quiz_time_limit']);

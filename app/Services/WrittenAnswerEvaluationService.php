@@ -270,10 +270,25 @@ class WrittenAnswerEvaluationService
         array $alternativeAnswers = [], 
         float $similarityThreshold = self::DEFAULT_SIMILARITY_THRESHOLD
     ): array {
+        // DEBUG: Log initial inputs
+        Log::debug('WrittenAnswerEvaluationService::evaluateAnswer - START', [
+            'submitted_answer' => $submittedAnswer,
+            'correct_answer' => $correctAnswer,
+            'alternative_answers' => $alternativeAnswers,
+            'similarity_threshold' => $similarityThreshold
+        ]);
+
         // Preprocess answers to handle medical symbols and notations
         $submittedAnswer = $this->preprocessSymbols($submittedAnswer);
         $correctAnswer = $this->preprocessSymbols($correctAnswer);
         $alternativeAnswers = array_map([$this, 'preprocessSymbols'], $alternativeAnswers);
+        
+        // DEBUG: Log after preprocessing
+        Log::debug('WrittenAnswerEvaluationService::evaluateAnswer - After preprocessing', [
+            'submitted_answer' => $submittedAnswer,
+            'correct_answer' => $correctAnswer,
+            'alternative_answers' => $alternativeAnswers
+        ]);
         
         $cacheKey = "evaluate:{$submittedAnswer}:{$correctAnswer}:" . implode('|', $alternativeAnswers) . ":{$similarityThreshold}";
         
@@ -282,8 +297,15 @@ class WrittenAnswerEvaluationService
             $submittedAnswer = trim($submittedAnswer);
             $correctAnswer = trim($correctAnswer);
             
+            // DEBUG: Log after trimming
+            Log::debug('WrittenAnswerEvaluationService::evaluateAnswer - After trimming', [
+                'submitted_answer' => $submittedAnswer,
+                'correct_answer' => $correctAnswer
+            ]);
+            
             // Performance optimization - Empty answers are never correct
             if (empty($submittedAnswer)) {
+                Log::debug('WrittenAnswerEvaluationService::evaluateAnswer - Empty submitted answer detected');
                 return [
                     'isCorrect' => false,
                     'similarity' => 0,
@@ -297,7 +319,15 @@ class WrittenAnswerEvaluationService
             $normalizedSubmitted = $this->textProcessor->normalizeText($submittedAnswer);
             $normalizedCorrect = $this->textProcessor->normalizeText($correctAnswer);
             
+            // DEBUG: Log normalization results
+            Log::debug('WrittenAnswerEvaluationService::evaluateAnswer - Normalization results', [
+                'normalized_submitted' => $normalizedSubmitted,
+                'normalized_correct' => $normalizedCorrect,
+                'exact_match' => ($normalizedSubmitted === $normalizedCorrect)
+            ]);
+            
             if ($normalizedSubmitted === $normalizedCorrect) {
+                Log::debug('WrittenAnswerEvaluationService::evaluateAnswer - Exact match found');
                 return [
                     'isCorrect' => true,
                     'similarity' => 1.0,
@@ -317,7 +347,15 @@ class WrittenAnswerEvaluationService
                 if (empty($altAnswer)) continue;
                 
                 $normalizedAlt = $this->textProcessor->normalizeText($altAnswer);
+                Log::debug('WrittenAnswerEvaluationService::evaluateAnswer - Checking alternative answer', [
+                    'index' => $index,
+                    'alternative_answer' => $altAnswer,
+                    'normalized_alternative' => $normalizedAlt,
+                    'matches_submitted' => ($normalizedSubmitted === $normalizedAlt)
+                ]);
+                
                 if ($normalizedSubmitted === $normalizedAlt) {
+                    Log::debug('WrittenAnswerEvaluationService::evaluateAnswer - Exact match with alternative found');
                     return [
                         'isCorrect' => true,
                         'similarity' => 1.0,
@@ -333,6 +371,9 @@ class WrittenAnswerEvaluationService
             
             // Identify course topic early for domain-specific optimizations
             $courseTopic = $this->identifyCourseTopic($correctAnswer);
+            Log::debug('WrittenAnswerEvaluationService::evaluateAnswer - Course topic identified', [
+                'course_topic' => $courseTopic
+            ]);
             
             // Special case: Protein synthesis location check (very important to get right)
             if (stripos($normalizedSubmitted, 'protein synthesis') !== false) {
@@ -531,9 +572,19 @@ class WrittenAnswerEvaluationService
             $mainSimilarity = $metrics['weighted'];
             $mainMetrics = $metrics;
             
+            // DEBUG: Log main similarity calculation
+            Log::debug('WrittenAnswerEvaluationService::evaluateAnswer - Main similarity calculation', [
+                'main_similarity' => $mainSimilarity,
+                'main_metrics' => $mainMetrics,
+                'has_contradictions' => $metrics['hasContradictions'] ?? false
+            ]);
+            
             // Early invalid detection - If the main answer has contradictions, mark as incorrect
             if ($metrics['hasContradictions'] ?? false) {
                 $mainSimilarity = min($mainSimilarity, 0.65); // Cap the similarity score
+                Log::debug('WrittenAnswerEvaluationService::evaluateAnswer - Contradictions detected, capping similarity', [
+                    'capped_similarity' => $mainSimilarity
+                ]);
             }
             
             // Check against alternative answers if provided
@@ -553,6 +604,14 @@ class WrittenAnswerEvaluationService
                 
                 $altSimilarities[$index] = $altMetric['weighted'];
                 $altMetrics[$index] = $altMetric;
+                
+                // DEBUG: Log alternative similarity calculation
+                Log::debug('WrittenAnswerEvaluationService::evaluateAnswer - Alternative similarity calculation', [
+                    'index' => $index,
+                    'alternative_answer' => $altAnswer,
+                    'similarity' => $altMetric['weighted'],
+                    'metrics' => $altMetric
+                ]);
             }
             
             // Find best similarity among all answers (main and alternatives)
@@ -572,9 +631,24 @@ class WrittenAnswerEvaluationService
                 }
             }
             
+            // DEBUG: Log best similarity selection
+            Log::debug('WrittenAnswerEvaluationService::evaluateAnswer - Best similarity selection', [
+                'best_similarity' => $bestSimilarity,
+                'best_source' => $bestSource,
+                'best_index' => $bestIndex,
+                'best_answer' => $bestAnswer,
+                'best_metrics' => $bestMetrics
+            ]);
+            
             // Apply domain-specific context boost if applicable
             $domainBoost = $this->calculateDomainContextBoost($submittedAnswer, $bestAnswer);
             $finalSimilarity = min(1.0, $bestSimilarity + $domainBoost);
+            
+            // DEBUG: Log domain boost calculation
+            Log::debug('WrittenAnswerEvaluationService::evaluateAnswer - Domain boost calculation', [
+                'domain_boost' => $domainBoost,
+                'final_similarity' => $finalSimilarity
+            ]);
             
             // Enhance abbreviation handling
             // Detect if we're dealing with an answer that predominantly uses medical abbreviations
@@ -720,12 +794,26 @@ class WrittenAnswerEvaluationService
             // Determine if the answer is correct based on threshold and safety checks
             $isCorrect = $finalSimilarity >= $similarityThreshold && !$isCriticalMismatch;
             
+            // DEBUG: Log final decision calculation
+            Log::debug('WrittenAnswerEvaluationService::evaluateAnswer - Final decision calculation', [
+                'final_similarity' => $finalSimilarity,
+                'similarity_threshold' => $similarityThreshold,
+                'is_critical_mismatch' => $isCriticalMismatch,
+                'critical_reason' => $criticalReason,
+                'initial_is_correct' => $isCorrect
+            ]);
+            
             // If we're very close to the threshold but below it, be conservative and mark as incorrect
             if ($finalSimilarity >= ($similarityThreshold - 0.05) && $finalSimilarity < $similarityThreshold) {
                 $isCorrect = false;
                 if (empty($criticalReason)) {
                     $criticalReason = 'Answer is too close to the threshold to confidently mark as correct';
                 }
+                Log::debug('WrittenAnswerEvaluationService::evaluateAnswer - Close to threshold, marking as incorrect', [
+                    'final_similarity' => $finalSimilarity,
+                    'threshold_minus_0_05' => $similarityThreshold - 0.05,
+                    'updated_critical_reason' => $criticalReason
+                ]);
             }
             
             // Special case: very high conceptual similarity and keyword overlap without contradictions
@@ -736,6 +824,12 @@ class WrittenAnswerEvaluationService
                 !($bestMetrics['hasContradictions'] ?? false)) {
                 $isCorrect = true;
                 $finalSimilarity = max($finalSimilarity, 0.9);
+                Log::debug('WrittenAnswerEvaluationService::evaluateAnswer - High conceptual similarity override', [
+                    'conceptual_similarity' => $bestMetrics['conceptual'],
+                    'keyword_similarity' => $bestMetrics['keyword'],
+                    'updated_final_similarity' => $finalSimilarity,
+                    'final_is_correct' => $isCorrect
+                ]);
             }
             
             // Generate detailed feedback for the user
@@ -793,6 +887,17 @@ class WrittenAnswerEvaluationService
                     $response['missingWords'] = $missingWords;
                 }
             }
+            
+            // DEBUG: Log final result
+            Log::debug('WrittenAnswerEvaluationService::evaluateAnswer - FINAL RESULT', [
+                'is_correct' => $isCorrect,
+                'final_similarity' => $finalSimilarity,
+                'best_similarity' => $bestSimilarity,
+                'domain_boost' => $domainBoost,
+                'best_source' => $bestSource,
+                'critical_reason' => $criticalReason,
+                'best_metrics' => $bestMetrics
+            ]);
             
             return $response;
         });

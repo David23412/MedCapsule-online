@@ -52,7 +52,7 @@ class GradingServiceTest extends TestCase
         parent::tearDown();
     }
 
-    /** @test */
+    #[\PHPUnit\Framework\Attributes\Test]
     public function it_validates_quiz_inputs_correctly()
     {
         $user = User::factory()->create();
@@ -66,7 +66,7 @@ class GradingServiceTest extends TestCase
         $this->gradingService->gradeQuiz($user, [], 60, 'quiz', $topic, $course);
     }
 
-    /** @test */
+    #[\PHPUnit\Framework\Attributes\Test]
     public function it_validates_duration_correctly()
     {
         $user = User::factory()->create();
@@ -79,7 +79,7 @@ class GradingServiceTest extends TestCase
         $this->gradingService->gradeQuiz($user, ['1' => 'A'], -1, 'quiz', $topic, $course);
     }
 
-    /** @test */
+    #[\PHPUnit\Framework\Attributes\Test]
     public function it_validates_answer_length_correctly()
     {
         $user = User::factory()->create();
@@ -94,7 +94,7 @@ class GradingServiceTest extends TestCase
         $this->gradingService->gradeQuiz($user, ['1' => $longAnswer], 60, 'quiz', $topic, $course);
     }
 
-    /** @test */
+    #[\PHPUnit\Framework\Attributes\Test]
     public function it_grades_quiz_correctly_with_all_correct_answers()
     {
         $user = User::factory()->create(['xp' => 0]);
@@ -148,7 +148,7 @@ class GradingServiceTest extends TestCase
         $this->assertEquals(2, $result['source_progress']['Test Source']['total']);
     }
 
-    /** @test */
+    #[\PHPUnit\Framework\Attributes\Test]
     public function it_grades_quiz_correctly_with_mixed_answers()
     {
         $user = User::factory()->create(['xp' => 0]);
@@ -200,7 +200,7 @@ class GradingServiceTest extends TestCase
         $this->assertContains($question2->id, $result['mistakes']);
     }
 
-    /** @test */
+    #[\PHPUnit\Framework\Attributes\Test]
     public function it_handles_level_up_correctly()
     {
         $user = User::factory()->create(['xp' => 0]); // Will level up to 1
@@ -243,7 +243,7 @@ class GradingServiceTest extends TestCase
         $this->assertEquals(1, $result['new_level']);
     }
 
-    /** @test */
+    #[\PHPUnit\Framework\Attributes\Test]
     public function it_handles_written_answers_correctly()
     {
         $user = User::factory()->create();
@@ -290,7 +290,7 @@ class GradingServiceTest extends TestCase
         $this->assertEquals(100, $result['percentage']);
     }
 
-    /** @test */
+    #[\PHPUnit\Framework\Attributes\Test]
     public function it_handles_written_answer_evaluation_failure()
     {
         $user = User::factory()->create();
@@ -335,7 +335,7 @@ class GradingServiceTest extends TestCase
         $this->assertEquals(1, $result['score']); // Should fallback to exact match
     }
 
-    /** @test */
+    #[\PHPUnit\Framework\Attributes\Test]
     public function it_grades_tutor_answer_correctly()
     {
         $user = User::factory()->create();
@@ -356,7 +356,7 @@ class GradingServiceTest extends TestCase
         $this->assertArrayHasKey('source_progress', $result);
     }
 
-    /** @test */
+    #[\PHPUnit\Framework\Attributes\Test]
     public function it_handles_tutor_answer_with_incorrect_answer()
     {
         $user = User::factory()->create();
@@ -375,7 +375,7 @@ class GradingServiceTest extends TestCase
         $this->assertEquals('A', $result['correct_answer']);
     }
 
-    /** @test */
+    #[\PHPUnit\Framework\Attributes\Test]
     public function it_creates_quiz_attempts_for_multiple_sources()
     {
         $user = User::factory()->create();
@@ -424,7 +424,7 @@ class GradingServiceTest extends TestCase
         $this->assertEquals(2, $attempts->count());
     }
 
-    /** @test */
+    #[\PHPUnit\Framework\Attributes\Test]
     public function it_updates_topic_progress_correctly()
     {
         $user = User::factory()->create();
@@ -467,7 +467,7 @@ class GradingServiceTest extends TestCase
         $this->assertEquals(100, $progress->percentage_grade);
     }
 
-    /** @test */
+    #[\PHPUnit\Framework\Attributes\Test]
     public function it_records_mistakes_correctly()
     {
         $user = User::factory()->create();
@@ -512,7 +512,7 @@ class GradingServiceTest extends TestCase
         $this->assertEquals('A', $mistake->correct_answer);
     }
 
-    /** @test */
+    #[\PHPUnit\Framework\Attributes\Test]
     public function it_handles_database_transaction_rollback_on_error()
     {
         $user = User::factory()->create();

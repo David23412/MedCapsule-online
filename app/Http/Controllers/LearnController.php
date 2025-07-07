@@ -136,7 +136,7 @@ class LearnController extends Controller
         $requestId = uniqid('get_mistakes_');
         
         try {
-            $userId = auth()->id();
+        $userId = auth()->id();
 
             Log::info('Getting updated mistakes for user', [
                 'request_id' => $requestId,
@@ -144,10 +144,10 @@ class LearnController extends Controller
                 'ip_address' => request()->ip()
             ]);
 
-            $mistakes = Mistake::where('user_id', $userId)
-                ->where('correct_streak', '<', 3) // Changed from mastered to correct_streak
-                ->with('question')
-                ->get();
+        $mistakes = Mistake::where('user_id', $userId)
+            ->where('correct_streak', '<', 3) // Changed from mastered to correct_streak
+            ->with('question')
+            ->get();
 
             $executionTime = (microtime(true) - $startTime) * 1000;
             Log::info('✅ Updated mistakes retrieved successfully', [
@@ -156,11 +156,11 @@ class LearnController extends Controller
                 'mistakes_count' => $mistakes->count()
             ]);
 
-            return response()->json([
-                'success' => true,
-                'mistakes_count' => $mistakes->count(),
-                'has_mistakes' => $mistakes->isNotEmpty()
-            ]);
+        return response()->json([
+            'success' => true,
+            'mistakes_count' => $mistakes->count(),
+            'has_mistakes' => $mistakes->isNotEmpty()
+        ]);
         } catch (\Exception $e) {
             $executionTime = (microtime(true) - $startTime) * 1000;
             Log::error('❌ Error getting updated mistakes', [
@@ -392,8 +392,8 @@ class LearnController extends Controller
             ]);
 
             $mistake = Mistake::where('user_id', $userId)
-                ->where('question_id', $questionId)
-                ->first();
+                            ->where('question_id', $questionId)
+                            ->first();
 
             if (!$mistake) {
                 Log::warning('Mistake not found for removal', [
@@ -489,7 +489,7 @@ class LearnController extends Controller
                 'execution_time_ms' => round($executionTime, 2),
                 'trace' => $e->getTraceAsString()
             ]);
-            
+
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to record study time'

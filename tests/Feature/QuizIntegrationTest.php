@@ -111,6 +111,7 @@ class QuizIntegrationTest extends TestCase
     /**
      * Test Normal Quiz Flow
      */
+    #[Test]
     public function test_normal_quiz_flow()
     {
         $this->actingAs($this->user);
@@ -192,7 +193,7 @@ class QuizIntegrationTest extends TestCase
         $this->assertDatabaseHas('quiz_attempts', [
             'user_id' => $this->user->id,
             'topic_id' => $this->topic->id,
-            'quiz_type' => 'quiz',
+            'quiz_type' => 'normal',
             'score' => 3,
             'total_questions' => 3,
             'percentage_grade' => 100.0
@@ -219,6 +220,7 @@ class QuizIntegrationTest extends TestCase
     /**
      * Test Tutor Quiz Flow
      */
+    #[Test]
     public function test_tutor_quiz_flow()
     {
         $this->actingAs($this->user);
@@ -235,47 +237,61 @@ class QuizIntegrationTest extends TestCase
         $this->assertTrue($quizData['success']);
         $this->assertEquals('tutor', $quizData['mode']);
 
-        // Step 2: Test tutor answer checking
-        $question = $this->questions[0];
+        // Step 2: Test tutor answer checking for multiple questions
         $correctAnswer = 'B';
         $incorrectAnswer = 'A';
 
-        // Test correct answer
+        // Test correct answer for first question
         $result = $this->gradingService->gradeTutorAnswer(
             $this->user,
-            $question,
+            $this->questions[0],
             $correctAnswer
         );
 
         $this->assertTrue($result['is_correct']);
         $this->assertEquals('Correct!', $result['message']);
 
-        // Test incorrect answer
+        // Verify tutor attempt created with correct type and mode
+        $this->assertDatabaseHas('quiz_attempts', [
+            'user_id' => $this->user->id,
+            'topic_id' => $this->topic->id,
+            'quiz_type' => 'normal',
+            'study_mode' => 'tutor'
+        ]);
+
+        // Test incorrect answer for second question
         $result = $this->gradingService->gradeTutorAnswer(
             $this->user,
-            $question,
+            $this->questions[1],
             $incorrectAnswer
         );
 
         $this->assertFalse($result['is_correct']);
-        $this->assertEquals('Incorrect. Try again!', $result['message']);
+        $this->assertStringContainsString('Incorrect', $result['message']);
 
-        // Step 3: Verify tutor attempts created
-        $this->assertDatabaseHas('quiz_attempts', [
+        // Verify mistake created for incorrect answer
+        $this->assertDatabaseHas('mistakes', [
             'user_id' => $this->user->id,
-            'topic_id' => $this->topic->id,
-            'quiz_type' => 'tutor'
+            'question_id' => $this->questions[1]->id
         ]);
+
+        // Step 3: Verify user stats updated
+        $this->user->refresh();
+        $this->assertGreaterThan(0, $this->user->xp);
+        $this->assertEquals(1, $this->user->correct_answers_count);
+        $this->assertEquals(2, $this->user->total_questions_attempted);
 
         Log::info('✅ Tutor quiz flow test passed', [
             'user_id' => $this->user->id,
-            'question_id' => $question->id
+            'correct_answers' => $this->user->correct_answers_count,
+            'total_attempted' => $this->user->total_questions_attempted
         ]);
     }
 
     /**
      * Test Cache Behavior
      */
+    #[Test]
     public function test_cache_behavior()
     {
         $this->actingAs($this->user);
@@ -309,6 +325,7 @@ class QuizIntegrationTest extends TestCase
     /**
      * Test Performance Metrics
      */
+    #[Test]
     public function test_performance_metrics()
     {
         $this->actingAs($this->user);

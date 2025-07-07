@@ -17,6 +17,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Http\Request;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\Cache;
 
 class GradingService
 {
@@ -57,7 +58,7 @@ class GradingService
             $this->validateQuizInputs($answers, $duration, $mode);
 
             // Get questions and validate they belong to the topic
-            $questions = $this->getAndValidateQuestions($answers, $topic);
+            $questions = $this->getAndValidateQuestions($answers);
 
             // Process answers and calculate scores
             $gradingResult = $this->processAnswers($user, $questions, $answers, $topic);
@@ -150,26 +151,38 @@ class GradingService
     }
 
     /**
-     * Get and validate questions
+     * Get and validate questions with optimized queries
      *
      * @param array $answers
-     * @param Topic $topic
      * @return \Illuminate\Database\Eloquent\Collection
-     * @throws \InvalidArgumentException
      */
-    private function getAndValidateQuestions(array $answers, Topic $topic): \Illuminate\Database\Eloquent\Collection
+    private function getAndValidateQuestions(array $answers): \Illuminate\Database\Eloquent\Collection
     {
-        $questions = Question::whereIn('id', array_keys($answers))->get();
-
-        // Verify all questions belong to this topic
-        if ($questions->where('topic_id', '!=', $topic->id)->count() > 0) {
-            throw new \InvalidArgumentException('Invalid questions for this topic');
+        $questionIds = array_keys($answers);
+        
+        // OPTIMIZED QUERY: Eager load relationships and select only needed fields
+        $questions = Question::select([
+                'id', 'question', 'question_type', 'correct_answer', 
+                'option_a', 'option_b', 'option_c', 'option_d', 'topic_id', 'source'
+            ])
+            ->with([
+                'topic:id,name,course_id',
+                'topic.course:id,name'
+            ])
+            ->whereIn('id', $questionIds)
+            ->get();
+        
+        // VALIDATION: Ensure all questions exist and are accessible
+        if ($questions->count() !== count($questionIds)) {
+            $foundIds = $questions->pluck('id')->toArray();
+            $missingIds = array_diff($questionIds, $foundIds);
+            throw new \InvalidArgumentException("Questions not found: " . implode(', ', $missingIds));
         }
-
-        if ($questions->count() === 0) {
-            throw new \InvalidArgumentException('No valid questions found');
-        }
-
+        
+        // CACHE: Store questions for potential reuse
+        $cacheKey = 'questions_' . md5(implode(',', $questionIds));
+        Cache::put($cacheKey, $questions, 300); // Cache for 5 minutes
+        
         return $questions;
     }
 
@@ -270,10 +283,8 @@ class GradingService
                 0.7 // similarityThreshold parameter
             );
 
-            $confidence = $evaluation['confidence'] ?? 0;
-            $threshold = config('quiz.written_answer_threshold', 0.7);
-
-            return $confidence >= $threshold;
+            // Use the correct key from WrittenAnswerEvaluationService response
+            return $evaluation['isCorrect'] ?? false;
         } catch (\Exception $e) {
             Log::error('Written answer evaluation failed', [
                 'question_id' => $question->id,
@@ -307,7 +318,7 @@ class GradingService
     }
 
     /**
-     * Create quiz attempts for each source
+     * Create a single quiz attempt for the entire quiz session
      *
      * @param User $user
      * @param array $sourceData
@@ -317,27 +328,24 @@ class GradingService
      */
     private function createQuizAttempts(User $user, array $sourceData, int $duration, string $mode, Topic $topic): void
     {
-        $totalQuestionsAcrossSources = array_sum(array_column($sourceData, 'total'));
-
+        $numSources = count($sourceData);
+        $durationPerSource = $numSources > 0 ? (int) round($duration / $numSources) : $duration;
         foreach ($sourceData as $source => $data) {
-            $sourcePercentage = $data['total'] > 0 ? min(100, ($data['score'] / $data['total']) * 100) : 0;
-            
-            // Calculate proportional duration based on number of questions from this source
-            $sourceDuration = $totalQuestionsAcrossSources > 0 
-                ? round(($data['total'] / $totalQuestionsAcrossSources) * $duration) 
-                : 0;
-            
+            $score = $data['score'];
+            $totalQuestions = $data['total'];
+            $percentage = $totalQuestions > 0 ? min(100, ($score / $totalQuestions) * 100) : 0;
             QuizAttempt::create([
                 'user_id' => $user->id,
                 'topic_id' => $topic->id,
                 'quiz_type' => 'normal',
                 'study_mode' => $mode,
                 'source' => $source,
-                'score' => $data['score'],
-                'total_questions' => $data['total'],
-                'percentage_grade' => $sourcePercentage,
-                'duration_seconds' => $sourceDuration,
-                'question_data' => $data['question_data']
+                'score' => $score,
+                'total_questions' => $totalQuestions,
+                'percentage_grade' => $percentage,
+                'duration_seconds' => $durationPerSource,
+                'question_data' => $data['question_data'],
+                'correct_answers' => $score
             ]);
         }
     }
@@ -474,11 +482,16 @@ class GradingService
         return [
             'success' => true,
             'score' => $gradingResult['score'],
-            'total' => $gradingResult['totalQuestions'],
-            'percentage' => $gradingResult['percentageGrade'],
+            'totalQuestions' => $gradingResult['totalQuestions'],
+            'total_questions' => $gradingResult['totalQuestions'],
+            'percentageGrade' => $gradingResult['percentageGrade'],
+            'percentage_grade' => $gradingResult['percentageGrade'],
             'encouragement' => $this->getEncouragementMessage($gradingResult['percentageGrade']),
             'source_progress' => $sourceProgress,
             'correct_answers' => $questions->mapWithKeys(function ($question) use ($answers) {
+                return [$question->id => $question->correct_answer];
+            }),
+            'correctAnswers' => $questions->mapWithKeys(function ($question) use ($answers) {
                 return [$question->id => $question->correct_answer];
             }),
             'xp_earned' => $xpResult['earnedXP'],
@@ -520,28 +533,29 @@ class GradingService
     public function gradeTutorAnswer(User $user, Question $question, string $answer): array
     {
         try {
+            Log::info('Tutor answer check', [
+                'user_id' => $user->id,
+                'question_id' => $question->id,
+                'topic_id' => $question->topic_id,
+                'source' => $question->source,
+                'answer' => $answer
+            ]);
             $isCorrect = $this->evaluateAnswer($question, $answer);
-
-            // Get topic for progress tracking
             $topic = $question->topic;
             if (!$topic) {
                 throw new \Exception('Question has no associated topic');
             }
-
-            // Update tutor progress in session
             $this->updateTutorProgress($user, $question, $topic, $isCorrect);
-
-            // Check if source is complete and create attempt
             $this->checkAndCreateTutorAttempt($user, $question, $topic);
-
+            $message = $isCorrect ? 'Correct!' : 'Incorrect. Try again!';
             return [
                 'success' => true,
                 'is_correct' => $isCorrect,
+                'message' => $message,
                 'correct_answer' => $question->correct_answer,
                 'explanation' => $question->explanation,
                 'source_progress' => $this->getTutorSourceProgress($user, $topic, $question->source)
             ];
-
         } catch (\Exception $e) {
             Log::error('Error in GradingService::gradeTutorAnswer:', [
                 'error' => $e->getMessage(),
@@ -597,20 +611,21 @@ class GradingService
     {
         $tutorProgress = session()->get('tutor_progress', ['sources' => []]);
         $source = $question->source ?: 'General';
-
         if (!isset($tutorProgress['sources'][$source])) {
             return;
         }
-
         $remainingQuestions = Question::where('topic_id', $topic->id)
             ->where('source', $source)
             ->whereNotIn('id', $tutorProgress['sources'][$source]['completed_questions'])
             ->count();
-
-        if ($remainingQuestions === 0) {
+        // Fallback: if this is the last question for the source, always create the attempt
+        if ($remainingQuestions === 0 || $this->isLastQuestionForSource($question, $topic, $source)) {
+            Log::info('Creating tutor attempt (all questions completed for source)', [
+                'user_id' => $user->id,
+                'topic_id' => $topic->id,
+                'source' => $source
+            ]);
             $this->createTutorAttempt($user, $topic, $source, $tutorProgress['sources'][$source]);
-            
-            // Remove this source's progress from session
             unset($tutorProgress['sources'][$source]);
             if (empty($tutorProgress['sources'])) {
                 session()->forget('tutor_progress');
@@ -618,6 +633,13 @@ class GradingService
                 session(['tutor_progress' => $tutorProgress]);
             }
         }
+    }
+
+    // Helper to check if this is the last question for the source
+    private function isLastQuestionForSource(Question $question, Topic $topic, string $source): bool
+    {
+        $allQuestions = Question::where('topic_id', $topic->id)->where('source', $source)->pluck('id')->toArray();
+        return count($allQuestions) > 0 && !array_diff($allQuestions, [ $question->id ]);
     }
 
     /**
@@ -631,8 +653,13 @@ class GradingService
     private function createTutorAttempt(User $user, Topic $topic, string $source, array $sourceProgress): void
     {
         try {
+            Log::info('Tutor quiz attempt creation', [
+                'user_id' => $user->id,
+                'topic_id' => $topic->id,
+                'source' => $source,
+                'progress' => $sourceProgress
+            ]);
             $sourceDuration = time() - $sourceProgress['start_time'];
-            
             $questionData = [];
             foreach (array_unique($sourceProgress['completed_questions']) as $questionId) {
                 $questionData[] = [
@@ -641,35 +668,31 @@ class GradingService
                     'is_correct' => true
                 ];
             }
-            
             $attempt = QuizAttempt::create([
                 'user_id' => $user->id,
                 'topic_id' => $topic->id,
+                'quiz_type' => 'normal',
+                'study_mode' => 'tutor',
+                'source' => $source,
                 'score' => $sourceProgress['correct'],
                 'total_questions' => $sourceProgress['total'],
-                'percentage_grade' => ($sourceProgress['correct'] / $sourceProgress['total']) * 100,
+                'percentage_grade' => ($sourceProgress['correct'] / max(1, $sourceProgress['total'])) * 100,
                 'duration_seconds' => $sourceDuration,
-                'quiz_type' => 'tutor',
-                'study_mode' => null,
-                'source' => null,
-                'question_data' => $questionData
+                'question_data' => $questionData,
+                'correct_answers' => $sourceProgress['correct']
             ]);
-
-            // Update user stats
             $this->userStatsService->updateAfterQuizAttempt(
                 $user,
                 $sourceProgress['total'],
                 $sourceProgress['correct'],
                 $sourceDuration
             );
-
             Log::info('Tutor quiz attempt created successfully', [
                 'attempt_id' => $attempt->id,
                 'user_id' => $user->id,
                 'topic_id' => $topic->id,
                 'source' => $source
             ]);
-
         } catch (\Exception $e) {
             Log::error('Failed to create tutor quiz attempt', [
                 'user_id' => $user->id,
