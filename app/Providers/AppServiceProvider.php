@@ -93,5 +93,8 @@ class AppServiceProvider extends ServiceProvider
         }
         // Register the Payment model observer
         Payment::observe(PaymentObserver::class);
+        
+        // Register the Question model observer with dependency injection
+        \App\Models\Question::observe(app()->make(\App\Observers\QuestionObserver::class));
     }
 }

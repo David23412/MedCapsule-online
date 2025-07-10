@@ -107,6 +107,18 @@ class UserCourseController extends Controller
         // Check OCR availability
         $ocrAvailable = $this->checkOcrAvailability();
         
+        // Get pending access requests with payment info
+        $pendingRequests = \App\Models\CourseAccessRequest::with(['user', 'course'])
+            ->where('status', 'pending')
+            ->orderBy('requested_at', 'desc')
+            ->get();
+
+        // Get pending payments
+        $pendingPayments = \App\Models\Payment::with(['user', 'course'])
+            ->whereIn('status', ['pending', 'pending_verification'])
+            ->orderBy('created_at', 'desc')
+            ->get();
+
         return view('admin.manage-access', compact(
             'users', 
             'courses', 
@@ -115,7 +127,9 @@ class UserCourseController extends Controller
             'courseStats', 
             'enrolledUsers',
             'paymentSettings',
-            'ocrAvailable'
+            'ocrAvailable',
+            'pendingRequests',
+            'pendingPayments'
         ));
     }
 
@@ -393,5 +407,52 @@ class UserCourseController extends Controller
         }
 
         file_put_contents($envFile, $envContents);
+    }
+
+    /**
+     * Approve a course access request
+     */
+    public function approveAccessRequest(Request $request, $requestId)
+    {
+        $accessRequest = \App\Models\CourseAccessRequest::findOrFail($requestId);
+        
+        // Enroll the user in the course
+        $accessRequest->user->courses()->attach($accessRequest->course_id, [
+            'enrollment_status' => 'active',
+            'enrolled_at' => now()
+        ]);
+        
+        // Update the access request status
+        $accessRequest->status = 'approved';
+        $accessRequest->approved_at = now();
+        $accessRequest->save();
+        
+        // If there's a related payment, mark it as completed
+        $payment = Payment::where('user_id', $accessRequest->user_id)
+            ->where('course_id', $accessRequest->course_id)
+            ->whereIn('status', ['pending', 'pending_verification'])
+            ->first();
+            
+        if ($payment) {
+            $payment->status = 'completed';
+            $payment->save();
+        }
+        
+        return redirect()->back()->with('success', 'Access request approved successfully.');
+    }
+
+    /**
+     * Reject a course access request
+     */
+    public function rejectAccessRequest(Request $request, $requestId)
+    {
+        $accessRequest = \App\Models\CourseAccessRequest::findOrFail($requestId);
+        
+        $accessRequest->status = 'rejected';
+        $accessRequest->rejected_at = now();
+        $accessRequest->admin_notes = $request->input('rejection_reason', 'Request rejected by administrator.');
+        $accessRequest->save();
+        
+        return redirect()->back()->with('success', 'Access request rejected successfully.');
     }
 }

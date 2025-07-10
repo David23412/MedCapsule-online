@@ -181,7 +181,7 @@
     </div>
     
     <!-- Payment Form -->
-    <form id="coursePaymentForm" class="mb-0" method="POST" action="{{ route('payments.submit-proof', ['course' => $course->id]) }}" data-course-id="{{ $course->id }}">
+                    <form id="coursePaymentForm" class="mb-0" method="POST" action="{{ secure_url(route('payments.submit-proof-course', ['course' => $course->id], false)) }}" data-course-id="{{ $course->id }}">
         @csrf
         <!-- Transaction ID Input -->
         <div class="mb-4">

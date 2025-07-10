@@ -674,6 +674,7 @@
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
     <!-- Add audio elements -->
     <audio id="quizPerfectSound" preload="auto">
@@ -812,7 +813,49 @@
                     }
                 });
 
-                fetch(gradeUrl, {
+                // Show loading state
+                const loadingOverlay = document.createElement('div');
+                loadingOverlay.className = 'loading-overlay';
+                loadingOverlay.innerHTML = `
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                    <div class="mt-2">Grading your quiz...</div>
+                `;
+                document.body.appendChild(loadingOverlay);
+
+                // Configure fetch options with timeout
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
+
+                const retryFetch = async (url, options, maxRetries = 3, delay = 1000) => {
+                    for (let i = 0; i < maxRetries; i++) {
+                        try {
+                            const response = await fetch(url, { ...options, signal: controller.signal });
+                            
+                            if (!response.ok) {
+                                const data = await response.json();
+                                throw new Error(data.error || `HTTP error! status: ${response.status}`);
+                            }
+                            
+                            clearTimeout(timeoutId);
+                            return await response.json();
+                        } catch (error) {
+                            if (error.name === 'AbortError') {
+                                throw new Error('Request timed out. Please try again.');
+                            }
+                            
+                            if (i === maxRetries - 1) {
+                                throw error;
+                            }
+                            
+                            // Wait before retrying
+                            await new Promise(resolve => setTimeout(resolve, delay * (i + 1)));
+                        }
+                    }
+                };
+
+                retryFetch(gradeUrl, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -821,139 +864,31 @@
                     },
                     body: JSON.stringify(formDataObj)
                 })
-                .then(response => {
-                    if (!response.ok) {
-                        return response.json().then(data => {
-                            throw new Error(data.error || 'An error occurred while grading the quiz');
-                        });
-                    }
-                    return response.json();
-                })
                 .then(data => {
+                    // Remove loading overlay
+                    document.body.removeChild(loadingOverlay);
+                    
                     if (data.success) {
-                        // Update score display
-                        popupScore.textContent = `${data.score}/${data.total}`;
-                        popupMessage.textContent = data.message;
-
-                        // Emit quiz completion event for real-time updates
-                        window.dispatchEvent(new CustomEvent('quizCompleted', {
-                            detail: {
-                                percentage_grade: Math.round((data.score / data.total) * 100),
-                                topic_name: 'Random Quiz',
-                                correct_answers: data.score,
-                                total_questions: data.total
-                            }
-                        }));
-
-                        // Update grade icon based on score
-                        const percentage = (data.score / data.total) * 100;
-                        const gradeIcon = document.getElementById('grade-icon');
-
-                        if (percentage === 100) {
-                            gradeIcon.innerHTML = '<i class="fas fa-crown"></i>';
-                            gradeIcon.className = 'grade-icon perfect';
-                            popupTitle.textContent = 'Perfect Score!';
-                            
-                            // Trigger confetti for perfect score
-                            createConfetti();
-                        } else if (percentage >= 70) {
-                            gradeIcon.innerHTML = '<i class="fas fa-star"></i>';
-                            gradeIcon.className = 'grade-icon good';
-                            popupTitle.textContent = 'Well Done!';
-                        } else {
-                            gradeIcon.innerHTML = '<i class="fas fa-book"></i>';
-                            gradeIcon.className = 'grade-icon needs-improvement';
-                            popupTitle.textContent = 'Keep Learning!';
-                        }
-
-                        // Play quiz completion sound based on score
-                        playQuizCompletionSound(data.score, data.total);
-
-                        // Mark correct and incorrect answers
-                        Object.keys(data.correct_answers).forEach(questionId => {
-                            const correctAnswer = data.correct_answers[questionId];
-                            const submittedAnswer = formDataObj.answers[questionId];
-                            const questionBox = document.querySelector(`[data-question-id="${questionId}"]`);
-                            
-                            if (questionBox) {
-                                // Check if this is a written question
-                                const writtenAnswer = questionBox.querySelector('.written-answer');
-                                if (writtenAnswer) {
-                                    // Handle written question
-                                    const feedbackElement = questionBox.querySelector('.answer-feedback');
-                                    
-                                    // Disable the textarea
-                                    writtenAnswer.disabled = true;
-                                    
-                                    // Store the correct answer for review
-                                    questionBox.setAttribute('data-correct-answer', correctAnswer);
-                                    
-                                    // Check if answer was correct
-                                    const isCorrect = correctAnswer === submittedAnswer;
-                                    
-                                    if (isCorrect) {
-                                        writtenAnswer.classList.add('correct');
-                                        feedbackElement.classList.add('correct');
-                                        feedbackElement.textContent = 'Correct!';
-                                    } else {
-                                        writtenAnswer.classList.add('incorrect');
-                                        feedbackElement.classList.add('incorrect');
-                                        
-                                        // Create a card to show the correct answer
-                                        const correctAnswerCard = document.createElement('div');
-                                        correctAnswerCard.className = 'correct-answer-card';
-                                        correctAnswerCard.innerHTML = `Correct answer: <strong>${correctAnswer}</strong>`;
-                                        feedbackElement.appendChild(correctAnswerCard);
-                                    }
-                                } else {
-                                    // Handle multiple choice question
-                                    const labels = questionBox.querySelectorAll('.form-check label');
-                                    const inputs = questionBox.querySelectorAll('.form-check input');
-                                    
-                                    // First disable all inputs
-                                    inputs.forEach(input => input.disabled = true);
-                                    
-                                    // Then mark answers
-                                    labels.forEach(label => {
-                                        const input = label.previousElementSibling;
-                                        if (input) {
-                                            const isCorrectAnswer = input.value === correctAnswer;
-                                            const isSelectedAnswer = input.value === submittedAnswer;
-                                            
-                                            // Remove any existing classes
-                                            label.classList.remove('correct', 'incorrect');
-                                            
-                                            if (isCorrectAnswer) {
-                                                // Always mark correct answer in green
-                                                label.classList.add('correct');
-                                            } else if (isSelectedAnswer) {
-                                                // Mark selected wrong answer in red
-                                                label.classList.add('incorrect');
-                                            }
-                                        }
-                                    });
-                                }
-                            }
-                        });
-
-                        // Show popup
-                        popupOverlay.classList.add('show');
-                        popup.classList.add('show');
+                        // Handle success
+                        displayQuizResults(data);
                     } else {
                         throw new Error(data.error || 'An error occurred while grading the quiz');
                     }
                 })
                 .catch(error => {
-                    console.error('Error:', error);
-                    // Show error message in a popup
-                    popupTitle.textContent = 'Error';
-                    popupScore.textContent = '';
-                    popupMessage.textContent = error.message || 'An error occurred while submitting the quiz. Please try again.';
-                    popupOverlay.classList.add('show');
-                    popup.classList.add('show');
+                    // Remove loading overlay
+                    if (document.body.contains(loadingOverlay)) {
+                        document.body.removeChild(loadingOverlay);
+                    }
                     
-                    // Re-enable form elements on error
-                    document.querySelectorAll('input, textarea, button[type="submit"]').forEach(input => input.disabled = false);
+                    // Show error message
+                    const errorMessage = error.message || 'An error occurred while grading the quiz. Please try again.';
+                    Swal.fire({
+                        title: 'Error',
+                        text: errorMessage,
+                        icon: 'error',
+                        confirmButtonText: 'OK'
+                    });
                 });
             }
 

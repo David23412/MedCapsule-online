@@ -12,14 +12,21 @@
     </div>
     <!-- Show course content here -->
 @else
-    <!-- User is not enrolled, show request access button -->
-    <div class="alert alert-info">
-        <i class="fas fa-info-circle me-2"></i> You need to request access to this course
+    @if($course->hasUserPendingRequest())
+    <!-- User has pending request, show pending status -->
+    <div class="alert alert-warning">
+        <i class="fas fa-clock me-2"></i> Your payment is being processed. Please wait for admin approval.
     </div>
-    <form action="{{ route('courses.request-access', $course->slug) }}" method="POST">
-        @csrf
-        <button type="submit" class="btn btn-primary">
-            <i class="fas fa-unlock-alt me-2"></i> Request Access
-        </button>
-    </form>
+    <button type="button" class="btn btn-warning" disabled>
+        <i class="fas fa-spinner fa-spin me-2"></i> Payment Pending
+    </button>
+@else
+    <!-- User is not enrolled, show payment options -->
+    <div class="alert alert-info">
+        <i class="fas fa-info-circle me-2"></i> This course requires payment for access
+    </div>
+    <a href="{{ secure_url(route('payments.options', $course->id, false)) }}" class="btn btn-primary">
+        <i class="fas fa-credit-card me-2"></i> Pay to Access
+    </a>
+@endif
 @endif 

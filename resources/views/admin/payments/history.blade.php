@@ -67,7 +67,7 @@
                     <!-- Filter Panel -->
                     <div class="collapse" id="filterPanel">
                         <div class="p-3 bg-light border-bottom">
-                            <form method="GET" action="{{ route('admin.payment-history') }}" class="row g-3">
+                            <form method="GET" action="{{ secure_url(route('admin.payment-history', [], false)) }}" class="row g-3">
                                 <div class="col-md-2">
                                     <label class="form-label small">Status</label>
                                     <select name="status" class="form-select form-select-sm">

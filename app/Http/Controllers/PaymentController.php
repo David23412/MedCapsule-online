@@ -193,6 +193,16 @@ class PaymentController extends Controller
             $user = auth()->user();
             \Log::error('User found:', ['user' => $user->toArray()]);
             
+            // Check if user is already enrolled
+            if ($course->isUserEnrolled($user->id)) {
+                return redirect()->back()->with('error', 'You are already enrolled in this course.');
+            }
+            
+            // Check if user already has a pending payment for this course
+            if ($course->hasUserPendingPayment($user->id)) {
+                return redirect()->back()->with('error', 'You already have a pending payment for this course.');
+            }
+            
             // Validate the transaction ID
             $validator = validator($request->all(), [
                 'transaction_id' => 'required|string|min:10|unique:payments,reference_number'
@@ -216,11 +226,27 @@ class PaymentController extends Controller
             $payment->reference_number = $request->transaction_id;
             $payment->amount = $course->price;
             $payment->payment_method = 'manual';
-            $payment->status = 'pending';
+            $payment->status = 'pending_verification';
             
             \Log::error('About to save payment:', ['payment' => $payment->toArray()]);
             $payment->save();
             \Log::error('Payment saved successfully');
+
+            // Create access request
+            $accessRequest = new \App\Models\CourseAccessRequest();
+            $accessRequest->user_id = $user->id;
+            $accessRequest->course_id = $course->id;
+            $accessRequest->status = 'pending';
+            $accessRequest->requested_at = now();
+            $accessRequest->admin_notes = "Payment submitted with transaction code: {$request->transaction_id}";
+            $accessRequest->save();
+            \Log::error('Access request saved successfully');
+
+            // Send notification to admin
+            app(\App\Services\NotificationService::class)->createCourseAccessRequestNotification(
+                $user,
+                $course
+            );
 
             $isAjax = $request->ajax() || $request->wantsJson() || $request->header('X-Requested-With') === 'XMLHttpRequest';
             \Log::error('Request type:', ['is_ajax' => $isAjax]);

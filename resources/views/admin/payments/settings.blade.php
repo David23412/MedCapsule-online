@@ -28,7 +28,7 @@
 
     <div class="row">
         <div class="col-lg-8">
-            <form action="{{ route('payment-settings') }}" method="POST">
+            <form action="{{ secure_url(route('payment-settings', [], false)) }}" method="POST">
                 @csrf
                 
                 <!-- OCR Settings Card -->

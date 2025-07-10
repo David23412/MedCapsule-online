@@ -60,6 +60,7 @@ class RandomQuizController extends Controller
             $randomQuestions = Question::whereHas('topic', function($query) use ($selectedCourses) {
                     $query->whereIn('course_id', $selectedCourses);
                 })
+                ->where('deleted', false) // Ensure only non-deleted questions are selected
                 ->inRandomOrder()
                 ->limit($request->question_limit)
                 ->with(['topic', 'topic.course']) // Eager load relationships
@@ -154,7 +155,9 @@ class RandomQuizController extends Controller
                 throw new \Exception('Quiz session expired or no questions found');
             }
 
-            $questions = Question::whereIn('id', $questionIds)->get();
+            $questions = Question::whereIn('id', $questionIds)
+                ->where('deleted', false) // Ensure only non-deleted questions are processed
+                ->get();
 
             if ($questions->count() !== count($questionIds)) {
                 throw new \Exception('Some questions are no longer available. Please start a new quiz.');

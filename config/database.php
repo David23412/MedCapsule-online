@@ -148,7 +148,7 @@ return [
         'options' => [
             'cluster' => env('REDIS_CLUSTER', 'redis'),
             'prefix' => env('REDIS_PREFIX', 'medcapsule_database_'),
-            'serializer' => Redis::SERIALIZER_JSON,
+            'serializer' => \Redis::SERIALIZER_JSON,
             'compression' => true,
             'compression_level' => 6
         ],

@@ -37,7 +37,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/courses/{course}', [CourseController::class, 'show'])->name('courses.show');
     
     // Review routes with CSRF and rate limiting
-    Route::get('/review', [QuizController::class, 'showMistakes'])->name('review.index');
+    Route::get('/review', [MistakeController::class, 'index'])->name('review.index');
     Route::get('/review/learn', [LearnController::class, 'learnMistakes'])->name('review.learn');
     Route::post('/review/remove/{question_id}', [MistakeController::class, 'removeMistake'])
         ->name('review.remove')
@@ -61,6 +61,8 @@ Route::middleware('auth')->group(function () {
     Route::get('/manage-access/search-users', [UserCourseController::class, 'searchUsers'])->name('admin.user-course.search');
     Route::post('/manage-access/toggle-admin', [UserCourseController::class, 'toggleAdmin'])->name('admin.user-course.toggle-admin');
     Route::post('/manage-access/payment-settings', [UserCourseController::class, 'updatePaymentSettings'])->name('admin.payment-settings.update');
+    Route::post('/manage-access/approve-request/{requestId}', [UserCourseController::class, 'approveAccessRequest'])->name('admin.approve-access-request');
+    Route::post('/manage-access/reject-request/{requestId}', [UserCourseController::class, 'rejectAccessRequest'])->name('admin.reject-access-request');
     
     // Delete Management Routes
     Route::get('/admin/delete', [DeleteController::class, 'index'])->name('admin.delete.index');
@@ -81,6 +83,7 @@ Route::middleware('auth')->group(function () {
     
     // Course enrollment and topic routes
     Route::post('/courses/{course}/enroll', [CourseController::class, 'enroll'])->name('courses.enroll');
+    Route::post('/courses/{courseSlug}/request-access', [CourseController::class, 'requestAccess'])->name('courses.request-access');
     Route::get('/topics/{course}', [TopicController::class, 'forCourse'])->name('topics.forCourse');
     Route::get('/topics/course/{course}', [TopicController::class, 'forCourse'])->name('topics.forCourse');
     Route::get('/topics', function() {
@@ -167,7 +170,9 @@ Route::middleware('auth')->group(function () {
     })->middleware('auth')->name('api.active-users');
 
     // Payment routes
+    Route::get('/payments/{course}/options', [PaymentController::class, 'getPaymentOptions'])->name('payments.options');
     Route::post('/payments/process-manual', [PaymentController::class, 'processManualPayment'])->name('payments.process-manual');
+    Route::post('/payments/{course}/submit-proof', [PaymentController::class, 'submitProof'])->name('payments.submit-proof-course');
     Route::post('/payments/{payment}/submit-proof', [PaymentController::class, 'submitPaymentProof'])->name('payments.submit-proof');
     
     // Admin payment routes

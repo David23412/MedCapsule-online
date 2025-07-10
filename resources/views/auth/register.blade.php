@@ -97,7 +97,7 @@
                     <div class="card-body p-4">
                         <h4 class="text-center mb-4">Create Account</h4>
                         
-                        <form method="POST" action="{{ route('register') }}">
+                        <form method="POST" action="{{ secure_url(route('register', [], false)) }}">
                             @csrf
 
                             <div class="mb-3">

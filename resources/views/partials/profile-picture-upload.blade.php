@@ -11,7 +11,7 @@
     
     <h5 class="mt-3">Profile Picture</h5>
     
-    <form action="{{ route('profile.update-picture') }}" method="POST" enctype="multipart/form-data" class="profile-picture-form mt-3">
+                    <form action="{{ secure_url(route('profile.update-picture', [], false)) }}" method="POST" enctype="multipart/form-data" class="profile-picture-form mt-3">
         @csrf
         <div class="mb-3">
             <label for="profile_picture" class="form-label">Select new profile picture</label>

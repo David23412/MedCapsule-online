@@ -49,8 +49,8 @@ class CourseController extends Controller
             },
             'users' => function($query) {
                 $query->select('users.id', 'users.name', 'users.email', 'users.profile_picture_url')
-                      ->where('course_user.enrollment_status', 'active')
-                      ->take(4);
+                    ->where('course_user.enrollment_status', 'active')
+                    ->take(4);
             }
         ])->get();
 
@@ -170,5 +170,40 @@ class CourseController extends Controller
         ]);
 
         return redirect()->route('courses.index')->with('success', 'Course created successfully!');
+    }
+
+    /**
+     * Request access to a course (for admin approval)
+     */
+    public function requestAccess(Request $request, $courseSlug)
+    {
+        $course = Course::where('slug', $courseSlug)->firstOrFail();
+        $user = auth()->user();
+        
+        // Check if user is already enrolled
+        if ($course->isUserEnrolled($user->id)) {
+            return redirect()->back()->with('error', 'You are already enrolled in this course.');
+        }
+        
+        // Check if user already has a pending access request
+        if ($course->hasUserPendingAccessRequest($user->id)) {
+            return redirect()->back()->with('error', 'You already have a pending access request for this course.');
+        }
+        
+        // Create access request
+        $accessRequest = new \App\Models\CourseAccessRequest();
+        $accessRequest->user_id = $user->id;
+        $accessRequest->course_id = $course->id;
+        $accessRequest->status = 'pending';
+        $accessRequest->requested_at = now();
+        $accessRequest->save();
+        
+        // Send notification to admin
+        app(NotificationService::class)->createCourseAccessRequestNotification(
+            $user,
+            $course
+        );
+        
+        return redirect()->back()->with('success', 'Your access request has been submitted. An administrator will review it shortly.');
     }
 }

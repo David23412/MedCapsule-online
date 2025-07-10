@@ -136,7 +136,7 @@ class CacheService
         $pipeline->del("user_{$userId}_mastery_stats");
         
         // Execute all deletions atomically
-        $pipeline->execute();
+        $pipeline->exec();
         
         Log::info('Cache invalidated', [
             'user_id' => $userId,
@@ -186,7 +186,7 @@ class CacheService
         }
         
         // Execute all cache warming operations atomically
-        $pipeline->execute();
+        $pipeline->exec();
     }
     
     /**
@@ -249,11 +249,14 @@ class CacheService
             $pipeline->del("available_sources_{$topicId}");
             $pipeline->del("quiz_stats_{$topicId}");
             $pipeline->del("tutor_progress_{$topicId}");
-            $pipeline->del("random_quiz_questions");
+            
+            // Clear random quiz caches
+            $this->clearRandomQuizCaches();
+            
             $pipeline->del("questions_" . md5($questionId));
             
             // Execute all deletions atomically
-            $pipeline->execute();
+            $pipeline->exec();
             
             // Clear session data
             session()->forget([
@@ -282,6 +285,35 @@ class CacheService
         }
     }
 
+    /**
+     * Clear random quiz caches
+     */
+    public function clearRandomQuizCaches(): void
+    {
+        try {
+            $redis = Redis::connection();
+            $pipeline = $redis->pipeline();
+            
+            // Clear random quiz related caches
+            $pipeline->del("random_quiz_questions");
+            $pipeline->del("random_quiz_*");
+            
+            // Clear session data for random quiz
+            session()->forget([
+                'random_quiz_questions',
+                'random_quiz_time_limit'
+            ]);
+            
+            $pipeline->exec();
+            
+            Log::info('Successfully cleared random quiz caches');
+        } catch (\Exception $e) {
+            Log::error('Error clearing random quiz caches', [
+                'error' => $e->getMessage()
+            ]);
+        }
+    }
+
     // PHASE 2: Event-based cache invalidation methods
 
     /**
@@ -305,7 +337,7 @@ class CacheService
             $pipeline->del("course_{$courseId}_user_{$userId}_mastered");
         }
         
-        $pipeline->execute();
+        $pipeline->exec();
     }
 
     /**
@@ -325,7 +357,7 @@ class CacheService
             $pipeline->del("topic:{$topicId}:completion_percentage");
         }
         
-        $pipeline->execute();
+        $pipeline->exec();
     }
 
     /**
@@ -347,7 +379,7 @@ class CacheService
             $pipeline->del("topic:{$topicId}:user:{$userId}:progress");
         }
         
-        $pipeline->execute();
+        $pipeline->exec();
     }
 
     /**
@@ -361,7 +393,7 @@ class CacheService
         $pipeline->del("user_{$userId}_topic_{$topicId}_progress_{$studyMode}");
         $pipeline->del("topic:{$topicId}:user:{$userId}:progress");
         
-        $pipeline->execute();
+        $pipeline->exec();
     }
 
     /**
@@ -386,7 +418,7 @@ class CacheService
         $pipeline->del("quiz_stats_{$topicId}");
         $pipeline->del("tutor_progress_{$topicId}");
         
-        $pipeline->execute();
+        $pipeline->exec();
     }
 
     /**
@@ -400,7 +432,7 @@ class CacheService
         $pipeline->del("quiz_questions_{$topicId}_" . md5(serialize([$source])));
         $pipeline->del("source_progress_{$topicId}_{$source}");
         
-        $pipeline->execute();
+        $pipeline->exec();
     }
 
     /**
@@ -416,7 +448,7 @@ class CacheService
         $pipeline->del("user_{$userId}_topic_{$topicId}_progress_quiz");
         $pipeline->del("user_{$userId}_topic_{$topicId}_mistakes");
         
-        $pipeline->execute();
+        $pipeline->exec();
     }
 
     /**
@@ -433,7 +465,7 @@ class CacheService
             $pipeline->del("user_notifications_{$userId}_{$limit}");
         }
         
-        $pipeline->execute();
+        $pipeline->exec();
     }
 
     /**
@@ -458,7 +490,7 @@ class CacheService
         $pipeline->del("course_{$courseId}_enrolled_count");
         $pipeline->del("course_{$courseId}_enrolled_students");
         
-        $pipeline->execute();
+        $pipeline->exec();
     }
 
     /**
@@ -474,7 +506,7 @@ class CacheService
             $pipeline->del("course_{$courseId}_user_{$userId}_mastered");
         }
         
-        $pipeline->execute();
+        $pipeline->exec();
     }
 
     /**
@@ -489,6 +521,6 @@ class CacheService
         $pipeline->del("user_{$userId}_payments");
         $pipeline->del("user_{$userId}_payment_history");
         
-        $pipeline->execute();
+        $pipeline->exec();
     }
 } 

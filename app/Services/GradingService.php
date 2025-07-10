@@ -114,12 +114,17 @@ class GradingService
      */
     private function validateQuizInputs(array $answers, int $duration, string $mode): void
     {
-        // Validate answer payload size
+        // Validate answer payload size (but allow empty answers)
         $maxAnswerLength = 2000;
         $maxTotalLength = 20000;
         $totalLength = 0;
 
         foreach ($answers as $qid => $answer) {
+            // Skip null/empty answers (they're allowed)
+            if ($answer === null || $answer === '') {
+                continue;
+            }
+            
             if (is_string($answer) && mb_strlen($answer) > $maxAnswerLength) {
                 throw new \InvalidArgumentException("Answer for question $qid exceeds maximum allowed length of $maxAnswerLength characters.");
             }
@@ -132,9 +137,9 @@ class GradingService
             throw new \InvalidArgumentException("Total answer payload exceeds maximum allowed length of $maxTotalLength characters.");
         }
 
-        // Validate other inputs
-        if (empty($answers)) {
-            throw new \InvalidArgumentException('No answers provided');
+        // Allow empty answers array (user might not answer anything)
+        if (!is_array($answers)) {
+            throw new \InvalidArgumentException('Answers must be an array');
         }
 
         if (!is_numeric($duration) || $duration < 0) {
@@ -142,7 +147,7 @@ class GradingService
         }
 
         // Default to 'quiz' mode if not valid
-        if (!in_array($mode, ['quiz', 'tutor'])) {
+        if (!in_array($mode, ['quiz', 'tutor', 'random'])) {
             Log::warning('Invalid mode received, defaulting to quiz mode', [
                 'received_mode' => $mode
             ]);
@@ -196,20 +201,24 @@ class GradingService
      * @param Topic $topic
      * @return array
      */
-    private function processAnswers(User $user, $questions, array $answers, Topic $topic): array
+    private function processAnswers(User $user, \Illuminate\Database\Eloquent\Collection $questions, array $answers, Topic $topic): array
     {
         $score = 0;
         $totalQuestions = $questions->count();
         $sourceData = [];
         $mistakes = [];
+        $correctAnswers = [];
 
         foreach ($questions as $question) {
             $submittedAnswer = $answers[$question->id] ?? null;
-            if ($submittedAnswer === null) {
-                throw new \InvalidArgumentException("Missing answer for question {$question->id}");
-            }
-
+            
+            // Handle unanswered questions (set as wrong but don't throw exception)
+            if ($submittedAnswer === null || $submittedAnswer === '') {
+                $submittedAnswer = 'unanswered';
+                $isCorrect = false;
+            } else {
             $isCorrect = $this->evaluateAnswer($question, $submittedAnswer);
+            }
             $source = $question->source ?: 'General';
 
             // Initialize source data if not exists
@@ -225,21 +234,21 @@ class GradingService
             if ($isCorrect) {
                 $score++;
                 $sourceData[$source]['score']++;
+                $correctAnswers[$question->id] = $question->correct_answer;
             } else {
                 // Record mistake
                 $this->recordMistake($user, $question, $submittedAnswer);
                 $mistakes[] = $question->id;
             }
 
+            // Only store minimal question data
             $sourceData[$source]['question_data'][] = [
                 'question_id' => $question->id,
-                'user_answer' => $submittedAnswer,
                 'is_correct' => $isCorrect
             ];
         }
 
         $percentageGrade = $totalQuestions > 0 ? min(100, ($score / $totalQuestions) * 100) : 0;
-        $totalCorrect = $score;
 
         return [
             'score' => $score,
@@ -247,7 +256,7 @@ class GradingService
             'percentageGrade' => $percentageGrade,
             'sourceData' => $sourceData,
             'mistakes' => $mistakes,
-            'totalCorrect' => $totalCorrect
+            'correctAnswers' => $correctAnswers
         ];
     }
 
@@ -455,71 +464,34 @@ class GradingService
     }
 
     /**
-     * Prepare grading response
-     *
-     * @param array $gradingResult
-     * @param \Illuminate\Database\Eloquent\Collection $questions
-     * @param array $answers
-     * @param array $xpResult
-     * @return array
+     * Prepare grading response with minimal data
      */
-    private function prepareGradingResponse(array $gradingResult, $questions, array $answers, array $xpResult): array
+    private function prepareGradingResponse(array $gradingResult, \Illuminate\Database\Eloquent\Collection $questions, array $answers, array $xpResult): array
     {
-        // Get updated progress for all sources
-        $sourceProgress = [];
-        foreach ($gradingResult['sourceData'] as $source => $data) {
-            $totalSourceQuestions = Question::where('topic_id', $questions->first()->topic_id)
-                ->where('source', $source)
-                ->count();
-            
-            $sourceProgress[$source] = [
-                'score' => $data['score'],
-                'total' => $data['total'],
-                'total_questions_available' => $totalSourceQuestions,
-                'percentage' => $data['total'] > 0 ? min(100, ($data['score'] / $data['total']) * 100) : 0
-            ];
-        }
-
         return [
             'success' => true,
             'score' => $gradingResult['score'],
-            'totalQuestions' => $gradingResult['totalQuestions'],
-            'total_questions' => $gradingResult['totalQuestions'],
-            'percentageGrade' => $gradingResult['percentageGrade'],
+            'total' => $gradingResult['totalQuestions'],
             'percentage_grade' => $gradingResult['percentageGrade'],
-            'encouragement' => $this->getEncouragementMessage($gradingResult['percentageGrade']),
-            'source_progress' => $sourceProgress,
-            'correct_answers' => $questions->mapWithKeys(function ($question) use ($answers) {
-                return [$question->id => $question->correct_answer];
-            }),
-            'correctAnswers' => $questions->mapWithKeys(function ($question) use ($answers) {
-                return [$question->id => $question->correct_answer];
-            }),
-            'xp_earned' => $xpResult['earnedXP'],
-            'level_up' => $xpResult['levelUp'],
-            'new_level' => $xpResult['newLevel'],
-            'mistakes' => $gradingResult['mistakes']
+            'correct_answers' => $gradingResult['correctAnswers'],
+            'xp_earned' => $xpResult['earnedXP'] ?? 0,
+            'level_up' => $xpResult['levelUp'] ?? false,
+            'new_level' => $xpResult['newLevel'] ?? null,
+            'encouragement' => $this->getEncouragementMessage($gradingResult['percentageGrade'])
         ];
     }
 
     /**
-     * Get encouragement message based on percentage grade
-     *
-     * @param float $percentageGrade
-     * @return string
+     * Get encouragement message based on score
      */
     private function getEncouragementMessage(float $percentageGrade): string
     {
-        if ($percentageGrade >= 100) {
-            return "Excellent work! You're mastering this material! 🌟";
-        } elseif ($percentageGrade >= 85) {
-            return "Great job! You're making excellent progress! 🎉";
-        } elseif ($percentageGrade >= 75) {
-            return "Good work! Keep practicing to improve further! 💪";
-        } elseif ($percentageGrade >= 65) {
-            return "Not bad! Review the mistakes and try again! 📚";
+        if ($percentageGrade >= 90) {
+            return 'Excellent work! Keep it up!';
+        } elseif ($percentageGrade >= 70) {
+            return 'Good job! You\'re making progress!';
         } else {
-            return "Don't worry! Learning takes time. Review and practice more! 🔄";
+            return 'Keep practicing! You\'ll get better with time.';
         }
     }
 

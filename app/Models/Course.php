@@ -57,6 +57,11 @@ class Course extends Model
         return $this->hasMany(Payment::class);
     }
 
+    public function accessRequests()
+    {
+        return $this->hasMany(CourseAccessRequest::class);
+    }
+
     /** -------------------
      * ENROLLED STUDENTS AND COUNT
      * ------------------- */
@@ -186,6 +191,27 @@ class Course extends Model
             ->where('user_id', $userId)
             ->whereIn('status', ['pending', 'pending_verification'])
             ->exists();
+    }
+
+    // Check if a user has a pending access request for this course
+    public function hasUserPendingAccessRequest($userId = null)
+    {
+        $userId = $userId ?? auth()->id();
+        if (!$userId) return false;
+        
+        return $this->accessRequests()
+            ->where('user_id', $userId)
+            ->where('status', 'pending')
+            ->exists();
+    }
+
+    // Check if user has pending payment OR access request (for UI display)
+    public function hasUserPendingRequest($userId = null)
+    {
+        $userId = $userId ?? auth()->id();
+        if (!$userId) return false;
+        
+        return $this->hasUserPendingPayment($userId) || $this->hasUserPendingAccessRequest($userId);
     }
     
     // Format price with currency

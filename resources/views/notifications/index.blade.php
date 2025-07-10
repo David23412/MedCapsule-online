@@ -287,7 +287,7 @@
                 </div>
                 
                 @if($notifications->count() > 0)
-                    <form action="{{ route('notifications.mark-all-read') }}" method="POST" id="mark-all-form">
+                                            <form action="{{ secure_url(route('notifications.mark-all-read', [], false)) }}" method="POST" id="mark-all-form">
                         @csrf
                         <button type="submit" class="mark-all-read-btn">
                             <i class="fas fa-check-double"></i>
