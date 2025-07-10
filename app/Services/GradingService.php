@@ -1,4 +1,4 @@
-<?php
+THIS SHOULD BE A LINTER ERROR<?php
 
 namespace App\Services;
 
@@ -204,11 +204,14 @@ class GradingService
 
         foreach ($questions as $question) {
             $submittedAnswer = $answers[$question->id] ?? null;
-            if ($submittedAnswer === null) {
-                throw new \InvalidArgumentException("Missing answer for question {$question->id}");
+            
+            // Handle unanswered questions (set as wrong but don't throw exception)
+            if ($submittedAnswer === null || $submittedAnswer === '') {
+                $submittedAnswer = 'unanswered';
+                $isCorrect = false;
+            } else {
+                $isCorrect = $this->evaluateAnswer($question, $submittedAnswer);
             }
-
-            $isCorrect = $this->evaluateAnswer($question, $submittedAnswer);
             $source = $question->source ?: 'General';
 
             // Initialize source data if not exists
