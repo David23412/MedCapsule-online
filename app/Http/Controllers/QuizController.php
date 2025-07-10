@@ -1,4 +1,4 @@
-<?php
+THIS SHOULD BE A LINTER ERROR<?php
 
 namespace App\Http\Controllers;
 
@@ -155,15 +155,25 @@ class QuizController extends Controller
     }
 
     /**
-     * Grade quiz with enhanced validation and performance monitoring
+     * Grade quiz with bulletproof validation and error handling
      */
     public function grade(Request $request, Course $course, Topic $topic)
     {
         $startTime = microtime(true);
         $userId = auth()->id();
+        $requestId = uniqid('quiz_grade_');
         
-        // STRUCTURED LOGGING: Track request performance
-        \Log::info('Quiz grading started', [
+        // Rate limiting check
+        $rateLimitKey = "quiz_grade_{$userId}";
+        if (!InputValidationService::checkRateLimit($rateLimitKey, 10, 60)) {
+            return response()->json([
+                'success' => false,
+                'error' => 'Too many quiz submissions. Please wait a moment.'
+            ], 429);
+        }
+        
+        Log::info('Quiz grading started', [
+            'request_id' => $requestId,
             'user_id' => $userId,
             'course_id' => $course->id,
             'topic_id' => $topic->id,
@@ -172,17 +182,22 @@ class QuizController extends Controller
         ]);
         
         try {
-            // VALIDATION: Use validated data instead of raw input
-            $validated = $request->validate([
-                'answers' => 'required|array|min:1',
-                'answers.*' => 'nullable|string|max:1000',
+            // BULLETPROOF VALIDATION: Use comprehensive validation service
+            $validated = InputValidationService::validateInput($request->all(), [
+                'answers' => 'required|array|min:1|max:100',
+                'answers.*' => 'nullable|string|max:2000|no_sql_injection',
                 'time_taken' => 'required|integer|min:1|max:86400',
                 'mode' => 'nullable|string|in:quiz,tutor,random'
+            ], [], [
+                'user_id' => $userId,
+                'action' => 'quiz_grade',
+                'request_id' => $requestId
             ]);
             
             // ACCESS CONTROL: Validate user permissions
             if (!$this->validateQuizAccess($course, $topic)) {
-                \Log::warning('Unauthorized quiz access attempt', [
+                Log::warning('Unauthorized quiz access attempt', [
+                    'request_id' => $requestId,
                     'user_id' => $userId,
                     'course_id' => $course->id,
                     'topic_id' => $topic->id
