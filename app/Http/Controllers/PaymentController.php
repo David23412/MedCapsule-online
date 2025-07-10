@@ -7,6 +7,7 @@ use App\Models\Payment;
 use App\Models\User;
 use App\Services\PaymentVerificationService;
 use App\Services\FraudDetectionService;
+use App\Services\PaymentService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
@@ -16,12 +17,36 @@ use Illuminate\Validation\ValidationException;
 
 class PaymentController extends Controller
 {
+    private PaymentService $paymentService;
+
     /**
      * Constructor
      */
-    public function __construct()
+    public function __construct(PaymentService $paymentService)
     {
         $this->middleware('auth');
+        $this->paymentService = $paymentService;
+    }
+
+    /**
+     * Helper method to detect AJAX requests consistently
+     */
+    private function isAjaxRequest(Request $request): bool
+    {
+        return $request->ajax() || 
+               $request->wantsJson() || 
+               $request->header('X-Requested-With') === 'XMLHttpRequest';
+    }
+
+    /**
+     * Helper method for consistent JSON responses
+     */
+    private function jsonResponse(bool $success, string $message, array $data = [], int $status = 200): \Illuminate\Http\JsonResponse
+    {
+        return response()->json(array_merge([
+            'success' => $success,
+            'message' => $message
+        ], $data), $status);
     }
 
     /**
@@ -38,9 +63,7 @@ class PaymentController extends Controller
             ->exists();
 
         if ($hasAccess) {
-            return response()->json([
-                'success' => false,
-                'message' => 'You already have access to this course.',
+            return $this->jsonResponse(false, 'You already have access to this course.', [
                 'redirect' => route('topics.forCourse', $course->id)
             ]);
         }
@@ -50,8 +73,7 @@ class PaymentController extends Controller
             'course' => $course
         ])->render();
         
-        return response()->json([
-            'success' => true,
+        return $this->jsonResponse(true, 'Payment options loaded successfully.', [
             'html' => $html
         ]);
     }
@@ -64,26 +86,13 @@ class PaymentController extends Controller
         try {
             $user = Auth::user();
             
-            // Simple check: Does user have active enrollment in this course?
-            $hasAccess = $user->courses()
-                ->where('course_id', $course->id)
-                ->where('enrollment_status', 'active')
-                ->exists();
-
-            if ($hasAccess) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'You already have access to this course.',
-                    'redirect' => route('topics.forCourse', $course->id)
-                ]);
-            }
+            // Use payment service for validation
+            $validationResult = $this->paymentService->validateCourseAccess($user, $course);
             
-            // Check if course has a valid price
-            if ($course->price && $course->price > 0 && (!isset($course->price) || $course->price <= 0)) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'This course has an invalid price configuration. Please contact support.',
-                ]);
+            if (!$validationResult['success']) {
+                return $this->jsonResponse(false, $validationResult['message'], 
+                    isset($validationResult['redirect']) ? ['redirect' => $validationResult['redirect']] : []
+                );
             }
             
             // Generate HTML for payment methods modal
@@ -91,130 +100,93 @@ class PaymentController extends Controller
                 'course' => $course
             ])->render();
             
-            return response()->json([
-                'success' => true,
+            return $this->jsonResponse(true, 'Payment methods loaded successfully.', [
                 'html' => $html
             ]);
+            
         } catch (\Exception $e) {
-            \Log::error('Payment processing error: ' . $e->getMessage(), [
+            Log::error('Payment processing error: ' . $e->getMessage(), [
                 'course_id' => $course->id,
                 'user_id' => Auth::id(),
                 'trace' => $e->getTraceAsString()
             ]);
             
-            return response()->json([
-                'success' => false,
-                'message' => 'An error occurred while processing your payment. Please try again or contact support.',
-            ], 500);
+            return $this->jsonResponse(false, 
+                'An error occurred while processing your payment. Please try again or contact support.', 
+                [], 500
+            );
         }
     }
 
     /**
      * Submit payment proof for manual payment.
-     *
-     * @param  \Illuminate\Http\Request  $request
-     * @param  int  $courseId
-     * @return \Illuminate\Http\Response
      */
     public function submitProof(Request $request, $courseId)
     {
-        \Log::error('=============== PAYMENT SUBMISSION START ===============');
-        \Log::error('Request details:', [
+        Log::info('Payment submission started', [
+            'course_id' => $courseId,
+            'user_id' => Auth::id(),
             'method' => $request->method(),
-            'url' => $request->url(),
-            'all_input' => $request->all(),
-            'headers' => $request->headers->all(),
-            'ajax' => $request->ajax(),
-            'wantsJson' => $request->wantsJson(),
-            'xhr' => $request->header('X-Requested-With')
+            'is_ajax' => $this->isAjaxRequest($request)
         ]);
 
         try {
             $course = Course::findOrFail($courseId);
-            \Log::error('Course found:', ['course' => $course->toArray()]);
-            
             $user = auth()->user();
-            \Log::error('User found:', ['user' => $user->toArray()]);
             
             // Validate the transaction ID
-            $validator = validator($request->all(), [
-                'transaction_id' => 'required|string|min:10|unique:payments,reference_number'
-            ], [
-                'transaction_id.required' => 'Please provide a transaction code.',
-                'transaction_id.min' => 'Transaction code must be at least 10 characters long.',
-                'transaction_id.unique' => 'This transaction code has already been used.'
-            ]);
-
-            if ($validator->fails()) {
-                \Log::error('Validation failed:', ['errors' => $validator->errors()->toArray()]);
-                throw new ValidationException($validator);
+            $validationResult = $this->paymentService->validateTransactionId($request->transaction_id);
+            
+            if (!$validationResult['success']) {
+                if ($this->isAjaxRequest($request)) {
+                    return $this->jsonResponse(false, $validationResult['message'], [], 422);
+                }
+                return redirect()->back()->withErrors(['transaction_id' => $validationResult['message']])->withInput();
             }
-
-            \Log::error('Validation passed');
 
             // Create the payment record
-            $payment = new Payment();
-            $payment->user_id = $user->id;
-            $payment->course_id = $course->id;
-            $payment->reference_number = $request->transaction_id;
-            $payment->amount = $course->price;
-            $payment->payment_method = 'manual';
-            $payment->status = 'pending';
+            $payment = $this->paymentService->createPaymentRecord($user, $course, $request->transaction_id);
             
-            \Log::error('About to save payment:', ['payment' => $payment->toArray()]);
-            $payment->save();
-            \Log::error('Payment saved successfully');
+            Log::info('Payment submitted successfully', [
+                'payment_id' => $payment->id,
+                'course_id' => $courseId,
+                'user_id' => $user->id
+            ]);
 
-            $isAjax = $request->ajax() || $request->wantsJson() || $request->header('X-Requested-With') === 'XMLHttpRequest';
-            \Log::error('Request type:', ['is_ajax' => $isAjax]);
-
-            if ($isAjax) {
-                \Log::error('Sending JSON response');
-                return response()->json([
-                    'success' => true,
-                    'message' => 'Your payment has been submitted successfully! Our team will verify it shortly.'
-                ]);
+            $message = 'Your payment has been submitted successfully! Our team will verify it shortly.';
+            
+            if ($this->isAjaxRequest($request)) {
+                return $this->jsonResponse(true, $message);
             }
 
-            \Log::error('Sending redirect response');
-            return redirect()->route('courses.index')
-                ->with('success', 'Your payment has been submitted successfully! Our team will verify it shortly.');
+            return redirect()->route('courses.index')->with('success', $message);
 
         } catch (ValidationException $e) {
-            \Log::error('Validation exception:', [
-                'errors' => $e->validator->errors()->toArray(),
-                'exception' => get_class($e),
-                'file' => $e->getFile(),
-                'line' => $e->getLine()
+            Log::warning('Payment validation failed', [
+                'course_id' => $courseId,
+                'user_id' => Auth::id(),
+                'errors' => $e->validator->errors()->toArray()
             ]);
             
-            if ($request->ajax() || $request->wantsJson() || $request->header('X-Requested-With') === 'XMLHttpRequest') {
-                return response()->json([
-                    'success' => false,
-                    'message' => $e->validator->errors()->first()
-                ], 422);
+            if ($this->isAjaxRequest($request)) {
+                return $this->jsonResponse(false, $e->validator->errors()->first(), [], 422);
             }
             return redirect()->back()->withErrors($e->validator)->withInput();
+            
         } catch (\Exception $e) {
-            \Log::error('General exception:', [
-                'message' => $e->getMessage(),
-                'exception' => get_class($e),
-                'file' => $e->getFile(),
-                'line' => $e->getLine(),
+            Log::error('Payment submission failed', [
+                'course_id' => $courseId,
+                'user_id' => Auth::id(),
+                'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString()
             ]);
             
-            if ($request->ajax() || $request->wantsJson() || $request->header('X-Requested-With') === 'XMLHttpRequest') {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Could not process payment. Please try again.'
-                ], 500);
+            if ($this->isAjaxRequest($request)) {
+                return $this->jsonResponse(false, 'Could not process payment. Please try again.', [], 500);
             }
             return redirect()->back()
                 ->with('error', 'Could not process payment. Please try again.')
                 ->withInput();
-        } finally {
-            \Log::error('=============== PAYMENT SUBMISSION END ===============');
         }
     }
 
@@ -301,7 +273,7 @@ class PaymentController extends Controller
                 ]
             ]);
         } catch (\Exception $e) {
-            \Log::error('Error fetching payment history: ' . $e->getMessage(), [
+            Log::error('Error fetching payment history: ' . $e->getMessage(), [
                 'trace' => $e->getTraceAsString()
             ]);
             
@@ -341,13 +313,13 @@ class PaymentController extends Controller
             $notificationsRead = $notificationService->markPaymentNotificationsAsRead($payment, Auth::user());
             
             if ($notificationsRead > 0) {
-                \Log::info("Admin viewed payment and marked {$notificationsRead} notifications as read", [
+                Log::info("Admin viewed payment and marked {$notificationsRead} notifications as read", [
                     'admin_id' => Auth::id(),
                     'payment_id' => $payment->id
                 ]);
             }
         } catch (\Exception $e) {
-            \Log::error('Failed to mark notifications as read', [
+            Log::error('Failed to mark notifications as read', [
                 'payment_id' => $payment->id,
                 'admin_id' => Auth::id(),
                 'error' => $e->getMessage()
@@ -363,64 +335,21 @@ class PaymentController extends Controller
     public function adminVerifyPayment(Request $request, Payment $payment)
     {
         if (!auth()->user()->is_admin) {
-            return response()->json(['success' => false, 'message' => 'Unauthorized'], 403);
+            return $this->jsonResponse(false, 'Unauthorized', [], 403);
         }
 
-        try {
-            // Check if there's an active payment for this user and course
-            $activePayment = Payment::where('user_id', $payment->user_id)
-                ->where('course_id', $payment->course_id)
-                ->where('status', 'completed')
-                ->where('id', '!=', $payment->id)
-                ->first();
+        $result = $this->paymentService->verifyPayment(
+            $payment, 
+            auth()->user(), 
+            $request->input('admin_notes')
+        );
 
-            if ($activePayment) {
-                // If there's an active payment, mark it as expired in payment_data
-                $activePayment->payment_data = array_merge($activePayment->payment_data ?? [], [
-                    'expired_at' => now()->toDateTimeString(),
-                    'expired_by' => auth()->id(),
-                    'expiry_reason' => 'New payment verification'
-                ]);
-                $activePayment->save();
-            }
-
-            // Update payment status
-            $payment->status = 'completed';
-            $payment->paid_at = now();
-            $payment->payment_data = array_merge($payment->payment_data ?? [], [
-                'verified_by' => auth()->id(),
-                'verified_at' => now()->toDateTimeString(),
-                'admin_notes' => $request->input('admin_notes'),
-                'verification_method' => 'admin_manual',
-                'is_renewal' => $activePayment ? true : false
-            ]);
-            $payment->save();
-
-            // Grant course access to user
-            $user = \App\Models\User::find($payment->user_id);
-            $course = \App\Models\Course::find($payment->course_id);
-            
-            if ($user && $course) {
-                // Attach the course with active status and enrollment date
-                $user->courses()->syncWithoutDetaching([
-                    $course->id => [
-                        'enrollment_status' => 'active',
-                        'enrolled_at' => now()
-                    ]
-                ]);
-            }
-
-            return response()->json([
-                'success' => true,
-                'message' => 'Payment verified successfully'
-            ]);
-        } catch (\Exception $e) {
-            \Log::error('Payment verification error: ' . $e->getMessage());
-            return response()->json([
-                'success' => false,
-                'message' => 'Could not verify payment. Please try again.'
-            ], 500);
-        }
+        return $this->jsonResponse(
+            $result['success'], 
+            $result['message'], 
+            [], 
+            $result['success'] ? 200 : 500
+        );
     }
     
     /**
@@ -472,7 +401,7 @@ class PaymentController extends Controller
                 
                 $processed++;
             } catch (\Exception $e) {
-                \Log::error('Error in bulk verification: ' . $e->getMessage(), [
+                Log::error('Error in bulk verification: ' . $e->getMessage(), [
                     'payment_id' => $paymentId,
                     'trace' => $e->getTraceAsString()
                 ]);
@@ -493,70 +422,35 @@ class PaymentController extends Controller
     {
         // Ensure user is admin
         if (!Auth::user()->is_admin) {
-            \Log::warning('Unauthorized payment rejection attempt', [
+            Log::warning('Unauthorized payment rejection attempt', [
                 'payment_id' => $payment->id,
                 'attempted_by' => Auth::id()
             ]);
             
-            return response()->json([
-                'success' => false,
-                'message' => 'Unauthorized access'
-            ], 403);
+            return $this->jsonResponse(false, 'Unauthorized access', [], 403);
         }
         
         // Check if payment is in a rejectable state
         if ($payment->status === 'completed') {
-            return response()->json([
-                'success' => false,
-                'message' => 'Cannot reject a completed payment.'
-            ]);
+            return $this->jsonResponse(false, 'Cannot reject a completed payment.');
         }
         
         if ($payment->status === 'expired') {
-            return response()->json([
-                'success' => false,
-                'message' => 'Cannot reject an expired payment.'
-            ]);
+            return $this->jsonResponse(false, 'Cannot reject an expired payment.');
         }
         
-        try {
-            $reason = $request->input('reason', 'Payment verification failed');
-            
-            // Update payment status
-            $payment->status = 'rejected';
-            $payment->payment_data = array_merge($payment->payment_data ?? [], [
-                'rejected_by' => Auth::user()->id,
-                'rejected_at' => now()->toDateTimeString(),
-                'rejection_reason' => $reason,
-                'admin_notes' => $request->input('admin_notes', ''),
-                'rejection_method' => 'admin'
-            ]);
-            $payment->save();
-            
-            // Log the rejection
-            \Log::info('Payment rejected by admin', [
-                'payment_id' => $payment->id,
-                'user_id' => $payment->user_id,
-                'course_id' => $payment->course_id,
-                'admin_id' => Auth::id(),
-                'reason' => $reason
-            ]);
-            
-            return response()->json([
-                'success' => true,
-                'message' => 'Payment rejected'
-            ]);
-        } catch (\Exception $e) {
-            \Log::error('Error rejecting payment: ' . $e->getMessage(), [
-                'payment_id' => $payment->id,
-                'trace' => $e->getTraceAsString()
-            ]);
-            
-            return response()->json([
-                'success' => false,
-                'message' => 'An error occurred while rejecting the payment.'
-            ], 500);
-        }
+        $result = $this->paymentService->rejectPayment(
+            $payment, 
+            auth()->user(), 
+            $request->input('reason', 'Payment verification failed')
+        );
+
+        return $this->jsonResponse(
+            $result['success'], 
+            $result['message'], 
+            [], 
+            $result['success'] ? 200 : 500
+        );
     }
 
     /**
@@ -658,7 +552,7 @@ class PaymentController extends Controller
                 $user->courses()->syncWithoutDetaching([$payment->course_id]);
                 
                 // Log the auto-verification
-                \Log::info('Payment auto-verified', [
+                Log::info('Payment auto-verified', [
                     'payment_id' => $payment->id,
                     'user_id' => $payment->user_id,
                     'course_id' => $payment->course_id,
@@ -669,7 +563,7 @@ class PaymentController extends Controller
                 if (config('payment.notify_admin_on_new_payment', true)) {
                     // This would be implemented with a notification or email class
                     // For now we'll just log it
-                    \Log::info('Admin notification for auto-verified payment', [
+                    Log::info('Admin notification for auto-verified payment', [
                         'payment_id' => $payment->id,
                         'admin_email' => config('payment.admin_email'),
                     ]);
@@ -680,7 +574,7 @@ class PaymentController extends Controller
             
             return false;
         } catch (\Exception $e) {
-            \Log::error('Auto-verification error: ' . $e->getMessage(), [
+            Log::error('Auto-verification error: ' . $e->getMessage(), [
                 'payment_id' => $payment->id,
                 'trace' => $e->getTraceAsString()
             ]);
@@ -910,7 +804,7 @@ class PaymentController extends Controller
             ])->render();
             
             // Log bundle payment creation
-            \Log::info('Bundle manual payment initiated', [
+            Log::info('Bundle manual payment initiated', [
                 'user_id' => Auth::id(),
                 'bundle_id' => $bundleId,
                 'course_ids' => $validated['courses'],
@@ -926,7 +820,7 @@ class PaymentController extends Controller
             ]);
         } catch (\Exception $e) {
             // Log the error
-            \Log::error('Bundle payment processing error: ' . $e->getMessage(), [
+            Log::error('Bundle payment processing error: ' . $e->getMessage(), [
                 'course_ids' => $request->input('courses', []),
                 'user_id' => Auth::id(),
                 'trace' => $e->getTraceAsString()
@@ -1031,7 +925,7 @@ class PaymentController extends Controller
                 $payment->save();
                 
                 // Log the payment proof submission
-                \Log::info('Bundle payment proof submitted', [
+                Log::info('Bundle payment proof submitted', [
                     'payment_id' => $payment->id,
                     'user_id' => Auth::id(),
                     'bundle_id' => $validated['bundle_id'],
@@ -1070,7 +964,7 @@ class PaymentController extends Controller
                         $user->courses()->syncWithoutDetaching([$payment->course_id]);
                         
                         // Log the auto-verification
-                        \Log::info('Bundle payment auto-verified', [
+                        Log::info('Bundle payment auto-verified', [
                             'payment_id' => $payment->id,
                             'user_id' => $payment->user_id,
                             'course_id' => $payment->course_id,
@@ -1090,7 +984,7 @@ class PaymentController extends Controller
             
         } catch (\Exception $e) {
             // Log the error
-            \Log::error('Bundle payment proof submission error: ' . $e->getMessage(), [
+            Log::error('Bundle payment proof submission error: ' . $e->getMessage(), [
                 'user_id' => Auth::id(),
                 'bundle_id' => $request->input('bundle_id'),
                 'trace' => $e->getTraceAsString()
