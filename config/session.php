@@ -156,7 +156,7 @@ return [
     |
     */
 
-    'domain' => env('SESSION_DOMAIN'),
+    'domain' => env('SESSION_DOMAIN', null),
 
     /*
     |--------------------------------------------------------------------------
@@ -199,7 +199,7 @@ return [
     |
     */
 
-    'same_site' => 'Strict',
+    'same_site' => env('SESSION_SAME_SITE', 'none'), // Use 'none' for ngrok, must use HTTPS
 
     /*
     |--------------------------------------------------------------------------
