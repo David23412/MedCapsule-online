@@ -11,19 +11,27 @@ class UserSeeder extends Seeder
     public function run(): void
     {
         // Create admin user
-        User::create([
-            'name' => 'David George',
-            'email' => 'geodavid627@gmail.com',
-            'password' => Hash::make('Einstein234'),
-            'is_admin' => true,
-        ]);
+        User::firstOrCreate(
+            ['email' => 'geodavid627@gmail.com'],
+            [
+                'name' => 'Admin',
+                'password' => Hash::make('Einstein234'),
+                'is_admin' => true,
+                'email_verified_at' => now()
+            ]
+        );
 
         // Create regular user
-        User::create([
-            'name' => 'Tuna User',
-            'email' => 'tuna@gmail.com',
-            'password' => Hash::make('Einstein234'),
-            'is_admin' => false,
-        ]);
+        User::firstOrCreate(
+            ['email' => 'tuna@gmail.com'],
+            [
+                'name' => 'Tuna',
+                'password' => Hash::make('Einstein234'),
+                'is_admin' => false,
+                'email_verified_at' => now()
+            ]
+        );
+
+        $this->command->info('Users seeded successfully.');
     }
 }

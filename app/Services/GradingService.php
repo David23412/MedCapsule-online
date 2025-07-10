@@ -165,6 +165,7 @@ class GradingService
                 'id', 'question', 'question_type', 'correct_answer', 
                 'option_a', 'option_b', 'option_c', 'option_d', 'topic_id', 'source'
             ])
+            ->where('deleted', false)  // Add check for deleted flag
             ->with([
                 'topic:id,name,course_id',
                 'topic.course:id,name'
@@ -176,7 +177,7 @@ class GradingService
         if ($questions->count() !== count($questionIds)) {
             $foundIds = $questions->pluck('id')->toArray();
             $missingIds = array_diff($questionIds, $foundIds);
-            throw new \InvalidArgumentException("Questions not found: " . implode(', ', $missingIds));
+            throw new \InvalidArgumentException("Questions not found or have been deleted: " . implode(', ', $missingIds));
         }
         
         // CACHE: Store questions for potential reuse

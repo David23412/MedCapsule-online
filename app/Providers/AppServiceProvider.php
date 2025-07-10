@@ -10,6 +10,7 @@ use App\Services\NotificationService;
 use App\Services\CacheService;
 use App\Services\UserStatsService;
 use App\Services\WrittenAnswerEvaluationService;
+use App\Services\QueryMonitoringService;
 use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
@@ -49,6 +50,11 @@ class AppServiceProvider extends ServiceProvider
         // Register UserStatsService as singleton
         $this->app->singleton(UserStatsService::class, function ($app) {
             return new UserStatsService();
+        });
+
+        // PHASE 3: Register QueryMonitoringService as singleton
+        $this->app->singleton(QueryMonitoringService::class, function ($app) {
+            return new QueryMonitoringService();
         });
 
         // Register TextProcessingService as singleton

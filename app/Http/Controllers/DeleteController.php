@@ -14,6 +14,7 @@ use App\Models\Mistake;
 use App\Models\UserTopicProgress;
 use App\Models\Payment;
 use Carbon\Carbon;
+use App\Services\CacheService;
 
 class DeleteController extends Controller
 {
@@ -308,36 +309,32 @@ class DeleteController extends Controller
 
             // Get counts for audit
             $mistakeCount = $question->mistakes()->count();
-            // Note: quiz_attempts table doesn't have question_id column, so we can't easily count them
-            $quizAttemptCount = 0;
 
-            // Delete related data in proper order
-            // 1. Delete mistakes
-            $question->mistakes()->delete();
+            // Mark question as deleted
+            $question->update(['deleted' => true]);
 
-            // 2. Note: quiz_attempts table doesn't have question_id column
-            // The relationship is stored in question_data JSON field
-            // For now, we'll skip deleting quiz attempts to avoid errors
-
-            // 3. Finally delete the question
-            $question->delete();
+            // Clear all caches
+            $cacheService = app(CacheService::class);
+            $cacheService->clearQuestionCaches($question->id, $question->topic_id);
+            
+            // Force clear all session data that might contain questions
+            session()->flush();
 
             DB::commit();
 
-            Log::info('Question deleted successfully', [
+            Log::info('Question marked as deleted successfully', [
                 'question_id' => $id,
                 'question_text' => $questionText,
                 'topic_name' => $topicName,
                 'course_name' => $courseName,
                 'deleted_by' => auth()->id(),
                 'stats' => [
-                    'mistakes_deleted' => $mistakeCount,
-                    'quiz_attempts_deleted' => $quizAttemptCount
+                    'mistakes_count' => $mistakeCount
                 ]
             ]);
 
             return redirect()->route('admin.delete.questions')
-                ->with('success', "Question from '{$topicName}' ({$courseName}) and all related data have been deleted successfully.");
+                ->with('success', "Question from '{$topicName}' ({$courseName}) has been marked as deleted successfully.");
 
         } catch (\Exception $e) {
             DB::rollBack();
@@ -455,27 +452,29 @@ class DeleteController extends Controller
                 
                 if (!$question) continue;
 
-                // Delete related data
-                $question->mistakes()->delete();
-                // Note: quiz_attempts table doesn't have question_id column
-                // The relationship is stored in question_data JSON field
-                // For now, we'll skip deleting quiz attempts to avoid errors
+                // Mark question as deleted
+                $question->update(['deleted' => true]);
+
+                // Clear caches
+                $cacheService = app(CacheService::class);
+                $cacheService->clearQuestionCaches($question->id, $question->topic_id);
                 
-                // Delete the question
-                $question->delete();
                 $deletedCount++;
             }
+
+            // Force clear all session data that might contain questions
+            session()->flush();
 
             DB::commit();
 
             Log::info('Bulk question deletion completed', [
                 'question_ids' => $questionIds,
-                'deleted_count' => $deletedCount,
+                'marked_as_deleted_count' => $deletedCount,
                 'deleted_by' => auth()->id()
             ]);
 
             return redirect()->route('admin.delete.questions')
-                ->with('success', "Successfully deleted {$deletedCount} questions.");
+                ->with('success', "Successfully marked {$deletedCount} questions as deleted.");
 
         } catch (\Exception $e) {
             DB::rollBack();

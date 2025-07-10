@@ -16,6 +16,8 @@ class Kernel extends HttpKernel
     protected $middleware = [
         \App\Http\Middleware\HttpsRedirectMiddleware::class,
         \Fruitcake\Cors\HandleCors::class,
+        \App\Http\Middleware\QueryLoggingMiddleware::class, // OPTIMIZATION: Monitor query performance
+        \App\Http\Middleware\QueryMonitoringMiddleware::class, // PHASE 3: Advanced query monitoring
         //
     ];
 

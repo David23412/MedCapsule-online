@@ -37,6 +37,19 @@ class Notification extends Model
         'data' => 'json'
     ];
 
+    protected static function boot()
+    {
+        parent::boot();
+
+        // PHASE 2: Dispatch NotificationCreated event when notification is created
+        static::created(function ($notification) {
+            event(new \App\Events\NotificationCreated(
+                $notification,
+                $notification->user_id
+            ));
+        });
+    }
+
     /**
      * Get the user that owns the notification.
      */

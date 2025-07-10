@@ -163,6 +163,7 @@ class QuizService
 
     /**
      * Retrieve questions based on topic and sources
+     * OPTIMIZED: Added eager loading and selective column fetching
      *
      * @param Topic $topic
      * @param array $sources
@@ -170,13 +171,23 @@ class QuizService
      */
     private function retrieveQuestions(Topic $topic, array $sources): \Illuminate\Database\Eloquent\Collection
     {
+        // Trim all source values to avoid whitespace issues
+        $sources = array_map('trim', $sources);
         // Try to get from cache first
         $cacheKey = "quiz_questions_{$topic->id}_" . md5(serialize($sources));
         $questions = $this->cacheService->get($cacheKey);
 
         if ($questions === null) {
-            // Build query
-            $questionsQuery = Question::where('topic_id', $topic->id);
+            // OPTIMIZED: Build query with selective column fetching and eager loading
+            $questionsQuery = Question::select([
+                'id', 'topic_id', 'question', 'question_type', 
+                'option_a', 'option_b', 'option_c', 'option_d',
+                'correct_answer', 'explanation', 'image_url', 'source',
+                'alternative_answers', 'similarity_threshold'
+            ])
+            ->where('topic_id', $topic->id)
+            ->where('deleted', false) // OPTIMIZED: Filter out deleted questions
+            ->with(['topic:id,name,course_id']); // OPTIMIZED: Eager load minimal topic data
             
             // Apply source filtering if specific sources are selected
             if (!in_array('all', $sources)) {
@@ -187,6 +198,20 @@ class QuizService
 
             // Cache for 30 minutes
             $this->cacheService->put($cacheKey, $questions, 1800);
+        } else {
+            // OPTIMIZED: Verify that cached questions still exist in the database
+            $questionIds = $questions->pluck('id')->toArray();
+            $existingQuestions = Question::whereIn('id', $questionIds)
+                ->where('deleted', false)
+                ->get();
+            
+            // If some questions were deleted, clear cache and get fresh questions
+            if ($existingQuestions->count() !== count($questionIds)) {
+                $this->cacheService->forget($cacheKey);
+                return $this->retrieveQuestions($topic, $sources);
+            }
+            
+            $questions = $existingQuestions;
         }
 
         Log::info('Questions retrieved', [
@@ -251,6 +276,7 @@ class QuizService
 
         if ($sources === null) {
             $sources = Question::where('topic_id', $topic->id)
+                ->where('deleted', false)
                 ->distinct()
                 ->pluck('source')
                 ->filter()
@@ -277,7 +303,8 @@ class QuizService
         $stats = $this->cacheService->get($cacheKey);
 
         if ($stats === null) {
-            $questionsQuery = Question::where('topic_id', $topic->id);
+            $questionsQuery = Question::where('topic_id', $topic->id)
+                ->where('deleted', false);
             
             if (!in_array('all', $sources)) {
                 $questionsQuery->whereIn('source', $sources);
@@ -310,7 +337,8 @@ class QuizService
      */
     private function getSourceBreakdown(Topic $topic, array $sources): array
     {
-        $query = Question::where('topic_id', $topic->id);
+        $query = Question::where('topic_id', $topic->id)
+            ->where('deleted', false);
         
         if (!in_array('all', $sources)) {
             $query->whereIn('source', $sources);
@@ -332,7 +360,8 @@ class QuizService
      */
     public function getRandomQuestions(Topic $topic, int $count = 10, array $sources = ['all']): \Illuminate\Database\Eloquent\Collection
     {
-        $questionsQuery = Question::where('topic_id', $topic->id);
+        $questionsQuery = Question::where('topic_id', $topic->id)
+            ->where('deleted', false);
         
         if (!in_array('all', $sources)) {
             $questionsQuery->whereIn('source', $sources);
@@ -354,7 +383,8 @@ class QuizService
     public function getQuestionsByDifficulty(Topic $topic, string $difficulty, array $sources = ['all']): \Illuminate\Database\Eloquent\Collection
     {
         $questionsQuery = Question::where('topic_id', $topic->id)
-            ->where('difficulty', $difficulty);
+            ->where('difficulty', $difficulty)
+            ->where('deleted', false);
         
         if (!in_array('all', $sources)) {
             $questionsQuery->whereIn('source', $sources);
@@ -478,6 +508,8 @@ class QuizService
     public function generateQuizQuestions(Topic $topic, array $sources = ['all'], User $user = null): array
     {
         try {
+            // Trim all source values to avoid whitespace issues
+            $sources = array_map('trim', $sources);
             Log::info('Generating quiz questions', [
                 'topic_id' => $topic->id,
                 'sources' => $sources,
@@ -485,7 +517,8 @@ class QuizService
             ]);
 
             // Get questions for the topic with source filtering
-            $questionsQuery = Question::where('topic_id', $topic->id);
+            $questionsQuery = Question::where('topic_id', $topic->id)
+                ->where('deleted', false);
             
             // Apply source filtering if specific sources are selected
             if (!in_array('all', $sources)) {
@@ -493,6 +526,12 @@ class QuizService
             }
             
             $questions = $questionsQuery->get();
+            Log::info('DEBUG: generateQuizQuestions', [
+                'topic_id' => $topic->id,
+                'sources' => $sources,
+                'questions_found' => $questions->count(),
+                'first_question' => $questions->first()
+            ]);
             
             if ($questions->isEmpty()) {
                 Log::warning('No questions available for topic with selected sources', [
@@ -567,7 +606,8 @@ class QuizService
             ]);
 
             // Build query for questions
-            $questionsQuery = Question::query();
+            $questionsQuery = Question::query()
+                ->where('deleted', false);
 
             // Apply source filtering
             if (!in_array('all', $sources)) {
@@ -637,6 +677,11 @@ class QuizService
      */
     public function generateTutorQuiz(Topic $topic, array $sources = ['all'], User $user = null): array
     {
+        Log::info('DEBUG: generateTutorQuiz called', [
+            'topic_id' => $topic->id,
+            'sources' => $sources,
+            'user_id' => $user?->id
+        ]);
         try {
             Log::info('Generating tutor quiz', [
                 'topic_id' => $topic->id,
@@ -656,6 +701,9 @@ class QuizService
             
             // Sort questions by difficulty (easier first for tutor mode)
             $questions = $questions->sortBy('difficulty');
+
+            // Store question IDs in session for later verification
+            session(['tutor_questions' => $questions->pluck('id')->toArray()]);
 
             // Add tutor-specific metadata
             $tutorQuestions = $questions->map(function ($question) {
@@ -689,7 +737,7 @@ class QuizService
             return [
                 'success' => false,
                 'message' => 'An error occurred while generating the tutor quiz.',
-                'questions' => []
+                'questions' => collect([])
             ];
         }
     }

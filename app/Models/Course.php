@@ -4,8 +4,9 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
+use App\Events\CourseUpdated;
 
 class Course extends Model
 {
@@ -15,45 +16,42 @@ class Course extends Model
         'name',
         'description',
         'image',
-        'color',
         'price',
         'currency',
+        'cache_version'
     ];
 
-    protected $appends = ['image_url'];
-
-    protected $casts = [
-        'completion_percentage' => 'float',
-        'price' => 'decimal:2',
+    protected $appends = [
+        'enrolled_students_count',
+        'completion_percentage',
+        'mastered_topics_count',
+        'formatted_price',
+        'image_url'
     ];
 
-    // Cache TTL in seconds (1 hour)
-    private const CACHE_TTL = 3600;
+    const CACHE_TTL = 3600; // 1 hour
 
     /** -------------------
      * RELATIONSHIPS
      * ------------------- */
-    // A course has many topics
+
     public function topics()
     {
-        return $this->hasMany(Topic::class)->orderBy('display_order');
+        return $this->hasMany(Topic::class);
     }
 
-    // Efficient relationship using hasManyThrough for questions
     public function questions()
     {
         return $this->hasManyThrough(Question::class, Topic::class);
     }
 
-    // Define the many-to-many relationship with users
     public function users()
     {
         return $this->belongsToMany(User::class, 'course_user')
-                    ->withPivot('enrollment_status')
+                    ->withPivot('enrollment_status', 'enrolled_at')
                     ->withTimestamps();
     }
 
-    // Define relationship with payments
     public function payments()
     {
         return $this->hasMany(Payment::class);
@@ -102,24 +100,35 @@ class Course extends Model
         }
 
         $userId = auth()->id();
-        return Cache::remember("course_{$this->id}_user_{$userId}_completion", self::CACHE_TTL, function () {
-            $topics = $this->topics()->get();
-            
-            if ($topics->isEmpty()) {
-                return 0;
-            }
-
-            // Count topics that have been mastered (>= 80% grade)
-            $masteredTopics = $topics->filter(function ($topic) {
-                $progress = $topic->userProgress()
-                    ->where('user_id', auth()->id())
-                    ->first();
-                return $progress && $progress->percentage_grade >= 80;
-            })->count();
-
-            // Calculate percentage based on total topics
-            return round(($masteredTopics / $topics->count()) * 100, 0);
+        // OPTIMIZED: Use cache versioning for better invalidation
+        $cacheVersion = $this->cache_version ?? 1;
+        $cacheKey = "course_{$this->id}_user_{$userId}_completion_v{$cacheVersion}";
+        
+        return Cache::remember($cacheKey, self::CACHE_TTL, function () use ($userId) {
+            return $this->calculateCompletionPercentage($userId);
         });
+    }
+
+    /**
+     * OPTIMIZED: Calculate completion percentage with single query
+     */
+    private function calculateCompletionPercentage($userId)
+    {
+        // OPTIMIZED: Single query instead of multiple queries
+        $masteredTopicsCount = DB::table('user_topic_progress')
+            ->join('topics', 'user_topic_progress.topic_id', '=', 'topics.id')
+            ->where('user_topic_progress.user_id', $userId)
+            ->where('topics.course_id', $this->id)
+            ->where('user_topic_progress.percentage_grade', '>=', 80)
+            ->count();
+
+        $totalTopicsCount = $this->topics()->count();
+        
+        if ($totalTopicsCount === 0) {
+            return 0;
+        }
+
+        return round(($masteredTopicsCount / $totalTopicsCount) * 100, 0);
     }
 
     // Check if a user is enrolled in this course
@@ -223,16 +232,37 @@ class Course extends Model
 
         static::updated(function ($course) {
             $course->clearCaches();
+            
+            // PHASE 2: Dispatch CourseUpdated event for cache invalidation
+            event(new \App\Events\CourseUpdated(
+                $course,
+                auth()->id(),
+                $course->getChanges()
+            ));
         });
 
         static::deleted(function ($course) {
             $course->clearCaches();
+            
+            // PHASE 2: Dispatch CourseUpdated event for cache invalidation
+            event(new \App\Events\CourseUpdated(
+                $course,
+                auth()->id(),
+                ['deleted' => true]
+            ));
         });
 
         // Clear course cache when any of its topics are updated
         Topic::updated(function ($topic) {
             if ($course = $topic->course) {
                 $course->clearCaches();
+                
+                // PHASE 2: Dispatch CourseUpdated event for cache invalidation
+                event(new \App\Events\CourseUpdated(
+                    $course,
+                    auth()->id(),
+                    ['topic_updated' => $topic->id]
+                ));
             }
         });
     }

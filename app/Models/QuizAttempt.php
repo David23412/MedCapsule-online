@@ -68,6 +68,34 @@ class QuizAttempt extends Model
     {
         parent::boot();
 
+        // PHASE 2: Dispatch QuizAttemptCompleted event when quiz attempt is completed
+        static::created(function ($quizAttempt) {
+            if ($quizAttempt->score !== null && $quizAttempt->total_questions !== null) {
+                $percentage = ($quizAttempt->score / $quizAttempt->total_questions) * 100;
+                
+                event(new \App\Events\QuizAttemptCompleted(
+                    $quizAttempt,
+                    $quizAttempt->score,
+                    $quizAttempt->total_questions,
+                    $percentage
+                ));
+            }
+        });
+
+        // PHASE 2: Dispatch UserProgressUpdated event when progress changes
+        static::saved(function ($quizAttempt) {
+            if ($quizAttempt->score !== null && $quizAttempt->total_questions !== null) {
+                $percentage = ($quizAttempt->score / $quizAttempt->total_questions) * 100;
+                
+                event(new \App\Events\UserProgressUpdated(
+                    $quizAttempt->user_id,
+                    $quizAttempt->topic_id,
+                    $percentage,
+                    $quizAttempt->study_mode ?? 'quiz'
+                ));
+            }
+        });
+
         static::creating(function ($model) {
             // Validate data before saving
             $validator = Validator::make(

@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
+use App\Services\CacheService;
 
 class Question extends Model
 {
@@ -34,7 +35,8 @@ class Question extends Model
         'correct_attempts',
         'last_attempted_at',
         'similarity_threshold',
-        'source'
+        'source',
+        'deleted'
     ];
 
     protected $casts = [
@@ -43,7 +45,8 @@ class Question extends Model
         'total_attempts' => 'integer',
         'correct_attempts' => 'integer',
         'alternative_answers' => 'array',
-        'similarity_threshold' => 'float'
+        'similarity_threshold' => 'float',
+        'deleted' => 'boolean'
     ];
 
     // Define the relationship: A Question belongs to a Topic
@@ -617,17 +620,57 @@ class Question extends Model
     {
         parent::boot();
 
-        // Automatically clear relevant caches when a question is updated or deleted
-        static::updated(function ($question) {
-            // Clear cache for both total_attempts and correct_attempts
-            Cache::forget("question:{$question->id}:total_attempts");
-            Cache::forget("question:{$question->id}:correct_attempts");
+        // Automatically clear all caches when a question is updated or deleted
+        static::deleted(function ($question) {
+            try {
+                // Clear all caches using the CacheService
+                $cacheService = app(CacheService::class);
+                $cacheService->clearQuestionCaches($question->id, $question->topic_id);
+                
+                // Force clear all session data that might contain questions
+                session()->flush();
+                
+                // Log the deletion and cache clearing
+                Log::info('Question deleted and all caches cleared', [
+                    'question_id' => $question->id,
+                    'topic_id' => $question->topic_id,
+                    'session_cleared' => true
+                ]);
+            } catch (\Exception $e) {
+                Log::error('Error clearing caches after question deletion', [
+                    'question_id' => $question->id,
+                    'error' => $e->getMessage()
+                ]);
+            }
         });
 
+        // Similar cache clearing for updates
+        static::updated(function ($question) {
+            try {
+                // Clear all caches using the CacheService
+                $cacheService = app(CacheService::class);
+                $cacheService->clearQuestionCaches($question->id, $question->topic_id);
+                
+                // Log the update and cache clearing
+                Log::info('Question updated and all caches cleared', [
+                    'question_id' => $question->id,
+                    'topic_id' => $question->topic_id
+                ]);
+            } catch (\Exception $e) {
+                Log::error('Error clearing caches after question update', [
+                    'question_id' => $question->id,
+                    'error' => $e->getMessage()
+                ]);
+            }
+        });
+
+        // PHASE 2: Dispatch QuestionDeleted event when question is deleted
         static::deleted(function ($question) {
-            // Clear cache for both total_attempts and correct_attempts
-            Cache::forget("question:{$question->id}:total_attempts");
-            Cache::forget("question:{$question->id}:correct_attempts");
+            event(new \App\Events\QuestionDeleted(
+                $question,
+                $question->topic_id,
+                $question->source
+            ));
         });
     }
 

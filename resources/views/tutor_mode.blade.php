@@ -3,8 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MedCapsule</title>
     <meta name="csrf-token" content="{{ csrf_token() }}">
+    <!-- Add cache control -->
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+    <title>MedCapsule</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
@@ -310,6 +314,7 @@
             font-weight: 500;
             border-radius: 6px;
             transition: all 0.3s ease;
+            cursor: pointer;
         }
 
         .btn:hover {
@@ -319,11 +324,23 @@
         .btn-primary {
             background: #007bff;
             border-color: #007bff;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #0056b3;
+            border-color: #0056b3;
         }
 
         .btn-success {
-            background: #28a745;
-            border-color: #28a745;
+            background: #007bff !important;
+            border-color: #007bff !important;
+            color: white !important;
+        }
+
+        .btn-success:hover {
+            background: #0056b3 !important;
+            border-color: #0056b3 !important;
         }
 
         @media (max-width: 1100px) {
@@ -380,37 +397,89 @@
             right: 0;
             bottom: 0;
             background: rgba(0, 0, 0, 0.5);
-            display: flex;
-            align-items: center;
+            display: none;
             justify-content: center;
-            z-index: 9999;
-            opacity: 0;
-            visibility: hidden;
-            transition: all 0.3s ease;
+            align-items: center;
+            z-index: 1000;
             backdrop-filter: blur(5px);
         }
 
         .popup-overlay.show {
-            opacity: 1;
-            visibility: visible;
+            display: flex;
         }
 
         .popup {
             background: white;
-            padding: 2rem;
-            border-radius: 12px;
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
-            width: 90%;
-            max-width: 500px;
+            padding: 2.5rem;
+            border-radius: 20px;
             text-align: center;
-            transform: scale(0.9);
+            max-width: 600px;
+            width: 90%;
+            position: relative;
+            transform: translateY(20px);
             opacity: 0;
             transition: all 0.3s ease;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
         }
 
         .popup.show {
-            transform: scale(1);
+            transform: translateY(0);
             opacity: 1;
+        }
+
+        .popup-title {
+            font-size: 2.5rem;
+            color: #2c3e50;
+            margin-bottom: 1.5rem;
+            font-weight: 700;
+            animation: slideDown 0.5s ease-out;
+        }
+
+        .score-container {
+            background: linear-gradient(135deg, #f8f9fa, #e9ecef);
+            padding: 2rem;
+            border-radius: 16px;
+            margin: 1.5rem 0;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .score-container::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(45deg, transparent, rgba(255,255,255,0.8), transparent);
+            transform: translateX(-100%);
+            animation: shimmer 2s infinite;
+        }
+
+        .popup-score {
+            font-size: 4rem;
+            font-weight: 800;
+            color: #007bff;
+            margin: 0;
+            text-shadow: 2px 2px 4px rgba(0, 123, 255, 0.2);
+            animation: scaleIn 0.5s ease-out;
+        }
+
+        .popup-message {
+            color: #495057;
+            font-size: 1.2rem;
+            margin: 1.5rem 0;
+            line-height: 1.6;
+            animation: fadeIn 0.5s ease-out 0.4s both;
+        }
+
+        .popup-buttons {
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+            flex-wrap: wrap;
+            margin-top: 2rem;
+            animation: fadeIn 0.5s ease-out 0.6s both;
         }
 
         .grade-icon {
@@ -419,85 +488,59 @@
             animation: bounceIn 0.6s cubic-bezier(0.68, -0.55, 0.265, 1.55);
         }
 
-        .grade-icon.perfect i {
+        .grade-icon.perfect {
             color: #ffd700;
-            text-shadow: 0 0 20px rgba(255, 215, 0, 0.5);
         }
 
-        .grade-icon.good i {
-            color: #40a9ff;
-            text-shadow: 0 0 10px rgba(64, 169, 255, 0.5);
+        .grade-icon.good {
+            color: #52c41a;
         }
 
-        .grade-icon.needs-improvement i {
-            color: #ff4d4f;
-            text-shadow: 0 0 10px rgba(255, 77, 79, 0.5);
-        }
-
-        .popup-title {
-            font-size: 1.5rem;
-            font-weight: 600;
-            margin-bottom: 1rem;
-            color: #2c3e50;
-        }
-
-        .popup-score {
-            font-size: 2.5rem;
-            font-weight: 700;
-            color: #2c3e50;
-            margin-bottom: 0.5rem;
-        }
-
-        .popup-message {
-            color: #666;
-            margin-bottom: 1.5rem;
-            font-size: 1.1rem;
-        }
-
-        .popup-buttons {
-            display: flex;
-            gap: 1rem;
-            justify-content: center;
-        }
-
-        .popup-btn {
-            padding: 0.75rem 1.5rem;
-            border: none;
-            border-radius: 6px;
-            font-weight: 500;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-            transition: all 0.3s ease;
-            text-decoration: none;
-            font-size: 1rem;
-        }
-
-        .review-btn {
-            background: #007bff;
-            color: white;
-        }
-
-        .review-btn:hover {
-            background: #0056b3;
-            transform: translateY(-2px);
-        }
-
-        .view-progress-btn {
-            background: #6c757d;
-            color: white;
-        }
-
-        .view-progress-btn:hover {
-            background: #5a6268;
-            transform: translateY(-2px);
+        .grade-icon.needs-improvement {
+            color: #1890ff;
         }
 
         @keyframes bounceIn {
             0% { transform: scale(0); }
             50% { transform: scale(1.2); }
             100% { transform: scale(1); }
+        }
+
+        @keyframes slideDown {
+            from {
+                transform: translateY(-20px);
+                opacity: 0;
+            }
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+
+        @keyframes scaleIn {
+            from {
+                transform: scale(0.8);
+                opacity: 0;
+            }
+            to {
+                transform: scale(1);
+                opacity: 1;
+            }
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+            }
+            to {
+                opacity: 1;
+            }
+        }
+
+        @keyframes shimmer {
+            100% {
+                transform: translateX(100%);
+            }
         }
 
         @media (max-width: 768px) {
@@ -562,20 +605,23 @@
                     <div class="question-content">
                         <div class="question-text-container">
                             <div class="question-text">
-                                {!! $question->question !!}
+                                {!! is_array($question) ? $question['question']->question : $question->question !!}
                             </div>
                         </div>
 
-                        @if($question->image_url)
+                        @php
+                            $qObj = is_array($question) ? $question['question'] : $question;
+                        @endphp
+                        @if($qObj->image_url ?? false)
                             <div class="question-image">
-                                <img src="{{ asset($question->image_url) }}" alt="Question Image" class="img-fluid">
+                                <img src="{{ asset($qObj->image_url) }}" alt="Question Image" class="img-fluid">
                             </div>
                         @endif
                     </div>
 
-                    <div class="options-container" data-question-id="{{ $question->id }}">
-                        @if($question->question_type === 'multiple_choice')
-                            @foreach(['A' => $question->option_a, 'B' => $question->option_b, 'C' => $question->option_c, 'D' => $question->option_d] as $letter => $option)
+                    <div class="options-container" data-question-id="{{ $qObj->id ?? '' }}">
+                        @if(($qObj->question_type ?? null) === 'multiple_choice')
+                            @foreach(['A' => $qObj->option_a, 'B' => $qObj->option_b, 'C' => $qObj->option_c, 'D' => $qObj->option_d] as $letter => $option)
                                 @if($option)
                                     <div class="option-card" data-option="{{ $letter }}" onclick="selectOption(this)">
                                         <span class="option-letter">{{ $letter }}</span>
@@ -599,10 +645,10 @@
                     </div>
 
                     <div class="actions mt-4">
-                        <button class="btn btn-primary check-answer" onclick="checkAnswer({{ $index + 1 }}, {{ $question->id }})">
+                        <button class="btn btn-primary check-answer" onclick="checkAnswer({{ $index + 1 }}, {{ $qObj->id ?? '' }})">
                             Check Answer
                         </button>
-                        <button class="btn btn-success next-question" style="display: none;" onclick="showNextQuestion({{ $index + 1 }})">
+                        <button class="btn btn-primary next-question" style="display: none;" onclick="showNextQuestion({{ $index + 1 }})">
                             Next Question
                         </button>
                     </div>
@@ -626,16 +672,16 @@
     <div class="popup-overlay" id="popup-overlay">
         <div class="popup" id="popup">
             <div class="grade-icon" id="grade-icon"></div>
-            <h2 class="popup-title" id="popup-title">Question Complete!</h2>
+            <h2 class="popup-title" id="popup-title">Quiz Complete!</h2>
             <div class="score-container">
-                <div class="popup-score" id="popup-score"></div>
+                <div class="popup-score" id="popup-score">0/0</div>
             </div>
-            <p class="popup-message" id="popup-message"></p>
+            <p class="popup-message" id="popup-message">Keep practicing! You're getting there!</p>
             <div class="popup-buttons">
-                <button class="popup-btn review-btn" id="review-btn">
+                <a href="{{ route('review.index', ['course' => $course->id]) }}" class="popup-btn review-btn" id="review-btn">
                     <i class="fas fa-search"></i>
-                    Continue Learning
-                </button>
+                    Review Mistakes
+                </a>
                 <a href="{{ route('topics.forCourse', ['course' => $course->id]) }}" class="popup-btn view-progress-btn" id="view-progress-btn">
                     <i class="fas fa-chart-line"></i>
                     Back to Topics
@@ -644,10 +690,15 @@
         </div>
     </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js?v={{ time() }}"></script>
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js?v={{ time() }}"></script>
     
     <script>
+        // [FIX] REMOVE INFINITE RELOAD LOOP
+        // if (window.performance && window.performance.navigation.type === window.performance.navigation.TYPE_RELOAD) {
+        //     window.location.reload(true);
+        // }
+
         let startTime = new Date();
         let currentQuestionIndex = 1;
         let totalQuestions = {{ $questions->count() }};
@@ -698,45 +749,44 @@
         // Function to check answer
         function checkAnswer(questionNumber, questionId) {
             const questionCard = document.getElementById(`question-${questionNumber}`);
-            const optionsContainer = questionCard.querySelector('.options-container');
-            const selectedOption = optionsContainer.querySelector('.option-card.selected');
-            const writtenAnswer = optionsContainer.querySelector('.written-answer');
-            const checkButton = questionCard.querySelector('.check-answer');
-            
-            let answer;
-            if (selectedOption) {
-                answer = selectedOption.dataset.option;
-            } else if (writtenAnswer) {
+            const writtenAnswer = questionCard.querySelector('.written-answer');
+            const selectedOption = questionCard.querySelector('.option-card.selected');
+            let answer = '';
+
+            if (writtenAnswer) {
                 answer = writtenAnswer.value.trim();
+            } else if (selectedOption) {
+                answer = selectedOption.getAttribute('data-option');
             }
 
             if (!answer) {
-                alert('Please select or write an answer before checking.');
+                alert('Please select an answer or write your response.');
                 return;
             }
 
-            // Calculate time taken for this question
-            const timeTaken = Math.floor((new Date() - questionStartTime) / 1000);
-            totalStudyTime += timeTaken; // Add to total study time
-
-            // Disable the check button
-            checkButton.disabled = true;
-
-            const baseUrl = '{{ secure_url("/") }}';
-            fetch(`${baseUrl}/quiz/tutor/check/${questionId}`, {
+            // Disable inputs while checking
+            questionCard.querySelectorAll('input, textarea, button').forEach(el => el.disabled = true);
+            
+            // Get CSRF token from meta tag
+            const token = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+            
+            fetch(`/quiz/tutor/check/${questionId}`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                    'X-CSRF-TOKEN': token,
                     'Accept': 'application/json'
                 },
-                body: JSON.stringify({ 
+                body: JSON.stringify({
                     answer: answer,
-                    time_taken: timeTaken
+                    question_number: questionNumber
                 })
             })
             .then(response => {
                 if (!response.ok) {
+                    if (response.status === 404) {
+                        throw new Error('Question not found or invalid route');
+                    }
                     return response.json().then(errorData => {
                         throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
                     });
@@ -774,19 +824,11 @@
                 }
             })
             .catch(error => {
-                console.error('Error checking answer:', error);
-                alert(error.message || 'An error occurred while checking your answer. Please try again.');
-                checkButton.disabled = false;
+                console.error('Error:', error);
+                alert(error.message || 'An error occurred while checking your answer.');
                 
-                // Re-enable options if there was an error
-                if (selectedOption) {
-                    optionsContainer.querySelectorAll('.option-card').forEach(opt => {
-                        opt.style.pointerEvents = 'auto';
-                        opt.style.cursor = 'pointer';
-                    });
-                } else if (writtenAnswer) {
-                    writtenAnswer.disabled = false;
-                }
+                // Re-enable inputs on error
+                questionCard.querySelectorAll('input, textarea, button').forEach(el => el.disabled = false);
             });
         }
 
@@ -795,42 +837,21 @@
             const currentQuestion = document.getElementById(`question-${currentNumber}`);
             const nextQuestion = document.getElementById(`question-${currentNumber + 1}`);
             
-            // Reset timer for new question
-            questionStartTime = new Date();
-            
             if (currentQuestion) {
                 currentQuestion.style.display = 'none';
             }
+            
             if (nextQuestion) {
                 nextQuestion.style.display = 'block';
-                // Update progress text
-                document.getElementById('progress-text').textContent = `Question ${currentNumber + 1} of ${totalQuestions}`;
-                // Update progress bar
-                const progressPercentage = ((currentNumber + 1) / totalQuestions) * 100;
-                document.getElementById('progress-fill').style.width = `${progressPercentage}%`;
+                currentQuestionIndex = currentNumber + 1;
+                updateProgress(currentNumber + 1, totalQuestions);
             } else {
-                // No more questions, save total study time
-                fetch('{{ secure_url("/learn/save-time") }}', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
-                        'Accept': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        duration_seconds: totalStudyTime,
-                        total_questions: totalQuestions,
-                        completed_questions: correctAnswers
-                    })
-                })
-                .then(response => response.json())
-                .then(data => {
-                    if (!data.success) {
-                        console.error('Failed to save study time:', data.message);
-                    }
-                })
-                .catch(error => {
-                    console.error('Error saving study time:', error);
+                // No more questions, show final results
+                const percentage = (correctAnswers / totalAnswers) * 100;
+                showQuizResults({
+                    correct: correctAnswers,
+                    total: totalAnswers,
+                    percentage: percentage
                 });
             }
         }
@@ -860,46 +881,38 @@
             const selectedOption = questionCard.querySelector('.option-card.selected');
             const writtenAnswer = questionCard.querySelector('.written-answer');
             
-            if (selectedOption) {
-                selectedOption.classList.remove('selected');
-                selectedOption.classList.add(data.correct ? 'correct' : 'incorrect');
-                
-                // If incorrect, highlight the correct answer
-                if (!data.correct && data.correctAnswer) {
-                    const correctOption = Array.from(optionsContainer.querySelectorAll('.option-card'))
-                        .find(opt => opt.dataset.option === data.correctAnswer);
-                    if (correctOption) {
-                        correctOption.classList.add('correct');
-                    }
-                }
-            } else if (writtenAnswer) {
+            if (writtenAnswer) {
+                writtenAnswer.disabled = true;
                 writtenAnswer.classList.add(data.correct ? 'correct' : 'incorrect');
-                writtenAnswer.disabled = true;
-            }
-
-            // Show next button if not the last question
-            const nextButton = questionCard.querySelector('.next-question');
-            if (nextButton && questionNumber < totalQuestions) {
-                nextButton.style.display = 'inline-block';
-            }
-
-            // Disable all options and the check button
-            const checkButton = questionCard.querySelector('.check-answer');
-            checkButton.disabled = true;
-
-            if (selectedOption) {
-                // Disable all option cards
-                optionsContainer.querySelectorAll('.option-card').forEach(opt => {
-                    opt.style.pointerEvents = 'none';
-                    opt.style.cursor = 'default';
+            } else if (selectedOption) {
+                // Update multiple choice styling
+                const options = questionCard.querySelectorAll('.option-card');
+                options.forEach(option => {
+                    option.classList.remove('selected', 'correct', 'incorrect');
+                    if (option === selectedOption) {
+                        option.classList.add(data.correct ? 'correct' : 'incorrect');
+                    } else if (!data.correct && option.getAttribute('data-option') === data.correctAnswer) {
+                        option.classList.add('correct');
+                    }
                 });
-            } else if (writtenAnswer) {
-                writtenAnswer.disabled = true;
             }
+
+            // Show next question button and hide check answer button
+            const checkAnswerBtn = questionCard.querySelector('.check-answer');
+            const nextQuestionBtn = questionCard.querySelector('.next-question');
+            
+            if (checkAnswerBtn) checkAnswerBtn.style.display = 'none';
+            if (nextQuestionBtn) {
+                nextQuestionBtn.style.display = 'block';
+                nextQuestionBtn.disabled = false; // FIX: Ensure Next Question is enabled
+            }
+
+            // FIX: Update progress bar immediately after checking answer
+            updateProgress(totalAnswers, totalQuestions);
         }
 
         // Function to show quiz results
-        function showQuizResults(stats) {
+        function showQuizResults(results) {
             const popupOverlay = document.getElementById('popup-overlay');
             const popup = document.getElementById('popup');
             const gradeIcon = document.getElementById('grade-icon');
@@ -907,27 +920,30 @@
             const popupScore = document.getElementById('popup-score');
             const popupMessage = document.getElementById('popup-message');
 
-            popupScore.textContent = `${stats.correct}/${stats.total}`;
+            // Show score as X/Y, not percentage
+            popupScore.textContent = `${results.correct}/${results.total}`;
 
-            if (stats.percentage === 100) {
+            // Set appropriate icon and message based on score
+            const percentage = (results.correct / results.total) * 100;
+            if (percentage === 100) {
                 gradeIcon.innerHTML = '<i class="fas fa-crown"></i>';
                 gradeIcon.className = 'grade-icon perfect';
                 popupTitle.textContent = 'Perfect Score!';
-                popupMessage.textContent = 'Outstanding! You\'ve mastered this set!';
+                popupMessage.textContent = 'Outstanding! You\'ve mastered this topic!';
                 createConfetti();
-                playQuizCompletionSound(true);
-            } else if (stats.percentage >= 70) {
+                playQuizCompletionSound(results);
+            } else if (percentage >= 70) {
                 gradeIcon.innerHTML = '<i class="fas fa-star"></i>';
                 gradeIcon.className = 'grade-icon good';
-                popupTitle.textContent = 'Great Job!';
+                popupTitle.textContent = 'Well Done!';
                 popupMessage.textContent = 'Good progress! Keep up the great work!';
-                playQuizCompletionSound(true);
+                playQuizCompletionSound(results);
             } else {
                 gradeIcon.innerHTML = '<i class="fas fa-book"></i>';
                 gradeIcon.className = 'grade-icon needs-improvement';
                 popupTitle.textContent = 'Keep Learning!';
                 popupMessage.textContent = 'Don\'t give up! Practice makes perfect!';
-                playQuizCompletionSound(false);
+                playQuizCompletionSound(results);
             }
 
             // Show popup with animation
@@ -938,11 +954,9 @@
         // Function to create confetti
         function createConfetti() {
             confetti({
-                particleCount: 200,
+                particleCount: 100,
                 spread: 70,
-                origin: { y: 0.6 },
-                colors: ['#FFD700', '#FFA500', '#FF69B4', '#00CED1', '#98FB98'],
-                zIndex: 9999
+                origin: { y: 0.6 }
             });
         }
 
@@ -951,48 +965,17 @@
             const perfectSound = document.getElementById('quizPerfectSound');
             const partialSound = document.getElementById('quizPartialSound');
             const wrongSound = document.getElementById('quizWrongSound');
-            
-            // Reset all sounds to start
-            [perfectSound, partialSound, wrongSound].forEach(sound => {
-                if (sound) {
-                    sound.pause();
-                    sound.currentTime = 0;
-                }
-            });
 
-            // Function to safely play audio with user interaction check
-            function safePlayAudio(audioElement, soundName) {
-                if (!audioElement) {
-                    console.warn(`${soundName} audio element not found`);
-                    return;
-                }
-                
-                // Check if user has interacted with the page
-                if (document.visibilityState === 'visible') {
-                    // Try to play with user interaction context
-                    const playPromise = audioElement.play();
-                    
-                    if (playPromise !== undefined) {
-                        playPromise
-                            .then(() => {
-                                console.log(`${soundName} played successfully`);
-                            })
-                            .catch(error => {
-                                // Handle autoplay policy restrictions
-                                if (error.name === 'NotAllowedError') {
-                                    console.log(`${soundName} blocked by autoplay policy - user interaction required`);
-                                } else {
-                                    console.error(`${soundName} play failed:`, error);
-                                }
-                            });
-                    }
-                } else {
-                    console.log(`${soundName} skipped - page not visible`);
+            function safePlayAudio(audioElement, type) {
+                if (audioElement) {
+                    audioElement.play().catch(error => {
+                        console.warn(`Failed to play ${type} sound:`, error);
+                    });
                 }
             }
 
-            // For individual answer checks, just use perfect for correct and wrong for incorrect
             if (typeof isCorrect === 'boolean') {
+                // For individual questions
                 if (isCorrect) {
                     safePlayAudio(perfectSound, 'Perfect');
                 } else {
@@ -1010,35 +993,6 @@
                 }
             }
         }
-
-        // Add event listeners to popup buttons
-        document.addEventListener('DOMContentLoaded', function() {
-            const reviewBtn = document.getElementById('review-btn');
-            if (reviewBtn) {
-                reviewBtn.addEventListener('click', function() {
-                    const popupOverlay = document.getElementById('popup-overlay');
-                    const popup = document.getElementById('popup');
-                    
-            popup.classList.remove('show');
-            setTimeout(() => {
-                popupOverlay.classList.remove('show');
-            }, 300);
-        });
-            }
-
-            const viewProgressBtn = document.getElementById('view-progress-btn');
-            if (viewProgressBtn) {
-                viewProgressBtn.addEventListener('click', function() {
-                    const popupOverlay = document.getElementById('popup-overlay');
-                    const popup = document.getElementById('popup');
-                    
-                    popup.classList.remove('show');
-                    setTimeout(() => {
-                        popupOverlay.classList.remove('show');
-                    }, 300);
-                });
-            }
-        });
     </script>
 </body>
 </html> 

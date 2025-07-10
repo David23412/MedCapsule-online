@@ -30,14 +30,6 @@ return new class extends Migration
             if (Schema::hasColumn('questions', 'created_at') && !DB::select("SHOW INDEX FROM questions WHERE Key_name = 'questions_created_at_index'")) {
                 $table->index('created_at', 'questions_created_at_index');
             }
-            if (Schema::hasColumn('questions', 'difficulty_level')) {
-                if (!DB::select("SHOW INDEX FROM questions WHERE Key_name = 'questions_difficulty_index'")) {
-                    $table->index('difficulty_level', 'questions_difficulty_index');
-                }
-                if (Schema::hasColumn('questions', 'topic_id') && !DB::select("SHOW INDEX FROM questions WHERE Key_name = 'questions_topic_difficulty_index'")) {
-                    $table->index(['topic_id', 'difficulty_level'], 'questions_topic_difficulty_index');
-                }
-            }
         });
 
         // Topics table indexes
@@ -190,8 +182,6 @@ return new class extends Migration
 
         Schema::table('questions', function (Blueprint $table) {
             $table->dropIndex('questions_created_at_index');
-            $table->dropIndex('questions_topic_difficulty_index');
-            $table->dropIndex('questions_difficulty_index');
             $table->dropIndex('questions_topic_id_index');
         });
 

@@ -166,20 +166,10 @@ Route::middleware('auth')->group(function () {
         }
     })->middleware('auth')->name('api.active-users');
 
-    // Payment routes - must be added inside the auth middleware group
-    Route::get('/payments/{course}/options', [PaymentController::class, 'getPaymentOptions'])->name('payments.options');
-    Route::get('/payments/history', [PaymentController::class, 'history'])->name('payments.history');
-
-    // Manual payment processing routes
-    Route::post('/payments/{course}/process-manual', [PaymentController::class, 'processManualPayment'])->name('payments.process-manual');
-    Route::post('/payments/{course}/submit-proof', [PaymentController::class, 'submitProof'])->name('payments.submit-proof');
-    Route::post('/payments/{payment}/submit-proof', [PaymentController::class, 'submitPaymentProof'])->name('payments.submit-payment-proof');
+    // Payment routes
+    Route::post('/payments/process-manual', [PaymentController::class, 'processManualPayment'])->name('payments.process-manual');
+    Route::post('/payments/{payment}/submit-proof', [PaymentController::class, 'submitPaymentProof'])->name('payments.submit-proof');
     
-    // Bundle payment routes
-    Route::post('/payments/bundle/options', [PaymentController::class, 'getBundlePaymentOptions'])->name('payments.bundle.options');
-    Route::post('/payments/bundle/process-manual', [PaymentController::class, 'processBundleManualPayment'])->name('payments.bundle.process-manual');
-    Route::post('/payments/bundle/submit-proof', [PaymentController::class, 'submitBundlePaymentProof'])->name('payments.bundle.submit-proof');
-
     // Admin payment routes
     Route::post('/admin/payments/{payment}/verify', [PaymentController::class, 'adminVerifyPayment'])->name('admin.payments.verify');
     Route::post('/admin/payments/{payment}/reject', [PaymentController::class, 'adminRejectPayment'])->name('admin.payments.reject');

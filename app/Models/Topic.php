@@ -214,6 +214,18 @@ class Topic extends Model
                 Cache::forget("topic:{$topic->id}:user:" . auth()->id() . ":completion");
                 Cache::forget("topic:{$topic->id}:sources");
                 Cache::forget("topic:{$topic->id}:v{$topic->cache_version}");
+                
+                // PHASE 2: Dispatch TopicCompleted event for cache invalidation
+                $userId = auth()->id();
+                $progress = $topic->getCurrentUserProgressAttribute();
+                if ($progress) {
+                    event(new \App\Events\TopicCompleted(
+                        $topic,
+                        $userId,
+                        $progress->percentage_grade ?? 0,
+                        $progress->source_progress ?? []
+                    ));
+                }
             }
         });
 
@@ -222,6 +234,14 @@ class Topic extends Model
                 Cache::forget("topic:{$topic->id}:user:" . auth()->id() . ":completion");
                 Cache::forget("topic:{$topic->id}:sources");
                 Cache::forget("topic:{$topic->id}:v{$topic->cache_version}");
+                
+                // PHASE 2: Dispatch TopicCompleted event for deletion
+                event(new \App\Events\TopicCompleted(
+                    $topic,
+                    auth()->id(),
+                    0,
+                    []
+                ));
             }
         });
 

@@ -21,6 +21,10 @@
             line-height: 1.6;
         }
 
+        html {
+            -webkit-text-size-adjust: 100%;
+        }
+        
         .navbar {
             background: rgba(255, 255, 255, 0.95);
             padding: 1rem 2rem;
@@ -91,78 +95,25 @@
             gap: 1.5rem;
             padding: 1rem;
             margin: 0.5rem 2rem;
-            max-width: 100%;
-            overflow-x: auto;
-            scroll-behavior: smooth;
-            scrollbar-width: none;
-            -ms-overflow-style: none;
-            position: relative;
-            scroll-snap-type: x mandatory;
-            padding-bottom: 20px;
-            -webkit-overflow-scrolling: touch;
-        }
-
-        .courses-grid::-webkit-scrollbar {
-            display: none;
-        }
-
-        .scroll-arrow {
-            position: absolute;
-            top: 50%;
-            transform: translateY(-50%);
-            width: 40px;
-            height: 40px;
-            background: rgba(255, 255, 255, 0.95);
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
+            flex-wrap: wrap;
             justify-content: center;
-            cursor: pointer;
-            z-index: 10;
-            border: none;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-            transition: all 0.3s ease;
-            opacity: 0;
-        }
-
-        .scroll-arrow:hover {
-            background: white;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-            transform: translateY(-50%) scale(1.05);
-            opacity: 1;
-        }
-
-        .courses-grid:hover .scroll-arrow {
-            opacity: 0.8;
-        }
-
-        .scroll-left {
-            left: 10px;
-        }
-
-        .scroll-right {
-            right: 10px;
-        }
-
-        .scroll-arrow i {
-            color: #2196f3;
-            font-size: 1.2rem;
         }
 
         .course-card {
-            flex: 0 0 340px;
+            flex: 0 0 300px;
+            max-width: 340px;
+            margin: 1rem;
             scroll-snap-align: start;
             background: white;
             border-radius: 12px;
             overflow: hidden;
             box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
             transition: all 0.3s ease;
-            width: 340px;
             border: 1px solid transparent;
         }
 
         .course-card:hover {
-            transform: translateY(-4px);
+            transform: translateY(-2px);
             box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
         }
 
@@ -1209,6 +1160,53 @@
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
         }
+
+        /* Course Card Styles */
+        .course-card {
+            transition: all 0.3s ease;
+        }
+
+        .course-card:hover {
+            transform: translateY(-2px);
+        }
+
+        .course-checkbox:checked + label {
+            color: var(--bs-primary);
+        }
+
+        .course-card .card {
+            transition: all 0.3s ease;
+        }
+
+        .course-checkbox:checked ~ .card {
+            border-color: var(--bs-primary);
+            box-shadow: 0 0 0 1px var(--bs-primary) !important;
+        }
+
+        /* Bundle Action Bar */
+        #bundleActionBar {
+            transform: translateY(100%);
+            transition: transform 0.3s ease;
+        }
+
+        #bundleActionBar.show {
+            transform: translateY(0);
+        }
+
+        /* Add margin to main content when action bar is visible */
+        .courses-container {
+            margin-bottom: 80px; /* Height of the action bar + some padding */
+        }
+
+        /* Disabled course styles */
+        .course-checkbox:disabled + label {
+            color: var(--bs-gray);
+            text-decoration: line-through;
+        }
+
+        .course-checkbox:disabled ~ .card {
+            opacity: 0.7;
+        }
     </style>
 </head>
 <body>
@@ -1418,87 +1416,40 @@
         
         <div class="courses-grid">
             @foreach ($courses as $course)
-                <div class="course-card {{ strtolower($course->name) }}" 
-                     style="border-left: 8px solid {{ $course->color }}; border-color: {{ $course->color }}"
-                     data-semester="{{ $course->semester }}">
-                    <div class="course-image" style="background-image: url('{{ asset($course->image_url) }}')" onerror="this.style.backgroundImage = 'linear-gradient(135deg, #f5f7fa 0%, #e9ecef 100%)'">
-                        <div class="info-icon">
-                            <i class="fas fa-info"></i>
-                            <div class="info-tooltip">
-                                {{ $course->description }}
+                <div class="course-card mb-4">
+                    <div class="card shadow-sm">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between align-items-start">
+                                <div class="form-check">
+                                    <input class="form-check-input course-checkbox" type="checkbox" value="{{ $course->id }}" 
+                                        id="course_{{ $course->id }}" data-price="{{ $course->price }}" data-name="{{ $course->name }}"
+                                        @if(Auth::user()->hasAccessToCourse($course->id)) disabled @endif>
+                                    <label class="form-check-label h5 mb-0" for="course_{{ $course->id }}">
+                                        {{ $course->name }}
+                                    </label>
+                                </div>
+                                <span class="badge bg-primary">{{ $course->formatted_price ?? '200 EGP' }}</span>
                             </div>
-                        </div>
-                        <div class="course-overlay">
-                            <h3 class="course-title" style="color: {{ $course->color }}">{{ $course->name }}</h3>
-                        </div>
-                    </div>
-                    <div class="course-info">
-                        <div class="course-stats-row">
-                            <span class="topics-badge">
-                                <i class="fas fa-book-open me-1"></i>
-                                {{ $course->topics_count }} Topics
-                            </span>
-                            <div class="enrolled-users-preview">
-                                @foreach($course->enrolled_preview as $user)
-                                    <div class="profile-circle-small" 
-                                         @if($user['profile_picture_url'])
-                                             style="background-image: url('{{ asset($user['profile_picture_url']) }}')"
-                                         @endif
-                                         title="{{ $user['name'] }}">
-                                        @if(!$user['profile_picture_url'])
-                                            {{ $user['initial'] }}
-                                        @endif
-                                    </div>
-                                @endforeach
-                                @if($course->has_more)
-                                    <div class="profile-circle-small more" title="More enrolled users">
-                                        +{{ $course->enrolled_users_count - 3 }}
-                                    </div>
+                            
+                            <p class="text-muted mt-2 mb-3">{{ $course->description }}</p>
+                            
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div class="course-stats small text-muted">
+                                    <span class="me-3"><i class="fas fa-book-reader"></i> {{ $course->topics_count }} Topics</span>
+                                    <span class="me-3"><i class="fas fa-users"></i> {{ $course->students_count }} Students</span>
+                                </div>
+                                
+                                @if(Auth::user()->hasAccessToCourse($course->id))
+                                    <a href="{{ route('topics.forCourse', $course->id) }}" class="btn btn-success">
+                                        <i class="fas fa-play-circle"></i> Continue Learning
+                                    </a>
+                                @else
+                                    <button type="button" class="btn btn-primary" id="paymentBtn_{{ $course->id }}">
+                                        <i class="fas fa-shopping-cart"></i> Purchase Course
+                                    </button>
                                 @endif
                             </div>
                         </div>
-                        <div class="progress-container">
-                            <div class="progress-bar">
-                                <div class="progress-fill" style="width: {{ $course->completion_percentage }}%">
-                                    <span class="progress-percentage">{{ number_format($course->completion_percentage, 0) }}%</span>
-                                </div>
-                            </div>
-                        </div>
-                        @if (auth()->check())
-                            @if (Auth::user()->is_admin)
-                                <a href="{{ route('topics.forCourse', $course) }}" class="action-btn continue">
-                                    <i class="fas fa-play"></i>
-                                    Continue Learning
-                                </a>
-                            @elseif ($course->is_enrolled)
-                                <a href="{{ route('topics.forCourse', $course) }}" class="action-btn continue">
-                                    <i class="fas fa-play"></i>
-                                    Continue Learning
-                                </a>
-                            @elseif (!$course->price || $course->price <= 0)
-                                <a href="{{ route('topics.forCourse', $course) }}" class="action-btn enroll free">
-                                    <i class="fas fa-play"></i>
-                                    Start Learning (Free)
-                                </a>
-                            @else
-                                <button type="button" class="action-btn enroll show-payment-modal" data-course-id="{{ $course->id }}">
-                                    <i class="fas fa-unlock"></i>
-                                    Pay to Access
-                                </button>
-                            @endif
-                        @else
-                            @if (!$course->price || $course->price <= 0)
-                                <a href="{{ route('login') }}" class="action-btn enroll free">
-                                    <i class="fas fa-play"></i>
-                                    Sign in to Start (Free)
-                                </a>
-                            @else
-                                <a href="{{ route('login') }}" class="action-btn enroll">
-                                    <i class="fas fa-lock"></i>
-                                    Sign in to Access
-                                </a>
-                            @endif
-                        @endif
                     </div>
                 </div>
             @endforeach
@@ -1523,17 +1474,28 @@
         <button class="btn btn-primary mt-3" onclick="hideUnlockInstructions()">Close</button>
     </div>
 
+    <!-- Proceed to Payment Button -->
+    <div class="fixed-bottom bg-white border-top p-3 d-none" id="bundleActionBar">
+        <div class="container">
+            <div class="row align-items-center">
+                <div class="col">
+                    <span class="selected-count">0 courses selected</span>
+                    <span class="bundle-discount text-success d-none">(10% bundle discount applied)</span>
+                </div>
+                <div class="col-auto">
+                    <button type="button" class="btn btn-primary" id="proceedToPaymentBtn" disabled>
+                        Purchase Course
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Payment Modal -->
     <div class="modal fade" id="paymentModal" tabindex="-1" aria-labelledby="paymentModalLabel" aria-hidden="true">
-        <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-dialog modal-lg">
             <div class="modal-content">
-                <!-- Modal content will be loaded dynamically -->
-                <div class="modal-body text-center p-5">
-                    <div class="spinner-border text-primary" role="status">
-                        <span class="visually-hidden">Loading...</span>
-                    </div>
-                    <p class="mt-2">Loading payment options...</p>
-                </div>
+                <!-- Content will be loaded dynamically -->
             </div>
         </div>
     </div>
@@ -2185,6 +2147,189 @@
         } catch (e) {
             console.warn('Payment modal initialization error:', e);
         }
+    </script>
+    <script>
+        // Add bundle selection functionality
+        document.addEventListener('DOMContentLoaded', function() {
+            const courseCheckboxes = document.querySelectorAll('.course-checkbox');
+            const paymentModal = new bootstrap.Modal(document.getElementById('paymentModal'));
+            const proceedToPaymentBtn = document.getElementById('proceedToPaymentBtn');
+            const bundleActionBar = document.getElementById('bundleActionBar');
+            const selectedCountSpan = document.querySelector('.selected-count');
+            const bundleDiscountSpan = document.querySelector('.bundle-discount');
+            let selectedCourses = [];
+
+            // Format currency function
+            function formatCurrency(amount) {
+                return parseFloat(amount).toFixed(2) + ' EGP';
+            }
+
+            // Calculate pricing function
+            function calculatePricing(courses) {
+                const originalPrice = courses.reduce((sum, course) => sum + course.price, 0);
+                const discountAmount = courses.length > 1 ? Math.round(originalPrice * 0.1 * 100) / 100 : 0;
+                const totalPrice = Math.round((originalPrice - discountAmount) * 100) / 100;
+                
+                return {
+                    originalPrice,
+                    discountAmount,
+                    totalPrice
+                };
+            }
+
+            // Update pricing display
+            function updatePricingDisplay() {
+                const pricing = calculatePricing(selectedCourses);
+                
+                // Update any pricing displays in the UI
+                if (bundleDiscountSpan) {
+                    if (selectedCourses.length > 1) {
+                        bundleDiscountSpan.innerHTML = `Save ${formatCurrency(pricing.discountAmount)} with bundle purchase!`;
+                        bundleDiscountSpan.classList.remove('d-none');
+                    } else {
+                        bundleDiscountSpan.classList.add('d-none');
+                    }
+                }
+                
+                // Update total price display if it exists
+                const totalPriceDisplay = document.getElementById('totalPriceDisplay');
+                if (totalPriceDisplay) {
+                    totalPriceDisplay.textContent = formatCurrency(pricing.totalPrice);
+                }
+            }
+
+            // Handle checkbox changes
+            courseCheckboxes.forEach(checkbox => {
+                checkbox.addEventListener('change', function() {
+                    if (this.checked) {
+                        selectedCourses.push({
+                            id: this.value,
+                            price: parseFloat(this.dataset.price),
+                            name: this.dataset.name
+                        });
+                    } else {
+                        selectedCourses = selectedCourses.filter(course => course.id !== this.value);
+                    }
+                    
+                    // Update UI
+                    selectedCountSpan.textContent = `${selectedCourses.length} course${selectedCourses.length !== 1 ? 's' : ''} selected`;
+                    
+                    // Show/hide bundle action bar
+                    if (selectedCourses.length > 0) {
+                        bundleActionBar.classList.remove('d-none');
+                        setTimeout(() => bundleActionBar.classList.add('show'), 10);
+                    } else {
+                        bundleActionBar.classList.remove('show');
+                        setTimeout(() => bundleActionBar.classList.add('d-none'), 300);
+                    }
+                    
+                    // Update proceed button state and text
+                    if (proceedToPaymentBtn) {
+                        proceedToPaymentBtn.disabled = selectedCourses.length === 0;
+                        proceedToPaymentBtn.textContent = selectedCourses.length > 1 ? 
+                            `Purchase Bundle (${selectedCourses.length} courses)` : 
+                            'Purchase Course';
+                    }
+                    
+                    // Update pricing display
+                    updatePricingDisplay();
+                });
+            });
+
+            // Handle payment button click
+            if (proceedToPaymentBtn) {
+                proceedToPaymentBtn.addEventListener('click', function() {
+                    // Show loading state
+                    proceedToPaymentBtn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Processing...';
+                    proceedToPaymentBtn.disabled = true;
+
+                    const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+                    
+                    // Calculate bundle pricing
+                    const pricing = calculatePricing(selectedCourses);
+                    
+                    // Prepare payment data
+                    const paymentData = {
+                        courses: selectedCourses.map(course => course.id),
+                        original_price: pricing.originalPrice,
+                        discount_amount: pricing.discountAmount,
+                        total_price: pricing.totalPrice,
+                        is_bundle: selectedCourses.length > 1
+                    };
+                    
+                    // Make request to create payment
+                    fetch('/payments/process', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Accept': 'application/json',
+                            'X-CSRF-TOKEN': csrfToken,
+                            'X-Requested-With': 'XMLHttpRequest'
+                        },
+                        body: JSON.stringify(paymentData)
+                    })
+                    .then(response => {
+                        if (!response.ok) {
+                            throw new Error('Network response was not ok: ' + response.status);
+                        }
+                        return response.json();
+                    })
+                    .then(data => {
+                        if (data.success) {
+                            // Update payment modal content
+                            document.querySelector('#paymentModal .modal-content').innerHTML = data.html;
+                            
+                            // Show payment modal
+                            paymentModal.show();
+                            
+                            // Mark selected courses as pending
+                            selectedCourses.forEach(course => {
+                                const button = document.querySelector(`#paymentBtn_${course.id}`);
+                                if (button) {
+                                    button.innerHTML = '<i class="fas fa-clock"></i> Payment Pending';
+                                    button.classList.remove('btn-primary');
+                                    button.classList.add('btn-warning');
+                                    button.disabled = true;
+                                }
+                                // Store pending state
+                                localStorage.setItem(`payment_pending_${course.id}`, 'true');
+                            });
+                            
+                            // Hide bundle action bar
+                            bundleActionBar.classList.remove('show');
+                            setTimeout(() => bundleActionBar.classList.add('d-none'), 300);
+                            
+                            // Clear selections
+                            courseCheckboxes.forEach(checkbox => {
+                                checkbox.checked = false;
+                            });
+                            selectedCourses = [];
+                        } else {
+                            alert(data.message || 'Failed to process payment. Please try again.');
+                        }
+                        
+                        // Reset button state
+                        proceedToPaymentBtn.innerHTML = selectedCourses.length > 1 ? 
+                            `Purchase Bundle (${selectedCourses.length} courses)` : 
+                            'Purchase Course';
+                        proceedToPaymentBtn.disabled = false;
+                    })
+                    .catch(error => {
+                        console.error('Error processing payment:', error);
+                        alert('An error occurred while processing your payment. Please try again later.');
+                        
+                        // Reset button state
+                        proceedToPaymentBtn.innerHTML = selectedCourses.length > 1 ? 
+                            `Purchase Bundle (${selectedCourses.length} courses)` : 
+                            'Purchase Course';
+                        proceedToPaymentBtn.disabled = false;
+                    });
+                });
+            }
+            
+            // Check for pending payments on page load
+            updatePaymentButtonsForPendingPayments();
+        });
     </script>
 </body>
 </html>

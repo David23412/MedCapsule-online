@@ -475,9 +475,10 @@ class NotificationService
     }
 
     /**
-     * Get notifications for the authenticated user with unread count
+     * Get user notifications with optimized single query
+     * OPTIMIZED: Reduced from 2 queries to 1 query using subquery
      *
-     * @param int $limit Maximum number of notifications to return
+     * @param int $limit
      * @return array
      */
     public function getUserNotifications(int $limit = 20): array
@@ -490,18 +491,19 @@ class NotificationService
             ];
         }
 
-        // Calculate unread count separately to ensure accuracy
-        $unreadCount = $user->notifications()
-            ->where('is_read', false)
-            ->count();
-
-        // Get notifications with prioritization of unread ones and ensure newest first
+        // OPTIMIZED: Single query with subquery for unread count
         $notifications = $user->notifications()
-            ->select('*')
+            ->select([
+                'notifications.*',
+                DB::raw('(SELECT COUNT(*) FROM notifications AS unread_count WHERE unread_count.user_id = notifications.user_id AND unread_count.is_read = false) as unread_count')
+            ])
             ->orderByRaw('is_read ASC, created_at DESC') // Prioritize unread notifications and show newest first
             ->limit($limit)
             ->get();
             
+        // Extract unread count from first notification (all will have same count)
+        $unreadCount = $notifications->first() ? $notifications->first()->unread_count : 0;
+        
         // Process notifications to add formatted timestamps and parse JSON data
         $notifications->transform(function ($notification) {
             // Parse JSON data if present
@@ -511,6 +513,9 @@ class NotificationService
             
             // Add human-readable time
             $notification->time_ago = $this->formatTimeAgo($notification->created_at);
+            
+            // Remove the unread_count attribute from the notification object
+            unset($notification->unread_count);
             
             return $notification;
         });

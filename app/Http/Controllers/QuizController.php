@@ -284,10 +284,15 @@ class QuizController extends Controller
     }
 
     /**
-     * ✅ Show mistakes (incorrect answers).
+     * ✅ Show mistakes (incorrect answers) with optimized query
+     * OPTIMIZED: Reduced from multiple queries to single optimized query
      */
     public function showMistakes(Request $request)
     {
+        \Log::info('DEBUG: Entered showMistakes', [
+            'user_id' => auth()->id(),
+            'request_url' => $request->fullUrl()
+        ]);
         $startTime = microtime(true);
         $requestId = uniqid('mistakes_');
         
@@ -302,24 +307,49 @@ class QuizController extends Controller
                 'ip_address' => request()->ip()
             ]);
 
-            $mistakesQuery = Mistake::with(['question.topic.course'])
-                ->where('user_id', $userId);
+            // OPTIMIZED: Single query with selective column fetching and proper eager loading
+            $mistakesQuery = Mistake::select([
+                'mistakes.id',
+                'mistakes.user_id',
+                'mistakes.question_id',
+                'mistakes.submitted_answer',
+                'mistakes.attempt_count',
+                'mistakes.last_attempt_date',
+                'mistakes.created_at'
+            ])
+            ->with([
+                'question:id,question,topic_id',
+                'question.topic:id,name,course_id',
+                'question.topic.course:id,name'
+            ])
+            ->where('mistakes.user_id', $userId);
 
+            // OPTIMIZED: Apply course filter efficiently
             if ($courseFilter) {
                 $mistakesQuery->whereHas('question.topic.course', function ($query) use ($courseFilter) {
                     $query->where('id', $courseFilter);
                 });
             }
 
-            $mistakes = $mistakesQuery->orderBy('last_attempt_date', 'desc')->get();
+            $mistakes = $mistakesQuery->orderBy('mistakes.last_attempt_date', 'desc')->get();
+
+            // OPTIMIZED: Get available courses using the correct relationship
+            $availableCourses = Course::select([
+                'courses.id',
+                'courses.name'
+            ])
+            ->whereExists(function ($query) use ($userId) {
+                $query->select(DB::raw(1))
+                      ->from('questions')
+                      ->join('mistakes', 'questions.id', '=', 'mistakes.question_id')
+                      ->join('topics', 'questions.topic_id', '=', 'topics.id')
+                      ->whereColumn('topics.course_id', 'courses.id')
+                      ->where('mistakes.user_id', $userId);
+            })
+            ->get();
 
             // Group mistakes by course for better organization
             $mistakesByCourse = $mistakes->groupBy('question.topic.course.name');
-
-            // Get available courses for filtering
-            $availableCourses = Course::whereHas('topics.questions.mistakes', function ($query) use ($userId) {
-                $query->where('user_id', $userId);
-            })->get();
 
             $executionTime = (microtime(true) - $startTime) * 1000;
             Log::info('✅ Mistakes loaded successfully', [
@@ -451,15 +481,26 @@ class QuizController extends Controller
             if (!is_array($sources)) {
                 $sources = [$sources];
             }
-            
-            Log::info('Selected sources for tutor mode', [
+            // FIX: If sources is a single string with commas, split it
+            if (count($sources) === 1 && strpos($sources[0], ',') !== false) {
+                $sources = array_map('trim', explode(',', $sources[0]));
+            }
+            Log::info('Selected sources for tutor mode (sanitized)', [
                 'request_id' => $requestId,
                 'sources' => $sources,
                 'topic_id' => $topic->id
             ]);
 
+            Log::info('DEBUG: About to call initializeQuiz', [
+                'sources' => $sources,
+                'topic_id' => $topic->id
+            ]);
             // Use QuizService to initialize tutor quiz
             $quizData = $this->quizService->initializeQuiz($user, $course, $topic, $sources, 'tutor');
+            Log::info('DEBUG: Returned from initializeQuiz', [
+                'questions_count' => is_array($quizData['questions']) ? count($quizData['questions']) : (method_exists($quizData['questions'], 'count') ? $quizData['questions']->count() : 'N/A'),
+                'sources' => $sources
+            ]);
             
             $executionTime = (microtime(true) - $startTime) * 1000;
             Log::info('✅ Tutor quiz initialized successfully', [

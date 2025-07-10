@@ -16,6 +16,7 @@ use App\Services\WrittenAnswerEvaluationService;
 use App\Services\MedicalKnowledgeService;
 use App\Services\PatternMatcherService;
 use App\Services\TextProcessingService;
+use App\Services\QueryMonitoringService;
 use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
@@ -31,6 +32,9 @@ class AppServiceProvider extends ServiceProvider
         $this->app->singleton(NotificationService::class);
         $this->app->singleton(UserStatsService::class);
         $this->app->singleton(CacheService::class);
+        
+        // PHASE 3: Query monitoring service
+        $this->app->singleton(QueryMonitoringService::class);
         
         // Payment and verification services
         $this->app->singleton(PaymentVerificationService::class);
@@ -49,6 +53,7 @@ class AppServiceProvider extends ServiceProvider
         $this->app->alias(NotificationService::class, 'notification.service');
         $this->app->alias(UserStatsService::class, 'user.stats.service');
         $this->app->alias(CacheService::class, 'cache.service');
+        $this->app->alias(QueryMonitoringService::class, 'query.monitor.service');
     }
 
     /**

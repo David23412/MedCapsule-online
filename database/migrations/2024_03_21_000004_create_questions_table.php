@@ -30,11 +30,11 @@ return new class extends Migration {
             // Add question_type field and default existing questions to 'multiple_choice'
             $table->string('question_type')->default('multiple_choice');
             
-            // Add difficulty column for filtering and analytics
-            $table->string('difficulty')->nullable();
-            
             // Add field for alternative correct answers (JSON field to store variations)
             $table->json('alternative_answers')->nullable();
+
+            // Add similarity threshold for written answers
+            $table->float('similarity_threshold')->default(0.8);
 
             // Correct answer and attempt tracking
             $table->integer('total_attempts')->default(0);
@@ -46,6 +46,9 @@ return new class extends Migration {
             // Indexes for better performance
             $table->index('topic_id'); // Fast look-up for questions by topic
             $table->index(['topic_id', 'last_attempted_at']); // For sorting by the most recently attempted question
+            $table->index(['source', 'question_type']); // For filtering questions by source and type
+            $table->index(['topic_id', 'question_type']); // For filtering questions by topic and type
+            $table->index(['total_attempts', 'correct_attempts']); // For difficulty analysis
         });
     }
 

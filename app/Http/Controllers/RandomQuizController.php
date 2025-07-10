@@ -75,7 +75,7 @@ class RandomQuizController extends Controller
             }
 
             // Store questions in session
-            session(['random_quiz_questions' => $randomQuestions]);
+            session(['random_quiz_questions' => $randomQuestions->pluck('id')->toArray()]);
             session(['random_quiz_time_limit' => round($timeLimit * 60)]); // Convert minutes to seconds and round
 
             $executionTime = (microtime(true) - $startTime) * 1000;
@@ -88,7 +88,7 @@ class RandomQuizController extends Controller
             ]);
 
             return view('quiz.random_quiz', [
-                'questions' => $randomQuestions,
+                'questions' => Question::whereIn('id', session('random_quiz_questions'))->get(),
                 'totalQuestions' => $randomQuestions->count(),
                 'selectedCourses' => Course::whereIn('id', $selectedCourses)->get(),
                 'time_limit' => round($timeLimit * 60) // Convert minutes to seconds and round
@@ -149,9 +149,15 @@ class RandomQuizController extends Controller
             $timeLimit = session('random_quiz_time_limit');
             
             // Get questions from session with validation
-            $questions = session('random_quiz_questions');
-            if (!$questions || !$questions->count()) {
+            $questionIds = session('random_quiz_questions');
+            if (!$questionIds || empty($questionIds)) {
                 throw new \Exception('Quiz session expired or no questions found');
+            }
+
+            $questions = Question::whereIn('id', $questionIds)->get();
+
+            if ($questions->count() !== count($questionIds)) {
+                throw new \Exception('Some questions are no longer available. Please start a new quiz.');
             }
 
             // Validate time limit if set
