@@ -1,4 +1,4 @@
-THIS SHOULD BE A LINTER ERROR<?php
+<?php
 
 namespace App\Http\Controllers;
 
@@ -213,51 +213,73 @@ class QuizController extends Controller
             $cacheKey = "user_access_{$userId}_{$course->id}_{$topic->id}";
             Cache::put($cacheKey, true, 300); // Cache for 5 minutes
             
-            // PROCESS GRADING: Use validated data
-            $gradingResult = $this->gradingService->gradeQuiz(
-                auth()->user(),
-                $validated['answers'],
-                $validated['time_taken'],
-                $validated['mode'] ?? 'quiz',
-                $topic,
-                $course
-            );
-            
-            // CACHE INVALIDATION: Update caches atomically
-            $this->cacheService->updateCacheBeforeWrite('quiz_completed', [
+            // BULLETPROOF GRADING: Use database service for safe operations
+            $gradingResult = DatabaseService::safeTransaction(function () use ($validated, $topic, $course, $userId, $requestId) {
+                return $this->gradingService->gradeQuiz(
+                    auth()->user(),
+                    $validated['answers'],
+                    $validated['time_taken'],
+                    $validated['mode'] ?? 'quiz',
+                    $topic,
+                    $course
+                );
+            }, [
                 'user_id' => $userId,
-                'topic_id' => $topic->id
+                'topic_id' => $topic->id,
+                'request_id' => $requestId,
+                'action' => 'quiz_grading'
             ]);
+            
+            if (!$gradingResult['success']) {
+                Log::error('Quiz grading transaction failed', [
+                    'request_id' => $requestId,
+                    'user_id' => $userId,
+                    'error' => $gradingResult['error']
+                ]);
+                
+                return response()->json([
+                    'success' => false,
+                    'error' => 'Quiz grading temporarily unavailable. Please try again.'
+                ], 503);
+            }
+            
+            // SAFE CACHE INVALIDATION: Update caches with error handling
+            ResilientCacheService::safeForget("user_progress_{$userId}_{$topic->id}");
+            ResilientCacheService::safeForget("quiz_cache_{$userId}_{$topic->id}");
             
             $processingTime = (microtime(true) - $startTime) * 1000;
             
             // PERFORMANCE LOGGING: Track response time
-            \Log::info('Quiz grading completed', [
+            Log::info('Quiz grading completed', [
+                'request_id' => $requestId,
                 'user_id' => $userId,
                 'topic_id' => $topic->id,
                 'processing_time_ms' => round($processingTime, 2),
                 'questions_graded' => count($validated['answers']),
-                'score' => $gradingResult['score'] ?? 0,
-                'total' => $gradingResult['totalQuestions'] ?? 0
+                'score' => $gradingResult['data']['score'] ?? 0,
+                'total' => $gradingResult['data']['totalQuestions'] ?? 0
             ]);
+            
+            // Extract the actual grading data
+            $result = $gradingResult['data'];
             
             // RESPONSE: Return structured data with performance metrics
             return response()->json([
                 'success' => true,
-                'score' => $gradingResult['score'],
-                'total' => $gradingResult['totalQuestions'],
-                'total_questions' => $gradingResult['totalQuestions'],
-                'percentage' => $gradingResult['percentageGrade'],
-                'percentage_grade' => $gradingResult['percentageGrade'],
-                'encouragement' => $gradingResult['encouragement'],
-                'source_progress' => $gradingResult['sourceProgress'] ?? [],
-                'correct_answers' => $gradingResult['correctAnswers'],
-                'xp_earned' => $gradingResult['xp_earned'] ?? 0,
-                'level_up' => $gradingResult['levelUp'] ?? false,
-                'new_level' => $gradingResult['newLevel'] ?? null,
+                'score' => $result['score'],
+                'total' => $result['totalQuestions'],
+                'total_questions' => $result['totalQuestions'],
+                'percentage' => $result['percentageGrade'],
+                'percentage_grade' => $result['percentageGrade'],
+                'encouragement' => $result['encouragement'],
+                'source_progress' => $result['sourceProgress'] ?? [],
+                'correct_answers' => $result['correctAnswers'],
+                'xp_earned' => $result['xp_earned'] ?? 0,
+                'level_up' => $result['levelUp'] ?? false,
+                'new_level' => $result['newLevel'] ?? null,
                 'performance_metrics' => [
                     'processing_time_ms' => round($processingTime, 2),
-                    'cache_hit' => Cache::has($cacheKey)
+                    'cache_hit' => ResilientCacheService::safeGet($cacheKey, false) !== false
                 ]
             ]);
             
