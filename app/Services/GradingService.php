@@ -1,4 +1,4 @@
-THIS SHOULD BE A LINTER ERROR<?php
+<?php
 
 namespace App\Services;
 
@@ -114,12 +114,17 @@ class GradingService
      */
     private function validateQuizInputs(array $answers, int $duration, string $mode): void
     {
-        // Validate answer payload size
+        // Validate answer payload size (but allow empty answers)
         $maxAnswerLength = 2000;
         $maxTotalLength = 20000;
         $totalLength = 0;
 
         foreach ($answers as $qid => $answer) {
+            // Skip null/empty answers (they're allowed)
+            if ($answer === null || $answer === '') {
+                continue;
+            }
+            
             if (is_string($answer) && mb_strlen($answer) > $maxAnswerLength) {
                 throw new \InvalidArgumentException("Answer for question $qid exceeds maximum allowed length of $maxAnswerLength characters.");
             }
@@ -132,9 +137,9 @@ class GradingService
             throw new \InvalidArgumentException("Total answer payload exceeds maximum allowed length of $maxTotalLength characters.");
         }
 
-        // Validate other inputs
-        if (empty($answers)) {
-            throw new \InvalidArgumentException('No answers provided');
+        // Allow empty answers array (user might not answer anything)
+        if (!is_array($answers)) {
+            throw new \InvalidArgumentException('Answers must be an array');
         }
 
         if (!is_numeric($duration) || $duration < 0) {
@@ -142,7 +147,7 @@ class GradingService
         }
 
         // Default to 'quiz' mode if not valid
-        if (!in_array($mode, ['quiz', 'tutor'])) {
+        if (!in_array($mode, ['quiz', 'tutor', 'random'])) {
             Log::warning('Invalid mode received, defaulting to quiz mode', [
                 'received_mode' => $mode
             ]);
