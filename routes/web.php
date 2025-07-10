@@ -170,15 +170,27 @@ Route::middleware('auth')->group(function () {
     Route::get('/payments/{course}/options', [PaymentController::class, 'getPaymentOptions'])->name('payments.options');
     Route::get('/payments/history', [PaymentController::class, 'history'])->name('payments.history');
 
-    // Manual payment processing routes
-    Route::post('/payments/{course}/process-manual', [PaymentController::class, 'processManualPayment'])->name('payments.process-manual');
-    Route::post('/payments/{course}/submit-proof', [PaymentController::class, 'submitProof'])->name('payments.submit-proof');
-    Route::post('/payments/{payment}/submit-proof', [PaymentController::class, 'submitPaymentProof'])->name('payments.submit-payment-proof');
+    // Manual payment processing routes with rate limiting
+    Route::post('/payments/{course}/process-manual', [PaymentController::class, 'processManualPayment'])
+        ->name('payments.process-manual')
+        ->middleware(['throttle:5,1']); // 5 payment attempts per minute
+    Route::post('/payments/{course}/submit-proof', [PaymentController::class, 'submitProof'])
+        ->name('payments.submit-proof')
+        ->middleware(['throttle:10,1']); // 10 proof submissions per minute
+    Route::post('/payments/{payment}/submit-proof', [PaymentController::class, 'submitPaymentProof'])
+        ->name('payments.submit-payment-proof')
+        ->middleware(['throttle:10,1']); // 10 proof submissions per minute
     
-    // Bundle payment routes
-    Route::post('/payments/bundle/options', [PaymentController::class, 'getBundlePaymentOptions'])->name('payments.bundle.options');
-    Route::post('/payments/bundle/process-manual', [PaymentController::class, 'processBundleManualPayment'])->name('payments.bundle.process-manual');
-    Route::post('/payments/bundle/submit-proof', [PaymentController::class, 'submitBundlePaymentProof'])->name('payments.bundle.submit-proof');
+    // Bundle payment routes with rate limiting
+    Route::post('/payments/bundle/options', [PaymentController::class, 'getBundlePaymentOptions'])
+        ->name('payments.bundle.options')
+        ->middleware(['throttle:20,1']); // 20 bundle option requests per minute
+    Route::post('/payments/bundle/process-manual', [PaymentController::class, 'processBundleManualPayment'])
+        ->name('payments.bundle.process-manual')
+        ->middleware(['throttle:3,1']); // 3 bundle payment attempts per minute
+    Route::post('/payments/bundle/submit-proof', [PaymentController::class, 'submitBundlePaymentProof'])
+        ->name('payments.bundle.submit-proof')
+        ->middleware(['throttle:5,1']); // 5 bundle proof submissions per minute
 
     // Admin payment routes
     Route::post('/admin/payments/{payment}/verify', [PaymentController::class, 'adminVerifyPayment'])->name('admin.payments.verify');
