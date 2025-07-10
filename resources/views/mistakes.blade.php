@@ -1164,7 +1164,7 @@
                     cardFront.innerHTML = `
                         <div class="question-text">
                             <p>${questionText}</p>
-                            ${questionImage ? questionImage.outerHTML : ''}
+                            ${questionImage ? `<img src="${questionImage.src}" alt="Question Image" class="question-image" style="max-width: 100%; height: auto; max-height: 200px; border-radius: 8px; margin: 1rem 0;">` : ''}
                         </div>
                     `;
                     cardBack.innerHTML = `

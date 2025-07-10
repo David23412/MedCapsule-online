@@ -1,0 +1,51 @@
+includes:
+    - ./vendor/larastan/larastan/extension.neon
+
+parameters:
+    paths:
+        - app/
+        - config/
+        - database/
+        - routes/
+        - tests/
+    
+    # The level 9 is the highest level
+    level: 8
+    
+    ignoreErrors:
+        # Ignore blade view errors
+        - '#Call to an undefined method Illuminate\\View\\View::#'
+        # Ignore Laravel-specific magic methods
+        - '#Call to an undefined method Illuminate\\Database\\Eloquent\\Builder::#'
+        - '#Access to an undefined property App\\Models\\[a-zA-Z0-9\\]+::\$[a-zA-Z0-9_]+#'
+        # Ignore errors in vendor packages
+        - '#.*vendor/.*#'
+    
+    excludePaths:
+        - ./vendor/*
+        - ./node_modules/*
+        - ./bootstrap/cache/*
+        - ./storage/*
+        - ./public/build/*
+    
+    checkMissingIterableValueType: false
+    checkGenericClassInNonGenericObjectType: false
+    
+    # Laravel-specific settings
+    noModelMake: true
+    checkModelProperties: true
+    checkPhpDocMissingReturn: true
+    checkTooWideReturnTypesInProtectedAndPublicMethods: true
+    checkUninitializedProperties: true
+    checkDynamicProperties: false
+    
+    # Additional checks for high quality
+    reportUnmatchedIgnoredErrors: false
+    treatPhpDocTypesAsCertain: false
+    
+    # Memory limit for large projects
+    tmpDir: ./storage/phpstan
+    
+    # Parallel processing
+    parallel:
+        maximumNumberOfProcesses: 4

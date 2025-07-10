@@ -1,0 +1,165 @@
+name: 🚀 Code Quality & Testing
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+jobs:
+  quality-check:
+    runs-on: ubuntu-latest
+    
+    strategy:
+      matrix:
+        php-versions: ['8.2', '8.3']
+        
+    name: Quality Check - PHP ${{ matrix.php-versions }}
+    
+    steps:
+    - name: 📥 Checkout code
+      uses: actions/checkout@v4
+      
+    - name: 🐘 Setup PHP
+      uses: shivammathur/setup-php@v2
+      with:
+        php-version: ${{ matrix.php-versions }}
+        extensions: mbstring, dom, fileinfo, mysql, redis
+        coverage: xdebug
+        
+    - name: 📦 Get Composer Cache Directory
+      id: composer-cache
+      run: echo "dir=$(composer config cache-files-dir)" >> $GITHUB_OUTPUT
+      
+    - name: 🗃️ Cache Composer dependencies
+      uses: actions/cache@v3
+      with:
+        path: ${{ steps.composer-cache.outputs.dir }}
+        key: ${{ runner.os }}-composer-${{ hashFiles('**/composer.lock') }}
+        restore-keys: ${{ runner.os }}-composer-
+        
+    - name: 📥 Install PHP dependencies
+      run: composer install --no-progress --prefer-dist --optimize-autoloader --no-dev
+      
+    - name: 🔧 Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+        cache: 'npm'
+        
+    - name: 📥 Install Node.js dependencies
+      run: npm ci
+      
+    - name: 📋 Copy environment file
+      run: cp .env.example .env
+      
+    - name: 🔑 Generate application key
+      run: php artisan key:generate
+      
+    - name: 📁 Create database
+      run: touch database/database.sqlite
+      
+    - name: 🗄️ Run migrations
+      env:
+        DB_CONNECTION: sqlite
+        DB_DATABASE: database/database.sqlite
+      run: php artisan migrate --force
+      
+    - name: 🎨 Code Formatting Check (Laravel Pint)
+      run: ./vendor/bin/pint --test
+      
+    - name: 🔍 Static Analysis (PHPStan)
+      run: |
+        mkdir -p storage/phpstan
+        ./vendor/bin/phpstan analyse --memory-limit=2G --no-progress
+        
+    - name: 🛡️ Security Audit (PHP)
+      run: composer audit
+      
+    - name: 🛡️ Security Audit (Node.js)
+      run: npm audit --audit-level high
+      continue-on-error: true
+      
+    - name: 🧪 Run PHPUnit Tests
+      env:
+        DB_CONNECTION: sqlite
+        DB_DATABASE: database/database.sqlite
+      run: ./vendor/bin/phpunit --coverage-clover coverage.xml
+      
+    - name: 📊 Upload Coverage to Codecov
+      uses: codecov/codecov-action@v3
+      with:
+        file: ./coverage.xml
+        flags: unittests
+        name: codecov-umbrella
+        fail_ci_if_error: false
+        
+    - name: 🏗️ Build Frontend Assets
+      run: npm run build
+      
+    - name: ✅ All Quality Checks Passed
+      run: echo "🎉 All quality checks passed successfully!"
+
+  security-scan:
+    runs-on: ubuntu-latest
+    name: 🔒 Security Scan
+    
+    steps:
+    - name: 📥 Checkout code
+      uses: actions/checkout@v4
+      
+    - name: 🔍 Run Trivy vulnerability scanner
+      uses: aquasecurity/trivy-action@master
+      with:
+        scan-type: 'fs'
+        scan-ref: '.'
+        format: 'sarif'
+        output: 'trivy-results.sarif'
+        
+    - name: 📤 Upload Trivy scan results to GitHub Security tab
+      uses: github/codeql-action/upload-sarif@v2
+      if: always()
+      with:
+        sarif_file: 'trivy-results.sarif'
+
+  performance-test:
+    runs-on: ubuntu-latest
+    name: ⚡ Performance Test
+    if: github.event_name == 'pull_request'
+    
+    steps:
+    - name: 📥 Checkout code
+      uses: actions/checkout@v4
+      
+    - name: 🐘 Setup PHP
+      uses: shivammathur/setup-php@v2
+      with:
+        php-version: '8.2'
+        extensions: mbstring, dom, fileinfo, mysql
+        
+    - name: 📥 Install dependencies
+      run: composer install --no-progress --prefer-dist --optimize-autoloader
+      
+    - name: 📋 Setup environment
+      run: |
+        cp .env.example .env
+        php artisan key:generate
+        touch database/database.sqlite
+        
+    - name: 🗄️ Run migrations
+      env:
+        DB_CONNECTION: sqlite
+        DB_DATABASE: database/database.sqlite
+      run: php artisan migrate --force
+      
+    - name: ⚡ Performance Benchmarks
+      env:
+        DB_CONNECTION: sqlite
+        DB_DATABASE: database/database.sqlite
+      run: |
+        echo "Running performance benchmarks..."
+        # Add your performance testing commands here
+        php artisan route:cache
+        php artisan config:cache
+        php artisan view:cache
+        echo "✅ Performance optimizations applied"
