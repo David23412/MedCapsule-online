@@ -55,10 +55,14 @@ return [
             'collation' => env('DB_COLLATION', 'utf8mb4_unicode_ci'),
             'prefix' => '',
             'prefix_indexes' => true,
-            'strict' => true,
+            'strict' => env('DB_STRICT', false),  // Better performance for bulk operations
             'engine' => null,
             'options' => extension_loaded('pdo_mysql') ? array_filter([
                 PDO::MYSQL_ATTR_SSL_CA => env('MYSQL_ATTR_SSL_CA'),
+                PDO::ATTR_EMULATE_PREPARES => false,
+                PDO::ATTR_STRINGIFY_FETCHES => false,
+                PDO::MYSQL_ATTR_USE_BUFFERED_QUERY => true,
+                PDO::MYSQL_ATTR_LOCAL_INFILE => true,
             ]) : [],
         ],
 
@@ -148,8 +152,8 @@ return [
         'options' => [
             'cluster' => env('REDIS_CLUSTER', 'redis'),
             'prefix' => env('REDIS_PREFIX', 'medcapsule_database_'),
-            'serializer' => \Redis::SERIALIZER_JSON,
-            'compression' => true,
+            'serializer' => extension_loaded('igbinary') ? \Redis::SERIALIZER_IGBINARY : \Redis::SERIALIZER_JSON,
+            'compression' => extension_loaded('lz4') ? \Redis::COMPRESSION_LZ4 : \Redis::COMPRESSION_ZSTD,
             'compression_level' => 6
         ],
 
@@ -161,7 +165,9 @@ return [
             'port' => env('REDIS_PORT', '6379'),
             'database' => env('REDIS_DB', '0'),
             'read_timeout' => 60,
-            'persistent' => true
+            'persistent' => true,
+            'tcp_keepalive' => 60,  // Keep connections alive
+            'retry_interval' => 100,  // Retry interval in milliseconds
         ],
 
         'cache' => [
@@ -172,7 +178,9 @@ return [
             'port' => env('REDIS_PORT', '6379'),
             'database' => env('REDIS_CACHE_DB', '1'),
             'read_timeout' => 60,
-            'persistent' => true
+            'persistent' => true,
+            'tcp_keepalive' => 60,  // Keep connections alive
+            'retry_interval' => 100,  // Retry interval in milliseconds
         ],
 
     ],
