@@ -795,8 +795,8 @@
                             $questionText = is_string($mistake->question) ? $mistake->question : json_decode($mistake->question)->question;
                         @endphp
                         {!! $questionText !!}
-                        @if($mistake->image_url)
-                            <img src="{{ asset($mistake->image_url) }}" alt="Question Image" class="question-image">
+                        @if($mistake->question && $mistake->question->image_url)
+                            <img src="{{ asset($mistake->question->image_url) }}" alt="Question Image" class="question-image">
                         @endif
                     </div>
                     
