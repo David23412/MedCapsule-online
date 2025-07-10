@@ -37,7 +37,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/courses/{course}', [CourseController::class, 'show'])->name('courses.show');
     
     // Review routes with CSRF and rate limiting
-    Route::get('/review', [MistakeController::class, 'index'])->name('review.index');
+    Route::get('/review', [QuizController::class, 'showMistakes'])->name('review.index');
     Route::get('/review/learn', [LearnController::class, 'learnMistakes'])->name('review.learn');
     Route::post('/review/remove/{question_id}', [MistakeController::class, 'removeMistake'])
         ->name('review.remove')
@@ -61,8 +61,6 @@ Route::middleware('auth')->group(function () {
     Route::get('/manage-access/search-users', [UserCourseController::class, 'searchUsers'])->name('admin.user-course.search');
     Route::post('/manage-access/toggle-admin', [UserCourseController::class, 'toggleAdmin'])->name('admin.user-course.toggle-admin');
     Route::post('/manage-access/payment-settings', [UserCourseController::class, 'updatePaymentSettings'])->name('admin.payment-settings.update');
-    Route::post('/manage-access/approve-request/{requestId}', [UserCourseController::class, 'approveAccessRequest'])->name('admin.approve-access-request');
-    Route::post('/manage-access/reject-request/{requestId}', [UserCourseController::class, 'rejectAccessRequest'])->name('admin.reject-access-request');
     
     // Delete Management Routes
     Route::get('/admin/delete', [DeleteController::class, 'index'])->name('admin.delete.index');
@@ -83,7 +81,6 @@ Route::middleware('auth')->group(function () {
     
     // Course enrollment and topic routes
     Route::post('/courses/{course}/enroll', [CourseController::class, 'enroll'])->name('courses.enroll');
-    Route::post('/courses/{courseSlug}/request-access', [CourseController::class, 'requestAccess'])->name('courses.request-access');
     Route::get('/topics/{course}', [TopicController::class, 'forCourse'])->name('topics.forCourse');
     Route::get('/topics/course/{course}', [TopicController::class, 'forCourse'])->name('topics.forCourse');
     Route::get('/topics', function() {
@@ -169,12 +166,32 @@ Route::middleware('auth')->group(function () {
         }
     })->middleware('auth')->name('api.active-users');
 
-    // Payment routes
+    // Payment routes - must be added inside the auth middleware group
     Route::get('/payments/{course}/options', [PaymentController::class, 'getPaymentOptions'])->name('payments.options');
-    Route::post('/payments/process-manual', [PaymentController::class, 'processManualPayment'])->name('payments.process-manual');
-    Route::post('/payments/{course}/submit-proof', [PaymentController::class, 'submitProof'])->name('payments.submit-proof-course');
-    Route::post('/payments/{payment}/submit-proof', [PaymentController::class, 'submitPaymentProof'])->name('payments.submit-proof');
+    Route::get('/payments/history', [PaymentController::class, 'history'])->name('payments.history');
+
+    // Manual payment processing routes with rate limiting
+    Route::post('/payments/{course}/process-manual', [PaymentController::class, 'processManualPayment'])
+        ->name('payments.process-manual')
+        ->middleware(['throttle:5,1']); // 5 payment attempts per minute
+    Route::post('/payments/{course}/submit-proof', [PaymentController::class, 'submitProof'])
+        ->name('payments.submit-proof')
+        ->middleware(['throttle:10,1']); // 10 proof submissions per minute
+    Route::post('/payments/{payment}/submit-proof', [PaymentController::class, 'submitPaymentProof'])
+        ->name('payments.submit-payment-proof')
+        ->middleware(['throttle:10,1']); // 10 proof submissions per minute
     
+    // Bundle payment routes with rate limiting
+    Route::post('/payments/bundle/options', [PaymentController::class, 'getBundlePaymentOptions'])
+        ->name('payments.bundle.options')
+        ->middleware(['throttle:20,1']); // 20 bundle option requests per minute
+    Route::post('/payments/bundle/process-manual', [PaymentController::class, 'processBundleManualPayment'])
+        ->name('payments.bundle.process-manual')
+        ->middleware(['throttle:3,1']); // 3 bundle payment attempts per minute
+    Route::post('/payments/bundle/submit-proof', [PaymentController::class, 'submitBundlePaymentProof'])
+        ->name('payments.bundle.submit-proof')
+        ->middleware(['throttle:5,1']); // 5 bundle proof submissions per minute
+
     // Admin payment routes
     Route::post('/admin/payments/{payment}/verify', [PaymentController::class, 'adminVerifyPayment'])->name('admin.payments.verify');
     Route::post('/admin/payments/{payment}/reject', [PaymentController::class, 'adminRejectPayment'])->name('admin.payments.reject');

@@ -17,6 +17,9 @@ use Illuminate\Support\Facades\Auth;
 use App\Services\NotificationService;
 use App\Models\User;
 use App\Services\UserStatsService;
+use App\Services\DatabaseService;
+use App\Services\ResilientCacheService;
+use App\Services\InputValidationService;
 
 class RandomQuizController extends Controller
 {
@@ -126,27 +129,32 @@ class RandomQuizController extends Controller
     {
         $startTime = microtime(true);
         $requestId = uniqid('random_quiz_grade_');
-        
-        DB::beginTransaction();
-        try {
+        $userId = auth()->id();
+
+        // BULLETPROOF INPUT VALIDATION
+        $validationResult = InputValidationService::validateInput($request->all(), [
+            'answers' => 'required|array|max:100',
+            'answers.*' => 'nullable|string|max:2000|no_sql_injection',
+            'time_taken' => 'required|integer|min:0|max:86400'
+        ], [], [
+            'user_id' => $userId,
+            'action' => 'random_quiz_grade',
+            'request_id' => $requestId
+        ]);
+
+        // BULLETPROOF TRANSACTION
+        $result = DatabaseService::safeTransaction(function () use ($request, $requestId, $validationResult, $userId, $startTime) {
             $user = Auth::user();
             
             Log::info('Random Quiz Grading Started', [
                 'request_id' => $requestId,
                 'user_id' => $user->id,
-                'request_data' => $request->all(),
-                'ip_address' => request()->ip()
-            ]);
-            
-            // Validate request data
-            $request->validate([
-                'answers' => 'required|array',
-                'answers.*' => 'nullable|string',
-                'time_taken' => 'required|integer|min:0'
+                'ip_address' => request()->ip(),
+                'questions_count' => count($validationResult['answers'] ?? [])
             ]);
 
-            $answers = $request->input('answers', []);
-            $timeTaken = $request->input('time_taken', 0);
+            $answers = $validationResult['answers'] ?? [];
+            $timeTaken = $validationResult['time_taken'] ?? 0;
             $timeLimit = session('random_quiz_time_limit');
             
             // Get questions from session with validation
@@ -243,49 +251,48 @@ class RandomQuizController extends Controller
 
             // Create mistake records with error handling
             foreach ($incorrectAnswers as $questionId => $mistakeData) {
-                try {
-                    Mistake::updateOrCreate(
-                        [
-                            'user_id' => $user->id,
-                            'question_id' => $questionId
-                        ],
-                        [
+                $mistakeResult = DatabaseService::safeQuery(function() use ($user, $questionId, $mistakeData) {
+                    $existing = Mistake::where('user_id', $user->id)
+                                     ->where('question_id', $questionId)
+                                     ->first();
+                    
+                    if ($existing) {
+                        // Update existing mistake
+                        $existing->update([
                             'last_attempt_date' => now(),
-                            'incorrect_attempts' => DB::raw('incorrect_attempts + 1'),
+                            'incorrect_attempts' => $existing->incorrect_attempts + 1,
                             'last_incorrect_answer' => $mistakeData['submitted_answer']
-                        ]
-                    );
-                } catch (\Exception $e) {
+                        ]);
+                        return $existing;
+                    } else {
+                        // Create new mistake
+                        return Mistake::create([
+                            'user_id' => $user->id,
+                            'question_id' => $questionId,
+                            'last_attempt_date' => now(),
+                            'incorrect_attempts' => 1,
+                            'last_incorrect_answer' => $mistakeData['submitted_answer']
+                        ]);
+                    }
+                }, null);
+                
+                if ($mistakeResult === null) {
                     Log::error('Failed to create/update mistake record', [
                         'request_id' => $requestId,
                         'user_id' => $user->id,
-                        'question_id' => $questionId,
-                        'error' => $e->getMessage()
+                        'question_id' => $questionId
                     ]);
                     // Continue processing other mistakes
                 }
             }
 
             // Handle milestones
-                $this->handleMilestones($user, $score);
+            $this->handleMilestones($user, $score);
 
             // Clear session data
             session()->forget(['random_quiz_questions', 'random_quiz_time_limit']);
 
-            DB::commit();
-
-            $executionTime = (microtime(true) - $startTime) * 1000;
-            Log::info('✅ Random quiz graded successfully', [
-                'request_id' => $requestId,
-                'execution_time_ms' => round($executionTime, 2),
-                'score' => $score,
-                'total_questions' => $totalQuestions,
-                'percentage_grade' => $percentageGrade,
-                'incorrect_answers_count' => count($incorrectAnswers),
-                'quiz_attempt_id' => $quizAttempt->id
-            ]);
-
-            return response()->json([
+            return [
                 'success' => true,
                 'score' => $score,
                 'total' => $totalQuestions,
@@ -295,31 +302,21 @@ class RandomQuizController extends Controller
                 'correct_answers' => $correctAnswersMap,
                 'message' => $this->getScoreMessage($percentageGrade),
                 'quiz_attempt_id' => $quizAttempt->id
-            ]);
+            ];
+        }, [
+            'user_id' => $userId,
+            'action' => 'random_quiz_grading',
+            'request_id' => $requestId
+        ]);
 
-        } catch (\Illuminate\Validation\ValidationException $e) {
-            DB::rollBack();
+        // Handle the result from the transaction
+        if (!$result['success']) {
             $executionTime = (microtime(true) - $startTime) * 1000;
-            Log::warning('Random quiz grading failed - validation error:', [
+            Log::error('❌ Random quiz transaction failed:', [
                 'request_id' => $requestId,
-                'error' => $e->getMessage(),
-                'validation_errors' => $e->errors(),
-                'user_id' => auth()->id(),
+                'error' => $result['error'],
+                'user_id' => $userId,
                 'execution_time_ms' => round($executionTime, 2)
-            ]);
-            throw $e; // Re-throw to let Laravel handle the validation response
-        } catch (\Exception $e) {
-            DB::rollBack();
-            $executionTime = (microtime(true) - $startTime) * 1000;
-            Log::error('❌ Error grading random quiz:', [
-                'request_id' => $requestId,
-                'error' => $e->getMessage(),
-                'file' => $e->getFile(),
-                'line' => $e->getLine(),
-                'execution_time_ms' => round($executionTime, 2),
-                'trace' => $e->getTraceAsString(),
-                'user_id' => auth()->id(),
-                'request_data' => $request->all()
             ]);
 
             return response()->json([
@@ -327,6 +324,18 @@ class RandomQuizController extends Controller
                 'error' => 'An error occurred while grading the quiz. Please try again.'
             ], 500);
         }
+
+        $executionTime = (microtime(true) - $startTime) * 1000;
+        Log::info('✅ Random quiz graded successfully', [
+            'request_id' => $requestId,
+            'execution_time_ms' => round($executionTime, 2),
+            'score' => $result['data']['score'],
+            'total_questions' => $result['data']['total_questions'],
+            'percentage_grade' => $result['data']['percentage_grade'],
+            'quiz_attempt_id' => $result['data']['quiz_attempt_id']
+        ]);
+
+        return response()->json($result['data']);
     }
 
     private function handleMilestones($user, $score)

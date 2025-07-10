@@ -170,7 +170,6 @@ class GradingService
                 'id', 'question', 'question_type', 'correct_answer', 
                 'option_a', 'option_b', 'option_c', 'option_d', 'topic_id', 'source'
             ])
-            ->where('deleted', false)  // Add check for deleted flag
             ->with([
                 'topic:id,name,course_id',
                 'topic.course:id,name'
@@ -182,7 +181,7 @@ class GradingService
         if ($questions->count() !== count($questionIds)) {
             $foundIds = $questions->pluck('id')->toArray();
             $missingIds = array_diff($questionIds, $foundIds);
-            throw new \InvalidArgumentException("Questions not found or have been deleted: " . implode(', ', $missingIds));
+            throw new \InvalidArgumentException("Questions not found: " . implode(', ', $missingIds));
         }
         
         // CACHE: Store questions for potential reuse
@@ -201,13 +200,12 @@ class GradingService
      * @param Topic $topic
      * @return array
      */
-    private function processAnswers(User $user, \Illuminate\Database\Eloquent\Collection $questions, array $answers, Topic $topic): array
+    private function processAnswers(User $user, $questions, array $answers, Topic $topic): array
     {
         $score = 0;
         $totalQuestions = $questions->count();
         $sourceData = [];
         $mistakes = [];
-        $correctAnswers = [];
 
         foreach ($questions as $question) {
             $submittedAnswer = $answers[$question->id] ?? null;
@@ -217,7 +215,7 @@ class GradingService
                 $submittedAnswer = 'unanswered';
                 $isCorrect = false;
             } else {
-            $isCorrect = $this->evaluateAnswer($question, $submittedAnswer);
+                $isCorrect = $this->evaluateAnswer($question, $submittedAnswer);
             }
             $source = $question->source ?: 'General';
 
@@ -234,21 +232,21 @@ class GradingService
             if ($isCorrect) {
                 $score++;
                 $sourceData[$source]['score']++;
-                $correctAnswers[$question->id] = $question->correct_answer;
             } else {
                 // Record mistake
                 $this->recordMistake($user, $question, $submittedAnswer);
                 $mistakes[] = $question->id;
             }
 
-            // Only store minimal question data
             $sourceData[$source]['question_data'][] = [
                 'question_id' => $question->id,
+                'user_answer' => $submittedAnswer,
                 'is_correct' => $isCorrect
             ];
         }
 
         $percentageGrade = $totalQuestions > 0 ? min(100, ($score / $totalQuestions) * 100) : 0;
+        $totalCorrect = $score;
 
         return [
             'score' => $score,
@@ -256,7 +254,7 @@ class GradingService
             'percentageGrade' => $percentageGrade,
             'sourceData' => $sourceData,
             'mistakes' => $mistakes,
-            'correctAnswers' => $correctAnswers
+            'totalCorrect' => $totalCorrect
         ];
     }
 
@@ -464,34 +462,71 @@ class GradingService
     }
 
     /**
-     * Prepare grading response with minimal data
+     * Prepare grading response
+     *
+     * @param array $gradingResult
+     * @param \Illuminate\Database\Eloquent\Collection $questions
+     * @param array $answers
+     * @param array $xpResult
+     * @return array
      */
-    private function prepareGradingResponse(array $gradingResult, \Illuminate\Database\Eloquent\Collection $questions, array $answers, array $xpResult): array
+    private function prepareGradingResponse(array $gradingResult, $questions, array $answers, array $xpResult): array
     {
+        // Get updated progress for all sources
+        $sourceProgress = [];
+        foreach ($gradingResult['sourceData'] as $source => $data) {
+            $totalSourceQuestions = Question::where('topic_id', $questions->first()->topic_id)
+                ->where('source', $source)
+                ->count();
+            
+            $sourceProgress[$source] = [
+                'score' => $data['score'],
+                'total' => $data['total'],
+                'total_questions_available' => $totalSourceQuestions,
+                'percentage' => $data['total'] > 0 ? min(100, ($data['score'] / $data['total']) * 100) : 0
+            ];
+        }
+
         return [
             'success' => true,
             'score' => $gradingResult['score'],
-            'total' => $gradingResult['totalQuestions'],
+            'totalQuestions' => $gradingResult['totalQuestions'],
+            'total_questions' => $gradingResult['totalQuestions'],
+            'percentageGrade' => $gradingResult['percentageGrade'],
             'percentage_grade' => $gradingResult['percentageGrade'],
-            'correct_answers' => $gradingResult['correctAnswers'],
-            'xp_earned' => $xpResult['earnedXP'] ?? 0,
-            'level_up' => $xpResult['levelUp'] ?? false,
-            'new_level' => $xpResult['newLevel'] ?? null,
-            'encouragement' => $this->getEncouragementMessage($gradingResult['percentageGrade'])
+            'encouragement' => $this->getEncouragementMessage($gradingResult['percentageGrade']),
+            'source_progress' => $sourceProgress,
+            'correct_answers' => $questions->mapWithKeys(function ($question) use ($answers) {
+                return [$question->id => $question->correct_answer];
+            }),
+            'correctAnswers' => $questions->mapWithKeys(function ($question) use ($answers) {
+                return [$question->id => $question->correct_answer];
+            }),
+            'xp_earned' => $xpResult['earnedXP'],
+            'level_up' => $xpResult['levelUp'],
+            'new_level' => $xpResult['newLevel'],
+            'mistakes' => $gradingResult['mistakes']
         ];
     }
 
     /**
-     * Get encouragement message based on score
+     * Get encouragement message based on percentage grade
+     *
+     * @param float $percentageGrade
+     * @return string
      */
     private function getEncouragementMessage(float $percentageGrade): string
     {
-        if ($percentageGrade >= 90) {
-            return 'Excellent work! Keep it up!';
-        } elseif ($percentageGrade >= 70) {
-            return 'Good job! You\'re making progress!';
+        if ($percentageGrade >= 100) {
+            return "Excellent work! You're mastering this material! 🌟";
+        } elseif ($percentageGrade >= 85) {
+            return "Great job! You're making excellent progress! 🎉";
+        } elseif ($percentageGrade >= 75) {
+            return "Good work! Keep practicing to improve further! 💪";
+        } elseif ($percentageGrade >= 65) {
+            return "Not bad! Review the mistakes and try again! 📚";
         } else {
-            return 'Keep practicing! You\'ll get better with time.';
+            return "Don't worry! Learning takes time. Review and practice more! 🔄";
         }
     }
 
@@ -644,7 +679,7 @@ class GradingService
             $attempt = QuizAttempt::create([
                 'user_id' => $user->id,
                 'topic_id' => $topic->id,
-                'quiz_type' => 'tutor',
+                'quiz_type' => 'normal',
                 'study_mode' => 'tutor',
                 'source' => $source,
                 'score' => $sourceProgress['correct'],

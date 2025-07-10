@@ -16,8 +16,7 @@ class Kernel extends HttpKernel
     protected $middleware = [
         \App\Http\Middleware\HttpsRedirectMiddleware::class,
         \Fruitcake\Cors\HandleCors::class,
-        \App\Http\Middleware\QueryLoggingMiddleware::class, // OPTIMIZATION: Monitor query performance
-        \App\Http\Middleware\QueryMonitoringMiddleware::class, // PHASE 3: Advanced query monitoring
+        \App\Http\Middleware\ErrorBoundary::class,
         //
     ];
 
@@ -35,6 +34,7 @@ class Kernel extends HttpKernel
             \App\Http\Middleware\VerifyCsrfToken::class,
             \Illuminate\Routing\Middleware\SubstituteBindings::class,
             \App\Http\Middleware\TrackUserActivity::class,
+            \App\Http\Middleware\PerformanceMonitoring::class,
         ],
 
         'api' => [
@@ -65,5 +65,7 @@ class Kernel extends HttpKernel
         'admin' => \App\Http\Middleware\AdminMiddleware::class,
         'check.course.access' => \App\Http\Middleware\CheckCourseAccess::class,
         'force.https' => \App\Http\Middleware\HttpsRedirectMiddleware::class,
+        'error.boundary' => \App\Http\Middleware\ErrorBoundary::class,
+        'performance.monitor' => \App\Http\Middleware\PerformanceMonitoring::class,
     ];
 } 
