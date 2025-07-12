@@ -26,17 +26,17 @@ fi
 
 # Get ngrok URL from user
 echo "🔧 Configuring environment variables..."
-read -p "🌐 Enter your ngrok URL (e.g., https://abc123.ngrok.io): " NGROK_URL
+read -p "🌐 Enter your ngrok URL (e.g., https://abc123.ngrok-free.app): " NGROK_URL
 
 if [ -z "$NGROK_URL" ]; then
     echo "❌ Ngrok URL is required. Exiting..."
     exit 1
 fi
 
-# Validate URL format
-if [[ ! $NGROK_URL =~ ^https://.*\.ngrok\.io$ ]]; then
+# Validate URL format - Updated to accept both .ngrok.io and .ngrok-free.app
+if [[ ! $NGROK_URL =~ ^https://.*\.ngrok(-free)?\.app$ ]] && [[ ! $NGROK_URL =~ ^https://.*\.ngrok\.io$ ]]; then
     echo "⚠️  Warning: URL doesn't look like a standard ngrok URL"
-    echo "    Expected format: https://abc123.ngrok.io"
+    echo "    Expected formats: https://abc123.ngrok-free.app or https://abc123.ngrok.io"
     read -p "🤔 Continue anyway? (y/n): " -n 1 -r
     echo
     if [[ ! $REPLY =~ ^[Yy]$ ]]; then
@@ -44,19 +44,30 @@ if [[ ! $NGROK_URL =~ ^https://.*\.ngrok\.io$ ]]; then
     fi
 fi
 
-# Update .env for ngrok/HTTPS
+# Update .env for ngrok/HTTPS - Fixed to use local environment for ngrok
 echo "🔧 Updating environment configuration..."
-sed -i.bak "s|APP_ENV=.*|APP_ENV=production|g" .env
+sed -i.bak "s|APP_ENV=.*|APP_ENV=local|g" .env
 sed -i.bak "s|APP_DEBUG=.*|APP_DEBUG=true|g" .env
 sed -i.bak "s|APP_URL=.*|APP_URL=$NGROK_URL|g" .env
-sed -i.bak "s|FORCE_HTTPS=.*|FORCE_HTTPS=true|g" .env
-sed -i.bak "s|SECURE_COOKIES=.*|SECURE_COOKIES=true|g" .env
-sed -i.bak "s|SESSION_SECURE=.*|SESSION_SECURE=true|g" .env
+sed -i.bak "s|ASSET_URL=.*|ASSET_URL=$NGROK_URL|g" .env
+sed -i.bak "s|FORCE_HTTPS=.*|FORCE_HTTPS=false|g" .env
+sed -i.bak "s|SESSION_SECURE=.*|SESSION_SECURE=false|g" .env
+sed -i.bak "s|SESSION_SAME_SITE=.*|SESSION_SAME_SITE=none|g" .env
+sed -i.bak "s|SESSION_DOMAIN=.*|SESSION_DOMAIN=|g" .env
+sed -i.bak "s|SESSION_DRIVER=.*|SESSION_DRIVER=database|g" .env
 sed -i.bak "s|IS_PRODUCTION=.*|IS_PRODUCTION=false|g" .env
 
-# Add ngrok URL to config if not present
+# Add ngrok-specific configurations if not present
 if ! grep -q "NGROK_URL=" .env; then
     echo "NGROK_URL=$NGROK_URL" >> .env
+fi
+
+if ! grep -q "TRUSTED_PROXIES=" .env; then
+    echo "TRUSTED_PROXIES=*" >> .env
+fi
+
+if ! grep -q "SESSION_HTTP_ONLY=" .env; then
+    echo "SESSION_HTTP_ONLY=false" >> .env
 fi
 
 # Set up database

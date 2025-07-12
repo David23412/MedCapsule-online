@@ -27,12 +27,12 @@ You were experiencing multiple issues with the courses page:
 ASSET_URL=https://your-ngrok-subdomain.ngrok-free.app
 
 # After
-ASSET_URL=https://fa6ba8f2a3e1.ngrok-free.app
+ASSET_URL=https://YOUR_NGROK_URL.ngrok-free.app
 ```
 
 **Applied:**
 ```bash
-sed -i '' "s|ASSET_URL=.*|ASSET_URL=https://fa6ba8f2a3e1.ngrok-free.app|g" .env
+sed -i '' "s|ASSET_URL=.*|ASSET_URL=https://YOUR_NGROK_URL|g" .env
 php artisan config:clear
 ```
 
@@ -127,15 +127,15 @@ document.addEventListener('DOMContentLoaded', () => {
 ### 🔍 Verification Results
 ```bash
 # CSS file accessible
-curl -s -o /dev/null -w "CSS File Status: %{http_code}\n" https://fa6ba8f2a3e1.ngrok-free.app/css/optimized-courses.css
+curl -s -o /dev/null -w "CSS File Status: %{http_code}\n" https://YOUR_NGROK_URL/css/optimized-courses.css
 # Result: CSS File Status: 200
 
 # App CSS accessible
-curl -s -o /dev/null -w "App CSS: %{http_code}\n" https://fa6ba8f2a3e1.ngrok-free.app/css/app.css
+curl -s -o /dev/null -w "App CSS: %{http_code}\n" https://YOUR_NGROK_URL/css/app.css
 # Result: App CSS: 200
 
 # Courses page (redirects to login when not authenticated - expected behavior)
-curl -s -o /dev/null -w "Courses Page: %{http_code}\n" https://fa6ba8f2a3e1.ngrok-free.app/courses
+curl -s -o /dev/null -w "Courses Page: %{http_code}\n" https://YOUR_NGROK_URL/courses
 # Result: Courses Page: 302 (redirect to login)
 ```
 
@@ -156,8 +156,8 @@ curl -s -o /dev/null -w "Courses Page: %{http_code}\n" https://fa6ba8f2a3e1.ngro
 ## 🎯 TESTING INSTRUCTIONS
 
 ### Test Courses Page
-1. **Login to the application** at: `https://fa6ba8f2a3e1.ngrok-free.app/login`
-2. **Navigate to courses** at: `https://fa6ba8f2a3e1.ngrok-free.app/courses`
+1. **Login to the application** at: `https://YOUR_NGROK_URL/login`
+2. **Navigate to courses** at: `https://YOUR_NGROK_URL/courses`
 3. **Verify functionality**:
    - Page loads without errors
    - CSS styles are applied correctly

@@ -52,11 +52,36 @@ DB_PASSWORD=             # Your MySQL password
 3. ✅ Quizzes should work
 4. ✅ All database features should work
 
-## 🌐 For Ngrok Later
+## 🌐 For Ngrok Setup
 
-Once local is working:
+Once local is working, set up ngrok for external access:
+
+### **Option 1: Automated Ngrok Setup**
 ```bash
 ./setup-ngrok.sh
+```
+
+### **Option 2: Manual Ngrok Setup**
+```bash
+# 1. Start ngrok tunnel
+ngrok http 8000
+
+# 2. Copy your ngrok URL (e.g., https://abc123.ngrok-free.app)
+
+# 3. Update .env with ngrok URL
+sed -i '' "s|APP_URL=.*|APP_URL=https://YOUR_NGROK_URL|g" .env
+sed -i '' "s|ASSET_URL=.*|ASSET_URL=https://YOUR_NGROK_URL|g" .env
+
+# 4. Configure for ngrok
+sed -i '' "s|APP_ENV=.*|APP_ENV=local|g" .env
+sed -i '' "s|SESSION_DRIVER=.*|SESSION_DRIVER=database|g" .env
+sed -i '' "s|SESSION_DOMAIN=.*|SESSION_DOMAIN=|g" .env
+sed -i '' "s|SESSION_SAME_SITE=.*|SESSION_SAME_SITE=none|g" .env
+sed -i '' "s|SESSION_SECURE=.*|SESSION_SECURE=false|g" .env
+
+# 5. Clear caches
+php artisan config:clear
+php artisan cache:clear
 ```
 
 ## 🆘 Still Having Issues?
@@ -72,3 +97,19 @@ php artisan migrate:status
 # Check environment
 php artisan env:status
 ```
+
+## 📝 Common Ngrok Issues
+
+If you encounter issues with ngrok:
+
+1. **419 CSRF Errors**: Make sure `SESSION_SAME_SITE=none` and `SESSION_SECURE=false`
+2. **Asset Loading**: Ensure `ASSET_URL` matches your `APP_URL`
+3. **Session Issues**: Use `SESSION_DRIVER=database` instead of `file`
+4. **Cookie Problems**: Set `SESSION_HTTP_ONLY=false` for ngrok
+
+## 🎯 Environment Files Available
+
+- `.env.medcapsule` - For local development with medcapsule database
+- `.env.ngrok` - Pre-configured for ngrok usage
+- `.env.development.example` - Template for development
+- `.env.production.example` - Template for production
