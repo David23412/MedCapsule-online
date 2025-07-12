@@ -355,7 +355,7 @@ class QuizController extends Controller
                 'mistakes.created_at'
             ])
             ->with([
-                'question:id,question,topic_id',
+                'question:id,question,topic_id,correct_answer,image_url,explanation,question_type,option_a,option_b,option_c,option_d',
                 'question.topic:id,name,course_id',
                 'question.topic.course:id,name'
             ])
@@ -396,13 +396,21 @@ class QuizController extends Controller
                 'courses_count' => $availableCourses->count()
             ]);
 
+            // ENHANCED: Return view directly without redirect for better UX
             return view('mistakes', [
                 'mistakes' => $mistakes,
                 'mistakesByCourse' => $mistakesByCourse,
                 'availableCourses' => $availableCourses,
                 'courses' => $availableCourses,
                 'selectedCourse' => $courseFilter,
-                'courseFilter' => $courseFilter
+                'courseFilter' => $courseFilter,
+                'success' => true,
+                'error' => null,
+                'performance_metrics' => [
+                    'execution_time_ms' => round($executionTime, 2),
+                    'mistakes_count' => $mistakes->count(),
+                    'courses_count' => $availableCourses->count()
+                ]
             ]);
 
         } catch (\Exception $e) {
@@ -416,7 +424,23 @@ class QuizController extends Controller
                 'execution_time_ms' => round($executionTime, 2),
                 'trace' => $e->getTraceAsString()
             ]);
-            return redirect()->back()->with('error', 'An error occurred while loading your mistakes.');
+
+            // ENHANCED: Return error view instead of redirect to prevent page reload
+            return view('mistakes', [
+                'mistakes' => collect([]),
+                'mistakesByCourse' => collect([]),
+                'availableCourses' => collect([]),
+                'courses' => collect([]),
+                'selectedCourse' => null,
+                'courseFilter' => null,
+                'success' => false,
+                'error' => 'An error occurred while loading your mistakes. Please try again.',
+                'performance_metrics' => [
+                    'execution_time_ms' => round($executionTime, 2),
+                    'mistakes_count' => 0,
+                    'courses_count' => 0
+                ]
+            ]);
         }
     }
 
