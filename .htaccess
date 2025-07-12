@@ -1,0 +1,41 @@
+# SECURITY: Block access to backup directories and sensitive files
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    
+    # Block access to backup directories
+    RewriteRule ^backup-payment/.*$ - [F,L]
+    RewriteRule ^backups/.*$ - [F,L]
+    
+    # Block access to sensitive files
+    RewriteRule \.(bak|backup|old|tmp|log|env|git|gitignore|htaccess|htpasswd)$ - [F,L]
+    
+    # Block access to configuration files
+    RewriteRule ^(config|storage|bootstrap|database|tests|vendor)/ - [F,L]
+    
+    # Block access to Laravel specific files
+    RewriteRule ^(artisan|composer\.(json|lock)|package\.(json|lock)|\.env.*|phpunit\.xml|webpack\.mix\.js)$ - [F,L]
+</IfModule>
+
+# Block access to backup directories with Apache directives
+<Directory "backup-payment">
+    Require all denied
+</Directory>
+
+<Directory "backups">
+    Require all denied
+</Directory>
+
+# Block access to sensitive file types
+<FilesMatch "\.(bak|backup|old|tmp|log|env|git|gitignore|htaccess|htpasswd)$">
+    Require all denied
+</FilesMatch>
+
+# Security headers
+<IfModule mod_headers.c>
+    Header always set X-Content-Type-Options nosniff
+    Header always set X-Frame-Options SAMEORIGIN
+    Header always set X-XSS-Protection "1; mode=block"
+    Header always set Strict-Transport-Security "max-age=31536000; includeSubDomains"
+    Header always set Referrer-Policy "strict-origin-when-cross-origin"
+    Header always set Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self'; frame-ancestors 'none'"
+</IfModule>

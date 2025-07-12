@@ -357,6 +357,20 @@ class Question extends Model
     protected function normalizeTextForComparison(string $text): string
     {
         try {
+            // Input validation and length protection
+            if (empty($text)) {
+                return '';
+            }
+            
+            // Protect against excessive text length
+            if (strlen($text) > 2000) {
+                Log::warning('Text too long for normalization, truncating', [
+                    'length' => strlen($text),
+                    'truncated_to' => 2000
+                ]);
+                $text = substr($text, 0, 2000);
+            }
+            
             // Normalize number formats
             $text = $this->normalizeNumberFormats($text);
             
@@ -364,15 +378,15 @@ class Question extends Model
             // Standardize common variations (spacing, punctuation)
             $text = str_replace(['/', '-', '_', '+'], ' ', $text);
             
-            // Step 2: Uniform spacing for compound terms
+            // Step 2: Uniform spacing for compound terms - SAFE REGEX
             // This helps with compound medical terms like "T cell" vs "Tcell"
-            $text = preg_replace('/([a-z])([A-Z])/', '$1 $2', $text); // Split camelCase
+            $text = \App\Services\SecurityService::safeRegexReplace('/([a-z])([A-Z])/', '$1 $2', $text); // Split camelCase
             
-            // Step 3: Remove punctuation
-            $text = preg_replace('/[^\p{L}\p{N}\s]/u', ' ', $text);
+            // Step 3: Remove punctuation - SAFE REGEX
+            $text = \App\Services\SecurityService::safeRegexReplace('/[^\p{L}\p{N}\s]/u', ' ', $text);
             
-            // Step 4: Remove extra whitespace
-            $text = preg_replace('/\s+/', ' ', $text);
+            // Step 4: Remove extra whitespace - SAFE REGEX  
+            $text = \App\Services\SecurityService::safeRegexReplace('/\s+/', ' ', $text);
             
             // Step 5: Remove common filler words
             $fillerWords = [
@@ -388,7 +402,7 @@ class Question extends Model
             return implode(' ', $words);
         } catch (\Exception $e) {
             Log::error('Error in text normalization:', [
-                'text' => $text,
+                'text' => substr($text, 0, 100) . '...',
                 'error' => $e->getMessage()
             ]);
             return $text; // Return original text in case of error
@@ -404,11 +418,16 @@ class Question extends Model
     protected function normalizeNumberFormats(string $text): string
     {
         try {
-            // Replace comma decimal separators with dots (e.g., "2,5" -> "2.5")
-            $text = preg_replace('/(\d),(\d)/', '$1.$2', $text);
+            // Length protection
+            if (strlen($text) > 2000) {
+                $text = substr($text, 0, 2000);
+            }
             
-            // Standardize spacing around units (e.g., "5mg" -> "5 mg")
-            $text = preg_replace('/(\d)([a-zA-Z]+)/', '$1 $2', $text);
+            // Replace comma decimal separators with dots (e.g., "2,5" -> "2.5") - SAFE REGEX
+            $text = \App\Services\SecurityService::safeRegexReplace('/(\d),(\d)/', '$1.$2', $text);
+            
+            // Standardize spacing around units (e.g., "5mg" -> "5 mg") - SAFE REGEX
+            $text = \App\Services\SecurityService::safeRegexReplace('/(\d)([a-zA-Z]+)/', '$1 $2', $text);
             
             // Handle standard number words (e.g., "three" -> "3")
             $numberWords = [
@@ -417,17 +436,17 @@ class Question extends Model
             ];
             
             foreach ($numberWords as $word => $digit) {
-                $text = preg_replace('/\b' . $word . '\b/i', $digit, $text);
+                $text = \App\Services\SecurityService::safeRegexReplace('/\b' . $word . '\b/i', $digit, $text);
             }
             
-            // Standardize range formats (e.g., "5-10" as "5 to 10")
-            $text = preg_replace('/(\d+)\s*(?:to|-)\s*(\d+)/', '$1 to $2', $text);
+            // Standardize range formats (e.g., "5-10" as "5 to 10") - SAFE REGEX
+            $text = \App\Services\SecurityService::safeRegexReplace('/(\d+)\s*(?:to|-)\s*(\d+)/', '$1 to $2', $text);
             
             return $text;
         } catch (\Exception $e) {
             Log::error('Error normalizing numbers:', [
                 'error' => $e->getMessage(),
-                'text' => $text
+                'text' => substr($text, 0, 100) . '...'
             ]);
             return $text; // Return original text in case of error
         }
