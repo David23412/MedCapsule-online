@@ -3,6 +3,7 @@
 **Date:** January 2025  
 **Status:** ✅ RESOLVED - 419 errors fixed for ngrok  
 **Time to Fix:** 10 minutes  
+**Last Updated:** January 2025 - Additional fixes applied  
 
 ---
 
@@ -46,6 +47,8 @@ $cookie->setSameSite('None');
 $cookie->setSecure(false);  // Disable secure for ngrok
 ```
 
+**✅ FIXED:** Middleware now properly sets `session.secure => false` and `setSecure(false)` for cookies
+
 ### 3. ✅ Added Middleware to Global Stack
 **File:** `app/Http/Kernel.php`
 ```php
@@ -62,8 +65,11 @@ protected $middleware = [
 ```bash
 # Added ngrok-specific settings
 SESSION_HTTP_ONLY=false
+SESSION_SECURE_COOKIES=false
 TRUSTED_PROXIES=*
 ```
+
+**✅ FIXED:** Added missing `SESSION_SECURE_COOKIES=false` setting
 
 ### 5. ✅ Cleared All Caches
 ```bash
@@ -72,6 +78,13 @@ php artisan cache:clear
 php artisan route:clear
 php artisan view:clear
 ```
+
+### 6. ✅ Fixed Setup Script
+**File:** `setup-ngrok.sh`
+- **FIXED:** Changed `APP_ENV=production` to `APP_ENV=local` for ngrok
+- **FIXED:** Changed `FORCE_HTTPS=true` to `FORCE_HTTPS=false` for ngrok
+- **FIXED:** Added proper session configuration settings
+- **FIXED:** Removed conflicting secure cookie settings
 
 ---
 
@@ -106,6 +119,7 @@ curl -s https://fa6ba8f2a3e1.ngrok-free.app/login | grep -o 'name="_token" value
 | **Session Domain** | `.ngrok-free.app` | Empty (``) |
 | **Session Secure** | `true` | `false` |
 | **Session HTTP Only** | `true` | `false` |
+| **Session Secure Cookies** | `true` | `false` |
 | **CSRF Token** | ❌ 419 errors | ✅ Working properly |
 
 ---
@@ -143,6 +157,8 @@ php artisan config:clear
 3. **Session Settings**: SameSite=None and non-secure cookies work better with ngrok
 4. **Cache Management**: Always clear caches after configuration changes
 5. **Cross-Site Requests**: ngrok requires special handling for CSRF tokens
+6. **Environment Configuration**: Use `APP_ENV=local` and `FORCE_HTTPS=false` for ngrok
+7. **Cookie Security**: Disable secure cookies (`SESSION_SECURE_COOKIES=false`) for ngrok
 
 ---
 
@@ -153,6 +169,7 @@ php artisan config:clear
 - **✅ CSRF Tokens**: GENERATING PROPERLY
 - **✅ Session Handling**: CONFIGURED FOR NGROK
 - **✅ Cookie Settings**: OPTIMIZED FOR CROSS-SITE
+- **✅ Setup Script**: FIXED FOR PROPER NGROK CONFIGURATION
 
 ---
 

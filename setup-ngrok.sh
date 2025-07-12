@@ -46,12 +46,14 @@ fi
 
 # Update .env for ngrok/HTTPS
 echo "🔧 Updating environment configuration..."
-sed -i.bak "s|APP_ENV=.*|APP_ENV=production|g" .env
+sed -i.bak "s|APP_ENV=.*|APP_ENV=local|g" .env
 sed -i.bak "s|APP_DEBUG=.*|APP_DEBUG=true|g" .env
 sed -i.bak "s|APP_URL=.*|APP_URL=$NGROK_URL|g" .env
-sed -i.bak "s|FORCE_HTTPS=.*|FORCE_HTTPS=true|g" .env
-sed -i.bak "s|SECURE_COOKIES=.*|SECURE_COOKIES=true|g" .env
-sed -i.bak "s|SESSION_SECURE=.*|SESSION_SECURE=true|g" .env
+sed -i.bak "s|FORCE_HTTPS=.*|FORCE_HTTPS=false|g" .env
+sed -i.bak "s|SESSION_SECURE_COOKIES=.*|SESSION_SECURE_COOKIES=false|g" .env
+sed -i.bak "s|SESSION_HTTP_ONLY=.*|SESSION_HTTP_ONLY=false|g" .env
+sed -i.bak "s|SESSION_DOMAIN=.*|SESSION_DOMAIN=|g" .env
+sed -i.bak "s|SESSION_SAME_SITE=.*|SESSION_SAME_SITE=none|g" .env
 sed -i.bak "s|IS_PRODUCTION=.*|IS_PRODUCTION=false|g" .env
 
 # Add ngrok URL to config if not present
