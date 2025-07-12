@@ -80,6 +80,43 @@ class AppServiceProvider extends ServiceProvider
                 $app->make(\App\Services\MedicalKnowledgeService::class)
             );
         });
+
+        // Register PerformanceOptimizationService as singleton
+        $this->app->singleton(\App\Services\PerformanceOptimizationService::class, function ($app) {
+            return new \App\Services\PerformanceOptimizationService(
+                $app->make(CacheService::class)
+            );
+        });
+
+        // Register PaymentVerificationService as singleton
+        $this->app->singleton(\App\Services\PaymentVerificationService::class, function ($app) {
+            return new \App\Services\PaymentVerificationService();
+        });
+
+        // Register FraudDetectionService as singleton
+        $this->app->singleton(\App\Services\FraudDetectionService::class, function ($app) {
+            return new \App\Services\FraudDetectionService();
+        });
+
+        // Register PaymentLogService as singleton
+        $this->app->singleton(\App\Services\PaymentLogService::class, function ($app) {
+            return new \App\Services\PaymentLogService();
+        });
+
+        // Register InputValidationService as singleton
+        $this->app->singleton(\App\Services\InputValidationService::class, function ($app) {
+            return new \App\Services\InputValidationService();
+        });
+
+        // Register DatabaseService as singleton
+        $this->app->singleton(\App\Services\DatabaseService::class, function ($app) {
+            return new \App\Services\DatabaseService();
+        });
+
+        // Register ResilientCacheService as singleton
+        $this->app->singleton(\App\Services\ResilientCacheService::class, function ($app) {
+            return new \App\Services\ResilientCacheService();
+        });
     }
 
     /**

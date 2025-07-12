@@ -521,6 +521,16 @@ class Question extends Model
     protected function calculateTextSimilarity(string $text1, string $text2): float
     {
         try {
+            // MEMORY PROTECTION: Limit input size to prevent memory exhaustion
+            if (strlen($text1) > 5000 || strlen($text2) > 5000) {
+                Log::warning('Text too long for similarity calculation', [
+                    'text1_length' => strlen($text1),
+                    'text2_length' => strlen($text2),
+                    'max_allowed' => 5000
+                ]);
+                return 0.0;
+            }
+            
             // If either is empty after normalization, they can't be similar
             if (empty($text1) || empty($text2)) {
                 return 0.0;
@@ -532,21 +542,23 @@ class Question extends Model
                 return 0.0; // Return 0 for very different lengths
             }
             
-            // Calculate word overlap ratio (Jaccard similarity)
-            $words1 = explode(' ', $text1);
-            $words2 = explode(' ', $text2);
-            
-            // Filter out single character words and common words
-            $commonWords = ['the', 'a', 'an', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for', 'of', 'with', 'by', 'is', 'are', 'was', 'were', 'be', 'been', 'have', 'has', 'had', 'do', 'does', 'did', 'will', 'would', 'could', 'should', 'may', 'might', 'can', 'this', 'that', 'these', 'those'];
-            
-            $words1 = array_filter($words1, function($word) use ($commonWords) { 
-                $word = strtolower(trim($word));
-                return strlen($word) > 2 && !in_array($word, $commonWords); 
+            // OPTIMIZED: Use simple word overlap for performance and memory safety
+            $words1 = array_filter(explode(' ', strtolower(trim($text1))), function($word) {
+                return strlen($word) > 2;
             });
-            $words2 = array_filter($words2, function($word) use ($commonWords) { 
-                $word = strtolower(trim($word)); 
-                return strlen($word) > 2 && !in_array($word, $commonWords); 
+            $words2 = array_filter(explode(' ', strtolower(trim($text2))), function($word) {
+                return strlen($word) > 2;
             });
+            
+            // MEMORY PROTECTION: Limit word count to prevent memory issues
+            if (count($words1) > 1000 || count($words2) > 1000) {
+                Log::warning('Too many words for similarity calculation', [
+                    'words1_count' => count($words1),
+                    'words2_count' => count($words2),
+                    'max_allowed' => 1000
+                ]);
+                return 0.0;
+            }
             
             // Empty after filtering?
             if (empty($words1) || empty($words2)) {
@@ -556,9 +568,9 @@ class Question extends Model
             $intersection = array_intersect($words1, $words2);
             $union = array_unique(array_merge($words1, $words2));
             
-            $wordOverlapRatio = count($intersection) / (count($union) ?: 1);
+            $wordOverlapRatio = count($union) > 0 ? count($intersection) / count($union) : 0.0;
             
-            // Simple character-based similarity for short strings
+            // Simple character-based similarity for short strings only
             $charSimilarity = 0;
             if (strlen($text1) <= 100 && strlen($text2) <= 100) {
                 $same = 0;
@@ -572,13 +584,28 @@ class Question extends Model
             }
             
             // Weighted combination: 70% word overlap, 30% character similarity
-            return ($wordOverlapRatio * 0.7) + ($charSimilarity * 0.3);
+            $similarity = ($wordOverlapRatio * 0.7) + ($charSimilarity * 0.3);
+            
+            // PERFORMANCE MONITORING: Log slow calculations
+            $executionTime = microtime(true) - LARAVEL_START;
+            if ($executionTime > 0.1) { // 100ms threshold
+                Log::warning('Text similarity calculation slow', [
+                    'execution_time' => round($executionTime * 1000, 2) . 'ms',
+                    'text1_length' => strlen($text1),
+                    'text2_length' => strlen($text2),
+                    'words1_count' => count($words1),
+                    'words2_count' => count($words2)
+                ]);
+            }
+            
+            return $similarity;
             
         } catch (\Exception $e) {
             Log::error('Error in similarity calculation', [
                 'error' => $e->getMessage(),
                 'text1_length' => strlen($text1),
-                'text2_length' => strlen($text2)
+                'text2_length' => strlen($text2),
+                'memory_usage' => memory_get_usage(true)
             ]);
             // Return low similarity on error to be conservative
             return 0.1;
