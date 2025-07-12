@@ -23,7 +23,7 @@ Your MedCapsule application was experiencing **419 "Page Expired" errors** on bo
 ```bash
 # Switched from broken mixed configuration to proper ngrok setup
 cp .env.ngrok .env
-sed -i '' "s|APP_URL=.*|APP_URL=https://9eaf64809a96.ngrok-free.app|g" .env
+sed -i '' "s|APP_URL=.*|APP_URL=https://YOUR_NGROK_URL|g" .env
 ```
 
 **Before:**

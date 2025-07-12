@@ -87,12 +87,12 @@ php artisan view:clear
 ### 🔍 Verification Results
 ```bash
 # Login page accessible
-curl -s -o /dev/null -w "Ngrok Status: %{http_code}\n" https://fa6ba8f2a3e1.ngrok-free.app/login
+curl -s -o /dev/null -w "Ngrok Status: %{http_code}\n" https://YOUR_NGROK_URL/login
 # Result: Ngrok Status: 200
 
 # CSRF token available
-curl -s https://fa6ba8f2a3e1.ngrok-free.app/login | grep -o 'name="_token" value="[^"]*"'
-# Result: name="_token" value="Dkn6NElHwvAqAToE9De0yVxRdxx07RrRWF3fwvhH"
+curl -s https://YOUR_NGROK_URL/login | grep -o 'name="_token" value="[^"]*"'
+# Result: name="_token" value="[TOKEN_VALUE]"
 ```
 
 ---
@@ -113,12 +113,12 @@ curl -s https://fa6ba8f2a3e1.ngrok-free.app/login | grep -o 'name="_token" value
 ## 🎯 TESTING INSTRUCTIONS
 
 ### Test Login Through Ngrok
-1. **Open your browser** and go to: `https://fa6ba8f2a3e1.ngrok-free.app/login`
+1. **Open your browser** and go to: `https://YOUR_NGROK_URL/login`
 2. **Fill in login credentials** (any test account)
 3. **Submit the form** - should work without 419 errors
 
 ### Test Other Forms
-- Registration form: `https://fa6ba8f2a3e1.ngrok-free.app/register`
+- Registration form: `https://YOUR_NGROK_URL/register`
 - Any other POST forms should now work properly
 
 ---
