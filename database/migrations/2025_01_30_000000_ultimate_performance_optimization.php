@@ -51,17 +51,17 @@ return new class extends Migration
         Schema::table('mistakes', function (Blueprint $table) {
             // Hot path: User's recent mistakes for learning
             if (!$this->indexExists('mistakes', 'idx_mistakes_user_recent')) {
-                $table->index(['user_id', 'last_attempt_date', 'attempt_count'], 'idx_mistakes_user_recent');
+                $table->index(['user_id', 'last_attempt_date'], 'idx_mistakes_user_recent');
             }
             
             // Hot path: Mistake analysis by question
             if (!$this->indexExists('mistakes', 'idx_mistakes_question_recent')) {
-                $table->index(['question_id', 'last_attempt_date', 'attempt_count'], 'idx_mistakes_question_recent');
+                $table->index(['question_id', 'last_attempt_date'], 'idx_mistakes_question_recent');
             }
             
             // Hot path: User mistake patterns
             if (!$this->indexExists('mistakes', 'idx_mistakes_user_question_count')) {
-                $table->index(['user_id', 'question_id', 'attempt_count'], 'idx_mistakes_user_question_count');
+                $table->index(['user_id', 'question_id'], 'idx_mistakes_user_question_count');
             }
         });
 
@@ -94,7 +94,7 @@ return new class extends Migration
         Schema::table('topics', function (Blueprint $table) {
             // Hot path: Course topic ordering with progress
             if (!$this->indexExists('topics', 'idx_topics_course_progress')) {
-                $table->index(['course_id', 'order', 'percentage_grade'], 'idx_topics_course_progress');
+                $table->index(['course_id', 'display_order', 'percentage_grade'], 'idx_topics_course_progress');
             }
         });
 
@@ -114,7 +114,7 @@ return new class extends Migration
         Schema::table('notifications', function (Blueprint $table) {
             // Hot path: User unread notifications
             if (!$this->indexExists('notifications', 'idx_notifications_user_unread')) {
-                $table->index(['notifiable_id', 'read_at', 'created_at'], 'idx_notifications_user_unread');
+                $table->index(['user_id', 'read_at', 'created_at'], 'idx_notifications_user_unread');
             }
             
             // Hot path: Notification type analysis
@@ -139,8 +139,9 @@ return new class extends Migration
         }
 
         // 6. DATABASE QUERY OPTIMIZATION SETTINGS
-        DB::statement('SET SESSION query_cache_type = ON');
-        DB::statement('SET SESSION query_cache_size = 268435456'); // 256MB
+        // Commented out for MySQL 8.0+ compatibility
+        // DB::statement('SET SESSION query_cache_type = ON');
+        // DB::statement('SET SESSION query_cache_size = 268435456'); // 256MB
         
         // 7. ANALYZE TABLES FOR OPTIMAL QUERY EXECUTION
         $tables = [

@@ -979,7 +979,7 @@
 
             <!-- Course Filter Dropdown -->
             <div class="filter-section">
-                <form action="{{ secure_url(route('review.index', [], false)) }}" method="GET" class="d-flex align-items-center w-100 gap-3">
+                <form action="{{ route('review.index') }}" method="GET" class="d-flex align-items-center w-100 gap-3">
                     <div class="d-flex align-items-center flex-grow-1 flex-wrap">
                         <label for="courseFilter" class="me-3">
                             <i class="fas fa-filter me-2 text-primary"></i>
@@ -1001,7 +1001,7 @@
                                     ->get()
                                     ->keyBy('id');
                             @endphp
-                            <select id="courseFilter" name="course" class="form-select" onchange="this.form.submit()">
+                            <select id="courseFilter" name="course" class="form-select">
                                 <option value="">All Courses ({{ $totalMistakesCount }})</option>
                                 @foreach($courses->sortBy('name') as $course)
                                     <option value="{{ $course->id }}" {{ $courseFilter == $course->id ? 'selected' : '' }}>
@@ -1233,7 +1233,23 @@
                     card.remove();
                     // Check if we need to show empty state
                     if (document.querySelectorAll('.mistake-card').length === 0) {
-                        location.reload();
+                        // Instead of reloading, show the empty state
+                        const container = document.querySelector('.container');
+                        if (container) {
+                            container.innerHTML = `
+                                <div class="empty-state">
+                                    <div class="confetti confetti-1"></div>
+                                    <div class="confetti confetti-2"></div>
+                                    <div class="confetti confetti-3"></div>
+                                    <div class="confetti confetti-4"></div>
+                                    <div class="confetti confetti-5"></div>
+                                    <i class="fas fa-check"></i>
+                                    <h3>No Mistakes!</h3>
+                                    <p>Fantastic work! You're crushing it with zero mistakes. Keep up the amazing progress!</p>
+                                    <a href="javascript:history.back()" class="btn btn-primary">Take More Quizzes</a>
+                                </div>
+                            `;
+                        }
                         return;
                     }
                 }, 300);
@@ -1250,6 +1266,13 @@
                 }
             })
             .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    showToast('Question removed successfully!', 'success');
+                } else {
+                    showToast(data.message || 'Error removing question.', 'error');
+                }
+            })
             .catch(error => {
                 console.error('Error:', error);
                 // Only show error toast if the card is still visible
@@ -1261,6 +1284,15 @@
         }
 
         document.addEventListener('DOMContentLoaded', function() {
+            console.log('Review mistakes page loaded successfully');
+            
+            // Check if we're in a reload loop
+            if (sessionStorage.getItem('reviewPageLoaded')) {
+                console.log('Page was already loaded, preventing reload loop');
+                sessionStorage.removeItem('reviewPageLoaded');
+                return;
+            }
+            sessionStorage.setItem('reviewPageLoaded', 'true');
             const toggles = document.querySelectorAll('.explanation-toggle');
             
             toggles.forEach(toggle => {
@@ -1305,6 +1337,31 @@
                     });
                 }
             });
+
+            // Handle course filter changes
+            const courseFilter = document.getElementById('courseFilter');
+            if (courseFilter) {
+                courseFilter.addEventListener('change', function() {
+                    const form = this.closest('form');
+                    if (form) {
+                        form.submit();
+                    }
+                });
+                
+                courseFilter.addEventListener('keydown', function(e) {
+                    if (e.key === 'Enter') {
+                        e.preventDefault();
+                    }
+                });
+            }
+
+            // Add error handling for flashcard mode toggle
+            if (flashcardModeToggle) {
+                flashcardModeToggle.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                });
+            }
         });
     </script>
 </body>

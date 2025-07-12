@@ -22,6 +22,9 @@ use App\Services\CacheService;
 use App\Services\UserStatsService;
 use App\Services\GradingService;
 use App\Services\QuizService;
+use App\Services\InputValidationService;
+use App\Services\DatabaseService;
+use App\Services\ResilientCacheService;
 
 class QuizController extends Controller 
 {

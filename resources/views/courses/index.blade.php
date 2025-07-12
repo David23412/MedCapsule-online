@@ -1534,6 +1534,63 @@
     <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.2/dist/gsap.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/alpinejs@2.8.2/dist/alpine.min.js" defer></script>
     <script>
+        // Global error handler to prevent courses from disappearing
+        window.addEventListener('error', function(e) {
+            console.warn('JavaScript error caught:', e.error);
+            // Prevent the error from breaking the page
+            e.preventDefault();
+            return false;
+        });
+
+        // Also catch unhandled promise rejections
+        window.addEventListener('unhandledrejection', function(e) {
+            console.warn('Unhandled promise rejection:', e.reason);
+            e.preventDefault();
+        });
+
+        // Ensure updateScrollArrows is available globally immediately
+        window.updateScrollArrows = function(container) {
+            try {
+                // If no container provided, try to find the courses grid
+                if (!container) {
+                    container = document.querySelector('.courses-grid');
+                }
+                
+                if (!container) {
+                    console.log('No courses grid container found');
+                    return;
+                }
+                
+                const leftArrow = document.querySelector('.scroll-left');
+                const rightArrow = document.querySelector('.scroll-right');
+                
+                if (!leftArrow || !rightArrow) {
+                    console.log('Scroll arrows not found');
+                    return;
+                }
+                
+                // Show/hide arrows with smooth fade
+                leftArrow.style.opacity = container.scrollLeft > 0 ? '1' : '0';
+                rightArrow.style.opacity = 
+                    (container.scrollLeft + container.offsetWidth) < container.scrollWidth 
+                        ? '1' : '0';
+            } catch (error) {
+                console.warn('Error in updateScrollArrows:', error);
+                // Don't let this error break the page
+            }
+        };
+
+        // Fallback to ensure courses are always visible
+        window.addEventListener('load', function() {
+            setTimeout(function() {
+                const coursesGrid = document.querySelector('.courses-grid');
+                if (coursesGrid) {
+                    coursesGrid.style.display = 'flex';
+                    coursesGrid.style.visibility = 'visible';
+                }
+            }, 1000);
+        });
+
         // Same notification bell logic from the home page
         function notificationBell() {
             return {
@@ -1927,6 +1984,8 @@
     <script>
     function scrollCourses(direction) {
         const container = document.querySelector('.courses-grid');
+        if (!container) return;
+        
         const cardWidth = 340;
         const gap = 24;
         const scrollAmount = cardWidth + gap;
@@ -1942,67 +2001,108 @@
         });
     }
 
-    // Update scroll arrows visibility
-    function updateScrollArrows(container) {
-        const leftArrow = document.querySelector('.scroll-left');
-        const rightArrow = document.querySelector('.scroll-right');
-        
-        // Show/hide arrows with smooth fade
-        leftArrow.style.opacity = container.scrollLeft > 0 ? '1' : '0';
-        rightArrow.style.opacity = 
-            (container.scrollLeft + container.offsetWidth) < container.scrollWidth 
-                ? '1' : '0';
-    }
+    // Function is now defined globally at the top of the page
 
-    // Add scroll event listener for arrow visibility
-    const coursesGrid = document.querySelector('.courses-grid');
-    coursesGrid.addEventListener('scroll', () => {
-        updateScrollArrows(coursesGrid);
-    });
-
-    // Initial arrow visibility
-    document.addEventListener('DOMContentLoaded', () => {
-        updateScrollArrows(document.querySelector('.courses-grid'));
-    });
-    </script>
-    <script>
-        // Enhanced semester pills functionality with precise scrolling
-        document.querySelectorAll('.semester-pill').forEach(pill => {
-            pill.addEventListener('click', () => {
-                // Remove active class from all pills
-                document.querySelectorAll('.semester-pill').forEach(p => p.classList.remove('active'));
-                // Add active class to clicked pill
-                pill.classList.add('active');
-
-                const selectedSemester = pill.textContent.trim();
-                const coursesGrid = document.querySelector('.courses-grid');
-                const courseCards = Array.from(document.querySelectorAll('.course-card'));
-
-                // Find the first course card of the selected semester
-                const targetCard = courseCards.find(card => 
-                    card.getAttribute('data-semester') === selectedSemester
-                );
-
-                if (targetCard) {
-                    // Calculate the precise scroll position
-                    const cardWidth = 340; // Fixed card width
-                    const gap = 24; // Gap between cards (1.5rem = 24px)
-                    const containerPadding = 16; // Container padding (1rem = 16px)
-                    
-                    const cardIndex = courseCards.indexOf(targetCard);
-                    const scrollPosition = cardIndex * (cardWidth + gap);
-
-                    // Smooth scroll with enhanced easing
-                    coursesGrid.scrollTo({
-                        left: scrollPosition,
-                        behavior: 'smooth'
-                    });
-
-                    // Update scroll arrows visibility
-                    updateScrollArrows(coursesGrid);
+    // Safari-compatible DOM ready function
+    function initializeScrollArrows() {
+        try {
+            const coursesGrid = document.querySelector('.courses-grid');
+            if (coursesGrid) {
+                            coursesGrid.addEventListener('scroll', () => {
+                if (typeof window.updateScrollArrows === 'function') {
+                    window.updateScrollArrows(coursesGrid);
                 }
             });
-        });
+                
+                            // Initial arrow visibility with delay for Safari
+            setTimeout(() => {
+                if (typeof window.updateScrollArrows === 'function') {
+                    window.updateScrollArrows(coursesGrid);
+                }
+            }, 100);
+            }
+        } catch (error) {
+            console.warn('Error initializing scroll arrows:', error);
+            // Don't let this error break the page
+        }
+    }
+
+    // Multiple ways to ensure DOM is ready (Safari compatibility)
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initializeScrollArrows);
+    } else {
+        // DOM is already loaded
+        initializeScrollArrows();
+    }
+    
+    // Fallback for Safari
+    window.addEventListener('load', initializeScrollArrows);
+    </script>
+    <script>
+        // Safari-compatible semester pills functionality
+        function initializeSemesterPills() {
+            try {
+                const semesterPills = document.querySelectorAll('.semester-pill');
+                if (semesterPills.length === 0) return;
+                
+                semesterPills.forEach(pill => {
+                pill.addEventListener('click', () => {
+                    // Remove active class from all pills
+                    document.querySelectorAll('.semester-pill').forEach(p => p.classList.remove('active'));
+                    // Add active class to clicked pill
+                    pill.classList.add('active');
+
+                    const selectedSemester = pill.textContent.trim();
+                    const coursesGrid = document.querySelector('.courses-grid');
+                    const courseCards = Array.from(document.querySelectorAll('.course-card'));
+
+                    if (!coursesGrid || courseCards.length === 0) return;
+
+                    // Find the first course card of the selected semester
+                    const targetCard = courseCards.find(card => 
+                        card.getAttribute('data-semester') === selectedSemester
+                    );
+
+                    if (targetCard) {
+                        // Calculate the precise scroll position
+                        const cardWidth = 340; // Fixed card width
+                        const gap = 24; // Gap between cards (1.5rem = 24px)
+                        const containerPadding = 16; // Container padding (1rem = 16px)
+                        
+                        const cardIndex = courseCards.indexOf(targetCard);
+                        const scrollPosition = cardIndex * (cardWidth + gap);
+
+                        // Smooth scroll with enhanced easing
+                        coursesGrid.scrollTo({
+                            left: scrollPosition,
+                            behavior: 'smooth'
+                        });
+
+                        // Update scroll arrows visibility with delay for Safari
+                        setTimeout(() => {
+                            if (typeof window.updateScrollArrows === 'function') {
+                                window.updateScrollArrows(coursesGrid);
+                            }
+                        }, 150);
+                    }
+                });
+            });
+        } catch (error) {
+            console.warn('Error initializing semester pills:', error);
+            // Don't let this error break the page
+        }
+    }
+
+        // Initialize semester pills with Safari compatibility
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initializeSemesterPills);
+        } else {
+            // DOM is already loaded
+            initializeSemesterPills();
+        }
+        
+        // Fallback for Safari
+        window.addEventListener('load', initializeSemesterPills);
     </script>
     <script>
         // Payment Modal Initialization 

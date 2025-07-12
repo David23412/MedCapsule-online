@@ -81,8 +81,8 @@ class GradingService
             $this->updateTopicProgress($user, $topic, $gradingResult['score'], $gradingResult['totalQuestions']);
 
             // Clear relevant caches
-            $this->cacheService->clearUserTopicProgressCache($user->id, $topic->id);
-            $this->cacheService->clearUserMistakesCache($user->id, $topic->id);
+            $this->cacheService->clearTopicProgressCaches($topic->id, $user->id, 'quiz');
+            $this->cacheService->invalidateUserCaches($user->id, $topic->id);
 
             DB::commit();
 

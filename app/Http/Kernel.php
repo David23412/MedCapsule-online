@@ -14,6 +14,7 @@ class Kernel extends HttpKernel
      * @var array<int, class-string|string>
      */
     protected $middleware = [
+        \App\Http\Middleware\HandleNgrokRequests::class,
         \App\Http\Middleware\HttpsRedirectMiddleware::class,
         \Fruitcake\Cors\HandleCors::class,
         \App\Http\Middleware\ErrorBoundary::class,

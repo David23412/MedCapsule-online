@@ -45,7 +45,7 @@ return new class extends Migration
         Schema::table('questions', function (Blueprint $table) {
             // Covering index for quiz generation
             if (!DB::select("SHOW INDEX FROM questions WHERE Key_name = 'questions_quiz_generation_brutal_idx'")) {
-                $table->index(['topic_id', 'source', 'question_type', 'deleted', 'id', 'difficulty'], 'questions_quiz_generation_brutal_idx');
+                $table->index(['topic_id', 'source', 'question_type', 'deleted', 'id'], 'questions_quiz_generation_brutal_idx');
             }
             
             // Covering index for question retrieval with all metadata
@@ -66,12 +66,12 @@ return new class extends Migration
         Schema::table('mistakes', function (Blueprint $table) {
             // Covering index for user mistake review
             if (!DB::select("SHOW INDEX FROM mistakes WHERE Key_name = 'mistakes_review_brutal_idx'")) {
-                $table->index(['user_id', 'mastered', 'question_id', 'attempt_count', 'correct_streak', 'created_at'], 'mistakes_review_brutal_idx');
+                $table->index(['user_id', 'mastered', 'question_id', 'correct_streak', 'created_at'], 'mistakes_review_brutal_idx');
             }
             
             // Covering index for question difficulty analysis
             if (!DB::select("SHOW INDEX FROM mistakes WHERE Key_name = 'mistakes_difficulty_brutal_idx'")) {
-                $table->index(['question_id', 'mastered', 'attempt_count', 'user_id'], 'mistakes_difficulty_brutal_idx');
+                $table->index(['question_id', 'mastered', 'user_id'], 'mistakes_difficulty_brutal_idx');
             }
         });
 
@@ -79,7 +79,7 @@ return new class extends Migration
         Schema::table('course_user', function (Blueprint $table) {
             // Covering index for enrollment checks
             if (!DB::select("SHOW INDEX FROM course_user WHERE Key_name = 'course_user_access_brutal_idx'")) {
-                $table->index(['user_id', 'course_id', 'enrollment_status', 'enrolled_at', 'completion_percentage'], 'course_user_access_brutal_idx');
+                $table->index(['user_id', 'course_id', 'enrollment_status', 'enrolled_at'], 'course_user_access_brutal_idx');
             }
         });
 
@@ -87,7 +87,7 @@ return new class extends Migration
         Schema::table('notifications', function (Blueprint $table) {
             // Covering index for user notification dashboard
             if (!DB::select("SHOW INDEX FROM notifications WHERE Key_name = 'notifications_dashboard_brutal_idx'")) {
-                $table->index(['user_id', 'is_read', 'created_at', 'type', 'data'], 'notifications_dashboard_brutal_idx');
+                $table->index(['user_id', 'is_read', 'created_at', 'type'], 'notifications_dashboard_brutal_idx');
             }
         });
 
