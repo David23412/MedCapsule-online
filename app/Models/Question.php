@@ -380,13 +380,13 @@ class Question extends Model
             
             // Step 2: Uniform spacing for compound terms - SAFE REGEX
             // This helps with compound medical terms like "T cell" vs "Tcell"
-            $text = \App\Services\SecurityService::safeRegexReplace('/([a-z])([A-Z])/', '$1 $2', $text); // Split camelCase
+            $text = $this->safeRegexReplace('/([a-z])([A-Z])/', '$1 $2', $text); // Split camelCase
             
             // Step 3: Remove punctuation - SAFE REGEX
-            $text = \App\Services\SecurityService::safeRegexReplace('/[^\p{L}\p{N}\s]/u', ' ', $text);
+            $text = $this->safeRegexReplace('/[^\p{L}\p{N}\s]/u', ' ', $text);
             
             // Step 4: Remove extra whitespace - SAFE REGEX  
-            $text = \App\Services\SecurityService::safeRegexReplace('/\s+/', ' ', $text);
+            $text = $this->safeRegexReplace('/\s+/', ' ', $text);
             
             // Step 5: Remove common filler words
             $fillerWords = [
@@ -424,10 +424,10 @@ class Question extends Model
             }
             
             // Replace comma decimal separators with dots (e.g., "2,5" -> "2.5") - SAFE REGEX
-            $text = \App\Services\SecurityService::safeRegexReplace('/(\d),(\d)/', '$1.$2', $text);
+            $text = $this->safeRegexReplace('/(\d),(\d)/', '$1.$2', $text);
             
             // Standardize spacing around units (e.g., "5mg" -> "5 mg") - SAFE REGEX
-            $text = \App\Services\SecurityService::safeRegexReplace('/(\d)([a-zA-Z]+)/', '$1 $2', $text);
+            $text = $this->safeRegexReplace('/(\d)([a-zA-Z]+)/', '$1 $2', $text);
             
             // Handle standard number words (e.g., "three" -> "3")
             $numberWords = [
@@ -436,11 +436,11 @@ class Question extends Model
             ];
             
             foreach ($numberWords as $word => $digit) {
-                $text = \App\Services\SecurityService::safeRegexReplace('/\b' . $word . '\b/i', $digit, $text);
+                $text = $this->safeRegexReplace('/\b' . $word . '\b/i', $digit, $text);
             }
             
             // Standardize range formats (e.g., "5-10" as "5 to 10") - SAFE REGEX
-            $text = \App\Services\SecurityService::safeRegexReplace('/(\d+)\s*(?:to|-)\s*(\d+)/', '$1 to $2', $text);
+            $text = $this->safeRegexReplace('/(\d+)\s*(?:to|-)\s*(\d+)/', '$1 to $2', $text);
             
             return $text;
         } catch (\Exception $e) {
@@ -721,5 +721,66 @@ class Question extends Model
         
         // If negation status differs, answers likely have opposite meanings
         return $submittedHasNegation !== $correctHasNegation;
+    }
+
+    /**
+     * Safe regex replace with bounds checking and error handling
+     * Prevents ReDoS attacks and memory exhaustion as mentioned in Fix.md
+     * 
+     * @param string $pattern
+     * @param string $replacement
+     * @param string $subject
+     * @param int $limit
+     * @return string
+     */
+    protected function safeRegexReplace(string $pattern, string $replacement, string $subject, int $limit = -1): string
+    {
+        try {
+            // Input validation - prevent excessively long inputs
+            if (strlen($subject) > 10000) {
+                Log::warning('Text too long for regex processing, truncating', [
+                    'original_length' => strlen($subject),
+                    'truncated_to' => 10000
+                ]);
+                $subject = substr($subject, 0, 10000);
+            }
+
+            // Set safe PCRE limits to prevent ReDoS
+            $originalBacktrackLimit = ini_get('pcre.backtrack_limit');
+            $originalRecursionLimit = ini_get('pcre.recursion_limit');
+            
+            ini_set('pcre.backtrack_limit', '100000');
+            ini_set('pcre.recursion_limit', '10000');
+            
+            // Perform the regex operation
+            $result = preg_replace($pattern, $replacement, $subject, $limit);
+            
+            // Restore original limits
+            ini_set('pcre.backtrack_limit', $originalBacktrackLimit);
+            ini_set('pcre.recursion_limit', $originalRecursionLimit);
+            
+            // Check for regex errors
+            if ($result === null) {
+                $error = preg_last_error();
+                Log::error('Regex operation failed', [
+                    'pattern' => $pattern,
+                    'error_code' => $error,
+                    'subject_length' => strlen($subject)
+                ]);
+                return $subject; // Return original on error
+            }
+            
+            return $result;
+            
+        } catch (\Exception $e) {
+            Log::error('Safe regex replace failed', [
+                'pattern' => $pattern,
+                'error' => $e->getMessage(),
+                'subject_length' => strlen($subject)
+            ]);
+            
+            // Return original subject on any error (fail-safe)
+            return $subject;
+        }
     }
 }
