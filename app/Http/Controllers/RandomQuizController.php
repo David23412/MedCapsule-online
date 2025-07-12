@@ -46,27 +46,39 @@ class RandomQuizController extends Controller
                 'user_agent' => request()->userAgent()
             ]);
 
-            // Validate request
-            $request->validate([
-                'question_limit' => 'required|integer|min:10|max:100',
-                'selected_courses' => 'required|array|min:1',
+            // Enhanced validation with better error messages
+            $validated = $request->validate([
+                'question_limit' => 'required|integer|min:5|max:100',
+                'selected_courses' => 'required|array|min:1|max:20',
                 'selected_courses.*' => 'exists:courses,id',
-                'time_limit' => 'required|numeric|min:0.167|max:60'
+                'time_limit' => 'required|numeric|min:0.083|max:60'
+            ], [
+                'question_limit.required' => 'Question limit is required',
+                'question_limit.min' => 'Minimum 5 questions required',
+                'question_limit.max' => 'Maximum 100 questions allowed',
+                'selected_courses.required' => 'At least one course must be selected',
+                'selected_courses.min' => 'At least one course must be selected',
+                'selected_courses.max' => 'Maximum 20 courses allowed',
+                'time_limit.required' => 'Time limit is required',
+                'time_limit.min' => 'Minimum 5 minutes required',
+                'time_limit.max' => 'Maximum 60 minutes allowed'
             ]);
 
             $user = Auth::user();
-            $selectedCourses = $request->selected_courses;
-            $timeLimit = $request->time_limit;
-            
+            $selectedCourses = $validated['selected_courses'];
+            $timeLimit = $validated['time_limit'];
+            $questionLimit = $validated['question_limit'];
 
-            // Get random questions from selected enrolled courses
+            // ENHANCED: Get random questions from selected enrolled courses with better error handling
             $randomQuestions = Question::whereHas('topic', function($query) use ($selectedCourses) {
                     $query->whereIn('course_id', $selectedCourses);
                 })
-                ->where('deleted', false) // Ensure only non-deleted questions are selected
+                ->where('deleted', false)
+                ->whereNotNull('question')
+                ->whereNotNull('correct_answer')
                 ->inRandomOrder()
-                ->limit($request->question_limit)
-                ->with(['topic', 'topic.course']) // Eager load relationships
+                ->limit($questionLimit)
+                ->with(['topic', 'topic.course'])
                 ->get();
 
             if ($randomQuestions->isEmpty()) {
@@ -75,12 +87,51 @@ class RandomQuizController extends Controller
                     'user_id' => $user->id,
                     'selected_courses' => $selectedCourses
                 ]);
-                return back()->with('error', 'No questions available from the selected courses.');
+                
+                // ENHANCED: Return JSON response for AJAX requests, view for regular requests
+                if ($request->expectsJson()) {
+                    return response()->json([
+                        'success' => false,
+                        'error' => 'No questions available from the selected courses. Please try selecting different courses.',
+                        'redirect' => route('courses.index')
+                    ], 422);
+                }
+                
+                return redirect()->route('courses.index')->with('error', 'No questions available from the selected courses.');
             }
 
-            // Store questions in session
-            session(['random_quiz_questions' => $randomQuestions->pluck('id')->toArray()]);
-            session(['random_quiz_time_limit' => round($timeLimit * 60)]); // Convert minutes to seconds and round
+            // ENHANCED: Validate minimum questions requirement
+            if ($randomQuestions->count() < min(5, $questionLimit)) {
+                Log::warning('Insufficient questions found', [
+                    'request_id' => $requestId,
+                    'user_id' => $user->id,
+                    'found_questions' => $randomQuestions->count(),
+                    'requested_questions' => $questionLimit
+                ]);
+                
+                if ($request->expectsJson()) {
+                    return response()->json([
+                        'success' => false,
+                        'error' => "Only {$randomQuestions->count()} questions available. Please select more courses or reduce the question limit.",
+                        'available_questions' => $randomQuestions->count()
+                    ], 422);
+                }
+                
+                return redirect()->route('courses.index')->with('error', "Only {$randomQuestions->count()} questions available. Please select more courses or reduce the question limit.");
+            }
+
+            // Store questions in session with better organization
+            session([
+                'random_quiz_questions' => $randomQuestions->pluck('id')->toArray(),
+                'random_quiz_time_limit' => round($timeLimit * 60),
+                'random_quiz_courses' => $selectedCourses,
+                'random_quiz_started_at' => now(),
+                'random_quiz_settings' => [
+                    'question_limit' => $questionLimit,
+                    'time_limit_minutes' => $timeLimit,
+                    'selected_courses' => $selectedCourses
+                ]
+            ]);
 
             $executionTime = (microtime(true) - $startTime) * 1000;
             Log::info('✅ Random quiz generated successfully', [
@@ -91,11 +142,25 @@ class RandomQuizController extends Controller
                 'time_limit_seconds' => round($timeLimit * 60)
             ]);
 
+            // ENHANCED: Return optimized view with better data structure
             return view('quiz.random_quiz', [
-                'questions' => Question::whereIn('id', session('random_quiz_questions'))->get(),
+                'questions' => $randomQuestions,
                 'totalQuestions' => $randomQuestions->count(),
                 'selectedCourses' => Course::whereIn('id', $selectedCourses)->get(),
-                'time_limit' => round($timeLimit * 60) // Convert minutes to seconds and round
+                'time_limit' => round($timeLimit * 60),
+                'time_limit_minutes' => $timeLimit,
+                'question_limit' => $questionLimit,
+                'quiz_settings' => [
+                    'question_limit' => $questionLimit,
+                    'time_limit_minutes' => $timeLimit,
+                    'selected_courses' => $selectedCourses,
+                    'started_at' => now()->toISOString()
+                ],
+                'performance_metrics' => [
+                    'execution_time_ms' => round($executionTime, 2),
+                    'questions_generated' => $randomQuestions->count(),
+                    'courses_selected' => count($selectedCourses)
+                ]
             ]);
 
         } catch (\Illuminate\Validation\ValidationException $e) {
@@ -107,6 +172,16 @@ class RandomQuizController extends Controller
                 'user_id' => auth()->id(),
                 'execution_time_ms' => round($executionTime, 2)
             ]);
+            
+            // ENHANCED: Better error handling for validation
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'error' => 'Invalid quiz settings provided.',
+                    'validation_errors' => $e->errors()
+                ], 422);
+            }
+            
             throw $e; // Re-throw to let Laravel handle the validation response
         } catch (\Exception $e) {
             $executionTime = (microtime(true) - $startTime) * 1000;
@@ -121,7 +196,16 @@ class RandomQuizController extends Controller
                 'request_data' => $request->all()
             ]);
 
-            return back()->with('error', 'An error occurred while generating the quiz. Please try again.');
+            // ENHANCED: Better error handling for exceptions
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'error' => 'An error occurred while generating the quiz. Please try again.',
+                    'debug' => app()->environment('local') ? $e->getMessage() : null
+                ], 500);
+            }
+
+            return redirect()->route('courses.index')->with('error', 'An error occurred while generating the quiz. Please try again.');
         }
     }
 

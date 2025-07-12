@@ -186,6 +186,68 @@ class PatternMatcherService
     }
     
     /**
+     * Get pattern matches for two texts (MISSING METHOD FROM FIX.MD)
+     * This method was mentioned as missing in the Fix.md file
+     *
+     * @param string $text1 First text to compare
+     * @param string $text2 Second text to compare
+     * @return array Array of matching patterns between the two texts
+     */
+    public function getPatternMatches(string $text1, string $text2): array
+    {
+        $cacheKey = 'pattern_matches:' . md5($text1 . '|' . $text2);
+        
+        return $this->getCachedOrCompute($cacheKey, function () use ($text1, $text2) {
+            $matches = [];
+            
+            // Get patterns for both texts
+            $patterns1 = $this->identifyPatterns($text1);
+            $patterns2 = $this->identifyPatterns($text2);
+            
+            // Find matching patterns
+            foreach ($patterns1 as $patternName => $description) {
+                if (isset($patterns2[$patternName])) {
+                    $matches[$patternName] = [
+                        'pattern' => $patternName,
+                        'description' => $description,
+                        'confidence' => $this->calculatePatternConfidence($patternName, $text1, $text2)
+                    ];
+                }
+            }
+            
+            return $matches;
+        });
+    }
+    
+    /**
+     * Calculate confidence score for a pattern match between two texts
+     *
+     * @param string $patternName The pattern name
+     * @param string $text1 First text
+     * @param string $text2 Second text
+     * @return float Confidence score between 0 and 1
+     */
+    private function calculatePatternConfidence(string $patternName, string $text1, string $text2): float
+    {
+        // Simple confidence calculation based on pattern strength
+        $baseConfidence = 0.8;
+        
+        // Boost confidence for stronger patterns
+        $strongPatterns = ['sympathetic_effects', 'parasympathetic_effects', 'drug_mechanism'];
+        if (in_array($patternName, $strongPatterns)) {
+            $baseConfidence += 0.1;
+        }
+        
+        // Adjust based on text length (longer texts might have more reliable patterns)
+        $avgLength = (strlen($text1) + strlen($text2)) / 2;
+        if ($avgLength > 100) {
+            $baseConfidence += 0.05;
+        }
+        
+        return min(1.0, $baseConfidence);
+    }
+    
+    /**
      * Identify matching patterns in a text
      *
      * @param string $text The text to analyze
