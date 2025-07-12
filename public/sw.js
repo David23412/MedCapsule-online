@@ -1,486 +1,559 @@
-// 🚀 MEDCAPSULE PWA SERVICE WORKER
-// Version 1.0 - Ultimate Medical Education Experience
+// MedCapsule Service Worker - Golden Standard Implementation
+// Version 1.0 - Optimized for AAAA performance
 
 const CACHE_NAME = 'medcapsule-v1.0';
-const OFFLINE_PAGE = '/offline.html';
+const STATIC_CACHE = 'medcapsule-static-v1.0';
+const DYNAMIC_CACHE = 'medcapsule-dynamic-v1.0';
+const API_CACHE = 'medcapsule-api-v1.0';
 
-// CRITICAL RESOURCES TO CACHE
+// PERFORMANCE: Critical resources to cache immediately
 const CRITICAL_RESOURCES = [
     '/',
-    '/offline.html',
-    '/css/app.css',
+    '/css/home-optimized.css',
     '/js/app.js',
-    '/favicon.ico',
-    '/images/logo.png',
-    '/courses',
-    '/profile'
+    'https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css',
+    'https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js',
+    'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css',
+    'https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap',
+    '/offline.html'
 ];
 
-// DYNAMIC CACHE PATTERNS
+// PERFORMANCE: Routes to cache with different strategies
 const CACHE_STRATEGIES = {
-    // Cache First: Static assets
-    CACHE_FIRST: [
-        /\.(?:js|css|woff2?|png|jpg|jpeg|gif|svg|ico)$/,
-        /\/images\//,
-        /\/fonts\//
+    // Static assets - Cache First
+    static: [
+        /\.(?:js|css|woff2?|ttf|eot|ico|png|jpg|jpeg|gif|svg)$/,
+        /^https:\/\/fonts\.googleapis\.com/,
+        /^https:\/\/fonts\.gstatic\.com/,
+        /^https:\/\/cdn\.jsdelivr\.net/,
+        /^https:\/\/cdnjs\.cloudflare\.com/
     ],
     
-    // Network First: API calls
-    NETWORK_FIRST: [
-        /\/api\//,
-        /\/quiz\//,
-        /\/notifications/,
-        /\/payments/
+    // API calls - Network First with fallback
+    api: [
+        /^\/api\//,
+        /^\/notifications/,
+        /^\/courses/,
+        /^\/quiz/
     ],
     
-    // Stale While Revalidate: Pages
-    STALE_WHILE_REVALIDATE: [
-        /\/courses/,
-        /\/topics/,
-        /\/profile/,
-        /\/review/
+    // Pages - Stale While Revalidate
+    pages: [
+        /^\/$/,
+        /^\/courses/,
+        /^\/profile/,
+        /^\/login/,
+        /^\/register/
     ]
 };
 
-// INSTALL EVENT - Cache Critical Resources
+// PERFORMANCE: Install event - Cache critical resources
 self.addEventListener('install', event => {
-    console.log('🚀 MedCapsule SW: Installing...');
+    console.log('SW: Installing Service Worker v1.0');
     
     event.waitUntil(
-        caches.open(CACHE_NAME)
-            .then(cache => {
-                console.log('📦 Caching critical resources');
+        Promise.all([
+            // Cache critical resources
+            caches.open(STATIC_CACHE).then(cache => {
+                console.log('SW: Caching critical resources');
                 return cache.addAll(CRITICAL_RESOURCES);
-            })
-            .then(() => {
-                console.log('✅ Critical resources cached');
-                return self.skipWaiting();
-            })
-            .catch(error => {
-                console.error('❌ Cache installation failed:', error);
-            })
+            }),
+            
+            // Skip waiting to activate immediately
+            self.skipWaiting()
+        ])
     );
 });
 
-// ACTIVATE EVENT - Clean Old Caches
+// PERFORMANCE: Activate event - Clean old caches
 self.addEventListener('activate', event => {
-    console.log('🔄 MedCapsule SW: Activating...');
+    console.log('SW: Activating Service Worker v1.0');
     
     event.waitUntil(
-        caches.keys()
-            .then(cacheNames => {
+        Promise.all([
+            // Clean old caches
+            caches.keys().then(cacheNames => {
                 return Promise.all(
                     cacheNames.map(cacheName => {
-                        if (cacheName !== CACHE_NAME) {
-                            console.log('🗑️ Deleting old cache:', cacheName);
+                        if (cacheName !== STATIC_CACHE && 
+                            cacheName !== DYNAMIC_CACHE && 
+                            cacheName !== API_CACHE) {
+                            console.log('SW: Deleting old cache:', cacheName);
                             return caches.delete(cacheName);
                         }
                     })
                 );
-            })
-            .then(() => {
-                console.log('✅ Old caches cleaned');
-                return self.clients.claim();
-            })
+            }),
+            
+            // Take control of all clients
+            self.clients.claim()
+        ])
     );
 });
 
-// FETCH EVENT - Intelligent Caching Strategy
+// PERFORMANCE: Fetch event - Implement caching strategies
 self.addEventListener('fetch', event => {
     const request = event.request;
     const url = new URL(request.url);
     
     // Skip non-GET requests
-    if (request.method !== 'GET') return;
+    if (request.method !== 'GET') {
+        return;
+    }
     
-    // Skip Chrome extensions and non-HTTP requests
-    if (!url.protocol.startsWith('http')) return;
+    // Skip Chrome extension requests
+    if (url.protocol === 'chrome-extension:') {
+        return;
+    }
     
-    event.respondWith(handleRequest(request));
+    // Determine caching strategy
+    const strategy = getCachingStrategy(request);
+    
+    switch (strategy) {
+        case 'static':
+            event.respondWith(cacheFirst(request));
+            break;
+        case 'api':
+            event.respondWith(networkFirst(request));
+            break;
+        case 'pages':
+            event.respondWith(staleWhileRevalidate(request));
+            break;
+        default:
+            event.respondWith(networkFirst(request));
+    }
 });
 
-// INTELLIGENT REQUEST HANDLING
-async function handleRequest(request) {
-    const url = new URL(request.url);
-    const pathname = url.pathname;
-    
+// PERFORMANCE: Cache First Strategy - For static assets
+async function cacheFirst(request) {
     try {
-        // QUIZ DATA SPECIAL HANDLING
-        if (pathname.includes('/quiz/')) {
-            return await handleQuizRequest(request);
-        }
-        
-        // API REQUESTS - Network First
-        if (matchesPatterns(pathname, CACHE_STRATEGIES.NETWORK_FIRST)) {
-            return await networkFirst(request);
-        }
-        
-        // STATIC ASSETS - Cache First
-        if (matchesPatterns(pathname, CACHE_STRATEGIES.CACHE_FIRST)) {
-            return await cacheFirst(request);
-        }
-        
-        // PAGES - Stale While Revalidate
-        if (matchesPatterns(pathname, CACHE_STRATEGIES.STALE_WHILE_REVALIDATE)) {
-            return await staleWhileRevalidate(request);
-        }
-        
-        // DEFAULT - Network First with Offline Fallback
-        return await networkFirstWithOfflineFallback(request);
-        
-    } catch (error) {
-        console.error('🚨 Request handling failed:', error);
-        return await getOfflinePage();
-    }
-}
-
-// QUIZ-SPECIFIC HANDLING
-async function handleQuizRequest(request) {
-    try {
-        // Always try network first for quiz data
-        const response = await fetch(request);
-        
-        if (response.ok) {
-            // Cache successful quiz responses temporarily
-            const cache = await caches.open(CACHE_NAME);
-            await cache.put(request, response.clone());
-            return response;
-        }
-        
-        throw new Error('Network response not ok');
-        
-    } catch (error) {
-        // Try to serve from cache if available
         const cachedResponse = await caches.match(request);
         if (cachedResponse) {
-            console.log('📱 Serving quiz from cache (offline mode)');
             return cachedResponse;
         }
         
-        // Show offline quiz page
-        return await getOfflineQuizPage();
-    }
-}
-
-// CACHE FIRST STRATEGY
-async function cacheFirst(request) {
-    const cachedResponse = await caches.match(request);
-    if (cachedResponse) {
-        return cachedResponse;
-    }
-    
-    try {
-        const response = await fetch(request);
-        if (response.ok) {
-            const cache = await caches.open(CACHE_NAME);
-            await cache.put(request, response.clone());
-        }
-        return response;
-    } catch (error) {
-        console.log('📱 Network failed, serving offline fallback');
-        return await getOfflinePage();
-    }
-}
-
-// NETWORK FIRST STRATEGY
-async function networkFirst(request) {
-    try {
-        const response = await fetch(request);
+        const networkResponse = await fetch(request);
         
-        if (response.ok) {
-            // Cache successful API responses for 5 minutes
-            const cache = await caches.open(CACHE_NAME);
-            const clonedResponse = response.clone();
-            
-            // Add timestamp for cache expiry
-            const headers = new Headers(clonedResponse.headers);
-            headers.set('sw-cached-at', Date.now().toString());
-            
-            const modifiedResponse = new Response(clonedResponse.body, {
-                status: clonedResponse.status,
-                statusText: clonedResponse.statusText,
-                headers: headers
-            });
-            
-            await cache.put(request, modifiedResponse);
+        // Cache successful responses
+        if (networkResponse.status === 200) {
+            const cache = await caches.open(STATIC_CACHE);
+            cache.put(request, networkResponse.clone());
         }
         
-        return response;
-        
+        return networkResponse;
     } catch (error) {
-        // Try cache as fallback
-        const cachedResponse = await caches.match(request);
-        if (cachedResponse) {
-            // Check if cache is fresh (5 minutes)
-            const cachedAt = cachedResponse.headers.get('sw-cached-at');
-            if (cachedAt && (Date.now() - parseInt(cachedAt)) < 300000) {
-                console.log('📱 Serving API from cache');
-                return cachedResponse;
-            }
+        console.log('SW: Cache first failed:', error);
+        
+        // Return offline fallback for pages
+        if (request.destination === 'document') {
+            return caches.match('/offline.html');
         }
         
         throw error;
     }
 }
 
-// STALE WHILE REVALIDATE STRATEGY
-async function staleWhileRevalidate(request) {
-    const cache = await caches.open(CACHE_NAME);
-    const cachedResponse = await cache.match(request);
-    
-    // Fetch in background to update cache
-    const fetchPromise = fetch(request).then(response => {
-        if (response.ok) {
-            cache.put(request, response.clone());
-        }
-        return response;
-    }).catch(() => {
-        console.log('📱 Background fetch failed');
-    });
-    
-    // Return cached version immediately if available
-    if (cachedResponse) {
-        return cachedResponse;
-    }
-    
-    // Wait for network if no cache
-    return await fetchPromise;
-}
-
-// NETWORK FIRST WITH OFFLINE FALLBACK
-async function networkFirstWithOfflineFallback(request) {
+// PERFORMANCE: Network First Strategy - For API calls
+async function networkFirst(request) {
     try {
-        const response = await fetch(request);
+        const networkResponse = await fetch(request);
         
-        if (response.ok) {
-            const cache = await caches.open(CACHE_NAME);
-            await cache.put(request, response.clone());
+        // Cache successful API responses
+        if (networkResponse.status === 200 && isApiRequest(request)) {
+            const cache = await caches.open(API_CACHE);
+            cache.put(request, networkResponse.clone());
         }
         
-        return response;
-        
+        return networkResponse;
     } catch (error) {
+        console.log('SW: Network first failed, trying cache:', error);
+        
         const cachedResponse = await caches.match(request);
         if (cachedResponse) {
             return cachedResponse;
         }
         
-        return await getOfflinePage();
+        // Return offline fallback for pages
+        if (request.destination === 'document') {
+            return caches.match('/offline.html');
+        }
+        
+        throw error;
     }
 }
 
-// OFFLINE PAGE HANDLER
-async function getOfflinePage() {
-    const cache = await caches.open(CACHE_NAME);
-    const offlinePage = await cache.match(OFFLINE_PAGE);
+// PERFORMANCE: Stale While Revalidate Strategy - For pages
+async function staleWhileRevalidate(request) {
+    const cache = await caches.open(DYNAMIC_CACHE);
+    const cachedResponse = await cache.match(request);
     
-    if (offlinePage) {
-        return offlinePage;
+    // Fetch fresh version in background
+    const fetchPromise = fetch(request).then(networkResponse => {
+        if (networkResponse.status === 200) {
+            cache.put(request, networkResponse.clone());
+        }
+        return networkResponse;
+    }).catch(error => {
+        console.log('SW: Background fetch failed:', error);
+    });
+    
+    // Return cached version immediately if available
+    if (cachedResponse) {
+        // Don't await the fetch promise to return cached response immediately
+        fetchPromise;
+        return cachedResponse;
     }
     
-    // Fallback offline response
-    return new Response(`
-        <!DOCTYPE html>
-        <html>
-        <head>
-            <title>MedCapsule - Offline</title>
-            <meta name="viewport" content="width=device-width, initial-scale=1">
-            <style>
-                body {
-                    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-                    display: flex;
-                    justify-content: center;
-                    align-items: center;
-                    min-height: 100vh;
-                    margin: 0;
-                    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-                    color: white;
-                    text-align: center;
-                }
-                .offline-container {
-                    max-width: 400px;
-                    padding: 2rem;
-                }
-                .offline-icon {
-                    font-size: 4rem;
-                    margin-bottom: 1rem;
-                }
-                h1 { margin: 0 0 1rem 0; }
-                p { margin: 0 0 2rem 0; opacity: 0.9; }
-                .retry-btn {
-                    background: rgba(255,255,255,0.2);
-                    border: 2px solid rgba(255,255,255,0.3);
-                    color: white;
-                    padding: 12px 24px;
-                    border-radius: 8px;
-                    cursor: pointer;
-                    font-size: 16px;
-                    transition: all 0.3s ease;
-                }
-                .retry-btn:hover {
-                    background: rgba(255,255,255,0.3);
-                }
-            </style>
-        </head>
-        <body>
-            <div class="offline-container">
-                <div class="offline-icon">📱</div>
-                <h1>You're Offline</h1>
-                <p>Don't worry! Your medical education continues even offline. Some features may be limited.</p>
-                <button class="retry-btn" onclick="window.location.reload()">Try Again</button>
-            </div>
-        </body>
-        </html>
-    `, {
-        status: 200,
-        headers: { 'Content-Type': 'text/html' }
-    });
+    // If no cached version, wait for network
+    try {
+        return await fetchPromise;
+    } catch (error) {
+        console.log('SW: Stale while revalidate failed:', error);
+        return caches.match('/offline.html');
+    }
 }
 
-// OFFLINE QUIZ PAGE
-async function getOfflineQuizPage() {
-    return new Response(`
-        <!DOCTYPE html>
-        <html>
-        <head>
-            <title>Quiz - Offline Mode</title>
-            <meta name="viewport" content="width=device-width, initial-scale=1">
-            <style>
-                body {
-                    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-                    margin: 0;
-                    padding: 2rem;
-                    background: #f8f9fa;
-                }
-                .quiz-offline {
-                    max-width: 600px;
-                    margin: 0 auto;
-                    background: white;
-                    padding: 2rem;
-                    border-radius: 12px;
-                    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-                    text-align: center;
-                }
-                .offline-icon { font-size: 3rem; margin-bottom: 1rem; }
-                .btn { 
-                    background: #007bff; 
-                    color: white; 
-                    padding: 12px 24px; 
-                    border: none; 
-                    border-radius: 6px; 
-                    margin: 0.5rem;
-                    cursor: pointer;
-                }
-            </style>
-        </head>
-        <body>
-            <div class="quiz-offline">
-                <div class="offline-icon">🧠</div>
-                <h2>Quiz Temporarily Unavailable</h2>
-                <p>This quiz requires an internet connection. Please check your connection and try again.</p>
-                <button class="btn" onclick="window.location.reload()">Retry</button>
-                <button class="btn" onclick="window.history.back()">Go Back</button>
-            </div>
-        </body>
-        </html>
-    `, {
-        status: 200,
-        headers: { 'Content-Type': 'text/html' }
-    });
+// PERFORMANCE: Determine caching strategy based on request
+function getCachingStrategy(request) {
+    const url = request.url;
+    
+    // Check static assets
+    for (const pattern of CACHE_STRATEGIES.static) {
+        if (pattern.test(url)) {
+            return 'static';
+        }
+    }
+    
+    // Check API calls
+    for (const pattern of CACHE_STRATEGIES.api) {
+        if (pattern.test(url)) {
+            return 'api';
+        }
+    }
+    
+    // Check pages
+    for (const pattern of CACHE_STRATEGIES.pages) {
+        if (pattern.test(url)) {
+            return 'pages';
+        }
+    }
+    
+    return 'default';
 }
 
-// UTILITY: Pattern Matching
-function matchesPatterns(pathname, patterns) {
-    return patterns.some(pattern => pattern.test(pathname));
+// PERFORMANCE: Check if request is an API call
+function isApiRequest(request) {
+    return request.url.includes('/api/') || 
+           request.url.includes('/notifications') ||
+           request.headers.get('X-Requested-With') === 'XMLHttpRequest';
 }
 
-// BACKGROUND SYNC FOR QUIZ SUBMISSIONS
+// PERFORMANCE: Background sync for offline actions
 self.addEventListener('sync', event => {
-    if (event.tag === 'quiz-submission') {
-        event.waitUntil(handleQuizSubmissionSync());
+    console.log('SW: Background sync:', event.tag);
+    
+    switch (event.tag) {
+        case 'quiz-submission':
+            event.waitUntil(syncQuizSubmissions());
+            break;
+        case 'progress-update':
+            event.waitUntil(syncProgressUpdates());
+            break;
+        case 'notification-read':
+            event.waitUntil(syncNotificationReads());
+            break;
     }
 });
 
-// Handle offline quiz submissions
-async function handleQuizSubmissionSync() {
-    console.log('🔄 Syncing offline quiz submissions...');
-    
+// PERFORMANCE: Sync quiz submissions when back online
+async function syncQuizSubmissions() {
     try {
-        // Get pending submissions from IndexedDB
-        const submissions = await getPendingSubmissions();
+        const submissions = await getStoredSubmissions();
         
         for (const submission of submissions) {
             try {
                 const response = await fetch(submission.url, {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': submission.token
-                    },
-                    body: JSON.stringify(submission.data)
+                    headers: submission.headers,
+                    body: submission.data
                 });
                 
                 if (response.ok) {
-                    await removePendingSubmission(submission.id);
-                    console.log('✅ Quiz submission synced successfully');
-                } else {
-                    console.log('❌ Quiz submission sync failed');
+                    await removeStoredSubmission(submission.id);
+                    console.log('SW: Quiz submission synced successfully');
                 }
             } catch (error) {
-                console.log('❌ Sync attempt failed:', error);
+                console.log('SW: Failed to sync quiz submission:', error);
             }
         }
     } catch (error) {
-        console.error('🚨 Background sync failed:', error);
+        console.log('SW: Background sync failed:', error);
     }
 }
 
-// PUSH NOTIFICATIONS
-self.addEventListener('push', event => {
-    const options = {
-        body: event.data ? event.data.text() : 'New MedCapsule notification',
-        icon: '/images/icon-192x192.png',
-        badge: '/images/badge-72x72.png',
-        vibrate: [100, 50, 100],
-        data: {
-            dateOfArrival: Date.now(),
-            primaryKey: 1
-        },
-        actions: [
-            {
-                action: 'explore',
-                title: 'View',
-                icon: '/images/checkmark.png'
-            },
-            {
-                action: 'close',
-                title: 'Close',
-                icon: '/images/xmark.png'
+// PERFORMANCE: Sync progress updates
+async function syncProgressUpdates() {
+    try {
+        const updates = await getStoredProgressUpdates();
+        
+        for (const update of updates) {
+            try {
+                const response = await fetch('/api/progress/sync', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': update.csrfToken
+                    },
+                    body: JSON.stringify(update.data)
+                });
+                
+                if (response.ok) {
+                    await removeStoredProgressUpdate(update.id);
+                    console.log('SW: Progress update synced successfully');
+                }
+            } catch (error) {
+                console.log('SW: Failed to sync progress update:', error);
             }
-        ]
-    };
+        }
+    } catch (error) {
+        console.log('SW: Progress sync failed:', error);
+    }
+}
+
+// PERFORMANCE: Sync notification reads
+async function syncNotificationReads() {
+    try {
+        const reads = await getStoredNotificationReads();
+        
+        for (const read of reads) {
+            try {
+                const response = await fetch('/notifications/mark-as-read', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': read.csrfToken
+                    },
+                    body: JSON.stringify({ notification_ids: read.ids })
+                });
+                
+                if (response.ok) {
+                    await removeStoredNotificationRead(read.id);
+                    console.log('SW: Notification read synced successfully');
+                }
+            } catch (error) {
+                console.log('SW: Failed to sync notification read:', error);
+            }
+        }
+    } catch (error) {
+        console.log('SW: Notification sync failed:', error);
+    }
+}
+
+// PERFORMANCE: IndexedDB helpers for offline storage
+async function getStoredSubmissions() {
+    return new Promise((resolve, reject) => {
+        const request = indexedDB.open('MedCapsuleOffline', 1);
+        
+        request.onerror = () => reject(request.error);
+        request.onsuccess = () => {
+            const db = request.result;
+            const transaction = db.transaction(['submissions'], 'readonly');
+            const store = transaction.objectStore('submissions');
+            const getAllRequest = store.getAll();
+            
+            getAllRequest.onsuccess = () => resolve(getAllRequest.result);
+            getAllRequest.onerror = () => reject(getAllRequest.error);
+        };
+        
+        request.onupgradeneeded = (event) => {
+            const db = event.target.result;
+            if (!db.objectStoreNames.contains('submissions')) {
+                db.createObjectStore('submissions', { keyPath: 'id', autoIncrement: true });
+            }
+            if (!db.objectStoreNames.contains('progress')) {
+                db.createObjectStore('progress', { keyPath: 'id', autoIncrement: true });
+            }
+            if (!db.objectStoreNames.contains('notifications')) {
+                db.createObjectStore('notifications', { keyPath: 'id', autoIncrement: true });
+            }
+        };
+    });
+}
+
+async function removeStoredSubmission(id) {
+    return new Promise((resolve, reject) => {
+        const request = indexedDB.open('MedCapsuleOffline', 1);
+        
+        request.onsuccess = () => {
+            const db = request.result;
+            const transaction = db.transaction(['submissions'], 'readwrite');
+            const store = transaction.objectStore('submissions');
+            const deleteRequest = store.delete(id);
+            
+            deleteRequest.onsuccess = () => resolve();
+            deleteRequest.onerror = () => reject(deleteRequest.error);
+        };
+    });
+}
+
+async function getStoredProgressUpdates() {
+    return new Promise((resolve, reject) => {
+        const request = indexedDB.open('MedCapsuleOffline', 1);
+        
+        request.onsuccess = () => {
+            const db = request.result;
+            const transaction = db.transaction(['progress'], 'readonly');
+            const store = transaction.objectStore('progress');
+            const getAllRequest = store.getAll();
+            
+            getAllRequest.onsuccess = () => resolve(getAllRequest.result);
+            getAllRequest.onerror = () => reject(getAllRequest.error);
+        };
+    });
+}
+
+async function removeStoredProgressUpdate(id) {
+    return new Promise((resolve, reject) => {
+        const request = indexedDB.open('MedCapsuleOffline', 1);
+        
+        request.onsuccess = () => {
+            const db = request.result;
+            const transaction = db.transaction(['progress'], 'readwrite');
+            const store = transaction.objectStore('progress');
+            const deleteRequest = store.delete(id);
+            
+            deleteRequest.onsuccess = () => resolve();
+            deleteRequest.onerror = () => reject(deleteRequest.error);
+        };
+    });
+}
+
+async function getStoredNotificationReads() {
+    return new Promise((resolve, reject) => {
+        const request = indexedDB.open('MedCapsuleOffline', 1);
+        
+        request.onsuccess = () => {
+            const db = request.result;
+            const transaction = db.transaction(['notifications'], 'readonly');
+            const store = transaction.objectStore('notifications');
+            const getAllRequest = store.getAll();
+            
+            getAllRequest.onsuccess = () => resolve(getAllRequest.result);
+            getAllRequest.onerror = () => reject(getAllRequest.error);
+        };
+    });
+}
+
+async function removeStoredNotificationRead(id) {
+    return new Promise((resolve, reject) => {
+        const request = indexedDB.open('MedCapsuleOffline', 1);
+        
+        request.onsuccess = () => {
+            const db = request.result;
+            const transaction = db.transaction(['notifications'], 'readwrite');
+            const store = transaction.objectStore('notifications');
+            const deleteRequest = store.delete(id);
+            
+            deleteRequest.onsuccess = () => resolve();
+            deleteRequest.onerror = () => reject(deleteRequest.error);
+        };
+    });
+}
+
+// PERFORMANCE: Push notification handling
+self.addEventListener('push', event => {
+    console.log('SW: Push notification received');
+    
+    if (!event.data) {
+        return;
+    }
+    
+    try {
+        const data = event.data.json();
+        
+        const options = {
+            body: data.body,
+            icon: '/icon-192x192.png',
+            badge: '/badge-72x72.png',
+            tag: data.tag || 'medcapsule-notification',
+            requireInteraction: data.requireInteraction || false,
+            actions: data.actions || [],
+            data: data.data || {}
+        };
+        
+        event.waitUntil(
+            self.registration.showNotification(data.title, options)
+        );
+    } catch (error) {
+        console.log('SW: Failed to show notification:', error);
+    }
+});
+
+// PERFORMANCE: Notification click handling
+self.addEventListener('notificationclick', event => {
+    console.log('SW: Notification clicked');
+    
+    event.notification.close();
+    
+    const data = event.notification.data;
+    const action = event.action;
+    
+    let url = '/';
+    
+    if (action) {
+        switch (action) {
+            case 'view':
+                url = data.url || '/';
+                break;
+            case 'dismiss':
+                return;
+        }
+    } else if (data.url) {
+        url = data.url;
+    }
     
     event.waitUntil(
-        self.registration.showNotification('MedCapsule', options)
+        clients.matchAll({ type: 'window' }).then(clientList => {
+            // Check if there's already a window open
+            for (const client of clientList) {
+                if (client.url === url && 'focus' in client) {
+                    return client.focus();
+                }
+            }
+            
+            // Open new window
+            if (clients.openWindow) {
+                return clients.openWindow(url);
+            }
+        })
     );
 });
 
-// NOTIFICATION CLICK HANDLER
-self.addEventListener('notificationclick', event => {
-    event.notification.close();
-    
-    if (event.action === 'explore') {
-        event.waitUntil(
-            clients.openWindow('/')
-        );
-    }
-});
-
-// MESSAGE HANDLER
+// PERFORMANCE: Message handling for communication with main thread
 self.addEventListener('message', event => {
-    if (event.data && event.data.type === 'SKIP_WAITING') {
-        self.skipWaiting();
+    console.log('SW: Message received:', event.data);
+    
+    switch (event.data.type) {
+        case 'SKIP_WAITING':
+            self.skipWaiting();
+            break;
+        case 'GET_VERSION':
+            event.ports[0].postMessage({ version: CACHE_NAME });
+            break;
+        case 'CLEAR_CACHE':
+            clearAllCaches().then(() => {
+                event.ports[0].postMessage({ success: true });
+            });
+            break;
     }
 });
 
-console.log('🚀 MedCapsule Service Worker loaded successfully!');
+// PERFORMANCE: Clear all caches
+async function clearAllCaches() {
+    const cacheNames = await caches.keys();
+    return Promise.all(
+        cacheNames.map(cacheName => caches.delete(cacheName))
+    );
+}
+
+console.log('SW: Service Worker v1.0 loaded successfully');

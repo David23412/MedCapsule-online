@@ -47,6 +47,6 @@ class HomeController extends Controller
             ->orderBy('courses.name')
             ->get();
 
-        return view('home', compact('statistics', 'featuredCourses'));
+        return view('home-optimized', compact('statistics', 'featuredCourses'));
     }
 }
