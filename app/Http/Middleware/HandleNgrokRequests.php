@@ -13,7 +13,7 @@ class HandleNgrokRequests
             // Configure session for ngrok
             config([
                 'session.domain' => '',  // Empty domain for ngrok
-                'session.secure' => true,  // Enable secure for HTTPS ngrok
+                'session.secure' => false,  // Disable secure for ngrok
                 'session.same_site' => 'none',  // Required for cross-site
                 'session.http_only' => false,  // Allow JavaScript access for ngrok
                 'app.url' => $request->getSchemeAndHttpHost(),
@@ -24,7 +24,7 @@ class HandleNgrokRequests
             $cookies = $response->headers->getCookies();
             foreach ($cookies as $cookie) {
                 $cookie->setSameSite('None');
-                $cookie->setSecure(true);  // Enable secure for HTTPS ngrok
+                $cookie->setSecure(false);  // Disable secure for ngrok
             }
             return $response;
         }
