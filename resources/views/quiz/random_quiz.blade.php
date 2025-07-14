@@ -517,16 +517,57 @@
         .grade-icon.perfect i {
             color: #FFD700 !important;
             text-shadow: 0 0 10px rgba(255, 215, 0, 0.5);
+            animation: glow-gold 2s ease-in-out infinite alternate;
+        }
+
+        .grade-icon.excellent i {
+            color: #ff6b35 !important;
+            text-shadow: 0 0 10px rgba(255, 107, 53, 0.5);
+            animation: glow-orange 2s ease-in-out infinite alternate;
         }
 
         .grade-icon.good i {
             color: #40a9ff !important;
             text-shadow: 0 0 10px rgba(64, 169, 255, 0.5);
+            animation: pulse-blue 1.5s ease-in-out infinite;
+        }
+
+        .grade-icon.improving i {
+            color: #ff9800 !important;
+            text-shadow: 0 0 10px rgba(255, 152, 0, 0.5);
+            animation: pulse-orange 1.5s ease-in-out infinite;
         }
 
         .grade-icon.needs-improvement i {
             color: #ff4d4f !important;
             text-shadow: 0 0 10px rgba(255, 77, 79, 0.5);
+            animation: pulse-red 1.5s ease-in-out infinite;
+        }
+
+        /* GOLDEN STANDARD: Enhanced animations for better user feedback */
+        @keyframes glow-gold {
+            from { text-shadow: 0 0 10px rgba(255, 215, 0, 0.5), 0 0 20px rgba(255, 215, 0, 0.3); }
+            to { text-shadow: 0 0 20px rgba(255, 215, 0, 0.8), 0 0 30px rgba(255, 215, 0, 0.5); }
+        }
+
+        @keyframes glow-orange {
+            from { text-shadow: 0 0 10px rgba(255, 107, 53, 0.5), 0 0 20px rgba(255, 107, 53, 0.3); }
+            to { text-shadow: 0 0 20px rgba(255, 107, 53, 0.8), 0 0 30px rgba(255, 107, 53, 0.5); }
+        }
+
+        @keyframes pulse-blue {
+            0%, 100% { transform: scale(1); opacity: 0.9; }
+            50% { transform: scale(1.1); opacity: 1; }
+        }
+
+        @keyframes pulse-orange {
+            0%, 100% { transform: scale(1); opacity: 0.8; }
+            50% { transform: scale(1.05); opacity: 1; }
+        }
+
+        @keyframes pulse-red {
+            0%, 100% { transform: scale(1); opacity: 0.7; }
+            50% { transform: scale(1.1); opacity: 1; }
         }
 
         @keyframes confetti {
@@ -734,19 +775,22 @@
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
-    <!-- GOLDEN STANDARD: Add audio elements with error handling -->
-    <audio id="quizPerfectSound" preload="auto" onerror="console.warn('Failed to load quiz-perfect.mp3')">
-        <source src="{{ secure_url(asset('sounds/quiz-perfect.mp3')) }}" type="audio/mpeg">
-        <!-- Fallback for different audio formats -->
-        <source src="{{ secure_url(asset('sounds/quiz-perfect.mp3')) }}" type="audio/mp3">
+    <!-- GOLDEN STANDARD: Add audio elements with enhanced error handling and fallbacks -->
+    <audio id="quizPerfectSound" preload="auto" onerror="console.warn('Failed to load quiz-perfect.mp3 - audio feedback disabled')">
+        <source src="{{ asset('sounds/quiz-perfect.mp3') }}" type="audio/mpeg">
+        <source src="{{ asset('sounds/quiz-perfect.mp3') }}" type="audio/mp3">
+        <!-- Fallback for browsers that don't support HTML5 audio -->
+        Your browser does not support the audio element.
     </audio>
-    <audio id="quizPartialSound" preload="auto" onerror="console.warn('Failed to load quiz-partial.mp3')">
-        <source src="{{ secure_url(asset('sounds/quiz-partial.mp3')) }}" type="audio/mpeg">
-        <source src="{{ secure_url(asset('sounds/quiz-partial.mp3')) }}" type="audio/mp3">
+    <audio id="quizPartialSound" preload="auto" onerror="console.warn('Failed to load quiz-partial.mp3 - audio feedback disabled')">
+        <source src="{{ asset('sounds/quiz-partial.mp3') }}" type="audio/mpeg">
+        <source src="{{ asset('sounds/quiz-partial.mp3') }}" type="audio/mp3">
+        Your browser does not support the audio element.
     </audio>
-    <audio id="quizWrongSound" preload="auto" onerror="console.warn('Failed to load quiz-wrong.mp3')">
-        <source src="{{ secure_url(asset('sounds/quiz-wrong.mp3')) }}" type="audio/mpeg">
-        <source src="{{ secure_url(asset('sounds/quiz-wrong.mp3')) }}" type="audio/mp3">
+    <audio id="quizWrongSound" preload="auto" onerror="console.warn('Failed to load quiz-wrong.mp3 - audio feedback disabled')">
+        <source src="{{ asset('sounds/quiz-wrong.mp3') }}" type="audio/mpeg">
+        <source src="{{ asset('sounds/quiz-wrong.mp3') }}" type="audio/mp3">
+        Your browser does not support the audio element.
     </audio>
 
     <script>
@@ -983,12 +1027,45 @@
                         document.body.removeChild(loadingOverlay);
                     }
                     
-                    if (data.success) {
-                        // Handle success - GOLDEN STANDARD RESULT DISPLAY
-                        console.log('Quiz graded successfully:', data);
-                        displayQuizResults(data);
+                    // GOLDEN STANDARD: Comprehensive response validation and handling
+                    console.log('🎯 Quiz grading response received:', data);
+                    
+                    // Validate response structure
+                    if (!data || typeof data !== 'object') {
+                        throw new Error('Invalid response format received from server');
+                    }
+                    
+                    if (data.success === true || (data.score !== undefined && data.total !== undefined)) {
+                        // GOLDEN STANDARD: Handle successful grading with validation
+                        console.log('✅ Quiz graded successfully:', {
+                            score: data.score,
+                            total: data.total || data.total_questions,
+                            percentage: data.percentage_grade,
+                            message: data.message
+                        });
+                        
+                        // Ensure required fields are present
+                        if (data.score === undefined || (data.total === undefined && data.total_questions === undefined)) {
+                            console.warn('⚠️ Missing required score data, attempting fallback');
+                            
+                            // Create fallback data structure
+                            const fallbackData = {
+                                ...data,
+                                score: data.score || 0,
+                                total: data.total || data.total_questions || 0,
+                                percentage_grade: data.percentage_grade || 0,
+                                message: data.message || 'Quiz completed successfully!'
+                            };
+                            
+                            displayQuizResults(fallbackData);
+                        } else {
+                            displayQuizResults(data);
+                        }
                     } else {
-                        throw new Error(data.error || 'An error occurred while grading the quiz');
+                        // Handle error responses
+                        const errorMessage = data.error || data.message || 'An error occurred while grading the quiz';
+                        console.error('❌ Quiz grading failed:', errorMessage);
+                        throw new Error(errorMessage);
                     }
                 })
                 .catch(error => {
@@ -997,38 +1074,119 @@
                         document.body.removeChild(loadingOverlay);
                     }
                     
-                    // GOLDEN STANDARD ERROR HANDLING
-                    console.error('Quiz grading error:', error);
+                    // GOLDEN STANDARD: Comprehensive error handling with categorization
+                    console.error('❌ Quiz grading error:', error);
                     
                     // Reset submission state to allow retry
                     quizSubmitted = false;
                     document.querySelectorAll('input, textarea, button[type="submit"]').forEach(input => input.disabled = false);
                     
-                    // Show user-friendly error message with retry option
+                    // GOLDEN STANDARD: Categorize errors for better user experience
                     const errorMessage = error.message || 'An error occurred while grading the quiz. Please try again.';
+                    const isNetworkError = error.name === 'TypeError' || errorMessage.includes('fetch');
+                    const isSessionError = errorMessage.includes('session expired') || errorMessage.includes('no questions found') || errorMessage.includes('422');
+                    const isServerError = errorMessage.includes('500') || errorMessage.includes('Internal Server Error');
                     
-                    if (errorMessage.includes('session expired') || errorMessage.includes('no questions found')) {
+                    console.log('🔍 Error categorization:', {
+                        isNetworkError,
+                        isSessionError,
+                        isServerError,
+                        originalError: errorMessage
+                    });
+                    
+                    if (isSessionError) {
+                        // Handle session-related errors
                         Swal.fire({
-                            title: 'Session Expired',
-                            text: 'Your quiz session has expired. Please start a new random quiz.',
+                            title: '⏰ Session Expired',
+                            html: `
+                                <div style="text-align: center; margin: 20px 0;">
+                                    <p>Your quiz session has expired or is no longer valid.</p>
+                                    <p style="color: #666; font-size: 0.9em;">This can happen if you've been inactive for too long or if there was a browser issue.</p>
+                                </div>
+                            `,
                             icon: 'warning',
                             confirmButtonText: 'Start New Quiz',
-                            allowOutsideClick: false
+                            confirmButtonColor: '#3085d6',
+                            allowOutsideClick: false,
+                            showCloseButton: true
                         }).then(() => {
                             window.location.href = '{{ route("topics.forCourse", ["course" => $selectedCourses->first()->id]) }}';
                         });
-                    } else {
+                    } else if (isNetworkError) {
+                        // Handle network-related errors
                         Swal.fire({
-                            title: 'Grading Error',
-                            text: errorMessage,
+                            title: '🌐 Connection Issue',
+                            html: `
+                                <div style="text-align: center; margin: 20px 0;">
+                                    <p>There was a problem connecting to the server.</p>
+                                    <p style="color: #666; font-size: 0.9em;">Please check your internet connection and try again.</p>
+                                </div>
+                            `,
+                            icon: 'error',
+                            showCancelButton: true,
+                            confirmButtonText: 'Retry Submission',
+                            cancelButtonText: 'Go Back',
+                            confirmButtonColor: '#28a745',
+                            cancelButtonColor: '#6c757d',
+                            allowOutsideClick: false
+                        }).then((result) => {
+                            if (result.isConfirmed) {
+                                console.log('🔄 User requested retry after network error');
+                                submitQuiz();
+                            } else {
+                                console.log('🔙 User chose to go back after network error');
+                            }
+                        });
+                    } else if (isServerError) {
+                        // Handle server-related errors
+                        Swal.fire({
+                            title: '🛠️ Server Error',
+                            html: `
+                                <div style="text-align: center; margin: 20px 0;">
+                                    <p>The server encountered an issue while processing your quiz.</p>
+                                    <p style="color: #666; font-size: 0.9em;">This is usually temporary. Your answers are saved locally.</p>
+                                </div>
+                            `,
+                            icon: 'error',
+                            showCancelButton: true,
+                            confirmButtonText: 'Try Again',
+                            cancelButtonText: 'Save & Exit',
+                            confirmButtonColor: '#28a745',
+                            cancelButtonColor: '#ffc107',
+                            allowOutsideClick: false
+                        }).then((result) => {
+                            if (result.isConfirmed) {
+                                console.log('🔄 User requested retry after server error');
+                                submitQuiz();
+                            } else {
+                                console.log('💾 User chose to save and exit after server error');
+                                // Could implement local storage save here
+                                window.location.href = '{{ route("topics.forCourse", ["course" => $selectedCourses->first()->id]) }}';
+                            }
+                        });
+                    } else {
+                        // Handle generic errors
+                        Swal.fire({
+                            title: '⚠️ Grading Error',
+                            html: `
+                                <div style="text-align: center; margin: 20px 0;">
+                                    <p>${errorMessage}</p>
+                                    <p style="color: #666; font-size: 0.9em;">You can try submitting again or contact support if the problem persists.</p>
+                                </div>
+                            `,
                             icon: 'error',
                             showCancelButton: true,
                             confirmButtonText: 'Retry Submission',
                             cancelButtonText: 'Cancel',
+                            confirmButtonColor: '#28a745',
+                            cancelButtonColor: '#6c757d',
                             allowOutsideClick: false
                         }).then((result) => {
                             if (result.isConfirmed) {
+                                console.log('🔄 User requested retry after generic error');
                                 submitQuiz();
+                            } else {
+                                console.log('❌ User cancelled after error');
                             }
                         });
                     }
@@ -1054,72 +1212,169 @@
             });
         });
 
-        // Function to play quiz completion sound based on score
+        // GOLDEN STANDARD: Enhanced audio feedback system with comprehensive error handling
         function playQuizCompletionSound(score, total) {
-            console.log(`Playing sound for score: ${score}/${total}`);
-            const percentage = (score / total) * 100;
-            
-            // Get all sound elements
-            const perfectSound = document.getElementById('quizPerfectSound');
-            const partialSound = document.getElementById('quizPartialSound');
-            const wrongSound = document.getElementById('quizWrongSound');
-            
-            // Reset all sounds to start
-            [perfectSound, partialSound, wrongSound].forEach(sound => {
-                if (sound) {
-                    sound.pause();
-                    sound.currentTime = 0;
-                }
-            });
-
-            // Function to safely play audio with user interaction check
-            function safePlayAudio(audioElement, soundName) {
-                if (!audioElement) {
-                    console.warn(`${soundName} audio element not found`);
+            try {
+                console.log(`🔊 Playing quiz completion sound for score: ${score}/${total}`);
+                
+                // GOLDEN STANDARD: Validate inputs
+                if (typeof score !== 'number' || typeof total !== 'number' || total === 0) {
+                    console.warn('⚠️ Invalid score parameters for audio playback:', { score, total });
                     return;
                 }
                 
-                // Check if user has interacted with the page
-                if (document.visibilityState === 'visible') {
-                    // Try to play with user interaction context
-                    const playPromise = audioElement.play();
-                    
-                    if (playPromise !== undefined) {
-                        playPromise
-                            .then(() => {
-                                console.log(`${soundName} played successfully`);
-                            })
-                            .catch(error => {
-                                // Handle autoplay policy restrictions
-                                if (error.name === 'NotAllowedError') {
-                                    console.log(`${soundName} blocked by autoplay policy - user interaction required`);
-                                    // Optionally show a message to user about enabling audio
-                                } else {
-                                    console.error(`${soundName} play failed:`, error);
-                                }
-                            });
-                    }
-                } else {
-                    console.log(`${soundName} skipped - page not visible`);
+                const percentage = (score / total) * 100;
+                console.log(`📊 Audio selection based on ${percentage.toFixed(1)}% performance`);
+                
+                // GOLDEN STANDARD: Get all sound elements with validation
+                const perfectSound = document.getElementById('quizPerfectSound');
+                const partialSound = document.getElementById('quizPartialSound');
+                const wrongSound = document.getElementById('quizWrongSound');
+                
+                const audioElements = { perfectSound, partialSound, wrongSound };
+                const missingElements = Object.entries(audioElements)
+                    .filter(([name, element]) => !element)
+                    .map(([name]) => name);
+                
+                if (missingElements.length > 0) {
+                    console.warn('⚠️ Missing audio elements:', missingElements);
                 }
-            }
+                
+                // GOLDEN STANDARD: Reset all available sounds to start position
+                Object.values(audioElements).forEach(sound => {
+                    if (sound) {
+                        try {
+                            sound.pause();
+                            sound.currentTime = 0;
+                        } catch (resetError) {
+                            console.warn('⚠️ Failed to reset audio element:', resetError.message);
+                        }
+                    }
+                });
 
-                // Play appropriate sound based on score
-                if (percentage === 100) {
-                safePlayAudio(perfectSound, 'Perfect');
-                } else if (score === 0) {
-                    // This will trigger for both wrong answers and unanswered questions
-                safePlayAudio(wrongSound, 'Wrong');
+                // GOLDEN STANDARD: Enhanced safe audio playback with comprehensive error handling
+                function safePlayAudio(audioElement, soundName, scorePercentage) {
+                    return new Promise((resolve, reject) => {
+                        if (!audioElement) {
+                            const warning = `${soundName} audio element not found`;
+                            console.warn(`⚠️ ${warning}`);
+                            resolve({ played: false, reason: 'element_not_found' });
+                            return;
+                        }
+                        
+                        // Check if the audio file is actually loaded
+                        if (audioElement.readyState < 2) {
+                            console.warn(`⚠️ ${soundName} audio not ready (readyState: ${audioElement.readyState})`);
+                            resolve({ played: false, reason: 'not_ready' });
+                            return;
+                        }
+                        
+                        // GOLDEN STANDARD: Check browser audio context and user interaction
+                        if (document.visibilityState !== 'visible') {
+                            console.log(`🔇 ${soundName} skipped - page not visible`);
+                            resolve({ played: false, reason: 'page_not_visible' });
+                            return;
+                        }
+                        
+                        // GOLDEN STANDARD: Try to play with comprehensive error handling
+                        try {
+                            const playPromise = audioElement.play();
+                            
+                            if (playPromise !== undefined) {
+                                playPromise
+                                    .then(() => {
+                                        console.log(`✅ ${soundName} audio played successfully for ${scorePercentage.toFixed(1)}% score`);
+                                        resolve({ played: true, reason: 'success' });
+                                    })
+                                    .catch(error => {
+                                        // GOLDEN STANDARD: Handle specific audio errors
+                                        if (error.name === 'NotAllowedError') {
+                                            console.log(`🔇 ${soundName} blocked by autoplay policy - user interaction required`);
+                                            resolve({ played: false, reason: 'autoplay_blocked' });
+                                        } else if (error.name === 'NotSupportedError') {
+                                            console.warn(`⚠️ ${soundName} format not supported by browser`);
+                                            resolve({ played: false, reason: 'format_not_supported' });
+                                        } else if (error.name === 'AbortError') {
+                                            console.log(`🔇 ${soundName} playback aborted`);
+                                            resolve({ played: false, reason: 'aborted' });
+                                        } else {
+                                            console.error(`❌ ${soundName} playback failed:`, error);
+                                            resolve({ played: false, reason: 'playback_error', error: error.message });
+                                        }
+                                    });
+                            } else {
+                                console.log(`✅ ${soundName} play() returned undefined (legacy browser)`);
+                                resolve({ played: true, reason: 'legacy_success' });
+                            }
+                        } catch (syncError) {
+                            console.error(`❌ ${soundName} synchronous play error:`, syncError);
+                            resolve({ played: false, reason: 'sync_error', error: syncError.message });
+                        }
+                    });
+                }
+
+                // GOLDEN STANDARD: Determine and play appropriate sound based on performance
+                let selectedAudio = null;
+                let soundName = '';
+                
+                if (percentage >= 100) {
+                    selectedAudio = perfectSound;
+                    soundName = 'Perfect Score';
+                    console.log('🏆 Playing perfect score sound');
+                } else if (percentage >= 70) {
+                    selectedAudio = partialSound;
+                    soundName = 'Good Score';
+                    console.log('🎯 Playing good score sound');
+                } else if (score === 0 || percentage === 0) {
+                    selectedAudio = wrongSound;
+                    soundName = 'No Correct Answers';
+                    console.log('💪 Playing encouragement sound');
                 } else {
-                safePlayAudio(partialSound, 'Partial');
+                    selectedAudio = partialSound;
+                    soundName = 'Partial Score';
+                    console.log('📈 Playing partial score sound');
+                }
+                
+                // GOLDEN STANDARD: Play the selected audio with result logging
+                if (selectedAudio) {
+                    safePlayAudio(selectedAudio, soundName, percentage)
+                        .then(result => {
+                            if (result.played) {
+                                console.log(`✅ Audio feedback completed successfully`);
+                            } else {
+                                console.log(`🔇 Audio feedback skipped: ${result.reason}`);
+                                
+                                // GOLDEN STANDARD: Optional visual feedback when audio fails
+                                if (result.reason === 'autoplay_blocked') {
+                                    // Could add a small visual indicator that audio was blocked
+                                    console.log('💡 Consider adding visual feedback for audio-blocked users');
+                                }
+                            }
+                        })
+                        .catch(error => {
+                            console.error('❌ Unexpected error in audio playback:', error);
+                        });
+                } else {
+                    console.warn('⚠️ No appropriate audio element selected for playback');
+                }
+                
+            } catch (error) {
+                console.error('❌ Critical error in playQuizCompletionSound:', error);
+                // Don't throw - audio failure should never break the quiz experience
             }
         }
 
-        // GOLDEN STANDARD: Display quiz results with robust error handling
+        // GOLDEN STANDARD: Display quiz results with comprehensive error handling and validation
         function displayQuizResults(data) {
             try {
-                console.log('Displaying quiz results:', data);
+                console.log('🎯 Displaying quiz results:', data);
                 
+                // GOLDEN STANDARD: Validate data structure
+                if (!data || typeof data !== 'object') {
+                    throw new Error('Invalid quiz results data received');
+                }
+                
+                // GOLDEN STANDARD: Validate all required DOM elements
                 const popup = document.getElementById('popup');
                 const popupOverlay = document.getElementById('popup-overlay');
                 const popupTitle = document.getElementById('popup-title');
@@ -1127,56 +1382,159 @@
                 const popupMessage = document.getElementById('popup-message');
                 const gradeIcon = document.getElementById('grade-icon');
                 
-                if (!popup || !popupOverlay || !popupTitle || !popupScore || !popupMessage || !gradeIcon) {
-                    console.error('Quiz result popup elements not found');
-                    return;
+                const missingElements = [];
+                if (!popup) missingElements.push('popup');
+                if (!popupOverlay) missingElements.push('popup-overlay');
+                if (!popupTitle) missingElements.push('popup-title');
+                if (!popupScore) missingElements.push('popup-score');
+                if (!popupMessage) missingElements.push('popup-message');
+                if (!gradeIcon) missingElements.push('grade-icon');
+                
+                if (missingElements.length > 0) {
+                    console.error('❌ Missing quiz result popup elements:', missingElements);
+                    throw new Error(`Missing popup elements: ${missingElements.join(', ')}`);
                 }
                 
-                const score = data.score || 0;
-                const total = data.total || data.total_questions || 0;
-                const percentage = data.percentage_grade || ((score / total) * 100);
+                // GOLDEN STANDARD: Extract and validate score data with fallbacks
+                const score = parseInt(data.score) || 0;
+                const total = parseInt(data.total || data.total_questions) || 0;
+                const percentage = parseFloat(data.percentage_grade) || (total > 0 ? (score / total) * 100 : 0);
                 
-                // Update popup content
+                if (total === 0) {
+                    console.warn('⚠️ Total questions is 0, quiz may be invalid');
+                }
+                
+                console.log('📊 Quiz Score Breakdown:', {
+                    score: score,
+                    total: total,
+                    percentage: percentage.toFixed(1) + '%',
+                    message: data.message
+                });
+                
+                // GOLDEN STANDARD: Update popup content with sanitized data
                 popupScore.textContent = `${score}/${total}`;
                 popupTitle.textContent = 'Quiz Complete!';
                 
-                // Set grade icon and message based on performance
-                if (percentage === 100) {
-                    gradeIcon.innerHTML = '<i class="fas fa-trophy"></i>';
+                // GOLDEN STANDARD: Set grade icon and message based on performance with enhanced feedback
+                if (percentage >= 100) {
+                    gradeIcon.innerHTML = '<i class="fas fa-trophy" style="color: #FFD700;"></i>';
                     gradeIcon.className = 'grade-icon perfect';
-                    popupMessage.textContent = data.message || 'Perfect score! Outstanding work!';
-                    createConfetti();
-                } else if (percentage >= 70) {
-                    gradeIcon.innerHTML = '<i class="fas fa-medal"></i>';
+                    popupTitle.textContent = 'Perfect Score! 🏆';
+                    popupMessage.textContent = data.message || 'Outstanding! You achieved a perfect score! 🌟';
+                    
+                    // GOLDEN STANDARD: Enhanced confetti for perfect scores
+                    setTimeout(() => createConfetti(), 300);
+                    setTimeout(() => createConfetti(), 600);
+                    
+                } else if (percentage >= 90) {
+                    gradeIcon.innerHTML = '<i class="fas fa-star" style="color: #FF6B35;"></i>';
+                    gradeIcon.className = 'grade-icon excellent';
+                    popupTitle.textContent = 'Excellent Work! ⭐';
+                    popupMessage.textContent = data.message || 'Amazing performance! You\'re mastering this material! 🎯';
+                    setTimeout(() => createConfetti(), 400);
+                    
+                } else if (percentage >= 80) {
+                    gradeIcon.innerHTML = '<i class="fas fa-medal" style="color: #4CAF50;"></i>';
                     gradeIcon.className = 'grade-icon good';
-                    popupMessage.textContent = data.message || 'Great job! You\'re doing well!';
+                    popupTitle.textContent = 'Great Job! 🥇';
+                    popupMessage.textContent = data.message || 'Well done! You\'re doing great! 💪';
+                    
+                } else if (percentage >= 70) {
+                    gradeIcon.innerHTML = '<i class="fas fa-thumbs-up" style="color: #2196F3;"></i>';
+                    gradeIcon.className = 'grade-icon good';
+                    popupTitle.textContent = 'Good Work! 👍';
+                    popupMessage.textContent = data.message || 'Good progress! Keep up the momentum! 📈';
+                    
+                } else if (percentage >= 50) {
+                    gradeIcon.innerHTML = '<i class="fas fa-chart-line" style="color: #FF9800;"></i>';
+                    gradeIcon.className = 'grade-icon improving';
+                    popupTitle.textContent = 'Keep Improving! 📊';
+                    popupMessage.textContent = data.message || 'You\'re making progress! Review and try again! 📚';
+                    
                 } else {
-                    gradeIcon.innerHTML = '<i class="fas fa-redo"></i>';
+                    gradeIcon.innerHTML = '<i class="fas fa-redo" style="color: #F44336;"></i>';
                     gradeIcon.className = 'grade-icon needs-improvement';
-                    popupMessage.textContent = data.message || 'Keep practicing! You\'re improving!';
+                    popupTitle.textContent = 'Keep Practicing! 🔄';
+                    popupMessage.textContent = data.message || 'Don\'t give up! Every attempt helps you learn! 💪';
                 }
                 
-                // Play appropriate audio feedback
-                playQuizCompletionSound(score, total);
+                // GOLDEN STANDARD: Play appropriate audio feedback with error handling
+                try {
+                    playQuizCompletionSound(score, total);
+                } catch (audioError) {
+                    console.warn('⚠️ Audio playback failed:', audioError.message);
+                    // Continue without audio - don't break the experience
+                }
                 
-                // Show the popup
+                // GOLDEN STANDARD: Animate popup display with enhanced timing
+                popupOverlay.style.display = 'flex';
                 popupOverlay.classList.add('show');
+                
+                // Staggered animation for better visual effect
                 setTimeout(() => {
                     popup.classList.add('show');
-                }, 100);
+                    
+                    // Add a subtle bounce effect for perfect scores
+                    if (percentage >= 100) {
+                        setTimeout(() => {
+                            popup.style.transform = 'scale(1.05)';
+                            setTimeout(() => {
+                                popup.style.transform = 'scale(1)';
+                            }, 200);
+                        }, 200);
+                    }
+                }, 150);
                 
-                // Store results for review functionality
-                window.quizResults = data;
+                // GOLDEN STANDARD: Store comprehensive results for review functionality
+                window.quizResults = {
+                    ...data,
+                    displayedAt: new Date().toISOString(),
+                    finalScore: score,
+                    finalTotal: total,
+                    finalPercentage: percentage
+                };
+                
+                console.log('✅ Quiz results displayed successfully');
                 
             } catch (error) {
-                console.error('Error displaying quiz results:', error);
-                // Fallback: show basic success message
-                Swal.fire({
-                    title: 'Quiz Complete!',
-                    text: 'Your quiz has been submitted successfully.',
-                    icon: 'success',
-                    confirmButtonText: 'OK'
-                });
+                console.error('❌ Critical error displaying quiz results:', error);
+                
+                // GOLDEN STANDARD: Comprehensive fallback with user-friendly messaging
+                try {
+                    // Try to show a basic popup if possible
+                    const basicScore = (data && data.score !== undefined) ? data.score : 'Unknown';
+                    const basicTotal = (data && (data.total || data.total_questions)) ? (data.total || data.total_questions) : 'Unknown';
+                    
+                    Swal.fire({
+                        title: '🎯 Quiz Complete!',
+                        html: `
+                            <div style="font-size: 1.2em; margin: 20px 0;">
+                                <strong>Score: ${basicScore}/${basicTotal}</strong>
+                            </div>
+                            <p style="color: #666;">Your quiz has been submitted and scored successfully!</p>
+                            ${data && data.message ? `<p style="font-style: italic;">"${data.message}"</p>` : ''}
+                        `,
+                        icon: 'success',
+                        confirmButtonText: 'Continue',
+                        confirmButtonColor: '#4CAF50',
+                        showCloseButton: true,
+                        timer: null,
+                        timerProgressBar: false
+                    }).then((result) => {
+                        if (result.isConfirmed || result.isDismissed) {
+                            // Optionally redirect or refresh
+                            console.log('User acknowledged quiz completion');
+                        }
+                    });
+                    
+                } catch (fallbackError) {
+                    console.error('❌ Even fallback display failed:', fallbackError);
+                    
+                    // Ultimate fallback - browser alert
+                    const score = (data && data.score !== undefined) ? data.score : '?';
+                    const total = (data && (data.total || data.total_questions)) ? (data.total || data.total_questions) : '?';
+                    alert(`Quiz Complete!\nScore: ${score}/${total}\n\nYour quiz has been submitted successfully.`);
+                }
             }
         }
 
