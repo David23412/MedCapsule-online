@@ -56,10 +56,11 @@ class PaymentService
     public function validateTransactionId(?string $transactionId): array
     {
         $validator = Validator::make(['transaction_id' => $transactionId], [
-            'transaction_id' => 'required|string|min:10|unique:payments,reference_number'
+            'transaction_id' => 'required|string|min:10|max:100|unique:payments,reference_number'
         ], [
             'transaction_id.required' => 'Please provide a transaction code.',
             'transaction_id.min' => 'Transaction code must be at least 10 characters long.',
+            'transaction_id.max' => 'Transaction code cannot exceed 100 characters.',
             'transaction_id.unique' => 'This transaction code has already been used.'
         ]);
 

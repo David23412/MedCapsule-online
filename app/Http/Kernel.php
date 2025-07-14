@@ -28,11 +28,13 @@ class Kernel extends HttpKernel
      */
     protected $middlewareGroups = [
         'web' => [
+            \App\Http\Middleware\SqlInjectionProtectionMiddleware::class,
+            \App\Http\Middleware\RequestTimeoutMiddleware::class,
             \App\Http\Middleware\EncryptCookies::class,
             \Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse::class,
             \Illuminate\Session\Middleware\StartSession::class,
             \Illuminate\View\Middleware\ShareErrorsFromSession::class,
-            // \App\Http\Middleware\VerifyCsrfToken::class, // Temporarily disabled for testing
+            \App\Http\Middleware\VerifyCsrfToken::class,
             \Illuminate\Routing\Middleware\SubstituteBindings::class,
             \App\Http\Middleware\TrackUserActivity::class,
             \App\Http\Middleware\PerformanceMonitoring::class,
@@ -68,5 +70,8 @@ class Kernel extends HttpKernel
         'force.https' => \App\Http\Middleware\HttpsRedirectMiddleware::class,
         'error.boundary' => \App\Http\Middleware\ErrorBoundary::class,
         'performance.monitor' => \App\Http\Middleware\PerformanceMonitoring::class,
+        'request.timeout' => \App\Http\Middleware\RequestTimeoutMiddleware::class,
+        'aggressive.rate.limit' => \App\Http\Middleware\AggressiveRateLimitMiddleware::class,
+        'sql.injection.protection' => \App\Http\Middleware\SqlInjectionProtectionMiddleware::class,
     ];
 } 
