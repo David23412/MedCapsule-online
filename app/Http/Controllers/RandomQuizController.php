@@ -244,7 +244,10 @@ class RandomQuizController extends Controller
             // Get questions from session with validation
             $questionIds = session('random_quiz_questions');
             if (!$questionIds || empty($questionIds)) {
-                throw new \Exception('Quiz session expired or no questions found');
+                return response()->json([
+                    'success' => false,
+                    'error' => 'Quiz session expired or no questions found. Please start a new random quiz.'
+                ], 422);
             }
 
             $questions = Question::whereIn('id', $questionIds)

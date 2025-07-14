@@ -949,10 +949,10 @@
             <a class="navbar-brand" href="/">MedCapsule</a>
             <div class="nav-links">
                 <a href="javascript:history.back()" class="nav-link">← Back</a>
-                <a href="{{ route('profile') }}" class="profile-circle {{ !Auth::user()->profile_picture_url ? 'no-image' : '' }}" 
-                     style="{{ Auth::user()->profile_picture_url ? 'background-image: url(' . secure_url(Auth::user()->profile_picture_url) . ');' : '' }}">
-                    @if(!Auth::user()->profile_picture_url)
-                        {{ substr(Auth::user()->name, 0, 1) }}
+                <a href="{{ route('profile') }}" class="profile-circle {{ !Auth::user() || !Auth::user()->profile_picture_url ? 'no-image' : '' }}" 
+                     style="{{ Auth::user() && Auth::user()->profile_picture_url ? 'background-image: url(' . secure_url(Auth::user()->profile_picture_url) . ');' : '' }}">
+                    @if(!Auth::user() || !Auth::user()->profile_picture_url)
+                        {{ Auth::user() ? substr(Auth::user()->name, 0, 1) : 'U' }}
                     @endif
                 </a>
             </div>

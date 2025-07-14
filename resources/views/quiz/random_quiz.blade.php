@@ -792,7 +792,7 @@
 
                 const formDataObj = {};
                 formDataObj.answers = {};
-                formDataObj.time_taken = document.getElementById('time-taken').value;
+                formDataObj.time_taken = parseInt(document.getElementById('time-taken').value, 10) || 0;
 
                 // Add all questions (answered and unanswered) to formData
                 document.querySelectorAll('.question-box').forEach(questionBox => {
@@ -800,16 +800,18 @@
                     const selectedAnswer = questionBox.querySelector('input:checked');
                     if (selectedAnswer) {
                         formDataObj.answers[questionId] = selectedAnswer.value;
+                    } else if (!formDataObj.answers.hasOwnProperty(questionId)) {
+                        // Mark unanswered multiple choice as empty string
+                        formDataObj.answers[questionId] = '';
                     }
                 });
-                
                 // Add written answers to formData
                 document.querySelectorAll('.written-answer').forEach(textarea => {
                     const questionId = textarea.getAttribute('data-question-id');
                     if (textarea.value.trim() !== '') {
                         formDataObj.answers[questionId] = textarea.value;
                     } else {
-                        formDataObj.answers[questionId] = ''; // Empty answer
+                        formDataObj.answers[questionId] = '';
                     }
                 });
 

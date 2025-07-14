@@ -37,7 +37,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/courses/{course}', [CourseController::class, 'show'])->name('courses.show');
     
     // Review routes with CSRF and rate limiting
-    Route::get('/review', [QuizController::class, 'showMistakes'])->name('review.index');
+    Route::get('/review', [QuizController::class, 'showMistakes'])->name('review.index')->withoutMiddleware('auth');
     Route::get('/review/learn', [LearnController::class, 'learnMistakes'])->name('review.learn');
     Route::post('/review/remove/{question_id}', [MistakeController::class, 'removeMistake'])
         ->name('review.remove')
@@ -82,10 +82,7 @@ Route::middleware('auth')->group(function () {
     // Course enrollment and topic routes
     Route::post('/courses/{course}/enroll', [CourseController::class, 'enroll'])->name('courses.enroll');
     Route::get('/topics/{course}', [TopicController::class, 'forCourse'])->name('topics.forCourse');
-    Route::get('/topics/course/{course}', [TopicController::class, 'forCourse'])->name('topics.forCourse');
-    Route::get('/topics', function() {
-        return redirect()->route('courses.index');
-    });
+    Route::get('/topics/course/{course}', [TopicController::class, 'forCourse'])->name('topics.forCourseLegacy');
     Route::get('/courses/{course}/cases', [TopicController::class, 'casesForCourse'])->name('cases.forCourse');
     Route::get('/courses/{course}/cases-count', [TopicController::class, 'casesCount'])->name('cases.count');
 
@@ -176,6 +173,9 @@ Route::middleware('auth')->group(function () {
         ->middleware(['throttle:5,1']); // 5 payment attempts per minute
     Route::post('/payments/{course}/submit-proof', [PaymentController::class, 'submitProof'])
         ->name('payments.submit-proof')
+        ->middleware(['throttle:10,1']); // 10 proof submissions per minute
+    Route::post('/payments/{course}/submit-proof-course', [PaymentController::class, 'submitProof'])
+        ->name('payments.submit-proof-course')
         ->middleware(['throttle:10,1']); // 10 proof submissions per minute
     Route::post('/payments/{payment}/submit-proof', [PaymentController::class, 'submitPaymentProof'])
         ->name('payments.submit-payment-proof')

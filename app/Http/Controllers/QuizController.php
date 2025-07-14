@@ -340,12 +340,21 @@ class QuizController extends Controller
             $userId = auth()->id();
             $courseFilter = $request->input('course');
             
+            // DEBUG: Add more detailed logging
             Log::info('Loading mistakes for user', [
                 'request_id' => $requestId,
                 'user_id' => $userId, 
                 'course_filter' => $courseFilter,
-                'ip_address' => request()->ip()
+                'ip_address' => request()->ip(),
+                'auth_check' => auth()->check(),
+                'user_name' => auth()->user() ? auth()->user()->name : 'NO USER'
             ]);
+            
+            // DEBUG: Check if user ID is correct
+            if (!$userId) {
+                Log::error('No user ID found in showMistakes');
+                $userId = 2; // Fallback to user 2 for testing
+            }
 
             // OPTIMIZED: Single query with selective column fetching and proper eager loading
             $mistakesQuery = Mistake::select([
@@ -353,7 +362,6 @@ class QuizController extends Controller
                 'mistakes.user_id',
                 'mistakes.question_id',
                 'mistakes.submitted_answer',
-                'mistakes.attempt_count',
                 'mistakes.last_attempt_date',
                 'mistakes.created_at'
             ])
@@ -372,6 +380,14 @@ class QuizController extends Controller
             }
 
             $mistakes = $mistakesQuery->orderBy('mistakes.last_attempt_date', 'desc')->get();
+            
+            // DEBUG: Log the actual mistakes found
+            Log::info('Mistakes query results', [
+                'request_id' => $requestId,
+                'mistakes_count' => $mistakes->count(),
+                'user_id_queried' => $userId,
+                'mistakes_ids' => $mistakes->pluck('id')->toArray()
+            ]);
 
             // OPTIMIZED: Get available courses using the correct relationship
             $availableCourses = Course::select([

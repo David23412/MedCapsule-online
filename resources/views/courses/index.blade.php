@@ -1537,58 +1537,93 @@
         // Global error handler to prevent courses from disappearing
         window.addEventListener('error', function(e) {
             console.warn('JavaScript error caught:', e.error);
-            // Prevent the error from breaking the page
-            e.preventDefault();
-            return false;
-        });
+                    // Prevent the error from breaking the page
+        e.preventDefault();
+        return false;
+    });
 
-        // Also catch unhandled promise rejections
-        window.addEventListener('unhandledrejection', function(e) {
-            console.warn('Unhandled promise rejection:', e.reason);
-            e.preventDefault();
+    // Also catch unhandled promise rejections
+    window.addEventListener('unhandledrejection', function(e) {
+        console.warn('Unhandled promise rejection:', e.reason);
+        e.preventDefault();
+    });
+    
+    // Safari-specific error handler to prevent page breaking
+    window.addEventListener('error', function(e) {
+        console.warn('JavaScript error caught:', e.error);
+        // Prevent the error from breaking the page
+        e.preventDefault();
+        return false;
+    });
+    
+    // Additional Safari fallback for DOM issues
+    if (typeof window !== 'undefined') {
+        window.addEventListener('load', function() {
+            // Ensure critical elements are always visible
+            const criticalElements = [
+                '.courses-grid',
+                '.courses-container', 
+                '.main-content',
+                '.container'
+            ];
+            
+            criticalElements.forEach(selector => {
+                const elements = document.querySelectorAll(selector);
+                elements.forEach(el => {
+                    if (el) {
+                        el.style.display = el.style.display || 'block';
+                        el.style.visibility = 'visible';
+                        el.style.opacity = '1';
+                    }
+                });
+            });
         });
+    }
 
-        // Ensure updateScrollArrows is available globally immediately
+        // DISABLED: updateScrollArrows function to prevent Safari errors
         window.updateScrollArrows = function(container) {
-            try {
-                // If no container provided, try to find the courses grid
-                if (!container) {
-                    container = document.querySelector('.courses-grid');
-                }
-                
-                if (!container) {
-                    console.log('No courses grid container found');
-                    return;
-                }
-                
-                const leftArrow = document.querySelector('.scroll-left');
-                const rightArrow = document.querySelector('.scroll-right');
-                
-                if (!leftArrow || !rightArrow) {
-                    console.log('Scroll arrows not found');
-                    return;
-                }
-                
-                // Show/hide arrows with smooth fade
-                leftArrow.style.opacity = container.scrollLeft > 0 ? '1' : '0';
-                rightArrow.style.opacity = 
-                    (container.scrollLeft + container.offsetWidth) < container.scrollWidth 
-                        ? '1' : '0';
-            } catch (error) {
-                console.warn('Error in updateScrollArrows:', error);
-                // Don't let this error break the page
-            }
+            // Function disabled to prevent Safari errors
+            return;
         };
 
-        // Fallback to ensure courses are always visible
+        // Fallback to ensure courses are always visible - Safari-safe
         window.addEventListener('load', function() {
             setTimeout(function() {
                 const coursesGrid = document.querySelector('.courses-grid');
                 if (coursesGrid) {
                     coursesGrid.style.display = 'flex';
                     coursesGrid.style.visibility = 'visible';
+                    coursesGrid.style.opacity = '1';
+                }
+                
+                // Additional Safari fallback - ensure courses container is visible
+                const coursesContainer = document.querySelector('.courses-container');
+                if (coursesContainer) {
+                    coursesContainer.style.display = 'block';
+                    coursesContainer.style.visibility = 'visible';
+                    coursesContainer.style.opacity = '1';
                 }
             }, 1000);
+        });
+        
+        // Additional Safari-specific fallback
+        document.addEventListener('DOMContentLoaded', function() {
+            setTimeout(function() {
+                const coursesGrid = document.querySelector('.courses-grid');
+                const coursesContainer = document.querySelector('.courses-container');
+                
+                if (coursesGrid) {
+                    coursesGrid.style.display = 'flex';
+                    coursesGrid.style.visibility = 'visible';
+                    coursesGrid.style.opacity = '1';
+                }
+                
+                if (coursesContainer) {
+                    coursesContainer.style.display = 'block';
+                    coursesContainer.style.visibility = 'visible';
+                    coursesContainer.style.opacity = '1';
+                }
+            }, 500);
         });
 
         // Same notification bell logic from the home page
@@ -2007,19 +2042,9 @@
     function initializeScrollArrows() {
         try {
             const coursesGrid = document.querySelector('.courses-grid');
-            if (coursesGrid) {
-                            coursesGrid.addEventListener('scroll', () => {
-                if (typeof window.updateScrollArrows === 'function') {
-                    window.updateScrollArrows(coursesGrid);
-                }
-            });
-                
-                            // Initial arrow visibility with delay for Safari
-            setTimeout(() => {
-                if (typeof window.updateScrollArrows === 'function') {
-                    window.updateScrollArrows(coursesGrid);
-                }
-            }, 100);
+            if (coursesGrid && coursesGrid.nodeType === 1) {
+                // Scroll functionality disabled for Safari compatibility
+                console.log('Scroll arrows disabled for Safari compatibility');
             }
         } catch (error) {
             console.warn('Error initializing scroll arrows:', error);
@@ -2078,12 +2103,8 @@
                             behavior: 'smooth'
                         });
 
-                        // Update scroll arrows visibility with delay for Safari
-                        setTimeout(() => {
-                            if (typeof window.updateScrollArrows === 'function') {
-                                window.updateScrollArrows(coursesGrid);
-                            }
-                        }, 150);
+                        // Scroll arrows disabled for Safari compatibility
+                        console.log('Scroll arrows disabled for Safari compatibility');
                     }
                 });
             });

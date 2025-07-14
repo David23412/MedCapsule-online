@@ -22,7 +22,6 @@ class UserStatsService
         // Atomic increments for performance and safety
         $user->increment('total_questions_attempted', $questionsAttempted);
         $user->increment('correct_answers_count', $correctAnswers);
-        $user->increment('study_time_seconds', $durationSeconds);
 
         // Handle study streak and last study date
         $today = Carbon::today();

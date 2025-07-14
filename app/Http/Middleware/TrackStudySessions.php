@@ -39,8 +39,8 @@ class TrackStudySessions
                         'duration' => $durationInMinutes
                     ]);
                     
-                    // Update user's total study minutes
-                    Auth::user()->increment('total_study_minutes', $durationInMinutes);
+                    // Update user's study time seconds
+                    Auth::user()->increment('study_time_seconds', $durationInMinutes * 60);
                     
                     // Clear the session variable
                     session()->forget('active_study_session_id');

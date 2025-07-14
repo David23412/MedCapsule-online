@@ -302,6 +302,15 @@ class InputValidationService
             // Cache this submission hash for 5 minutes
             ResilientCacheService::safePut($cacheKey, true, 300);
         }
+
+        if ($context['action'] === 'random_quiz_grade' && isset($context['user_id'])) {
+            $cacheKey = 'random_quiz_grade_' . $context['user_id'];
+            if (cache()->has($cacheKey)) {
+                // Instead of throwing, return a user-friendly error
+                throw new \Exception('You have already submitted this random quiz. Please start a new quiz.');
+            }
+            cache()->put($cacheKey, true, 300); // 5 minutes lock
+        }
     }
 
     /**

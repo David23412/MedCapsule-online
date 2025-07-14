@@ -443,19 +443,17 @@ class GradingService
      */
     private function updateTopicProgress(User $user, Topic $topic, int $score, int $totalQuestions): void
     {
-        // Get total questions in topic for overall progress
-        $totalTopicQuestions = Question::where('topic_id', $topic->id)->count();
-        
-        // Calculate overall progress based on total questions in topic
-        $overallProgress = $totalTopicQuestions > 0 ? min(100, ($score / $totalTopicQuestions) * 100) : 0;
+        // Use QuizAttempt::getTopicProgress to get the true overall progress
+        $progress = \App\Models\QuizAttempt::getTopicProgress($user->id, $topic->id, 'quiz');
+        $overallPercentage = $progress['overall']['percentage'] ?? 0;
 
-        UserTopicProgress::updateOrCreate(
+        \App\Models\UserTopicProgress::updateOrCreate(
             [
                 'user_id' => $user->id,
                 'topic_id' => $topic->id
             ],
             [
-                'percentage_grade' => $overallProgress,
+                'percentage_grade' => $overallPercentage,
                 'last_attempt_date' => now()
             ]
         );
@@ -549,6 +547,9 @@ class GradingService
                 'answer' => $answer
             ]);
             $isCorrect = $this->evaluateAnswer($question, $answer);
+            if (!$isCorrect) {
+                $this->recordMistake($user, $question, $answer);
+            }
             $topic = $question->topic;
             if (!$topic) {
                 throw new \Exception('Question has no associated topic');

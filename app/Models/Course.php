@@ -119,12 +119,12 @@ class Course extends Model
      */
     private function calculateCompletionPercentage($userId)
     {
-        // OPTIMIZED: Single query instead of multiple queries
-        $masteredTopicsCount = DB::table('user_topic_progress')
+        // Count topics in this course where user has >= 90% progress
+        $completedTopicsCount = DB::table('user_topic_progress')
             ->join('topics', 'user_topic_progress.topic_id', '=', 'topics.id')
             ->where('user_topic_progress.user_id', $userId)
             ->where('topics.course_id', $this->id)
-            ->where('user_topic_progress.percentage_grade', '>=', 80)
+            ->where('user_topic_progress.percentage_grade', '>=', 90)
             ->count();
 
         $totalTopicsCount = $this->topics()->count();
@@ -133,7 +133,8 @@ class Course extends Model
             return 0;
         }
 
-        return round(($masteredTopicsCount / $totalTopicsCount) * 100, 0);
+        // Progress is the percentage of topics with >= 90% completion
+        return round(($completedTopicsCount / $totalTopicsCount) * 100, 0);
     }
 
     // Check if a user is enrolled in this course
@@ -248,6 +249,21 @@ class Course extends Model
         // Forget cache keys
         foreach ($cacheKeys as $key) {
             Cache::forget($key);
+        }
+    }
+
+    /**
+     * Clear course completion cache for a specific user
+     */
+    public function clearUserCompletionCache(int $userId): void
+    {
+        $cacheVersion = $this->cache_version ?? 1;
+        $cacheKey = "course_{$this->id}_user_{$userId}_completion_v{$cacheVersion}";
+        Cache::forget($cacheKey);
+        
+        // Also clear other possible versions
+        for ($i = 1; $i <= 5; $i++) {
+            Cache::forget("course_{$this->id}_user_{$userId}_completion_v{$i}");
         }
     }
 

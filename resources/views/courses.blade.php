@@ -4,55 +4,14 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token() }}">
-    <title>MedCapsule</title>
-    
-    <!-- PERFORMANCE: Critical CSS inline, rest async -->
-    <style>
-        /* CRITICAL PATH CSS - Inline for instant rendering */
-        html { font-size: 12.8px; }
-        body { 
-            font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; 
-            background-color: #f8f9fa; 
-            color: #1a1a1a; 
-            margin: 0; 
-            padding: 0; 
-            min-height: 100vh; 
-            overflow-x: hidden; 
-            line-height: 1.6;
-        }
-        .loading-skeleton { background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%); background-size: 200% 100%; animation: loading 1.5s infinite; }
-        @keyframes loading { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
-        .course-card { will-change: transform; transform: translateZ(0); }
-        .fade-in { opacity: 0; transform: translateY(20px); transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
-        .fade-in.visible { opacity: 1; transform: translateY(0); }
-    </style>
-
-    <!-- PERFORMANCE: Load fonts with display=swap for instant text -->
-    <link rel="preload" href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" as="style" onload="this.onload=null;this.rel='stylesheet'">
-    <link rel="preload" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" as="style" onload="this.onload=null;this.rel='stylesheet'">
-    
-    <!-- PERFORMANCE: Load Bootstrap async -->
-    <link rel="preload" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" as="style" onload="this.onload=null;this.rel='stylesheet'">
-    <link rel="preload" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" as="style" onload="this.onload=null;this.rel='stylesheet'">
-    
-    <!-- PERFORMANCE: Preload critical JavaScript -->
-    <link rel="preload" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js" as="script">
-    
-    <noscript>
-        <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <title>Available Courses - MedCapsule</title>
         <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Crimson+Pro:wght@700;800;900&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
         <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-    </noscript>
-
-    <!-- PERFORMANCE: Defer non-critical CSS -->
-    <link rel="stylesheet" href="{{ asset('css/optimized-courses.css') }}" media="print" onload="this.media='all'">
 
     <style>
-        /* Course page zoom fix - 80% scale */
-        html {
-            font-size: 12.8px; /* 80% of 16px */
-        }
-        
         body {
             font-family: 'Poppins', sans-serif;
             background-color: #f8f9fa;
@@ -461,23 +420,6 @@
 
         .action-btn.enroll i {
             color: #9ca3af;
-        }
-
-        /* Free course button styling */
-        .action-btn.enroll.free {
-            background: #16a34a;
-            color: white;
-            border: 1px solid #16a34a;
-        }
-
-        .action-btn.enroll.free:hover {
-            background: #15803d;
-            border-color: #15803d;
-            transform: translateY(-2px);
-        }
-
-        .action-btn.enroll.free i {
-            color: white;
         }
 
         .action-btn.enroll[disabled] {
@@ -1602,7 +1544,7 @@
                 <div class="course-card {{ strtolower($course->name) }}" 
                      style="border-left: 8px solid {{ $course->color }}; border-color: {{ $course->color }}"
                      data-semester="{{ $course->semester }}">
-                    <div class="course-image" style="background-image: url('{{ asset($course->image_url) }}')" onerror="this.style.backgroundImage = 'linear-gradient(135deg, #f5f7fa 0%, #e9ecef 100%)'">
+                    <div class="course-image" style="background-image: url('{{ $course->image_url }}')" onerror="this.style.backgroundImage = 'linear-gradient(135deg, #f5f7fa 0%, #e9ecef 100%)'">
                         <div class="info-icon">
                             <i class="fas fa-info"></i>
                             <div class="info-tooltip">
@@ -1657,7 +1599,7 @@
                                     Continue Learning
                                 </a>
                             @elseif (!$course->price || $course->price <= 0)
-                                <a href="{{ route('topics.forCourse', $course) }}" class="action-btn enroll free">
+                                <a href="{{ route('topics.forCourse', $course) }}" class="action-btn enroll">
                                     <i class="fas fa-play"></i>
                                     Start Learning (Free)
                                 </a>
@@ -1674,7 +1616,7 @@
                             @endif
                         @else
                             @if (!$course->price || $course->price <= 0)
-                                <a href="{{ route('login') }}" class="action-btn enroll free">
+                                <a href="{{ route('login') }}" class="action-btn enroll">
                                     <i class="fas fa-play"></i>
                                     Sign in to Start (Free)
                                 </a>
@@ -2243,130 +2185,7 @@
         updateScrollArrows(document.querySelector('.courses-grid'));
     });
     </script>
-    
-    <!-- PERFORMANCE: Load JavaScript after critical rendering -->
     <script>
-        // INSTANT PERFORMANCE OPTIMIZATION
-        window.courseData = @json($courses ?? []);
-        window.userProgress = @json($userProgress ?? []);
-        window.csrfToken = '{{ csrf_token() }}';
-        
-        // PERFORMANCE: Client-side caching
-        const CourseCache = {
-            data: new Map(),
-            set(key, value, ttl = 300000) { // 5 minutes
-                this.data.set(key, { value, expires: Date.now() + ttl });
-            },
-            get(key) {
-                const item = this.data.get(key);
-                if (!item || Date.now() > item.expires) {
-                    this.data.delete(key);
-                    return null;
-                }
-                return item.value;
-            },
-            clear() { this.data.clear(); }
-        };
-
-        // PERFORMANCE: Instant course rendering
-        function renderCourses(courses, semester = '') {
-            const grid = document.querySelector('.courses-grid');
-            
-            // PERFORMANCE: Use DocumentFragment for batch DOM updates
-            const fragment = document.createDocumentFragment();
-            
-            const filteredCourses = semester ? 
-                courses.filter(course => course.semester === semester) : 
-                courses;
-
-            filteredCourses.forEach((course, index) => {
-                const courseCard = createCourseCard(course);
-                courseCard.style.setProperty('--animation-delay', `${index * 50}ms`);
-                fragment.appendChild(courseCard);
-            });
-
-            // PERFORMANCE: Single reflow
-            grid.innerHTML = '';
-            grid.appendChild(fragment);
-            
-            // PERFORMANCE: Trigger animations with RAF
-            requestAnimationFrame(() => {
-                grid.querySelectorAll('.course-card').forEach(card => {
-                    card.classList.add('visible');
-                });
-            });
-        }
-
-        // PERFORMANCE: Optimized course card creation
-        function createCourseCard(course) {
-            const card = document.createElement('div');
-            card.className = 'course-card fade-in';
-            card.setAttribute('data-semester', course.semester);
-            card.style.animationDelay = 'var(--animation-delay)';
-            
-            // PERFORMANCE: Use template strings for better performance
-            card.innerHTML = `
-                <div class="course-image" style="background-image: url('${course.image_url}');">
-                    <div class="info-icon">
-                        <i class="fas fa-info"></i>
-                        <div class="info-tooltip">${course.description || 'Course information'}</div>
-                    </div>
-                    <div class="course-overlay">
-                        <h3 class="course-title">${course.name}</h3>
-                    </div>
-                </div>
-                <div class="course-info">
-                    <div class="course-stats">
-                        <div class="stat-item">
-                            <i class="fas fa-book"></i>
-                            <span>${course.topics_count || 0} Topics</span>
-                        </div>
-                        <div class="stat-item">
-                            <i class="fas fa-users"></i>
-                            <span>${course.enrolled_count || 0} Students</span>
-                        </div>
-                    </div>
-                    ${course.progress > 0 ? `
-                        <div class="progress-container">
-                            <div class="progress-bar">
-                                <div class="progress-fill" style="width: ${course.progress}%;"></div>
-                            </div>
-                        </div>
-                    ` : ''}
-                    <button class="action-btn ${course.enrolled ? 'continue' : 'enroll'}" 
-                            onclick="handleCourseAction(${course.id}, '${course.enrolled ? 'continue' : 'enroll'}')">
-                        <i class="fas fa-${course.enrolled ? 'play' : 'plus'}"></i>
-                        ${course.enrolled ? 'Continue Learning' : (course.price > 0 ? `Enroll - ${course.price} EGP` : 'Enroll Free')}
-                    </button>
-                </div>
-            `;
-            
-            return card;
-        }
-
-        // PERFORMANCE: Instant filter with debouncing
-        let filterTimeout;
-        function handleSemesterFilter() {
-            clearTimeout(filterTimeout);
-            filterTimeout = setTimeout(() => {
-                const semester = document.getElementById('semesterDropdown').value;
-                
-                // PERFORMANCE: Check cache first
-                const cacheKey = `courses_${semester}`;
-                let filteredData = CourseCache.get(cacheKey);
-                
-                if (!filteredData) {
-                    filteredData = semester ? 
-                        window.courseData.filter(course => course.semester === semester) :
-                        window.courseData;
-                    CourseCache.set(cacheKey, filteredData);
-                }
-                
-                renderCourses(filteredData);
-                updateScrollArrows();
-            }, 100); // Instant debounce
-        }
-
         // Enhanced semester dropdown functionality with precise scrolling
         document.addEventListener('DOMContentLoaded', () => {
             const semesterDropdown = document.getElementById('semesterDropdown');
@@ -2375,10 +2194,43 @@
                 // Set the first option as selected by default
                 semesterDropdown.value = "Year 1- First semester";
                 
-                // PERFORMANCE: Use optimized filter
-                handleSemesterFilter();
+                // Filter courses on page load to show only first semester
+                filterCoursesForSemester("Year 1- First semester");
                 
-                semesterDropdown.addEventListener('change', handleSemesterFilter);
+                semesterDropdown.addEventListener('change', () => {
+                    const selectedSemester = semesterDropdown.value;
+                    filterCoursesForSemester(selectedSemester);
+                });
+            }
+            
+            // Function to filter courses based on selected semester
+            function filterCoursesForSemester(selectedSemester) {
+                const coursesGrid = document.querySelector('.courses-grid');
+                const courseCards = Array.from(document.querySelectorAll('.course-card'));
+
+                // Find the first course card of the selected semester
+                const targetCard = courseCards.find(card => 
+                    card.getAttribute('data-semester') === selectedSemester
+                );
+
+                if (targetCard) {
+                    // Calculate the precise scroll position
+                    const cardWidth = 340; // Fixed card width
+                    const gap = 24; // Gap between cards (1.5rem = 24px)
+                    const containerPadding = 16; // Container padding (1rem = 16px)
+                    
+                    const cardIndex = courseCards.indexOf(targetCard);
+                    const scrollPosition = cardIndex * (cardWidth + gap);
+                
+                    // Smooth scroll with enhanced easing
+                    coursesGrid.scrollTo({
+                        left: scrollPosition,
+                        behavior: 'smooth'
+                    });
+
+                    // Update scroll arrows visibility
+                    updateScrollArrows(coursesGrid);
+                }
             }
         });
     </script>
@@ -2520,78 +2372,7 @@
         } catch (e) {
             console.warn('Payment modal initialization error:', e);
         }
-        
-        // PERFORMANCE: Course action with instant feedback
-        function handleCourseAction(courseId, action) {
-            const button = event.target.closest('.action-btn');
-            const originalContent = button.innerHTML;
-            
-            // PERFORMANCE: Instant feedback
-            button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing...';
-            button.disabled = true;
-            
-            if (action === 'continue') {
-                // Instant navigation
-                window.location.href = `/topics/${courseId}`;
-            } else {
-                // PERFORMANCE: Load payment modal on demand
-                loadPaymentModal(courseId).then(() => {
-                    button.innerHTML = originalContent;
-                    button.disabled = false;
-                }).catch(() => {
-                    button.innerHTML = originalContent;
-                    button.disabled = false;
-                });
-            }
-        }
-
-        // PERFORMANCE: Lazy load payment modal
-        async function loadPaymentModal(courseId) {
-            const cacheKey = `payment_modal_${courseId}`;
-            let modalHtml = CourseCache.get(cacheKey);
-            
-            if (!modalHtml) {
-                const response = await fetch(`/payments/${courseId}/options`, {
-                    headers: {
-                        'X-CSRF-TOKEN': window.csrfToken,
-                        'X-Requested-With': 'XMLHttpRequest',
-                        'Accept': 'application/json'
-                    }
-                });
-                
-                const data = await response.json();
-                if (data.success) {
-                    modalHtml = data.html;
-                    CourseCache.set(cacheKey, modalHtml, 60000); // 1 minute cache
-                }
-            }
-            
-            // PERFORMANCE: Show modal instantly
-            if (modalHtml) {
-                const modal = new bootstrap.Modal(document.querySelector('#paymentModal'));
-                modal.show();
-            }
-        }
-
-        // PERFORMANCE: Initialize animations
-        function initializeAnimations() {
-            const observer = new IntersectionObserver((entries) => {
-                entries.forEach(entry => {
-                    if (entry.isIntersecting) {
-                        entry.target.classList.add('visible');
-                        observer.unobserve(entry.target);
-                    }
-                });
-            }, { threshold: 0.1 });
-
-            document.querySelectorAll('.fade-in').forEach(el => {
-                observer.observe(el);
-            });
-        }
     </script>
-    
-    <!-- PERFORMANCE: Load heavy scripts after content -->
-    <script defer src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     
     <!-- Bundle Purchase Feature Script -->
     <script>

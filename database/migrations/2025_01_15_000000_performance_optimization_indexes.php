@@ -137,25 +137,28 @@ return new class extends Migration
         // User_topic_progress table - Critical for progress tracking
         Schema::table('user_topic_progress', function (Blueprint $table) {
             // Covering index for user progress
-            if (!DB::select("SHOW INDEX FROM user_topic_progress WHERE Key_name = 'user_topic_progress_idx'")) {
-                $table->index(['user_id', 'topic_id', 'study_mode'], 'user_topic_progress_idx');
-            }
+            // if (!DB::select("SHOW INDEX FROM user_topic_progress WHERE Key_name = 'user_topic_progress_idx'")) {
+            //     // COMMENTED OUT: study_mode column does not exist
+            //     // $table->index(['user_id', 'topic_id', 'study_mode'], 'user_topic_progress_idx');
+            // }
         });
 
         // 🔥 COMPOSITE INDEXES FOR COMPLEX QUERIES
 
         // Questions with alternative answers
         Schema::table('questions', function (Blueprint $table) {
-            if (!DB::select("SHOW INDEX FROM questions WHERE Key_name = 'questions_alt_answers_idx'")) {
-                $table->index(['topic_id', 'question_type', 'alternative_answers'], 'questions_alt_answers_idx');
-            }
+            // if (!DB::select("SHOW INDEX FROM questions WHERE Key_name = 'questions_alt_answers_idx'")) {
+            //     // COMMENTED OUT: Cannot index JSON column directly in MySQL
+            //     // $table->index(['topic_id', 'question_type', 'alternative_answers'], 'questions_alt_answers_idx');
+            // }
         });
 
         // Quiz attempts with duration
         Schema::table('quiz_attempts', function (Blueprint $table) {
-            if (!DB::select("SHOW INDEX FROM quiz_attempts WHERE Key_name = 'quiz_attempts_duration_idx'")) {
-                $table->index(['user_id', 'duration', 'percentage_grade'], 'quiz_attempts_duration_idx');
-            }
+            // if (!DB::select("SHOW INDEX FROM quiz_attempts WHERE Key_name = 'quiz_attempts_duration_idx'")) {
+            //     // COMMENTED OUT: duration column does not exist
+            //     // $table->index(['user_id', 'duration', 'percentage_grade'], 'quiz_attempts_duration_idx');
+            // }
         });
 
         // 🔥 FULL-TEXT SEARCH INDEXES

@@ -1327,7 +1327,7 @@
                         'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
                     },
                     body: JSON.stringify({
-                        duration_seconds: timeSpentValue,
+                        study_time: timeSpentValue,
                         total_questions: questionsData.length,
                         completed_questions: questionsData.length - activeQuestions.size
                     })

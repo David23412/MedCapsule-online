@@ -44,6 +44,9 @@ class InvalidateQuizCache implements ShouldQueue
             // Clear topic progress caches
             $this->cacheService->clearTopicProgressCaches($topicId, $userId, 'quiz');
 
+            // Clear course completion cache to reflect updated progress
+            $this->clearCourseCompletionCache($userId, $topicId);
+
             Log::info('Quiz cache invalidated', [
                 'quiz_attempt_id' => $quizAttempt->id,
                 'user_id' => $userId,
@@ -59,6 +62,35 @@ class InvalidateQuizCache implements ShouldQueue
                 'user_id' => $event->quizAttempt->user_id,
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString()
+            ]);
+        }
+    }
+
+    /**
+     * Clear course completion cache for the user
+     */
+    private function clearCourseCompletionCache(int $userId, int $topicId): void
+    {
+        try {
+            // Get the course ID for this topic
+            $topic = \App\Models\Topic::find($topicId);
+            $course = $topic->course ?? null;
+            
+            if ($course) {
+                // Use the Course model's method to clear completion cache
+                $course->clearUserCompletionCache($userId);
+                
+                Log::info('Course completion cache cleared', [
+                    'user_id' => $userId,
+                    'course_id' => $course->id,
+                    'topic_id' => $topicId
+                ]);
+            }
+        } catch (\Exception $e) {
+            Log::error('Error clearing course completion cache', [
+                'user_id' => $userId,
+                'topic_id' => $topicId,
+                'error' => $e->getMessage()
             ]);
         }
     }
