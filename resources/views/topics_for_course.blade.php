@@ -1,4 +1,4 @@
-THIS SHOULD BE A LINTER ERROR<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -240,12 +240,12 @@ THIS SHOULD BE A LINTER ERROR<!DOCTYPE html>
             display: flex;
             justify-content: space-between;
             align-items: flex-start;
-            margin-bottom: 1.5rem;
+            margin-bottom: 1.2rem;
         }
 
         .topic-main {
             flex: 1;
-            padding-right: 2rem;
+            padding-right: 1.5rem;
         }
 
         .topic-name {
@@ -1262,6 +1262,207 @@ THIS SHOULD BE A LINTER ERROR<!DOCTYPE html>
         .form-check-input:checked ~ .form-check-label {
             color: #007bff;
             font-weight: 500;
+        }
+
+        /* GOLDEN STANDARD: Mobile Responsive Design */
+        @media (max-width: 768px) {
+            .topics-container {
+                padding: 1rem;
+            }
+            
+            .topic-card {
+                padding: 1.2rem;
+                margin-bottom: 1rem;
+            }
+            
+            .topic-info {
+                flex-direction: column;
+                align-items: stretch;
+                margin-bottom: 1rem;
+            }
+            
+            .topic-main {
+                padding-right: 0;
+                margin-bottom: 1rem;
+            }
+            
+            .topic-name {
+                font-size: 1.2rem;
+                margin-bottom: 0.6rem;
+            }
+            
+            .grade-badge {
+                align-self: flex-start;
+                margin-bottom: 1rem;
+            }
+            
+            .progress-container {
+                margin-top: 1rem;
+            }
+            
+            .topic-actions {
+                flex-direction: column;
+                align-items: stretch;
+                gap: 0.8rem;
+            }
+            
+            .stat-item {
+                justify-content: center;
+                font-size: 0.85rem;
+            }
+            
+            .start-quiz-btn {
+                width: 100%;
+                justify-content: center;
+                padding: 1rem;
+                margin-top: 0;
+            }
+            
+            .course-header {
+                padding: 3rem 1rem 2rem;
+            }
+            
+            .course-progress {
+                max-width: 300px;
+                padding: 1rem 1.5rem;
+                gap: 1rem;
+            }
+            
+            .progress-circle {
+                width: 48px;
+                height: 48px;
+                font-size: 1rem;
+            }
+            
+            .progress-text-title {
+                font-size: 1.1rem;
+            }
+            
+            .progress-text-subtitle {
+                font-size: 0.9rem;
+            }
+            
+            .case-filters {
+                padding: 1rem;
+                gap: 0.5rem;
+                flex-wrap: wrap;
+            }
+            
+            .case-filter {
+                padding: 0.5rem 0.8rem;
+                font-size: 0.85rem;
+            }
+            
+            .case-filter .count {
+                font-size: 0.75rem;
+            }
+            
+            .nav-link, .random-link, .mistakes-link {
+                padding: 0.5rem 0.8rem;
+                font-size: 0.85rem;
+            }
+        }
+
+        /* Extra small devices (phones, less than 576px) */
+        @media (max-width: 575.98px) {
+            .topics-container {
+                padding: 0.8rem;
+            }
+            
+            .topic-card {
+                padding: 1rem;
+                margin-bottom: 0.8rem;
+            }
+            
+            .topic-name {
+                font-size: 1.1rem;
+                gap: 0.5rem;
+            }
+            
+            .topic-name i {
+                font-size: 0.9rem;
+            }
+            
+            .grade-badge {
+                padding: 0.3rem 0.8rem;
+                font-size: 0.8rem;
+            }
+            
+            .progress-container {
+                margin-top: 0.8rem;
+            }
+            
+            .progress {
+                height: 8px;
+                margin-bottom: 0.6rem;
+            }
+            
+            .progress-label {
+                font-size: 0.75rem;
+            }
+            
+            .start-quiz-btn {
+                padding: 0.8rem;
+                font-size: 0.9rem;
+            }
+            
+            .course-header {
+                padding: 2.5rem 0.8rem 1.5rem;
+            }
+            
+            .course-progress {
+                max-width: 280px;
+                padding: 0.8rem 1.2rem;
+                gap: 0.8rem;
+            }
+            
+            .progress-circle {
+                width: 42px;
+                height: 42px;
+                font-size: 0.9rem;
+            }
+            
+            .progress-text-title {
+                font-size: 1rem;
+            }
+            
+            .progress-text-subtitle {
+                font-size: 0.8rem;
+            }
+            
+            .case-filters {
+                padding: 0.8rem;
+                gap: 0.4rem;
+                overflow-x: auto;
+                flex-wrap: nowrap;
+                scrollbar-width: none;
+                -ms-overflow-style: none;
+            }
+            
+            .case-filters::-webkit-scrollbar {
+                display: none;
+            }
+            
+            .case-filter {
+                padding: 0.4rem 0.7rem;
+                font-size: 0.8rem;
+                white-space: nowrap;
+                flex-shrink: 0;
+            }
+            
+            .case-filter i {
+                font-size: 0.75rem;
+            }
+            
+            .nav-link, .random-link, .mistakes-link {
+                padding: 0.4rem 0.7rem;
+                font-size: 0.8rem;
+                white-space: nowrap;
+            }
+            
+            .last-attempt {
+                font-size: 0.8rem;
+            }
         }
     </style>
 </head>

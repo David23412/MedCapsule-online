@@ -1569,6 +1569,7 @@
         
         <div class="courses-grid">
             @foreach ($courses as $course)
+                @if($course->price > 0)
                 <div class="course-card mb-4">
                     <div class="card shadow-sm">
                         <div class="card-body">
@@ -1605,6 +1606,7 @@
                         </div>
                     </div>
                 </div>
+                @endif
             @endforeach
         </div>
 
@@ -2435,17 +2437,20 @@
 
             // Format currency function
             function formatCurrency(amount) {
-                return parseFloat(amount).toFixed(2) + ' EGP';
+                return Number(amount).toFixed(2) + ' EGP';
             }
 
             // Calculate pricing function
             function calculatePricing(courses) {
-                const originalPrice = courses.reduce((sum, course) => sum + course.price, 0);
-                const discountAmount = courses.length > 1 ? Math.round(originalPrice * 0.1 * 100) / 100 : 0;
-                const totalPrice = Math.round((originalPrice - discountAmount) * 100) / 100;
+                // Filter out any free courses (price = 0) just in case
+                const paidCourses = courses.filter(course => course.price > 0);
+                
+                const originalPrice = paidCourses.reduce((sum, course) => sum + parseFloat(course.price), 0);
+                const discountAmount = paidCourses.length > 1 ? parseFloat((originalPrice * 0.1).toFixed(2)) : 0;
+                const totalPrice = parseFloat((originalPrice - discountAmount).toFixed(2));
                 
                 return {
-                    originalPrice,
+                    originalPrice: parseFloat(originalPrice.toFixed(2)),
                     discountAmount,
                     totalPrice
                 };
@@ -2475,10 +2480,19 @@
             // Handle checkbox changes
             courseCheckboxes.forEach(checkbox => {
                 checkbox.addEventListener('change', function() {
+                    const coursePrice = parseFloat(this.dataset.price);
+                    
                     if (this.checked) {
+                        // Don't allow selection of free courses (price = 0)
+                        if (coursePrice <= 0) {
+                            this.checked = false;
+                            alert('Free courses cannot be added to bundle purchases.');
+                            return;
+                        }
+                        
                         selectedCourses.push({
                             id: this.value,
-                            price: parseFloat(this.dataset.price),
+                            price: coursePrice,
                             name: this.dataset.name
                         });
                     } else {
