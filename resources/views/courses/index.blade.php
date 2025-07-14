@@ -51,10 +51,10 @@
 
         .hero-section {
             background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
-            padding: 8rem 2rem 4rem;
+            padding: 6rem 1.5rem 3rem;
             text-align: center;
             position: relative;
-            margin-bottom: 2rem;
+            margin-bottom: 1.5rem;
             overflow: hidden;
         }
 
@@ -83,26 +83,26 @@
         }
 
         .hero-title {
-            font-size: 2.5rem;
+            font-size: 2.2rem;
             font-weight: 700;
             color: #2196f3;
-            margin-bottom: 1rem;
+            margin-bottom: 0.8rem;
             position: relative;
         }
 
         .courses-grid {
             display: flex;
-            gap: 1.5rem;
-            padding: 1rem;
-            margin: 0.5rem 2rem;
+            gap: 1.2rem;
+            padding: 0.8rem;
+            margin: 0.4rem 1.5rem;
             flex-wrap: wrap;
             justify-content: center;
         }
 
         .course-card {
-            flex: 0 0 300px;
-            max-width: 340px;
-            margin: 1rem;
+            flex: 0 0 280px;
+            max-width: 320px;
+            margin: 0.8rem;
             scroll-snap-align: start;
             background: white;
             border-radius: 12px;
@@ -1196,6 +1196,159 @@
         /* Add margin to main content when action bar is visible */
         .courses-container {
             margin-bottom: 80px; /* Height of the action bar + some padding */
+        }
+
+        /* GOLDEN STANDARD: Mobile Responsive Design */
+        @media (max-width: 768px) {
+            .navbar {
+                padding: 0.8rem 1rem;
+            }
+            
+            .navbar-brand {
+                font-size: 1.5rem;
+            }
+            
+            .hero-section {
+                padding: 5rem 1rem 2rem;
+                margin-bottom: 1rem;
+            }
+            
+            .hero-title {
+                font-size: 1.8rem;
+                margin-bottom: 0.6rem;
+            }
+            
+            .courses-grid {
+                gap: 0.8rem;
+                padding: 0.5rem;
+                margin: 0.2rem 0.8rem;
+            }
+            
+            .course-card {
+                flex: 0 0 260px;
+                max-width: 290px;
+                margin: 0.5rem;
+            }
+            
+            .course-image {
+                height: 350px;
+            }
+            
+            .course-title {
+                font-size: 1.7rem;
+            }
+            
+            .notification-dropdown {
+                width: 320px;
+                right: -70px;
+            }
+            
+            .milestone-container {
+                width: 90vw;
+                bottom: 15px;
+                padding: 0.6rem;
+            }
+            
+            .milestone-stats {
+                font-size: 0.85rem;
+                gap: 0.3rem;
+            }
+            
+            .profile-circle {
+                width: 32px;
+                height: 32px;
+                font-size: 0.8rem;
+            }
+        }
+
+        /* Extra small devices (phones, less than 576px) */
+        @media (max-width: 575.98px) {
+            .navbar {
+                padding: 0.6rem 0.8rem;
+            }
+            
+            .navbar-brand {
+                font-size: 1.3rem;
+            }
+            
+            .hero-section {
+                padding: 4.5rem 0.8rem 1.5rem;
+            }
+            
+            .hero-title {
+                font-size: 1.6rem;
+            }
+            
+            .courses-grid {
+                gap: 0.6rem;
+                padding: 0.3rem;
+                margin: 0.1rem 0.5rem;
+            }
+            
+            .course-card {
+                flex: 0 0 240px;
+                max-width: 270px;
+                margin: 0.3rem;
+            }
+            
+            .course-image {
+                height: 320px;
+            }
+            
+            .course-title {
+                font-size: 1.5rem;
+            }
+            
+            .notification-dropdown {
+                width: 280px;
+                right: -50px;
+                max-height: 350px;
+            }
+            
+            .milestone-container {
+                width: 95vw;
+                bottom: 10px;
+                padding: 0.5rem;
+            }
+            
+            .milestone-stats {
+                font-size: 0.8rem;
+                margin-bottom: 0.3rem;
+            }
+            
+            .milestone-progress {
+                height: 16px;
+            }
+            
+            .milestone-mark {
+                width: 14px;
+                height: 14px;
+            }
+            
+            .profile-circle {
+                width: 28px;
+                height: 28px;
+                font-size: 0.75rem;
+            }
+        }
+
+        /* Large screens - slightly larger layout */
+        @media (min-width: 1400px) {
+            .courses-grid {
+                gap: 1.5rem;
+                padding: 1rem;
+                margin: 0.5rem 2rem;
+            }
+            
+            .course-card {
+                flex: 0 0 320px;
+                max-width: 360px;
+                margin: 1rem;
+            }
+            
+            .course-image {
+                height: 420px;
+            }
         }
 
         /* Disabled course styles */
