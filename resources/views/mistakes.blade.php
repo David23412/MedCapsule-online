@@ -948,7 +948,15 @@
         <div class="container">
             <a class="navbar-brand" href="/">MedCapsule</a>
             <div class="nav-links">
-                <a href="javascript:history.back()" class="nav-link">← Back</a>
+                @if(isset($recentCourse) && $recentCourse)
+                    <a href="{{ route('topics.forCourse', $recentCourse->id) }}" class="nav-link">
+                        <i class="fas fa-arrow-left"></i> Back to {{ $recentCourse->name }}
+                    </a>
+                @else
+                    <a href="{{ route('courses.index') }}" class="nav-link">
+                        <i class="fas fa-arrow-left"></i> Back to Courses
+                    </a>
+                @endif
                 <a href="{{ route('profile') }}" class="profile-circle {{ !Auth::user() || !Auth::user()->profile_picture_url ? 'no-image' : '' }}" 
                      style="{{ Auth::user() && Auth::user()->profile_picture_url ? 'background-image: url(' . secure_url(Auth::user()->profile_picture_url) . ');' : '' }}">
                     @if(!Auth::user() || !Auth::user()->profile_picture_url)
@@ -1029,7 +1037,15 @@
                     <i class="fas fa-check"></i>
                     <h3>No Mistakes!</h3>
                     <p>Fantastic work! You're crushing it with zero mistakes. Keep up the amazing progress!</p>
-                    <a href="javascript:history.back()" class="btn btn-primary">Take More Quizzes</a>
+                    @if(isset($recentCourse) && $recentCourse)
+                        <a href="{{ route('topics.forCourse', $recentCourse->id) }}" class="btn btn-primary">
+                            <i class="fas fa-arrow-left me-2"></i>Back to {{ $recentCourse->name }}
+                        </a>
+                    @else
+                        <a href="{{ route('courses.index') }}" class="btn btn-primary">
+                            <i class="fas fa-arrow-left me-2"></i>Back to Courses
+                        </a>
+                    @endif
                 </div>
             @else
                 @foreach($mistakes as $mistake)
@@ -1246,7 +1262,7 @@
                                     <i class="fas fa-check"></i>
                                     <h3>No Mistakes!</h3>
                                     <p>Fantastic work! You're crushing it with zero mistakes. Keep up the amazing progress!</p>
-                                    <a href="javascript:history.back()" class="btn btn-primary">Take More Quizzes</a>
+                                    ${getBackButtonHtml()}
                                 </div>
                             `;
                         }
@@ -1281,6 +1297,23 @@
                     showToast('Error removing question. Please try again.', 'error');
                 }
             });
+        }
+
+        // GOLDEN STANDARD: Navigation data from backend
+        const recentCourse = @json($recentCourse ?? null);
+        const coursesIndexUrl = '{{ route("courses.index") }}';
+        
+        function getBackButtonHtml() {
+            if (recentCourse && recentCourse.id) {
+                const topicsUrl = '{{ route("topics.forCourse", ":courseId") }}'.replace(':courseId', recentCourse.id);
+                return `<a href="${topicsUrl}" class="btn btn-primary">
+                    <i class="fas fa-arrow-left me-2"></i>Back to ${recentCourse.name}
+                </a>`;
+            } else {
+                return `<a href="${coursesIndexUrl}" class="btn btn-primary">
+                    <i class="fas fa-arrow-left me-2"></i>Back to Courses
+                </a>`;
+            }
         }
 
         document.addEventListener('DOMContentLoaded', function() {

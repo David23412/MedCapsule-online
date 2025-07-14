@@ -327,12 +327,11 @@ class QuizController extends Controller
      * ✅ Show mistakes (incorrect answers) with optimized query
      * OPTIMIZED: Reduced from multiple queries to single optimized query
      */
+    /**
+     * GOLDEN STANDARD: Show mistakes page with optimized queries and smart navigation
+     */
     public function showMistakes(Request $request)
     {
-        \Log::info('DEBUG: Entered showMistakes', [
-            'user_id' => auth()->id(),
-            'request_url' => $request->fullUrl()
-        ]);
         $startTime = microtime(true);
         $requestId = uniqid('mistakes_');
         
@@ -340,71 +339,73 @@ class QuizController extends Controller
             $userId = auth()->id();
             $courseFilter = $request->input('course');
             
-            // DEBUG: Add more detailed logging
             Log::info('Loading mistakes for user', [
                 'request_id' => $requestId,
                 'user_id' => $userId, 
-                'course_filter' => $courseFilter,
-                'ip_address' => request()->ip(),
-                'auth_check' => auth()->check(),
-                'user_name' => auth()->user() ? auth()->user()->name : 'NO USER'
+                'course_filter' => $courseFilter
             ]);
-            
-            // DEBUG: Check if user ID is correct
-            if (!$userId) {
-                Log::error('No user ID found in showMistakes');
-                $userId = 2; // Fallback to user 2 for testing
-            }
 
-            // OPTIMIZED: Single query with selective column fetching and proper eager loading
-            $mistakesQuery = Mistake::select([
+            // GOLDEN STANDARD: Optimized single query with minimal data transfer
+            $mistakes = Mistake::select([
                 'mistakes.id',
-                'mistakes.user_id',
                 'mistakes.question_id',
                 'mistakes.submitted_answer',
                 'mistakes.last_attempt_date',
-                'mistakes.created_at'
+                'mistakes.correct_streak'
             ])
             ->with([
-                'question:id,question,topic_id,correct_answer,image_url,explanation,question_type,option_a,option_b,option_c,option_d',
-                'question.topic:id,name,course_id',
-                'question.topic.course:id,name'
+                'question' => function($query) {
+                    $query->select([
+                        'id', 'question', 'topic_id', 'correct_answer', 
+                        'image_url', 'explanation', 'question_type',
+                        'option_a', 'option_b', 'option_c', 'option_d'
+                    ]);
+                },
+                'question.topic' => function($query) {
+                    $query->select(['id', 'name', 'course_id']);
+                },
+                'question.topic.course' => function($query) {
+                    $query->select(['id', 'name']);
+                }
             ])
-            ->where('mistakes.user_id', $userId);
-
-            // OPTIMIZED: Apply course filter efficiently
-            if ($courseFilter) {
-                $mistakesQuery->whereHas('question.topic.course', function ($query) use ($courseFilter) {
-                    $query->where('id', $courseFilter);
+            ->where('mistakes.user_id', $userId)
+            ->when($courseFilter, function($query) use ($courseFilter) {
+                return $query->whereHas('question.topic.course', function($q) use ($courseFilter) {
+                    $q->where('id', $courseFilter);
                 });
-            }
-
-            $mistakes = $mistakesQuery->orderBy('mistakes.last_attempt_date', 'desc')->get();
-            
-            // DEBUG: Log the actual mistakes found
-            Log::info('Mistakes query results', [
-                'request_id' => $requestId,
-                'mistakes_count' => $mistakes->count(),
-                'user_id_queried' => $userId,
-                'mistakes_ids' => $mistakes->pluck('id')->toArray()
-            ]);
-
-            // OPTIMIZED: Get available courses using the correct relationship
-            $availableCourses = Course::select([
-                'courses.id',
-                'courses.name'
-            ])
-            ->whereExists(function ($query) use ($userId) {
-                $query->select(DB::raw(1))
-                      ->from('questions')
-                      ->join('mistakes', 'questions.id', '=', 'mistakes.question_id')
-                      ->join('topics', 'questions.topic_id', '=', 'topics.id')
-                      ->whereColumn('topics.course_id', 'courses.id')
-                      ->where('mistakes.user_id', $userId);
             })
+            ->orderByDesc('mistakes.last_attempt_date')
             ->get();
 
-            // Group mistakes by course for better organization
+            // GOLDEN STANDARD: Efficient course availability check
+            $availableCourses = Course::select(['id', 'name'])
+                ->whereIn('id', function($query) use ($userId) {
+                    $query->select('topics.course_id')
+                          ->from('topics')
+                          ->join('questions', 'topics.id', '=', 'questions.topic_id')
+                          ->join('mistakes', 'questions.id', '=', 'mistakes.question_id')
+                          ->where('mistakes.user_id', $userId)
+                          ->distinct();
+                })
+                ->orderBy('name')
+                ->get();
+
+            // GOLDEN STANDARD: Smart navigation - get the most recent course for back button
+            $recentCourse = null;
+            $recentQuizAttempt = QuizAttempt::where('user_id', $userId)
+                ->whereNotNull('topic_id')
+                ->latest('created_at')
+                ->with('topic.course:id,name')
+                ->first();
+            
+            if ($recentQuizAttempt && $recentQuizAttempt->topic && $recentQuizAttempt->topic->course) {
+                $recentCourse = $recentQuizAttempt->topic->course;
+            } elseif ($mistakes->isNotEmpty()) {
+                // Fallback: use the most recent mistake's course
+                $recentCourse = $mistakes->first()->question->topic->course;
+            }
+
+            // Group mistakes by course for organization
             $mistakesByCourse = $mistakes->groupBy('question.topic.course.name');
 
             $executionTime = (microtime(true) - $startTime) * 1000;
@@ -412,19 +413,16 @@ class QuizController extends Controller
                 'request_id' => $requestId,
                 'execution_time_ms' => round($executionTime, 2),
                 'mistakes_count' => $mistakes->count(),
-                'courses_count' => $availableCourses->count()
+                'courses_count' => $availableCourses->count(),
+                'recent_course' => $recentCourse ? $recentCourse->name : 'none'
             ]);
 
-            // ENHANCED: Return view directly without redirect for better UX
             return view('mistakes', [
                 'mistakes' => $mistakes,
                 'mistakesByCourse' => $mistakesByCourse,
                 'availableCourses' => $availableCourses,
-                'courses' => $availableCourses,
                 'selectedCourse' => $courseFilter,
-                'courseFilter' => $courseFilter,
-                'success' => true,
-                'error' => null,
+                'recentCourse' => $recentCourse,
                 'performance_metrics' => [
                     'execution_time_ms' => round($executionTime, 2),
                     'mistakes_count' => $mistakes->count(),
@@ -437,28 +435,16 @@ class QuizController extends Controller
             Log::error('❌ Error in showMistakes:', [
                 'request_id' => $requestId,
                 'error' => $e->getMessage(),
-                'file' => $e->getFile(),
-                'line' => $e->getLine(),
-                'user_id' => auth()->id(),
-                'execution_time_ms' => round($executionTime, 2),
-                'trace' => $e->getTraceAsString()
+                'execution_time_ms' => round($executionTime, 2)
             ]);
 
-            // ENHANCED: Return error view instead of redirect to prevent page reload
             return view('mistakes', [
                 'mistakes' => collect([]),
                 'mistakesByCourse' => collect([]),
                 'availableCourses' => collect([]),
-                'courses' => collect([]),
                 'selectedCourse' => null,
-                'courseFilter' => null,
-                'success' => false,
-                'error' => 'An error occurred while loading your mistakes. Please try again.',
-                'performance_metrics' => [
-                    'execution_time_ms' => round($executionTime, 2),
-                    'mistakes_count' => 0,
-                    'courses_count' => 0
-                ]
+                'recentCourse' => null,
+                'error' => 'An error occurred while loading your mistakes. Please try again.'
             ]);
         }
     }
