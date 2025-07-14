@@ -241,9 +241,15 @@ class RandomQuizController extends Controller
             $timeTaken = $validationResult['time_taken'] ?? 0;
             $timeLimit = session('random_quiz_time_limit');
             
-            // Get questions from session with validation
+            // GOLDEN STANDARD: Get questions from session with robust validation
             $questionIds = session('random_quiz_questions');
             if (!$questionIds || empty($questionIds)) {
+                Log::warning('Random quiz session expired or missing', [
+                    'request_id' => $requestId,
+                    'user_id' => $userId,
+                    'session_questions' => $questionIds
+                ]);
+                
                 return response()->json([
                     'success' => false,
                     'error' => 'Quiz session expired or no questions found. Please start a new random quiz.'
@@ -269,15 +275,16 @@ class RandomQuizController extends Controller
             $correctAnswersMap = [];
             $questionData = [];
 
-            // Process each question with proper validation
+            // GOLDEN STANDARD: Process each question with bulletproof validation
             foreach ($questions as $question) {
                 $submittedAnswer = $answers[$question->id] ?? null;
                 
                 // Store the expected correct answer
                 $correctAnswersMap[$question->id] = $question->correct_answer;
                 
-                // Handle written questions
+                // GOLDEN STANDARD: Handle all question types robustly
                 if ($question->question_type === Question::TYPE_WRITTEN) {
+                    // Written question handling
                     if (is_null($submittedAnswer) || trim((string)$submittedAnswer) === '') {
                         $submittedAnswer = 'unanswered';
                         $isCorrect = false;
@@ -285,14 +292,26 @@ class RandomQuizController extends Controller
                         $isCorrect = $question->isAnswerCorrect($submittedAnswer);
                     }
                 } else {
-                    // Handle multiple choice questions
-                    if (!in_array($submittedAnswer, ['A', 'B', 'C', 'D', null])) {
-                        throw new \Exception("Invalid answer format for question {$question->id}");
+                    // Multiple choice question handling
+                    if (is_null($submittedAnswer) || $submittedAnswer === '') {
+                        // Treat null or empty as unanswered (incorrect)
+                        $submittedAnswer = 'unanswered';
+                        $isCorrect = false;
+                    } else if (!in_array($submittedAnswer, ['A', 'B', 'C', 'D'])) {
+                        // Invalid answer format - log and treat as incorrect
+                        Log::warning('Invalid answer format', [
+                            'request_id' => $requestId,
+                            'question_id' => $question->id,
+                            'submitted_answer' => $submittedAnswer
+                        ]);
+                        $submittedAnswer = 'invalid';
+                        $isCorrect = false;
+                    } else {
+                        $isCorrect = $question->isAnswerCorrect($submittedAnswer);
                     }
-                    $isCorrect = $question->isAnswerCorrect($submittedAnswer);
                 }
 
-                // Track question data
+                // Track question data for quiz attempt
                 $questionData[] = [
                     'question_id' => $question->id,
                     'user_answer' => $submittedAnswer,
@@ -300,9 +319,10 @@ class RandomQuizController extends Controller
                     'question_type' => $question->question_type
                 ];
 
+                // GOLDEN STANDARD: Always record mistakes for incorrect/unanswered
                 if (!$isCorrect) {
                     $incorrectAnswers[$question->id] = [
-                        'submitted_answer' => $submittedAnswer === null ? 'unanswered' : $submittedAnswer,
+                        'submitted_answer' => $submittedAnswer,
                         'question_text' => $question->question,
                         'correct_answer' => $question->correct_answer,
                         'image_path' => $question->image_url ?? null,
@@ -316,7 +336,7 @@ class RandomQuizController extends Controller
 
             $percentageGrade = ($score / $totalQuestions) * 100;
 
-            // Create quiz attempt with validation
+            // GOLDEN STANDARD: Create quiz attempt with bulletproof error handling
             try {
                 $quizAttempt = QuizAttempt::create([
                     'user_id' => $user->id,
@@ -325,53 +345,95 @@ class RandomQuizController extends Controller
                     'study_mode' => null,
                     'source' => null,
                     'duration_seconds' => $timeTaken,
-                    'percentage_grade' => $percentageGrade,
+                    'percentage_grade' => round($percentageGrade, 2),
                     'score' => $score,
                     'total_questions' => $totalQuestions,
                     'question_data' => $questionData
                 ]);
+                
+                Log::info('Random quiz attempt created successfully', [
+                    'request_id' => $requestId,
+                    'user_id' => $user->id,
+                    'quiz_attempt_id' => $quizAttempt->id,
+                    'score' => $score,
+                    'total_questions' => $totalQuestions,
+                    'percentage' => $percentageGrade
+                ]);
+                
                 // Update user stats after quiz attempt
                 $this->userStatsService->updateAfterQuizAttempt($user, $totalQuestions, $score, $timeTaken);
+                
             } catch (\Exception $e) {
-                throw new \Exception('Invalid quiz attempt data: ' . json_encode($e->getMessage()));
+                Log::error('Failed to create quiz attempt', [
+                    'request_id' => $requestId,
+                    'user_id' => $user->id,
+                    'error' => $e->getMessage(),
+                    'trace' => $e->getTraceAsString()
+                ]);
+                throw new \Exception('Failed to record quiz attempt: ' . $e->getMessage());
             }
 
-            // Create mistake records with error handling
+            // GOLDEN STANDARD: Create mistake records with bulletproof error handling
+            $mistakesProcessed = 0;
+            $mistakesFailed = 0;
+            
             foreach ($incorrectAnswers as $questionId => $mistakeData) {
-                $mistakeResult = DatabaseService::safeQuery(function() use ($user, $questionId, $mistakeData) {
-                    $existing = Mistake::where('user_id', $user->id)
-                                     ->where('question_id', $questionId)
-                                     ->first();
+                try {
+                    $mistakeResult = DatabaseService::safeQuery(function() use ($user, $questionId, $mistakeData) {
+                        $existing = Mistake::where('user_id', $user->id)
+                                         ->where('question_id', $questionId)
+                                         ->first();
+                        
+                        if ($existing) {
+                            // Update existing mistake
+                            $existing->update([
+                                'last_attempt_date' => now(),
+                                'incorrect_attempts' => $existing->incorrect_attempts + 1,
+                                'last_incorrect_answer' => $mistakeData['submitted_answer']
+                            ]);
+                            return $existing;
+                        } else {
+                            // Create new mistake
+                            return Mistake::create([
+                                'user_id' => $user->id,
+                                'question_id' => $questionId,
+                                'last_attempt_date' => now(),
+                                'incorrect_attempts' => 1,
+                                'last_incorrect_answer' => $mistakeData['submitted_answer']
+                            ]);
+                        }
+                    }, null);
                     
-                    if ($existing) {
-                        // Update existing mistake
-                        $existing->update([
-                            'last_attempt_date' => now(),
-                            'incorrect_attempts' => $existing->incorrect_attempts + 1,
-                            'last_incorrect_answer' => $mistakeData['submitted_answer']
-                        ]);
-                        return $existing;
+                    if ($mistakeResult !== null) {
+                        $mistakesProcessed++;
                     } else {
-                        // Create new mistake
-                        return Mistake::create([
+                        $mistakesFailed++;
+                        Log::error('Failed to create/update mistake record', [
+                            'request_id' => $requestId,
                             'user_id' => $user->id,
                             'question_id' => $questionId,
-                            'last_attempt_date' => now(),
-                            'incorrect_attempts' => 1,
-                            'last_incorrect_answer' => $mistakeData['submitted_answer']
+                            'mistake_data' => $mistakeData
                         ]);
                     }
-                }, null);
-                
-                if ($mistakeResult === null) {
-                    Log::error('Failed to create/update mistake record', [
+                } catch (\Exception $e) {
+                    $mistakesFailed++;
+                    Log::error('Exception while processing mistake record', [
                         'request_id' => $requestId,
                         'user_id' => $user->id,
-                        'question_id' => $questionId
+                        'question_id' => $questionId,
+                        'error' => $e->getMessage()
                     ]);
-                    // Continue processing other mistakes
+                    // Continue processing other mistakes - don't fail the entire grading
                 }
             }
+            
+            Log::info('Mistake processing completed', [
+                'request_id' => $requestId,
+                'user_id' => $user->id,
+                'mistakes_processed' => $mistakesProcessed,
+                'mistakes_failed' => $mistakesFailed,
+                'total_incorrect' => count($incorrectAnswers)
+            ]);
 
             // Handle milestones
             $this->handleMilestones($user, $score);
@@ -379,17 +441,31 @@ class RandomQuizController extends Controller
             // Clear session data
             session()->forget(['random_quiz_questions', 'random_quiz_time_limit']);
 
-            return [
+            // GOLDEN STANDARD: Return comprehensive success response
+            $responseData = [
                 'success' => true,
                 'score' => $score,
                 'total' => $totalQuestions,
                 'total_questions' => $totalQuestions,
-                'percentage_grade' => $percentageGrade,
+                'percentage_grade' => round($percentageGrade, 2),
                 'incorrect_answers' => $incorrectAnswers,
                 'correct_answers' => $correctAnswersMap,
                 'message' => $this->getScoreMessage($percentageGrade),
-                'quiz_attempt_id' => $quizAttempt->id
+                'quiz_attempt_id' => $quizAttempt->id,
+                'mistakes_recorded' => $mistakesProcessed,
+                'time_taken' => $timeTaken
             ];
+            
+            Log::info('Random quiz grading completed successfully', [
+                'request_id' => $requestId,
+                'user_id' => $user->id,
+                'quiz_attempt_id' => $quizAttempt->id,
+                'final_score' => "{$score}/{$totalQuestions}",
+                'percentage' => round($percentageGrade, 2),
+                'execution_time_ms' => round((microtime(true) - $startTime) * 1000, 2)
+            ]);
+            
+            return $responseData;
         }, [
             'user_id' => $userId,
             'action' => 'random_quiz_grading',
