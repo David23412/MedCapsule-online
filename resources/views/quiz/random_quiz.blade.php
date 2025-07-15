@@ -329,24 +329,6 @@
             cursor: not-allowed;
         }
 
-        .submit-btn.btn-warning {
-            background: #ffc107;
-            color: #212529;
-        }
-
-        .submit-btn.btn-warning:hover:not(:disabled) {
-            background: #e0a800;
-        }
-
-        .submit-btn.btn-primary {
-            background: #007bff;
-            color: white;
-        }
-
-        .submit-btn.btn-primary:hover:not(:disabled) {
-            background: #0056b3;
-        }
-
         .popup-overlay {
             position: fixed;
             top: 0;
@@ -586,46 +568,6 @@
         .profile-circle:hover {
             transform: scale(1.1);
         }
-
-        /* GOLDEN STANDARD: Loading overlay styles */
-        .loading-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: rgba(0, 0, 0, 0.7);
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            z-index: 10000;
-            color: white;
-            font-size: 1.2rem;
-            backdrop-filter: blur(5px);
-        }
-
-        .loading-overlay .spinner-border {
-            width: 3rem;
-            height: 3rem;
-            margin-bottom: 1rem;
-        }
-
-        /* Timer pulsing animation */
-        .timer.pulsing {
-            animation: timerPulse 1s ease-in-out infinite;
-        }
-
-        @keyframes timerPulse {
-            0%, 100% { 
-                transform: scale(1); 
-                opacity: 1; 
-            }
-            50% { 
-                transform: scale(1.05); 
-                opacity: 0.8; 
-            }
-        }
     </style>
 </head>
 <body>
@@ -734,19 +676,15 @@
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
-    <!-- GOLDEN STANDARD: Add audio elements with error handling -->
-    <audio id="quizPerfectSound" preload="auto" onerror="console.warn('Failed to load quiz-perfect.mp3')">
-        <source src="{{ secure_url(asset('sounds/quiz-perfect.mp3')) }}" type="audio/mpeg">
-        <!-- Fallback for different audio formats -->
-        <source src="{{ secure_url(asset('sounds/quiz-perfect.mp3')) }}" type="audio/mp3">
+    <!-- Add audio elements -->
+    <audio id="quizPerfectSound" preload="auto">
+        <source src="{{ asset('sounds/quiz-perfect.mp3') }}" type="audio/mpeg">
     </audio>
-    <audio id="quizPartialSound" preload="auto" onerror="console.warn('Failed to load quiz-partial.mp3')">
-        <source src="{{ secure_url(asset('sounds/quiz-partial.mp3')) }}" type="audio/mpeg">
-        <source src="{{ secure_url(asset('sounds/quiz-partial.mp3')) }}" type="audio/mp3">
+    <audio id="quizPartialSound" preload="auto">
+        <source src="{{ asset('sounds/quiz-partial.mp3') }}" type="audio/mpeg">
     </audio>
-    <audio id="quizWrongSound" preload="auto" onerror="console.warn('Failed to load quiz-wrong.mp3')">
-        <source src="{{ secure_url(asset('sounds/quiz-wrong.mp3')) }}" type="audio/mpeg">
-        <source src="{{ secure_url(asset('sounds/quiz-wrong.mp3')) }}" type="audio/mp3">
+    <audio id="quizWrongSound" preload="auto">
+        <source src="{{ asset('sounds/quiz-wrong.mp3') }}" type="audio/mpeg">
     </audio>
 
     <script>
@@ -759,7 +697,7 @@
             
             let selectedAnswers = {};
             
-            // GOLDEN STANDARD: Update progress function with robust tracking
+            // Update progress function
             function updateProgress() {
                 const totalQuestions = {{ $questions->count() }};
                 const answeredQuestions = Object.keys(selectedAnswers).length;
@@ -769,24 +707,11 @@
                 const progressText = document.getElementById('progress-text');
                 const progressPercentage = (answeredQuestions / totalQuestions) * 100;
                 
-                if (progressFill && progressText) {
-                    progressFill.style.width = `${progressPercentage}%`;
-                    progressText.textContent = `${answeredQuestions} of ${totalQuestions} questions answered`;
-                }
+                progressFill.style.width = `${progressPercentage}%`;
+                progressText.textContent = `${answeredQuestions} of ${totalQuestions} questions answered`;
                 
-                // Enable submit button when all questions are answered OR allow partial submission
-                if (submitBtn) {
-                    submitBtn.disabled = false; // Always allow submission
-                    if (answeredQuestions === totalQuestions) {
-                        submitBtn.textContent = 'Submit Quiz';
-                        submitBtn.classList.remove('btn-warning');
-                        submitBtn.classList.add('btn-primary');
-                    } else {
-                        submitBtn.textContent = `Submit Quiz (${answeredQuestions}/${totalQuestions} answered)`;
-                        submitBtn.classList.remove('btn-primary');
-                        submitBtn.classList.add('btn-warning');
-                    }
-                }
+                // Enable submit button when all questions are answered
+                submitBtn.disabled = answeredQuestions !== totalQuestions;
             }
             
             // Handle multiple choice question answers
@@ -816,14 +741,8 @@
             let timeRemaining = timeLimit;
             let timeTaken = 0;
             let timerInterval;
-            let quizSubmitted = false; // Prevent double submission
             
             function updateTimer() {
-                if (quizSubmitted) {
-                    clearInterval(timerInterval);
-                    return;
-                }
-                
                 timeRemaining--;
                 timeTaken++;
                 
@@ -835,14 +754,11 @@
                 // Update hidden field with time taken
                 timeTakenField.value = timeTaken;
                 
-                // Timer expiration logic - GOLDEN STANDARD AUTO-SUBMIT
+                // Timer expiration logic
                 if (timeRemaining <= 0) {
                     clearInterval(timerInterval);
-                    if (!quizSubmitted) {
-                        console.log('Timer expired - auto-submitting quiz');
-                        quizSubmitted = true;
-                        submitQuiz();
-                    }
+                    // Submit quiz automatically without alert
+                    submitQuiz();
                 }
                 
                 // Visual indication when time is running low
@@ -858,9 +774,6 @@
             
             // Start the timer
             timerInterval = setInterval(updateTimer, 1000);
-            
-            // Initialize progress on page load
-            updateProgress();
 
             const popupOverlay = document.getElementById("popup-overlay");
             const popup = document.getElementById("popup");
@@ -871,16 +784,6 @@
             const viewProgressButton = document.getElementById("view-progress-btn");
 
             function submitQuiz() {
-                // GOLDEN STANDARD SUBMISSION PROTECTION
-                if (quizSubmitted) {
-                    console.log('Quiz already submitted, preventing duplicate submission');
-                    return;
-                }
-                quizSubmitted = true;
-                
-                // Clear timer immediately
-                clearInterval(timerInterval);
-                
                 // Disable all inputs and submit button
                 document.querySelectorAll('input, textarea, button[type="submit"]').forEach(input => input.disabled = true);
                 
@@ -891,40 +794,26 @@
                 formDataObj.answers = {};
                 formDataObj.time_taken = parseInt(document.getElementById('time-taken').value, 10) || 0;
 
-                // GOLDEN STANDARD: Ensure ALL questions are included (answered or unanswered)
-                const allQuestionIds = [];
-                
-                // Collect all multiple choice questions
-                document.querySelectorAll('.question-box[data-question-id]').forEach(questionBox => {
+                // Add all questions (answered and unanswered) to formData
+                document.querySelectorAll('.question-box').forEach(questionBox => {
                     const questionId = questionBox.dataset.questionId;
-                    allQuestionIds.push(questionId);
-                    
                     const selectedAnswer = questionBox.querySelector('input:checked');
                     if (selectedAnswer) {
                         formDataObj.answers[questionId] = selectedAnswer.value;
-                    } else {
-                        // Mark unanswered multiple choice as null for backend to handle as mistake
-                        formDataObj.answers[questionId] = null;
+                    } else if (!formDataObj.answers.hasOwnProperty(questionId)) {
+                        // Mark unanswered multiple choice as empty string
+                        formDataObj.answers[questionId] = '';
                     }
                 });
-                
-                // Collect all written questions
+                // Add written answers to formData
                 document.querySelectorAll('.written-answer').forEach(textarea => {
                     const questionId = textarea.getAttribute('data-question-id');
-                    if (!allQuestionIds.includes(questionId)) {
-                        allQuestionIds.push(questionId);
-                    }
-                    
                     if (textarea.value.trim() !== '') {
-                        formDataObj.answers[questionId] = textarea.value.trim();
+                        formDataObj.answers[questionId] = textarea.value;
                     } else {
-                        // Mark unanswered written as null for backend to handle as mistake
-                        formDataObj.answers[questionId] = null;
+                        formDataObj.answers[questionId] = '';
                     }
                 });
-                
-                console.log('Submitting quiz with answers:', formDataObj.answers);
-                console.log('Total questions found:', allQuestionIds.length);
 
                 // Show loading state
                 const loadingOverlay = document.createElement('div');
@@ -979,13 +868,10 @@
                 })
                 .then(data => {
                     // Remove loading overlay
-                    if (document.body.contains(loadingOverlay)) {
-                        document.body.removeChild(loadingOverlay);
-                    }
+                    document.body.removeChild(loadingOverlay);
                     
                     if (data.success) {
-                        // Handle success - GOLDEN STANDARD RESULT DISPLAY
-                        console.log('Quiz graded successfully:', data);
+                        // Handle success
                         displayQuizResults(data);
                     } else {
                         throw new Error(data.error || 'An error occurred while grading the quiz');
@@ -997,52 +883,22 @@
                         document.body.removeChild(loadingOverlay);
                     }
                     
-                    // GOLDEN STANDARD ERROR HANDLING
-                    console.error('Quiz grading error:', error);
-                    
-                    // Reset submission state to allow retry
-                    quizSubmitted = false;
-                    document.querySelectorAll('input, textarea, button[type="submit"]').forEach(input => input.disabled = false);
-                    
-                    // Show user-friendly error message with retry option
+                    // Show error message
                     const errorMessage = error.message || 'An error occurred while grading the quiz. Please try again.';
-                    
-                    if (errorMessage.includes('session expired') || errorMessage.includes('no questions found')) {
-                        Swal.fire({
-                            title: 'Session Expired',
-                            text: 'Your quiz session has expired. Please start a new random quiz.',
-                            icon: 'warning',
-                            confirmButtonText: 'Start New Quiz',
-                            allowOutsideClick: false
-                        }).then(() => {
-                            window.location.href = '{{ route("topics.forCourse", ["course" => $selectedCourses->first()->id]) }}';
-                        });
-                    } else {
-                        Swal.fire({
-                            title: 'Grading Error',
-                            text: errorMessage,
-                            icon: 'error',
-                            showCancelButton: true,
-                            confirmButtonText: 'Retry Submission',
-                            cancelButtonText: 'Cancel',
-                            allowOutsideClick: false
-                        }).then((result) => {
-                            if (result.isConfirmed) {
-                                submitQuiz();
-                            }
-                        });
-                    }
+                    Swal.fire({
+                        title: 'Error',
+                        text: errorMessage,
+                        icon: 'error',
+                        confirmButtonText: 'OK'
+                    });
                 });
             }
 
-            // Handle form submission - GOLDEN STANDARD
+            // Handle form submission
             quizForm.addEventListener("submit", function (event) {
                 event.preventDefault();
-                
-                if (!quizSubmitted) {
-                    console.log('Manual quiz submission triggered');
-                    submitQuiz();
-                }
+                clearInterval(timerInterval);
+                submitQuiz();
             });
 
             // Add event listeners to popup buttons
@@ -1115,82 +971,15 @@
             }
         }
 
-        // GOLDEN STANDARD: Display quiz results with robust error handling
-        function displayQuizResults(data) {
-            try {
-                console.log('Displaying quiz results:', data);
-                
-                const popup = document.getElementById('popup');
-                const popupOverlay = document.getElementById('popup-overlay');
-                const popupTitle = document.getElementById('popup-title');
-                const popupScore = document.getElementById('popup-score');
-                const popupMessage = document.getElementById('popup-message');
-                const gradeIcon = document.getElementById('grade-icon');
-                
-                if (!popup || !popupOverlay || !popupTitle || !popupScore || !popupMessage || !gradeIcon) {
-                    console.error('Quiz result popup elements not found');
-                    return;
-                }
-                
-                const score = data.score || 0;
-                const total = data.total || data.total_questions || 0;
-                const percentage = data.percentage_grade || ((score / total) * 100);
-                
-                // Update popup content
-                popupScore.textContent = `${score}/${total}`;
-                popupTitle.textContent = 'Quiz Complete!';
-                
-                // Set grade icon and message based on performance
-                if (percentage === 100) {
-                    gradeIcon.innerHTML = '<i class="fas fa-trophy"></i>';
-                    gradeIcon.className = 'grade-icon perfect';
-                    popupMessage.textContent = data.message || 'Perfect score! Outstanding work!';
-                    createConfetti();
-                } else if (percentage >= 70) {
-                    gradeIcon.innerHTML = '<i class="fas fa-medal"></i>';
-                    gradeIcon.className = 'grade-icon good';
-                    popupMessage.textContent = data.message || 'Great job! You\'re doing well!';
-                } else {
-                    gradeIcon.innerHTML = '<i class="fas fa-redo"></i>';
-                    gradeIcon.className = 'grade-icon needs-improvement';
-                    popupMessage.textContent = data.message || 'Keep practicing! You\'re improving!';
-                }
-                
-                // Play appropriate audio feedback
-                playQuizCompletionSound(score, total);
-                
-                // Show the popup
-                popupOverlay.classList.add('show');
-                setTimeout(() => {
-                    popup.classList.add('show');
-                }, 100);
-                
-                // Store results for review functionality
-                window.quizResults = data;
-                
-            } catch (error) {
-                console.error('Error displaying quiz results:', error);
-                // Fallback: show basic success message
-                Swal.fire({
-                    title: 'Quiz Complete!',
-                    text: 'Your quiz has been submitted successfully.',
-                    icon: 'success',
-                    confirmButtonText: 'OK'
-                });
-            }
-        }
-
         // Function to create confetti
         function createConfetti() {
-            if (typeof confetti !== 'undefined') {
-                confetti({
-                    particleCount: 100,
-                    spread: 70,
-                    origin: { y: 0.6 },
-                    colors: ['#FFD700', '#FFA500', '#FF69B4', '#00CED1', '#98FB98'],
-                    zIndex: 9999
-                });
-            }
+            confetti({
+                particleCount: 100,
+                spread: 70,
+                origin: { y: 0.6 },
+                colors: ['#FFD700', '#FFA500', '#FF69B4', '#00CED1', '#98FB98'],
+                zIndex: 9999
+            });
         }
     </script>
 </body>
