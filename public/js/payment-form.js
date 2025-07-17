@@ -242,11 +242,4 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 });
 
-// Add debug button
-const debugBtn = document.createElement('button');
-debugBtn.textContent = 'Force Show Success';
-debugBtn.style.cssText = 'position: fixed; bottom: 10px; right: 10px; z-index: 999999; padding: 10px; background: #28a745; color: white; border: none; border-radius: 5px; cursor: pointer;';
-debugBtn.onclick = showSuccessMessage;
-document.body.appendChild(debugBtn);
-
 console.log('PAYMENT SCRIPT LOADED');
