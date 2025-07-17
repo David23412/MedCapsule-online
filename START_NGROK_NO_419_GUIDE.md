@@ -6,13 +6,18 @@ This guide will get your Laravel app running with ngrok **without any 419 Page E
 
 ## 1. **Start Your Local Laravel Server**
 
-Open your terminal and run:
+Open your terminal and run **one** of the following commands:
 
 ```bash
-php artisan serve
+php artisan serve --host=127.0.0.1 --port=8000
+```
+**or**
+```bash
+php artisan serve --host=localhost --port=8000
 ```
 
-This will start your app at: [http://localhost:8000](http://localhost:8000)
+- This will start your app at: [http://127.0.0.1:8000](http://127.0.0.1:8000) or [http://localhost:8000](http://localhost:8000)
+- If you just run `php artisan serve`, it may default to `127.0.0.1:8000` (not `localhost`).
 
 ---
 
@@ -75,10 +80,10 @@ php artisan migrate
 
 ## 6. **Restart Laravel Server**
 
-Stop and restart your Laravel server:
+Stop and restart your Laravel server (using the same command as in step 1):
 
 ```bash
-php artisan serve
+php artisan serve --host=127.0.0.1 --port=8000
 ```
 
 ---
@@ -96,6 +101,7 @@ php artisan serve
 - If you still get 419 errors, double-check your `.env` for typos and repeat steps 4–6.
 - Make sure you’re using the **ngrok HTTPS URL** everywhere in `.env`.
 - If you change your ngrok URL, update `.env` and clear caches again.
+- Make sure you are starting the server on `127.0.0.1` or `localhost` and not another IP.
 
 ---
 
