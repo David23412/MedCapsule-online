@@ -221,3 +221,10 @@ Route::middleware('auth:sanctum')->group(function () {
 Route::get('/health', function() {
     return response()->json(['status' => 'ok'], 200);
 });
+
+// Tutor Routes
+Route::middleware(['auth', 'tutor'])->prefix('tutor')->name('tutor.')->group(function () {
+    Route::get('/dashboard', [App\Http\Controllers\Tutor\TutorDashboardController::class, 'index'])->name('dashboard');
+    Route::get('/student/{student_id}/progress', [App\Http\Controllers\Tutor\StudentProgressController::class, 'show'])->name('student.progress');
+    Route::get('/student/{student_id}/updates', [App\Http\Controllers\Tutor\StudentProgressController::class, 'getRealtimeUpdates'])->name('student.updates');
+});

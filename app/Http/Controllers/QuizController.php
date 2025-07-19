@@ -377,6 +377,9 @@ class QuizController extends Controller
             ->orderByDesc('mistakes.last_attempt_date')
             ->get();
 
+            // Get total mistakes count (unfiltered)
+            $totalMistakesCount = Mistake::where('user_id', $userId)->count();
+
             // GOLDEN STANDARD: Efficient course availability check
             $availableCourses = Course::select(['id', 'name'])
                 ->whereIn('id', function($query) use ($userId) {
@@ -423,6 +426,7 @@ class QuizController extends Controller
                 'availableCourses' => $availableCourses,
                 'selectedCourse' => $courseFilter,
                 'recentCourse' => $recentCourse,
+                'totalMistakesCount' => $totalMistakesCount,
                 'performance_metrics' => [
                     'execution_time_ms' => round($executionTime, 2),
                     'mistakes_count' => $mistakes->count(),
@@ -444,6 +448,7 @@ class QuizController extends Controller
                 'availableCourses' => collect([]),
                 'selectedCourse' => null,
                 'recentCourse' => null,
+                'totalMistakesCount' => 0,
                 'error' => 'An error occurred while loading your mistakes. Please try again.'
             ]);
         }

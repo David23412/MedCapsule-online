@@ -18,7 +18,7 @@ class User extends Authenticatable
         'email',
         'university',
         'password',
-        'is_admin',
+        'role',
         'last_active_at',
         'profile_picture_url',
         'correct_answers_count',
@@ -45,11 +45,18 @@ class User extends Authenticatable
         'email_verified_at' => 'datetime',
         'last_active_at' => 'datetime',
         'password' => 'hashed',
-        'is_admin' => 'boolean',
+        'role' => 'string',
         'profile_picture_url' => 'string',
         'correct_answers_count' => 'integer',
         'total_questions_attempted' => 'integer',
     ];
+
+    /**
+     * User roles
+     */
+    const ROLE_ADMIN = 'admin';
+    const ROLE_TUTOR = 'tutor';
+    const ROLE_STUDENT = 'student';
 
     /**
      * Define the relationship with courses (many-to-many).
@@ -115,7 +122,7 @@ class User extends Authenticatable
      */
     public function hasAccessToCourse($courseId)
     {
-        return $this->is_admin || $this->courses()
+        return $this->role === self::ROLE_ADMIN || $this->courses()
             ->where('course_id', $courseId)
             ->where('enrollment_status', 'active')
             ->exists();
@@ -199,11 +206,59 @@ class User extends Authenticatable
     }
 
     /**
-     * Check if the user is an admin.
+     * Check if user is an admin
+     *
+     * @return bool
      */
-    public function isAdmin()
+    public function isAdmin(): bool
     {
-        return $this->is_admin;
+        return $this->role === self::ROLE_ADMIN;
+    }
+
+    /**
+     * Check if user is a tutor
+     *
+     * @return bool
+     */
+    public function isTutor(): bool
+    {
+        return $this->role === self::ROLE_TUTOR;
+    }
+
+    /**
+     * Check if user is a student
+     *
+     * @return bool
+     */
+    public function isStudent(): bool
+    {
+        return $this->role === self::ROLE_STUDENT;
+    }
+
+    /**
+     * Get students assigned to this tutor
+     *
+     * @return \Illuminate\Database\Eloquent\Relations\BelongsToMany
+     */
+    public function assignedStudents()
+    {
+        return $this->belongsToMany(User::class, 'tutor_student_relationships', 'tutor_id', 'student_id')
+                    ->where('role', self::ROLE_STUDENT)
+                    ->withTimestamp('assigned_at')
+                    ->withTimestamps();
+    }
+
+    /**
+     * Get tutors assigned to this student
+     *
+     * @return \Illuminate\Database\Eloquent\Relations\BelongsToMany
+     */
+    public function assignedTutors()
+    {
+        return $this->belongsToMany(User::class, 'tutor_student_relationships', 'student_id', 'tutor_id')
+                    ->where('role', self::ROLE_TUTOR)
+                    ->withTimestamp('assigned_at')
+                    ->withTimestamps();
     }
 
     public function getFormattedStudyTimeAttribute(): string

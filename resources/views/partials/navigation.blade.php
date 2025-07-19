@@ -84,6 +84,16 @@
                                     </a>
                                 </li>
                             @endif
+                            @auth
+                                @if(auth()->user()->isAdmin() || auth()->user()->isTutor())
+                                    <li><hr class="dropdown-divider"></li>
+                                    <li>
+                                        <a class="dropdown-item" href="{{ route('tutor.dashboard') }}">
+                                            <i class="fas fa-chalkboard-teacher me-2"></i> Tutor Dashboard
+                                        </a>
+                                    </li>
+                                @endif
+                            @endauth
                             <li><hr class="dropdown-divider"></li>
                             <li>
                                 <a class="dropdown-item" href="{{ route('profile') }}">

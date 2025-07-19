@@ -82,9 +82,13 @@ class QuizAttempt extends Model
             }
         });
 
-        // PHASE 2: Dispatch UserProgressUpdated event when progress changes
+        // PHASE 2: Dispatch UserProgressUpdated event when progress changes (only for regular quizzes)
         static::saved(function ($quizAttempt) {
-            if ($quizAttempt->score !== null && $quizAttempt->total_questions !== null) {
+            if ($quizAttempt->score !== null && 
+                $quizAttempt->total_questions !== null && 
+                $quizAttempt->topic_id !== null && 
+                $quizAttempt->quiz_type !== 'random') {
+                
                 $percentage = ($quizAttempt->score / $quizAttempt->total_questions) * 100;
                 
                 event(new \App\Events\UserProgressUpdated(

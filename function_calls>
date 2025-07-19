@@ -1,0 +1,5 @@
+<invoke name="read_file">
+<parameter name="target_file">.env</parameter>
+<parameter name="explanation">Reading current .env file to make targeted changes</parameter>
+<parameter name="should_read_entire_file">true</parameter>
+</invoke> 

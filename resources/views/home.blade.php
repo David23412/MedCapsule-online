@@ -44,6 +44,8 @@
             font-family: 'Poppins', sans-serif;
             overflow-x: hidden;
             scroll-behavior: smooth;
+            zoom: 0.90;
+            -webkit-text-size-adjust: 100%; /* Prevent Safari text auto-sizing */
         }
 
         /* Navbar */
@@ -2246,6 +2248,14 @@
                                     <li>
                                         <a class="dropdown-item" href="{{ route('add-course.form') }}">
                                             <i class="fas fa-graduation-cap me-2"></i>Add Course
+                                        </a>
+                                    </li>
+                                @endif
+                                @if(Auth::user()->isAdmin() || Auth::user()->isTutor())
+                                    <li><hr class="dropdown-divider"></li>
+                                    <li>
+                                        <a class="dropdown-item" href="{{ route('tutor.dashboard') }}">
+                                            <i class="fas fa-chalkboard-teacher me-2"></i>Tutor Dashboard
                                         </a>
                                     </li>
                                 @endif

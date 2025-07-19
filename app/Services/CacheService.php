@@ -122,14 +122,10 @@ class CacheService
             }
             $pipeline->del("user_{$userId}_topic_{$topicId}_mistakes");
         } else {
-            // If no topicId, clear all topics for this user
-            $topics = Topic::pluck('id');
-            foreach ($topics as $tid) {
-                foreach ($modes as $mode) {
-                    $pipeline->del("user_{$userId}_topic_{$tid}_progress_{$mode}");
-                }
-                $pipeline->del("user_{$userId}_topic_{$tid}_mistakes");
-            }
+            // For random quizzes or when no topic is specified
+            $pipeline->del("user_{$userId}_random_quiz_progress");
+            $pipeline->del("user_{$userId}_random_quiz_stats");
+            $pipeline->del("user_{$userId}_random_quiz_mistakes");
         }
         
         // Remove mastery stats
@@ -141,6 +137,7 @@ class CacheService
         Log::info('Cache invalidated', [
             'user_id' => $userId,
             'topic_id' => $topicId,
+            'type' => $topicId ? 'topic_quiz' : 'random_quiz',
             'timestamp' => now()
         ]);
     }
@@ -438,15 +435,21 @@ class CacheService
     /**
      * Clear quiz caches
      */
-    public function clearQuizCaches(int $topicId, int $userId): void
+    public function clearQuizCaches(?int $topicId, int $userId): void
     {
         $redis = Redis::connection();
         $pipeline = $redis->pipeline();
         
-        $pipeline->del("quiz_questions_{$topicId}_" . md5(serialize(['all'])));
-        $pipeline->del("quiz_stats_{$topicId}");
-        $pipeline->del("user_{$userId}_topic_{$topicId}_progress_quiz");
-        $pipeline->del("user_{$userId}_topic_{$topicId}_mistakes");
+        if ($topicId) {
+            $pipeline->del("quiz_questions_{$topicId}_" . md5(serialize(['all'])));
+            $pipeline->del("quiz_stats_{$topicId}");
+            $pipeline->del("user_{$userId}_topic_{$topicId}_progress_quiz");
+            $pipeline->del("user_{$userId}_topic_{$topicId}_mistakes");
+        } else {
+            // For random quizzes, just clear user-specific caches
+            $pipeline->del("user_{$userId}_random_quiz_progress");
+            $pipeline->del("user_{$userId}_random_quiz_stats");
+        }
         
         $pipeline->exec();
     }

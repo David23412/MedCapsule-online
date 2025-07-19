@@ -1415,6 +1415,12 @@
                                         Payment Settings
                                     </a></li>
                                 @endif
+                                @if(Auth::user()->isAdmin() || Auth::user()->isTutor())
+                                    <li><hr class="dropdown-divider"></li>
+                                    <li><a class="dropdown-item" href="{{ route('tutor.dashboard') }}">
+                                        <i class="fas fa-chalkboard-teacher me-2"></i>Tutor Dashboard
+                                    </a></li>
+                                @endif
                                 <li><hr class="dropdown-divider"></li>
                                 <li>
                                     <form method="POST" action="{{ secure_url(route('logout', [], false)) }}">

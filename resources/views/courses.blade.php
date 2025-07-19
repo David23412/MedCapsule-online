@@ -5,7 +5,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>Available Courses - MedCapsule</title>
-        <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+
+    <!-- Favicon -->
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 50'%3E%3Crect fill='%23007bff' x='10' y='15' width='80' height='20' rx='10' ry='10' /%3E%3Crect x='50' y='15' width='40' height='20' fill='%23ff0000' rx='0 10 10 0' ry='10'/%3E%3Cline x1='50' y1='15' x2='50' y2='35' stroke='white' stroke-width='1.5' stroke-dasharray='2,1'/%3E%3C/svg%3E">
+    <link rel="shortcut icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 50'%3E%3Crect fill='%23007bff' x='10' y='15' width='80' height='20' rx='10' ry='10' /%3E%3Crect x='50' y='15' width='40' height='20' fill='%23ff0000' rx='0 10 10 0' ry='10'/%3E%3Cline x1='50' y1='15' x2='50' y2='35' stroke='white' stroke-width='1.5' stroke-dasharray='2,1'/%3E%3C/svg%3E">
+    <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 50'%3E%3Crect fill='%23007bff' x='10' y='15' width='80' height='20' rx='10' ry='10' /%3E%3Crect x='50' y='15' width='40' height='20' fill='%23ff0000' rx='0 10 10 0' ry='10'/%3E%3Cline x1='50' y1='15' x2='50' y2='35' stroke='white' stroke-width='1.5' stroke-dasharray='2,1'/%3E%3C/svg%3E">
+
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Crimson+Pro:wght@700;800;900&display=swap" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -21,11 +27,12 @@
             min-height: 100vh;
             overflow-x: hidden;
             line-height: 1.6;
+            zoom: 0.73; /* Add zoom out for better overall view */
         }
 
         .navbar {
             background: rgba(255, 255, 255, 0.95);
-            padding: 1rem 2rem;
+            padding: 1rem 2.5rem; /* Increased horizontal padding */
             box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
             position: fixed;
             top: 0;
@@ -49,11 +56,12 @@
 
         .hero-section {
             background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
-            padding: 8rem 2rem 4rem;
+            padding: 6rem 2rem 3rem; /* Further reduced padding */
             text-align: center;
             position: relative;
-            margin-bottom: 2rem;
+            margin-bottom: 2rem; /* Reduced margin */
             overflow: hidden;
+            -webkit-text-size-adjust: 100%; /* Prevent Safari text auto-sizing */
         }
 
         .floating-elements {
@@ -63,6 +71,7 @@
             top: 0;
             left: 0;
             pointer-events: none;
+            opacity: 0.6; /* Reduced opacity for subtler background */
         }
 
         .floating-element {
@@ -81,18 +90,32 @@
         }
 
         .hero-title {
-            font-size: 2.5rem;
-            font-weight: 700;
+            font-size: 1.75rem; /* Smaller base size */
+            font-weight: 600;
             color: #2196f3;
-            margin-bottom: 1rem;
+            margin-bottom: 0.75rem;
             position: relative;
+            letter-spacing: -0.01em;
+            -webkit-text-size-adjust: 100%; /* Prevent Safari text auto-sizing */
+        }
+
+        @supports (-webkit-touch-callout: none) {
+            /* Safari-specific styles */
+            .hero-title {
+                font-size: 1.5rem !important; /* Force smaller size in Safari */
+                max-height: 2.5rem; /* Limit height */
+                line-height: 1.2;
+            }
+            .hero-section {
+                padding: 5rem 2rem 2.5rem; /* Even more compact in Safari */
+            }
         }
 
         .courses-grid {
             display: flex;
-            gap: 1.5rem;
-            padding: 1rem;
-            margin: 0.5rem 2rem;
+            gap: 2rem; /* Increased gap between cards */
+            padding: 1.5rem 3rem; /* Increased padding */
+            margin: 1rem 3rem 2rem; /* Added bottom margin */
             max-width: 100%;
             overflow-x: auto;
             scroll-behavior: smooth;
@@ -100,7 +123,7 @@
             -ms-overflow-style: none;
             position: relative;
             scroll-snap-type: x mandatory;
-            padding-bottom: 20px;
+            padding-bottom: 20px; /* Reduced from 30px */
             -webkit-overflow-scrolling: touch;
         }
 
@@ -112,9 +135,9 @@
             position: absolute;
             top: 50%;
             transform: translateY(-50%);
-            width: 40px;
-            height: 40px;
-            background: rgba(255, 255, 255, 0.95);
+            width: 48px; /* Increased size */
+            height: 48px; /* Increased size */
+            background: rgba(255, 255, 255, 0.98);
             border-radius: 50%;
             display: flex;
             align-items: center;
@@ -122,7 +145,7 @@
             cursor: pointer;
             z-index: 10;
             border: none;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            box-shadow: 0 3px 10px rgba(0, 0, 0, 0.12);
             transition: all 0.3s ease;
             opacity: 0;
         }
@@ -139,38 +162,40 @@
         }
 
         .scroll-left {
-            left: 10px;
+            left: 20px; /* Increased distance from edge */
         }
 
         .scroll-right {
-            right: 10px;
+            right: 20px; /* Increased distance from edge */
         }
 
         .scroll-arrow i {
             color: #2196f3;
-            font-size: 1.2rem;
+            font-size: 1.4rem; /* Increased size */
         }
 
         .course-card {
-            flex: 0 0 360px; /* Increased from 340px */
+            flex: 0 0 400px;
             scroll-snap-align: start;
             background: white;
-            border-radius: 12px;
+            border-radius: 16px;
             overflow: hidden;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+            box-shadow: 0 3px 6px rgba(0, 0, 0, 0.08);
             transition: all 0.3s ease;
-            width: 360px; /* Increased from 340px */
-            border: 1px solid transparent;
+            width: 400px;
+            border: 1px solid rgba(0, 0, 0, 0.05);
+            margin-bottom: 3rem; /* Increased space for progress bar */
+            transform: translateY(0); /* Reset base position */
         }
 
         .course-card:hover {
-            transform: translateY(-4px);
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            transform: translateY(-15px); /* Subtle upward lift on hover */
+            box-shadow: 0 6px 16px rgba(0, 0, 0, 0.12);
         }
 
         .course-image {
             position: relative;
-            height: 450px; /* Maintained the same height */
+            height: 500px; /* Increased from 450px */
             background-size: cover;
             background-position: center;
             background-repeat: no-repeat;
@@ -241,15 +266,14 @@
         }
 
         .course-title {
-            font-size: 2.4rem;
+            font-size: 2.6rem; /* Increased from 2.4rem */
             font-weight: 800;
             letter-spacing: -0.02em;
-            line-height: 1.2;
+            line-height: 1.3; /* Increased line height */
             font-family: 'Inter', 'SF Pro Display', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
             z-index: 2;
             mix-blend-mode: normal;
-            transition: color 0.3s ease;
-            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+            margin-bottom: 1rem; /* Added margin */
         }
 
         /* Remove all hardcoded course title color styles */
@@ -350,9 +374,10 @@
         }
 
         .progress-container {
+            margin-top: 3rem; /* Add space above progress bar */
+            padding-top: 1rem; /* Add padding above progress bar */
             width: 100%;
             padding: 1px;
-            margin-top: 6px;
             background: rgba(0, 0, 0, 0.05);
             border-radius: 2px;
         }

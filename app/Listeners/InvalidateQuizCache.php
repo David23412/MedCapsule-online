@@ -31,6 +31,7 @@ class InvalidateQuizCache implements ShouldQueue
             $quizAttempt = $event->quizAttempt;
             $userId = $quizAttempt->user_id;
             $topicId = $quizAttempt->topic_id;
+            $isRandomQuiz = $quizAttempt->quiz_type === 'random';
 
             // Clear quiz-specific caches
             $this->cacheService->clearQuizCaches($topicId, $userId);
@@ -41,16 +42,18 @@ class InvalidateQuizCache implements ShouldQueue
             // Clear user stats cache
             $this->cacheService->clearUserMasteryStats($userId);
 
-            // Clear topic progress caches
-            $this->cacheService->clearTopicProgressCaches($topicId, $userId, 'quiz');
-
-            // Clear course completion cache to reflect updated progress
-            $this->clearCourseCompletionCache($userId, $topicId);
+            // Clear topic progress caches only for regular quizzes
+            if (!$isRandomQuiz && $topicId) {
+                $this->cacheService->clearTopicProgressCaches($topicId, $userId, 'quiz');
+                // Clear course completion cache to reflect updated progress
+                $this->clearCourseCompletionCache($userId, $topicId);
+            }
 
             Log::info('Quiz cache invalidated', [
                 'quiz_attempt_id' => $quizAttempt->id,
                 'user_id' => $userId,
                 'topic_id' => $topicId,
+                'is_random_quiz' => $isRandomQuiz,
                 'score' => $event->score,
                 'total_questions' => $event->totalQuestions,
                 'percentage' => $event->percentage,

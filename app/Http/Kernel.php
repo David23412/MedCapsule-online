@@ -73,5 +73,6 @@ class Kernel extends HttpKernel
         'request.timeout' => \App\Http\Middleware\RequestTimeoutMiddleware::class,
         'aggressive.rate.limit' => \App\Http\Middleware\AggressiveRateLimitMiddleware::class,
         'sql.injection.protection' => \App\Http\Middleware\SqlInjectionProtectionMiddleware::class,
+        'tutor' => \App\Http\Middleware\TutorMiddleware::class,
     ];
 } 

@@ -240,7 +240,7 @@ class RandomQuizController extends Controller
                 Log::warning('❌ Random quiz session expired or missing', [
                     'request_id' => $requestId,
                     'user_id' => $userId,
-                    'session_questions' => $questionIds
+                    'session_data' => session()->all()
                 ]);
                 
                 return response()->json([
@@ -254,11 +254,26 @@ class RandomQuizController extends Controller
                 ->where('deleted', false)
                 ->get();
 
+            if ($questions->isEmpty()) {
+                Log::error('❌ No questions found', [
+                    'request_id' => $requestId,
+                    'question_ids' => $questionIds,
+                    'user_id' => $userId
+                ]);
+                
+                return response()->json([
+                    'success' => false,
+                    'error' => 'No questions found. Please start a new quiz.'
+                ], 422);
+            }
+
             if ($questions->count() !== count($questionIds)) {
                 Log::error('❌ Questions mismatch', [
                     'request_id' => $requestId,
                     'expected_count' => count($questionIds),
-                    'actual_count' => $questions->count()
+                    'actual_count' => $questions->count(),
+                    'question_ids' => $questionIds,
+                    'found_questions' => $questions->pluck('id')
                 ]);
                 
                 return response()->json([
@@ -428,7 +443,7 @@ class RandomQuizController extends Controller
                 DB::commit();
                 
                 // Clear session data after successful grading
-                session()->forget(['random_quiz_questions', 'random_quiz_time_limit']);
+                session()->forget(['random_quiz_questions', 'random_quiz_time_limit', 'random_quiz_courses', 'random_quiz_started_at', 'random_quiz_settings']);
 
                 // GOLDEN STANDARD: Return comprehensive success response
                 $responseData = [
@@ -462,7 +477,20 @@ class RandomQuizController extends Controller
                 
             } catch (\Exception $e) {
                 DB::rollback();
-                throw $e;
+                Log::error('💥 Database transaction failed in random quiz grading', [
+                    'request_id' => $requestId,
+                    'error' => $e->getMessage(),
+                    'file' => $e->getFile(),
+                    'line' => $e->getLine(),
+                    'trace' => $e->getTraceAsString(),
+                    'user_id' => $userId
+                ]);
+                
+                return response()->json([
+                    'success' => false,
+                    'error' => 'An error occurred while saving your quiz results. Please try again.',
+                    'debug' => app()->environment('local') ? $e->getMessage() : null
+                ], 500);
             }
 
         } catch (\Illuminate\Validation\ValidationException $e) {
