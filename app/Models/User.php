@@ -244,7 +244,7 @@ class User extends Authenticatable
     {
         return $this->belongsToMany(User::class, 'tutor_student_relationships', 'tutor_id', 'student_id')
                     ->where('role', self::ROLE_STUDENT)
-                    ->withTimestamp('assigned_at')
+                    ->withPivot('assigned_at')
                     ->withTimestamps();
     }
 
@@ -257,7 +257,7 @@ class User extends Authenticatable
     {
         return $this->belongsToMany(User::class, 'tutor_student_relationships', 'student_id', 'tutor_id')
                     ->where('role', self::ROLE_TUTOR)
-                    ->withTimestamp('assigned_at')
+                    ->withPivot('assigned_at')
                     ->withTimestamps();
     }
 

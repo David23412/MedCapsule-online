@@ -225,6 +225,9 @@ Route::get('/health', function() {
 // Tutor Routes
 Route::middleware(['auth', 'tutor'])->prefix('tutor')->name('tutor.')->group(function () {
     Route::get('/dashboard', [App\Http\Controllers\Tutor\TutorDashboardController::class, 'index'])->name('dashboard');
+    Route::get('/student/{student_id}/profile', [App\Http\Controllers\Tutor\TutorDashboardController::class, 'showStudentProfile'])->name('student.profile');
     Route::get('/student/{student_id}/progress', [App\Http\Controllers\Tutor\StudentProgressController::class, 'show'])->name('student.progress');
     Route::get('/student/{student_id}/updates', [App\Http\Controllers\Tutor\StudentProgressController::class, 'getRealtimeUpdates'])->name('student.updates');
+    Route::post('/student/{student_id}/report', [App\Http\Controllers\Tutor\TutorDashboardController::class, 'generateStudentReport'])->name('student.report');
+    Route::post('/reports/export', [App\Http\Controllers\Tutor\TutorDashboardController::class, 'exportAllReports'])->name('reports.export');
 });

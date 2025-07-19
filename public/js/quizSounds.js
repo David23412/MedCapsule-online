@@ -4,15 +4,11 @@
  */
 class QuizSoundManager {
     constructor() {
-        // Get the base URL from the script tag
-        const scriptTag = document.querySelector('script[src*="quizSounds.js"]');
-        const baseUrl = scriptTag ? scriptTag.src.replace(/quizSounds\.js.*$/, '') : '/js/';
-
-        // Initialize sound paths with absolute URLs
+        // Initialize sound paths with correct URLs
         this.soundPaths = {
-            perfect: baseUrl + 'sounds/quiz-perfect.mp3',
-            partial: baseUrl + 'sounds/quiz-partial.mp3',
-            wrong: baseUrl + 'sounds/quiz-wrong.mp3'
+            perfect: '/sounds/quiz-perfect.mp3',
+            partial: '/sounds/quiz-partial.mp3',
+            wrong: '/sounds/quiz-wrong.mp3'
         };
 
         // Initialize audio elements
@@ -28,7 +24,7 @@ class QuizSoundManager {
         this.playWrong = this.playWrong.bind(this);
 
         // Log initialization
-        console.log('QuizSoundManager initialized with base URL:', baseUrl);
+        console.log('QuizSoundManager initialized');
     }
 
     loadSounds() {

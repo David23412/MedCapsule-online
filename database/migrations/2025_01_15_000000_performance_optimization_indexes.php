@@ -73,12 +73,12 @@ return new class extends Migration
         Schema::table('users', function (Blueprint $table) {
             // Covering index for user stats
             if (!DB::select("SHOW INDEX FROM users WHERE Key_name = 'users_stats_idx'")) {
-                $table->index(['id', 'xp', 'level', 'total_questions_attempted'], 'users_stats_idx');
+                $table->index(['id', 'xp', 'total_questions_attempted'], 'users_stats_idx');
             }
             
             // Index for active users
             if (!DB::select("SHOW INDEX FROM users WHERE Key_name = 'users_active_idx'")) {
-                $table->index(['last_active_at', 'is_admin'], 'users_active_idx');
+                $table->index(['last_active_at', 'role'], 'users_active_idx');
             }
         });
 
@@ -121,18 +121,20 @@ return new class extends Migration
             }
         });
 
-        // Payments table - Critical for payment processing
-        Schema::table('payments', function (Blueprint $table) {
-            // Covering index for payment status tracking
-            if (!DB::select("SHOW INDEX FROM payments WHERE Key_name = 'payments_status_idx'")) {
-                $table->index(['status', 'created_at', 'user_id'], 'payments_status_idx');
-            }
-            
-            // Index for payment verification
-            if (!DB::select("SHOW INDEX FROM payments WHERE Key_name = 'payments_reference_idx'")) {
-                $table->index(['reference_number'], 'payments_reference_idx');
-            }
-        });
+        // Payments table - Critical for payment processing (only if table exists)
+        if (Schema::hasTable('payments')) {
+            Schema::table('payments', function (Blueprint $table) {
+                // Covering index for payment status tracking
+                if (!DB::select("SHOW INDEX FROM payments WHERE Key_name = 'payments_status_idx'")) {
+                    $table->index(['status', 'created_at', 'user_id'], 'payments_status_idx');
+                }
+                
+                // Index for payment verification
+                if (!DB::select("SHOW INDEX FROM payments WHERE Key_name = 'payments_reference_idx'")) {
+                    $table->index(['reference_number'], 'payments_reference_idx');
+                }
+            });
+        }
 
         // User_topic_progress table - Critical for progress tracking
         Schema::table('user_topic_progress', function (Blueprint $table) {

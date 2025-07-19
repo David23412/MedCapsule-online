@@ -1420,6 +1420,9 @@
                                     <li><a class="dropdown-item" href="{{ route('tutor.dashboard') }}">
                                         <i class="fas fa-chalkboard-teacher me-2"></i>Tutor Dashboard
                                     </a></li>
+                                    <li><a class="dropdown-item" href="{{ route('tutor.my-analytics') }}">
+                                        <i class="fas fa-chart-bar me-2"></i>My Analytics
+                                    </a></li>
                                 @endif
                                 <li><hr class="dropdown-divider"></li>
                                 <li>

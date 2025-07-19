@@ -19,7 +19,7 @@ return new class extends Migration
         Schema::table('users', function (Blueprint $table) {
             // Covering index for authentication queries
             if (!DB::select("SHOW INDEX FROM users WHERE Key_name = 'users_auth_covering_brutal_idx'")) {
-                $table->index(['email', 'password', 'email_verified_at', 'is_admin'], 'users_auth_covering_brutal_idx');
+                $table->index(['email', 'password', 'email_verified_at', 'role'], 'users_auth_covering_brutal_idx');
             }
             
             // Covering index for user stats
@@ -32,7 +32,7 @@ return new class extends Migration
         Schema::table('quiz_attempts', function (Blueprint $table) {
             // Covering index for user performance analysis
             if (!DB::select("SHOW INDEX FROM quiz_attempts WHERE Key_name = 'quiz_attempts_performance_brutal_idx'")) {
-                $table->index(['user_id', 'topic_id', 'percentage_grade', 'correct_answers', 'total_questions', 'created_at'], 'quiz_attempts_performance_brutal_idx');
+                $table->index(['user_id', 'topic_id', 'percentage_grade', 'score', 'total_questions', 'created_at'], 'quiz_attempts_performance_brutal_idx');
             }
             
             // Covering index for topic statistics

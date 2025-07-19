@@ -15,6 +15,7 @@ return new class extends Migration
             $table->id();
             $table->string('name'); // Name of the course
             $table->text('description')->nullable(); // Description of the course (optional)
+            $table->year('year')->default(2024); // Academic year for the course
             $table->string('image')->nullable(); // Image URL for the course
             $table->string('color')->nullable(); // Color for the course
             $table->string('title_color')->default('#FFFFFF'); // Title color for the course
@@ -22,7 +23,12 @@ return new class extends Migration
             $table->string('image_path')->nullable();
             $table->decimal('price', 10, 2)->nullable(); // Course price (null for free courses)
             $table->string('currency')->default('EGP'); // Currency for the price
+            $table->unsignedInteger('cache_version')->default(1); // Cache version for invalidation
             $table->timestamps();
+            
+            // Indexes for performance
+            $table->index('year', 'idx_courses_year');
+            $table->index(['year', 'price'], 'idx_year_price');
         });
     }
 

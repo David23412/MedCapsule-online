@@ -73,7 +73,7 @@ return new class extends Migration
             
             // Hot path: Active user analysis
             if (!$this->indexExists('users', 'idx_users_activity')) {
-                $table->index(['last_active_at', 'study_streak_days', 'is_admin'], 'idx_users_activity');
+                $table->index(['last_active_at', 'study_streak_days', 'role'], 'idx_users_activity');
             }
         });
 
