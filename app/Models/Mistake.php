@@ -22,7 +22,9 @@ class Mistake extends Model
         'last_attempt_date',
         'quick_correct_count',
         'quiz_correct_count',
-        'mastered'
+        'mastered',
+        'skipped',
+        'skipped_at'
     ];
 
     protected $attributes = [
@@ -30,7 +32,8 @@ class Mistake extends Model
         'submitted_answer' => '',  // Default empty string for submitted_answer
         'quick_correct_count' => 0,
         'quiz_correct_count' => 0,
-        'mastered' => false
+        'mastered' => false,
+        'skipped' => false
     ];
 
     protected $casts = [
@@ -38,7 +41,9 @@ class Mistake extends Model
         'correct_streak' => 'integer',
         'quick_correct_count' => 'integer',
         'quiz_correct_count' => 'integer',
-        'mastered' => 'boolean'
+        'mastered' => 'boolean',
+        'skipped' => 'boolean',
+        'skipped_at' => 'datetime'
     ];
 
     public $timestamps = false;

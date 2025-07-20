@@ -190,6 +190,59 @@ class MistakeController extends Controller
     }
 
     /**
+     * Skip a mistake question.
+     */
+    public function skipMistake($question_id)
+    {
+        $userId = auth()->id();
+
+        Log::info("📌 Skipping mistake", [
+            'user_id' => $userId,
+            'question_id' => $question_id
+        ]);
+
+        try {
+            // Find the mistake record for the given user and question
+            $mistake = Mistake::where('user_id', $userId)
+                              ->where('question_id', $question_id)
+                              ->first();
+
+            if ($mistake) {
+                // Mark the mistake as skipped
+                $mistake->skipped = true;
+                $mistake->skipped_at = now();
+                $mistake->save();
+
+                Log::info("✅ Mistake successfully skipped", [
+                    'user_id' => $userId,
+                    'question_id' => $question_id
+                ]);
+
+                return response()->json(['success' => true]);
+            } else {
+                Log::warning("⚠️ No mistake found to skip", [
+                    'user_id' => $userId,
+                    'question_id' => $question_id
+                ]);
+                return response()->json([
+                    'success' => false,
+                    'message' => "No mistake found to skip."
+                ]);
+            }
+        } catch (\Exception $e) {
+            Log::error('❌ Error skipping mistake', [
+                'error' => $e->getMessage(),
+                'user_id' => $userId,
+                'question_id' => $question_id
+            ]);
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to skip mistake'
+            ], 500);
+        }
+    }
+
+    /**
      * Handle Anki rating for a mistake.
      */
     public function rateMistake(Request $request, $questionId)

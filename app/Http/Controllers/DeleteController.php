@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Cache;
 use App\Models\Question;
 use App\Models\Topic;
 use App\Models\Course;
@@ -178,7 +179,18 @@ class DeleteController extends Controller
             // 7. Delete payments
             $course->payments()->delete();
 
-            // 8. Finally delete the course
+            // 8. Clear all course-related caches before deletion
+            $course->clearCaches();
+            
+            // Increment cache version to invalidate all course caches
+            $currentVersion = Cache::get('courses_cache_version', 1);
+            Cache::put('courses_cache_version', $currentVersion + 1, 86400); // 24 hours
+            
+            // Clear general course listing cache
+            Cache::forget('courses_list');
+            Cache::forget('courses_with_stats');
+            
+            // 9. Finally delete the course
             $course->delete();
 
             DB::commit();

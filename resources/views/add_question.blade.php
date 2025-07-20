@@ -15,6 +15,7 @@
         body {
             font-family: 'Poppins', sans-serif;
             background-color: #f8f9fa;
+            zoom: 0.8; /* 80% zoom for better overview */
         }
         .navbar {
             background-color: white;

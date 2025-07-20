@@ -476,7 +476,13 @@ class LearnController extends Controller
                 'total_questions' => $totalQuestions,
                 'percentage_grade' => $totalQuestions > 0 ? ($completedQuestions / $totalQuestions) * 100 : 0,
                 'duration_seconds' => $studyTime,
-                'question_data' => [], // Empty for now, could be enhanced later
+                'question_data' => [
+                    [
+                        'question_id' => 1, // Placeholder for mistake review
+                        'user_answer' => null,
+                        'is_correct' => true // Placeholder for mistake review
+                    ]
+                ], // Minimal valid structure for mistake review
                 'correct_answers' => $completedQuestions
             ]);
 

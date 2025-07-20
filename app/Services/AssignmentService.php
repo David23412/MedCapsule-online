@@ -61,8 +61,9 @@ class AssignmentService
 
         DB::transaction(function() use ($tutorId, $studentIds, $assignmentData, &$assignments) {
             foreach ($studentIds as $studentId) {
-                // Verify tutor-student relationship
-                if (!$this->verifyTutorStudentRelationship($tutorId, $studentId)) {
+                // Verify tutor-student relationship (skip for admins)
+                $currentUser = auth()->user();
+                if ($currentUser->role !== 'admin' && !$this->verifyTutorStudentRelationship($tutorId, $studentId)) {
                     throw new \InvalidArgumentException("Invalid tutor-student relationship for student ID: {$studentId}");
                 }
 
@@ -303,7 +304,7 @@ class AssignmentService
         }
 
         // Verify relationships exist
-        if (!User::where('id', $data['tutor_id'])->where('role', 'tutor')->exists()) {
+        if (!User::where('id', $data['tutor_id'])->whereIn('role', ['tutor', 'admin'])->exists()) {
             throw new \InvalidArgumentException('Invalid tutor ID');
         }
 

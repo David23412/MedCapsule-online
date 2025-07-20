@@ -11,6 +11,7 @@
         body {
             font-family: 'Poppins', sans-serif;
             background-color: #f8f9fa;
+            zoom: 0.8; /* 80% zoom for better overview */
         }
         .navbar {
             background-color: white;
@@ -166,6 +167,35 @@
                             </div>
 
                             <div class="mb-4">
+                                <label for="academic_year" class="form-label">Academic Year</label>
+                                <select class="form-select" id="academic_year" name="academic_year" required>
+                                    <option value="">Select Academic Year</option>
+                                    <optgroup label="Medical School Years">
+                                        <option value="year-1-sem-1" {{ old('academic_year') == 'year-1-sem-1' ? 'selected' : '' }}>Year 1 - First Semester</option>
+                                        <option value="year-1-sem-2" {{ old('academic_year') == 'year-1-sem-2' ? 'selected' : '' }}>Year 1 - Second Semester</option>
+                                        <option value="year-2-sem-1" {{ old('academic_year') == 'year-2-sem-1' ? 'selected' : '' }}>Year 2 - First Semester</option>
+                                        <option value="year-2-sem-2" {{ old('academic_year') == 'year-2-sem-2' ? 'selected' : '' }}>Year 2 - Second Semester</option>
+                                        <option value="year-3-sem-1" {{ old('academic_year') == 'year-3-sem-1' ? 'selected' : '' }}>Year 3 - First Semester</option>
+                                        <option value="year-3-sem-2" {{ old('academic_year') == 'year-3-sem-2' ? 'selected' : '' }}>Year 3 - Second Semester</option>
+                                        <option value="year-4-sem-1" {{ old('academic_year') == 'year-4-sem-1' ? 'selected' : '' }}>Year 4 - First Semester</option>
+                                        <option value="year-4-sem-2" {{ old('academic_year') == 'year-4-sem-2' ? 'selected' : '' }}>Year 4 - Second Semester</option>
+                                        <option value="year-5-sem-1" {{ old('academic_year') == 'year-5-sem-1' ? 'selected' : '' }}>Year 5 - First Semester</option>
+                                        <option value="year-5-sem-2" {{ old('academic_year') == 'year-5-sem-2' ? 'selected' : '' }}>Year 5 - Second Semester</option>
+                                        <option value="year-6-sem-1" {{ old('academic_year') == 'year-6-sem-1' ? 'selected' : '' }}>Year 6 - First Semester</option>
+                                        <option value="year-6-sem-2" {{ old('academic_year') == 'year-6-sem-2' ? 'selected' : '' }}>Year 6 - Second Semester</option>
+                                    </optgroup>
+                                    <optgroup label="Standardized Tests">
+                                        <option value="sat-prep" {{ old('academic_year') == 'sat-prep' ? 'selected' : '' }}>SAT Preparation</option>
+                                        <option value="est-prep" {{ old('academic_year') == 'est-prep' ? 'selected' : '' }}>EST Preparation</option>
+                                        <option value="act-prep" {{ old('academic_year') == 'act-prep' ? 'selected' : '' }}>ACT Preparation</option>
+                                    </optgroup>
+                                </select>
+                                <div class="form-text text-muted">
+                                    Select the academic year and semester for this course
+                                </div>
+                            </div>
+
+                            <div class="mb-4">
                                 <label for="image" class="form-label">Image URL</label>
                                 <input type="url" 
                                        class="form-control" 
@@ -212,34 +242,31 @@
 
                             <!-- Course Pricing -->
                             <div class="mb-4">
-                                <div class="form-check form-switch">
-                                                        <label class="form-label">Course Price (leave empty for free course)</label>
-                                </div>
+                                <label class="form-label">Course Price</label>
                                 <div class="form-text text-muted mb-3">
-                                    Enable if this is a paid course requiring payment before enrollment
+                                    Leave price as 0 for free courses. Set a price to require payment before enrollment.
                                 </div>
                                 
-                                <div id="pricing_options" class="border p-3 rounded mt-2">
-                                    <div class="row">
-                                        <div class="col-md-6">
-                                            <label for="price" class="form-label">Price</label>
-                                            <input type="number" 
-                                                   class="form-control" 
-                                                   id="price" 
-                                                   name="price" 
-                                                   value="{{ old('price', '0.00') }}" 
-                                                   min="0" 
-                                                   step="0.01">
-                                        </div>
-                                        <div class="col-md-6">
-                                            <label for="currency" class="form-label">Currency</label>
-                                            <select class="form-select" id="currency" name="currency">
-                                                <option value="EGP" {{ old('currency') == 'EGP' ? 'selected' : '' }}>Egyptian Pound (EGP)</option>
-                                                <option value="USD" {{ old('currency') == 'USD' ? 'selected' : '' }}>US Dollar (USD)</option>
-                                                <option value="EUR" {{ old('currency') == 'EUR' ? 'selected' : '' }}>Euro (EUR)</option>
-                                                <option value="GBP" {{ old('currency') == 'GBP' ? 'selected' : '' }}>British Pound (GBP)</option>
-                                            </select>
-                                        </div>
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <label for="price" class="form-label">Price</label>
+                                        <input type="number" 
+                                               class="form-control" 
+                                               id="price" 
+                                               name="price" 
+                                               value="{{ old('price', '0') }}" 
+                                               min="0" 
+                                               step="0.01"
+                                               placeholder="0 for free course">
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label for="currency" class="form-label">Currency</label>
+                                        <select class="form-select" id="currency" name="currency">
+                                            <option value="EGP" {{ old('currency', 'EGP') == 'EGP' ? 'selected' : '' }}>Egyptian Pound (EGP)</option>
+                                            <option value="USD" {{ old('currency') == 'USD' ? 'selected' : '' }}>US Dollar (USD)</option>
+                                            <option value="EUR" {{ old('currency') == 'EUR' ? 'selected' : '' }}>Euro (EUR)</option>
+                                            <option value="GBP" {{ old('currency') == 'GBP' ? 'selected' : '' }}>British Pound (GBP)</option>
+                                        </select>
                                     </div>
                                 </div>
                             </div>

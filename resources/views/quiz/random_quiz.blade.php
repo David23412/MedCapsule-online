@@ -15,23 +15,11 @@
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     
-    <!-- Quiz sound manager with fallback -->
-    <script>
-        // Fallback sound manager in case the external script fails to load
-        window.quizSoundManager = {
-            playPerfect: () => console.log('Sound disabled: perfect score'),
-            playPartial: () => console.log('Sound disabled: partial score'),
-            playWrong: () => console.log('Sound disabled: wrong score')
-        };
-    </script>
-    <script>
-        // Load sound manager with proper error handling
-        const script = document.createElement('script');
-        script.src = '{{ asset('js/quizSounds.js') }}';
-        script.async = true;
-        script.onerror = () => console.warn('Quiz sounds not available');
-        document.head.appendChild(script);
-    </script>
+    <!-- Unified Grading Audio System -->
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    <script src="{{ asset('js/grading-audio-controller.js') }}"></script>
+    <script src="{{ asset('js/confetti-manager.js') }}"></script>
+    <script src="{{ asset('js/quizSounds.js') }}"></script>
     
     <style>
         body {
@@ -164,16 +152,18 @@
         .progress-bar-container {
             position: fixed;
             bottom: 0;
-            left: 50%;
-            transform: translateX(-50%);
-            background: #f8f9fa;
-            border-radius: 10px 10px 0 0;
+            left: 0;
+            right: 0;
+            background: rgba(255, 255, 255, 0.95);
             padding: 1rem;
-            box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.1);
-            z-index: 1000;
-            transition: all 0.3s ease;
-            max-width: 800px;
-            width: 100%;
+            box-shadow: 0 -1px 3px rgba(0, 0, 0, 0.1);
+            z-index: 999;
+            transition: transform 0.2s ease;
+            backdrop-filter: blur(8px);
+        }
+        
+        .progress-bar-container.hidden {
+            transform: translateY(100%);
         }
 
         .progress-bar-container.at-form {
@@ -730,6 +720,26 @@
             const timeTakenField = document.getElementById('time-taken');
             const timerDisplay = document.getElementById('timer');
             
+            // Handle progress bar visibility based on submit button position
+            function checkSubmitButtonVisibility() {
+                const submitBtnRect = submitBtn.getBoundingClientRect();
+                const windowHeight = window.innerHeight;
+                
+                // If submit button is visible (within viewport + some buffer), hide progress bar
+                if (submitBtnRect.top <= windowHeight + 100) {
+                    progressBarContainer.classList.add('hidden');
+                } else {
+                    progressBarContainer.classList.remove('hidden');
+                }
+            }
+            
+            // Check on scroll and resize
+            window.addEventListener('scroll', checkSubmitButtonVisibility);
+            window.addEventListener('resize', checkSubmitButtonVisibility);
+            
+            // Initial check
+            checkSubmitButtonVisibility();
+            
             let selectedAnswers = {};
             
             // Update progress function
@@ -755,8 +765,8 @@
                     const questionId = this.name.match(/\[(\d+)\]/)[1];
                     selectedAnswers[questionId] = this.value;
                     updateProgress();
-                    });
                 });
+            });
             
             // Handle written question answers
             document.querySelectorAll('.written-answer').forEach(textarea => {
@@ -834,15 +844,19 @@
 
                 // Collect answers from multiple choice questions
                 document.querySelectorAll('.form-check-input').forEach(input => {
-                    const questionId = input.getAttribute('name').replace('question_', '');
-                    const selectedAnswer = document.querySelector(`input[name="question_${questionId}"]:checked`);
-                    
-                    // Initialize answer as empty string (unanswered)
-                    formDataObj.answers[questionId] = '';
-                    
-                    // Update if an answer was selected
-                    if (selectedAnswer) {
-                        formDataObj.answers[questionId] = selectedAnswer.value;
+                    // Extract question ID from name attribute like "answers[123]"
+                    const nameMatch = input.getAttribute('name').match(/answers\[(\d+)\]/);
+                    if (nameMatch) {
+                        const questionId = nameMatch[1];
+                        const selectedAnswer = document.querySelector(`input[name="answers[${questionId}]"]:checked`);
+                        
+                        // Initialize answer as empty string (unanswered)
+                        formDataObj.answers[questionId] = '';
+                        
+                        // Update if an answer was selected
+                        if (selectedAnswer) {
+                            formDataObj.answers[questionId] = selectedAnswer.value;
+                        }
                     }
                 });
                 
@@ -885,6 +899,9 @@
                 })
                 .then(data => {
                     if (data.success) {
+                        // Store quiz results globally for review functionality
+                        window.lastQuizResults = data;
+                        
                         // Update score display and UI
                         const percentage = (data.score / data.total) * 100;
                         const gradeIcon = document.getElementById('grade-icon');
@@ -893,26 +910,42 @@
                         popupScore.textContent = `${data.score}/${data.total}`;
                         popupMessage.textContent = data.message || 'Quiz completed!';
 
-                        // Update grade icon and attempt sound
+                        // Update grade icon and play unified grading sound
                         if (percentage === 100) {
                             gradeIcon.innerHTML = '<i class="fas fa-crown"></i>';
                             gradeIcon.className = 'grade-icon perfect';
                             popupTitle.textContent = 'Perfect Score!';
-                            
-                            try { quizSoundManager.playPerfect(); } catch (error) { console.warn('Sound error:', error); }
-                    createConfetti();
-                } else if (percentage >= 70) {
+                            // Use unified confetti system for perfect scores
+                            if (typeof ConfettiManager !== 'undefined') {
+                                ConfettiManager.celebratePerfectScore('#popup');
+                            } else if (typeof confetti !== 'undefined') {
+                                confetti({
+                                    particleCount: 100,
+                                    spread: 70,
+                                    origin: { y: 0.6 },
+                                    colors: ['#FFD700', '#FFA500', '#FF69B4', '#00CED1', '#98FB98'],
+                                    zIndex: 9999
+                                });
+                            }
+                        } else if (percentage >= 70) {
                             gradeIcon.innerHTML = '<i class="fas fa-star"></i>';
                             gradeIcon.className = 'grade-icon good';
                             popupTitle.textContent = 'Well Done!';
-                            
-                            try { quizSoundManager.playPartial(); } catch (error) { console.warn('Sound error:', error); }
-                    } else {
+                        } else {
                             gradeIcon.innerHTML = '<i class="fas fa-book"></i>';
                             gradeIcon.className = 'grade-icon needs-improvement';
                             popupTitle.textContent = 'Keep Learning!';
-                            
-                            try { quizSoundManager.playWrong(); } catch (error) { console.warn('Sound error:', error); }
+                        }
+
+                        // Play unified grading sound based on score percentage
+                        try {
+                            if (typeof GradingAudioController !== 'undefined') {
+                                GradingAudioController.playGradingSound(percentage, data.total);
+                            } else if (typeof quizSoundManager !== 'undefined') {
+                                quizSoundManager.playGradingSound(percentage);
+                            }
+                        } catch (error) {
+                            console.warn('Grading sound error:', error);
                         }
 
                         // Show the completion popup
@@ -960,11 +993,121 @@
 
             // Add event listeners to popup buttons
             reviewButton.addEventListener("click", function () {
+                // Hide popup first
                 popup.classList.remove('show');
                 setTimeout(() => {
                     popupOverlay.classList.remove('show');
+                    
+                    // Show review mode - highlight correct/incorrect answers
+                    showReviewMode();
                 }, 300);
             });
+
+            // Function to show review mode with correct/incorrect answer highlighting
+            function showReviewMode() {
+                // Get the quiz results data from the last grading response
+                if (typeof lastQuizResults === 'undefined') {
+                    console.warn('No quiz results available for review');
+                    return;
+                }
+
+                const correctAnswers = lastQuizResults.correct_answers || {};
+                const incorrectAnswers = lastQuizResults.incorrect_answers || {};
+
+                // Process each question for review
+                document.querySelectorAll('[data-question-id]').forEach(questionBox => {
+                    const questionId = questionBox.getAttribute('data-question-id');
+                    const correctAnswer = correctAnswers[questionId];
+                    const incorrectData = incorrectAnswers[questionId];
+                    const submittedAnswer = incorrectData ? incorrectData.submitted_answer : null;
+
+                    if (correctAnswer) {
+                        // Check if this is a written question
+                        const writtenAnswer = questionBox.querySelector('.written-answer');
+                        
+                        if (writtenAnswer) {
+                            // Handle written question review
+                            writtenAnswer.disabled = true;
+                            
+                            const feedbackElement = questionBox.querySelector('.answer-feedback') || 
+                                                  (() => {
+                                                      const feedback = document.createElement('div');
+                                                      feedback.className = 'answer-feedback mt-2';
+                                                      writtenAnswer.parentNode.appendChild(feedback);
+                                                      return feedback;
+                                                  })();
+
+                            if (incorrectData) {
+                                // Wrong answer - show in red with correct answer
+                                writtenAnswer.classList.add('incorrect');
+                                feedbackElement.classList.add('incorrect');
+                                
+                                // Create a card to show the correct answer
+                                const correctAnswerCard = document.createElement('div');
+                                correctAnswerCard.className = 'correct-answer-card';
+                                correctAnswerCard.innerHTML = `<strong>Correct answer:</strong> ${correctAnswer}`;
+                                feedbackElement.appendChild(correctAnswerCard);
+                            } else {
+                                // Correct answer - show in green
+                                writtenAnswer.classList.add('correct');
+                                feedbackElement.classList.add('correct');
+                                feedbackElement.innerHTML = '<i class="fas fa-check-circle text-success"></i> Correct!';
+                            }
+                        } else {
+                            // Handle multiple choice question review
+                            const labels = questionBox.querySelectorAll('.form-check label');
+                            const inputs = questionBox.querySelectorAll('.form-check input');
+                            
+                            // First disable all inputs
+                            inputs.forEach(input => input.disabled = true);
+                            
+                            // Then mark answers
+                            labels.forEach(label => {
+                                const input = label.previousElementSibling;
+                                if (input) {
+                                    const isCorrectAnswer = input.value === correctAnswer;
+                                    const isSelectedAnswer = input.value === submittedAnswer;
+                                    
+                                    // Remove any existing classes
+                                    label.classList.remove('correct', 'incorrect');
+                                    
+                                    if (isCorrectAnswer) {
+                                        // Always mark correct answer in green
+                                        label.classList.add('correct');
+                                    } else if (isSelectedAnswer && incorrectData) {
+                                        // Mark selected wrong answer in red
+                                        label.classList.add('incorrect');
+                                    }
+                                }
+                            });
+                        }
+                    }
+                });
+
+                // Scroll to top to show the review
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+                
+                // Show a message that review mode is active
+                const reviewMessage = document.createElement('div');
+                reviewMessage.className = 'alert alert-info review-mode-alert';
+                reviewMessage.innerHTML = `
+                    <div class="d-flex align-items-center justify-content-between">
+                        <div>
+                            <i class="fas fa-search me-2"></i>
+                            <strong>Review Mode:</strong> Correct answers are highlighted in green, incorrect answers in red.
+                        </div>
+                        <button class="btn btn-sm btn-outline-primary" onclick="location.reload()">
+                            <i class="fas fa-redo me-1"></i>Try Again
+                        </button>
+                    </div>
+                `;
+                
+                // Insert the message at the top of the quiz container
+                const quizContainer = document.querySelector('.quiz-container');
+                if (quizContainer) {
+                    quizContainer.insertBefore(reviewMessage, quizContainer.firstChild);
+                }
+            }
         });
 
         // Function to create confetti

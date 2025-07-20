@@ -45,6 +45,9 @@ Route::middleware('auth')->group(function () {
     Route::post('/review/remove/{question_id}', [MistakeController::class, 'removeMistake'])
         ->name('review.remove')
         ->middleware(['throttle:60,1']); // 60 requests per minute
+    Route::post('/review/skip/{question_id}', [MistakeController::class, 'skipMistake'])
+        ->name('review.skip')
+        ->middleware(['throttle:60,1']); // 60 requests per minute
     Route::post('/learn/review/{question_id}', [LearnController::class, 'reviewMistake'])
         ->name('learn.review')
         ->middleware(['throttle:120,1']); // 120 requests per minute
@@ -209,16 +212,16 @@ Route::middleware('auth')->group(function () {
     // Assignment Management Routes (Admin & Tutor)
     Route::middleware(['auth'])->prefix('assignments')->name('assignments.')->group(function () {
         Route::get('/', [AssignmentController::class, 'index'])->name('index');
-        Route::get('/create', [AssignmentController::class, 'create'])->name('create');
-        Route::post('/', [AssignmentController::class, 'store'])->name('store');
+        Route::get('/create', [AssignmentController::class, 'bulkCreate'])->name('create');
+        Route::post('/store', [AssignmentController::class, 'bulkStore'])->name('store');
         Route::get('/{assignment}', [AssignmentController::class, 'show'])->name('show');
         Route::get('/{assignment}/edit', [AssignmentController::class, 'edit'])->name('edit');
         Route::put('/{assignment}', [AssignmentController::class, 'update'])->name('update');
         Route::delete('/{assignment}', [AssignmentController::class, 'destroy'])->name('destroy');
         
-        // Bulk assignment routes
-        Route::get('/bulk/create', [AssignmentController::class, 'bulkCreate'])->name('bulk.create');
-        Route::post('/bulk/store', [AssignmentController::class, 'bulkStore'])->name('bulk.store');
+        // AJAX endpoints for assignment creation
+        Route::get('/courses/{course}/topics', [AssignmentController::class, 'getTopicsForCourse'])->name('course.topics');
+        Route::get('/courses/{course}/students', [AssignmentController::class, 'getStudentsForCourse'])->name('course.students');
         
         // Analytics and reporting
         Route::get('/analytics/dashboard', [AssignmentController::class, 'analytics'])->name('analytics');
@@ -327,6 +330,52 @@ Route::middleware('auth:sanctum')->group(function () {
 // Healthcheck route for monitoring
 Route::get('/health', function() {
     return response()->json(['status' => 'ok'], 200);
+});
+
+// Debug route for assignment creation
+Route::get('/debug/assignment-data', function() {
+    if (!auth()->check() || !auth()->user()->isAdmin()) {
+        abort(403);
+    }
+    
+    $user = auth()->user();
+    $courses = \App\Models\Course::orderBy('name')->get();
+    $students = \App\Models\User::where('role', 'student')->orderBy('name')->get();
+    
+    return response()->json([
+        'user' => $user->name,
+        'is_admin' => $user->isAdmin(),
+        'courses_count' => $courses->count(),
+        'students_count' => $students->count(),
+        'courses' => $courses->map(function($course) {
+            return [
+                'id' => $course->id,
+                'name' => $course->name,
+                'year' => $course->year
+            ];
+        }),
+        'students' => $students->map(function($student) {
+            return [
+                'id' => $student->id,
+                'name' => $student->name,
+                'username' => $student->username
+            ];
+        })
+    ]);
+})->middleware('auth');
+
+// Admin Tutor Management Routes
+Route::middleware(['auth'])->prefix('admin/tutors')->name('admin.tutors.')->group(function () {
+    Route::get('/', [App\Http\Controllers\Admin\TutorManagementController::class, 'index'])->name('index');
+    Route::get('/create', [App\Http\Controllers\Admin\TutorManagementController::class, 'createTutor'])->name('create');
+    Route::post('/store', [App\Http\Controllers\Admin\TutorManagementController::class, 'storeTutor'])->name('store');
+    Route::get('/{tutor}/assign-students', [App\Http\Controllers\Admin\TutorManagementController::class, 'assignStudents'])->name('assign-students');
+    Route::post('/{tutor}/process-assignment', [App\Http\Controllers\Admin\TutorManagementController::class, 'processStudentAssignment'])->name('process-assignment');
+    Route::get('/bulk-operations', [App\Http\Controllers\Admin\TutorManagementController::class, 'bulkOperations'])->name('bulk-operations');
+    Route::post('/bulk-process', [App\Http\Controllers\Admin\TutorManagementController::class, 'processBulkAssignment'])->name('bulk-process');
+    Route::post('/create-course', [App\Http\Controllers\Admin\TutorManagementController::class, 'createCourseForTutor'])->name('create-course');
+    Route::get('/{tutor}/details', [App\Http\Controllers\Admin\TutorManagementController::class, 'getTutorDetails'])->name('details');
+    Route::post('/remove-student', [App\Http\Controllers\Admin\TutorManagementController::class, 'removeStudentFromTutor'])->name('remove-student');
 });
 
 // Tutor Routes (Admin & Tutor Access)

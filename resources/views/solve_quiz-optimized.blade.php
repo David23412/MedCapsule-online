@@ -610,10 +610,49 @@
                 window.location.reload();
             });
             
+            // PERFORMANCE: Setup scroll-based progress bar hiding
+            setupProgressBarScrollBehavior();
+            
             // PERFORMANCE: Restore progress after setup
             requestIdleCallback(() => {
                 QuizManager.restoreFromLocalStorage();
             });
+        }
+
+        // PERFORMANCE: Progress bar scroll behavior
+        function setupProgressBarScrollBehavior() {
+            const progressIndicator = document.getElementById('progress-indicator');
+            const submitBtn = document.getElementById('submit-btn');
+            let lastScrollY = window.scrollY;
+            let ticking = false;
+
+            function updateProgressBarVisibility() {
+                const currentScrollY = window.scrollY;
+                const scrollDirection = currentScrollY > lastScrollY ? 'down' : 'up';
+                const submitBtnRect = submitBtn.getBoundingClientRect();
+                const windowHeight = window.innerHeight;
+                
+                // Hide progress bar when scrolling down and submit button is visible
+                // or when submit button is near the viewport
+                if (scrollDirection === 'down' && (submitBtnRect.top < windowHeight + 100)) {
+                    progressIndicator.classList.add('hidden-on-scroll');
+                } else if (scrollDirection === 'up' && submitBtnRect.top > windowHeight + 200) {
+                    progressIndicator.classList.remove('hidden-on-scroll');
+                }
+                
+                lastScrollY = currentScrollY;
+                ticking = false;
+            }
+
+            function requestTick() {
+                if (!ticking) {
+                    requestAnimationFrame(updateProgressBarVisibility);
+                    ticking = true;
+                }
+            }
+
+            // Throttled scroll listener for performance
+            window.addEventListener('scroll', requestTick, { passive: true });
         }
 
         // PERFORMANCE: Add confetti CSS

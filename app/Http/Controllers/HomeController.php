@@ -27,23 +27,22 @@ class HomeController extends Controller
                 ->count('user_id')
         ];
 
-        // Get ALL courses with their counts (not just featured ones)
+        // Get ALL courses with their counts
         $featuredCourses = Course::select('courses.*')
             ->selectRaw('
                 COUNT(DISTINCT CASE WHEN topics.case_type = "quiz" THEN topics.id END) as quiz_count,
                 COUNT(DISTINCT CASE WHEN topics.case_type = "cases" THEN topics.id END) as case_count,
                 COUNT(DISTINCT CASE WHEN topics.case_type = "practical" THEN topics.id END) as practical_count,
                 COUNT(DISTINCT questions.id) as question_count,
-                COUNT(DISTINCT course_user.user_id) as enrolled_count
+                COUNT(DISTINCT CASE WHEN course_user.enrollment_status = "active" THEN course_user.user_id END) as enrolled_count
             ')
             ->leftJoin('topics', 'courses.id', '=', 'topics.course_id')
             ->leftJoin('questions', 'topics.id', '=', 'questions.topic_id')
-            ->leftJoin('course_user', 'courses.id', '=', 'course_user.course_id')
-            ->where(function($query) {
-                $query->whereNull('course_user.enrollment_status')
-                    ->orWhere('course_user.enrollment_status', '=', 'active');
+            ->leftJoin('course_user', function($join) {
+                $join->on('courses.id', '=', 'course_user.course_id')
+                     ->where('course_user.enrollment_status', '=', 'active');
             })
-            ->groupBy('courses.id', 'courses.name', 'courses.description', 'courses.image', 'courses.color', 'courses.price', 'courses.currency', 'courses.created_at', 'courses.updated_at')
+            ->groupBy('courses.id', 'courses.name', 'courses.description', 'courses.image', 'courses.color', 'courses.price', 'courses.currency', 'courses.created_at', 'courses.updated_at', 'courses.year')
             ->orderBy('courses.name')
             ->get();
 

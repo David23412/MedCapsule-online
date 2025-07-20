@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MedCapsule</title>
+    <title>Create Assignment - MedCapsule</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <meta name="csrf-token" content="{{ csrf_token() }}">
@@ -57,12 +57,6 @@
             border-radius: 20px;
             font-size: 0.9rem;
         }
-        .preview-section {
-            background: #f8f9fa;
-            border-radius: 8px;
-            padding: 1.5rem;
-            margin-top: 1rem;
-        }
     </style>
 </head>
 <body class="bg-light">
@@ -71,11 +65,11 @@
             <!-- Header -->
             <div class="d-flex justify-content-between align-items-center mb-4">
                 <div>
-                    <h1 class="h3 mb-0">Bulk Create Assignments</h1>
-                    <p class="text-muted mb-0">Assign the same topic to multiple students</p>
+                    <h1 class="h3 mb-0">Create Assignment</h1>
+                    <p class="text-muted mb-0">Assign topics to students with deadlines</p>
                 </div>
                 <a href="{{ route('assignments.index') }}" class="btn btn-outline-secondary">
-                    <i class="fas fa-arrow-left me-2"></i>Back to Assignments
+                    <i class="fas fa-arrow-left me-2"></i>Back
                 </a>
             </div>
 
@@ -90,63 +84,9 @@
                 </div>
             @endif
 
-            <form action="{{ route('assignments.bulk.store') }}" method="POST" id="bulkAssignmentForm">
+            <form action="{{ route('assignments.store') }}" method="POST" id="assignmentForm">
                 @csrf
                 
-                <!-- Basic Information -->
-                <div class="form-section">
-                    <h4 class="section-title">
-                        <i class="fas fa-info-circle me-2"></i>Assignment Details
-                    </h4>
-                    
-                    <div class="row">
-                        <div class="col-md-6">
-                            <div class="mb-3">
-                                <label for="title" class="form-label">Assignment Title *</label>
-                                <input type="text" class="form-control" id="title" name="title" 
-                                       value="{{ old('title') }}" required>
-                                <div class="form-text">This title will be used for all assignments</div>
-                            </div>
-                        </div>
-                        <div class="col-md-6">
-                            <div class="mb-3">
-                                <label for="duration_minutes" class="form-label">Duration (minutes)</label>
-                                <input type="number" class="form-control" id="duration_minutes" name="duration_minutes" 
-                                       value="{{ old('duration_minutes', 60) }}" min="1" max="1440">
-                                <div class="form-text">Estimated time to complete</div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="row">
-                        <div class="col-md-6">
-                            <div class="mb-3">
-                                <label for="deadline" class="form-label">Deadline *</label>
-                                <input type="datetime-local" class="form-control" id="deadline" name="deadline" 
-                                       value="{{ old('deadline') }}" required min="{{ now()->format('Y-m-d\TH:i') }}">
-                                <div class="form-text">Same deadline for all students</div>
-                            </div>
-                        </div>
-                        <div class="col-md-6">
-                            <div class="mb-3">
-                                <label class="form-label">Options</label>
-                                <div class="form-check">
-                                    <input class="form-check-input" type="checkbox" id="skip_existing" name="skip_existing" value="1">
-                                    <label class="form-check-label" for="skip_existing">
-                                        Skip students who already have this assignment
-                                    </label>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="mb-3">
-                        <label for="description" class="form-label">Description</label>
-                        <textarea class="form-control" id="description" name="description" rows="3" 
-                                  placeholder="Optional description or instructions for students">{{ old('description') }}</textarea>
-                    </div>
-                </div>
-
                 <!-- Course and Topic Selection -->
                 <div class="form-section">
                     <h4 class="section-title">
@@ -160,7 +100,7 @@
                                 <select class="form-select" id="course_id" name="course_id" required>
                                     <option value="">Select a course</option>
                                     @foreach($courses as $course)
-                                        <option value="{{ $course->id }}" {{ old('course_id') == $course->id ? 'selected' : '' }}>
+                                        <option value="{{ $course->id }}">
                                             {{ $course->name }} ({{ $course->year }})
                                         </option>
                                     @endforeach
@@ -179,6 +119,58 @@
                     </div>
                 </div>
 
+                <!-- Assignment Details -->
+                <div class="form-section">
+                    <h4 class="section-title">
+                        <i class="fas fa-info-circle me-2"></i>Assignment Details
+                    </h4>
+                    
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="title" class="form-label">Assignment Title</label>
+                                <input type="text" class="form-control" id="title" name="title" 
+                                       value="{{ old('title') }}" placeholder="Leave blank to use topic name">
+                                <div class="form-text">Optional - will use topic name if empty</div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="duration_minutes" class="form-label">Duration (minutes)</label>
+                                <select class="form-select" id="duration_minutes" name="duration_minutes">
+                                    <option value="30">30 minutes</option>
+                                    <option value="60" selected>1 hour</option>
+                                    <option value="90">1.5 hours</option>
+                                    <option value="120">2 hours</option>
+                                    <option value="180">3 hours</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="deadline" class="form-label">Deadline *</label>
+                                <input type="datetime-local" class="form-control" id="deadline" name="deadline" 
+                                       required min="{{ now()->format('Y-m-d\TH:i') }}">
+                                <div class="quick-deadline-buttons mt-2">
+                                    <button type="button" class="btn btn-sm btn-outline-secondary me-1" onclick="setQuickDeadline(1)">Tomorrow</button>
+                                    <button type="button" class="btn btn-sm btn-outline-secondary me-1" onclick="setQuickDeadline(3)">3 Days</button>
+                                    <button type="button" class="btn btn-sm btn-outline-secondary me-1" onclick="setQuickDeadline(7)">1 Week</button>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="description" class="form-label">Instructions (Optional)</label>
+                                <textarea class="form-control" id="description" name="description" rows="3" 
+                                          placeholder="Any special instructions...">{{ old('description') }}</textarea>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- Student Selection -->
                 <div class="form-section">
                     <div class="d-flex justify-content-between align-items-center mb-3">
@@ -192,20 +184,19 @@
                                     Select All
                                 </button>
                                 <button type="button" class="btn btn-sm btn-outline-secondary" onclick="selectNone()">
-                                    Select None
+                                    Clear All
                                 </button>
                             </div>
                         </div>
                     </div>
                     
-                    <div class="row" id="studentsContainer">
+                    <div class="row">
                         @foreach($students as $student)
                             <div class="col-md-6 col-lg-4 mb-2">
                                 <div class="student-checkbox">
                                     <div class="form-check">
                                         <input class="form-check-input student-checkbox-input" type="checkbox" 
-                                               name="student_ids[]" value="{{ $student->id }}" id="student_{{ $student->id }}"
-                                               {{ in_array($student->id, old('student_ids', [])) ? 'checked' : '' }}>
+                                               name="student_ids[]" value="{{ $student->id }}" id="student_{{ $student->id }}">
                                         <label class="form-check-label" for="student_{{ $student->id }}">
                                             {{ $student->name }}
                                             <small class="text-muted d-block">{{ $student->username }}</small>
@@ -224,34 +215,15 @@
                     @endif
                 </div>
 
-                <!-- Preview Section -->
-                <div class="form-section" id="previewSection" style="display: none;">
-                    <h4 class="section-title">
-                        <i class="fas fa-eye me-2"></i>Bulk Assignment Preview
-                    </h4>
-                    <div class="preview-section">
-                        <div id="previewContent">
-                            <!-- Preview will be populated by JavaScript -->
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Submit Buttons -->
+                <!-- Submit -->
                 <div class="form-section">
                     <div class="d-flex justify-content-between align-items-center">
-                        <div>
-                            <button type="button" class="btn btn-outline-info" onclick="previewBulkAssignment()">
-                                <i class="fas fa-eye me-2"></i>Preview Assignments
-                            </button>
-                        </div>
-                        <div>
-                            <a href="{{ route('assignments.index') }}" class="btn btn-outline-secondary me-2">
-                                <i class="fas fa-times me-2"></i>Cancel
-                            </a>
-                            <button type="submit" class="btn btn-create">
-                                <i class="fas fa-layer-group me-2"></i>Create Assignments
-                            </button>
-                        </div>
+                        <a href="{{ route('assignments.index') }}" class="btn btn-outline-secondary">
+                            <i class="fas fa-times me-2"></i>Cancel
+                        </a>
+                        <button type="submit" class="btn btn-create">
+                            <i class="fas fa-plus me-2"></i>Create Assignments
+                        </button>
                     </div>
                 </div>
             </form>
@@ -287,6 +259,16 @@
             updateSelectedCount();
         }
 
+        // Quick deadline functions
+        function setQuickDeadline(days) {
+            const now = new Date();
+            now.setDate(now.getDate() + days);
+            now.setHours(23, 59);
+            
+            const formatted = now.toISOString().slice(0, 16);
+            document.getElementById('deadline').value = formatted;
+        }
+
         // Load topics when course is selected
         document.getElementById('course_id').addEventListener('change', function() {
             const courseId = this.value;
@@ -315,67 +297,8 @@
             }
         });
 
-        // Preview bulk assignment
-        function previewBulkAssignment() {
-            const form = document.getElementById('bulkAssignmentForm');
-            const formData = new FormData(form);
-            
-            const title = formData.get('title');
-            const description = formData.get('description');
-            const courseSelect = document.getElementById('course_id');
-            const topicSelect = document.getElementById('topic_id');
-            const deadline = formData.get('deadline');
-            const duration = formData.get('duration_minutes');
-            const skipExisting = formData.get('skip_existing');
-            
-            const selectedStudents = Array.from(document.querySelectorAll('.student-checkbox-input:checked'))
-                .map(checkbox => {
-                    const label = document.querySelector(`label[for="${checkbox.id}"]`);
-                    return label.textContent.trim();
-                });
-            
-            if (!title || !courseSelect.value || !topicSelect.value || selectedStudents.length === 0 || !deadline) {
-                alert('Please fill in all required fields and select at least one student before previewing.');
-                return;
-            }
-            
-            const courseName = courseSelect.options[courseSelect.selectedIndex].text;
-            const topicName = topicSelect.options[topicSelect.selectedIndex].text;
-            const deadlineFormatted = new Date(deadline).toLocaleString();
-            
-            const previewHtml = `
-                <div class="row">
-                    <div class="col-md-6">
-                        <h5 class="text-primary">${title}</h5>
-                        ${description ? `<p class="text-muted">${description}</p>` : ''}
-                        <ul class="list-unstyled">
-                            <li><strong>Course:</strong> ${courseName}</li>
-                            <li><strong>Topic:</strong> ${topicName}</li>
-                            <li><strong>Deadline:</strong> ${deadlineFormatted}</li>
-                            <li><strong>Duration:</strong> ${duration} minutes</li>
-                            ${skipExisting ? '<li><strong>Skip existing:</strong> Yes</li>' : ''}
-                        </ul>
-                    </div>
-                    <div class="col-md-6">
-                        <h6>Selected Students (${selectedStudents.length}):</h6>
-                        <div class="row">
-                            ${selectedStudents.map(student => `
-                                <div class="col-6">
-                                    <small class="text-muted">• ${student}</small>
-                                </div>
-                            `).join('')}
-                        </div>
-                    </div>
-                </div>
-            `;
-            
-            document.getElementById('previewContent').innerHTML = previewHtml;
-            document.getElementById('previewSection').style.display = 'block';
-            document.getElementById('previewSection').scrollIntoView({ behavior: 'smooth' });
-        }
-
         // Form validation
-        document.getElementById('bulkAssignmentForm').addEventListener('submit', function(e) {
+        document.getElementById('assignmentForm').addEventListener('submit', function(e) {
             const selectedStudents = document.querySelectorAll('.student-checkbox-input:checked').length;
             
             if (selectedStudents === 0) {
@@ -392,14 +315,9 @@
                 alert('Deadline must be in the future.');
                 return false;
             }
-            
-            if (!confirm(`Are you sure you want to create ${selectedStudents} assignments?`)) {
-                e.preventDefault();
-                return false;
-            }
         });
 
-        // Initialize selected count
+        // Initialize
         updateSelectedCount();
     </script>
 </body>

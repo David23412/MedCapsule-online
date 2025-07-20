@@ -25,10 +25,10 @@ class AssignmentController extends Controller
         $this->middleware('auth');
         $this->middleware(function ($request, $next) {
             $user = auth()->user();
-            if ($user->role === 'admin' || $user->role === 'tutor') {
+            if (in_array($user->role, ['admin', 'tutor'])) {
                 return $next($request);
             }
-            abort(403, 'Unauthorized access');
+            abort(403, 'Unauthorized access. Only tutors and admins can manage assignments.');
         });
     }
 
@@ -40,32 +40,26 @@ class AssignmentController extends Controller
         $filters = $request->only(['status', 'course_id', 'student_id', 'due_within_hours', 'overdue']);
         $assignments = $this->assignmentService->getTutorAssignments(auth()->id(), $filters);
         
-        // Get courses that have students assigned to this tutor
-        $studentIds = auth()->user()->assignedStudents()->pluck('users.id');
-        $courses = Course::whereHas('users', function($query) use ($studentIds) {
-            $query->whereIn('id', $studentIds);
-        })->get();
-
-        $students = auth()->user()->assignedStudents;
+        $user = auth()->user();
+        
+        // For admins, get all courses and students
+        if ($user->isAdmin()) {
+            $courses = Course::orderBy('name')->get();
+            $students = User::where('role', User::ROLE_STUDENT)->orderBy('name')->get();
+        } else {
+            // Get courses that have students assigned to this tutor
+            $studentIds = $user->assignedStudents()->pluck('users.id');
+            $courses = Course::whereHas('users', function($query) use ($studentIds) {
+                $query->whereIn('users.id', $studentIds);
+            })->orderBy('name')->get();
+            
+            $students = $user->assignedStudents()->orderBy('name')->get();
+        }
 
         return view('assignments.index', compact('assignments', 'courses', 'students', 'filters'));
     }
 
-    /**
-     * Show the form for creating a new assignment
-     */
-    public function create(): View
-    {
-        // Get courses that have students assigned to this tutor
-        $studentIds = auth()->user()->assignedStudents()->pluck('users.id');
-        $courses = Course::whereHas('users', function($query) use ($studentIds) {
-            $query->whereIn('id', $studentIds);
-        })->get();
 
-        $students = auth()->user()->assignedStudents;
-
-        return view('assignments.create', compact('courses', 'students'));
-    }
 
     /**
      * Store a newly created assignment
@@ -164,15 +158,21 @@ class AssignmentController extends Controller
      */
     public function bulkCreate(): View
     {
-        $courses = Course::whereHas('users', function($query) {
-            $query->whereHas('tutorStudents', function($q) {
-                $q->where('tutor_id', auth()->id());
-            });
-        })->get();
-
-        $students = User::whereHas('tutorRelationships', function($query) {
-            $query->where('tutor_id', auth()->id());
-        })->get();
+        $user = auth()->user();
+        
+        // For admins, get all courses and students
+        if ($user->isAdmin()) {
+            $courses = Course::orderBy('name')->get();
+            $students = User::where('role', User::ROLE_STUDENT)->orderBy('name')->get();
+        } else {
+            // For tutors, get courses that have students assigned to this tutor
+            $studentIds = $user->assignedStudents()->pluck('users.id');
+            $courses = Course::whereHas('users', function($query) use ($studentIds) {
+                $query->whereIn('users.id', $studentIds);
+            })->orderBy('name')->get();
+            
+            $students = $user->assignedStudents()->orderBy('name')->get();
+        }
 
         return view('assignments.bulk-create', compact('courses', 'students'));
     }
@@ -278,13 +278,23 @@ class AssignmentController extends Controller
      */
     public function getStudentsForCourse(Course $course): JsonResponse
     {
-        $students = User::whereHas('tutorRelationships', function($query) {
-                          $query->where('tutor_id', auth()->id());
-                      })
-                      ->whereHas('courses', function($query) use ($course) {
-                          $query->where('courses.id', $course->id);
-                      })
-                      ->get(['id', 'name', 'username']);
+        $user = auth()->user();
+        
+        if ($user->isAdmin()) {
+            // For admins, get all students enrolled in the course
+            $students = User::where('role', User::ROLE_STUDENT)
+                          ->whereHas('courses', function($query) use ($course) {
+                              $query->where('courses.id', $course->id);
+                          })
+                          ->get(['id', 'name', 'username']);
+        } else {
+            // For tutors, get only their assigned students who are enrolled in the course
+            $students = $user->assignedStudents()
+                          ->whereHas('courses', function($query) use ($course) {
+                              $query->where('courses.id', $course->id);
+                          })
+                          ->get(['id', 'name', 'username']);
+        }
 
         return response()->json($students);
     }

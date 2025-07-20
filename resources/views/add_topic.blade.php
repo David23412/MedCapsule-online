@@ -60,6 +60,9 @@
         .type-option input[type="radio"]:checked + label i {
             transform: scale(1.1);
         }
+        body {
+            zoom: 0.8; /* 80% zoom for better overview */
+        }
     </style>
 </head>
 <body class="bg-light">

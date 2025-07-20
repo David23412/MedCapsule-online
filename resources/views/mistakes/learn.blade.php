@@ -346,7 +346,7 @@
             box-shadow: 0 12px 48px rgba(0, 0, 0, 0.2);
             text-align: center;
             display: none;
-            z-index: 1001;
+            z-index: 10000;
             max-width: 600px;
             width: 90%;
             border: 3px solid #4CAF50;
@@ -586,10 +586,11 @@
         }
 
         .confetti {
-            position: absolute;
+            position: fixed;
             width: 10px;
             height: 10px;
             opacity: 0;
+            z-index: 3000;
         }
 
         .confetti-1 { background: #3b82f6; top: 20%; left: 20%; animation: confetti 3s ease-out infinite; }
@@ -704,6 +705,13 @@
             border-color: #86b7fe;
             outline: 0;
             box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
+        }
+
+        /* Skip button styles */
+        .skip-question-btn:hover {
+            color: #0056b3 !important;
+            border-bottom-color: #0056b3 !important;
+            transform: translateY(-1px);
         }
 
     </style>
@@ -846,6 +854,14 @@
 
                     <div class="stage-indicator" data-mode="practice">
                         <!-- Stage dots will be dynamically added by JavaScript -->
+                    </div>
+                    
+                    <!-- Skip Button -->
+                    <div class="skip-button-container" style="position: absolute; bottom: 15px; right: 15px;">
+                        <button class="skip-question-btn" data-question-id="{{ $mistake->question_id }}" 
+                                style="background: transparent; color: #007bff; border: none; border-bottom: 2px solid #007bff; padding: 4px 8px; font-size: 0.85rem; cursor: pointer; transition: all 0.2s ease; font-weight: 500;">
+                            >> skip
+                        </button>
                     </div>
                 </div>
             @endforeach
@@ -1259,6 +1275,41 @@
                 });
             });
 
+            // Handle skip button click
+            document.querySelectorAll('.skip-question-btn').forEach(button => {
+                button.addEventListener('click', function() {
+                    const questionId = this.dataset.questionId;
+                    const currentQuestion = questionsData[currentQuestionIndex];
+                    
+                    // Mark question as skipped via API
+                    fetch(`/review/skip/${questionId}`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+                        }
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            console.log('Question skipped successfully');
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error skipping question:', error);
+                    });
+                    
+                    // Remove from active questions (skip it for this session)
+                    activeQuestions.delete(currentQuestion.id);
+                    
+                    // Update progress
+                    updateProgress();
+                    
+                    // Move to next question immediately
+                    showNextQuestion();
+                });
+            });
+
             function showNextQuestion() {
                 if (questionsData.length === 0) return;
 
@@ -1367,17 +1418,54 @@
                 completionMessage.style.display = 'block';
                 completionMessage.style.zIndex = '2000'; // Ensure it's above other elements
                 
-                // Simple, elegant confetti effect with higher z-index
+                // Ensure confetti canvas has proper z-index
+                const confettiCanvas = document.querySelector('canvas');
+                if (confettiCanvas) {
+                    confettiCanvas.style.zIndex = '9999';
+                    confettiCanvas.style.pointerEvents = 'none';
+                }
+                
+                // Simple, elegant confetti effect with proper positioning
                 const confettiConfig = {
-                    particleCount: 80,
-                    spread: 55,
-                    origin: { y: 0.6 },
+                    particleCount: 150,
+                    spread: 60,
+                    origin: { x: 0.5, y: 0.4 }, // Slightly above center where popup is
                     colors: ['#007bff', '#0056b3', '#3b82f6', '#60a5fa'],
-                    ticks: 200,
-                    zIndex: 2500, // Higher than the completion message
-                    disableForReducedMotion: true
+                    ticks: 400,
+                    disableForReducedMotion: true,
+                    scalar: 1.0,
+                    gravity: 0.6,
+                    drift: 0
                 };
+                
+                // Fire confetti bursts
                 confetti(confettiConfig);
+                setTimeout(() => {
+                    confetti({
+                        ...confettiConfig,
+                        particleCount: 100,
+                        spread: 80,
+                        origin: { x: 0.3, y: 0.4 }
+                    });
+                }, 200);
+                setTimeout(() => {
+                    confetti({
+                        ...confettiConfig,
+                        particleCount: 100,
+                        spread: 80,
+                        origin: { x: 0.7, y: 0.4 }
+                    });
+                }, 400);
+                
+                // Fix canvas z-index after confetti is created
+                setTimeout(() => {
+                    const canvas = document.querySelector('canvas');
+                    if (canvas) {
+                        canvas.style.zIndex = '9999';
+                        canvas.style.position = 'fixed';
+                        canvas.style.pointerEvents = 'none';
+                    }
+                }, 100);
             }
 
             // Update completion message styling

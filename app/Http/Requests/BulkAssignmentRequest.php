@@ -11,7 +11,7 @@ class BulkAssignmentRequest extends FormRequest
      */
     public function authorize(): bool
     {
-        return auth()->check() && auth()->user()->role === 'tutor';
+        return auth()->check() && in_array(auth()->user()->role, ['admin', 'tutor']);
     }
 
     /**
@@ -65,8 +65,8 @@ class BulkAssignmentRequest extends FormRequest
     public function withValidator($validator): void
     {
         $validator->after(function ($validator) {
-            // Validate all students have tutor relationship
-            if ($this->student_ids && is_array($this->student_ids)) {
+            // Validate all students have tutor relationship (skip for admins)
+            if ($this->student_ids && is_array($this->student_ids) && auth()->user()->role !== 'admin') {
                 foreach ($this->student_ids as $index => $studentId) {
                     $hasRelationship = \DB::table('tutor_student_relationships')
                         ->where('tutor_id', auth()->id())
@@ -77,8 +77,8 @@ class BulkAssignmentRequest extends FormRequest
                         $validator->errors()->add("student_ids.{$index}", 'You do not have a relationship with this student.');
                     }
 
-                    // Validate student has access to the course
-                    if ($this->course_id) {
+                    // Validate student has access to the course (skip for admins)
+                    if ($this->course_id && auth()->user()->role !== 'admin') {
                         $studentHasAccess = \DB::table('course_user')
                             ->where('user_id', $studentId)
                             ->where('course_id', $this->course_id)

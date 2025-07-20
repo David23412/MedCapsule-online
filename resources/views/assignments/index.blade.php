@@ -69,8 +69,8 @@
                 <a href="{{ route('assignments.create') }}" class="btn btn-create me-2">
                     <i class="fas fa-plus me-2"></i>New Assignment
                 </a>
-                <a href="{{ route('assignments.bulk.create') }}" class="btn btn-outline-primary">
-                    <i class="fas fa-layer-group me-2"></i>Bulk Create
+                <a href="{{ route('assignments.create') }}" class="btn btn-outline-primary">
+                    <i class="fas fa-plus me-2"></i>Create Assignment
                 </a>
             </div>
         </div>

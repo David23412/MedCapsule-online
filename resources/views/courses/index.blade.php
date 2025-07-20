@@ -16,6 +16,7 @@
             color: #1a1a1a;
             margin: 0;
             padding: 0;
+            
             min-height: 100vh;
             overflow-x: hidden;
             line-height: 1.6;
@@ -1379,62 +1380,7 @@
                             <a class="nav-link" href="{{ route('register') }}">Sign Up</a>
                         </li>
                     @else
-                        <li class="nav-item dropdown">
-                            <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-bs-toggle="dropdown">
-                                {{ Auth::user()->name }}
-                                @if(Auth::user()->is_admin)
-                                    <span class="badge bg-primary ms-1">Admin</span>
-                                @endif
-                            </a>
-                            <ul class="dropdown-menu dropdown-menu-end">
-                                <li><a class="dropdown-item" href="{{ route('courses.index') }}">
-                                    <i class="fas fa-book me-2"></i>My Courses
-                                </a></li>
-                                <li><a class="dropdown-item" href="{{ route('review.index') }}">
-                                    <i class="fas fa-exclamation-circle me-2"></i>My Mistakes
-                                </a></li>
-                                @if(Auth::user()->is_admin)
-                                    <li><hr class="dropdown-divider"></li>
-                                    <li><a class="dropdown-item" href="{{ route('admin.user-course') }}">
-                                        <i class="fas fa-users-cog me-2"></i>Manage Access
-                                    </a></li>
-                                    <li><a class="dropdown-item" href="{{ route('add-topic.form') }}">
-                                        <i class="fas fa-plus-circle me-2"></i>Add Topic
-                                    </a></li>
-                                    <li><a class="dropdown-item" href="{{ route('add-question.form') }}">
-                                        <i class="fas fa-question-circle me-2"></i>Add Question
-                                    </a></li>
-                                    <li><a class="dropdown-item" href="{{ route('add-course.form') }}">
-                                        <i class="fas fa-plus-square me-2"></i>Add Course
-                                    </a></li>
-                                    <li><a class="dropdown-item" href="{{ route('admin.payment-history') }}">
-                                        <i class="fas fa-money-bill me-2"></i>Payments
-                                    </a></li>
-                                    <li><a class="dropdown-item" href="{{ route('admin.user-course', ['tab' => 'payment-settings']) }}">
-                                        <i class="fas fa-cog fa-sm fa-fw mr-2 text-gray-400"></i>
-                                        Payment Settings
-                                    </a></li>
-                                @endif
-                                @if(Auth::user()->isAdmin() || Auth::user()->isTutor())
-                                    <li><hr class="dropdown-divider"></li>
-                                    <li><a class="dropdown-item" href="{{ route('tutor.dashboard') }}">
-                                        <i class="fas fa-chalkboard-teacher me-2"></i>Tutor Dashboard
-                                    </a></li>
-                                    <li><a class="dropdown-item" href="{{ route('tutor.my-analytics') }}">
-                                        <i class="fas fa-chart-bar me-2"></i>My Analytics
-                                    </a></li>
-                                @endif
-                                <li><hr class="dropdown-divider"></li>
-                                <li>
-                                    <form method="POST" action="{{ secure_url(route('logout', [], false)) }}">
-                                        @csrf
-                                        <button type="submit" class="dropdown-item text-danger">
-                                            <i class="fas fa-sign-out-alt me-2"></i>Logout
-                                        </button>
-                                    </form>
-                                </li>
-                            </ul>
-                        </li>
+                        <x-navigation-dropdown />
                         
                         <!-- Notification Bell -->
                         <li class="nav-item me-3">

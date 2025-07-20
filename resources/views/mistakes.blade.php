@@ -1035,6 +1035,7 @@
                 </form>
             </div>
 
+            <div id="mistakes-content">
             @if($mistakes->isEmpty())
                 <div class="empty-state">
                     <div class="confetti confetti-1"></div>
@@ -1045,15 +1046,6 @@
                     <i class="fas fa-check"></i>
                     <h3>No Mistakes!</h3>
                     <p>Fantastic work! You're crushing it with zero mistakes. Keep up the amazing progress!</p>
-                    @if(isset($recentCourse) && $recentCourse)
-                        <a href="{{ route('topics.forCourse', $recentCourse->id) }}" class="btn btn-primary">
-                            <i class="fas fa-arrow-left me-2"></i>Back to {{ $recentCourse->name }}
-                        </a>
-                    @else
-                        <a href="{{ route('courses.index') }}" class="btn btn-primary">
-                            <i class="fas fa-arrow-left me-2"></i>Back to Courses
-                        </a>
-                    @endif
                 </div>
             @else
                 @foreach($mistakes as $mistake)
@@ -1067,6 +1059,14 @@
                                 <p>{{ $mistake->question->question }}</p>
                                 @if($mistake->question->image_url)
                                     <img src="{{ asset($mistake->question->image_url) }}" alt="Question Image" class="question-image">
+                                @endif
+                                
+                                <!-- Skipped Indicator -->
+                                @if(isset($mistake->skipped) && $mistake->skipped)
+                                    <div class="skipped-indicator" style="margin-top: 12px; display: flex; align-items: center; gap: 6px; padding: 4px 8px; background: rgba(135, 206, 235, 0.1); border-radius: 12px; width: fit-content;">
+                                        <span class="skipped-dot" style="width: 8px; height: 8px; background-color: #87CEEB; border-radius: 50%; display: inline-block; box-shadow: 0 0 0 2px rgba(135, 206, 235, 0.3);"></span>
+                                        <span class="skipped-text" style="color: #5a9fd4; font-size: 0.8rem; font-weight: 600; text-transform: lowercase;">skipped</span>
+                                    </div>
                                 @endif
                             </div>
                             <div class="answers">
@@ -1152,6 +1152,7 @@
                     </div>
                 @endforeach
             @endif
+            </div>
         </div>
     </div>
 
@@ -1258,9 +1259,9 @@
                     // Check if we need to show empty state
                     if (document.querySelectorAll('.mistake-card').length === 0) {
                         // Instead of reloading, show the empty state
-                        const container = document.querySelector('.container');
-                        if (container) {
-                            container.innerHTML = `
+                        const mistakesContent = document.querySelector('#mistakes-content');
+                        if (mistakesContent) {
+                            mistakesContent.innerHTML = `
                                 <div class="empty-state">
                                     <div class="confetti confetti-1"></div>
                                     <div class="confetti confetti-2"></div>
@@ -1270,7 +1271,6 @@
                                     <i class="fas fa-check"></i>
                                     <h3>No Mistakes!</h3>
                                     <p>Fantastic work! You're crushing it with zero mistakes. Keep up the amazing progress!</p>
-                                    ${getBackButtonHtml()}
                                 </div>
                             `;
                         }
@@ -1312,16 +1312,7 @@
         const coursesIndexUrl = '{{ route("courses.index") }}';
         
         function getBackButtonHtml() {
-            if (recentCourse && recentCourse.id) {
-                const topicsUrl = '{{ route("topics.forCourse", ":courseId") }}'.replace(':courseId', recentCourse.id);
-                return `<a href="${topicsUrl}" class="btn btn-primary">
-                    <i class="fas fa-arrow-left me-2"></i>Back to ${recentCourse.name}
-                </a>`;
-            } else {
-                return `<a href="${coursesIndexUrl}" class="btn btn-primary">
-                    <i class="fas fa-arrow-left me-2"></i>Back to Courses
-                </a>`;
-            }
+            return '';
         }
 
         document.addEventListener('DOMContentLoaded', function() {

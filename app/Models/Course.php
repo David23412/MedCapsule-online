@@ -18,7 +18,10 @@ class Course extends Model
         'image',
         'price',
         'currency',
-        'cache_version'
+        'cache_version',
+        'color',
+        'title_color',
+        'academic_year'
     ];
 
     protected $appends = [
@@ -275,6 +278,10 @@ class Course extends Model
         static::updated(function ($course) {
             $course->clearCaches();
             
+            // Increment cache version to invalidate all course caches
+            $currentVersion = Cache::get('courses_cache_version', 1);
+            Cache::put('courses_cache_version', $currentVersion + 1, 86400); // 24 hours
+            
             // PHASE 2: Dispatch CourseUpdated event for cache invalidation
             event(new \App\Events\CourseUpdated(
                 $course,
@@ -285,6 +292,14 @@ class Course extends Model
 
         static::deleted(function ($course) {
             $course->clearCaches();
+            
+            // Increment cache version to invalidate all course caches
+            $currentVersion = Cache::get('courses_cache_version', 1);
+            Cache::put('courses_cache_version', $currentVersion + 1, 86400); // 24 hours
+            
+            // Clear general course listing cache
+            Cache::forget('courses_list');
+            Cache::forget('courses_with_stats');
             
             // PHASE 2: Dispatch CourseUpdated event for cache invalidation
             event(new \App\Events\CourseUpdated(
@@ -299,6 +314,10 @@ class Course extends Model
             if ($course = $topic->course) {
                 $course->clearCaches();
                 
+                // Increment cache version to invalidate all course caches
+                $currentVersion = Cache::get('courses_cache_version', 1);
+                Cache::put('courses_cache_version', $currentVersion + 1, 86400); // 24 hours
+                
                 // PHASE 2: Dispatch CourseUpdated event for cache invalidation
                 event(new \App\Events\CourseUpdated(
                     $course,
@@ -310,8 +329,18 @@ class Course extends Model
     }
 
     /** -------------------
-     * IMAGE URL ATTRIBUTE
+     * COLOR AND IMAGE ATTRIBUTES
      * ------------------- */
+
+    public function getColorAttribute($value)
+    {
+        return $value ?: '#3b82f6'; // Default blue if no color set
+    }
+
+    public function getTitleColorAttribute($value)
+    {
+        return $value ?: '#FFFFFF'; // Default white if no title color set
+    }
 
     public function getImageUrlAttribute()
     {

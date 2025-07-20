@@ -4,7 +4,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token() }}">
-    <title>{{ $course->name }} Topics - MedCapsule</title>
+    <title>MedCapsule</title>
+    <!-- Favicon -->
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 50'%3E%3Crect fill='%23007bff' x='10' y='15' width='80' height='20' rx='10' ry='10' /%3E%3Crect x='50' y='15' width='40' height='20' fill='%23ff0000' rx='0 10 10 0' ry='10'/%3E%3Cline x1='50' y1='15' x2='50' y2='35' stroke='white' stroke-width='1.5' stroke-dasharray='2,1'/%3E%3C/svg%3E">
+    <link rel="shortcut icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 50'%3E%3Crect fill='%23007bff' x='10' y='15' width='80' height='20' rx='10' ry='10' /%3E%3Crect x='50' y='15' width='40' height='20' fill='%23ff0000' rx='0 10 10 0' ry='10'/%3E%3Cline x1='50' y1='15' x2='50' y2='35' stroke='white' stroke-width='1.5' stroke-dasharray='2,1'/%3E%3C/svg%3E">
+    <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 50'%3E%3Crect fill='%23007bff' x='10' y='15' width='80' height='20' rx='10' ry='10' /%3E%3Crect x='50' y='15' width='40' height='20' fill='%23ff0000' rx='0 10 10 0' ry='10'/%3E%3Cline x1='50' y1='15' x2='50' y2='35' stroke='white' stroke-width='1.5' stroke-dasharray='2,1'/%3E%3C/svg%3E">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
@@ -12,15 +16,63 @@
         body {
             font-family: 'Poppins', sans-serif;
             background-color: #f8f9fa;
+            zoom: 0.78; /* Precise zoom level for optimal viewing */
             margin: 0;
             padding: 0;
-            zoom: 0.8;
+            line-height: 1.6;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
         }
 
-        /* Fix modal backdrop blue overlay issue */
+        /* Universal modal backdrop fix - force consistent rendering */
         .modal-backdrop {
-            background-color: rgba(0, 0, 0, 0.5) !important;
+            background: rgba(0, 0, 0, 0.5) !important;
             backdrop-filter: none !important;
+            position: fixed !important;
+            top: 0 !important;
+            left: 0 !important;
+            width: 100% !important;
+            height: 100% !important;
+            z-index: 1040 !important;
+            transform: none !important;
+            will-change: auto !important;
+            transition: none !important;
+        }
+
+        .modal-backdrop.show {
+            opacity: 1 !important;
+        }
+
+        .modal-backdrop.fade {
+            opacity: 0 !important;
+            transition: none !important;
+        }
+
+        .modal-backdrop.fade.show {
+            opacity: 1 !important;
+            transition: none !important;
+        }
+
+        /* Edge-specific modal backdrop override */
+        @supports (-ms-ime-align: auto) {
+            .modal-backdrop,
+            .modal-backdrop.show,
+            .modal-backdrop.fade.show {
+                background: rgba(0, 0, 0, 0.5) !important;
+                opacity: 1 !important;
+                position: fixed !important;
+                top: 0 !important;
+                left: 0 !important;
+                right: 0 !important;
+                bottom: 0 !important;
+                width: 100% !important;
+                height: 100% !important;
+                z-index: 1040 !important;
+                backdrop-filter: none !important;
+                filter: none !important;
+                transform: none !important;
+                transition: none !important;
+            }
         }
 
         .navbar {
@@ -72,13 +124,14 @@
             background: linear-gradient(135deg, #0072ff, #00c6ff);
             color: white;
             padding: 4rem 3rem;
+            padding-top: 6rem;
             text-align: center;
             margin-bottom: 2rem;
             position: relative;
             overflow: hidden;
             min-height: 280px;
             display: flex;
-            align-items: flex-end;
+            align-items: center;
             justify-content: center;
         }
 
@@ -217,43 +270,98 @@
 
         .topic-card {
             background: white;
-            border-radius: 12px;
-            padding: 2rem;
-            margin-bottom: 1.5rem;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            border-radius: 16px;
+            padding: 2rem 2.5rem;
+            margin-bottom: 1.25rem;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
             transition: all 0.3s ease;
             animation: slideIn 0.5s ease-out forwards;
             opacity: 0;
             transform: translateY(20px);
             position: relative;
             overflow: hidden;
+            width: 100%;
+            max-width: none;
+            border: 1px solid rgba(0, 0, 0, 0.04);
+        }
+        
+        /* Safari-specific sleek adjustments */
+        @media screen and (-webkit-min-device-pixel-ratio:0) {
+            .topic-card {
+                padding: 1.5rem 2.5rem;
+                margin-bottom: 1rem;
+                border-radius: 18px;
+                box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
+            }
+            
+            .topics-container {
+                max-width: 1400px;
+                padding: 1.5rem 3rem;
+            }
+            
+            .topic-info {
+                margin-bottom: 1rem;
+            }
+            
+            .progress-container {
+                margin-top: 1rem;
+            }
+            
+            .topic-actions {
+                margin-top: 0.75rem;
+            }
+            
+            /* Source Selection Modal - slightly wider for Safari */
+            #sourceSelectionModal .modal-dialog {
+                max-width: 540px;
+            }
+            
+            #sourceSelectionModal .modal-body {
+                padding: 1.75rem;
+            }
+            
+            /* Navbar positioning fix for Safari */
+            .navbar .container {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                width: 100%;
+            }
+            
+            .navbar-brand {
+                margin-right: auto;
+            }
+            
+
         }
 
         .topic-card:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+            border-color: rgba(0, 123, 255, 0.1);
         }
 
         .topic-info {
             display: flex;
             justify-content: space-between;
             align-items: flex-start;
-            margin-bottom: 1.5rem;
+            margin-bottom: 1.25rem;
         }
 
         .topic-main {
             flex: 1;
-            padding-right: 2rem;
+            padding-right: 1.5rem;
         }
 
         .topic-name {
-            font-size: 1.4rem;
+            font-size: 1.3rem;
             font-weight: 600;
             color: #2c3e50;
-            margin-bottom: 0.8rem;
+            margin-bottom: 0.6rem;
             display: flex;
             align-items: center;
-            gap: 0.8rem;
+            gap: 0.75rem;
+            line-height: 1.3;
         }
 
         .topic-name i {
@@ -284,15 +392,15 @@
 
         .progress-container {
             flex: 1;
-            margin-top: 1.5rem;
+            margin-top: 1.25rem;
         }
 
         .progress {
-            height: 10px;
+            height: 8px;
             background-color: #e9ecef;
-            border-radius: 5px;
+            border-radius: 4px;
             overflow: hidden;
-            margin-bottom: 0.8rem;
+            margin-bottom: 0.6rem;
         }
 
         .progress-bar {
@@ -1261,6 +1369,456 @@
             color: #007bff;
             font-weight: 500;
         }
+
+        /* Assignment Badge Styles */
+        .assignment-badge {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.5rem 1rem;
+            border-radius: 25px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            margin-left: 1rem;
+            animation: pulse 2s infinite;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .assignment-badge::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
+            animation: shimmer 3s infinite;
+        }
+
+        .assignment-badge.assignment-active {
+            background: linear-gradient(135deg, #ff6b35, #f7931e);
+            color: white;
+            border: 2px solid #ff8c42;
+        }
+
+        .assignment-badge.assignment-overdue {
+            background: linear-gradient(135deg, #dc3545, #c82333);
+            color: white;
+            border: 2px solid #dc3545;
+            animation: urgentPulse 1s infinite;
+        }
+
+        .assignment-badge.assignment-completed {
+            background: linear-gradient(135deg, #28a745, #20c997);
+            color: white;
+            border: 2px solid #28a745;
+        }
+
+        .assignment-countdown {
+            display: flex;
+            align-items: center;
+            gap: 0.3rem;
+            font-size: 0.8rem;
+            margin-left: 0.5rem;
+            padding: 0.2rem 0.6rem;
+            background: rgba(255,255,255,0.2);
+            border-radius: 15px;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.02); }
+        }
+
+        @keyframes urgentPulse {
+            0%, 100% { 
+                transform: scale(1);
+                box-shadow: 0 2px 8px rgba(220,53,69,0.3);
+            }
+            50% { 
+                transform: scale(1.05);
+                box-shadow: 0 4px 16px rgba(220,53,69,0.5);
+            }
+        }
+
+        @keyframes shimmer {
+            0% { left: -100%; }
+            100% { left: 100%; }
+        }
+
+        /* Assignment Filter Specific Styling */
+        .assignment-filter {
+            background: #fff5f5 !important;
+            border-color: #fed7d7 !important;
+            color: #c53030 !important;
+            animation: assignmentPulse 3s infinite;
+        }
+
+        .assignment-filter:hover {
+            background: #fed7d7 !important;
+            border-color: #fc8181 !important;
+            color: #9b2c2c !important;
+        }
+
+        .assignment-filter.active {
+            background: #c53030 !important;
+            border-color: #c53030 !important;
+            color: white !important;
+        }
+
+        .assignment-filter .assignment-count {
+            background: rgba(197, 48, 48, 0.1) !important;
+            color: #c53030 !important;
+        }
+
+        .assignment-filter.active .assignment-count {
+            background: rgba(255, 255, 255, 0.2) !important;
+            color: white !important;
+        }
+
+        @keyframes assignmentPulse {
+            0%, 100% { 
+                box-shadow: 0 2px 4px rgba(0,0,0,0.05), 0 0 0 0 rgba(197, 48, 48, 0.3);
+            }
+            50% { 
+                box-shadow: 0 2px 4px rgba(0,0,0,0.05), 0 0 0 4px rgba(197, 48, 48, 0.1);
+            }
+        }
+
+        /* Premium Assignment Status Banner */
+        .assignment-status-banner {
+            margin: -2rem -2rem 0 -2rem;
+            padding: 0;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            position: relative;
+            background: transparent;
+            border-radius: 12px 12px 0 0;
+            overflow: hidden;
+        }
+
+        .assignment-status-banner.assignment-active {
+            background: linear-gradient(135deg, rgba(255, 152, 0, 0.08) 0%, rgba(255, 193, 7, 0.05) 100%);
+            border-top: 2px solid #ff9800;
+        }
+
+        .assignment-status-banner.assignment-overdue {
+            background: linear-gradient(135deg, rgba(244, 67, 54, 0.08) 0%, rgba(255, 87, 34, 0.05) 100%);
+            border-top: 2px solid #f44336;
+            animation: premiumUrgent 4s ease-in-out infinite;
+        }
+
+        .assignment-status-banner.assignment-completed {
+            background: linear-gradient(135deg, rgba(76, 175, 80, 0.08) 0%, rgba(139, 195, 74, 0.05) 100%);
+            border-top: 2px solid #4caf50;
+        }
+
+        .assignment-info {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            font-weight: 500;
+            font-size: 0.875rem;
+            color: #374151;
+            padding: 1rem 2rem;
+            flex: 1;
+        }
+
+        .assignment-info i {
+            font-size: 1rem;
+            opacity: 0.7;
+            transition: all 0.3s ease;
+        }
+
+        .assignment-info.overdue {
+            color: #dc2626;
+        }
+
+        .assignment-info.overdue i {
+            color: #dc2626;
+            opacity: 1;
+        }
+
+        .assignment-info.completed {
+            color: #059669;
+        }
+
+        .assignment-info.completed i {
+            color: #059669;
+            opacity: 1;
+        }
+
+        .assignment-countdown {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            background: rgba(255, 255, 255, 0.9);
+            padding: 0.5rem 1rem;
+            border-radius: 8px;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            font-weight: 600;
+            font-size: 0.8rem;
+            color: #374151;
+            border: 1px solid rgba(0, 0, 0, 0.08);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+            backdrop-filter: blur(10px);
+            margin-right: 2rem;
+            transition: all 0.3s ease;
+        }
+
+        .assignment-countdown:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+
+        .countdown-display {
+            letter-spacing: 0.5px;
+            font-variant-numeric: tabular-nums;
+        }
+
+        .overdue-text, .completed-text {
+            background: rgba(255, 255, 255, 0.9);
+            padding: 0.5rem 1rem;
+            border-radius: 8px;
+            font-size: 0.8rem;
+            font-weight: 500;
+            border: 1px solid rgba(0, 0, 0, 0.08);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+            backdrop-filter: blur(10px);
+            margin-right: 2rem;
+        }
+
+        .overdue-text {
+            color: #dc2626;
+            border-color: rgba(220, 38, 38, 0.2);
+        }
+
+        .completed-text {
+            color: #059669;
+            border-color: rgba(5, 150, 105, 0.2);
+        }
+
+        /* Premium Locked Topic Styling */
+        .topic-locked {
+            position: relative;
+            transform: scale(0.98);
+            transition: all 0.3s ease;
+        }
+
+        .topic-locked::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.7) 0%, rgba(248, 250, 252, 0.8) 100%);
+            backdrop-filter: blur(2px) saturate(0.8);
+            border-radius: 12px;
+            z-index: 1;
+            pointer-events: none;
+        }
+
+
+
+        .topic-locked .start-quiz-btn {
+            background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%) !important;
+            color: #64748b !important;
+            cursor: not-allowed;
+            pointer-events: none;
+            border: 1px solid #cbd5e1 !important;
+            box-shadow: none !important;
+        }
+
+        @keyframes premiumUrgent {
+            0%, 100% { 
+                border-top-color: #f44336;
+                background: linear-gradient(135deg, rgba(244, 67, 54, 0.08) 0%, rgba(255, 87, 34, 0.05) 100%);
+            }
+            50% { 
+                border-top-color: #ff5722;
+                background: linear-gradient(135deg, rgba(255, 87, 34, 0.12) 0%, rgba(244, 67, 54, 0.08) 100%);
+            }
+        }
+
+        /* Premium Countdown Urgency */
+        .countdown-urgent {
+            background: rgba(255, 243, 224, 0.95) !important;
+            border-color: rgba(255, 152, 0, 0.3) !important;
+            color: #ea580c !important;
+            box-shadow: 0 0 0 1px rgba(255, 152, 0, 0.1), 0 4px 12px rgba(255, 152, 0, 0.15) !important;
+        }
+
+        .countdown-urgent .countdown-display {
+            animation: premiumPulse 2s ease-in-out infinite;
+        }
+
+        @keyframes premiumPulse {
+            0%, 100% { 
+                opacity: 1;
+                transform: scale(1);
+            }
+            50% { 
+                opacity: 0.8;
+                transform: scale(1.02);
+            }
+        }
+
+        /* Responsive Design */
+        @media (max-width: 768px) {
+            .assignment-status-banner {
+                margin: -1.5rem -1.5rem 0 -1.5rem;
+            }
+            
+            .assignment-info {
+                padding: 0.75rem 1.5rem;
+                font-size: 0.8rem;
+            }
+            
+            .assignment-countdown,
+            .overdue-text,
+            .completed-text {
+                margin-right: 1.5rem;
+                padding: 0.4rem 0.75rem;
+                font-size: 0.75rem;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .assignment-info {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 0.5rem;
+            }
+            
+            .assignment-countdown,
+            .overdue-text,
+            .completed-text {
+                margin-right: 0;
+                margin-top: 0.5rem;
+            }
+        }
+
+        /* Minimal Assignment Status Bar - Only at top */
+        .assignment-status-bar {
+            margin: -2rem -2rem 1.5rem -2rem;
+            padding: 0.6rem 2rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            font-size: 0.85rem;
+            font-weight: 500;
+            border-radius: 12px 12px 0 0;
+        }
+
+        .assignment-status-bar.assignment-active {
+            background: linear-gradient(135deg, #fff8e1 0%, #fff3cd 100%);
+            color: #e65100;
+            border-bottom: 1px solid #ffcc02;
+        }
+
+        .assignment-status-bar.assignment-overdue {
+            background: linear-gradient(135deg, #ffebee 0%, #ffcdd2 100%);
+            color: #c62828;
+            border-bottom: 1px solid #f44336;
+            animation: subtleUrgent 3s infinite;
+        }
+
+        .assignment-status-bar.assignment-completed {
+            background: linear-gradient(135deg, #e8f5e9 0%, #c8e6c9 100%);
+            color: #2e7d32;
+            border-bottom: 1px solid #4caf50;
+        }
+
+        .assignment-info-minimal {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .assignment-info-minimal i {
+            font-size: 0.9rem;
+            opacity: 0.8;
+        }
+
+        .assignment-countdown-minimal {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            background: rgba(255, 255, 255, 0.7);
+            padding: 0.25rem 0.75rem;
+            border-radius: 20px;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            font-weight: 600;
+            font-size: 0.8rem;
+            border: 1px solid rgba(0, 0, 0, 0.1);
+            margin-left: auto;
+        }
+
+        .countdown-display {
+            letter-spacing: 0.3px;
+            font-variant-numeric: tabular-nums;
+        }
+
+        /* Minimal Locked Topic Styling */
+        .topic-locked {
+            opacity: 0.6;
+            position: relative;
+        }
+
+        .topic-locked::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(248, 249, 250, 0.8);
+            backdrop-filter: blur(1px);
+            pointer-events: none;
+            z-index: 2;
+            border-radius: 12px;
+        }
+
+        .topic-locked .start-quiz-btn {
+            background: #e9ecef !important;
+            color: #6c757d !important;
+            cursor: not-allowed;
+            pointer-events: none;
+            border: 1px solid #dee2e6 !important;
+        }
+
+        @keyframes subtleUrgent {
+            0%, 100% { 
+                border-bottom-color: #f44336;
+            }
+            50% { 
+                border-bottom-color: #ff5722;
+            }
+        }
+
+        /* Countdown urgency styling */
+        .countdown-urgent {
+            background: rgba(255, 152, 0, 0.2) !important;
+            border-color: rgba(255, 152, 0, 0.3) !important;
+            color: #e65100 !important;
+        }
+
+        .countdown-urgent .countdown-display {
+            animation: subtlePulse 2s infinite;
+        }
+
+        @keyframes subtlePulse {
+            0%, 100% { 
+                opacity: 1;
+            }
+            50% { 
+                opacity: 0.7;
+            }
+        }
     </style>
 </head>
 <body>
@@ -1483,18 +2041,64 @@
             <i class="fas fa-times-circle"></i>
             Review Mistakes
         </a>
+        
+        {{-- Conditional Assignment Filter - Only show if there are assignments --}}
+        @if(isset($assignments) && (is_array($assignments) ? count($assignments) : $assignments->count()) > 0)
+            <div class="case-filter assignment-filter" data-filter="assignments">
+                <i class="fas fa-tasks"></i>
+                Assignments
+                <span class="count assignment-count">{{ is_array($assignments) ? count($assignments) : $assignments->count() }}</span>
+            </div>
+        @endif
     </div>
 
     <!-- Topics List -->
     <div class="topics-container">
         @if($topics->count() > 0)
             @foreach($topics as $topic)
-                <div class="topic-card" data-case-type="{{ $topic->case_type }}" data-topic-id="{{ $topic->id }}">
+                @php
+                    $assignment = isset($assignments[$topic->id]) ? $assignments[$topic->id] : null;
+                    $isLocked = false;
+                    
+                    // Check if topic should be locked due to overdue assignment
+                    if ($assignment && $assignment->status === 'overdue' && $assignment->deadline < now()) {
+                        $isLocked = true;
+                    }
+                @endphp
+                
+                <div class="topic-card {{ $isLocked ? 'topic-locked' : '' }} {{ $assignment ? 'has-assignment assignment-' . $assignment->status : '' }}" 
+                     data-case-type="{{ $topic->case_type }}" 
+                     data-topic-id="{{ $topic->id }}" 
+                     @if($assignment) data-has-assignment="true" data-assignment-deadline="{{ $assignment->deadline }}" data-assignment-status="{{ $assignment->status }}" @endif>
+                    
+                    {{-- Minimal Assignment Status Bar (only at top) --}}
+                    @if($assignment)
+                        <div class="assignment-status-bar assignment-{{ $assignment->status }}">
+                            <div class="assignment-info-minimal">
+                                @if($assignment->status === 'active')
+                                    <span>Assignment Due:</span>
+                                    <div class="assignment-countdown-minimal" data-deadline="{{ $assignment->deadline }}">
+                                        <span class="countdown-display">Loading...</span>
+                                    </div>
+                                @elseif($assignment->status === 'overdue')
+                                    <i class="fas fa-exclamation-triangle"></i>
+                                    <span>ASSIGNMENT OVERDUE</span>
+                                @elseif($assignment->status === 'completed')
+                                    <i class="fas fa-check-circle"></i>
+                                    <span>Assignment Completed</span>
+                                @endif
+                            </div>
+                        </div>
+                    @endif
+                    
                     <div class="topic-info">
                         <div class="topic-main">
                             <h3 class="topic-name">
                                 <i class="fas fa-book-open"></i>
                                 {{ $topic->name }}
+                                @if($isLocked)
+                                    <i class="fas fa-lock text-danger ms-2" title="Topic locked due to overdue assignment"></i>
+                                @endif
                             </h3>
                             
                             @if($topic->last_attempt_date)
@@ -1595,30 +2199,112 @@
                     // Add active class to clicked filter
                     this.classList.add('active');
                     
-                    // Get the case type from the filter text
-                    const filterText = this.textContent.trim().toLowerCase();
-                    let filterType = '';
-                    
-                    if (filterText.includes('all')) {
-                        filterType = 'all';
-                    } else if (filterText.includes('cases')) {
-                        filterType = 'cases';
-                    } else if (filterText.includes('practical')) {
-                        filterType = 'practical';
-                    } else if (filterText.includes('quiz')) {
-                        filterType = 'quiz';
-                    }
+                    // Get the filter type
+                    const filterType = this.dataset.filter || this.textContent.trim().toLowerCase();
                     
                     // Filter topic cards
                     topicCards.forEach(card => {
-                        if (filterType === 'all' || card.dataset.caseType === filterType) {
-                            card.style.display = 'block';
-                        } else {
-                            card.style.display = 'none';
+                        const caseType = card.dataset.caseType;
+                        const hasAssignment = card.dataset.hasAssignment === 'true';
+                        
+                        let shouldShow = false;
+                        
+                        if (filterType === 'assignments') {
+                            shouldShow = hasAssignment;
+                        } else if (filterType === 'all' || filterType.includes('all')) {
+                            shouldShow = true;
+                        } else if (filterType === 'cases') {
+                            shouldShow = caseType === 'cases';
+                        } else if (filterType === 'practical') {
+                            shouldShow = caseType === 'practical';
+                        } else if (filterType === 'quiz' || filterType.includes('quiz')) {
+                            shouldShow = caseType === 'quiz';
                         }
+                        
+                        card.style.display = shouldShow ? 'block' : 'none';
                     });
                 });
             });
+
+            // Assignment countdown functionality
+            function updateCountdowns() {
+                const countdowns = document.querySelectorAll('.assignment-countdown-minimal');
+                
+                countdowns.forEach(countdown => {
+                    const deadline = new Date(countdown.dataset.deadline);
+                    const now = new Date();
+                    const timeLeft = deadline - now;
+                    
+                    if (timeLeft <= 0) {
+                        // Assignment is overdue - lock the topic
+                        const topicCard = countdown.closest('.topic-card');
+                        if (topicCard) {
+                            topicCard.classList.add('topic-locked');
+                            
+                            // Update the banner to show overdue status
+                            const banner = topicCard.querySelector('.assignment-status-banner');
+                            if (banner) {
+                                banner.className = 'assignment-status-banner assignment-overdue';
+                                banner.innerHTML = `
+                                    <div class="assignment-info overdue">
+                                        <i class="fas fa-exclamation-triangle"></i>
+                                        <span class="assignment-label">ASSIGNMENT OVERDUE</span>
+                                        <span class="overdue-text">Topic Locked</span>
+                                    </div>
+                                `;
+                            }
+                            
+                            // Disable the start quiz button
+                            const startBtn = topicCard.querySelector('.start-quiz-btn');
+                            if (startBtn) {
+                                startBtn.style.pointerEvents = 'none';
+                                startBtn.style.background = '#6c757d';
+                                startBtn.innerHTML = '<i class="fas fa-lock"></i> Locked';
+                            }
+                        }
+                        return;
+                    }
+                    
+                    // Calculate time components
+                    const days = Math.floor(timeLeft / (1000 * 60 * 60 * 24));
+                    const hours = Math.floor((timeLeft % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+                    const minutes = Math.floor((timeLeft % (1000 * 60 * 60)) / (1000 * 60));
+                    const seconds = Math.floor((timeLeft % (1000 * 60)) / 1000);
+                    
+                    // Format countdown display
+                    let countdownText = '';
+                    if (days > 0) {
+                        countdownText = `${days}d ${hours}h ${minutes}m`;
+                    } else if (hours > 0) {
+                        countdownText = `${hours}h ${minutes}m ${seconds}s`;
+                    } else if (minutes > 0) {
+                        countdownText = `${minutes}m ${seconds}s`;
+                    } else {
+                        countdownText = `${seconds}s`;
+                        // Add urgent styling when less than 1 minute
+                        countdown.classList.add('countdown-urgent');
+                    }
+                    
+                    // Update the countdown display
+                    const display = countdown.querySelector('.countdown-display');
+                    if (display) {
+                        display.textContent = countdownText;
+                    }
+                    
+                    // Add warning styling when less than 1 hour
+                    if (timeLeft < 3600000) { // 1 hour in milliseconds
+                        countdown.classList.add('countdown-urgent');
+                        const banner = countdown.closest('.assignment-status-banner');
+                        if (banner) {
+                            banner.style.animation = 'urgentBanner 1s infinite';
+                        }
+                    }
+                });
+            }
+            
+            // Start countdown updates
+            updateCountdowns();
+            setInterval(updateCountdowns, 1000); // Update every second
 
             // Handle source progress updates from quiz completion
             document.addEventListener('sourceProgressUpdated', function(e) {
@@ -1830,6 +2516,45 @@
                 window.location.href = `${baseUrl}?${sourceParams}`;
             });
         });
+
+        // Microsoft Edge modal backdrop fix
+        function isEdge() {
+            return /Edge|Edg/.test(navigator.userAgent);
+        }
+
+        if (isEdge()) {
+            // Fix Edge modal backdrop rendering issue
+            document.addEventListener('shown.bs.modal', function(e) {
+                const backdrop = document.querySelector('.modal-backdrop');
+                if (backdrop) {
+                    // Force repaint in Edge
+                    backdrop.style.display = 'none';
+                    backdrop.offsetHeight; // Trigger reflow
+                    backdrop.style.display = 'block';
+                    backdrop.style.background = 'rgba(0, 0, 0, 0.5)';
+                    backdrop.style.position = 'fixed';
+                    backdrop.style.top = '0';
+                    backdrop.style.left = '0';
+                    backdrop.style.width = '100%';
+                    backdrop.style.height = '100%';
+                    backdrop.style.zIndex = '1040';
+                }
+            });
+
+            // Additional fix for modal show event
+            const modals = document.querySelectorAll('.modal');
+            modals.forEach(modal => {
+                modal.addEventListener('show.bs.modal', function() {
+                    setTimeout(() => {
+                        const backdrop = document.querySelector('.modal-backdrop');
+                        if (backdrop) {
+                            backdrop.style.background = 'rgba(0, 0, 0, 0.5)';
+                            backdrop.style.opacity = '1';
+                        }
+                    }, 50);
+                });
+            });
+        }
     </script>
 </body>
 </html>

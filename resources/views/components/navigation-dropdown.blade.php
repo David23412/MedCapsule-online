@@ -1,0 +1,488 @@
+@php
+    use App\Services\NavigationService;
+    $navigationRoutes = NavigationService::getNavigationRoutes();
+    $userBadge = NavigationService::getUserRoleBadge();
+@endphp
+
+<li class="nav-item dropdown">
+    <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-bs-toggle="dropdown">
+        {{ Auth::user()->name }}
+        @if($userBadge)
+            <span class="badge {{ $userBadge['class'] }} ms-1">{{ $userBadge['text'] }}</span>
+        @endif
+    </a>
+    <ul class="dropdown-menu dropdown-menu-end">
+        <!-- Study Streak Indicator with Enhanced Navigation -->
+        <li class="d-flex justify-content-center">
+            <div class="streak-indicator dropdown" data-streak="{{ Auth::user()->study_streak_days ?? 0 }}">
+                <div class="streak-circle" data-bs-toggle="dropdown" aria-expanded="false" role="button">
+                    <svg viewBox="0 0 100 100">
+                        <circle class="streak-bg" cx="50" cy="50" r="40"></circle>
+                        <circle class="streak-progress" cx="50" cy="50" r="40"></circle>
+                    </svg>
+                    <div class="streak-content">
+                        <div class="streak-value" data-value="{{ Auth::user()->study_streak_days ?? 0 }}">
+                            {{ Auth::user()->study_streak_days ?? 0 }}
+                        </div>
+                        <div class="streak-label">Streak</div>
+                    </div>
+                    @if((Auth::user()->study_streak_days ?? 0) > 0)
+                        <div class="streak-fire">
+                            <i class="fas fa-fire"></i>
+                        </div>
+                    @endif
+                </div>
+                
+                <!-- Enhanced Streak Navigation Dropdown -->
+                <ul class="dropdown-menu streak-dropdown">
+                    <li class="dropdown-header">
+                        <i class="fas fa-fire me-2 text-warning"></i>Study Progress
+                    </li>
+                    
+                    <!-- Quick Actions for All Users -->
+                    <li>
+                        <a class="dropdown-item" href="{{ route('courses.index') }}">
+                            <i class="fas fa-book me-2"></i>Continue Learning
+                        </a>
+                    </li>
+                    <li>
+                        <a class="dropdown-item" href="{{ route('quiz.random') }}">
+                            <i class="fas fa-random me-2"></i>Random Quiz
+                        </a>
+                    </li>
+                    <li>
+                        <a class="dropdown-item" href="{{ route('mistakes.index') }}">
+                            <i class="fas fa-exclamation-triangle me-2"></i>Review Mistakes
+                        </a>
+                    </li>
+                    
+                    <!-- Student-specific Actions -->
+                    @if(Auth::user()->role === 'student')
+                        <li><hr class="dropdown-divider"></li>
+                        <li class="dropdown-header">
+                            <i class="fas fa-graduation-cap me-2 text-primary"></i>Student Tools
+                        </li>
+                        <li>
+                            <a class="dropdown-item" href="{{ route('student.assignments.index') }}">
+                                <i class="fas fa-tasks me-2"></i>My Assignments
+                            </a>
+                        </li>
+                        <li>
+                            <a class="dropdown-item" href="{{ route('profile') }}">
+                                <i class="fas fa-chart-line me-2"></i>Progress Report
+                            </a>
+                        </li>
+                    @endif
+                    
+                    <!-- Tutor-specific Actions -->
+                    @if(Auth::user()->isTutor() || Auth::user()->isAdmin())
+                        <li><hr class="dropdown-divider"></li>
+                        <li class="dropdown-header">
+                            <i class="fas fa-chalkboard-teacher me-2 text-success"></i>Tutor Tools
+                        </li>
+                        <li>
+                            <a class="dropdown-item" href="{{ route('tutor.dashboard') }}">
+                                <i class="fas fa-tachometer-alt me-2"></i>Tutor Dashboard
+                            </a>
+                        </li>
+                        <li>
+                            <a class="dropdown-item" href="{{ route('assignments.bulk-create') }}">
+                                <i class="fas fa-plus-circle me-2"></i>Create Assignment
+                            </a>
+                        </li>
+                    @endif
+                    
+                    <!-- Admin-specific Actions -->
+                    @if(Auth::user()->isAdmin())
+                        <li><hr class="dropdown-divider"></li>
+                        <li class="dropdown-header">
+                            <i class="fas fa-crown me-2 text-warning"></i>Admin Tools
+                        </li>
+                        <li>
+                            <a class="dropdown-item" href="{{ route('admin.tutor-management.index') }}">
+                                <i class="fas fa-users-cog me-2"></i>Manage Tutors
+                            </a>
+                        </li>
+                        <li>
+                            <a class="dropdown-item" href="{{ route('admin.payments.index') }}">
+                                <i class="fas fa-credit-card me-2"></i>Payment Management
+                            </a>
+                        </li>
+                    @endif
+                    
+                    <!-- Streak Stats -->
+                    <li><hr class="dropdown-divider"></li>
+                    <li class="streak-stats">
+                        <div class="d-flex justify-content-between align-items-center px-3 py-2">
+                            <div class="text-center">
+                                <div class="fw-bold text-primary">{{ Auth::user()->study_streak_days ?? 0 }}</div>
+                                <small class="text-muted">Current</small>
+                            </div>
+                            <div class="text-center">
+                                <div class="fw-bold text-success">{{ Auth::user()->max_study_streak ?? 0 }}</div>
+                                <small class="text-muted">Best</small>
+                            </div>
+                            <div class="text-center">
+                                <div class="fw-bold text-info">{{ Auth::user()->total_study_days ?? 0 }}</div>
+                                <small class="text-muted">Total</small>
+                            </div>
+                        </div>
+                    </li>
+                </ul>
+            </div>
+        </li>
+        <li><hr class="dropdown-divider"></li>
+
+        <!-- Core Navigation Items -->
+        @if(isset($navigationRoutes['core']))
+            @foreach($navigationRoutes['core'] as $item)
+                @if(NavigationService::hasAccess($item['roles']))
+                    <li>
+                        <a class="dropdown-item" href="{{ NavigationService::getRouteUrl($item['route'], $item['params'] ?? []) }}">
+                            <i class="{{ $item['icon'] }} me-2"></i>{{ $item['label'] }}
+                        </a>
+                    </li>
+                @endif
+            @endforeach
+        @endif
+
+        <!-- Admin Section -->
+        @if(isset($navigationRoutes['admin']) && NavigationService::hasAccess(['admin']))
+            <li><hr class="dropdown-divider"></li>
+            <li class="dropdown-header">
+                <i class="{{ $navigationRoutes['admin']['header']['icon'] }} me-2 {{ $navigationRoutes['admin']['header']['class'] }}"></i>{{ $navigationRoutes['admin']['header']['label'] }}
+            </li>
+            @foreach($navigationRoutes['admin']['items'] as $item)
+                @if(NavigationService::hasAccess($item['roles']))
+                    <li>
+                        <a class="dropdown-item" href="{{ NavigationService::getRouteUrl($item['route'], $item['params'] ?? []) }}">
+                            <i class="{{ $item['icon'] }} me-2"></i>{{ $item['label'] }}
+                        </a>
+                    </li>
+                @endif
+            @endforeach
+        @endif
+
+        <!-- Tutor Section -->
+        @if(isset($navigationRoutes['tutor']) && (Auth::user()->isAdmin() || Auth::user()->isTutor()))
+            <li><hr class="dropdown-divider"></li>
+            <li class="dropdown-header">
+                <i class="{{ $navigationRoutes['tutor']['header']['icon'] }} me-2 {{ $navigationRoutes['tutor']['header']['class'] }}"></i>{{ $navigationRoutes['tutor']['header']['label'] }}
+            </li>
+            @foreach($navigationRoutes['tutor']['items'] as $item)
+                @if(NavigationService::hasAccess($item['roles']))
+                    <li>
+                        <a class="dropdown-item" href="{{ NavigationService::getRouteUrl($item['route'], $item['params'] ?? []) }}">
+                            <i class="{{ $item['icon'] }} me-2"></i>{{ $item['label'] }}
+                        </a>
+                    </li>
+                @endif
+            @endforeach
+        @endif
+
+        <!-- Profile and Logout -->
+        <li><hr class="dropdown-divider"></li>
+        @if(isset($navigationRoutes['profile']))
+            @foreach($navigationRoutes['profile'] as $item)
+                @if(NavigationService::hasAccess($item['roles']))
+                    <li>
+                        <a class="dropdown-item" href="{{ NavigationService::getRouteUrl($item['route'], $item['params'] ?? []) }}">
+                            <i class="{{ $item['icon'] }} me-2"></i>{{ $item['label'] }}
+                        </a>
+                    </li>
+                @endif
+            @endforeach
+        @endif
+        <li>
+            <form method="POST" action="{{ secure_url(route('logout', [], false)) }}" class="dropdown-item p-0">
+                @csrf
+                <button type="submit" class="dropdown-item w-100 text-danger">
+                    <i class="fas fa-sign-out-alt me-2"></i>Logout
+                </button>
+            </form>
+        </li>
+    </ul>
+</li>
+
+<style>
+    /* Streak Indicator Styles */
+    .streak-indicator {
+        background: #f9f9f9;
+        box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-direction: column;
+        margin: 10px auto;
+        padding: 5px;
+        transition: all 0.3s ease;
+        width: 60px;
+        height: 60px;
+        position: relative;
+        margin: 1rem;
+        cursor: pointer;
+        transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        background: rgba(255, 255, 255, 0.08);
+        border-radius: 50%;
+        backdrop-filter: blur(12px);
+        box-shadow: 0 0 25px rgba(25, 118, 210, 0.25);
+    }
+
+    .streak-circle {
+        width: 100%;
+        height: 100%;
+        position: relative;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .streak-circle svg {
+        width: 100%;
+        height: 100%;
+        transform: rotate(-90deg);
+        filter: drop-shadow(0 0 8px rgba(51, 154, 240, 0.4));
+    }
+
+    .streak-circle circle {
+        fill: none;
+        stroke-width: 3;
+        stroke-linecap: round;
+        transition: all 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .streak-bg {
+        stroke: rgba(33, 150, 243, 0.15);
+    }
+
+    .streak-progress {
+        stroke: #2196f3;
+        stroke-dasharray: 251.2;
+        stroke-dashoffset: 251.2;
+        transition: stroke-dashoffset 1.2s cubic-bezier(0.4, 0, 0.2, 1);
+        filter: drop-shadow(0 0 8px rgba(25, 118, 210, 0.8));
+    }
+
+    .streak-content {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        text-align: center;
+        width: 100%;
+        transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        z-index: 2;
+    }
+
+    .streak-value {
+        font-size: 1.5rem;
+        font-weight: 700;
+        background: linear-gradient(135deg, #1565c0, #2196f3);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        position: relative;
+        line-height: 1;
+        margin-bottom: 0.2rem;
+        text-shadow: 0 0 25px rgba(33, 150, 243, 0.6);
+        animation: glowPulse 2s infinite;
+    }
+
+    .streak-label {
+        font-size: 0.55rem;
+        background: linear-gradient(135deg, #1565c0, #2196f3);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        opacity: 0.95;
+        transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        animation: glowPulse 2s infinite 0.5s;
+    }
+
+    @keyframes glowPulse {
+        0% { 
+            filter: brightness(1) drop-shadow(0 0 10px rgba(25, 118, 210, 0.5));
+            transform: scale(1);
+        }
+        50% { 
+            filter: brightness(1.4) drop-shadow(0 0 15px rgba(25, 118, 210, 0.7));
+            transform: scale(1.05);
+        }
+        100% { 
+            filter: brightness(1) drop-shadow(0 0 10px rgba(25, 118, 210, 0.5));
+            transform: scale(1);
+        }
+    }
+
+    .streak-fire {
+        position: absolute;
+        bottom: -2px;
+        right: -2px;
+        color: #ff6b6b;
+        animation: flame 1.5s infinite;
+        font-size: 1rem;
+    }
+
+    @keyframes flame {
+        0% { transform: scale(1) rotate(0deg); }
+        50% { transform: scale(1.2) rotate(5deg); }
+        100% { transform: scale(1) rotate(0deg); }
+    }
+
+    .dropdown-header {
+        font-weight: 600;
+        font-size: 0.85rem;
+        color: #6c757d;
+        padding: 0.5rem 1rem;
+    }
+
+    /* Enhanced Streak Navigation Dropdown Styles */
+    .streak-dropdown {
+        min-width: 280px;
+        border-radius: 12px;
+        border: none;
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
+        padding: 0.5rem;
+        margin-top: 0.5rem;
+        background: rgba(255, 255, 255, 0.98);
+        backdrop-filter: blur(12px);
+    }
+
+    .streak-dropdown .dropdown-item {
+        padding: 0.75rem 1rem;
+        border-radius: 8px;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        font-weight: 500;
+        color: #374151;
+    }
+
+    .streak-dropdown .dropdown-item:hover {
+        background: linear-gradient(135deg, #f0f7ff, #e3f2fd);
+        color: #1976d2;
+        transform: translateX(4px);
+        box-shadow: 0 2px 8px rgba(25, 118, 210, 0.15);
+    }
+
+    .streak-dropdown .dropdown-item i {
+        width: 18px;
+        text-align: center;
+        opacity: 0.8;
+        transition: all 0.3s ease;
+    }
+
+    .streak-dropdown .dropdown-item:hover i {
+        opacity: 1;
+        transform: scale(1.1);
+    }
+
+    .streak-dropdown .dropdown-header {
+        font-weight: 700;
+        font-size: 0.8rem;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        padding: 0.75rem 1rem 0.5rem;
+        margin-bottom: 0.25rem;
+        background: linear-gradient(135deg, #667eea, #764ba2);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+    }
+
+    .streak-dropdown .dropdown-header i {
+        -webkit-text-fill-color: initial;
+    }
+
+    .streak-stats {
+        background: linear-gradient(135deg, #f8fafc, #e2e8f0);
+        border-radius: 8px;
+        margin: 0.5rem;
+        padding: 0.5rem;
+    }
+
+    .streak-stats .fw-bold {
+        font-size: 1.1rem;
+        font-weight: 700;
+    }
+
+    .streak-stats small {
+        font-size: 0.7rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.3px;
+    }
+
+    /* Enhanced streak indicator hover effects */
+    .streak-indicator:hover {
+        transform: scale(1.05);
+        box-shadow: 0 0 35px rgba(25, 118, 210, 0.4);
+    }
+
+    .streak-indicator:hover .streak-circle svg {
+        filter: drop-shadow(0 0 12px rgba(51, 154, 240, 0.6));
+    }
+
+    .streak-indicator:hover .streak-value {
+        animation: glowPulse 1s infinite;
+    }
+
+    /* Dropdown positioning for streak */
+    .streak-indicator.dropdown .dropdown-menu {
+        left: 50%;
+        transform: translateX(-50%);
+        top: 100%;
+        margin-top: 0.5rem;
+    }
+
+    /* Role-specific header colors */
+    .streak-dropdown .dropdown-header .text-primary {
+        color: #2196f3 !important;
+    }
+
+    .streak-dropdown .dropdown-header .text-success {
+        color: #4caf50 !important;
+    }
+
+    .streak-dropdown .dropdown-header .text-warning {
+        color: #ff9800 !important;
+    }
+
+    /* Smooth transitions for all dropdown elements */
+    .streak-dropdown * {
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+</style>
+
+<script>
+    // Streak animation initialization
+    document.addEventListener('DOMContentLoaded', function() {
+        const streakIndicator = document.querySelector('.streak-indicator');
+        if (streakIndicator) {
+            const streakProgress = document.querySelector('.streak-progress');
+            const streak = parseInt(streakIndicator.dataset.streak);
+            
+            // Calculate progress (assuming max streak of 30 days)
+            const maxStreak = 30;
+            const progress = Math.min(streak / maxStreak, 1);
+            const circumference = 2 * Math.PI * 40; // circle radius is 40
+            
+            // Animate the progress
+            setTimeout(() => {
+                streakProgress.style.strokeDasharray = circumference;
+                streakProgress.style.strokeDashoffset = circumference * (1 - progress);
+            }, 100);
+            
+            // Add hover effect for the flame
+            if (streak > 0) {
+                const streakFire = document.querySelector('.streak-fire');
+                if (streakFire) {
+                    streakIndicator.addEventListener('mouseover', () => {
+                        streakFire.style.transform = 'scale(1.2)';
+                    });
+                    streakIndicator.addEventListener('mouseout', () => {
+                        streakFire.style.transform = 'scale(1)';
+                    });
+                }
+            }
+        }
+    });
+</script>

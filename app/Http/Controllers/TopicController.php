@@ -73,9 +73,20 @@ class TopicController extends Controller
             })
         ]);
         
+        // Load assignments for the current user for this course
+        $assignments = [];
+        if ($user->role === 'student') {
+            $assignments = \App\Models\Assignment::where('student_id', $user->id)
+                ->where('course_id', $course->id)
+                ->with(['topic'])
+                ->get()
+                ->keyBy('topic_id'); // Key by topic_id for easy lookup
+        }
+
         return view('topics_for_course', [
             'course' => $course,
-            'topics' => $topics
+            'topics' => $topics,
+            'assignments' => $assignments
         ]);
     }
 

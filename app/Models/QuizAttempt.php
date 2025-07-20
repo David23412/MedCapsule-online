@@ -49,7 +49,7 @@ class QuizAttempt extends Model
         'user_id' => 'required|exists:users,id',
         'topic_id' => 'nullable|exists:topics,id',
         'quiz_type' => 'required|in:normal,random,tutor,mistake_review',
-        'study_mode' => 'nullable|in:quiz,tutor,random',
+        'study_mode' => 'nullable|in:quiz,tutor,random,mistake_review',
         'source' => 'nullable|string',
         'score' => 'required|integer|min:0',
         'total_questions' => 'required|integer|min:1',

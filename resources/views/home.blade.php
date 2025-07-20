@@ -2246,11 +2246,6 @@
                                         </a>
                                     </li>
                                     <li>
-                                        <a class="dropdown-item" href="{{ route('assignments.bulk.create') }}">
-                                            <i class="fas fa-layer-group me-2"></i>Bulk Assignments
-                                        </a>
-                                    </li>
-                                    <li>
                                         <a class="dropdown-item" href="{{ route('topic-locking.index') }}">
                                             <i class="fas fa-lock me-2"></i>Topic Management
                                         </a>

@@ -45,8 +45,9 @@ class CourseController extends Controller
         $userId = auth()->id();
         $isLoggedIn = auth()->check();
 
-        // Cache key for courses metadata
-        $cacheKey = "courses_metadata_" . ($userId ?? 'guest');
+        // Cache key for courses metadata with timestamp for cache busting
+        $cacheVersion = Cache::get('courses_cache_version', 1);
+        $cacheKey = "courses_metadata_" . ($userId ?? 'guest') . "_v{$cacheVersion}";
         
         $courses = Cache::remember($cacheKey, 300, function () use ($userId, $isLoggedIn) {
             $subqueries = [
@@ -211,12 +212,15 @@ class CourseController extends Controller
             'image' => 'nullable|url|max:2048',
             'color' => 'required|string|regex:/^#[a-fA-F0-9]{6}$/',
             'title_color' => 'required|string|regex:/^#[a-fA-F0-9]{6}$/',
+            'academic_year' => 'required|string|in:year-1-sem-1,year-1-sem-2,year-2-sem-1,year-2-sem-2,year-3-sem-1,year-3-sem-2,year-4-sem-1,year-4-sem-2,year-5-sem-1,year-5-sem-2,year-6-sem-1,year-6-sem-2,sat-prep,est-prep,act-prep',
             'price' => 'nullable|numeric|min:0|max:999999.99',
             'currency' => 'required_with:price|string|size:3|in:EGP,USD,EUR'
         ], [
             'name.unique' => 'A course with this name already exists.',
             'color.regex' => 'Color must be a valid hex color code (e.g., #FF5733).',
             'title_color.regex' => 'Title color must be a valid hex color code (e.g., #FF5733).',
+            'academic_year.required' => 'Academic year is required.',
+            'academic_year.in' => 'Please select a valid academic year.',
             'currency.in' => 'Currency must be one of: EGP, USD, EUR.'
         ]);
 
@@ -227,12 +231,14 @@ class CourseController extends Controller
                 'image' => $validated['image'] ?? null,
                 'color' => $validated['color'],
                 'title_color' => $validated['title_color'],
+                'academic_year' => $validated['academic_year'],
                 'price' => $validated['price'] ?? null,
                 'currency' => $validated['price'] ? $validated['currency'] : 'EGP'
             ]);
             
-            // Clear courses cache for all users
-            Cache::flush(); // This is aggressive but safe for course metadata cache
+            // Increment cache version to invalidate all course caches
+            $currentVersion = Cache::get('courses_cache_version', 1);
+            Cache::put('courses_cache_version', $currentVersion + 1, 86400); // 24 hours
             
             \Log::info('Course created successfully', [
                 'course_id' => $course->id,

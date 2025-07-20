@@ -16,6 +16,7 @@ return new class extends Migration
             $table->string('name'); // Name of the course
             $table->text('description')->nullable(); // Description of the course (optional)
             $table->year('year')->default(2024); // Academic year for the course
+            $table->string('academic_year')->nullable(); // Academic year and semester (e.g., year-1-sem-1)
             $table->string('image')->nullable(); // Image URL for the course
             $table->string('color')->nullable(); // Color for the course
             $table->string('title_color')->default('#FFFFFF'); // Title color for the course
@@ -28,6 +29,7 @@ return new class extends Migration
             
             // Indexes for performance
             $table->index('year', 'idx_courses_year');
+            $table->index('academic_year', 'idx_academic_year');
             $table->index(['year', 'price'], 'idx_year_price');
         });
     }

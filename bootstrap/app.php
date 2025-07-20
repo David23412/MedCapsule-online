@@ -13,6 +13,13 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware) {
         $middleware->alias([
             'tutor' => \App\Http\Middleware\TutorMiddleware::class,
+            'admin' => \App\Http\Middleware\AdminMiddleware::class,
+            'ngrok.csrf' => \App\Http\Middleware\NgrokCsrfFix::class,
+        ]);
+        
+        // Add ngrok CSRF fix to web middleware group
+        $middleware->web(append: [
+            \App\Http\Middleware\NgrokCsrfFix::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {

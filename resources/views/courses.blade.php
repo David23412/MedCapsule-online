@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token() }}">
-    <title>Available Courses - MedCapsule</title>
+    <title>MedCapsule</title>
 
     <!-- Favicon -->
     <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 50'%3E%3Crect fill='%23007bff' x='10' y='15' width='80' height='20' rx='10' ry='10' /%3E%3Crect x='50' y='15' width='40' height='20' fill='%23ff0000' rx='0 10 10 0' ry='10'/%3E%3Cline x1='50' y1='15' x2='50' y2='35' stroke='white' stroke-width='1.5' stroke-dasharray='2,1'/%3E%3C/svg%3E">
@@ -175,17 +175,34 @@
         }
 
         .course-card {
-            flex: 0 0 400px;
+            flex: 0 0 420px; /* Increased from 400px */
             scroll-snap-align: start;
             background: white;
             border-radius: 16px;
             overflow: hidden;
             box-shadow: 0 3px 6px rgba(0, 0, 0, 0.08);
             transition: all 0.3s ease;
-            width: 400px;
-            border: 1px solid rgba(0, 0, 0, 0.05);
-            margin-bottom: 3rem; /* Increased space for progress bar */
-            transform: translateY(0); /* Reset base position */
+            width: 420px; /* Increased from 400px */
+            margin-bottom: 3rem;
+            transform: translateY(0);
+            position: relative;
+            /* Dynamic border system using CSS custom properties */
+            border: 2px solid var(--course-color, #3b82f6);
+            border-left: 8px solid var(--course-color, #3b82f6);
+        }
+
+        .course-card::before {
+            content: '';
+            position: absolute;
+            top: -2px;
+            left: -2px;
+            right: -2px;
+            bottom: -2px;
+            border: 2px solid var(--course-color, #3b82f6);
+            border-radius: 18px; /* Slightly larger than card border-radius */
+            z-index: -1;
+            opacity: 0.3;
+            transition: all 0.3s ease;
         }
 
         .course-card:hover {
@@ -195,7 +212,7 @@
 
         .course-image {
             position: relative;
-            height: 500px; /* Increased from 450px */
+            height: 520px; /* Increased from 500px to match wider cards */
             background-size: cover;
             background-position: center;
             background-repeat: no-repeat;
@@ -570,33 +587,10 @@
             display: none;
         }
 
-        .course-card.anatomy {
-            border-left: 4px solid #ff4444;
-        }
-        .course-card.anatomy .course-title {
-            color: #ff4444;
-        }
-
-        .course-card.histology {
-            border-left: 4px solid #ff66b2;
-        }
-        .course-card.histology .course-title {
-            color: #ff66b2;
-        }
-
-        .course-card.physiology {
-            border-left: 4px solid #ffeb3b;
-        }
-        .course-card.physiology .course-title {
-            color: #ffeb3b;
-            text-shadow: 1px 1px 1px rgba(0, 0, 0, 0.2);
-        }
-
-        .course-card.biochemistry {
-            border-left: 4px solid #9c27b0;
-        }
-        .course-card.biochemistry .course-title {
-            color: #9c27b0;
+        /* Dynamic course card styling - colors set via CSS custom properties */
+        .course-title {
+            color: var(--course-title-color, #FFFFFF) !important;
+            text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.3);
         }
 
         /* Milestone Progress Bar */
@@ -904,6 +898,23 @@
             background-size: 12px;
             padding-right: 2rem;
             min-width: 200px;
+        }
+
+        /* Ensure the default "All Courses" option is visible and dropdown shows text properly */
+        .semester-dropdown option:first-child {
+            font-weight: 600;
+            color: #007bff;
+        }
+
+        /* Make sure dropdown text is always visible */
+        .semester-dropdown {
+            text-align: left;
+            text-indent: 0.5rem;
+        }
+
+        /* Ensure dropdown shows selected text properly */
+        .semester-dropdown:invalid {
+            color: #007bff;
         }
 
         .semester-dropdown:hover {
@@ -1546,10 +1557,51 @@
 
     <div class="position-relative">
         <div class="semester-pills">
-            <select class="semester-dropdown" id="semesterDropdown">
-                <option value="Year 1- First semester">Year 1- First semester</option>
-                <option value="Year 1- Second semester">Year 1- Second semester</option>
-                <option value="Year 2- First semester">Year 2- First semester</option>
+            <select class="semester-dropdown" id="semesterDropdown" onchange="filterCoursesByAcademicYear()">
+                <option value="">All Courses</option>
+                @php
+                    $availableYears = $courses->pluck('academic_year')->filter()->unique()->sort();
+                    $medicalYears = $availableYears->filter(function($year) {
+                        return str_starts_with($year, 'year-');
+                    });
+                    $testPrep = $availableYears->filter(function($year) {
+                        return in_array($year, ['sat-prep', 'est-prep', 'act-prep']);
+                    });
+                    
+                    $yearLabels = [
+                        'year-1-sem-1' => 'Year 1 - First Semester',
+                        'year-1-sem-2' => 'Year 1 - Second Semester',
+                        'year-2-sem-1' => 'Year 2 - First Semester',
+                        'year-2-sem-2' => 'Year 2 - Second Semester',
+                        'year-3-sem-1' => 'Year 3 - First Semester',
+                        'year-3-sem-2' => 'Year 3 - Second Semester',
+                        'year-4-sem-1' => 'Year 4 - First Semester',
+                        'year-4-sem-2' => 'Year 4 - Second Semester',
+                        'year-5-sem-1' => 'Year 5 - First Semester',
+                        'year-5-sem-2' => 'Year 5 - Second Semester',
+                        'year-6-sem-1' => 'Year 6 - First Semester',
+                        'year-6-sem-2' => 'Year 6 - Second Semester',
+                        'sat-prep' => 'SAT Preparation',
+                        'est-prep' => 'EST Preparation',
+                        'act-prep' => 'ACT Preparation'
+                    ];
+                @endphp
+                
+                @if($medicalYears->isNotEmpty())
+                    <optgroup label="Medical School Years">
+                        @foreach($medicalYears as $year)
+                            <option value="{{ $year }}">{{ $yearLabels[$year] ?? $year }}</option>
+                        @endforeach
+                    </optgroup>
+                @endif
+                
+                @if($testPrep->isNotEmpty())
+                    <optgroup label="Standardized Tests">
+                        @foreach($testPrep as $year)
+                            <option value="{{ $year }}">{{ $yearLabels[$year] ?? $year }}</option>
+                        @endforeach
+                    </optgroup>
+                @endif
             </select>
             
             @guest
@@ -1566,8 +1618,9 @@
         
         <div class="courses-grid">
             @foreach ($courses as $course)
-                <div class="course-card {{ strtolower($course->name) }}" 
-                     style="border-left: 8px solid {{ $course->color }}; border-color: {{ $course->color }}"
+                <div class="course-card" 
+                     style="--course-color: {{ $course->color }}; --course-title-color: {{ $course->title_color }}"
+                     data-academic-year="{{ $course->academic_year }}"
                      data-semester="{{ $course->semester }}">
                     <div class="course-image" style="background-image: url('{{ $course->image_url }}')" onerror="this.style.backgroundImage = 'linear-gradient(135deg, #f5f7fa 0%, #e9ecef 100%)'">
                         <div class="info-icon">
@@ -1577,7 +1630,7 @@
                             </div>
                         </div>
                         <div class="course-overlay">
-                            <h3 class="course-title" style="color: {{ $course->title_color }}">{{ $course->name }}</h3>
+                            <h3 class="course-title">{{ $course->name }}</h3>
                         </div>
                     </div>
                     <div class="course-info">
@@ -2570,6 +2623,59 @@
                     });
                 });
             }
+        });
+
+        // Academic Year Filtering Function
+        function filterCoursesByAcademicYear() {
+            const selectedYear = document.getElementById('semesterDropdown').value;
+            const courseCards = document.querySelectorAll('.course-card');
+            
+            courseCards.forEach(card => {
+                const cardAcademicYear = card.getAttribute('data-academic-year');
+                
+                if (selectedYear === '' || cardAcademicYear === selectedYear) {
+                    card.style.display = 'block';
+                    card.style.opacity = '1';
+                } else {
+                    card.style.display = 'none';
+                    card.style.opacity = '0';
+                }
+            });
+            
+            // Update scroll arrows visibility after filtering
+            updateScrollArrows();
+        }
+
+        // Update scroll arrows based on filtered content
+        function updateScrollArrows() {
+            const coursesGrid = document.querySelector('.courses-grid');
+            const visibleCards = document.querySelectorAll('.course-card[style*="display: block"], .course-card:not([style*="display: none"])');
+            
+            if (visibleCards.length <= 3) {
+                document.querySelector('.scroll-left').style.display = 'none';
+                document.querySelector('.scroll-right').style.display = 'none';
+            } else {
+                document.querySelector('.scroll-left').style.display = 'flex';
+                document.querySelector('.scroll-right').style.display = 'flex';
+            }
+        }
+
+        // Initialize filtering on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            // Ensure all course cards are visible by default
+            const courseCards = document.querySelectorAll('.course-card');
+            courseCards.forEach(card => {
+                card.style.display = 'block';
+                card.style.opacity = '1';
+            });
+            
+            // Set dropdown to show "All Courses" by default
+            const dropdown = document.getElementById('semesterDropdown');
+            if (dropdown) {
+                dropdown.value = '';
+            }
+            
+            updateScrollArrows();
         });
     </script>
 </body>
