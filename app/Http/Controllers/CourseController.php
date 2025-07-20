@@ -17,7 +17,7 @@ class CourseController extends Controller
         
         // Admin-only routes
         $this->middleware(function ($request, $next) {
-            if (!auth()->user() || !auth()->user()->is_admin) {
+            if (!auth()->user() || auth()->user()->role !== 'admin') {
                 return redirect()->route('home')->with('error', 'Unauthorized access.');
             }
             return $next($request);
@@ -125,7 +125,7 @@ class CourseController extends Controller
         $isEnrolled = false;
 
         if ($user) {
-            if ($user->is_admin) {
+            if ($user->role === 'admin') {
                 $isEnrolled = true;
             } else {
                 // Use efficient query instead of model method

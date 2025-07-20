@@ -12,7 +12,7 @@ class QuestionController extends Controller
     {
         $this->middleware('auth');
         $this->middleware(function ($request, $next) {
-            if (!auth()->user()->is_admin) {
+            if (auth()->user()->role !== 'admin') {
                 return redirect()->route('home')->with('error', 'Unauthorized access.');
             }
             return $next($request);
@@ -21,7 +21,7 @@ class QuestionController extends Controller
 
     public function showAddQuestionForm()
     {
-        if (!auth()->user()->is_admin) {
+        if (auth()->user()->role !== 'admin') {
             abort(403);
         }
         $topics = Topic::all();
@@ -30,7 +30,7 @@ class QuestionController extends Controller
 
     public function storeQuestion(Request $request)
     {
-        if (!auth()->user()->is_admin) {
+        if (auth()->user()->role !== 'admin') {
             abort(403);
         }
 

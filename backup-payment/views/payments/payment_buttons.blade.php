@@ -1,5 +1,5 @@
 @if (auth()->check())
-    @if (Auth::user()->is_admin)
+    @if (Auth::user()->role === 'admin')
         <a href="{{ route('topics.forCourse', $course) }}" class="action-btn continue">
             <i class="fas fa-play"></i>
             Continue Learning

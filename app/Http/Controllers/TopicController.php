@@ -19,7 +19,7 @@ class TopicController extends Controller
     {
         $this->middleware('auth');
         $this->middleware(function ($request, $next) {
-            if (!auth()->user()->is_admin) {
+            if (auth()->user()->role !== 'admin') {
                 return redirect()->route('home')->with('error', 'Unauthorized access.');
             }
             return $next($request);
@@ -35,7 +35,7 @@ class TopicController extends Controller
         $user = auth()->user();
         
         // Allow access if user is admin, enrolled, or if course is free
-        if (!$user->is_admin && !$user->hasAccessToCourse($course->id) && $course->price && $course->price > 0) {
+        if ($user->role !== 'admin' && !$user->hasAccessToCourse($course->id) && $course->price && $course->price > 0) {
             // Check if user has a pending payment
             $pendingPayment = Payment::where('user_id', $user->id)
                 ->where('course_id', $course->id)
@@ -84,7 +84,7 @@ class TopicController extends Controller
      */
     public function showAddTopicForm()
     {
-        if (!auth()->user()->is_admin) {
+        if (auth()->user()->role !== 'admin') {
             abort(403);
         }
 
@@ -97,7 +97,7 @@ class TopicController extends Controller
      */
     public function addTopic(Request $request)
     {
-        if (!auth()->user()->is_admin) {
+        if (auth()->user()->role !== 'admin') {
             abort(403);
         }
 

@@ -1474,8 +1474,8 @@
                         <li class="nav-item dropdown">
                             <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-bs-toggle="dropdown">
                                 {{ Auth::user()->name }}
-                                @if(Auth::user()->is_admin)
-                                    <span class="badge bg-primary ms-1">Admin</span>
+                                @if(Auth::user()->role === 'admin')
+                                    <span class="badge bg-warning ms-1">👑 Admin</span>
                                 @endif
                             </a>
                             <ul class="dropdown-menu dropdown-menu-end">
@@ -1485,7 +1485,7 @@
                                 <li><a class="dropdown-item" href="{{ route('review.index') }}">
                                     <i class="fas fa-exclamation-circle me-2"></i>My Mistakes
                                 </a></li>
-                                @if(Auth::user()->is_admin)
+                                @if(Auth::user()->role === 'admin')
                                     <li><hr class="dropdown-divider"></li>
                                     <li><a class="dropdown-item" href="{{ route('admin.user-course') }}">
                                         <i class="fas fa-users-cog me-2"></i>Manage Access
@@ -1613,7 +1613,7 @@
                             </div>
                         </div>
                         @if (auth()->check())
-                            @if (Auth::user()->is_admin)
+                            @if (Auth::user()->role === 'admin')
                                 <a href="{{ route('topics.forCourse', $course) }}" class="action-btn continue">
                                     <i class="fas fa-play"></i>
                                     Continue Learning

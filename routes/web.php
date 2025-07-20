@@ -17,7 +17,10 @@ use App\Http\Controllers\{
     PaymentController,
     PaymentSettingsController,
     PaymentLogController,
-    DeleteController
+    DeleteController,
+    AssignmentController,
+    StudentAssignmentController,
+    TopicLockingController
 };
 use Illuminate\Support\Facades\DB;
 
@@ -202,6 +205,110 @@ Route::middleware('auth')->group(function () {
     Route::get('/topics/{topic}/source-progress', [TopicController::class, 'getSourceProgress'])
         ->name('topics.source-progress')
         ->middleware('auth');
+
+    // Assignment Management Routes (Admin & Tutor)
+    Route::middleware(['auth'])->prefix('assignments')->name('assignments.')->group(function () {
+        Route::get('/', [AssignmentController::class, 'index'])->name('index');
+        Route::get('/create', [AssignmentController::class, 'create'])->name('create');
+        Route::post('/', [AssignmentController::class, 'store'])->name('store');
+        Route::get('/{assignment}', [AssignmentController::class, 'show'])->name('show');
+        Route::get('/{assignment}/edit', [AssignmentController::class, 'edit'])->name('edit');
+        Route::put('/{assignment}', [AssignmentController::class, 'update'])->name('update');
+        Route::delete('/{assignment}', [AssignmentController::class, 'destroy'])->name('destroy');
+        
+        // Bulk assignment routes
+        Route::get('/bulk/create', [AssignmentController::class, 'bulkCreate'])->name('bulk.create');
+        Route::post('/bulk/store', [AssignmentController::class, 'bulkStore'])->name('bulk.store');
+        
+        // Analytics and reporting
+        Route::get('/analytics/dashboard', [AssignmentController::class, 'analytics'])->name('analytics');
+        
+        // AJAX endpoints
+        Route::post('/{assignment}/extend-deadline', [AssignmentController::class, 'extendDeadline'])
+            ->name('extend-deadline')
+            ->middleware(['throttle:10,1']);
+        Route::post('/{assignment}/mark-completed', [AssignmentController::class, 'markCompleted'])
+            ->name('mark-completed')
+            ->middleware(['throttle:30,1']);
+        Route::get('/counter/data', [AssignmentController::class, 'getCounterData'])
+            ->name('counter.data');
+        Route::get('/courses/{course}/topics', [AssignmentController::class, 'getTopicsForCourse'])
+            ->name('course.topics');
+        Route::get('/courses/{course}/students', [AssignmentController::class, 'getStudentsForCourse'])
+            ->name('course.students');
+        Route::post('/update-overdue', [AssignmentController::class, 'updateOverdue'])
+            ->name('update-overdue')
+            ->middleware(['throttle:5,1']);
+    });
+
+    // Student Assignment Routes
+    Route::middleware(['auth'])->prefix('student/assignments')->name('student.assignments.')->group(function () {
+        Route::get('/', [StudentAssignmentController::class, 'index'])->name('index');
+        Route::get('/{assignment}', [StudentAssignmentController::class, 'show'])->name('show');
+        Route::get('/history/completed', [StudentAssignmentController::class, 'history'])->name('history');
+        Route::post('/{assignment}/start', [StudentAssignmentController::class, 'start'])->name('start');
+        
+        // AJAX endpoints
+        Route::post('/{assignment}/complete', [StudentAssignmentController::class, 'complete'])
+            ->name('complete')
+            ->middleware(['throttle:30,1']);
+        Route::get('/{assignment}/countdown', [StudentAssignmentController::class, 'getCountdownData'])
+            ->name('countdown');
+        Route::get('/stats/performance', [StudentAssignmentController::class, 'getStats'])
+            ->name('stats');
+        Route::get('/course/{course_id}/assignments', [StudentAssignmentController::class, 'getAssignmentsForCourse'])
+            ->name('course.assignments');
+        Route::get('/widget/progress', [StudentAssignmentController::class, 'getProgressWidget'])
+            ->name('widget.progress');
+        Route::post('/{assignment}/request-extension', [StudentAssignmentController::class, 'requestExtension'])
+            ->name('request-extension')
+            ->middleware(['throttle:5,1']);
+    });
+
+    // Topic Locking Routes (Admin & Tutor)
+    Route::middleware(['auth'])->prefix('topic-locking')->name('topic-locking.')->group(function () {
+        Route::get('/', [TopicLockingController::class, 'index'])->name('index');
+        Route::get('/courses/{course}', [TopicLockingController::class, 'courseTopics'])->name('course');
+        
+        // Individual topic locking
+        Route::post('/topics/{topic}/lock', [TopicLockingController::class, 'lock'])
+            ->name('lock')
+            ->middleware(['throttle:30,1']);
+        Route::post('/topics/{topic}/unlock', [TopicLockingController::class, 'unlock'])
+            ->name('unlock')
+            ->middleware(['throttle:30,1']);
+        Route::post('/topics/{topic}/toggle', [TopicLockingController::class, 'toggle'])
+            ->name('toggle')
+            ->middleware(['throttle:30,1']);
+        
+        // Bulk operations
+        Route::post('/bulk/lock', [TopicLockingController::class, 'bulkLock'])
+            ->name('bulk.lock')
+            ->middleware(['throttle:10,1']);
+        Route::post('/bulk/unlock', [TopicLockingController::class, 'bulkUnlock'])
+            ->name('bulk.unlock')
+            ->middleware(['throttle:10,1']);
+        
+        // Course-wide operations
+        Route::post('/courses/{course}/lock-all', [TopicLockingController::class, 'lockCourse'])
+            ->name('course.lock')
+            ->middleware(['throttle:5,1']);
+        Route::post('/courses/{course}/unlock-all', [TopicLockingController::class, 'unlockCourse'])
+            ->name('course.unlock')
+            ->middleware(['throttle:5,1']);
+        
+        // AJAX endpoints
+        Route::get('/topics/{topic}/status', [TopicLockingController::class, 'getTopicStatus'])
+            ->name('topic.status');
+        Route::get('/topics/{topic}/student-access', [TopicLockingController::class, 'checkStudentAccess'])
+            ->name('student.access');
+        Route::get('/students/accessible-topics', [TopicLockingController::class, 'getAccessibleTopics'])
+            ->name('accessible.topics');
+        Route::get('/statistics', [TopicLockingController::class, 'getStatistics'])
+            ->name('statistics');
+        Route::get('/locked-topics', [TopicLockingController::class, 'getLockedTopics'])
+            ->name('locked.topics');
+    });
 });
 
 // Notification routes - simplified implementation
@@ -222,7 +329,7 @@ Route::get('/health', function() {
     return response()->json(['status' => 'ok'], 200);
 });
 
-// Tutor Routes
+// Tutor Routes (Admin & Tutor Access)
 Route::middleware(['auth', 'tutor'])->prefix('tutor')->name('tutor.')->group(function () {
     Route::get('/dashboard', [App\Http\Controllers\Tutor\TutorDashboardController::class, 'index'])->name('dashboard');
     Route::get('/student/{student_id}/profile', [App\Http\Controllers\Tutor\TutorDashboardController::class, 'showStudentProfile'])->name('student.profile');

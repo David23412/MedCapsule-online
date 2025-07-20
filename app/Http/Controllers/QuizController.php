@@ -25,6 +25,8 @@ use App\Services\QuizService;
 use App\Services\InputValidationService;
 use App\Services\DatabaseService;
 use App\Services\ResilientCacheService;
+use App\Models\Assignment;
+use App\Services\AssignmentService;
 
 class QuizController extends Controller 
 {
@@ -249,6 +251,9 @@ class QuizController extends Controller
             // SAFE CACHE INVALIDATION: Update caches with error handling
             ResilientCacheService::safeForget("user_progress_{$userId}_{$topic->id}");
             ResilientCacheService::safeForget("quiz_cache_{$userId}_{$topic->id}");
+            
+            // ASSIGNMENT INTEGRATION: Check and complete assignments
+            $this->handleAssignmentCompletion($userId, $topic->id, $gradingResult['data']['percentageGrade'] ?? 0);
             
             $processingTime = (microtime(true) - $startTime) * 1000;
             
@@ -692,6 +697,41 @@ class QuizController extends Controller
                     'line' => $e->getLine()
                 ] : null
             ], 500);
+        }
+    }
+
+    /**
+     * Handle assignment completion when quiz is completed
+     */
+    private function handleAssignmentCompletion(int $userId, int $topicId, float $percentageGrade): void
+    {
+        try {
+            // Find active assignments for this user and topic
+            $assignments = Assignment::where('student_id', $userId)
+                                   ->where('topic_id', $topicId)
+                                   ->where('status', Assignment::STATUS_ACTIVE)
+                                   ->get();
+
+            foreach ($assignments as $assignment) {
+                if ($assignment->canBeCompleted()) {
+                    // Complete the assignment with the quiz score
+                    $assignment->markAsCompleted((int) round($percentageGrade));
+                    
+                    Log::info('Assignment completed via quiz', [
+                        'assignment_id' => $assignment->id,
+                        'user_id' => $userId,
+                        'topic_id' => $topicId,
+                        'score' => round($percentageGrade)
+                    ]);
+                }
+            }
+        } catch (\Exception $e) {
+            // Don't let assignment completion failure affect quiz grading
+            Log::error('Failed to complete assignment after quiz', [
+                'user_id' => $userId,
+                'topic_id' => $topicId,
+                'error' => $e->getMessage()
+            ]);
         }
     }
 

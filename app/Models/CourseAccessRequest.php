@@ -14,15 +14,13 @@ class CourseAccessRequest extends Model
         'course_id',
         'status',
         'requested_at',
-        'approved_at',
-        'rejected_at',
-        'admin_notes'
+        'processed_at',
+        'notes'
     ];
 
     protected $casts = [
         'requested_at' => 'datetime',
-        'approved_at' => 'datetime',
-        'rejected_at' => 'datetime',
+        'processed_at' => 'datetime',
     ];
 
     public function user()

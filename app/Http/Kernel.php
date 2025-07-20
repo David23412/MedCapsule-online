@@ -74,5 +74,6 @@ class Kernel extends HttpKernel
         'aggressive.rate.limit' => \App\Http\Middleware\AggressiveRateLimitMiddleware::class,
         'sql.injection.protection' => \App\Http\Middleware\SqlInjectionProtectionMiddleware::class,
         'tutor' => \App\Http\Middleware\TutorMiddleware::class,
+        'role' => \App\Http\Middleware\RoleMiddleware::class,
     ];
 } 

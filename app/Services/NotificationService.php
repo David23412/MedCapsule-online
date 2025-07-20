@@ -73,6 +73,205 @@ class NotificationService
     }
 
     /**
+     * Create assignment-related notifications
+     */
+    public function createAssignmentNotification(
+        int $userId,
+        string $type,
+        string $title,
+        string $message,
+        array $assignmentData = []
+    ): Notification {
+        return $this->createNotification(
+            $userId,
+            $type,
+            $title,
+            $message,
+            array_merge(['category' => 'assignment'], $assignmentData)
+        );
+    }
+
+    /**
+     * Notify student about new assignment
+     */
+    public function notifyAssignmentCreated(\App\Models\Assignment $assignment): Notification
+    {
+        return $this->createAssignmentNotification(
+            $assignment->student_id,
+            'assignment_created',
+            'New Assignment: ' . $assignment->title,
+            "You have a new assignment from {$assignment->tutor->name} for {$assignment->topic->name}. Due: {$assignment->deadline->format('M j, Y g:i A')}",
+            [
+                'assignment_id' => $assignment->id,
+                'tutor_name' => $assignment->tutor->name,
+                'topic_name' => $assignment->topic->name,
+                'course_name' => $assignment->course->name,
+                'deadline' => $assignment->deadline->toISOString(),
+                'action_url' => route('student.assignments.show', $assignment->id)
+            ]
+        );
+    }
+
+    /**
+     * Notify student about deadline change
+     */
+    public function notifyDeadlineChanged(\App\Models\Assignment $assignment, \Carbon\Carbon $oldDeadline): Notification
+    {
+        return $this->createAssignmentNotification(
+            $assignment->student_id,
+            'assignment_deadline_changed',
+            'Assignment Deadline Updated',
+            "The deadline for '{$assignment->title}' has been changed from {$oldDeadline->format('M j, Y g:i A')} to {$assignment->deadline->format('M j, Y g:i A')}",
+            [
+                'assignment_id' => $assignment->id,
+                'old_deadline' => $oldDeadline->toISOString(),
+                'new_deadline' => $assignment->deadline->toISOString(),
+                'action_url' => route('student.assignments.show', $assignment->id)
+            ]
+        );
+    }
+
+    /**
+     * Notify about assignment completion
+     */
+    public function notifyAssignmentCompleted(\App\Models\Assignment $assignment): array
+    {
+        $notifications = [];
+
+        // Notify student
+        $notifications['student'] = $this->createAssignmentNotification(
+            $assignment->student_id,
+            'assignment_completed',
+            'Assignment Completed!',
+            "Great job! You've completed '{$assignment->title}'" . ($assignment->score ? " with a score of {$assignment->score}%" : ""),
+            [
+                'assignment_id' => $assignment->id,
+                'score' => $assignment->score,
+                'completed_at' => $assignment->completed_at->toISOString()
+            ]
+        );
+
+        // Notify tutor
+        $notifications['tutor'] = $this->createAssignmentNotification(
+            $assignment->tutor_id,
+            'student_completed_assignment',
+            'Student Completed Assignment',
+            "{$assignment->student->name} has completed '{$assignment->title}'" . ($assignment->score ? " with a score of {$assignment->score}%" : ""),
+            [
+                'assignment_id' => $assignment->id,
+                'student_name' => $assignment->student->name,
+                'score' => $assignment->score,
+                'completed_at' => $assignment->completed_at->toISOString(),
+                'action_url' => route('assignments.show', $assignment->id)
+            ]
+        );
+
+        return $notifications;
+    }
+
+    /**
+     * Send deadline reminder notifications
+     */
+    public function sendDeadlineReminders(): int
+    {
+        $sentCount = 0;
+        
+        // Get assignments due within 24 hours that haven't been reminded
+        $assignments = \App\Models\Assignment::with(['student', 'tutor', 'topic', 'course'])
+            ->where('status', \App\Models\Assignment::STATUS_ACTIVE)
+            ->where('deadline', '<=', now()->addHours(24))
+            ->where('deadline', '>', now())
+            ->whereDoesntHave('notifications', function($query) {
+                $query->where('type', 'assignment_reminder')
+                      ->where('created_at', '>=', now()->subHours(12));
+            })
+            ->get();
+
+        foreach ($assignments as $assignment) {
+            try {
+                $this->createAssignmentNotification(
+                    $assignment->student_id,
+                    'assignment_reminder',
+                    'Assignment Due Soon!',
+                    "Reminder: '{$assignment->title}' is due {$assignment->deadline->diffForHumans()}",
+                    [
+                        'assignment_id' => $assignment->id,
+                        'deadline' => $assignment->deadline->toISOString(),
+                        'time_remaining' => $assignment->getTimeRemaining(),
+                        'action_url' => route('student.assignments.show', $assignment->id)
+                    ]
+                );
+                $sentCount++;
+            } catch (\Exception $e) {
+                Log::error('Failed to send assignment reminder', [
+                    'assignment_id' => $assignment->id,
+                    'error' => $e->getMessage()
+                ]);
+            }
+        }
+
+        return $sentCount;
+    }
+
+    /**
+     * Send overdue assignment notifications
+     */
+    public function sendOverdueNotifications(): int
+    {
+        $sentCount = 0;
+        
+        // Get assignments that just became overdue
+        $assignments = \App\Models\Assignment::with(['student', 'tutor', 'topic', 'course'])
+            ->where('status', \App\Models\Assignment::STATUS_OVERDUE)
+            ->where('deadline', '>=', now()->subHours(1))
+            ->whereDoesntHave('notifications', function($query) {
+                $query->where('type', 'assignment_overdue')
+                      ->where('created_at', '>=', now()->subHours(2));
+            })
+            ->get();
+
+        foreach ($assignments as $assignment) {
+            try {
+                // Notify student
+                $this->createAssignmentNotification(
+                    $assignment->student_id,
+                    'assignment_overdue',
+                    'Assignment Overdue',
+                    "'{$assignment->title}' is now overdue. Please complete it as soon as possible or request an extension.",
+                    [
+                        'assignment_id' => $assignment->id,
+                        'overdue_by' => $assignment->deadline->diffForHumans(),
+                        'action_url' => route('student.assignments.show', $assignment->id)
+                    ]
+                );
+
+                // Notify tutor
+                $this->createAssignmentNotification(
+                    $assignment->tutor_id,
+                    'assignment_overdue_tutor',
+                    'Student Assignment Overdue',
+                    "{$assignment->student->name}'s assignment '{$assignment->title}' is now overdue.",
+                    [
+                        'assignment_id' => $assignment->id,
+                        'student_name' => $assignment->student->name,
+                        'overdue_by' => $assignment->deadline->diffForHumans(),
+                        'action_url' => route('assignments.show', $assignment->id)
+                    ]
+                );
+
+                $sentCount += 2; // Count both student and tutor notifications
+            } catch (\Exception $e) {
+                Log::error('Failed to send overdue notification', [
+                    'assignment_id' => $assignment->id,
+                    'error' => $e->getMessage()
+                ]);
+            }
+        }
+
+        return $sentCount;
+    }
+
+    /**
      * Create a level up notification.
      */
     public function createLevelUpNotification(User $user, int $newLevel, int $xpNeeded): Notification

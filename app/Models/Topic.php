@@ -27,7 +27,18 @@ class Topic extends Model
         'description',
         'display_order',
         'case_type',
-        'cache_version'
+        'cache_version',
+        'is_locked',
+        'locked_by_tutor_id',
+        'lock_reason',
+        'locked_at',
+        'unlocked_at'
+    ];
+
+    protected $casts = [
+        'is_locked' => 'boolean',
+        'locked_at' => 'datetime',
+        'unlocked_at' => 'datetime'
     ];
 
     // Append dynamic properties to the model
@@ -64,6 +75,11 @@ class Topic extends Model
     public function userProgress()
     {
         return $this->hasMany(UserTopicProgress::class);
+    }
+
+    public function lockedByTutor(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'locked_by_tutor_id');
     }
 
     public function getCurrentUserProgressAttribute()

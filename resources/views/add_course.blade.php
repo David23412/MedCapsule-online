@@ -87,10 +87,26 @@
 <body class="bg-light">
     <nav class="navbar navbar-expand-lg navbar-light mb-4">
         <div class="container">
-            <a class="navbar-brand" href="/">MedCapsule</a>
-            <a href="{{ route('courses.index') }}" class="btn btn-outline-primary">
-                <i class="fas fa-arrow-left"></i> Back to Courses
+            <a class="navbar-brand" href="/">
+                <i class="fas fa-capsules me-2"></i>MedCapsule Admin
             </a>
+            <div class="navbar-nav ms-auto">
+                <a href="{{ route('assignments.create') }}" class="nav-link">
+                    <i class="fas fa-plus me-1"></i>Create Assignment
+                </a>
+                <a href="{{ route('assignments.index') }}" class="nav-link">
+                    <i class="fas fa-clipboard-list me-1"></i>Manage Assignments
+                </a>
+                <a href="{{ route('add-topic.form') }}" class="nav-link">
+                    <i class="fas fa-plus-circle me-1"></i>Add Topic
+                </a>
+                <a href="{{ route('add-question.form') }}" class="nav-link">
+                    <i class="fas fa-question-circle me-1"></i>Add Question
+                </a>
+                <a href="{{ route('courses.index') }}" class="btn btn-outline-primary ms-2">
+                    <i class="fas fa-arrow-left"></i> Back to Courses
+                </a>
+            </div>
         </div>
     </nav>
 

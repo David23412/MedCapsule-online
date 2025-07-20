@@ -520,6 +520,14 @@
                     @endif
                 </div>
                 <div class="col-md-4 text-end">
+                    <div class="btn-group me-2" role="group">
+                        <a href="{{ route('assignments.create') }}" class="btn btn-success">
+                            <i class="fas fa-plus"></i> Create Assignment
+                        </a>
+                        <a href="{{ route('assignments.index') }}" class="btn btn-outline-success">
+                            <i class="fas fa-clipboard-list"></i> Manage
+                        </a>
+                    </div>
                     <button class="btn btn-outline-primary me-2" onclick="exportGradeReports()">
                         <i class="fas fa-file-export"></i> Export Reports
                     </button>

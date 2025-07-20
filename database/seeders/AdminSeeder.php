@@ -14,9 +14,9 @@ class AdminSeeder extends Seeder
         $user = User::where('email', $email)->first();
 
         if ($user) {
-            if (!$user->is_admin) {
+            if ($user->role !== 'admin') {
                 $this->command->info('User exists. Making them admin...');
-                $user->update(['is_admin' => true]);
+                $user->update(['role' => 'admin']);
                 $this->command->info('User is now an admin!');
             } else {
                 $this->command->info('User already exists and is already an admin!');
@@ -26,7 +26,7 @@ class AdminSeeder extends Seeder
                 'name' => 'Admin',
                 'email' => $email,
                 'password' => Hash::make('password'),
-                'is_admin' => true
+                'role' => 'admin'
             ]);
             $this->command->info('Admin user created successfully!');
         }

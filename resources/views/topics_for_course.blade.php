@@ -4,30 +4,23 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token() }}">
-    <title>MedCapsule</title>
+    <title>{{ $course->name }} Topics - MedCapsule</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-    <!-- Favicon -->
-    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 50'%3E%3Crect fill='%23007bff' x='10' y='15' width='80' height='20' rx='10' ry='10' /%3E%3Crect x='50' y='15' width='40' height='20' fill='%23ff0000' rx='0 10 10 0' ry='10'/%3E%3Cline x1='50' y1='15' x2='50' y2='35' stroke='white' stroke-width='1.5' stroke-dasharray='2,1'/%3E%3C/svg%3E">
-    <link rel="shortcut icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 50'%3E%3Crect fill='%23007bff' x='10' y='15' width='80' height='20' rx='10' ry='10' /%3E%3Crect x='50' y='15' width='40' height='20' fill='%23ff0000' rx='0 10 10 0' ry='10'/%3E%3Cline x1='50' y1='15' x2='50' y2='35' stroke='white' stroke-width='1.5' stroke-dasharray='2,1'/%3E%3C/svg%3E">
-    <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 50'%3E%3Crect fill='%23007bff' x='10' y='15' width='80' height='20' rx='10' ry='10' /%3E%3Crect x='50' y='15' width='40' height='20' fill='%23ff0000' rx='0 10 10 0' ry='10'/%3E%3Cline x1='50' y1='15' x2='50' y2='35' stroke='white' stroke-width='1.5' stroke-dasharray='2,1'/%3E%3C/svg%3E">
     <style>
-        body {
-            zoom: 0.85;
-            -webkit-text-size-adjust: 100%; /* Prevent Safari text auto-sizing */
-        }
-        
-        /* Topics page zoom fix - 80% scale */
-        html {
-            font-size: 12.8px; /* 80% of 16px */
-        }
-        
         body {
             font-family: 'Poppins', sans-serif;
             background-color: #f8f9fa;
             margin: 0;
             padding: 0;
+            zoom: 0.8;
+        }
+
+        /* Fix modal backdrop blue overlay issue */
+        .modal-backdrop {
+            background-color: rgba(0, 0, 0, 0.5) !important;
+            backdrop-filter: none !important;
         }
 
         .navbar {
@@ -217,16 +210,16 @@
         .particle:nth-child(8) { top: 35%; right: 45%; animation: float-particle 7.8s infinite 3.5s; }
 
         .topics-container {
-            max-width: 1000px;
+            max-width: 1100px;
             margin: 0 auto;
-            padding: 1.5rem;
+            padding: 2rem;
         }
 
         .topic-card {
             background: white;
             border-radius: 12px;
-            padding: 1.5rem;
-            margin-bottom: 1.2rem;
+            padding: 2rem;
+            margin-bottom: 1.5rem;
             box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
             transition: all 0.3s ease;
             animation: slideIn 0.5s ease-out forwards;
@@ -245,12 +238,12 @@
             display: flex;
             justify-content: space-between;
             align-items: flex-start;
-            margin-bottom: 1.2rem;
+            margin-bottom: 1.5rem;
         }
 
         .topic-main {
             flex: 1;
-            padding-right: 1.5rem;
+            padding-right: 2rem;
         }
 
         .topic-name {
@@ -1268,207 +1261,6 @@
             color: #007bff;
             font-weight: 500;
         }
-
-        /* GOLDEN STANDARD: Mobile Responsive Design */
-        @media (max-width: 768px) {
-            .topics-container {
-                padding: 1rem;
-            }
-            
-            .topic-card {
-                padding: 1.2rem;
-                margin-bottom: 1rem;
-            }
-            
-            .topic-info {
-                flex-direction: column;
-                align-items: stretch;
-                margin-bottom: 1rem;
-            }
-            
-            .topic-main {
-                padding-right: 0;
-                margin-bottom: 1rem;
-            }
-            
-            .topic-name {
-                font-size: 1.2rem;
-                margin-bottom: 0.6rem;
-            }
-            
-            .grade-badge {
-                align-self: flex-start;
-                margin-bottom: 1rem;
-            }
-            
-            .progress-container {
-                margin-top: 1rem;
-            }
-            
-            .topic-actions {
-                flex-direction: column;
-                align-items: stretch;
-                gap: 0.8rem;
-            }
-            
-            .stat-item {
-                justify-content: center;
-                font-size: 0.85rem;
-            }
-            
-            .start-quiz-btn {
-                width: 100%;
-                justify-content: center;
-                padding: 1rem;
-                margin-top: 0;
-            }
-            
-            .course-header {
-                padding: 3rem 1rem 2rem;
-            }
-            
-            .course-progress {
-                max-width: 300px;
-                padding: 1rem 1.5rem;
-                gap: 1rem;
-            }
-            
-            .progress-circle {
-                width: 48px;
-                height: 48px;
-                font-size: 1rem;
-            }
-            
-            .progress-text-title {
-                font-size: 1.1rem;
-            }
-            
-            .progress-text-subtitle {
-                font-size: 0.9rem;
-            }
-            
-            .case-filters {
-                padding: 1rem;
-                gap: 0.5rem;
-                flex-wrap: wrap;
-            }
-            
-            .case-filter {
-                padding: 0.5rem 0.8rem;
-                font-size: 0.85rem;
-            }
-            
-            .case-filter .count {
-                font-size: 0.75rem;
-            }
-            
-            .nav-link, .random-link, .mistakes-link {
-                padding: 0.5rem 0.8rem;
-                font-size: 0.85rem;
-            }
-        }
-
-        /* Extra small devices (phones, less than 576px) */
-        @media (max-width: 575.98px) {
-            .topics-container {
-                padding: 0.8rem;
-            }
-            
-            .topic-card {
-                padding: 1rem;
-                margin-bottom: 0.8rem;
-            }
-            
-            .topic-name {
-                font-size: 1.1rem;
-                gap: 0.5rem;
-            }
-            
-            .topic-name i {
-                font-size: 0.9rem;
-            }
-            
-            .grade-badge {
-                padding: 0.3rem 0.8rem;
-                font-size: 0.8rem;
-            }
-            
-            .progress-container {
-                margin-top: 0.8rem;
-            }
-            
-            .progress {
-                height: 8px;
-                margin-bottom: 0.6rem;
-            }
-            
-            .progress-label {
-                font-size: 0.75rem;
-            }
-            
-            .start-quiz-btn {
-                padding: 0.8rem;
-                font-size: 0.9rem;
-            }
-            
-            .course-header {
-                padding: 2.5rem 0.8rem 1.5rem;
-            }
-            
-            .course-progress {
-                max-width: 280px;
-                padding: 0.8rem 1.2rem;
-                gap: 0.8rem;
-            }
-            
-            .progress-circle {
-                width: 42px;
-                height: 42px;
-                font-size: 0.9rem;
-            }
-            
-            .progress-text-title {
-                font-size: 1rem;
-            }
-            
-            .progress-text-subtitle {
-                font-size: 0.8rem;
-            }
-            
-            .case-filters {
-                padding: 0.8rem;
-                gap: 0.4rem;
-                overflow-x: auto;
-                flex-wrap: nowrap;
-                scrollbar-width: none;
-                -ms-overflow-style: none;
-            }
-            
-            .case-filters::-webkit-scrollbar {
-                display: none;
-            }
-            
-            .case-filter {
-                padding: 0.4rem 0.7rem;
-                font-size: 0.8rem;
-                white-space: nowrap;
-                flex-shrink: 0;
-            }
-            
-            .case-filter i {
-                font-size: 0.75rem;
-            }
-            
-            .nav-link, .random-link, .mistakes-link {
-                padding: 0.4rem 0.7rem;
-                font-size: 0.8rem;
-                white-space: nowrap;
-            }
-            
-            .last-attempt {
-                font-size: 0.8rem;
-            }
-        }
     </style>
 </head>
 <body>
@@ -1519,16 +1311,7 @@
                             <div class="courses-container">
                                 @php
                                     $user = auth()->user();
-                                    if ($user->is_admin) {
-                                        $courses = \App\Models\Course::all();
-                                    } else {
-                                        $enrolled = $user->courses()->pluck('courses.id')->toArray();
-                                        $free = \App\Models\Course::where(function($query) {
-                                            $query->where('price', 0)->orWhereNull('price');
-                                        })->pluck('id')->toArray();
-                                        $allIds = array_unique(array_merge($enrolled, $free));
-                                        $courses = \App\Models\Course::whereIn('id', $allIds)->get();
-                                    }
+                                    $courses = $user->role === 'admin' ? \App\Models\Course::all() : $user->courses;
                                 @endphp
                                 @foreach($courses as $course)
                                     <div class="form-check custom-checkbox">

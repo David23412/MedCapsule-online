@@ -243,7 +243,7 @@ class User extends Authenticatable
     public function assignedStudents()
     {
         return $this->belongsToMany(User::class, 'tutor_student_relationships', 'tutor_id', 'student_id')
-                    ->where('role', self::ROLE_STUDENT)
+                    ->where('users.role', self::ROLE_STUDENT)
                     ->withPivot('assigned_at')
                     ->withTimestamps();
     }
@@ -256,7 +256,7 @@ class User extends Authenticatable
     public function assignedTutors()
     {
         return $this->belongsToMany(User::class, 'tutor_student_relationships', 'student_id', 'tutor_id')
-                    ->where('role', self::ROLE_TUTOR)
+                    ->where('users.role', self::ROLE_TUTOR)
                     ->withPivot('assigned_at')
                     ->withTimestamps();
     }

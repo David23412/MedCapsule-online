@@ -14,7 +14,7 @@ class UserCourseController extends Controller
     {
         $this->middleware('auth');
         $this->middleware(function ($request, $next) {
-            if (!auth()->user()->is_admin) {
+            if (auth()->user()->role !== 'admin') {
                 return redirect()->route('home')->with('error', 'Unauthorized access.');
             }
             return $next($request);
@@ -23,7 +23,7 @@ class UserCourseController extends Controller
 
     public function index()
     {
-        if (!auth()->user()->is_admin) {
+        if (auth()->user()->role !== 'admin') {
             return redirect()->route('courses.index')->with('error', 'Unauthorized access');
         }
         
@@ -34,7 +34,7 @@ class UserCourseController extends Controller
         $userStats = [
             'total_users' => User::count(),
             'active_users' => User::where('last_active_at', '>=', now()->subDays(7))->count(),
-            'admin_users' => User::where('is_admin', true)->count(),
+            'admin_users' => User::where('role', 'admin')->count(),
             'total_enrollments' => DB::table('course_user')->count(),
         ];
         
@@ -135,7 +135,7 @@ class UserCourseController extends Controller
 
     public function searchUsers(Request $request)
     {
-        if (!auth()->user()->is_admin) {
+        if (auth()->user()->role !== 'admin') {
             abort(403);
         }
         $query = $request->input('query');
@@ -150,7 +150,7 @@ class UserCourseController extends Controller
 
     public function enroll(Request $request)
     {
-        if (!auth()->user()->is_admin) {
+        if (auth()->user()->role !== 'admin') {
             abort(403);
         }
         $request->validate([
@@ -185,27 +185,27 @@ class UserCourseController extends Controller
 
     public function toggleAdmin(Request $request)
     {
-        if (!auth()->user()->is_admin) {
+        if (auth()->user()->role !== 'admin') {
             abort(403);
         }
         $request->validate(['user_id' => 'required|exists:users,id']);
         $user = User::findOrFail($request->user_id);
 
         // Preventing removal of admin status from the last admin
-        if ($user->is_admin && User::where('is_admin', true)->count() <= 1) {
+        if ($user->role === 'admin' && User::where('role', 'admin')->count() <= 1) {
             return response()->json([
                 'success' => false,
                 'message' => 'Cannot remove admin status from the last admin user.'
             ], 400);
         }
 
-        $user->is_admin = !$user->is_admin;
+        $user->role = $user->role === 'admin' ? 'student' : 'admin';
         $user->save();
 
         return response()->json([
             'success' => true,
-            'message' => $user->is_admin ? 'Admin privileges granted' : 'Admin privileges revoked',
-            'is_admin' => $user->is_admin
+            'message' => $user->role === 'admin' ? 'Admin privileges granted' : 'Admin privileges revoked',
+            'is_admin' => $user->role === 'admin'
         ]);
     }
 

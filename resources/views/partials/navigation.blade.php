@@ -24,8 +24,10 @@
                     <li class="nav-item dropdown">
                         <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
                             {{ Auth::user()->name }}
-                            @if(Auth::user()->is_admin)
-                                <span class="badge bg-primary ms-1">Admin</span>
+                            @if(Auth::user()->role === 'admin')
+                                <span class="badge bg-warning ms-1">👑 Admin</span>
+                            @elseif(Auth::user()->role === 'tutor')
+                                <span class="badge bg-info ms-1">📚 Tutor</span>
                             @endif
                         </a>
                         <ul class="dropdown-menu dropdown-menu-end">
@@ -61,7 +63,31 @@
                                     <i class="fas fa-exclamation-circle me-2"></i>My Mistakes
                                 </a>
                             </li>
-                            @if(Auth::user()->is_admin)
+                            @if(Auth::user()->role === 'admin')
+                                <li><hr class="dropdown-divider"></li>
+                                <li class="dropdown-header">
+                                    <i class="fas fa-crown me-2 text-warning"></i>Admin Controls
+                                </li>
+                                <li>
+                                    <a class="dropdown-item" href="{{ route('assignments.index') }}">
+                                        <i class="fas fa-clipboard-list me-2"></i>Assignment Management
+                                    </a>
+                                </li>
+                                <li>
+                                    <a class="dropdown-item" href="{{ route('assignments.create') }}">
+                                        <i class="fas fa-plus me-2"></i>Create Assignment
+                                    </a>
+                                </li>
+                                <li>
+                                    <a class="dropdown-item" href="{{ route('assignments.bulk.create') }}">
+                                        <i class="fas fa-layer-group me-2"></i>Bulk Assignments
+                                    </a>
+                                </li>
+                                <li>
+                                    <a class="dropdown-item" href="{{ route('topic-locking.index') }}">
+                                        <i class="fas fa-lock me-2"></i>Topic Management
+                                    </a>
+                                </li>
                                 <li><hr class="dropdown-divider"></li>
                                 <li>
                                     <a class="dropdown-item" href="{{ route('admin.user-course') }}">
@@ -84,16 +110,7 @@
                                     </a>
                                 </li>
                             @endif
-                            @auth
-                                @if(auth()->user()->isAdmin() || auth()->user()->isTutor())
-                                    <li><hr class="dropdown-divider"></li>
-                                    <li>
-                                        <a class="dropdown-item" href="{{ route('tutor.dashboard') }}">
-                                            <i class="fas fa-chalkboard-teacher me-2"></i> Tutor Dashboard
-                                        </a>
-                                    </li>
-                                @endif
-                            @endauth
+
                             <li><hr class="dropdown-divider"></li>
                             <li>
                                 <a class="dropdown-item" href="{{ route('profile') }}">

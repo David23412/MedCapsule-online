@@ -33,7 +33,6 @@ class QuestionFactory extends Factory
             'created_at' => $this->faker->dateTimeBetween('-1 year', 'now'),
             'updated_at' => $this->faker->dateTimeBetween('-1 month', 'now'),
             'question_type' => $questionType,
-            'difficulty' => $this->faker->randomElement(['easy', 'medium', 'hard']),
         ];
 
         // Add type-specific data

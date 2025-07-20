@@ -20,7 +20,12 @@ class CheckCourseAccess
             return $next($request);
         }
 
-        if (!$user->is_admin && !$user->hasAccessToCourse($courseId)) {
+        // Admin has complete access to all courses (including paid ones)
+        if ($user->role === 'admin') {
+            return $next($request);
+        }
+
+        if (!$user->hasAccessToCourse($courseId)) {
             return redirect()->route('courses.index')
                 ->with('error', 'Access denied. Please contact an administrator to request access to this course.');
         }

@@ -63,6 +63,29 @@
     </style>
 </head>
 <body class="bg-light">
+    <!-- Admin Navigation -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+        <div class="container">
+            <a class="navbar-brand" href="/">
+                <i class="fas fa-capsules me-2"></i>MedCapsule Admin
+            </a>
+            <div class="navbar-nav ms-auto">
+                <a href="{{ route('assignments.create') }}" class="nav-link">
+                    <i class="fas fa-plus me-1"></i>Create Assignment
+                </a>
+                <a href="{{ route('assignments.index') }}" class="nav-link">
+                    <i class="fas fa-clipboard-list me-1"></i>Manage Assignments
+                </a>
+                <a href="{{ route('add-course.form') }}" class="nav-link">
+                    <i class="fas fa-graduation-cap me-1"></i>Add Course
+                </a>
+                <a href="{{ route('add-question.form') }}" class="nav-link">
+                    <i class="fas fa-question-circle me-1"></i>Add Question
+                </a>
+            </div>
+        </div>
+    </nav>
+
     <div class="container mt-5">
         <div class="card shadow">
             <div class="card-header bg-primary text-white text-center">
