@@ -12,7 +12,21 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.5.1/dist/confetti.browser.min.js"></script>
+
+    
+    <!-- TUTOR MODE AUDIO SYSTEM -->
+    <audio id="correctChimeSound" preload="auto" volume="0.7">
+        <source src="/sounds/correct-chime.mp3" type="audio/mpeg">
+    </audio>
+    <audio id="wrongAnswerSound" preload="auto" volume="0.7">
+        <source src="/sounds/quiz-wrong.mp3" type="audio/mpeg">
+    </audio>
+    <audio id="quizPerfectSound" preload="auto" volume="0.7">
+        <source src="/sounds/quiz-perfect.mp3" type="audio/mpeg">
+    </audio>
+    <audio id="quizPartialSound" preload="auto" volume="0.7">
+        <source src="/sounds/quiz-partial.mp3" type="audio/mpeg">
+    </audio>
     <!-- Favicon -->
     <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 50'%3E%3Crect fill='%23007bff' x='10' y='15' width='80' height='20' rx='10' ry='10' /%3E%3Crect x='50' y='15' width='40' height='20' fill='%23ff0000' rx='0 10 10 0' ry='10'/%3E%3Cline x1='50' y1='15' x2='50' y2='35' stroke='white' stroke-width='1.5' stroke-dasharray='2,1'/%3E%3C/svg%3E">
     <link rel="shortcut icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 50'%3E%3Crect fill='%23007bff' x='10' y='15' width='80' height='20' rx='10' ry='10' /%3E%3Crect x='50' y='15' width='40' height='20' fill='%23ff0000' rx='0 10 10 0' ry='10'/%3E%3Cline x1='50' y1='15' x2='50' y2='35' stroke='white' stroke-width='1.5' stroke-dasharray='2,1'/%3E%3C/svg%3E">
@@ -545,15 +559,102 @@
             }
         }
 
+        @keyframes slideDown {
+            from { transform: translateY(-20px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+
+        @keyframes scaleIn {
+            from { transform: scale(0.8); opacity: 0; }
+            to { transform: scale(1); opacity: 1; }
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .grade-icon {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+            animation: bounce 1s ease infinite;
+        }
+
+        @keyframes bounce {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
+        }
+
+        .grade-icon.perfect i {
+            color: #FFD700 !important;
+            text-shadow: 0 0 10px rgba(255, 215, 0, 0.5);
+        }
+
+        .grade-icon.good i {
+            color: #40a9ff !important;
+            text-shadow: 0 0 10px rgba(64, 169, 255, 0.5);
+        }
+
+        .grade-icon.needs-improvement i {
+            color: #ff4d4f !important;
+            text-shadow: 0 0 10px rgba(255, 77, 79, 0.5);
+        }
+
+
+
         @media (max-width: 768px) {
             .popup-buttons {
                 flex-direction: column;
         }
 
-            .popup-btn {
-                width: 100%;
-                justify-content: center;
-            }
+        .popup-buttons {
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+            flex-wrap: wrap;
+            margin-top: 2rem;
+            animation: fadeIn 0.5s ease-out 0.6s both;
+        }
+
+        .popup-btn {
+            padding: 1rem 2rem;
+            border: none;
+            border-radius: 12px;
+            font-weight: 600;
+            font-size: 1.1rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 0.8rem;
+            text-decoration: none !important;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .retry-btn {
+            background: #007bff !important;
+            color: white !important;
+        }
+
+        .retry-btn:hover {
+            background: #0056b3 !important;
+            color: white !important;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 12px rgba(0, 123, 255, 0.2);
+            text-decoration: none !important;
+        }
+
+        .view-progress-btn {
+            background: #28a745 !important;
+            color: white !important;
+        }
+
+        .view-progress-btn:hover {
+            background: #218838 !important;
+            color: white !important;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 12px rgba(40, 167, 69, 0.2);
+            text-decoration: none !important;
         }
     </style>
 </head>
@@ -670,20 +771,21 @@
         <source src="{{ asset('sounds/quiz-wrong.mp3') }}" type="audio/mpeg">
     </audio>
 
-    <!-- Quiz Results Popup -->
+    <!-- Quiz Results Popup - EXACT COPY FROM SOLVE_QUIZ -->
     <div class="popup-overlay" id="popup-overlay">
         <div class="popup" id="popup">
             <div class="grade-icon" id="grade-icon"></div>
             <h2 class="popup-title" id="popup-title">Quiz Complete!</h2>
             <div class="score-container">
                 <div class="popup-score" id="popup-score">0/0</div>
+                <div class="score-details" id="score-details"></div>
             </div>
             <p class="popup-message" id="popup-message">Keep practicing! You're getting there!</p>
             <div class="popup-buttons">
-                <a href="{{ route('review.index', ['course' => $course->id]) }}" class="popup-btn review-btn" id="review-btn">
-                    <i class="fas fa-search"></i>
-                    Review Mistakes
-                </a>
+                <button class="popup-btn retry-btn" id="retry-btn" onclick="window.location.reload()">
+                    <i class="fas fa-redo"></i>
+                    Retry Quiz
+                </button>
                 <a href="{{ route('topics.forCourse', ['course' => $course->id]) }}" class="popup-btn view-progress-btn" id="view-progress-btn">
                     <i class="fas fa-chart-line"></i>
                     Back to Topics
@@ -696,6 +798,33 @@
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js?v={{ time() }}"></script>
     
     <script>
+        // LIGHTNING FAST FUNCTION DEFINITIONS 🚀
+        function selectOption(element) {
+            try {
+                const container = element.closest('.options-container');
+                if (!container) return;
+                
+                // OPTIMIZED: Remove selected from siblings only
+                const siblings = container.querySelectorAll('.option-card');
+                siblings.forEach(opt => opt.classList.remove('selected'));
+                
+                // CLEAN SELECTION FEEDBACK
+                element.classList.add('selected');
+                
+            } catch (error) {
+                console.error('selectOption error:', error);
+            }
+        }
+
+        // OPTIMIZED EVENT DELEGATION FOR BETTER PERFORMANCE
+        document.addEventListener('DOMContentLoaded', function() {
+            document.addEventListener('click', function(e) {
+                if (e.target.closest('.option-card')) {
+                    selectOption(e.target.closest('.option-card'));
+                }
+            });
+        });
+
         // [FIX] REMOVE INFINITE RELOAD LOOP
         // if (window.performance && window.performance.navigation.type === window.performance.navigation.TYPE_RELOAD) {
         //     window.location.reload(true);
@@ -737,24 +866,19 @@
             progressText.textContent = `${completed} of ${total} questions completed`;
         }
 
-        // Function to select an option
-        function selectOption(element) {
-            // Remove selected class from all options in this container
-            const container = element.closest('.options-container');
-            container.querySelectorAll('.option-card').forEach(opt => {
-                opt.classList.remove('selected');
-            });
-            // Add selected class to clicked option
-            element.classList.add('selected');
-        }
+
 
         // Function to check answer
+        // LIGHTNING FAST OPTIMIZED ANSWER CHECKING 🚀
         function checkAnswer(questionNumber, questionId) {
+            const startTime = performance.now();
             const questionCard = document.getElementById(`question-${questionNumber}`);
             const writtenAnswer = questionCard.querySelector('.written-answer');
             const selectedOption = questionCard.querySelector('.option-card.selected');
+            const checkBtn = questionCard.querySelector('.check-answer');
+            
+            // INSTANT VALIDATION
             let answer = '';
-
             if (writtenAnswer) {
                 answer = writtenAnswer.value.trim();
             } else if (selectedOption) {
@@ -762,60 +886,49 @@
             }
 
             if (!answer) {
-                alert('Please select an answer or write your response.');
+                // PROFESSIONAL FEEDBACK - NO ANIMATION
                 return;
             }
 
-            // Disable inputs while checking
-            questionCard.querySelectorAll('input, textarea, button').forEach(el => el.disabled = true);
-            
-            // Get CSRF token from meta tag
-            const token = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
-            
+            // INSTANT UI FEEDBACK - NO LOADING ANIMATION
+            if (checkBtn) {
+                checkBtn.disabled = true;
+                checkBtn.innerHTML = 'Checking...';
+                checkBtn.style.background = '#6c757d';
+            }
+
+            // OPTIMIZED FETCH - MINIMAL PAYLOAD
             fetch(`/quiz/tutor/check/${questionId}`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'X-CSRF-TOKEN': token,
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
                     'Accept': 'application/json'
                 },
-                body: JSON.stringify({
-                    answer: answer,
-                    question_number: questionNumber
-                })
+                body: JSON.stringify({ answer, question_number: questionNumber })
             })
             .then(response => {
-                if (!response.ok) {
-                    if (response.status === 404) {
-                        throw new Error('Question not found or invalid route');
-                    }
-                    return response.json().then(errorData => {
-                        throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
-                    });
-                }
+                if (!response.ok) throw new Error(`HTTP ${response.status}`);
                 return response.json();
             })
             .then(data => {
-                if (!data.success) {
-                    throw new Error(data.error || 'An error occurred while checking your answer.');
-                }
+                const endTime = performance.now();
+                console.log(`⚡ Answer checked in ${Math.round(endTime - startTime)}ms`);
+                
+                if (!data.success) throw new Error(data.error || 'Check failed');
 
+                // INSTANT COUNTERS
                 totalAnswers++;
-                if (data.is_correct) {
-                    correctAnswers++;
-                }
+                if (data.is_correct) correctAnswers++;
 
-                // Update the UI to show correct/incorrect answer
+                // INSTANT UI UPDATE
                 updateQuestionUI(questionNumber, {
                     correct: data.is_correct,
                     explanation: data.explanation,
                     correctAnswer: data.correct_answer
                 });
 
-                // Play sound based on result
-                playQuizCompletionSound(data.is_correct);
-
-                // If we've answered all questions in the set, show the final popup
+                // FINAL RESULTS
                 if (totalAnswers === totalQuestions) {
                     const percentage = (correctAnswers / totalAnswers) * 100;
                     showQuizResults({
@@ -871,6 +984,11 @@
             
             // Update feedback text
             feedbackDiv.querySelector('.result-text').textContent = data.correct ? 'Correct! 🎉' : 'Incorrect';
+            
+            // PLAY INDIVIDUAL QUESTION SOUND (but not on last question to avoid double sound)
+            if (totalAnswers < totalQuestions) {
+                playIndividualQuestionSound(data.correct);
+            }
             
             // Show explanation and correct answer if incorrect
             let explanationHtml = data.explanation || '';
@@ -932,20 +1050,29 @@
                 gradeIcon.className = 'grade-icon perfect';
                 popupTitle.textContent = 'Perfect Score!';
                 popupMessage.textContent = 'Outstanding! You\'ve mastered this topic!';
-                createConfetti();
-                playQuizCompletionSound(results);
+                // PERFECT CENTER CONFETTI
+                if (typeof confetti !== 'undefined') {
+                    confetti({
+                        particleCount: 100,
+                        spread: 70,
+                        origin: { x: 0.5, y: 0.5 },
+                        colors: ['#FFD700', '#FFA500', '#FF69B4', '#00CED1', '#98FB98'],
+                        zIndex: 10000
+                    });
+                }
+                playFinalGradingSound(results.correct, results.total);
             } else if (percentage >= 70) {
                 gradeIcon.innerHTML = '<i class="fas fa-star"></i>';
                 gradeIcon.className = 'grade-icon good';
                 popupTitle.textContent = 'Well Done!';
                 popupMessage.textContent = 'Good progress! Keep up the great work!';
-                playQuizCompletionSound(results);
+                playFinalGradingSound(results.correct, results.total);
             } else {
                 gradeIcon.innerHTML = '<i class="fas fa-book"></i>';
                 gradeIcon.className = 'grade-icon needs-improvement';
                 popupTitle.textContent = 'Keep Learning!';
                 popupMessage.textContent = 'Don\'t give up! Practice makes perfect!';
-                playQuizCompletionSound(results);
+                playFinalGradingSound(results.correct, results.total);
             }
 
             // Show popup with animation
@@ -953,48 +1080,141 @@
             setTimeout(() => popup.classList.add('show'), 100);
         }
 
-        // Function to create confetti
-        function createConfetti() {
-            confetti({
-                particleCount: 100,
-                spread: 70,
-                origin: { y: 0.6 }
-            });
-        }
+
 
         // Function to play quiz completion sound
-        function playQuizCompletionSound(isCorrect) {
-            const perfectSound = document.getElementById('quizPerfectSound');
-            const partialSound = document.getElementById('quizPartialSound');
-            const wrongSound = document.getElementById('quizWrongSound');
 
-            function safePlayAudio(audioElement, type) {
-                if (audioElement) {
-                    audioElement.play().catch(error => {
-                        console.warn(`Failed to play ${type} sound:`, error);
+    </script>
+
+    <!-- TUTOR MODE AUDIO SYSTEM -->
+    <audio id="singleCorrectSound" preload="auto" volume="0.7">
+        <source src="/sounds/Single-correct.mp3" type="audio/mpeg">
+    </audio>
+    <audio id="singleWrongSound" preload="auto" volume="0.7">
+        <source src="/sounds/quiz-partial.mp3" type="audio/mpeg">
+    </audio>
+    <!-- Final grading sounds (same as quiz mode) -->
+    <audio id="quizPerfectSound" preload="auto" volume="0.7">
+        <source src="/sounds/quiz-perfect.mp3" type="audio/mpeg">
+    </audio>
+    <audio id="quizPartialSound" preload="auto" volume="0.7">
+        <source src="/sounds/quiz-partial.mp3" type="audio/mpeg">
+    </audio>
+    <audio id="quizWrongSound" preload="auto" volume="0.7">
+        <source src="/sounds/quiz-wrong.mp3" type="audio/mpeg">
+    </audio>
+
+    <script>
+        // TUTOR MODE AUDIO FUNCTIONS
+        function playIndividualQuestionSound(isCorrect) {
+            const audioElement = isCorrect ? 
+                document.getElementById('singleCorrectSound') : 
+                document.getElementById('singleWrongSound');
+            
+            if (audioElement) {
+                try {
+                    audioElement.volume = 0.7;
+                    audioElement.currentTime = 0;
+                    audioElement.play().then(() => {
+                        console.log(`✅ Individual question sound played: ${isCorrect ? 'correct' : 'wrong'}`);
+                    }).catch(error => {
+                        console.log(`❌ Individual question sound failed:`, error);
                     });
+                } catch (error) {
+                    console.log(`❌ Audio element error:`, error);
                 }
             }
+        }
 
-            if (typeof isCorrect === 'boolean') {
-                // For individual questions
-                if (isCorrect) {
-                    safePlayAudio(perfectSound, 'Perfect');
-                } else {
-                    safePlayAudio(wrongSound, 'Wrong');
-                }
+        // FINAL GRADING SOUND (same as quiz mode)
+        function playFinalGradingSound(score, total) {
+            const percentage = (score / total) * 100;
+            
+            let audioElement;
+            let soundId;
+            
+            if (percentage === 100) {
+                audioElement = document.getElementById('quizPerfectSound');
+                soundId = 'perfect';
+            } else if (percentage >= 70) {
+                audioElement = document.getElementById('quizPartialSound');
+                soundId = 'partial';
             } else {
-                // For quiz completion, use the percentage logic
-                const percentage = (isCorrect.correct / isCorrect.total) * 100;
-                if (percentage === 100) {
-                    safePlayAudio(perfectSound, 'Perfect');
-                } else if (percentage >= 70) {
-                    safePlayAudio(partialSound, 'Partial');
-                } else {
-                    safePlayAudio(wrongSound, 'Wrong');
+                audioElement = document.getElementById('quizWrongSound');
+                soundId = 'wrong';
+            }
+            
+            if (audioElement) {
+                try {
+                    audioElement.volume = 0.7;
+                    audioElement.currentTime = 0;
+                    audioElement.play().then(() => {
+                        console.log(`✅ Final grading sound played: ${soundId}`);
+                    }).catch(error => {
+                        console.log(`❌ Final grading sound failed:`, error);
+                    });
+                } catch (error) {
+                    console.log(`❌ Audio element error:`, error);
                 }
             }
         }
     </script>
+
+    <!-- FORCE BIG BEAUTIFUL BUTTON STYLING -->
+    <style>
+        .popup-btn {
+            padding: 1rem 2rem !important;
+            border: none !important;
+            border-radius: 12px !important;
+            font-weight: 600 !important;
+            font-size: 1.1rem !important;
+            cursor: pointer !important;
+            transition: all 0.3s ease !important;
+            display: flex !important;
+            align-items: center !important;
+            gap: 0.8rem !important;
+            text-decoration: none !important;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1) !important;
+            min-width: 150px !important;
+            justify-content: center !important;
+        }
+        .popup-btn.retry-btn {
+            background: #007bff !important;
+            color: white !important;
+        }
+        .popup-btn.retry-btn:hover {
+            background: #0056b3 !important;
+            color: white !important;
+            transform: translateY(-2px) !important;
+            box-shadow: 0 6px 12px rgba(0, 123, 255, 0.2) !important;
+        }
+        .popup-btn.view-progress-btn {
+            background: #28a745 !important;
+            color: white !important;
+        }
+        .popup-btn.view-progress-btn:hover {
+            background: #218838 !important;
+            color: white !important;
+            transform: translateY(-2px) !important;
+            box-shadow: 0 6px 12px rgba(40, 167, 69, 0.2) !important;
+        }
+        .popup-buttons {
+            display: flex !important;
+            gap: 1rem !important;
+            justify-content: center !important;
+            flex-wrap: wrap !important;
+            margin-top: 2rem !important;
+        }
+        /* ENSURE CONFETTI APPEARS ABOVE MODAL */
+        canvas {
+            z-index: 10001 !important;
+            pointer-events: none !important;
+            position: fixed !important;
+            top: 0 !important;
+            left: 0 !important;
+            width: 100vw !important;
+            height: 100vh !important;
+        }
+    </style>
 </body>
 </html> 

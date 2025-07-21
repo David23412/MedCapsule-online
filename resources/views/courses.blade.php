@@ -1526,6 +1526,9 @@
                             </ul>
                         </li>
                         <li class="nav-item">
+                            @include('components.notification-bell')
+                        </li>
+                        <li class="nav-item">
                             <a href="{{ route('profile') }}" class="profile-circle {{ !Auth::user()->profile_picture_url ? 'no-image' : '' }}" 
                                 style="{{ Auth::user()->profile_picture_url ? 'background-image: url(' . secure_url(Auth::user()->profile_picture_url) . ');' : '' }}">
                                 @if(!Auth::user()->profile_picture_url)
@@ -2678,5 +2681,10 @@
             updateScrollArrows();
         });
     </script>
+</body>
+</html>
+<!-- No
+tification System JavaScript -->
+<script src="{{ asset('js/notification-system.js') }}"></script>
 </body>
 </html>

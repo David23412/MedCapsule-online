@@ -84,7 +84,20 @@ This feature addresses critical UI/UX issues across the MedCapsule platform that
 3. WHEN dashboard elements are rendered THEN they SHALL maintain a sleek, business-appropriate appearance
 4. IF "Class summary" sections exist THEN they SHALL be removed as they serve no functional purpose
 
-### Requirement 8: Notification System Overhaul
+### Requirement 8: Quiz Progress Bar Overlap Prevention
+
+**User Story:** As a user taking quizzes in solve quiz mode, I want the progress bar to intelligently disappear when I reach the submit button, so that there is no visual overlap or interference with quiz completion.
+
+#### Acceptance Criteria
+
+1. WHEN the submit button becomes visible in the viewport THEN the progress bar SHALL smoothly fade out or hide completely
+2. WHEN the submit button is far from view THEN the progress bar SHALL be fully visible and functional
+3. WHEN the submit button is approaching the viewport THEN the progress bar SHALL partially fade to indicate upcoming transition
+4. WHEN the quiz is submitted THEN the progress bar SHALL immediately disappear to avoid any visual conflicts
+5. WHEN scrolling occurs THEN the progress bar visibility SHALL update smoothly with optimized performance using requestAnimationFrame
+6. WHEN the page loads or resizes THEN the progress bar visibility SHALL be correctly calculated and applied
+
+### Requirement 9: Notification System Overhaul
 
 **User Story:** As a user receiving notifications, I want a highly efficient and well-designed notification system with proper icons and logic, so that I stay informed about important platform activities.
 

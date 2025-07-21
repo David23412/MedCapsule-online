@@ -8,6 +8,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
 use App\Services\NotificationService;
+use App\Services\CourseFilterService;
 
 class CourseController extends Controller
 {
@@ -40,16 +41,17 @@ class CourseController extends Controller
     /**
      * Show detailed course list with metadata for authenticated users.
      */
-    public function index()
+    public function index(Request $request)
     {
         $userId = auth()->id();
         $isLoggedIn = auth()->check();
+        $selectedYear = $request->get('academic_year');
 
         // Cache key for courses metadata with timestamp for cache busting
         $cacheVersion = Cache::get('courses_cache_version', 1);
-        $cacheKey = "courses_metadata_" . ($userId ?? 'guest') . "_v{$cacheVersion}";
+        $cacheKey = "courses_metadata_" . ($userId ?? 'guest') . "_" . ($selectedYear ?? 'all') . "_v{$cacheVersion}";
         
-        $courses = Cache::remember($cacheKey, 300, function () use ($userId, $isLoggedIn) {
+        $courses = Cache::remember($cacheKey, 300, function () use ($userId, $isLoggedIn, $selectedYear) {
             $subqueries = [
                 DB::raw('(SELECT COUNT(*) FROM topics WHERE topics.course_id = courses.id AND name NOT LIKE "%cases%") as topics_count'),
                 DB::raw('(SELECT COUNT(*) FROM topics WHERE topics.course_id = courses.id AND name LIKE "%cases%") as cases_count'),
@@ -79,13 +81,19 @@ class CourseController extends Controller
                 ) as has_pending_payment");
             }
 
-            return Course::select('courses.*', ...$subqueries)
+            $query = Course::select('courses.*', ...$subqueries)
                 ->with(['users' => function($query) {
                     $query->select('users.id', 'users.name', 'users.email', 'users.profile_picture_url')
                         ->where('course_user.enrollment_status', 'active')
                         ->take(4);
-                }])
-                ->get();
+                }]);
+
+            // Apply academic year filter if provided
+            if ($selectedYear && CourseFilterService::isValidAcademicYear($selectedYear)) {
+                $query = CourseFilterService::filterByAcademicYear($query, $selectedYear);
+            }
+
+            return $query->get();
         });
 
         // Format the results (outside cache to ensure fresh data)
@@ -105,7 +113,10 @@ class CourseController extends Controller
             $course->has_more = $course->users->count() > 3;
         }
 
-        return view('courses', compact('courses'));
+        // Get available academic years for filter dropdown
+        $availableYears = CourseFilterService::getAvailableAcademicYears();
+
+        return view('courses', compact('courses', 'availableYears', 'selectedYear'));
     }
 
     /**

@@ -81,6 +81,7 @@ class RandomQuizController extends Controller
                 ->with(['topic', 'topic.course'])
                 ->get();
 
+            // SMART LOGIC: Only redirect if absolutely NO questions found
             if ($randomQuestions->isEmpty()) {
                 Log::warning('No questions found for selected courses', [
                     'request_id' => $requestId,
@@ -88,7 +89,6 @@ class RandomQuizController extends Controller
                     'selected_courses' => $selectedCourses
                 ]);
                 
-                // ENHANCED: Return JSON response for AJAX requests, view for regular requests
                 if ($request->expectsJson()) {
                     return response()->json([
                         'success' => false,
@@ -97,39 +97,39 @@ class RandomQuizController extends Controller
                     ], 422);
                 }
                 
-                return redirect()->route('courses.index')->with('error', 'No questions available from the selected courses.');
+                return redirect()->route('courses.index')->with('error', 'No questions available from the selected courses. Please make sure the courses you select have questions added to them.');
             }
 
-            // ENHANCED: Validate minimum questions requirement
-            if ($randomQuestions->count() < min(5, $questionLimit)) {
-                Log::warning('Insufficient questions found', [
+            // SMART LOGIC: Adjust question limit to available questions instead of redirecting
+            $availableQuestions = $randomQuestions->count();
+            $actualQuestionLimit = min($questionLimit, $availableQuestions);
+            
+            // If we have fewer questions than requested, just use what we have
+            if ($availableQuestions < $questionLimit) {
+                Log::info('Adjusting question limit to available questions', [
                     'request_id' => $requestId,
                     'user_id' => $user->id,
-                    'found_questions' => $randomQuestions->count(),
-                    'requested_questions' => $questionLimit
+                    'requested_questions' => $questionLimit,
+                    'available_questions' => $availableQuestions,
+                    'actual_limit' => $actualQuestionLimit
                 ]);
                 
-                if ($request->expectsJson()) {
-                    return response()->json([
-                        'success' => false,
-                        'error' => "Only {$randomQuestions->count()} questions available. Please select more courses or reduce the question limit.",
-                        'available_questions' => $randomQuestions->count()
-                    ], 422);
-                }
-                
-                return redirect()->route('courses.index')->with('error', "Only {$randomQuestions->count()} questions available. Please select more courses or reduce the question limit.");
+                // Take only the available questions
+                $randomQuestions = $randomQuestions->take($actualQuestionLimit);
             }
 
-            // Store questions in session with better organization
+            // Store questions in session with ACTUAL question count
             session([
                 'random_quiz_questions' => $randomQuestions->pluck('id')->toArray(),
                 'random_quiz_time_limit' => round($timeLimit * 60),
                 'random_quiz_courses' => $selectedCourses,
                 'random_quiz_started_at' => now(),
                 'random_quiz_settings' => [
-                    'question_limit' => $questionLimit,
+                    'question_limit' => $actualQuestionLimit, // Use actual limit, not requested
                     'time_limit_minutes' => $timeLimit,
-                    'selected_courses' => $selectedCourses
+                    'selected_courses' => $selectedCourses,
+                    'requested_questions' => $questionLimit,
+                    'available_questions' => $availableQuestions
                 ]
             ]);
 

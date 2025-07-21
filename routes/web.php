@@ -39,6 +39,23 @@ Route::middleware('auth')->group(function () {
     Route::get('/courses', [CourseController::class, 'index'])->name('courses.index');
     Route::get('/courses/{course}', [CourseController::class, 'show'])->name('courses.show');
     
+    // Notification routes
+    Route::prefix('notifications')->group(function () {
+        Route::get('/', [NotificationController::class, 'index'])->name('notifications.index');
+        Route::post('/mark-read', [NotificationController::class, 'markAsRead'])->name('notifications.mark-read');
+        Route::post('/mark-all-read', [NotificationController::class, 'markAllAsRead'])->name('notifications.mark-all-read');
+        Route::get('/stats', [NotificationController::class, 'stats'])->name('notifications.stats');
+        Route::post('/cleanup', [NotificationController::class, 'cleanup'])->name('notifications.cleanup');
+        Route::post('/test', [NotificationController::class, 'createTest'])->name('notifications.test');
+        Route::post('/stress-test', [NotificationController::class, 'stressTest'])->name('notifications.stress-test');
+        Route::post('/clear-test', [NotificationController::class, 'clearTestNotifications'])->name('notifications.clear-test');
+        
+        // AGGRESSIVE DATABASE OPTIMIZATION ROUTES
+        Route::post('/aggressive-cleanup', [NotificationController::class, 'aggressiveCleanup'])->name('notifications.aggressive-cleanup');
+        Route::post('/delete', [NotificationController::class, 'deleteNotification'])->name('notifications.delete');
+        Route::post('/ultra-cleanup', [NotificationController::class, 'ultraCleanup'])->name('notifications.ultra-cleanup');
+    });
+
     // Review routes with CSRF and rate limiting
     Route::get('/review', [QuizController::class, 'showMistakes'])->name('review.index')->withoutMiddleware('auth');
     Route::get('/review/learn', [LearnController::class, 'learnMistakes'])->name('review.learn');

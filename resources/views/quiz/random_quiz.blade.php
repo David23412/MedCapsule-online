@@ -152,28 +152,31 @@
         .progress-bar-container {
             position: fixed;
             bottom: 0;
-            left: 0;
-            right: 0;
-            background: rgba(255, 255, 255, 0.95);
+            left: 50%;
+            transform: translate(-50%, 0);
+            background: #f8f9fa;
+            border-radius: 10px;
             padding: 1rem;
-            box-shadow: 0 -1px 3px rgba(0, 0, 0, 0.1);
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
             z-index: 999;
-            transition: transform 0.2s ease;
-            backdrop-filter: blur(8px);
-        }
-        
-        .progress-bar-container.hidden {
-            transform: translateY(100%);
+            max-width: 1000px;
+            width: 100%;
+            transition: all 0.3s ease;
         }
 
         .progress-bar-container.at-form {
-            position: relative;
-            bottom: auto;
+            position: static;
             transform: none;
-            left: auto;
-            border-radius: 10px;
-            margin-bottom: 2rem;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+            margin: 2rem auto;
+            background: #f8f9fa;
+        }
+
+        .progress-bar-container.hidden {
+            transform: translate(-50%, 100%);
+            opacity: 0;
+            pointer-events: none;
+            visibility: hidden;
+            display: none !important;
         }
 
         .progress-bar {
@@ -437,24 +440,25 @@
             display: flex;
             gap: 1rem;
             justify-content: center;
-            flex-wrap: wrap;
+            flex-wrap: nowrap;
             margin-top: 2rem;
             animation: fadeIn 0.5s ease-out 0.6s both;
         }
 
         .popup-btn {
-            padding: 1rem 2rem;
+            padding: 0.75rem 1.5rem;
             border: none;
-            border-radius: 12px;
-            font-weight: 600;
-            font-size: 1.1rem;
+            border-radius: 8px;
+            font-weight: 500;
+            font-size: 0.95rem;
             cursor: pointer;
             transition: all 0.3s ease;
             display: flex;
             align-items: center;
-            gap: 0.8rem;
+            gap: 0.5rem;
             text-decoration: none;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08);
+            min-height: 42px;
         }
 
         .review-btn {
@@ -464,8 +468,8 @@
 
         .review-btn:hover {
             background: #e9ecef;
-            transform: translateY(-2px);
-            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.1);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.12);
         }
 
         .view-progress-btn {
@@ -475,8 +479,8 @@
 
         .view-progress-btn:hover {
             background: #218838;
-            transform: translateY(-2px);
-            box-shadow: 0 6px 12px rgba(40, 167, 69, 0.2);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 8px rgba(40, 167, 69, 0.25);
         }
 
         @keyframes slideDown {
@@ -540,15 +544,20 @@
             pointer-events: none;
         }
 
-        @media (max-width: 768px) {
+        @media (max-width: 480px) {
             .popup-buttons {
-                flex-direction: column;
+                flex-direction: row;
+                flex-wrap: wrap;
             }
 
             .popup-btn {
-                width: 100%;
+                flex: 1;
+                min-width: 120px;
                 justify-content: center;
+                padding: 0.6rem 1rem;
+                font-size: 0.9rem;
             }
+        }
         }
 
         @media (max-width: 850px) {
@@ -720,25 +729,46 @@
             const timeTakenField = document.getElementById('time-taken');
             const timerDisplay = document.getElementById('timer');
             
-            // Handle progress bar visibility based on submit button position
-            function checkSubmitButtonVisibility() {
+            // ROBUST PROGRESS BAR POSITIONING SYSTEM - EXACT COPY FROM SOLVE_QUIZ
+            function updateProgressBarPosition() {
+                if (!submitBtn || !progressBarContainer) return;
+                
                 const submitBtnRect = submitBtn.getBoundingClientRect();
                 const windowHeight = window.innerHeight;
                 
-                // If submit button is visible (within viewport + some buffer), hide progress bar
-                if (submitBtnRect.top <= windowHeight + 100) {
+                // INTELLIGENT BUT STRICT AS FUCK:
+                // Hide when submit button is anywhere near the viewport (300px buffer)
+                if (submitBtnRect.top <= windowHeight + 300) {
+                    // NUCLEAR HIDE - multiple methods to ensure it's GONE
                     progressBarContainer.classList.add('hidden');
+                    progressBarContainer.style.display = 'none';
+                    progressBarContainer.style.visibility = 'hidden';
+                    progressBarContainer.style.opacity = '0';
                 } else {
+                    // Show when submit button is FAR AWAY (user scrolled back up to work on questions)
                     progressBarContainer.classList.remove('hidden');
+                    progressBarContainer.style.display = '';
+                    progressBarContainer.style.visibility = '';
+                    progressBarContainer.style.opacity = '';
                 }
             }
+
+            function onScroll() {
+                if (rafId) return;
+                
+                rafId = requestAnimationFrame(() => {
+                    updateProgressBarPosition();
+                    rafId = null;
+                });
+            }
+
+            // Event listeners with passive scrolling for better performance
+            let rafId = null;
+            window.addEventListener('scroll', onScroll, { passive: true });
+            window.addEventListener('resize', onScroll, { passive: true });
             
-            // Check on scroll and resize
-            window.addEventListener('scroll', checkSubmitButtonVisibility);
-            window.addEventListener('resize', checkSubmitButtonVisibility);
-            
-            // Initial check
-            checkSubmitButtonVisibility();
+            // Initial position check
+            updateProgressBarPosition();
             
             let selectedAnswers = {};
             
@@ -910,23 +940,11 @@
                         popupScore.textContent = `${data.score}/${data.total}`;
                         popupMessage.textContent = data.message || 'Quiz completed!';
 
-                        // Update grade icon and play unified grading sound
+                        // Update grade icon and trigger confetti/sound
                         if (percentage === 100) {
                             gradeIcon.innerHTML = '<i class="fas fa-crown"></i>';
                             gradeIcon.className = 'grade-icon perfect';
                             popupTitle.textContent = 'Perfect Score!';
-                            // Use unified confetti system for perfect scores
-                            if (typeof ConfettiManager !== 'undefined') {
-                                ConfettiManager.celebratePerfectScore('#popup');
-                            } else if (typeof confetti !== 'undefined') {
-                                confetti({
-                                    particleCount: 100,
-                                    spread: 70,
-                                    origin: { y: 0.6 },
-                                    colors: ['#FFD700', '#FFA500', '#FF69B4', '#00CED1', '#98FB98'],
-                                    zIndex: 9999
-                                });
-                            }
                         } else if (percentage >= 70) {
                             gradeIcon.innerHTML = '<i class="fas fa-star"></i>';
                             gradeIcon.className = 'grade-icon good';
@@ -938,19 +956,62 @@
                         }
 
                         // Play unified grading sound based on score percentage
-                        try {
-                            if (typeof GradingAudioController !== 'undefined') {
-                                GradingAudioController.playGradingSound(percentage, data.total);
-                            } else if (typeof quizSoundManager !== 'undefined') {
-                                quizSoundManager.playGradingSound(percentage);
+                        setTimeout(() => {
+                            try {
+                                // Direct audio play with user interaction context
+                                let soundFile;
+                                if (percentage === 100) {
+                                    soundFile = '/sounds/quiz-perfect.mp3';
+                                } else if (percentage >= 50) {
+                                    soundFile = '/sounds/quiz-partial.mp3';
+                                } else {
+                                    soundFile = '/sounds/quiz-wrong.mp3';
+                                }
+                                
+                                const audio = new Audio(soundFile);
+                                audio.volume = 0.7;
+                                audio.play().catch(e => {
+                                    console.warn('Audio play failed:', e);
+                                    // Try with GradingAudioController as fallback
+                                    if (typeof GradingAudioController !== 'undefined') {
+                                        GradingAudioController.playGradingSound(percentage, data.total);
+                                    }
+                                });
+                            } catch (error) {
+                                console.warn('Grading sound error:', error);
                             }
-                        } catch (error) {
-                            console.warn('Grading sound error:', error);
-                        }
+                        }, 300);
 
                         // Show the completion popup
                         popupOverlay.classList.add('show');
                         popup.classList.add('show');
+
+                        // Trigger confetti AFTER popup is shown and positioned
+                        setTimeout(() => {
+                            if (percentage === 100) {
+                                // CONFETTI positioned right and down to center in popup
+                                if (typeof confetti !== 'undefined') {
+                                    confetti({
+                                        particleCount: 150,
+                                        spread: 70,
+                                        origin: { x: 0.62, y: 0.45 },
+                                        colors: ['#FFD700', '#FFA500', '#FF69B4'],
+                                        zIndex: 10000
+                                    });
+                                }
+                            } else if (percentage >= 70) {
+                                // Good score confetti
+                                if (typeof confetti !== 'undefined') {
+                                    confetti({
+                                        particleCount: 100,
+                                        spread: 60,
+                                        origin: { x: 0.62, y: 0.45 },
+                                        colors: ['#00CED1', '#98FB98', '#4ECDC4'],
+                                        zIndex: 10000
+                                    });
+                                }
+                            }
+                        }, 500);
 
                         // Update review button link if provided
                         if (data.review_url) {
@@ -1110,16 +1171,7 @@
             }
         });
 
-        // Function to create confetti
-        function createConfetti() {
-            confetti({
-                particleCount: 100,
-                spread: 70,
-                origin: { y: 0.6 },
-                colors: ['#FFD700', '#FFA500', '#FF69B4', '#00CED1', '#98FB98'],
-                zIndex: 9999
-            });
-        }
+
     </script>
 </body>
 </html> 

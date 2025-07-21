@@ -1,0 +1,297 @@
+/**
+ * Notification Design System Foundation
+ * Clean, minimal, and spacious notification UI
+ * Based on 8px grid system with consistent spacing, typography, and colors
+ */
+
+:root {
+  /* === PREMIUM SPACING SYSTEM === */
+  --ns-space-xs: 4px;
+  --ns-space-sm: 8px;
+  --ns-space-md: 16px;
+  --ns-space-lg: 24px;
+  --ns-space-xl: 32px;
+  --ns-space-2xl: 48px;
+  --ns-space-3xl: 64px;
+
+  /* === PREMIUM COLOR SYSTEM === */
+  
+  /* Primary Colors - Clean & Expensive */
+  --ns-color-primary: #000000;         /* Pure black - Premium, expensive */
+  --ns-color-accent: #3b82f6;          /* Blue accent for actions */
+  --ns-color-text: #000000;            /* Pure black text */
+  --ns-color-text-light: #6b7280;      /* Light gray for secondary text */
+  
+  /* Background Colors - Ultra Clean */
+  --ns-color-white: #ffffff;           /* Pure white */
+  --ns-color-gray-50: #f9fafb;         /* Subtle background */
+  --ns-color-gray-100: #f3f4f6;        /* Light gray */
+  --ns-color-blue-50: #eff6ff;         /* Subtle blue tint */
+  
+  /* Semantic Colors - Refined */
+  --ns-color-success: #059669;         /* Emerald */
+  --ns-color-warning: #d97706;         /* Amber */
+  --ns-color-error: #dc2626;           /* Red */
+  --ns-color-info: #0284c7;            /* Sky blue */
+  
+  /* Border Colors - Minimal */
+  --ns-color-border: #e5e7eb;          /* Light border */
+  --ns-color-border-light: #f3f4f6;    /* Very light border */
+
+  /* === PREMIUM TYPOGRAPHY === */
+  
+  /* Font Family - System fonts for performance */
+  --ns-font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+  
+  /* Font Sizes - Refined scale */
+  --ns-text-lg: 18px;          /* Large text */
+  --ns-text-base: 16px;        /* Base text */
+  --ns-text-sm: 14px;          /* Small text */
+  --ns-text-xs: 12px;          /* Extra small */
+  
+  /* Font Weights - Minimal set */
+  --ns-font-normal: 400;
+  --ns-font-medium: 500;
+  --ns-font-semibold: 600;
+  
+  /* Line Heights */
+  --ns-leading-tight: 1.25;
+  --ns-leading-normal: 1.5;
+  
+  /* Letter Spacing */
+  --ns-tracking-tight: -0.025em;
+
+  /* === PREMIUM COMPONENT DIMENSIONS === */
+  
+  /* Bell Component - Larger, more premium */
+  --ns-bell-size: 44px;
+  --ns-bell-icon-size: 20px;
+  
+  /* Badge Component - Refined */
+  --ns-badge-size: 18px;
+  --ns-badge-offset: -4px;
+  
+  /* Dropdown Component - Spacious */
+  --ns-dropdown-width: 420px;
+  --ns-dropdown-max-height: 600px;
+  --ns-dropdown-radius: 20px;
+  
+  /* Generous Spacing */
+  --ns-header-padding: 32px;
+  --ns-item-padding-x: 32px;
+  --ns-item-padding-y: 24px;
+  --ns-item-gap: 20px;
+  
+  /* Icon Container - Larger */
+  --ns-icon-size: 52px;
+  --ns-icon-radius: 16px;
+  
+  /* Button Sizes */
+  --ns-button-size: 40px;
+
+  /* === PREMIUM ANIMATIONS === */
+  
+  /* Smooth, expensive feeling transitions */
+  --ns-ease: cubic-bezier(0.25, 0.1, 0.25, 1);
+  --ns-duration: 200ms;
+  
+  /* Transform Values */
+  --ns-scale-hover: 1.02;
+  --ns-scale-active: 0.98;
+
+  /* === PREMIUM SHADOWS === */
+  
+  /* Subtle, expensive shadows */
+  --ns-shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  --ns-shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  --ns-shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+  --ns-shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+
+  /* === Z-INDEX === */
+  --ns-z-dropdown: 1050;
+  --ns-z-badge: 10;
+}
+
+/* === UTILITY CLASSES === */
+
+/* Spacing Utilities */
+.ns-p-xs { padding: var(--ns-space-xs); }
+.ns-p-sm { padding: var(--ns-space-sm); }
+.ns-p-md { padding: var(--ns-space-md); }
+.ns-p-lg { padding: var(--ns-space-lg); }
+.ns-p-xl { padding: var(--ns-space-xl); }
+.ns-p-2xl { padding: var(--ns-space-2xl); }
+.ns-p-3xl { padding: var(--ns-space-3xl); }
+
+.ns-px-xs { padding-left: var(--ns-space-xs); padding-right: var(--ns-space-xs); }
+.ns-px-sm { padding-left: var(--ns-space-sm); padding-right: var(--ns-space-sm); }
+.ns-px-md { padding-left: var(--ns-space-md); padding-right: var(--ns-space-md); }
+.ns-px-lg { padding-left: var(--ns-space-lg); padding-right: var(--ns-space-lg); }
+.ns-px-xl { padding-left: var(--ns-space-xl); padding-right: var(--ns-space-xl); }
+
+.ns-py-xs { padding-top: var(--ns-space-xs); padding-bottom: var(--ns-space-xs); }
+.ns-py-sm { padding-top: var(--ns-space-sm); padding-bottom: var(--ns-space-sm); }
+.ns-py-md { padding-top: var(--ns-space-md); padding-bottom: var(--ns-space-md); }
+.ns-py-lg { padding-top: var(--ns-space-lg); padding-bottom: var(--ns-space-lg); }
+.ns-py-xl { padding-top: var(--ns-space-xl); padding-bottom: var(--ns-space-xl); }
+
+.ns-m-xs { margin: var(--ns-space-xs); }
+.ns-m-sm { margin: var(--ns-space-sm); }
+.ns-m-md { margin: var(--ns-space-md); }
+.ns-m-lg { margin: var(--ns-space-lg); }
+.ns-m-xl { margin: var(--ns-space-xl); }
+
+.ns-gap-xs { gap: var(--ns-space-xs); }
+.ns-gap-sm { gap: var(--ns-space-sm); }
+.ns-gap-md { gap: var(--ns-space-md); }
+.ns-gap-lg { gap: var(--ns-space-lg); }
+.ns-gap-xl { gap: var(--ns-space-xl); }
+
+/* Typography Utilities */
+.ns-text-heading {
+  font-size: var(--ns-text-heading);
+  font-weight: var(--ns-font-semibold);
+  line-height: var(--ns-leading-normal);
+  letter-spacing: var(--ns-tracking-tight);
+  color: var(--ns-color-text-primary);
+}
+
+.ns-text-body-lg {
+  font-size: var(--ns-text-body-lg);
+  font-weight: var(--ns-font-semibold);
+  line-height: var(--ns-leading-normal);
+  color: var(--ns-color-text-primary);
+}
+
+.ns-text-body {
+  font-size: var(--ns-text-body);
+  font-weight: var(--ns-font-regular);
+  line-height: var(--ns-leading-relaxed);
+  color: var(--ns-color-text-secondary);
+}
+
+.ns-text-caption {
+  font-size: var(--ns-text-caption);
+  font-weight: var(--ns-font-medium);
+  line-height: var(--ns-leading-normal);
+  color: var(--ns-color-text-muted);
+}
+
+.ns-text-small {
+  font-size: var(--ns-text-small);
+  font-weight: var(--ns-font-medium);
+  line-height: var(--ns-leading-tight);
+  color: var(--ns-color-text-muted);
+}
+
+/* Color Utilities */
+.ns-text-primary { color: var(--ns-color-text-primary); }
+.ns-text-secondary { color: var(--ns-color-text-secondary); }
+.ns-text-muted { color: var(--ns-color-text-muted); }
+.ns-text-subtle { color: var(--ns-color-text-subtle); }
+
+.ns-bg-white { background-color: var(--ns-color-white); }
+.ns-bg-slate-50 { background-color: var(--ns-color-slate-50); }
+.ns-bg-slate-25 { background-color: var(--ns-color-slate-25); }
+.ns-bg-blue-tint { background-color: var(--ns-color-blue-tint); }
+
+.ns-border-subtle { border-color: var(--ns-color-border-subtle); }
+.ns-border-light { border-color: var(--ns-color-border-light); }
+.ns-border-accent { border-color: var(--ns-color-border-accent); }
+
+/* Layout Utilities */
+.ns-flex { display: flex; }
+.ns-flex-col { flex-direction: column; }
+.ns-items-center { align-items: center; }
+.ns-items-start { align-items: flex-start; }
+.ns-justify-center { justify-content: center; }
+.ns-justify-between { justify-content: space-between; }
+.ns-flex-1 { flex: 1; }
+.ns-flex-shrink-0 { flex-shrink: 0; }
+
+.ns-relative { position: relative; }
+.ns-absolute { position: absolute; }
+.ns-fixed { position: fixed; }
+
+.ns-w-full { width: 100%; }
+.ns-h-full { height: 100%; }
+.ns-min-w-0 { min-width: 0; }
+
+/* Border Radius Utilities */
+.ns-rounded-sm { border-radius: 4px; }
+.ns-rounded { border-radius: 8px; }
+.ns-rounded-lg { border-radius: 12px; }
+.ns-rounded-xl { border-radius: 16px; }
+.ns-rounded-full { border-radius: 50%; }
+
+/* Transition Utilities */
+.ns-transition {
+  transition: all var(--ns-duration-normal) var(--ns-ease-out);
+}
+
+.ns-transition-fast {
+  transition: all var(--ns-duration-fast) var(--ns-ease-out);
+}
+
+.ns-transition-slow {
+  transition: all var(--ns-duration-slow) var(--ns-ease-out);
+}
+
+/* Transform Utilities */
+.ns-scale-hover:hover {
+  transform: scale(var(--ns-scale-hover));
+}
+
+.ns-scale-active:active {
+  transform: scale(var(--ns-scale-active));
+}
+
+/* Accessibility Utilities */
+.ns-sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.ns-focus-ring:focus {
+  outline: 2px solid var(--ns-color-primary);
+  outline-offset: 2px;
+}
+
+/* Reduced Motion Support */
+@media (prefers-reduced-motion: reduce) {
+  .ns-transition,
+  .ns-transition-fast,
+  .ns-transition-slow {
+    transition: none;
+  }
+  
+  .ns-scale-hover:hover,
+  .ns-scale-active:active {
+    transform: none;
+  }
+}
+
+/* Mobile Responsive Utilities */
+@media (max-width: 767px) {
+  :root {
+    --ns-dropdown-width: calc(100vw - 32px);
+    --ns-header-padding-x: var(--ns-space-lg);
+    --ns-item-padding-x: var(--ns-space-lg);
+    --ns-empty-padding-x: var(--ns-space-lg);
+  }
+}
+
+/* High Contrast Mode Support */
+@media (prefers-contrast: high) {
+  :root {
+    --ns-color-border-subtle: rgba(0, 0, 0, 0.2);
+    --ns-color-border-light: #94a3b8;
+  }
+}

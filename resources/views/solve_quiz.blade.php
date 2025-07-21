@@ -145,20 +145,30 @@
             position: fixed;
             bottom: 0;
             left: 50%;
-            transform: translateX(-50%);
-            background: rgba(248, 249, 250, 0.95);
-            border-radius: 10px 10px 0 0;
+            transform: translate(-50%, 0);
+            background: #f8f9fa;
+            border-radius: 10px;
             padding: 1rem;
-            box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.1);
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
             z-index: 999;
-            max-width: 800px;
-            width: 90%;
-            transition: transform 0.3s ease;
-            backdrop-filter: blur(10px);
+            max-width: 1000px;
+            width: 100%;
+            transition: all 0.3s ease;
+        }
+
+        .progress-bar-container.at-form {
+            position: static;
+            transform: none;
+            margin: 2rem auto;
+            background: #f8f9fa;
         }
 
         .progress-bar-container.hidden {
-            transform: translateX(-50%) translateY(100%);
+            transform: translate(-50%, 100%);
+            opacity: 0;
+            pointer-events: none;
+            visibility: hidden;
+            display: none !important;
         }
 
         @media (max-width: 1100px) {
@@ -172,6 +182,13 @@
                 padding: 1.5rem;
                 width: 100%;
                 border-radius: 8px;
+            }
+            
+            .progress-bar-container {
+                transform: translate(-50%, 0);
+            }
+            .progress-bar-container.hidden {
+                transform: translate(-50%, 100%);
             }
         }
 
@@ -360,8 +377,53 @@
         }
 
         .submit-btn:disabled {
-            background: #ccc;
-            cursor: not-allowed;
+            background: #6c757d !important;
+            cursor: not-allowed !important;
+            opacity: 0.6 !important;
+            pointer-events: none !important;
+            transform: none !important;
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.2) !important;
+            border: 2px solid #495057 !important;
+        }
+
+        .submit-btn:disabled:hover {
+            background: #6c757d !important;
+            transform: none !important;
+            cursor: not-allowed !important;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 10px;
+            background: #e9ecef;
+            border-radius: 5px;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #007bff, #00d4ff);
+            width: 0;
+            transition: width 0.3s ease;
+            border-radius: 5px;
+        }
+
+        .timer {
+            font-size: 1.2rem;
+            color: #333;
+            font-weight: 600;
+            background: #f8f9fa;
+            padding: 0.5rem 1rem;
+            border-radius: 6px;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .timer i {
+            color: #007bff;
         }
 
         .popup-overlay {
@@ -376,6 +438,23 @@
             align-items: center;
             z-index: 1000;
             backdrop-filter: blur(5px);
+        }
+
+        /* Ensure confetti appears above modal and is properly positioned */
+        canvas {
+            z-index: 10001 !important;
+            pointer-events: none;
+            position: fixed !important;
+            top: 0 !important;
+            left: 0 !important;
+            width: 100vw !important;
+            height: 100vh !important;
+        }
+        
+        /* Make sure popup has proper positioning context */
+        .popup {
+            position: relative;
+            z-index: 1001;
         }
 
         .popup-overlay.show {
@@ -524,6 +603,25 @@
         @keyframes fadeIn {
             from { opacity: 0; transform: translateY(10px); }
             to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* BRUTAL VISUAL FEEDBACK ANIMATIONS */
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-5px); }
+            75% { transform: translateX(5px); }
+        }
+
+        @keyframes wobble {
+            0%, 100% { transform: rotate(0deg); }
+            25% { transform: rotate(-2deg); }
+            75% { transform: rotate(2deg); }
         }
 
         @keyframes shimmer {
@@ -805,23 +903,19 @@
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
-    <script src="{{ asset('js/grading-audio-controller.js') }}"></script>
-    <script src="{{ asset('js/confetti-manager.js') }}"></script>
-
-    <!-- Add audio elements -->
-    <audio id="quizPerfectSound" preload="auto">
-        <source src="{{ asset('sounds/quiz-perfect.mp3') }}" type="audio/mpeg">
+    <!-- WORKING AUDIO SYSTEM WITH REAL FILES -->
+    <audio id="quizPerfectSound" preload="auto" volume="0.7">
+        <source src="/sounds/quiz-perfect.mp3" type="audio/mpeg">
     </audio>
-    <audio id="quizPartialSound" preload="auto">
-        <source src="{{ asset('sounds/quiz-partial.mp3') }}" type="audio/mpeg">
+    <audio id="quizPartialSound" preload="auto" volume="0.7">
+        <source src="/sounds/quiz-partial.mp3" type="audio/mpeg">
     </audio>
-    <audio id="quizWrongSound" preload="auto">
-        <source src="{{ asset('sounds/quiz-wrong.mp3') }}" type="audio/mpeg">
+    <audio id="quizWrongSound" preload="auto" volume="0.7">
+        <source src="/sounds/quiz-wrong.mp3" type="audio/mpeg">
     </audio>
 
     <script>
         document.addEventListener("DOMContentLoaded", function () {
-            const progressBarContainer = document.querySelector('.progress-bar-container');
             const quizForm = document.getElementById("quiz-form");
             const submitButton = document.getElementById("submit-btn");
             const popupOverlay = document.getElementById("popup-overlay");
@@ -835,39 +929,49 @@
 
             let selectedAnswers = {};
 
-            // Handle progress bar visibility based on submit button position
-            function checkSubmitButtonVisibility() {
-                if (!submitButton || !progressBarContainer) {
-                    return;
-                }
+            // WORKING: Smart progress bar positioning system
+            const progressBarContainer = document.querySelector('.progress-bar-container');
+            const submitBtn = document.getElementById('submit-btn');
+            let rafId = null;
+            
+            function updateProgressBarPosition() {
+                if (!submitBtn || !progressBarContainer) return;
                 
-                const submitBtnRect = submitButton.getBoundingClientRect();
+                const submitBtnRect = submitBtn.getBoundingClientRect();
                 const windowHeight = window.innerHeight;
-                const progressBarHeight = 100; // Height of progress bar
                 
-                // MUCH MORE AGGRESSIVE: Hide progress bar when submit button is within 150px of viewport
-                if (submitBtnRect.top <= windowHeight + 150) {
+                // INTELLIGENT BUT STRICT AS FUCK:
+                // Hide when submit button is anywhere near the viewport (300px buffer)
+                if (submitBtnRect.top <= windowHeight + 300) {
+                    // NUCLEAR HIDE - multiple methods to ensure it's GONE
                     progressBarContainer.classList.add('hidden');
+                    progressBarContainer.style.display = 'none';
+                    progressBarContainer.style.visibility = 'hidden';
+                    progressBarContainer.style.opacity = '0';
                 } else {
+                    // Show when submit button is FAR AWAY (user scrolled back up to work on questions)
                     progressBarContainer.classList.remove('hidden');
+                    progressBarContainer.style.display = '';
+                    progressBarContainer.style.visibility = '';
+                    progressBarContainer.style.opacity = '';
                 }
             }
-            
-            // Check on scroll and resize with throttling
-            let scrollTimeout;
-            function throttledCheck() {
-                if (scrollTimeout) return;
-                scrollTimeout = setTimeout(() => {
-                    checkSubmitButtonVisibility();
-                    scrollTimeout = null;
-                }, 16); // ~60fps
+
+            function onScroll() {
+                if (rafId) return;
+                
+                rafId = requestAnimationFrame(() => {
+                    updateProgressBarPosition();
+                    rafId = null;
+                });
             }
+
+            // Event listeners with passive scrolling for better performance
+            window.addEventListener('scroll', onScroll, { passive: true });
+            window.addEventListener('resize', onScroll, { passive: true });
             
-            window.addEventListener('scroll', throttledCheck);
-            window.addEventListener('resize', throttledCheck);
-            
-            // Initial check with delay to ensure DOM is ready
-            setTimeout(checkSubmitButtonVisibility, 100);
+            // Initial position check
+            updateProgressBarPosition();
 
             if (quizForm) {
                 // Handle multiple choice answers
@@ -964,24 +1068,65 @@
                     // Clear timer interval
                     clearTimeout(timerInterval);
                     
-                    // Prepare form data
+                    // BRUTAL DATA VALIDATION AND PREPARATION
                     const formData = new FormData(this);
                     formData.append('time_taken', durationSeconds);
                     formData.append('mode', '{{ $mode ?? 'quiz' }}');
+                    
+                    // DEBUG: Log form data
+                    console.log('Form submission data:');
+                    for (let [key, value] of formData.entries()) {
+                        console.log(key, value);
+                    }
+                    
+                    // VALIDATE: Ensure we have answers
+                    const totalQuestions = {{ $questions->count() }};
+                    const answeredQuestions = Object.keys(selectedAnswers).length;
+                    
+                    if (answeredQuestions !== totalQuestions) {
+                        alert(`Please answer all questions. You have answered ${answeredQuestions} out of ${totalQuestions} questions.`);
+                        submitButton.disabled = false;
+                        submitButton.innerHTML = 'Submit Quiz';
+                        return;
+                    }
+                    
+                    // ENSURE CSRF TOKEN EXISTS
+                    const csrfToken = document.querySelector('meta[name="csrf-token"]');
+                    if (!csrfToken) {
+                        console.error('CSRF token not found');
+                        alert('Security token missing. Please refresh the page and try again.');
+                        return;
+                    }
                     
                     // Send request
                     fetch(this.action, {
                         method: 'POST',
                         body: formData,
                         headers: {
-                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+                            'X-CSRF-TOKEN': csrfToken.content,
+                            'Accept': 'application/json'
                         }
                     })
-                    .then(response => response.json())
+                    .then(response => {
+                        console.log('Response status:', response.status);
+                        if (!response.ok) {
+                            if (response.status === 422) {
+                                return response.json().then(errorData => {
+                                    console.error('Validation errors:', errorData);
+                                    throw new Error(`Validation failed: ${JSON.stringify(errorData.errors || errorData.message || 'Unknown validation error')}`);
+                                });
+                            }
+                            throw new Error(`HTTP error! status: ${response.status}`);
+                        }
+                        return response.json();
+                    })
                     .then(data => {
-                        // Re-enable submit button
-                        submitButton.disabled = false;
-                        submitButton.innerHTML = 'Submit Quiz';
+                        // LOCK SUBMIT BUTTON PERMANENTLY - NO RE-ENABLING
+                        submitButton.disabled = true;
+                        submitButton.innerHTML = 'Quiz Submitted';
+                        submitButton.style.background = '#6c757d';
+                        submitButton.style.cursor = 'not-allowed';
+                        submitButton.style.opacity = '0.6';
 
                         // Check for error response
                         if (data.error) {
@@ -1010,6 +1155,15 @@
                             // Use unified confetti system for perfect scores
                             if (typeof ConfettiManager !== 'undefined') {
                                 ConfettiManager.celebratePerfectScore('#popup');
+                            } else if (typeof confetti !== 'undefined') {
+                                // SINGLE PERFECT CONFETTI - Dead center of screen where modal is
+                                confetti({
+                                    particleCount: 100,
+                                    spread: 70,
+                                    origin: { x: 0.5, y: 0.5 },
+                                    colors: ['#FFD700', '#FFA500', '#FF69B4', '#00CED1', '#98FB98'],
+                                    zIndex: 10000
+                                });
                             }
                         } else if (percentage >= 70) {
                             gradeIcon.innerHTML = '<i class="fas fa-star"></i>';
@@ -1120,10 +1274,27 @@
                         popup.classList.add('show');
                     })
                     .catch((error) => {
-                        console.error('Error:', error);
-                        alert(error.message || 'An error occurred while submitting the quiz. Please try again.');
+                        console.error('Quiz submission error:', error);
+                        
+                        // Re-enable submit button
                         submitButton.disabled = false;
                         submitButton.innerHTML = 'Submit Quiz';
+                        submitButton.style.background = '';
+                        submitButton.style.cursor = '';
+                        submitButton.style.opacity = '';
+                        
+                        // Show detailed error message
+                        let errorMessage = 'An error occurred while submitting the quiz.';
+                        
+                        if (error.message.includes('Validation failed')) {
+                            errorMessage = 'Quiz validation failed. Please check your answers and try again.';
+                        } else if (error.message.includes('422')) {
+                            errorMessage = 'Invalid quiz data. Please refresh the page and try again.';
+                        } else if (error.message.includes('CSRF')) {
+                            errorMessage = 'Security token expired. Please refresh the page and try again.';
+                        }
+                        
+                        alert(errorMessage + '\n\nTechnical details: ' + error.message);
                     });
                 });
             }
@@ -1134,6 +1305,20 @@
                 setTimeout(() => {
                     popupOverlay.classList.remove('show');
                 }, 300);
+                
+                // BRUTAL SUBMIT BUTTON LOCKDOWN IN REVIEW MODE
+                if (submitButton) {
+                    submitButton.disabled = true;
+                    submitButton.innerHTML = '✓ Quiz Completed - Review Mode';
+                    submitButton.style.background = '#28a745';
+                    submitButton.style.cursor = 'not-allowed';
+                    submitButton.style.opacity = '0.7';
+                    submitButton.style.pointerEvents = 'none';
+                    
+                    // Add visual indicator that it's locked
+                    submitButton.style.border = '2px solid #155724';
+                    submitButton.style.boxShadow = 'inset 0 2px 4px rgba(0,0,0,0.2)';
+                }
             });
 
             retryButton.addEventListener("click", function () {
@@ -1145,20 +1330,137 @@
             });
         });
 
-        // Function to play quiz completion sound based on score - UNIFIED SYSTEM
+        // SIMPLE RELIABLE AUDIO SYSTEM
         function playQuizCompletionSound(score, total) {
             const percentage = (score / total) * 100;
             
-            // Use the unified grading audio controller
-            if (typeof GradingAudioController !== 'undefined') {
-                GradingAudioController.playGradingSound(percentage, total);
+            let audioElement;
+            let soundId;
+            
+            if (percentage === 100) {
+                audioElement = document.getElementById('quizPerfectSound');
+                soundId = 'perfect';
+            } else if (percentage >= 70) {
+                audioElement = document.getElementById('quizPartialSound');
+                soundId = 'partial';
             } else {
-                console.warn('GradingAudioController not available - falling back to legacy system');
-                // Fallback to legacy system if controller not loaded
-                if (typeof quizSoundManager !== 'undefined') {
-                    quizSoundManager.playGradingSound(percentage);
+                audioElement = document.getElementById('quizWrongSound');
+                soundId = 'wrong';
+            }
+            
+            // SIMPLE AND RELIABLE
+            if (audioElement) {
+                try {
+                    audioElement.volume = 0.7;
+                    audioElement.currentTime = 0;
+                    
+                    audioElement.play().then(() => {
+                        console.log(`✅ Audio ${soundId} played successfully`);
+                    }).catch(error => {
+                        console.log(`❌ Audio ${soundId} failed:`, error);
+                        // Fallback to Web Audio API
+                        playWebAudioSound(soundId, percentage);
+                    });
+                } catch (error) {
+                    console.log(`❌ Audio element error for ${soundId}:`, error);
+                    playWebAudioSound(soundId, percentage);
+                }
+            } else {
+                console.log(`❌ Audio element not found for ${soundId}`);
+                playWebAudioSound(soundId, percentage);
+            }
+        }
+        
+        // STRATEGY 2: Web Audio API fallback
+        function playWebAudioSound(soundId, percentage) {
+            try {
+                const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                const oscillator = audioContext.createOscillator();
+                const gainNode = audioContext.createGain();
+                
+                oscillator.connect(gainNode);
+                gainNode.connect(audioContext.destination);
+                
+                // Different frequencies for different scores
+                if (soundId === 'perfect') {
+                    oscillator.frequency.setValueAtTime(800, audioContext.currentTime);
+                    oscillator.frequency.setValueAtTime(1000, audioContext.currentTime + 0.1);
+                } else if (soundId === 'partial') {
+                    oscillator.frequency.setValueAtTime(600, audioContext.currentTime);
+                } else {
+                    oscillator.frequency.setValueAtTime(300, audioContext.currentTime);
+                }
+                
+                gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.5);
+                
+                oscillator.start(audioContext.currentTime);
+                oscillator.stop(audioContext.currentTime + 0.5);
+                
+                console.log(`Web Audio API sound played for ${soundId}`);
+            } catch (error) {
+                console.log('Web Audio API failed:', error);
+                // STRATEGY 4: Visual feedback only
+                showVisualFeedback(soundId);
+            }
+        }
+        
+        // STRATEGY 3: Dynamic audio creation
+        function createAndPlayAudio(soundId, percentage) {
+            const audio = new Audio();
+            const soundPaths = [
+                `/sounds/quiz-${soundId}.mp3`,
+                `{{ url('sounds') }}/quiz-${soundId}.mp3`,
+                `{{ asset('sounds') }}/quiz-${soundId}.mp3`
+            ];
+            
+            let pathIndex = 0;
+            
+            function tryNextPath() {
+                if (pathIndex < soundPaths.length) {
+                    audio.src = soundPaths[pathIndex];
+                    audio.volume = 0.7;
+                    
+                    audio.addEventListener('canplaythrough', () => {
+                        audio.play().then(() => {
+                            console.log(`Dynamic audio played for ${soundId}`);
+                        }).catch(() => {
+                            pathIndex++;
+                            tryNextPath();
+                        });
+                    }, { once: true });
+                    
+                    audio.addEventListener('error', () => {
+                        pathIndex++;
+                        tryNextPath();
+                    }, { once: true });
+                    
+                    audio.load();
+                } else {
+                    // All paths failed, use Web Audio API
+                    playWebAudioSound(soundId, percentage);
                 }
             }
+            
+            tryNextPath();
+        }
+        
+        // STRATEGY 4: Visual feedback when all audio fails
+        function showVisualFeedback(soundId) {
+            const popup = document.getElementById('popup');
+            if (popup) {
+                popup.style.animation = 'none';
+                popup.offsetHeight; // Trigger reflow
+                
+                if (soundId === 'perfect') {
+                    popup.style.animation = 'pulse 0.6s ease-in-out';
+                } else if (soundId === 'partial') {
+                    popup.style.animation = 'shake 0.5s ease-in-out';
+                } else {
+                    popup.style.animation = 'wobble 0.5s ease-in-out';
+                }
+            }
+            console.log(`Visual feedback shown for ${soundId}`);
         }
 
         // Function to create confetti

@@ -13,6 +13,7 @@ use App\Models\Payment;
 use App\Notifications\PaymentRequiresAttention;
 use Illuminate\Support\Facades\Notification as FacadeNotification;
 use Illuminate\Support\Facades\Log;
+use App\Services\UniversalNotificationService;
 
 class NotificationService
 {
@@ -530,6 +531,9 @@ class NotificationService
         User $user,
         string $courseName
     ): Notification {
+        // Also create universal notification
+        UniversalNotificationService::createCourseWelcomeNotification($user, $courseName);
+        
         $notification = $this->createNotification(
             $user->id,
             'course_welcome',

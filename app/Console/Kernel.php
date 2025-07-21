@@ -19,8 +19,18 @@ class Kernel extends ConsoleKernel
     {
         // $schedule->command('inspire')->hourly();
         
-        // Run notification cleanup daily at midnight
-        $schedule->command('notifications:clean --days=14')->daily()->at('00:00');
+        // AGGRESSIVE NOTIFICATION CLEANUP - KEEP SYSTEM FAST
+        $schedule->command('notifications:cleanup --all')
+                ->daily()
+                ->at('02:00')
+                ->withoutOverlapping()
+                ->appendOutputTo(storage_path('logs/notification-cleanup.log'));
+        
+        // HOURLY PERFORMANCE OPTIMIZATION - CLEAN ACTIVE USERS
+        $schedule->command('notifications:cleanup')
+                ->hourly()
+                ->withoutOverlapping()
+                ->runInBackground();
         
         // Check leaderboard ranks daily and send notifications
         $schedule->command('leaderboard:check-ranks')->daily()->at('08:00');
@@ -94,5 +104,7 @@ class Kernel extends ConsoleKernel
         Commands\CleanupPaymentProofs::class,
         Commands\SendPaymentDigest::class,
         Commands\SummarizePaymentLogs::class,
+        Commands\CleanupNotifications::class,
+        Commands\TestNotificationSystem::class,
     ];
 } 

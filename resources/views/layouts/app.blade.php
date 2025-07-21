@@ -23,6 +23,7 @@
     
     <!-- Custom Styles -->
     <link rel="stylesheet" href="{{ secure_asset('css/app.css') }}">
+    <link rel="stylesheet" href="{{ secure_asset('css/notification-design-system.css') }}">
     <link rel="stylesheet" href="{{ secure_asset('css/notifications.css') }}">
 
     <!-- Favicon -->

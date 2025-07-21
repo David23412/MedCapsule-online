@@ -21,16 +21,15 @@
     <!-- Font Awesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 
-    <!-- Alpine.js - for notification system -->
-    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <!-- Notification System -->
+    <script src="{{ asset('js/notification-system.js') }}"></script>
+    
+    <!-- CLEAN NOTIFICATION SYSTEM - NO UI CLUTTER -->
     
     <!-- CSRF Token - for notification system -->
     <meta name="csrf-token" content="{{ csrf_token() }}">
 
-    <!-- Alpine.js x-cloak directive to prevent content flash before Alpine loads -->
-    <style>
-        [x-cloak] { display: none !important; }
-    </style>
+    <!-- Notification system styles handled by components -->
 
     <!-- Custom Styles -->
     <style>
@@ -1409,195 +1408,7 @@
             }
         }
 
-        /* Enhanced notification bell styles */
-        .notification-bell button {
-            background: transparent;
-            border: none;
-            outline: none;
-            position: relative;
-            transition: all 0.3s ease;
-            width: 36px;
-            height: 36px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            border-radius: 50%;
-        }
-
-        .notification-bell i {
-            color: #007bff;
-            font-size: 1.25rem;
-            transition: all 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55);
-        }
-
-        .notification-bell button:hover i {
-            transform: scale(1.15);
-        }
-
-        .notification-bell button:hover {
-            background: rgba(0, 123, 255, 0.08);
-        }
-
-        .notification-bell button:active i {
-            transform: scale(0.9);
-            transition: transform 0.15s ease;
-        }
-
-        .notification-bell .badge {
-            position: absolute;
-            top: -8px;
-            right: -8px;
-            font-size: 0.7rem;
-            padding: 0.15em 0.35em;
-            min-width: 18px;
-            height: 18px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            border-radius: 50%;
-            background: #f44336;
-            color: white;
-            font-weight: 600;
-            box-shadow: 0 2px 5px rgba(244, 67, 54, 0.5);
-            animation: notificationPulse 2s infinite;
-            z-index: 10;
-        }
-
-        @keyframes notificationPulse {
-            0% {
-                transform: scale(1);
-                box-shadow: 0 2px 5px rgba(244, 67, 54, 0.5);
-            }
-            50% {
-                transform: scale(1.1); 
-                box-shadow: 0 2px 8px rgba(244, 67, 54, 0.7);
-            }
-            100% {
-                transform: scale(1);
-                box-shadow: 0 2px 5px rgba(244, 67, 54, 0.5);
-            }
-        }
-
-        @keyframes bellRing {
-            0% { transform: rotate(0); }
-            10% { transform: rotate(20deg); }
-            20% { transform: rotate(-20deg); }
-            30% { transform: rotate(15deg); }
-            40% { transform: rotate(-15deg); }
-            50% { transform: rotate(10deg); }
-            60% { transform: rotate(-10deg); }
-            70% { transform: rotate(5deg); }
-            80% { transform: rotate(-5deg); }
-            90% { transform: rotate(2deg); }
-            100% { transform: rotate(0); }
-        }
-        
-        .notification-bell p {
-            margin-bottom: 0;
-        }
-
-        /* Bell ring animation on unread notifications */
-        .notification-bell.has-unread button i {
-            animation: bellRing 2.5s infinite;
-            animation-delay: 1s;
-        }
-        
-        /* Fix text-purple class for notification icon */
-        .text-purple {
-            color: #9C27B0;
-        }
-
-        /* Enhanced notification dropdown styles */
-        .notification-bell .position-absolute,
-        .notification-dropdown {
-            width: 380px;
-            border-radius: 12px;
-            box-shadow: 0 8px 30px rgba(0,0,0,0.12);
-            border: 1px solid rgba(0,0,0,0.05);
-            z-index: 1050;
-            overflow: hidden;
-            max-height: 450px;
-            display: flex;
-            flex-direction: column;
-            background-color: white;
-            margin-top: 0.8rem;
-            left: 50%;
-            transform: translateX(-50%);
-        }
-        
-        .notification-dropdown {
-            position: absolute !important;
-            top: 100% !important;
-            right: auto !important;
-        }
-
-        .notification-header {
-            border-bottom: 1px solid rgba(33, 150, 243, 0.1);
-            padding: 1rem;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            background-color: #f8f9fa;
-            border-radius: 12px 12px 0 0;
-        }
-        
-        .notification-header h6 {
-            margin: 0;
-            font-weight: 600;
-            color: #343a40;
-            font-size: 1rem;
-        }
-
-        .mark-all-read {
-            background: none;
-            border: none;
-            color: #007bff;
-            font-size: 0.8rem;
-            cursor: pointer;
-            padding: 0.3rem 0.6rem;
-            border-radius: 4px;
-            transition: all 0.2s ease;
-            display: flex;
-            align-items: center;
-        }
-
-        .mark-all-read:hover {
-            background-color: #e6f2ff;
-            transform: translateY(-1px);
-        }
-
-        .notification-list {
-            overflow-y: auto;
-            flex: 1;
-            scrollbar-width: thin;
-            scrollbar-color: #e0e0e0 #f5f5f5;
-            max-height: 330px;
-            padding: 0.5rem 0;
-        }
-
-        .notification-list::-webkit-scrollbar {
-            width: 3px;
-        }
-
-        .notification-list::-webkit-scrollbar-track {
-            background: #f5f5f5;
-        }
-
-        .notification-list::-webkit-scrollbar-thumb {
-            background: #e0e0e0;
-            border-radius: 10px;
-        }
-
-        .notification-item {
-            padding: 0.75rem 1rem;
-            border-bottom: 1px solid #f1f3f5;
-            position: relative;
-            transition: all 0.3s ease;
-            cursor: pointer;
-            opacity: 0;
-            animation: appear-in 0.5s forwards;
-            animation-delay: var(--appear-delay, 0s);
-            background-color: #ffffff;
+        /* Notification styles now handled by components */
             border-radius: 8px;
             margin-bottom: 0.5rem;
             box-shadow: 0 1px 3px rgba(0,0,0,0.05);
@@ -2308,96 +2119,10 @@
                         </li>
                         <!-- Notification Bell -->
                         <li class="nav-item me-4">
-                            <div class="notification-bell position-relative" 
-                                 x-data="notificationBell()" 
-                                 :class="{'has-unread': unreadCount > 0}">
-                                <button 
-                                    @click="toggleNotifications" 
-                                    class="position-relative focus:outline-none"
-                                    aria-label="Notifications"
-                                >
-                                    <i class="fas fa-bell"></i>
-                                    <span 
-                                        x-cloak
-                                        x-show="unreadCount > 0" 
-                                        x-text="unreadCount > 99 ? '99+' : unreadCount"
-                                        class="badge"
-                                    ></span>
-                                </button>
-                                
-                                <div 
-                                    x-show="isOpen" 
-                                    @click.away="isOpen = false"
-                                    x-transition:enter="transition ease-out duration-200"
-                                    x-transition:enter-start="opacity-0 transform scale-95"
-                                    x-transition:enter-end="opacity-100 transform scale-100"
-                                    x-transition:leave="transition ease-in duration-100"
-                                    x-transition:leave-start="opacity-100 transform scale-100"
-                                    x-transition:leave-end="opacity-0 transform scale-95"
-                                    class="notification-dropdown"
-                                    style="display: none;"
-                                >
-                                    <div class="notification-header">
-                                        <h6>Notifications</h6>
-                                    </div>
-
-                                    <div class="notification-list" x-show="!loading">
-                                        <template x-if="notifications.length === 0">
-                                            <div class="empty-notification">
-                                                <div class="empty-icon">
-                                                    <i class="fas fa-bell-slash"></i>
-                                                </div>
-                                                <p class="empty-text">No notifications</p>
-                                            </div>
-                                        </template>
-                                        
-                                        <template x-if="notifications.length > 0">
-                                            <div>
-                                                <template x-for="(notification, index) in notifications.slice(0, 5)" :key="notification.id">
-                                                    <div 
-                                                        :class="{
-                                                            'notification-unread': !notification.is_read,
-                                                            'notification-urgent': ['weak_topics', 'weak_topic_added', 'review_mistakes'].includes(notification.type),
-                                                            'notification-item-appear': true
-                                                        }"
-                                                        class="notification-item"
-                                                        style="--appear-delay: calc(0.05s * var(--index))"
-                                                        :style="{
-                                                            '--index': index
-                                                        }"
-                                                    >
-                                                        <div class="d-flex">
-                                                            <div 
-                                                                class="notification-icon me-2"
-                                                                :class="{'icon-pulse': ['weak_topics', 'weak_topic_added', 'review_mistakes'].includes(notification.type) && !notification.is_read}"
-                                                            >
-                                                                <i class="medcapsule-type-icon">MedCapsule</i>
-                                                            </div>
-                                                            <div class="notification-content">
-                                                                <div class="notification-title">
-                                                                    <span x-text="notification.title"></span>
-                                                                    <small class="notification-time" x-text="notification.time_ago"></small>
-                                                                </div>
-                                                                <p class="notification-message" x-text="notification.message"></p>
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                </template>
-                                            </div>
-                                        </template>
-                                    </div>
-                                    
-                                    <div class="notification-list" x-show="loading">
-                                        <div class="notification-loading">
-                                            <div class="loading-spinner" role="status">
-                                                <span class="visually-hidden">Loading...</span>
-                                            </div>
-                                            <span>Loading notifications...</span>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
+                            @include('components.notification-bell')
                         </li>
+                        
+
                         <li class="nav-item">
                             <a href="{{ route('profile') }}" class="nav-link">
                                 <div class="profile-circle {{ !Auth::user()->profile_picture_url ? 'no-image' : '' }}" 

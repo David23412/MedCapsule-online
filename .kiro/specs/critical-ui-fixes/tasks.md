@@ -49,21 +49,21 @@
   - Update random quiz, tutor quiz, and quiz mode to use unified components
   - _Requirements: 3.1, 3.3_
 
-- [ ] 7. Add Academic Year Field to Courses System
+- [x] 7. Add Academic Year Field to Courses System
   - Create database migration to add academic_year field to courses table
   - Update Course model with academic year field and validation
   - Modify course creation/editing forms to include academic year selection
   - Create CourseFilterService for academic year filtering logic
   - _Requirements: 4.1, 4.2_
 
-- [ ] 8. Implement Academic Year Filtering in Course Blade
+- [x] 8. Implement Academic Year Filtering in Course Blade
   - Add academic year filter dropdown to course listing page
   - Implement filtering logic to show only courses for selected year
   - Create academic year categorization pills matching filter system
   - Test filtering functionality across all user roles
   - _Requirements: 4.3, 4.4_
 
-- [ ] 9. Overhaul Notification System for Universal Usage
+- [x] 9. Overhaul Notification System for Universal Usage
   - Create UniversalNotificationService with proper icon management
   - Implement notification blade component for cross-page usage
   - Add notification system to course pages and tutor/admin interfaces
