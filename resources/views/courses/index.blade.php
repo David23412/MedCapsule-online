@@ -1744,7 +1744,7 @@
                 unreadCount: 0,
                 loading: false,
                 lastFetched: 0,
-                notificationSound: new Audio('/sounds/zapsplat_multimedia_ui_chime_alert_notification_simple_chime_correct_answer_88733.mp3'),
+                notificationSound: new Audio('/sounds/notification-sound.mp3'),
                 prevUnreadCount: 0, // Track previous unread count to detect changes
                 
                 init() {

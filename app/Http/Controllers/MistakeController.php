@@ -39,6 +39,7 @@ class MistakeController extends Controller
         // Fetch all mistakes along with the related questions that are not mastered
         $mistakesQuery = Mistake::where('user_id', $userId)
             ->where('mastered', false)  // Only show non-mastered mistakes
+            ->select('*')  // Explicitly select all fields including 'skipped'
             ->with(['question' => function($query) {
                 $query->select('id', 'question', 'topic_id', 'image_url', 'option_a', 'option_b', 'option_c', 'option_d', 'correct_answer', 'explanation');
                 $query->with(['topic' => function($query) {
@@ -58,9 +59,36 @@ class MistakeController extends Controller
 
         $mistakes = $mistakesQuery->orderBy('last_attempt_date', 'desc')->get();
 
+        // Ensure all skipped values are properly set
+        foreach ($mistakes as $mistake) {
+            // Force skipped to be a boolean if it's null or not a boolean
+            if ($mistake->skipped === null) {
+                $mistake->skipped = false;
+                $mistake->save();
+                
+                Log::info('Fixed null skipped value', [
+                    'question_id' => $mistake->question_id,
+                    'new_value' => false
+                ]);
+            }
+            
+            Log::info('Mistake skipped value', [
+                'question_id' => $mistake->question_id,
+                'skipped' => var_export($mistake->skipped, true),
+                'type' => gettype($mistake->skipped)
+            ]);
+        }
+
         Log::info('✅ Mistakes fetched:', [
             'count' => $mistakes->count(),
-            'courses_count' => $courses->count()
+            'courses_count' => $courses->count(),
+            'skipped_mistakes' => $mistakes->where('skipped', true)->count(),
+            'sample_mistake_data' => $mistakes->first() ? [
+                'id' => $mistakes->first()->id,
+                'question_id' => $mistakes->first()->question_id,
+                'skipped' => $mistakes->first()->skipped,
+                'skipped_type' => gettype($mistakes->first()->skipped)
+            ] : null
         ]);
 
         return view('mistakes', compact('mistakes', 'courses', 'courseFilter'));
@@ -194,47 +222,76 @@ class MistakeController extends Controller
      */
     public function skipMistake($question_id)
     {
+        $startTime = microtime(true);
+        $requestId = uniqid('skip_mistake_');
         $userId = auth()->id();
 
         Log::info("📌 Skipping mistake", [
+            'request_id' => $requestId,
             'user_id' => $userId,
-            'question_id' => $question_id
+            'question_id' => $question_id,
+            'ip_address' => request()->ip()
         ]);
 
         try {
+            DB::beginTransaction();
+
             // Find the mistake record for the given user and question
             $mistake = Mistake::where('user_id', $userId)
                               ->where('question_id', $question_id)
                               ->first();
 
             if ($mistake) {
-                // Mark the mistake as skipped
+                // Mark the mistake as skipped and update last attempt date
                 $mistake->skipped = true;
-                $mistake->skipped_at = now();
+                $mistake->last_attempt_date = now();
                 $mistake->save();
 
+                DB::commit();
+
+                $executionTime = (microtime(true) - $startTime) * 1000;
                 Log::info("✅ Mistake successfully skipped", [
+                    'request_id' => $requestId,
                     'user_id' => $userId,
-                    'question_id' => $question_id
+                    'question_id' => $question_id,
+                    'execution_time_ms' => round($executionTime, 2)
                 ]);
 
-                return response()->json(['success' => true]);
-            } else {
-                Log::warning("⚠️ No mistake found to skip", [
-                    'user_id' => $userId,
-                    'question_id' => $question_id
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Question skipped successfully'
                 ]);
+            } else {
+                DB::rollBack();
+                
+                $executionTime = (microtime(true) - $startTime) * 1000;
+                Log::warning("⚠️ No mistake found to skip", [
+                    'request_id' => $requestId,
+                    'user_id' => $userId,
+                    'question_id' => $question_id,
+                    'execution_time_ms' => round($executionTime, 2)
+                ]);
+                
                 return response()->json([
                     'success' => false,
                     'message' => "No mistake found to skip."
-                ]);
+                ], 404);
             }
         } catch (\Exception $e) {
+            DB::rollBack();
+            
+            $executionTime = (microtime(true) - $startTime) * 1000;
             Log::error('❌ Error skipping mistake', [
+                'request_id' => $requestId,
                 'error' => $e->getMessage(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
                 'user_id' => $userId,
-                'question_id' => $question_id
+                'question_id' => $question_id,
+                'execution_time_ms' => round($executionTime, 2),
+                'trace' => $e->getTraceAsString()
             ]);
+            
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to skip mistake'

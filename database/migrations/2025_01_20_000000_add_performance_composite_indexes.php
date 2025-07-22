@@ -22,7 +22,7 @@ return new class extends Migration
             
             // Covering index for question retrieval
             if (!DB::select("SHOW INDEX FROM questions WHERE Key_name = 'idx_topic_deleted_covering'")) {
-                $table->index(['topic_id', 'deleted', 'id'], 'idx_topic_deleted_covering');
+                $table->index(['topic_id', 'id'], 'idx_topic_deleted_covering');
             }
         });
 

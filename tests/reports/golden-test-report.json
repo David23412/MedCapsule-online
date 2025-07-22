@@ -1,0 +1,25 @@
+{
+  "timestamp": "2025-07-21T15:18:16.314Z",
+  "duration": 1978,
+  "successRate": 40,
+  "results": {
+    "total": 5,
+    "passed": 2,
+    "failed": 3,
+    "errors": [
+      {
+        "test": "Environment Validation",
+        "error": "Node.js version v23.10.0 not optimal. Recommend v18+ or v20+"
+      },
+      {
+        "test": "Jest Unit Tests",
+        "error": "Jest tests failed with code 1"
+      },
+      {
+        "test": "Integration Validation",
+        "error": "Component notification-bell missing accessibility attributes"
+      }
+    ]
+  },
+  "status": "IMPROVEMENTS_REQUIRED"
+}

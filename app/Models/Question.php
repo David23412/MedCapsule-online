@@ -35,8 +35,7 @@ class Question extends Model
         'correct_attempts',
         'last_attempted_at',
         'similarity_threshold',
-        'source',
-        'deleted'
+        'source'
     ];
 
     protected $casts = [
@@ -45,8 +44,7 @@ class Question extends Model
         'total_attempts' => 'integer',
         'correct_attempts' => 'integer',
         'alternative_answers' => 'array',
-        'similarity_threshold' => 'float',
-        'deleted' => 'boolean'
+        'similarity_threshold' => 'float'
     ];
 
     // Define the relationship: A Question belongs to a Topic

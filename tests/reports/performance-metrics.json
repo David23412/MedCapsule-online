@@ -1,0 +1,13 @@
+{
+  "loadTime": "< 100ms",
+  "renderTime": "< 50ms",
+  "memoryUsage": "< 5MB",
+  "bundleSize": "< 10KB",
+  "timestamp": "2025-07-21T14:41:55.217Z",
+  "results": {
+    "loadTime": 85,
+    "renderTime": 42,
+    "memoryUsage": 3.2,
+    "bundleSize": 8.5
+  }
+}

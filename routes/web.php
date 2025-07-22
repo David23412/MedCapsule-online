@@ -29,6 +29,7 @@ Route::get('/', [HomeController::class, 'index'])->name('home');
 
 // Auth routes
 require __DIR__.'/auth.php';
+require __DIR__.'/debug.php';
 
 // Protected routes
 Route::middleware('auth')->group(function () {
@@ -376,6 +377,32 @@ Route::get('/debug/assignment-data', function() {
                 'id' => $student->id,
                 'name' => $student->name,
                 'username' => $student->username
+            ];
+        })
+    ]);
+})->middleware('auth');
+
+// Debug route for mistakes data
+Route::get('/debug/mistakes-data', function() {
+    if (!auth()->check()) {
+        abort(403);
+    }
+    
+    $userId = auth()->id();
+    $mistakes = \App\Models\Mistake::where('user_id', $userId)->get();
+    
+    return response()->json([
+        'user_id' => $userId,
+        'total_mistakes' => $mistakes->count(),
+        'skipped_mistakes' => $mistakes->where('skipped', true)->count(),
+        'mistakes_data' => $mistakes->map(function($mistake) {
+            return [
+                'id' => $mistake->id,
+                'question_id' => $mistake->question_id,
+                'skipped' => $mistake->skipped,
+                'skipped_type' => gettype($mistake->skipped),
+                'mastered' => $mistake->mastered,
+                'last_attempt_date' => $mistake->last_attempt_date
             ];
         })
     ]);

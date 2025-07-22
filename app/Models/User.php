@@ -345,76 +345,121 @@ class User extends Authenticatable
      */
     public function updateStudyStreak($lastQuizDate = null)
     {
-        $today = now()->startOfDay();
-        $yesterday = now()->subDay()->startOfDay();
-        
         // Store original streak for tracking reset
-        $originalStreak = $this->study_streak_days ?? 0;
+        $originalStreak = $this->study_streak_days ?? 1;
         
-        // If no last quiz date is provided, find one from the database
-        if (!$lastQuizDate) {
-            $lastAttempt = \App\Models\QuizAttempt::where('user_id', $this->id)
-                ->where('created_at', '<', now()->subMinutes(5)) // Exclude very recent attempts 
-                ->orderBy('created_at', 'desc')
-                ->first();
-                
-            $lastQuizDate = $lastAttempt ? $lastAttempt->created_at->startOfDay() : null;
-        } else if (is_string($lastQuizDate)) {
-            // Convert string date to Carbon instance if needed
-            $lastQuizDate = \Carbon\Carbon::parse($lastQuizDate)->startOfDay();
-        }
-        
-        // First ever quiz (no previous quiz attempts)
-        if (!$lastQuizDate) {
+        // Get the user's latest quiz attempt
+        $lastAttempt = \App\Models\QuizAttempt::where('user_id', $this->id)
+            ->orderBy('created_at', 'desc')
+            ->first();
+            
+        // If they have no attempts, set streak to 1 (default for platform users)
+        if (!$lastAttempt) {
             $this->study_streak_days = 1;
             $this->save();
             return 1;
         }
         
-        // User already did a quiz today, streak stays the same
-        if ($lastQuizDate->equalTo($today)) {
-            // Initialize streak to 1 if it's not set
-            if ($this->study_streak_days === null || $this->study_streak_days === 0) {
-                $this->study_streak_days = 1;
-                $this->save();
-            }
-            return $this->study_streak_days;
-        }
+        $lastAttemptDate = $lastAttempt->created_at->startOfDay();
+        $today = now()->startOfDay();
+        $yesterday = now()->subDay()->startOfDay();
         
-        // User did a quiz yesterday, increment streak
-        if ($lastQuizDate->equalTo($yesterday)) {
-            if ($this->study_streak_days === null || $this->study_streak_days === 0) {
-                $this->study_streak_days = 1;
-            } else {
-                $this->study_streak_days += 1;
-            }
+        // Handle different cases
+        if ($lastAttemptDate->equalTo($today)) {
+            // They did a quiz today - check for previous days in sequence
+            $streak = $this->calculateConsecutiveDays();
+            $this->study_streak_days = $streak;
             $this->save();
-            return $this->study_streak_days;
+            
+            // Create streak notification for new streaks or milestones
+            $this->createStreakNotificationIfNeeded($streak, $originalStreak);
+            
+            return $streak;
+        } else if ($lastAttemptDate->equalTo($yesterday)) {
+            // Quiz taken yesterday - check for previous days
+            $streak = $this->calculateConsecutiveDays();
+            $this->study_streak_days = $streak;
+            $this->save();
+            
+            // Create streak notification for new streaks or milestones
+            $this->createStreakNotificationIfNeeded($streak, $originalStreak);
+            
+            return $streak;
+        } else {
+            // Last quiz attempt was more than 1 day ago - streak resets to 1
+            $wasReset = $originalStreak > 1;
+            $this->study_streak_days = 1;
+            $this->save();
+            
+            // Send streak reset notification if applicable
+            if ($wasReset) {
+                try {
+                    app(\App\Services\NotificationService::class)->createStreakResetNotification($this);
+                    \Illuminate\Support\Facades\Log::info('Created streak reset notification', [
+                        'user_id' => $this->id,
+                        'previous_streak' => $originalStreak
+                    ]);
+                } catch (\Exception $e) {
+                    \Illuminate\Support\Facades\Log::error('Failed to create streak reset notification', [
+                        'error' => $e->getMessage(),
+                        'user_id' => $this->id,
+                        'previous_streak' => $originalStreak
+                    ]);
+                }
+            }
+            
+            return 1;
+        }
+    }
+    
+    /**
+     * Calculate how many consecutive days a user has been active
+     */
+    private function calculateConsecutiveDays()
+    {
+        // Start with today - go backwards day by day and see if the user was active
+        $streak = 0;
+        $currentDate = now()->startOfDay();
+        
+        while (true) {
+            // Check if the user had quiz activity on this day
+            $hadActivity = \App\Models\QuizAttempt::where('user_id', $this->id)
+                ->whereDate('created_at', $currentDate)
+                ->exists();
+                
+            if (!$hadActivity) {
+                break; // Break the streak if no activity on this day
+            }
+            
+            $streak++;
+            $currentDate->subDay(); // Go back one day
         }
         
-        // User didn't do a quiz yesterday, reset streak to 1
-        // Check if streak is being reset (was > 1 before)
-        $wasReset = $originalStreak > 1;
-        $this->study_streak_days = 1;
-        $this->save();
+        return max(1, $streak); // Minimum streak is 1 if they've ever done a quiz
+    }
+    
+    /**
+     * Create streak notification if needed for milestones
+     */
+    private function createStreakNotificationIfNeeded($currentStreak, $previousStreak)
+    {
+        // Only create notifications for new streaks or significant milestones
+        $milestones = [1, 2, 3, 7, 14, 30, 60, 100];
         
-        // Send streak reset notification if applicable
-        if ($wasReset) {
+        if ($currentStreak > $previousStreak && in_array($currentStreak, $milestones)) {
             try {
-                app(\App\Services\NotificationService::class)->createStreakResetNotification($this);
-                \Illuminate\Support\Facades\Log::info('Created streak reset notification', [
+                app(\App\Services\NotificationService::class)->createStudyStreakNotification($this, $currentStreak);
+                \Illuminate\Support\Facades\Log::info('Created streak milestone notification', [
                     'user_id' => $this->id,
-                    'previous_streak' => $originalStreak
+                    'streak' => $currentStreak
                 ]);
             } catch (\Exception $e) {
-                \Illuminate\Support\Facades\Log::error('Failed to create streak reset notification', [
+                \Illuminate\Support\Facades\Log::error('Failed to create streak notification', [
                     'error' => $e->getMessage(),
                     'user_id' => $this->id,
-                    'previous_streak' => $originalStreak
+                    'streak' => $currentStreak
                 ]);
             }
         }
-        
-        return 1;
     }
 }

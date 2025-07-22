@@ -902,7 +902,7 @@
 
     <!-- Add audio elements for all sounds -->
     <audio id="correctSound" preload="auto">
-        <source src="{{ asset('sounds/zapsplat_multimedia_ui_chime_alert_notification_simple_chime_correct_answer_88733.mp3') }}" type="audio/mpeg">
+        <source src="{{ asset('sounds/Single-correct.mp3') }}" type="audio/mpeg">
     </audio>
     <audio id="wrongSound" preload="auto">
         <source src="{{ asset('sounds/quiz-wrong.mp3') }}" type="audio/mpeg">
@@ -1289,14 +1289,22 @@
                             'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
                         }
                     })
-                    .then(response => response.json())
+                    .then(response => {
+                        if (!response.ok) {
+                            throw new Error(`HTTP error! status: ${response.status}`);
+                        }
+                        return response.json();
+                    })
                     .then(data => {
                         if (data.success) {
-                            console.log('Question skipped successfully');
+                            console.log('✅ Question skipped successfully');
+                        } else {
+                            console.warn('⚠️ Skip failed:', data.message);
                         }
                     })
                     .catch(error => {
-                        console.error('Error skipping question:', error);
+                        console.error('❌ Error skipping question:', error);
+                        // Don't show alert to user, just log the error
                     });
                     
                     // Remove from active questions (skip it for this session)

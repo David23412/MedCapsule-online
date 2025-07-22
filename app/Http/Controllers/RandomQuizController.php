@@ -73,7 +73,6 @@ class RandomQuizController extends Controller
             $randomQuestions = Question::whereHas('topic', function($query) use ($selectedCourses) {
                     $query->whereIn('course_id', $selectedCourses);
                 })
-                ->where('deleted', false)
                 ->whereNotNull('question')
                 ->whereNotNull('correct_answer')
                 ->inRandomOrder()
@@ -251,7 +250,6 @@ class RandomQuizController extends Controller
 
             // GOLDEN STANDARD: Get questions with proper validation
             $questions = Question::whereIn('id', $questionIds)
-                ->where('deleted', false)
                 ->get();
 
             if ($questions->isEmpty()) {

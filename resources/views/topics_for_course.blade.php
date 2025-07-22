@@ -1976,6 +1976,8 @@
                                 Complete all sources to master this topic. Progress is tracked for each source.
                             </p>
                         </div>
+                        
+
                     </form>
                 </div>
                 <div class="modal-footer">
@@ -2331,8 +2333,19 @@
                 }
             });
 
-            // Source selection modal functionality
-            const sourceSelectionModal = new bootstrap.Modal(document.getElementById('sourceSelectionModal'));
+            // Source selection modal
+            let sourceSelectionModal;
+            try {
+                const modalElement = document.getElementById('sourceSelectionModal');
+                if (modalElement) {
+                    sourceSelectionModal = new bootstrap.Modal(modalElement);
+                    console.log('✅ Modal initialized successfully');
+                } else {
+                    console.error('❌ Modal element not found');
+                }
+            } catch (error) {
+                console.error('❌ Modal initialization failed:', error);
+            }
             
             // Handle mode change
             document.querySelectorAll('input[name="quiz_mode"]').forEach(radio => {
@@ -2447,53 +2460,108 @@
                         });
             }
             
-            // Handle quiz button clicks
-            document.querySelectorAll('.start-quiz-btn').forEach(button => {
-                button.addEventListener('click', async function(e) {
+            // ROBUST: Handle quiz button clicks with multiple prevention methods
+            console.log('🔍 Setting up quiz button handlers...');
+            const quizButtons = document.querySelectorAll('.start-quiz-btn');
+            console.log('🔍 Found', quizButtons.length, 'quiz buttons');
+            
+            quizButtons.forEach((button, index) => {
+                console.log('🔍 Setting up button', index, button);
+                
+                // Remove any existing href to prevent navigation
+                const originalHref = button.href;
+                button.removeAttribute('href');
+                button.style.cursor = 'pointer';
+                
+                button.addEventListener('click', function(e) {
+                    console.log('🎯 BUTTON CLICKED - MULTIPLE PREVENTION');
+                    
+                    // Multiple ways to prevent default
                     e.preventDefault();
+                    e.stopPropagation();
+                    e.stopImmediatePropagation();
+                    
+                    // Prevent any form submission
+                    if (e.target.form) {
+                        e.target.form.onsubmit = function() { return false; };
+                    }
+                    
+                    console.log('🔍 All prevention methods applied');
+                    
                     const topicId = this.dataset.topicId;
                     const courseId = this.dataset.courseId;
                     
-                    document.getElementById('source_topic_id').value = topicId;
-                    document.getElementById('source_course_id').value = courseId;
-                    document.getElementById('sourceSelectionForm').action = this.href;
+                    console.log('🔍 Topic ID:', topicId, 'Course ID:', courseId);
                     
-                    // Fetch and update source progress
-                    const sourcesContainer = document.querySelector('.sources-container');
-                    sourcesContainer.innerHTML = '<div class="text-center"><div class="spinner-border text-primary" role="status"></div></div>';
-
+                    if (!topicId || !courseId) {
+                        console.error('❌ Missing topic or course ID');
+                        return false;
+                    }
+                    
+                    if (!sourceSelectionModal) {
+                        console.error('❌ Modal not initialized, redirecting directly');
+                        window.location.href = originalHref;
+                        return false;
+                    }
+                    
                     try {
-                        const selectedMode = document.querySelector('input[name="quiz_mode"]:checked').value;
-                        const response = await fetch(`/topics/${topicId}/source-progress?mode=${selectedMode}`, {
+                        // Set form values
+                        document.getElementById('source_topic_id').value = topicId;
+                        document.getElementById('source_course_id').value = courseId;
+                        document.getElementById('sourceSelectionForm').action = originalHref;
+                        
+                        console.log('✅ Form values set');
+                        
+                        // Show modal immediately
+                        console.log('🔍 Showing modal immediately');
+                        sourceSelectionModal.show();
+                        
+                        // Load sources in background
+                        const sourcesContainer = document.querySelector('.sources-container');
+                        if (sourcesContainer) {
+                            sourcesContainer.innerHTML = '<div class="text-center py-3"><div class="spinner-border text-primary" role="status"></div><p class="mt-2">Loading sources...</p></div>';
+                        }
+                        
+                        const selectedMode = document.querySelector('input[name="quiz_mode"]:checked')?.value || 'quiz';
+                        
+                        fetch(`/topics/${topicId}/source-progress?mode=${selectedMode}`, {
                             method: 'GET',
                             headers: {
                                 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
-                                'Accept': 'application/json',
-                                'Content-Type': 'application/json'
-                            },
-                            credentials: 'same-origin'
+                                'Accept': 'application/json'
+                            }
+                        })
+                        .then(response => response.json())
+                        .then(data => {
+                            console.log('✅ Sources loaded');
+                            if (typeof updateSourcesContainer === 'function') {
+                                updateSourcesContainer(data);
+                            }
+                        })
+                        .catch(error => {
+                            console.error('❌ Error loading sources:', error);
+                            if (sourcesContainer) {
+                                sourcesContainer.innerHTML = '<div class="alert alert-warning">Could not load source details. You can still start the quiz.</div>';
+                            }
                         });
                         
-                        if (!response.ok) {
-                            throw new Error(`HTTP error! status: ${response.status}`);
-                        }
-                        
-                        const data = await response.json();
-                        updateSourcesContainer(data);
                     } catch (error) {
-                        console.error('Error fetching source progress:', error);
-                        console.log('Topic ID:', topicId);
-                        console.log('Attempted URL:', `/topics/${topicId}/source-progress`);
-                        sourcesContainer.innerHTML = '<div class="alert alert-danger">Error loading sources. Please try again. Details: ' + error.message + '</div>';
+                        console.error('❌ Handler error:', error);
+                        // Fallback to direct navigation
+                        window.location.href = originalHref;
                     }
                     
-                    sourceSelectionModal.show();
+                    return false;
                 });
+                
+                // Also prevent any other click events
+                button.onclick = function() { return false; };
             });
 
-            // Form submission validation
+            // Form submission
             document.getElementById('sourceSelectionForm').addEventListener('submit', function(e) {
                 e.preventDefault();
+                
                 const checkedSources = this.querySelectorAll('input[name="sources[]"]:checked');
                 if (checkedSources.length === 0) {
                     alert('Please select at least one source to start the quiz.');
@@ -2504,17 +2572,17 @@
                 const courseId = this.querySelector('#source_course_id').value;
                 const topicId = this.querySelector('#source_topic_id').value;
                 
-                // Build the URL with selected sources
                 const selectedSources = Array.from(checkedSources).map(cb => cb.value);
                 const sourceParams = selectedSources.map(s => `sources[]=${s}`).join('&');
                 
-                // Redirect to appropriate route based on mode
                 const baseUrl = selectedMode === 'tutor' 
                     ? `/quiz/${courseId}/${topicId}/tutor`
                     : `/quiz/${courseId}/${topicId}`;
                     
                 window.location.href = `${baseUrl}?${sourceParams}`;
             });
+            
+
         });
 
         // Microsoft Edge modal backdrop fix

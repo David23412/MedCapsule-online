@@ -41,15 +41,7 @@ return new class extends Migration
             }
         });
 
-        Schema::table('skipped_questions', function (Blueprint $table) {
-            // Additional performance indexes
-            if (!$this->indexExists('skipped_questions', 'idx_skipped_time_session')) {
-                $table->index(['skipped_at', 'session_type'], 'idx_skipped_time_session');
-            }
-            if (!$this->indexExists('skipped_questions', 'idx_skipped_user_time')) {
-                $table->index(['user_id', 'skipped_at'], 'idx_skipped_user_time');
-            }
-        });
+        // Skip skipped_questions table - removed from schema
 
         Schema::table('topics', function (Blueprint $table) {
             // Enhanced locking and performance indexes
@@ -66,8 +58,8 @@ return new class extends Migration
 
         Schema::table('courses', function (Blueprint $table) {
             // Course filtering and performance indexes
-            if (!$this->indexExists('courses', 'idx_courses_year_price_currency')) {
-                $table->index(['year', 'price', 'currency'], 'idx_courses_year_price_currency');
+            if (!$this->indexExists('courses', 'idx_courses_academic_year_price_currency')) {
+                $table->index(['academic_year', 'price', 'currency'], 'idx_courses_academic_year_price_currency');
             }
             if (!$this->indexExists('courses', 'idx_courses_cache_version')) {
                 $table->index('cache_version', 'idx_courses_cache_version');
@@ -97,7 +89,7 @@ return new class extends Migration
         Schema::table('questions', function (Blueprint $table) {
             // Question filtering and performance indexes
             if (!$this->indexExists('questions', 'idx_questions_topic_deleted')) {
-                $table->index(['topic_id', 'deleted'], 'idx_questions_topic_deleted');
+                $table->index(['topic_id'], 'idx_questions_topic_deleted');
             }
             if (!$this->indexExists('questions', 'idx_questions_source_type')) {
                 $table->index(['source', 'question_type'], 'idx_questions_source_type');
@@ -204,7 +196,7 @@ return new class extends Migration
         });
 
         Schema::table('courses', function (Blueprint $table) {
-            $table->dropIndex('idx_courses_year_price_currency');
+            $table->dropIndex('idx_courses_academic_year_price_currency');
             $table->dropIndex('idx_courses_cache_version');
         });
 
@@ -214,10 +206,7 @@ return new class extends Migration
             $table->dropIndex('idx_topics_attempt_mastered');
         });
 
-        Schema::table('skipped_questions', function (Blueprint $table) {
-            $table->dropIndex('idx_skipped_time_session');
-            $table->dropIndex('idx_skipped_user_time');
-        });
+        // Skip skipped_questions table - removed from schema
 
         Schema::table('assignments', function (Blueprint $table) {
             $table->dropIndex('idx_assignments_status_deadline');

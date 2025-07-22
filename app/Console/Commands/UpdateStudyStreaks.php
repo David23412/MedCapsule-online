@@ -43,15 +43,15 @@ class UpdateStudyStreaks extends Command
                 ->orderBy('created_at', 'desc')
                 ->first();
                 
-            // If they have no attempts, set streak to 0
+            // If they have no attempts, set streak to 1 (default for platform users)
             if (!$lastAttempt) {
-                if ($user->study_streak_days !== 0) {
-                    $user->study_streak_days = 0;
+                if ($user->study_streak_days !== 1) {
+                    $user->study_streak_days = 1;
                     $user->save();
-                    $this->line("  No quiz attempts found. Set streak to 0.");
+                    $this->line("  No quiz attempts found. Set streak to 1 (default).");
                     $updatedCount++;
                 } else {
-                    $this->line("  No quiz attempts found. Streak already 0.");
+                    $this->line("  No quiz attempts found. Streak already 1.");
                 }
                 continue;
             }
@@ -86,16 +86,15 @@ class UpdateStudyStreaks extends Command
                     $this->line("  Streak verified as {$streak} (active yesterday)");
                 }
             } else {
-                // Last quiz attempt was more than 1 day ago - streak should be 0 or 1
-                $correctStreak = $user->study_streak_days > 1 ? 1 : $user->study_streak_days;
-                if ($user->study_streak_days != $correctStreak) {
+                // Last quiz attempt was more than 1 day ago - streak should reset to 1
+                if ($user->study_streak_days != 1) {
                     $oldStreak = $user->study_streak_days;
-                    $user->study_streak_days = $correctStreak;
+                    $user->study_streak_days = 1;
                     $user->save();
-                    $this->line("  Updated streak: {$oldStreak} → {$correctStreak} (inactive)");
+                    $this->line("  Updated streak: {$oldStreak} → 1 (reset due to inactivity)");
                     $updatedCount++;
                 } else {
-                    $this->line("  Streak verified as {$correctStreak} (inactive)");
+                    $this->line("  Streak verified as 1 (inactive)");
                 }
             }
         }

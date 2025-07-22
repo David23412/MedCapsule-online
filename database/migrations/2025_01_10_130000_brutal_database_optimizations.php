@@ -45,12 +45,12 @@ return new class extends Migration
         Schema::table('questions', function (Blueprint $table) {
             // Covering index for quiz generation
             if (!DB::select("SHOW INDEX FROM questions WHERE Key_name = 'questions_quiz_generation_brutal_idx'")) {
-                $table->index(['topic_id', 'source', 'question_type', 'deleted', 'id'], 'questions_quiz_generation_brutal_idx');
+                $table->index(['topic_id', 'source', 'question_type', 'id'], 'questions_quiz_generation_brutal_idx');
             }
             
             // Covering index for question retrieval with all metadata
             if (!DB::select("SHOW INDEX FROM questions WHERE Key_name = 'questions_full_covering_brutal_idx'")) {
-                $table->index(['id', 'topic_id', 'question_type', 'source', 'deleted', 'created_at'], 'questions_full_covering_brutal_idx');
+                $table->index(['id', 'topic_id', 'question_type', 'source', 'created_at'], 'questions_full_covering_brutal_idx');
             }
         });
 
@@ -83,13 +83,7 @@ return new class extends Migration
             }
         });
 
-        // Notifications - BRUTAL notification performance
-        Schema::table('notifications', function (Blueprint $table) {
-            // Covering index for user notification dashboard
-            if (!DB::select("SHOW INDEX FROM notifications WHERE Key_name = 'notifications_dashboard_brutal_idx'")) {
-                $table->index(['user_id', 'is_read', 'created_at', 'type'], 'notifications_dashboard_brutal_idx');
-            }
-        });
+        // Skip notifications table - removed from schema
 
         // 🔥 ADDITIONAL FULL-TEXT SEARCH INDEXES
         Schema::table('topics', function (Blueprint $table) {
@@ -142,10 +136,7 @@ return new class extends Migration
             // Indexes may not exist
         }
 
-        // Drop covering indexes
-        Schema::table('notifications', function (Blueprint $table) {
-            $table->dropIndex('notifications_dashboard_brutal_idx');
-        });
+        // Skip notifications table - removed from schema
 
         Schema::table('course_user', function (Blueprint $table) {
             $table->dropIndex('course_user_access_brutal_idx');

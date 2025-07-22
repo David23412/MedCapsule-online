@@ -19,7 +19,7 @@ return new class extends Migration
         Schema::table('questions', function (Blueprint $table) {
             // Covering index for quiz generation (most important)
             if (!DB::select("SHOW INDEX FROM questions WHERE Key_name = 'questions_quiz_generation_idx'")) {
-                $table->index(['topic_id', 'source', 'question_type', 'deleted'], 'questions_quiz_generation_idx');
+                $table->index(['topic_id', 'source', 'question_type'], 'questions_quiz_generation_idx');
             }
             
             // Index for question retrieval
@@ -29,7 +29,7 @@ return new class extends Migration
             
             // Index for question type filtering
             if (!DB::select("SHOW INDEX FROM questions WHERE Key_name = 'questions_type_idx'")) {
-                $table->index(['question_type', 'deleted'], 'questions_type_idx');
+                $table->index(['question_type'], 'questions_type_idx');
             }
         });
 
@@ -183,7 +183,7 @@ return new class extends Migration
 
         try {
             // Active questions only
-            DB::statement("CREATE INDEX questions_active_idx ON questions(topic_id, source) WHERE deleted = 0");
+            DB::statement("CREATE INDEX questions_active_idx ON questions(topic_id, source)");
         } catch (\Exception $e) {
             // Partial indexes not supported, skip
         }

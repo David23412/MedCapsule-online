@@ -154,14 +154,19 @@
             bottom: 0;
             left: 50%;
             transform: translate(-50%, 0);
-            background: #f8f9fa;
-            border-radius: 10px;
-            padding: 1rem;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+            background: rgba(248, 249, 250, 0.98);
+            backdrop-filter: blur(15px);
+            -webkit-backdrop-filter: blur(15px);
+            border-radius: 12px 12px 0 0;
+            padding: 1rem 1.5rem;
+            box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.15), 0 -2px 10px rgba(0, 0, 0, 0.1);
             z-index: 999;
             max-width: 1000px;
             width: 100%;
-            transition: all 0.3s ease;
+            transition: all 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-bottom: none;
+            will-change: transform, opacity;
         }
 
         .progress-bar-container.at-form {
@@ -172,11 +177,30 @@
         }
 
         .progress-bar-container.hidden {
-            transform: translate(-50%, 100%);
-            opacity: 0;
-            pointer-events: none;
-            visibility: hidden;
+            transform: translate(-50%, 200%) !important;
+            opacity: 0 !important;
+            pointer-events: none !important;
+            visibility: hidden !important;
             display: none !important;
+            z-index: -999 !important;
+            bottom: -300px !important;
+            transition: all 0.2s ease !important;
+        }
+        
+        /* Smooth show animation */
+        .progress-bar-container:not(.hidden) {
+            animation: slideUpSmooth 0.4s cubic-bezier(0.25, 0.8, 0.25, 1) forwards;
+        }
+        
+        @keyframes slideUpSmooth {
+            from {
+                transform: translate(-50%, 100%);
+                opacity: 0;
+            }
+            to {
+                transform: translate(-50%, 0);
+                opacity: 1;
+            }
         }
 
         .progress-bar {
@@ -564,6 +588,33 @@
             .progress-bar-container {
                 max-width: 100%;
                 border-radius: 0;
+                padding: 0.75rem 1rem;
+                left: 0;
+                transform: translateX(0);
+                width: 100vw;
+            }
+            
+            .progress-bar-container.hidden {
+                transform: translateY(120%) !important;
+            }
+            
+            .progress-bar-container:not(.hidden) {
+                transform: translateY(0) !important;
+            }
+        }
+        
+        @media (max-width: 480px) {
+            .progress-bar-container {
+                padding: 0.5rem 0.75rem;
+                font-size: 0.85rem;
+            }
+            
+            .progress-text {
+                font-size: 0.8rem;
+            }
+            
+            .timer {
+                font-size: 0.8rem;
             }
         }
 
@@ -723,52 +774,109 @@
 
     <script>
         document.addEventListener('DOMContentLoaded', function() {
-            const progressBarContainer = document.getElementById('progress-bar-container');
-            const submitBtn = document.getElementById('submit-btn');
+            // NUCLEAR ELEMENT DETECTION - FIND THEM NO MATTER WHAT
+            let progressBarContainer = document.getElementById('progress-bar-container') || document.querySelector('.progress-bar-container');
+            let submitBtn = document.getElementById('submit-btn') || document.querySelector('.submit-btn') || document.querySelector('button[type="submit"]');
             const quizForm = document.getElementById('quiz-form');
             const timeTakenField = document.getElementById('time-taken');
             const timerDisplay = document.getElementById('timer');
             
-            // ROBUST PROGRESS BAR POSITIONING SYSTEM - EXACT COPY FROM SOLVE_QUIZ
-            function updateProgressBarPosition() {
-                if (!submitBtn || !progressBarContainer) return;
-                
-                const submitBtnRect = submitBtn.getBoundingClientRect();
-                const windowHeight = window.innerHeight;
-                
-                // INTELLIGENT BUT STRICT AS FUCK:
-                // Hide when submit button is anywhere near the viewport (300px buffer)
-                if (submitBtnRect.top <= windowHeight + 300) {
-                    // NUCLEAR HIDE - multiple methods to ensure it's GONE
-                    progressBarContainer.classList.add('hidden');
-                    progressBarContainer.style.display = 'none';
-                    progressBarContainer.style.visibility = 'hidden';
-                    progressBarContainer.style.opacity = '0';
-                } else {
-                    // Show when submit button is FAR AWAY (user scrolled back up to work on questions)
-                    progressBarContainer.classList.remove('hidden');
-                    progressBarContainer.style.display = '';
-                    progressBarContainer.style.visibility = '';
-                    progressBarContainer.style.opacity = '';
-                }
-            }
-
-            function onScroll() {
-                if (rafId) return;
-                
-                rafId = requestAnimationFrame(() => {
-                    updateProgressBarPosition();
-                    rafId = null;
-                });
-            }
-
-            // Event listeners with passive scrolling for better performance
-            let rafId = null;
-            window.addEventListener('scroll', onScroll, { passive: true });
-            window.addEventListener('resize', onScroll, { passive: true });
+            // BRUTAL DEBUG LOGGING
+            console.log('ELEMENTS FOUND:');
+            console.log('Progress Bar Container:', progressBarContainer);
+            console.log('Submit Button:', submitBtn);
             
-            // Initial position check
-            updateProgressBarPosition();
+            // NUCLEAR FALLBACK - WAIT AND TRY AGAIN
+            if (!progressBarContainer || !submitBtn) {
+                setTimeout(() => {
+                    progressBarContainer = document.getElementById('progress-bar-container') || document.querySelector('.progress-bar-container');
+                    submitBtn = document.getElementById('submit-btn') || document.querySelector('.submit-btn') || document.querySelector('button[type="submit"]');
+                    console.log('FALLBACK ELEMENTS FOUND:');
+                    console.log('Progress Bar Container:', progressBarContainer);
+                    console.log('Submit Button:', submitBtn);
+                    initializeProgressBarSystem();
+                }, 500);
+            } else {
+                initializeProgressBarSystem();
+            }
+            
+            function initializeProgressBarSystem() {
+                if (!progressBarContainer || !submitBtn) {
+                    console.error('CRITICAL ERROR: Elements not found!');
+                    return;
+                }
+                
+                // BRUTALLY AGGRESSIVE PROGRESS BAR SYSTEM
+                let rafId = null;
+                let isProgressBarHidden = false;
+                
+                function updateProgressBarPosition() {
+                    if (!submitBtn || !progressBarContainer) {
+                        console.warn('Elements missing during update');
+                        return;
+                    }
+                    
+                    const submitBtnRect = submitBtn.getBoundingClientRect();
+                    const windowHeight = window.innerHeight;
+                    const scrollBuffer = 400; // EVEN MORE MASSIVE buffer zone
+                    
+                    console.log('Submit button top:', submitBtnRect.top, 'Window height:', windowHeight, 'Buffer:', scrollBuffer);
+                    
+                    // BRUTAL LOGIC: Hide when submit button is ANYWHERE NEAR viewport
+                    const shouldHide = submitBtnRect.top <= windowHeight + scrollBuffer;
+                    
+                    console.log('Should hide:', shouldHide, 'Currently hidden:', isProgressBarHidden);
+                    
+                    if (shouldHide && !isProgressBarHidden) {
+                        // NUCLEAR ANNIHILATION - OBLITERATE THE PROGRESS BAR
+                        console.log('🔥 NUCLEAR HIDING PROGRESS BAR 🔥');
+                        progressBarContainer.classList.add('hidden');
+                        progressBarContainer.style.transform = 'translate(-50%, 200%)';
+                        progressBarContainer.style.opacity = '0';
+                        progressBarContainer.style.visibility = 'hidden';
+                        progressBarContainer.style.pointerEvents = 'none';
+                        progressBarContainer.style.display = 'none';
+                        progressBarContainer.style.zIndex = '-999';
+                        progressBarContainer.style.bottom = '-500px';
+                        isProgressBarHidden = true;
+                    } else if (!shouldHide && isProgressBarHidden) {
+                        // AGGRESSIVE RESURRECTION
+                        console.log('🚀 AGGRESSIVELY SHOWING PROGRESS BAR 🚀');
+                        progressBarContainer.classList.remove('hidden');
+                        progressBarContainer.style.transform = 'translate(-50%, 0)';
+                        progressBarContainer.style.opacity = '1';
+                        progressBarContainer.style.visibility = 'visible';
+                        progressBarContainer.style.pointerEvents = 'auto';
+                        progressBarContainer.style.display = '';
+                        progressBarContainer.style.zIndex = '999';
+                        progressBarContainer.style.bottom = '0';
+                        isProgressBarHidden = false;
+                    }
+                }
+
+                function onScroll() {
+                    if (rafId) return;
+                    
+                    rafId = requestAnimationFrame(() => {
+                        updateProgressBarPosition();
+                        rafId = null;
+                    });
+                }
+
+                // BULLETPROOF EVENT LISTENERS
+                window.addEventListener('scroll', onScroll, { passive: true });
+                window.addEventListener('resize', onScroll, { passive: true });
+                
+                // MULTIPLE BRUTAL INITIALIZATION CHECKS
+                updateProgressBarPosition();
+                setTimeout(() => updateProgressBarPosition(), 100);
+                setTimeout(() => updateProgressBarPosition(), 300);
+                setTimeout(() => updateProgressBarPosition(), 500);
+                setTimeout(() => updateProgressBarPosition(), 1000);
+                setTimeout(() => updateProgressBarPosition(), 2000);
+                
+                console.log('🔥 PROGRESS BAR SYSTEM INITIALIZED 🔥');
+            }
             
             let selectedAnswers = {};
             
@@ -1172,6 +1280,123 @@
         });
 
 
+    </script>
+
+    <!-- NUCLEAR OVERRIDE - PROGRESS BAR ANNIHILATION SYSTEM -->
+    <script>
+        console.log('🔥 NUCLEAR OVERRIDE ACTIVATED 🔥');
+        
+        // WAIT FOR EVERYTHING TO LOAD THEN ACTIVATE NUCLEAR SYSTEM
+        window.addEventListener('load', function() {
+            setTimeout(function() {
+                console.log('🚀 INITIALIZING NUCLEAR PROGRESS BAR DESTROYER 🚀');
+                
+                // FIND ELEMENTS WITH EXTREME PREJUDICE
+                const progressBar = document.getElementById('progress-bar-container') || 
+                                  document.querySelector('.progress-bar-container') ||
+                                  document.querySelector('[class*="progress"]');
+                
+                const submitButton = document.getElementById('submit-btn') || 
+                                   document.querySelector('.submit-btn') ||
+                                   document.querySelector('button[type="submit"]') ||
+                                   document.querySelector('[class*="submit"]');
+                
+                console.log('🎯 TARGETS ACQUIRED:');
+                console.log('Progress Bar:', progressBar);
+                console.log('Submit Button:', submitButton);
+                
+                if (!progressBar || !submitButton) {
+                    console.error('❌ TARGETS NOT FOUND - ABORTING MISSION');
+                    return;
+                }
+                
+                let isHidden = false;
+                
+                function NUCLEAR_HIDE() {
+                    if (isHidden) return;
+                    console.log('💥 NUCLEAR HIDE ENGAGED 💥');
+                    
+                    // OBLITERATE WITH EXTREME PREJUDICE
+                    progressBar.style.display = 'none !important';
+                    progressBar.style.opacity = '0 !important';
+                    progressBar.style.visibility = 'hidden !important';
+                    progressBar.style.transform = 'translate(-50%, 500px) !important';
+                    progressBar.style.zIndex = '-9999 !important';
+                    progressBar.style.bottom = '-1000px !important';
+                    progressBar.style.height = '0 !important';
+                    progressBar.style.overflow = 'hidden !important';
+                    progressBar.style.pointerEvents = 'none !important';
+                    progressBar.classList.add('hidden');
+                    
+                    // NUCLEAR OPTION - REMOVE FROM DOM
+                    progressBar.remove();
+                    
+                    isHidden = true;
+                    console.log('✅ TARGET ELIMINATED');
+                }
+                
+                function NUCLEAR_SHOW() {
+                    if (!isHidden) return;
+                    console.log('🔄 NUCLEAR RESURRECTION ENGAGED 🔄');
+                    
+                    // RESURRECT THE PROGRESS BAR
+                    document.body.appendChild(progressBar);
+                    progressBar.style.display = '';
+                    progressBar.style.opacity = '1';
+                    progressBar.style.visibility = 'visible';
+                    progressBar.style.transform = 'translate(-50%, 0)';
+                    progressBar.style.zIndex = '999';
+                    progressBar.style.bottom = '0';
+                    progressBar.style.height = '';
+                    progressBar.style.overflow = '';
+                    progressBar.style.pointerEvents = 'auto';
+                    progressBar.classList.remove('hidden');
+                    
+                    isHidden = false;
+                    console.log('✅ TARGET RESURRECTED');
+                }
+                
+                function CHECK_AND_DESTROY() {
+                    const submitRect = submitButton.getBoundingClientRect();
+                    const windowHeight = window.innerHeight;
+                    const NUCLEAR_BUFFER = 500; // MASSIVE BUFFER
+                    
+                    const shouldDestroy = submitRect.top <= windowHeight + NUCLEAR_BUFFER;
+                    
+                    console.log(`📊 SCAN RESULTS: Submit top: ${submitRect.top}, Window: ${windowHeight}, Should destroy: ${shouldDestroy}`);
+                    
+                    if (shouldDestroy && !isHidden) {
+                        NUCLEAR_HIDE();
+                    } else if (!shouldDestroy && isHidden) {
+                        NUCLEAR_SHOW();
+                    }
+                }
+                
+                // ACTIVATE CONTINUOUS MONITORING
+                let rafId;
+                function MONITOR() {
+                    if (rafId) return;
+                    rafId = requestAnimationFrame(() => {
+                        CHECK_AND_DESTROY();
+                        rafId = null;
+                    });
+                }
+                
+                // ENGAGE ALL MONITORING SYSTEMS
+                window.addEventListener('scroll', MONITOR, { passive: true });
+                window.addEventListener('resize', MONITOR, { passive: true });
+                window.addEventListener('orientationchange', MONITOR, { passive: true });
+                
+                // INITIAL SCAN
+                CHECK_AND_DESTROY();
+                
+                // CONTINUOUS MONITORING EVERY 100MS
+                setInterval(CHECK_AND_DESTROY, 100);
+                
+                console.log('🎯 NUCLEAR SYSTEM FULLY OPERATIONAL');
+                
+            }, 1000);
+        });
     </script>
 </body>
 </html> 

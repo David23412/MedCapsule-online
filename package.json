@@ -44,20 +44,29 @@
   "author": "E2E Testing Team",
   "license": "MIT",
   "devDependencies": {
+    "@babel/plugin-transform-runtime": "^7.28.0",
+    "@babel/preset-env": "^7.28.0",
     "@playwright/test": "^1.40.0",
+    "@testing-library/jest-dom": "^6.6.3",
     "@types/node": "^20.8.0",
     "allure-playwright": "^2.9.0",
+    "babel-jest": "^29.7.0",
+    "cross-env": "^7.0.3",
     "dotenv": "^16.3.1",
     "eslint": "^8.50.0",
     "eslint-config-prettier": "^9.0.0",
     "eslint-plugin-playwright": "^0.18.0",
-    "prettier": "^3.0.3",
-    "cross-env": "^7.0.3"
+    "jest": "^29.7.0",
+    "jest-environment-jsdom": "^29.7.0",
+    "jest-html-reporters": "^3.1.7",
+    "jest-junit": "^16.0.0",
+    "jsdom": "^26.1.0",
+    "prettier": "^3.0.3"
   },
   "dependencies": {
     "fs-extra": "^11.1.1",
-    "moment": "^2.29.4",
-    "lodash": "^4.17.21"
+    "lodash": "^4.17.21",
+    "moment": "^2.29.4"
   },
   "engines": {
     "node": ">=18.0.0",

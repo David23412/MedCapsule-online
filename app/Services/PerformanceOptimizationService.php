@@ -40,7 +40,6 @@ class PerformanceOptimizationService
                 'alternative_answers', 'similarity_threshold', 'source'
             ])
             ->where('topic_id', $topicId)
-            ->where('deleted', false)
             ->when(!in_array('all', $sources), function ($query) use ($sources) {
                 $query->whereIn('source', $sources);
             })

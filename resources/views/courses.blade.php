@@ -31,28 +31,321 @@
         }
 
         .navbar {
-            background: rgba(255, 255, 255, 0.95);
-            padding: 1rem 2.5rem; /* Increased horizontal padding */
-            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+            background: linear-gradient(180deg, rgba(255,255,255,0.98) 0%, rgba(248,249,250,0.95) 70%, rgba(248,249,250,0.8) 100%);
+            backdrop-filter: blur(10px);
+            border: none;
+            box-shadow: none;
+            padding: 0.4rem 0;
             position: fixed;
             top: 0;
             left: 0;
             right: 0;
             z-index: 1000;
-            backdrop-filter: blur(10px);
+            border-bottom: 1px solid rgba(0,0,0,0.05);
         }
 
         .navbar-brand {
-            color: #007bff;
+            display: flex;
+            align-items: center;
             font-weight: 700;
-            font-size: 1.8rem;
-            transition: transform 0.3s ease;
+            font-size: 2rem;
+            color: #007bff;
+            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+            position: relative;
+            transition: all 0.3s ease;
+            margin-left: -60px;
         }
 
         .navbar-brand:hover {
             color: #007bff;
-            transform: translateY(-2px);
+            transform: scale(1.05);
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
         }
+
+        .nav-link {
+            color: #333;
+            font-weight: 500;
+            padding: 0.5rem 1rem;
+        }
+
+        .nav-link:hover {
+            color: #007bff;
+        }
+
+        /* Dropdown fixes */
+        .dropdown-menu {
+            display: none;
+            position: absolute;
+            background: white;
+            border: none;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+            border-radius: 12px;
+            padding: 0.5rem;
+            min-width: 200px;
+            z-index: 1000;
+            pointer-events: auto;
+        }
+
+        .dropdown-menu-end {
+            transform: translateX(-400px) !important;
+        }
+
+        .dropdown-menu.show {
+            display: block;
+        }
+
+        .dropdown-item {
+            display: block;
+            width: 100%;
+            padding: 0.5rem 1rem;
+            clear: both;
+            text-align: inherit;
+            white-space: nowrap;
+            background: none;
+            border: none;
+            border-radius: 8px;
+            color: #212529;
+            text-decoration: none;
+            transition: all 0.2s ease;
+            cursor: pointer;
+            position: relative;
+            z-index: 2;
+        }
+
+        .dropdown-item:hover,
+        .dropdown-item:focus {
+            background-color: rgba(33, 150, 243, 0.1);
+            color: #2196f3;
+            transform: translateX(5px);
+        }
+
+        .dropdown-item i {
+            width: 20px;
+            text-align: center;
+            pointer-events: none;
+        }
+
+        .dropdown-divider {
+            height: 0;
+            margin: 0.5rem 0;
+            overflow: hidden;
+            border-top: 1px solid #e9ecef;
+            opacity: 0.1;
+            pointer-events: none;
+        }
+
+        /* Fix dropdown button style */
+        form {
+            margin: 0;
+            padding: 0;
+        }
+
+        .dropdown-item[type="submit"] {
+            width: 100%;
+            text-align: left;
+            background: none;
+            border: none;
+            cursor: pointer;
+            font: inherit;
+            margin: 0;
+            padding: 0.5rem 1rem;
+            color: inherit;
+            position: relative;
+            z-index: 2;
+        }
+
+        .nav-item.dropdown {
+            position: relative;
+        }
+
+        .nav-item.dropdown .nav-link {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            cursor: pointer;
+        }
+
+        .nav-item.dropdown .badge {
+            padding: 0.35em 0.65em;
+            pointer-events: none;
+        }
+
+        /* Ensure dropdown items are clickable */
+        .dropdown-menu li {
+            position: relative;
+            margin: 0;
+            padding: 0;
+        }
+
+        .dropdown-menu li a,
+        .dropdown-menu li button {
+            outline: none;
+            position: relative;
+            z-index: 2;
+        }
+
+        /* Remove any pointer events from icons to prevent interference */
+        .dropdown-menu li a i,
+        .dropdown-menu li button i {
+            pointer-events: none;
+        }
+
+        /* GOLDEN STANDARD Streak Indicator */
+        .streak-indicator {
+            background: #f9f9f9;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+            margin: 10px auto;
+            padding: 5px;
+            transition: all 0.3s ease;
+            width: 80px;
+            height: 80px;
+            position: relative;
+            margin: 1rem;
+            cursor: pointer;
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            background: rgba(255, 255, 255, 0.08);
+            border-radius: 50%;
+            backdrop-filter: blur(12px);
+            box-shadow: 0 0 25px rgba(25, 118, 210, 0.25);
+        }
+
+        .streak-indicator:hover {
+            transform: translateY(-2px) scale(1.05);
+            box-shadow: 
+                0 12px 40px rgba(33, 150, 243, 0.25),
+                0 4px 12px rgba(0, 0, 0, 0.15),
+                inset 0 1px 0 rgba(255, 255, 255, 0.9);
+        }
+
+        .streak-circle {
+            width: 100%;
+            height: 100%;
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .streak-circle svg {
+            width: 100%;
+            height: 100%;
+            transform: rotate(-90deg);
+            filter: drop-shadow(0 0 8px rgba(51, 154, 240, 0.4));
+        }
+
+        .streak-circle circle {
+            fill: none;
+            stroke-width: 3;
+            stroke-linecap: round;
+            transition: all 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .streak-bg {
+            stroke: rgba(33, 150, 243, 0.15);
+        }
+
+        .streak-progress {
+            stroke: #2196f3;
+            stroke-dasharray: 251.2;
+            stroke-dashoffset: 251.2;
+            transition: stroke-dashoffset 1.5s cubic-bezier(0.4, 0, 0.2, 1);
+            filter: drop-shadow(0 0 6px rgba(33, 150, 243, 0.6));
+        }
+
+        .streak-content {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            width: 100%;
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            z-index: 2;
+        }
+
+        .streak-value {
+            font-size: 1.5rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, #1565c0, #2196f3);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            position: relative;
+            line-height: 1;
+            margin-bottom: 0.2rem;
+            text-shadow: 0 0 25px rgba(33, 150, 243, 0.6);
+            animation: glowPulse 2s infinite;
+        }
+
+        .streak-label {
+            font-size: 0.55rem;
+            background: linear-gradient(135deg, #1565c0, #2196f3);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            opacity: 0.95;
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            animation: glowPulse 2s infinite 0.5s;
+            margin-left: 2px;
+        }
+
+        @keyframes valueGlow {
+            0%, 100% { 
+                filter: drop-shadow(0 2px 4px rgba(33, 150, 243, 0.3));
+                transform: scale(1);
+            }
+            50% { 
+                filter: drop-shadow(0 4px 8px rgba(33, 150, 243, 0.5));
+                transform: scale(1.02);
+            }
+        }
+
+        @keyframes glowPulse {
+            0% { 
+                filter: brightness(1) drop-shadow(0 0 10px rgba(25, 118, 210, 0.5));
+                transform: scale(1);
+            }
+            50% { 
+                filter: brightness(1.4) drop-shadow(0 0 15px rgba(25, 118, 210, 0.7));
+                transform: scale(1.05);
+            }
+            100% { 
+                filter: brightness(1) drop-shadow(0 0 10px rgba(25, 118, 210, 0.5));
+                transform: scale(1);
+            }
+        }
+
+        .streak-fire {
+            position: absolute;
+            bottom: -2px;
+            right: -2px;
+            color: #ff6b6b;
+            animation: flame 1.5s infinite;
+            font-size: 1rem;
+        }
+
+        @keyframes flame {
+            0% { transform: scale(1) rotate(0deg); }
+            50% { transform: scale(1.2) rotate(5deg); }
+            100% { transform: scale(1) rotate(0deg); }
+        }
+
+        /* Match notification bell to reference image */
+        .clean-notification-bell {
+            width: 50px !important;
+            height: 50px !important;
+        }
+
+        .clean-notification-bell i {
+            font-size: 25px !important;
+        }
+
+
 
         .hero-section {
             background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
@@ -794,8 +1087,8 @@
         }
 
         .profile-circle {
-            width: 36px;
-            height: 36px;
+            width: 45px; /* Match reference image size */
+            height: 45px; /* Match reference image size */
             background: #2196f3;
             border-radius: 50%;
             display: flex;
@@ -803,12 +1096,12 @@
             justify-content: center;
             color: white;
             font-weight: 600;
-            font-size: 0.9rem;
+            font-size: 1.1rem; /* Proportional font */
             transition: transform 0.2s ease;
             background-size: cover;
             background-position: center;
             text-decoration: none;
-            margin-left: 1.5rem;
+            margin-left: 0;
         }
 
         .profile-circle.no-image {
@@ -955,18 +1248,18 @@
             outline: none;
             position: relative;
             transition: all 0.3s ease;
-            width: 40px; /* Slightly increased from 36px */
-            height: 40px; /* Slightly increased from 36px */
+            width: 60px; /* MUCH bigger to match reference */
+            height: 60px; /* MUCH bigger to match reference */
             display: flex;
             align-items: center;
             justify-content: center;
             border-radius: 50%;
-            margin-top: -4px; /* Match the profile picture positioning */
+            margin-top: -1px; /* Better alignment with profile circle */
         }
 
         .notification-bell i {
             color: #007bff;
-            font-size: 1.4rem; /* Slightly larger icon */
+            font-size: 2.2rem; /* MUCH bigger icon to match reference */
             transition: all 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55);
         }
 
@@ -1431,33 +1724,7 @@
             margin-left: 1rem;
         }
 
-        .profile-circle {
-            width: 36px;
-            height: 36px;
-            background: #2196f3;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: white;
-            font-weight: 600;
-            font-size: 0.9rem;
-            transition: transform 0.2s ease;
-            background-size: cover;
-            background-position: center;
-            text-decoration: none;
-            margin-left: 1.5rem;
-        }
 
-        .profile-circle.no-image {
-            background: #2196f3;
-        }
-
-        .profile-circle:hover {
-            transform: scale(1.1);
-            color: white;
-            text-decoration: none;
-        }
 
         .navbar-nav {
             display: flex;
@@ -1466,14 +1733,14 @@
     </style>
 </head>
 <body>
-    <nav class="navbar navbar-expand-lg">
+    <nav class="navbar navbar-expand-lg navbar-light">
         <div class="container">
             <a class="navbar-brand" href="/">MedCapsule</a>
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
                 <span class="navbar-toggler-icon"></span>
             </button>
             <div class="collapse navbar-collapse" id="navbarNav">
-                <ul class="navbar-nav ms-auto">
+                <ul class="navbar-nav ms-auto align-items-center" style="margin-right: -120px !important;"
                     @guest
                         <li class="nav-item">
                             <a class="nav-link" href="{{ route('login') }}">Login</a>
@@ -1482,58 +1749,137 @@
                             <a class="nav-link" href="{{ route('register') }}">Sign Up</a>
                         </li>
                     @else
-                        <li class="nav-item dropdown">
+                        <li class="nav-item dropdown me-1">
                             <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-bs-toggle="dropdown">
                                 {{ Auth::user()->name }}
                                 @if(Auth::user()->role === 'admin')
-                                    <span class="badge bg-warning ms-1">👑 Admin</span>
+                                    <span class="badge bg-warning ms-1">Admin</span>
+                                @elseif(Auth::user()->role === 'tutor')
+                                    <span class="badge bg-info ms-1">Tutor</span>
+                                @else
+                                    <span class="badge bg-primary ms-1">Student</span>
                                 @endif
                             </a>
                             <ul class="dropdown-menu dropdown-menu-end">
-                                <li><a class="dropdown-item" href="{{ route('courses.index') }}">
-                                    <i class="fas fa-book me-2"></i>My Courses
-                                </a></li>
-                                <li><a class="dropdown-item" href="{{ route('review.index') }}">
-                                    <i class="fas fa-exclamation-circle me-2"></i>My Mistakes
-                                </a></li>
+                                <li class="d-flex justify-content-center">
+                                    <div class="streak-indicator" data-streak="{{ Auth::user()->study_streak_days ?? 0 }}">
+                                        <div class="streak-circle">
+                                            <svg viewBox="0 0 100 100">
+                                                <circle class="streak-bg" cx="50" cy="50" r="40"></circle>
+                                                <circle class="streak-progress" cx="50" cy="50" r="40"></circle>
+                                            </svg>
+                                            <div class="streak-content">
+                                                <div class="streak-value">{{ Auth::user()->study_streak_days ?? 0 }}</div>
+                                                <div class="streak-label">Streak</div>
+                                            </div>
+                                            @if((Auth::user()->study_streak_days ?? 0) > 0)
+                                                <div class="streak-fire">
+                                                    <i class="fas fa-fire"></i>
+                                                </div>
+                                            @endif
+                                        </div>
+                                    </div>
+                                </li>
+                                <li><hr class="dropdown-divider"></li>
+                                <li>
+                                    <a class="dropdown-item" href="{{ route('courses.index') }}">
+                                        <i class="fas fa-book me-2"></i>My Courses
+                                    </a>
+                                </li>
+                                <li>
+                                    <a class="dropdown-item" href="{{ route('review.index') }}">
+                                        <i class="fas fa-exclamation-circle me-2"></i>My Mistakes
+                                    </a>
+                                </li>
                                 @if(Auth::user()->role === 'admin')
                                     <li><hr class="dropdown-divider"></li>
-                                    <li><a class="dropdown-item" href="{{ route('admin.user-course') }}">
-                                        <i class="fas fa-users-cog me-2"></i>Manage Access
-                                    </a></li>
-                                    <li><a class="dropdown-item" href="{{ route('add-topic.form') }}">
-                                        <i class="fas fa-plus-circle me-2"></i>Add Topic
-                                    </a></li>
-                                    <li><a class="dropdown-item" href="{{ route('add-question.form') }}">
-                                        <i class="fas fa-question-circle me-2"></i>Add Question
-                                    </a></li>
-                                    <li><a class="dropdown-item" href="{{ route('add-course.form') }}">
-                                        <i class="fas fa-plus-square me-2"></i>Add Course
-                                    </a></li>
-                                    <li><a class="dropdown-item text-danger" href="{{ route('admin.delete.index') }}">
-                                        <i class="fas fa-trash-alt me-2"></i>Delete Management
-                                    </a></li>
+                                    <li class="dropdown-header">
+                                        <i class="fas fa-crown me-2 text-warning"></i>Admin Controls
+                                    </li>
+                                    <li>
+                                        <a class="dropdown-item" href="{{ route('assignments.index') }}">
+                                            <i class="fas fa-clipboard-list me-2"></i>Assignment Management
+                                        </a>
+                                    </li>
+                                    <li>
+                                        <a class="dropdown-item" href="{{ route('assignments.create') }}">
+                                            <i class="fas fa-plus me-2"></i>Create Assignment
+                                        </a>
+                                    </li>
+                                    <li>
+                                        <a class="dropdown-item" href="{{ route('topic-locking.index') }}">
+                                            <i class="fas fa-lock me-2"></i>Topic Management
+                                        </a>
+                                    </li>
+                                    <li>
+                                        <a class="dropdown-item" href="{{ route('tutor.dashboard') }}">
+                                            <i class="fas fa-chalkboard-teacher me-2"></i>Tutor Dashboard
+                                        </a>
+                                    </li>
+                                    <li><hr class="dropdown-divider"></li>
+                                    <li>
+                                        <a class="dropdown-item" href="{{ route('admin.user-course') }}">
+                                            <i class="fas fa-users-cog me-2"></i>Manage Access
+                                        </a>
+                                    </li>
+                                    <li>
+                                        <a class="dropdown-item" href="{{ route('add-topic.form') }}">
+                                            <i class="fas fa-plus-circle me-2"></i>Add Topic
+                                        </a>
+                                    </li>
+                                    <li>
+                                        <a class="dropdown-item" href="{{ route('add-question.form') }}">
+                                            <i class="fas fa-question-circle me-2"></i>Add Question
+                                        </a>
+                                    </li>
+                                    <li>
+                                        <a class="dropdown-item" href="{{ route('add-course.form') }}">
+                                            <i class="fas fa-graduation-cap me-2"></i>Add Course
+                                        </a>
+                                    </li>
+                                @endif
+                                @if(Auth::user()->role === 'tutor')
+                                    <li><hr class="dropdown-divider"></li>
+                                    <li>
+                                        <a class="dropdown-item" href="{{ route('tutor.dashboard') }}">
+                                            <i class="fas fa-chalkboard-teacher me-2"></i>Tutor Dashboard
+                                        </a>
+                                    </li>
+                                    <li>
+                                        <a class="dropdown-item" href="{{ route('assignments.index') }}">
+                                            <i class="fas fa-clipboard-list me-2"></i>My Assignments
+                                        </a>
+                                    </li>
                                 @endif
                                 <li><hr class="dropdown-divider"></li>
                                 <li>
-                                    <form method="POST" action="{{ secure_url(route('logout', [], false)) }}">
+                                    <a class="dropdown-item" href="{{ route('profile') }}">
+                                        <i class="fas fa-user me-2"></i>Profile
+                                    </a>
+                                </li>
+                                <li>
+                                    <form method="POST" action="{{ secure_url(route('logout', [], false)) }}" class="dropdown-item p-0">
                                         @csrf
-                                        <button type="submit" class="dropdown-item text-danger">
+                                        <button type="submit" class="dropdown-item w-100 text-danger">
                                             <i class="fas fa-sign-out-alt me-2"></i>Logout
                                         </button>
                                     </form>
                                 </li>
                             </ul>
                         </li>
-                        <li class="nav-item">
+                        <!-- Notification Bell -->
+                        <li class="nav-item me-1">
                             @include('components.notification-bell')
                         </li>
-                        <li class="nav-item">
-                            <a href="{{ route('profile') }}" class="profile-circle {{ !Auth::user()->profile_picture_url ? 'no-image' : '' }}" 
-                                style="{{ Auth::user()->profile_picture_url ? 'background-image: url(' . secure_url(Auth::user()->profile_picture_url) . ');' : '' }}">
-                                @if(!Auth::user()->profile_picture_url)
-                                    {{ substr(Auth::user()->name, 0, 1) }}
-                                @endif
+                        
+                        <li class="nav-item me-5">
+                            <a href="{{ route('profile') }}" class="nav-link">
+                                <div class="profile-circle {{ !Auth::user()->profile_picture_url ? 'no-image' : '' }}" 
+                                     style="{{ Auth::user()->profile_picture_url ? 'background-image: url(' . secure_url(Auth::user()->profile_picture_url) . ');' : '' }}">
+                                    @if(!Auth::user()->profile_picture_url)
+                                        {{ substr(Auth::user()->name, 0, 1) }}
+                                    @endif
+                                </div>
                             </a>
                         </li>
                     @endguest
@@ -1843,7 +2189,7 @@
                 unreadCount: 0,
                 loading: false,
                 lastFetched: 0,
-                notificationSound: new Audio('/sounds/zapsplat_multimedia_ui_chime_alert_notification_simple_chime_correct_answer_88733.mp3'),
+                notificationSound: new Audio('/sounds/notification-sound.mp3'),
                 prevUnreadCount: 0, // Track previous unread count to detect changes
                 
                 init() {

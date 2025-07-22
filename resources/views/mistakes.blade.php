@@ -30,6 +30,8 @@
             -webkit-text-size-adjust: 100%; /* Prevent Safari text auto-sizing */
         }
 
+        /* No top indicator styles */
+
         .main-content {
             margin-top: 80px;
             padding: 2rem;
@@ -268,6 +270,23 @@
         .info-box i {
             font-size: 0.75rem;
             color: #64748b;
+        }
+
+        /* Enhanced skipped badge visibility */
+        .skipped-badge {
+            animation: skippedPulse 2s infinite !important;
+            box-shadow: 0 2px 8px rgba(135, 206, 235, 0.4) !important;
+        }
+
+        @keyframes skippedPulse {
+            0%, 100% { 
+                background: rgba(135, 206, 235, 0.2) !important;
+                transform: scale(1);
+            }
+            50% { 
+                background: rgba(135, 206, 235, 0.3) !important;
+                transform: scale(1.05);
+            }
         }
 
         .topic-badge, .time-badge {
@@ -1056,18 +1075,15 @@
                                 <i class="fas fa-times"></i>
                             </button>
                             <div class="question-text">
+    <!-- No hardcoded indicator -->
                                 <p>{{ $mistake->question->question }}</p>
                                 @if($mistake->question->image_url)
                                     <img src="{{ asset($mistake->question->image_url) }}" alt="Question Image" class="question-image">
                                 @endif
                                 
-                                <!-- Skipped Indicator -->
-                                @if(isset($mistake->skipped) && $mistake->skipped)
-                                    <div class="skipped-indicator" style="margin-top: 12px; display: flex; align-items: center; gap: 6px; padding: 4px 8px; background: rgba(135, 206, 235, 0.1); border-radius: 12px; width: fit-content;">
-                                        <span class="skipped-dot" style="width: 8px; height: 8px; background-color: #87CEEB; border-radius: 50%; display: inline-block; box-shadow: 0 0 0 2px rgba(135, 206, 235, 0.3);"></span>
-                                        <span class="skipped-text" style="color: #5a9fd4; font-size: 0.8rem; font-weight: 600; text-transform: lowercase;">skipped</span>
-                                    </div>
-                                @endif
+                                <!-- No top indicator -->
+                                
+
                             </div>
                             <div class="answers">
                                 <div class="options">
@@ -1126,6 +1142,16 @@
                                     </div>
                                 @endif
                                 <div class="info-boxes">
+                                    @if($mistake->skipped)
+                                    <div class="info-box skipped-badge" style="background: rgba(135, 206, 235, 0.2) !important; border: 2px solid rgba(135, 206, 235, 0.6) !important; z-index: 10 !important;">
+                                        <i class="fas fa-forward" style="color: #4a90e2 !important; margin-right: 4px; font-size: 0.8rem;"></i>
+                                        <div class="info-box-value" style="color: #2c5aa0 !important; font-weight: 600 !important; font-size: 0.8rem;">SKIPPED</div>
+                                    </div>
+                                    <!-- Debug info for troubleshooting -->
+                                    <div style="display: block; font-size: 10px; color: red; background: yellow; padding: 2px;">
+                                        DEBUG: skipped={{ var_export($mistake->skipped, true) }} | type={{ gettype($mistake->skipped) }}
+                                    </div>
+                                    @endif
                                     <div class="info-box">
                                         <div class="info-box-label">Date</div>
                                         <div class="info-box-value">{{ $mistake->last_attempt_date->format('M j, Y') }}</div>

@@ -42,7 +42,7 @@ class HomeController extends Controller
                 $join->on('courses.id', '=', 'course_user.course_id')
                      ->where('course_user.enrollment_status', '=', 'active');
             })
-            ->groupBy('courses.id', 'courses.name', 'courses.description', 'courses.image', 'courses.color', 'courses.price', 'courses.currency', 'courses.created_at', 'courses.updated_at', 'courses.year')
+            ->groupBy('courses.id', 'courses.name', 'courses.description', 'courses.image', 'courses.color', 'courses.price', 'courses.currency', 'courses.created_at', 'courses.updated_at', 'courses.academic_year')
             ->orderBy('courses.name')
             ->get();
 

@@ -16,6 +16,18 @@ use App\Events\QuizAttemptCompleted;
 use App\Events\NotificationCreated;
 use App\Events\PaymentCompleted;
 
+// Import notification events
+use App\Events\StudyStreakUpdated;
+use App\Events\TopicMastered;
+use App\Events\WeakTopicIdentified;
+use App\Events\UserLeveledUp;
+use App\Events\MistakesNeedReview;
+use App\Events\CourseProgressMilestone;
+use App\Events\SkippedQuestionsDetected;
+use App\Events\TopicUnlockedByTutor;
+use App\Events\AssignmentDeadlineChanged;
+use App\Events\CorrectAnswersMilestoneReached;
+
 // Import our custom listeners
 use App\Listeners\InvalidateCourseCache;
 use App\Listeners\InvalidateTopicCache;
@@ -24,6 +36,18 @@ use App\Listeners\InvalidateUserProgressCache;
 use App\Listeners\InvalidateQuizCache;
 use App\Listeners\InvalidateNotificationCache;
 use App\Listeners\InvalidatePaymentCache;
+
+// Import notification listeners
+use App\Listeners\SendStudyStreakNotification;
+use App\Listeners\SendTopicMasteryNotification;
+use App\Listeners\SendWeakTopicNotification;
+use App\Listeners\SendLevelUpNotification;
+use App\Listeners\SendMistakeReviewNotification;
+use App\Listeners\SendCourseProgressNotification;
+use App\Listeners\SendSkippedQuestionNotification;
+use App\Listeners\SendTopicUnlockNotification;
+use App\Listeners\SendAssignmentDeadlineNotification;
+use App\Listeners\SendCorrectAnswersMilestoneNotification;
 
 class EventServiceProvider extends ServiceProvider
 {
@@ -64,6 +88,47 @@ class EventServiceProvider extends ServiceProvider
 
         PaymentCompleted::class => [
             InvalidatePaymentCache::class,
+        ],
+
+        // NOTIFICATION SYSTEM: Event-driven notifications
+        StudyStreakUpdated::class => [
+            SendStudyStreakNotification::class,
+        ],
+
+        TopicMastered::class => [
+            SendTopicMasteryNotification::class,
+        ],
+
+        WeakTopicIdentified::class => [
+            SendWeakTopicNotification::class,
+        ],
+
+        UserLeveledUp::class => [
+            SendLevelUpNotification::class,
+        ],
+
+        MistakesNeedReview::class => [
+            SendMistakeReviewNotification::class,
+        ],
+
+        CourseProgressMilestone::class => [
+            SendCourseProgressNotification::class,
+        ],
+
+        SkippedQuestionsDetected::class => [
+            SendSkippedQuestionNotification::class,
+        ],
+
+        TopicUnlockedByTutor::class => [
+            SendTopicUnlockNotification::class,
+        ],
+
+        AssignmentDeadlineChanged::class => [
+            SendAssignmentDeadlineNotification::class,
+        ],
+
+        CorrectAnswersMilestoneReached::class => [
+            SendCorrectAnswersMilestoneNotification::class,
         ],
     ];
 

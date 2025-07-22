@@ -12,7 +12,7 @@ return new class extends Migration
             $table->id();
             $table->foreignId('user_id')->constrained()->onDelete('cascade');
             $table->foreignId('question_id')->constrained()->onDelete('cascade');
-            $table->string('submitted_answer'); // User's wrong answer
+            $table->string('submitted_answer')->nullable(); // User's wrong answer (null if skipped)
             $table->text('question_text'); // Stores question text directly
             $table->string('correct_answer'); // Correct answer for review
             $table->string('image_path')->nullable(); // Image if attached to question
@@ -20,6 +20,7 @@ return new class extends Migration
             $table->integer('quick_correct_count')->default(0); // Count of correct answers in quick mode
             $table->integer('quiz_correct_count')->default(0); // Count of correct answers in quiz mode
             $table->boolean('mastered')->default(false); // Whether the question has been mastered
+            $table->boolean('skipped')->default(false); // Whether the question was skipped
             $table->timestamp('last_attempt_date')->nullable();
             $table->timestamps();
 
@@ -29,6 +30,7 @@ return new class extends Migration
             // Add indexes for efficient querying
             $table->index(['user_id', 'correct_streak'], 'idx_user_streak');
             $table->index(['user_id', 'last_attempt_date'], 'idx_user_last_attempt');
+            $table->index('skipped');
         });
     }
 

@@ -23,8 +23,7 @@ class Mistake extends Model
         'quick_correct_count',
         'quiz_correct_count',
         'mastered',
-        'skipped',
-        'skipped_at'
+        'skipped'
     ];
 
     protected $attributes = [
@@ -42,11 +41,10 @@ class Mistake extends Model
         'quick_correct_count' => 'integer',
         'quiz_correct_count' => 'integer',
         'mastered' => 'boolean',
-        'skipped' => 'boolean',
-        'skipped_at' => 'datetime'
+        'skipped' => 'boolean'
     ];
 
-    public $timestamps = false;
+    public $timestamps = true;
 
     protected static function boot()
     {

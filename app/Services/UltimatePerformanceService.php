@@ -148,7 +148,7 @@ class UltimatePerformanceService
                     SUM(CASE WHEN qa.score >= 70 THEN 1 ELSE 0 END) as passing_attempts,
                     MAX(qa.created_at) as last_attempt_date
                 FROM topics t
-                LEFT JOIN questions q ON t.id = q.topic_id AND q.deleted = 0
+                LEFT JOIN questions q ON t.id = q.topic_id
                 LEFT JOIN quiz_attempts qa ON t.id = qa.topic_id AND qa.user_id = ?
                 LEFT JOIN mistakes m ON m.user_id = ? AND m.question_id = q.id
                 WHERE t.id = ?

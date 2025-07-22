@@ -146,14 +146,16 @@
             bottom: 0;
             left: 50%;
             transform: translate(-50%, 0);
-            background: #f8f9fa;
-            border-radius: 10px;
+            background: rgba(248, 249, 250, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 10px 10px 0 0;
             padding: 1rem;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+            box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.1);
             z-index: 999;
             max-width: 1000px;
             width: 100%;
-            transition: all 0.3s ease;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            border: 1px solid rgba(0, 0, 0, 0.1);
         }
 
         .progress-bar-container.at-form {
@@ -164,11 +166,11 @@
         }
 
         .progress-bar-container.hidden {
-            transform: translate(-50%, 100%);
-            opacity: 0;
-            pointer-events: none;
-            visibility: hidden;
-            display: none !important;
+            transform: translate(-50%, 100%) !important;
+            opacity: 0 !important;
+            pointer-events: none !important;
+            visibility: hidden !important;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
         }
 
         @media (max-width: 1100px) {
@@ -929,31 +931,38 @@
 
             let selectedAnswers = {};
 
-            // WORKING: Smart progress bar positioning system
+            // AGGRESSIVE PROGRESS BAR POSITIONING SYSTEM
             const progressBarContainer = document.querySelector('.progress-bar-container');
             const submitBtn = document.getElementById('submit-btn');
             let rafId = null;
+            let isProgressBarHidden = false;
             
             function updateProgressBarPosition() {
                 if (!submitBtn || !progressBarContainer) return;
                 
                 const submitBtnRect = submitBtn.getBoundingClientRect();
                 const windowHeight = window.innerHeight;
+                const scrollBuffer = 200; // Aggressive buffer zone
                 
-                // INTELLIGENT BUT STRICT AS FUCK:
-                // Hide when submit button is anywhere near the viewport (300px buffer)
-                if (submitBtnRect.top <= windowHeight + 300) {
-                    // NUCLEAR HIDE - multiple methods to ensure it's GONE
+                // AGGRESSIVE LOGIC: Hide when submit button is approaching viewport
+                const shouldHide = submitBtnRect.top <= windowHeight + scrollBuffer;
+                
+                if (shouldHide && !isProgressBarHidden) {
+                    // NUCLEAR HIDE - multiple methods to ensure it's COMPLETELY GONE
                     progressBarContainer.classList.add('hidden');
-                    progressBarContainer.style.display = 'none';
-                    progressBarContainer.style.visibility = 'hidden';
+                    progressBarContainer.style.transform = 'translate(-50%, 100%)';
                     progressBarContainer.style.opacity = '0';
-                } else {
-                    // Show when submit button is FAR AWAY (user scrolled back up to work on questions)
+                    progressBarContainer.style.visibility = 'hidden';
+                    progressBarContainer.style.pointerEvents = 'none';
+                    isProgressBarHidden = true;
+                } else if (!shouldHide && isProgressBarHidden) {
+                    // AGGRESSIVE SHOW - when submit button is FAR AWAY (user scrolled back up)
                     progressBarContainer.classList.remove('hidden');
-                    progressBarContainer.style.display = '';
-                    progressBarContainer.style.visibility = '';
-                    progressBarContainer.style.opacity = '';
+                    progressBarContainer.style.transform = 'translate(-50%, 0)';
+                    progressBarContainer.style.opacity = '1';
+                    progressBarContainer.style.visibility = 'visible';
+                    progressBarContainer.style.pointerEvents = 'auto';
+                    isProgressBarHidden = false;
                 }
             }
 
@@ -971,7 +980,7 @@
             window.addEventListener('resize', onScroll, { passive: true });
             
             // Initial position check
-            updateProgressBarPosition();
+            setTimeout(() => updateProgressBarPosition(), 100);
 
             if (quizForm) {
                 // Handle multiple choice answers

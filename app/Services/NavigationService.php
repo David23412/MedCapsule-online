@@ -166,17 +166,20 @@ class NavigationService
 
         if ($user->role === 'admin') {
             return [
-                'text' => '👑 Admin',
+                'text' => 'Admin',
                 'class' => 'bg-warning'
             ];
         } elseif ($user->role === 'tutor') {
             return [
-                'text' => '📚 Tutor',
+                'text' => 'Tutor',
                 'class' => 'bg-info'
             ];
+        } else {
+            return [
+                'text' => 'Student',
+                'class' => 'bg-primary'
+            ];
         }
-
-        return null;
     }
 
     /**

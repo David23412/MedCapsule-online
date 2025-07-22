@@ -69,8 +69,7 @@ class LearnMistakesService
      */
     public function getQuestionsForSession(int $userId, int $topicId, bool $excludeSkipped = true): Collection
     {
-        $query = Question::where('topic_id', $topicId)
-                        ->where('deleted', false);
+        $query = Question::where('topic_id', $topicId);
 
         if ($excludeSkipped) {
             // Exclude questions that have been skipped in learn mistakes sessions
@@ -96,7 +95,6 @@ class LearnMistakesService
     public function getAllQuestionsForTopic(int $userId, int $topicId): array
     {
         $allQuestions = Question::where('topic_id', $topicId)
-                              ->where('deleted', false)
                               ->orderBy('id')
                               ->get();
 
@@ -173,7 +171,6 @@ class LearnMistakesService
     public function getQuestionsWithSkipStatus(int $userId, int $topicId): Collection
     {
         $questions = Question::where('topic_id', $topicId)
-                           ->where('deleted', false)
                            ->orderBy('id')
                            ->get();
 
@@ -199,7 +196,6 @@ class LearnMistakesService
     public function getSessionProgress(int $userId, int $topicId): array
     {
         $totalQuestions = Question::where('topic_id', $topicId)
-                                ->where('deleted', false)
                                 ->count();
 
         $skippedCount = SkippedQuestion::where('user_id', $userId)
@@ -260,7 +256,6 @@ class LearnMistakesService
                                          ->toArray();
 
         return Question::where('topic_id', $topicId)
-                      ->where('deleted', false)
                       ->whereNotIn('id', $recentlySkipped)
                       ->orderBy('id')
                       ->limit($limit)

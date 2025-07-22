@@ -186,7 +186,7 @@ class QuizService
                 'alternative_answers', 'similarity_threshold'
             ])
             ->where('topic_id', $topic->id)
-            ->where('deleted', false) // OPTIMIZED: Filter out deleted questions
+
             ->with(['topic:id,name,course_id']); // OPTIMIZED: Eager load minimal topic data
             
             // Apply source filtering if specific sources are selected
@@ -202,7 +202,6 @@ class QuizService
             // OPTIMIZED: Verify that cached questions still exist in the database
             $questionIds = $questions->pluck('id')->toArray();
             $existingQuestions = Question::whereIn('id', $questionIds)
-                ->where('deleted', false)
                 ->get();
             
             // If some questions were deleted, clear cache and get fresh questions
@@ -276,7 +275,6 @@ class QuizService
 
         if ($sources === null) {
             $sources = Question::where('topic_id', $topic->id)
-                ->where('deleted', false)
                 ->distinct()
                 ->pluck('source')
                 ->filter()
@@ -303,8 +301,7 @@ class QuizService
         $stats = $this->cacheService->get($cacheKey);
 
         if ($stats === null) {
-            $questionsQuery = Question::where('topic_id', $topic->id)
-                ->where('deleted', false);
+            $questionsQuery = Question::where('topic_id', $topic->id);
             
             if (!in_array('all', $sources)) {
                 $questionsQuery->whereIn('source', $sources);
@@ -337,8 +334,7 @@ class QuizService
      */
     private function getSourceBreakdown(Topic $topic, array $sources): array
     {
-        $query = Question::where('topic_id', $topic->id)
-            ->where('deleted', false);
+        $query = Question::where('topic_id', $topic->id);
         
         if (!in_array('all', $sources)) {
             $query->whereIn('source', $sources);
@@ -360,8 +356,7 @@ class QuizService
      */
     public function getRandomQuestions(Topic $topic, int $count = 10, array $sources = ['all']): \Illuminate\Database\Eloquent\Collection
     {
-        $questionsQuery = Question::where('topic_id', $topic->id)
-            ->where('deleted', false);
+        $questionsQuery = Question::where('topic_id', $topic->id);
         
         if (!in_array('all', $sources)) {
             $questionsQuery->whereIn('source', $sources);
@@ -383,8 +378,7 @@ class QuizService
     public function getQuestionsByDifficulty(Topic $topic, string $difficulty, array $sources = ['all']): \Illuminate\Database\Eloquent\Collection
     {
         $questionsQuery = Question::where('topic_id', $topic->id)
-            ->where('difficulty', $difficulty)
-            ->where('deleted', false);
+            ->where('difficulty', $difficulty);
         
         if (!in_array('all', $sources)) {
             $questionsQuery->whereIn('source', $sources);
@@ -517,8 +511,7 @@ class QuizService
             ]);
 
             // Get questions for the topic with source filtering
-            $questionsQuery = Question::where('topic_id', $topic->id)
-                ->where('deleted', false);
+            $questionsQuery = Question::where('topic_id', $topic->id);
             
             // Apply source filtering if specific sources are selected
             if (!in_array('all', $sources)) {
@@ -606,8 +599,7 @@ class QuizService
             ]);
 
             // Build query for questions
-            $questionsQuery = Question::query()
-                ->where('deleted', false);
+            $questionsQuery = Question::query();
 
             // Apply source filtering
             if (!in_array('all', $sources)) {

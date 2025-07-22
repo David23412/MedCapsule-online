@@ -1291,6 +1291,133 @@
             pointer-events: none;
         }
 
+        /* Clean Streak Indicator */
+        .streak-indicator {
+            background: #f9f9f9;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+            margin: 10px auto;
+            padding: 5px;
+            transition: all 0.3s ease;
+            width: 60px;
+            height: 60px;
+            position: relative;
+            margin: 1rem;
+            cursor: pointer;
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            background: rgba(255, 255, 255, 0.08);
+            border-radius: 50%;
+            backdrop-filter: blur(12px);
+            box-shadow: 0 0 25px rgba(25, 118, 210, 0.25);
+        }
+
+
+
+        .streak-circle {
+            width: 100%;
+            height: 100%;
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .streak-circle svg {
+            width: 100%;
+            height: 100%;
+            transform: rotate(-90deg);
+            filter: drop-shadow(0 0 8px rgba(51, 154, 240, 0.4));
+        }
+
+        .streak-circle circle {
+            fill: none;
+            stroke-width: 3;
+            stroke-linecap: round;
+            transition: all 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .streak-bg {
+            stroke: rgba(33, 150, 243, 0.15);
+        }
+
+        .streak-progress {
+            stroke: #2196f3;
+            stroke-dasharray: 251.2;
+            stroke-dashoffset: 251.2;
+            transition: stroke-dashoffset 1.5s cubic-bezier(0.4, 0, 0.2, 1);
+            filter: drop-shadow(0 0 6px rgba(33, 150, 243, 0.6));
+        }
+
+        .streak-content {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            width: 100%;
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            z-index: 2;
+        }
+
+        .streak-value {
+            font-size: 1.5rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, #1565c0, #2196f3);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            position: relative;
+            line-height: 1;
+            margin-bottom: 0.2rem;
+            text-shadow: 0 0 25px rgba(33, 150, 243, 0.6);
+            animation: glowPulse 2s infinite;
+        }
+
+        .streak-label {
+            font-size: 0.55rem;
+            background: linear-gradient(135deg, #1565c0, #2196f3);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            opacity: 0.95;
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            animation: glowPulse 2s infinite 0.5s;
+        }
+
+        @keyframes glowPulse {
+            0% { 
+                filter: brightness(1) drop-shadow(0 0 10px rgba(25, 118, 210, 0.5));
+                transform: scale(1);
+            }
+            50% { 
+                filter: brightness(1.4) drop-shadow(0 0 15px rgba(25, 118, 210, 0.7));
+                transform: scale(1.05);
+            }
+            100% { 
+                filter: brightness(1) drop-shadow(0 0 10px rgba(25, 118, 210, 0.5));
+                transform: scale(1);
+            }
+        }
+
+        .streak-fire {
+            position: absolute;
+            bottom: -2px;
+            right: -2px;
+            color: #ff6b6b;
+            animation: flame 1.5s infinite;
+            font-size: 1rem;
+        }
+
+        @keyframes flame {
+            0% { transform: scale(1) rotate(0deg); }
+            50% { transform: scale(1.2) rotate(5deg); }
+            100% { transform: scale(1) rotate(0deg); }
+        }
+
         .counter {
             animation: countUp 2s ease-out forwards;
             display: inline-block;
@@ -2025,12 +2152,34 @@
                             <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
                                 {{ Auth::user()->name }}
                                 @if(Auth::user()->role === 'admin')
-                                    <span class="badge bg-warning ms-1">👑 Admin</span>
+                                    <span class="badge bg-warning ms-1">Admin</span>
                                 @elseif(Auth::user()->role === 'tutor')
-                                    <span class="badge bg-info ms-1">📚 Tutor</span>
+                                    <span class="badge bg-info ms-1">Tutor</span>
+                                @else
+                                    <span class="badge bg-primary ms-1">Student</span>
                                 @endif
                             </a>
                             <ul class="dropdown-menu dropdown-menu-end">
+                                <li class="d-flex justify-content-center">
+                                    <div class="streak-indicator" data-streak="{{ Auth::user()->study_streak_days ?? 0 }}">
+                                        <div class="streak-circle">
+                                            <svg viewBox="0 0 100 100">
+                                                <circle class="streak-bg" cx="50" cy="50" r="40"></circle>
+                                                <circle class="streak-progress" cx="50" cy="50" r="40"></circle>
+                                            </svg>
+                                            <div class="streak-content">
+                                                <div class="streak-value">{{ Auth::user()->study_streak_days ?? 0 }}</div>
+                                                <div class="streak-label">Streak</div>
+                                            </div>
+                                            @if((Auth::user()->study_streak_days ?? 0) > 0)
+                                                <div class="streak-fire">
+                                                    <i class="fas fa-fire"></i>
+                                                </div>
+                                            @endif
+                                        </div>
+                                    </div>
+                                </li>
+                                <li><hr class="dropdown-divider"></li>
                                 <li>
                                     <a class="dropdown-item" href="{{ route('courses.index') }}">
                                         <i class="fas fa-book me-2"></i>My Courses
@@ -2110,7 +2259,7 @@
                                 <li>
                                     <form method="POST" action="{{ secure_url(route('logout', [], false)) }}" class="dropdown-item p-0">
                                         @csrf
-                                        <button type="submit" class="dropdown-item w-100">
+                                        <button type="submit" class="dropdown-item w-100 text-danger">
                                             <i class="fas fa-sign-out-alt me-2"></i>Logout
                                         </button>
                                     </form>
@@ -2410,7 +2559,7 @@
                 unreadCount: 0,
                 loading: false,
                 lastFetched: 0,
-                notificationSound: new Audio('/sounds/zapsplat_multimedia_ui_chime_alert_notification_simple_chime_correct_answer_88733.mp3'),
+                notificationSound: new Audio('/sounds/notification-sound.mp3'),
                 prevUnreadCount: 0, // Track previous unread count to detect changes
                 
                 init() {
@@ -2536,7 +2685,7 @@
                                     console.log('Sound play prevented: ', error);
                                     
                                     // Create and play a new audio instance as fallback
-                                    const fallbackSound = new Audio('/sounds/zapsplat_multimedia_ui_chime_alert_notification_simple_chime_correct_answer_88733.mp3');
+                                    const fallbackSound = new Audio('/sounds/notification-sound.mp3');
                                     fallbackSound.volume = 0.5;
                                     fallbackSound.play().catch(() => {});
                                 });
@@ -2722,42 +2871,45 @@
         }
     </script>
     
-    <!-- Streak Animation Script -->
+    <!-- GOLDEN STANDARD Streak Animation Script -->
     <script>
         document.addEventListener('DOMContentLoaded', function() {
             const streakIndicators = document.querySelectorAll('.streak-indicator');
-            if (streakIndicators.length > 0) {
-                streakIndicators.forEach(streakIndicator => {
-                    const streakProgress = streakIndicator.querySelector('.streak-progress');
-                    const streak = parseInt(streakIndicator.dataset.streak || 0);
-                    
-                    // Calculate progress (assuming max streak of 30 days)
+            
+            streakIndicators.forEach(streakIndicator => {
+                const streakProgress = streakIndicator.querySelector('.streak-progress');
+                const streak = parseInt(streakIndicator.dataset.streak || 0);
+                
+                if (streakProgress) {
+                    // Calculate progress (max streak of 30 days)
                     const maxStreak = 30;
                     const progress = Math.min(streak / maxStreak, 1);
-                    const circumference = 2 * Math.PI * 40; // circle radius is 40
+                    const circumference = 2 * Math.PI * 40;
                     
-                    // Animate the progress
-                    if (streakProgress) {
-                        setTimeout(() => {
-                            streakProgress.style.strokeDasharray = circumference;
-                            streakProgress.style.strokeDashoffset = circumference * (1 - progress);
-                        }, 100);
-                    }
+                    // Set initial state
+                    streakProgress.style.strokeDasharray = circumference;
+                    streakProgress.style.strokeDashoffset = circumference;
                     
-                    // Add hover effect for the flame
-                    if (streak > 0) {
-                        const streakFire = streakIndicator.querySelector('.streak-fire');
-                        if (streakFire) {
-                            streakIndicator.addEventListener('mouseover', () => {
-                                streakFire.style.transform = 'scale(1.2)';
-                            });
-                            streakIndicator.addEventListener('mouseout', () => {
-                                streakFire.style.transform = 'scale(1)';
-                            });
-                        }
-                    }
-                });
-            }
+                    // Animate with delay for smooth effect
+                    setTimeout(() => {
+                        streakProgress.style.strokeDashoffset = circumference * (1 - progress);
+                    }, 300);
+                }
+                
+                // Enhanced hover effects
+                const streakFire = streakIndicator.querySelector('.streak-fire');
+                if (streakFire && streak > 0) {
+                    streakIndicator.addEventListener('mouseenter', () => {
+                        streakFire.style.transform = 'scale(1.3) rotate(10deg)';
+                        streakFire.style.filter = 'drop-shadow(0 0 8px rgba(255, 107, 107, 0.8))';
+                    });
+                    
+                    streakIndicator.addEventListener('mouseleave', () => {
+                        streakFire.style.transform = 'scale(1) rotate(0deg)';
+                        streakFire.style.filter = 'none';
+                    });
+                }
+            });
         });
     </script>
 </body>
