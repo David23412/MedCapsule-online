@@ -768,7 +768,7 @@ class QuizServiceTest extends TestCase
         // Assert
         $this->assertIsArray($config);
         $this->assertArrayHasKey('max_questions', $config);
-        $this->assertArrayHasKey('time_limit', $config);
+        $this->assertArrayHasKey('duration_minutes', $config);
         $this->assertArrayHasKey('passing_score', $config);
     }
 

@@ -63,8 +63,11 @@ class GradingService
             // Process answers and calculate scores
             $gradingResult = $this->processAnswers($user, $questions, $answers, $topic);
 
+            // Check if this is an assignment quiz
+            $isAssignment = $this->isAssignmentQuiz($user, $topic, $course);
+
             // Create quiz attempts for each source
-            $this->createQuizAttempts($user, $gradingResult['sourceData'], $duration, $mode, $topic);
+            $this->createQuizAttempts($user, $gradingResult['sourceData'], $duration, $mode, $topic, $isAssignment);
 
             // Update user statistics
             $this->userStatsService->updateAfterQuizAttempt(
@@ -305,6 +308,23 @@ class GradingService
     }
 
     /**
+     * Check if this quiz is being solved for an assignment
+     *
+     * @param User $user
+     * @param Topic $topic
+     * @param Course $course
+     * @return bool
+     */
+    private function isAssignmentQuiz(User $user, Topic $topic, Course $course): bool
+    {
+        return \App\Models\Assignment::where('student_id', $user->id)
+            ->where('topic_id', $topic->id)
+            ->where('course_id', $course->id)
+            ->whereIn('status', [\App\Models\Assignment::STATUS_ACTIVE, \App\Models\Assignment::STATUS_OVERDUE])
+            ->exists();
+    }
+
+    /**
      * Record a mistake for incorrect answers
      *
      * @param User $user
@@ -334,10 +354,14 @@ class GradingService
      * @param string $mode
      * @param Topic $topic
      */
-    private function createQuizAttempts(User $user, array $sourceData, int $duration, string $mode, Topic $topic): void
+    private function createQuizAttempts(User $user, array $sourceData, int $duration, string $mode, Topic $topic, bool $isAssignment = false): void
     {
         $numSources = count($sourceData);
         $durationPerSource = $numSources > 0 ? (int) round($duration / $numSources) : $duration;
+        
+        // Determine quiz type based on assignment status
+        $quizType = $isAssignment ? 'assignment' : 'normal';
+        
         foreach ($sourceData as $source => $data) {
             $score = $data['score'];
             $totalQuestions = $data['total'];
@@ -345,7 +369,7 @@ class GradingService
             QuizAttempt::create([
                 'user_id' => $user->id,
                 'topic_id' => $topic->id,
-                'quiz_type' => 'normal',
+                'quiz_type' => $quizType,
                 'study_mode' => $mode,
                 'source' => $source,
                 'score' => $score,

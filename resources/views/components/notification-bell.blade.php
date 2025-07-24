@@ -39,18 +39,18 @@
 </div>
 
 <style>
-/* === CLEAN BLUE NOTIFICATION SYSTEM === */
+/* === ULTRA-MODERN NOTIFICATION SYSTEM === */
 
 .clean-notification-system {
     position: relative;
     display: inline-block;
 }
 
-/* === CLEAN BLUE NOTIFICATION BELL === */
+/* === CLEAN NOTIFICATION BELL (NO BOX) === */
 .clean-notification-bell {
     /* Size */
-    width: 40px;
-    height: 40px;
+    width: 44px;
+    height: 44px;
     
     /* Layout */
     display: flex;
@@ -58,10 +58,9 @@
     justify-content: center;
     position: relative;
     
-    /* Appearance - Original blue design */
+    /* Clean design - no box */
     background: transparent;
     border: none;
-    border-radius: 50%;
     cursor: pointer;
     
     /* Remove default styles */
@@ -75,19 +74,20 @@
 }
 
 .clean-notification-bell i {
-    font-size: 20px;
-    color: #3b82f6;
+    font-size: 18px;
+    color: #667eea;
     transition: all 300ms cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-/* Hover State with micro-interaction */
+/* Hover State with clean micro-interaction */
 .clean-notification-bell:hover {
-    background: rgba(59, 130, 246, 0.1);
-    transform: scale(1.05);
+    background: transparent;
+    transform: translateY(-1px);
 }
 
 .clean-notification-bell:hover i {
-    color: #2563eb;
+    color: #5a67d8;
+    transform: scale(1.1);
 }
 
 /* Active State with button press feedback */
@@ -111,39 +111,39 @@
     outline-offset: 2px;
 }
 
-/* === CLEAN NOTIFICATION BADGE === */
+/* === MODERN NOTIFICATION BADGE === */
 .clean-notification-badge {
     /* Position */
     position: absolute;
-    top: -6px;
-    right: -6px;
+    top: -8px;
+    right: -8px;
     z-index: 10;
     
     /* Size */
-    min-width: 18px;
-    height: 18px;
+    min-width: 20px;
+    height: 20px;
     
     /* Layout */
     display: flex;
     align-items: center;
     justify-content: center;
     
-    /* Appearance */
-    background: #ef4444;
+    /* Modern gradient appearance */
+    background: linear-gradient(135deg, #ef4444, #dc2626);
     color: white;
-    border-radius: 50%;
-    border: 2px solid white;
+    border-radius: 10px;
+    border: 2px solid rgba(255, 255, 255, 0.9);
     
     /* Typography */
     font-size: 11px;
-    font-weight: 600;
+    font-weight: 700;
     line-height: 1;
     
-    /* Shadow */
-    box-shadow: 0 2px 4px rgba(239, 68, 68, 0.3);
+    /* Enhanced shadow */
+    box-shadow: 0 4px 15px rgba(239, 68, 68, 0.4);
     
     /* Padding for text */
-    padding: 0 2px;
+    padding: 0 3px;
     
     /* Smooth animations */
     transition: all 300ms cubic-bezier(0.4, 0, 0.2, 1);
@@ -162,25 +162,26 @@
     animation: badgeCountChange 300ms cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-/* === CLEAN NOTIFICATION DROPDOWN === */
+/* === ULTRA-MODERN NOTIFICATION DROPDOWN === */
 .clean-notification-dropdown {
     /* Position */
     position: absolute;
-    top: calc(100% + 8px);
-    right: -190px; /* Proper positioning to prevent cutoff */
+    top: calc(100% + 12px);
+    right: -200px; /* Proper positioning to prevent cutoff */
     z-index: 1050;
     
     /* Size - Wider and more spacious */
-    width: 420px;
-    max-height: 480px;
+    width: 450px;
+    max-height: 520px;
     
-    /* Appearance */
-    background: white;
-    border: 1px solid #e5e7eb;
-    border-radius: 12px;
+    /* Modern glass morphism appearance */
+    background: rgba(255, 255, 255, 0.98);
+    backdrop-filter: blur(20px) saturate(180%);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 20px;
     
-    /* Shadow */
-    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+    /* Enhanced shadow */
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15), 0 8px 25px rgba(0, 0, 0, 0.1);
     
     /* Layout */
     display: none;

@@ -42,7 +42,7 @@ class ProfileController extends Controller
                 ->where('topic_id', '!=', null)
                 ->sum('duration_seconds'),
             'tutor' => QuizAttempt::where('user_id', $user->id)
-                ->where('quiz_type', 'tutor')
+                ->where('study_mode', 'tutor')
                 ->sum('duration_seconds'),
             'random_quiz' => QuizAttempt::where('user_id', $user->id)
                 ->where('quiz_type', 'random')

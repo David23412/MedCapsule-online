@@ -2,356 +2,85 @@
 
 ## Overview
 
-This design addresses critical UI/UX issues across the MedCapsule platform with a focus on bulletproof implementation, zero regressions, and client-ready polish. The solution provides systematic fixes for course card styling, grading system consistency, notification system overhaul, navigation improvements, and tutor dashboard refinements.
+This design document outlines the solution for fixing the critical UI issue with custom course categorization pills not displaying properly on the topics cards. The issue involves debug information showing "DEBUG: medical | ID: 7" instead of proper categorization pills, and a course ID mismatch where TUNA course (ID 1) is being incorrectly treated as course ID 8 with a medical type.
+
+The solution will focus on:
+1. Removing debug output from the frontend
+2. Ensuring correct course ID resolution
+3. Fixing course type detection and categorization pill generation
+4. Implementing proper error logging
 
 ## Architecture
 
-### Component Structure
-```
-Critical UI Fixes
-├── Course Card System
-│   ├── Color Propagation Service
-│   ├── Border Styling Engine
-│   └── Cache Management
-├── Grading System Unification
-│   ├── Audio Feedback Controller
-│   ├── Confetti Animation Manager
-│   └── Modal Consistency Framework
-├── Notification System Overhaul
-│   ├── Universal Notification Service
-│   ├── Icon Management System
-│   └── Cross-Page Integration
-├── Navigation Enhancement
-│   ├── Dropdown Synchronization
-│   ├── Study Streak Navigation
-│   └── Role-Based Route Management
-└── Tutor Dashboard Refinement
-    ├── Professional UI Components
-    └── Minimalist Design System
-```
+The current architecture involves several components:
+
+1. **TopicController**: Responsible for loading course and topic data
+2. **Course Model**: Contains course type information and methods
+3. **CourseTypeService**: Determines categorizations based on course type
+4. **topics_for_course.blade.php**: Frontend view that displays topics and categorization pills
+5. **dynamic-categorization.js**: JavaScript for client-side filtering
+
+The issue appears to be in the interaction between these components, particularly in how course type is determined and how debug information is being displayed.
 
 ## Components and Interfaces
 
-### 1. Course Card Visual System
+### TopicController
 
-#### Color Propagation Service
-- **Purpose**: Ensure course colors are consistently applied across all visual elements
-- **Implementation**: 
-  - CSS custom properties for dynamic color application
-  - JavaScript color inheritance system
-  - Database color field validation
+The TopicController's `forCourse` method needs to be fixed to:
+- Ensure it loads the correct course by ID
+- Remove any debug output that might be leaking to the frontend
+- Properly pass course type information to the view
 
-#### Border Styling Engine
-```css
-.course-card {
-    --course-color: /* Dynamic from database */;
-    border: 2px solid var(--course-color);
-    border-left: 8px solid var(--course-color);
-}
+### topics_for_course.blade.php
 
-.course-card::before {
-    content: '';
-    position: absolute;
-    top: -2px;
-    left: -2px;
-    right: -2px;
-    bottom: -2px;
-    border: 2px solid var(--course-color);
-    border-radius: inherit;
-    z-index: -1;
-}
-```
+The view template needs to be modified to:
+- Remove any debug output statements
+- Fix the course type detection logic
+- Ensure categorization pills are generated correctly based on course type
+- Fix the emergency override for Course 1 (TUNA) that's causing issues
 
-#### Cache Management
-- **Cache Busting**: Implement versioned cache keys for course data
-- **Real-time Updates**: WebSocket or polling for immediate course deletion reflection
-- **Frontend State Management**: Vuex/Redux pattern for course list state
+### CourseTypeService
 
-### 2. Grading System Unification
+This service appears to be working correctly but we'll verify that:
+- It correctly determines course type
+- It generates appropriate categorizations based on course type
+- It handles null/empty course types properly
 
-#### Audio Feedback Controller
-```javascript
-class GradingAudioController {
-    static SOUNDS = {
-        PERFECT: '/sounds/quiz-perfect.mp3',
-        PARTIAL: '/sounds/quiz-partial.mp3',
-        WRONG: '/sounds/quiz-wrong.mp3'
-    };
-    
-    static playGradingSound(scorePercentage) {
-        const sound = this.determineSound(scorePercentage);
-        this.playAudio(sound);
-    }
-    
-    static determineSound(percentage) {
-        if (percentage === 100) return this.SOUNDS.PERFECT;
-        if (percentage >= 50) return this.SOUNDS.PARTIAL;
-        return this.SOUNDS.WRONG;
-    }
-}
-```
+### dynamic-categorization.js
 
-#### Confetti Animation Manager
-```javascript
-class ConfettiManager {
-    static triggerConfetti(container, intensity = 'medium') {
-        // Remove any existing confetti
-        this.clearConfetti(container);
-        
-        // Create properly positioned confetti
-        const confettiElement = this.createConfetti(intensity);
-        container.appendChild(confettiElement);
-        
-        // Auto-cleanup after animation
-        setTimeout(() => this.clearConfetti(container), 3000);
-    }
-}
-```
-
-#### Modal Consistency Framework
-- **Unified Base Component**: Single modal template for all grading interfaces
-- **Shared CSS Classes**: Consistent styling across all quiz types
-- **Component Props**: Standardized data structure for grading results
-
-### 3. Notification System Overhaul
-
-#### Universal Notification Service
-```php
-class UniversalNotificationService {
-    public function createNotification($type, $message, $userId = null) {
-        return [
-            'id' => uniqid(),
-            'type' => $type, // success, error, warning, info
-            'message' => $message,
-            'icon' => $this->getIconForType($type),
-            'timestamp' => now(),
-            'user_id' => $userId
-        ];
-    }
-    
-    public function getIconForType($type) {
-        return match($type) {
-            'success' => 'fas fa-check-circle',
-            'error' => 'fas fa-exclamation-triangle',
-            'warning' => 'fas fa-exclamation-circle',
-            'info' => 'fas fa-info-circle',
-            default => 'fas fa-bell'
-        };
-    }
-}
-```
-
-#### Cross-Page Integration
-- **Blade Component**: `@include('components.notification-system')`
-- **JavaScript Module**: Importable notification handler
-- **CSS Framework**: Consistent notification styling
-
-### 4. Navigation Enhancement
-
-#### Dropdown Synchronization System
-```php
-class NavigationService {
-    public function getNavigationForRole($userRole, $currentPage = null) {
-        $baseRoutes = $this->getBaseRoutes();
-        $roleRoutes = $this->getRoleSpecificRoutes($userRole);
-        
-        return array_merge($baseRoutes, $roleRoutes);
-    }
-    
-    private function getRoleSpecificRoutes($role) {
-        return match($role) {
-            'admin' => $this->getAdminRoutes(),
-            'tutor' => $this->getTutorRoutes(),
-            'student' => $this->getStudentRoutes(),
-            default => []
-        };
-    }
-}
-```
-
-#### Study Streak Navigation Component
-```javascript
-class StudyStreakNavigation {
-    constructor(streakData, userRole) {
-        this.streakData = streakData;
-        this.userRole = userRole;
-        this.initializeDropdown();
-    }
-    
-    initializeDropdown() {
-        // Create enhanced dropdown with role-specific options
-        // Smooth animations and responsive design
-        // Quick action shortcuts
-    }
-}
-```
-
-### 5. Academic Year Categorization
-
-#### Database Schema Addition
-```sql
-ALTER TABLE courses ADD COLUMN academic_year VARCHAR(50) AFTER name;
-ALTER TABLE courses ADD INDEX idx_academic_year (academic_year);
-```
-
-#### Filtering System
-```php
-class CourseFilterService {
-    public function filterByAcademicYear($year) {
-        return Course::where('academic_year', $year)
-                    ->where('deleted_at', null)
-                    ->orderBy('name')
-                    ->get();
-    }
-    
-    public function getAcademicYearOptions() {
-        return [
-            'year-1-sem-1' => 'Year 1 - First Semester',
-            'year-1-sem-2' => 'Year 1 - Second Semester',
-            'year-2-sem-1' => 'Year 2 - First Semester',
-            'year-2-sem-2' => 'Year 2 - Second Semester',
-            // ... additional years
-        ];
-    }
-}
-```
-
-### 6. Tutor Dashboard Professional Refinement
-
-#### Minimalist Design System
-```css
-.tutor-dashboard-card {
-    background: #ffffff;
-    border: 1px solid #e5e7eb;
-    border-radius: 8px;
-    padding: 24px;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-}
-
-.tutor-action-btn {
-    background: #3b82f6;
-    color: white;
-    border: none;
-    padding: 8px 16px;
-    border-radius: 6px;
-    font-weight: 500;
-    transition: background-color 0.2s;
-}
-
-.tutor-action-btn:hover {
-    background: #2563eb;
-}
-```
+The JavaScript file needs to be checked to ensure:
+- It correctly reads course type from the DOM
+- It properly filters topics based on selected categories
+- It doesn't output any debug information to the console or DOM
 
 ## Data Models
 
-### Course Model Enhancement
-```php
-class Course extends Model {
-    protected $fillable = [
-        'name',
-        'description',
-        'color',
-        'academic_year',
-        'image_url'
-    ];
-    
-    protected $casts = [
-        'color' => 'string',
-        'academic_year' => 'string'
-    ];
-    
-    public function getColorAttribute($value) {
-        return $value ?: '#3b82f6'; // Default blue
-    }
-}
-```
-
-### Notification Model
-```php
-class Notification extends Model {
-    protected $fillable = [
-        'type',
-        'message',
-        'icon',
-        'user_id',
-        'read_at'
-    ];
-    
-    protected $casts = [
-        'read_at' => 'datetime'
-    ];
-}
-```
+No changes to data models are required. The existing Course model already has a 'type' field that can be either 'medical' or 'custom'.
 
 ## Error Handling
 
-### Course Color Fallbacks
-- Default color system when course color is null/invalid
-- CSS fallback values for missing custom properties
-- Graceful degradation for older browsers
-
-### Audio Playback Error Handling
-```javascript
-class AudioErrorHandler {
-    static async playWithFallback(audioUrl) {
-        try {
-            await this.playAudio(audioUrl);
-        } catch (error) {
-            console.warn('Audio playback failed:', error);
-            // Fallback to visual feedback only
-            this.showVisualFeedback();
-        }
-    }
-}
-```
-
-### Notification System Resilience
-- Queue system for failed notifications
-- Retry mechanism with exponential backoff
-- Graceful degradation when WebSocket unavailable
+We'll implement proper error handling:
+- Server-side errors will be logged using Laravel's logging system
+- No debug information will be displayed to end users
+- If course loading fails, a proper 404 page will be shown
+- If categorization fails, a fallback to showing all topics without filtering will be implemented
 
 ## Testing Strategy
 
-### Visual Regression Testing
-- Screenshot comparison for course cards
-- Cross-browser compatibility testing
-- Mobile responsiveness validation
+1. **Unit Testing**:
+   - Test CourseTypeService to ensure it correctly determines categorizations
+   - Test Course model methods related to course type
 
-### Audio System Testing
-```javascript
-describe('Grading Audio System', () => {
-    test('plays correct sound for perfect score', () => {
-        const mockAudio = jest.fn();
-        GradingAudioController.playGradingSound(100);
-        expect(mockAudio).toHaveBeenCalledWith('/sounds/quiz-perfect.mp3');
-    });
-});
-```
+2. **Integration Testing**:
+   - Test TopicController's forCourse method with different course IDs
+   - Verify correct course loading and type determination
 
-### Integration Testing
-- End-to-end notification flow testing
-- Navigation dropdown functionality across user roles
-- Course deletion and cache invalidation testing
+3. **End-to-End Testing**:
+   - Test the complete flow from course selection to topic display
+   - Verify categorization pills display correctly for both medical and custom courses
+   - Test filtering functionality with different categories
 
-### Performance Testing
-- Page load time impact measurement
-- Memory usage monitoring for animations
-- Database query optimization validation
-
-## Security Considerations
-
-### Input Validation
-- Course color hex code validation
-- Academic year enum validation
-- Notification content sanitization
-
-### Access Control
-- Role-based navigation route protection
-- Notification visibility restrictions
-- Course modification permissions
-
-### XSS Prevention
-- Notification message escaping
-- Dynamic CSS property sanitization
-- User-generated content filtering
+4. **Manual Testing**:
+   - Verify TUNA course (ID 1) loads correctly with proper categorization
+   - Check that no debug information is visible on the page
+   - Test filtering with different categories to ensure it works correctly

@@ -75,5 +75,7 @@ class Kernel extends HttpKernel
         'sql.injection.protection' => \App\Http\Middleware\SqlInjectionProtectionMiddleware::class,
         'tutor' => \App\Http\Middleware\TutorMiddleware::class,
         'role' => \App\Http\Middleware\RoleMiddleware::class,
+        'assignment.security' => \App\Http\Middleware\AssignmentSecurityMiddleware::class,
+        'assignment.access' => \App\Http\Middleware\CheckAssignmentAccess::class,
     ];
 } 

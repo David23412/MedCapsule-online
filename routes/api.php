@@ -18,6 +18,42 @@ Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
     return $request->user();
 });
 
+// Course preview data for course type switching UI
+Route::get('/courses/{id}/preview-data', 'App\Http\Controllers\Api\CoursePreviewController@getPreviewData');
+
+// Topic Access Control Routes
+Route::middleware(['auth'])->group(function () {
+    // Check access for a topic
+    Route::get('/topic/{topic}/access', 'App\Http\Controllers\TopicAccessController@checkAccessApi');
+    
+    // Get available sources for a topic
+    Route::get('/topic/{topic}/sources', 'App\Http\Controllers\TopicAccessController@getSourcesApi');
+});
+
+// Topic Locking Routes
+Route::middleware(['auth', 'role:admin,tutor'])->group(function () {
+    // Lock a topic
+    Route::post('/topic/{topic}/lock', 'App\Http\Controllers\TopicLockingController@lock');
+    
+    // Unlock a topic
+    Route::post('/topic/{topic}/unlock', 'App\Http\Controllers\TopicLockingController@unlock');
+    
+    // Bulk lock topics
+    Route::post('/topics/bulk-lock', 'App\Http\Controllers\TopicLockingController@bulkLock');
+    
+    // Bulk unlock topics
+    Route::post('/topics/bulk-unlock', 'App\Http\Controllers\TopicLockingController@bulkUnlock');
+    
+    // Get locked topics for a course
+    Route::get('/course/{course}/locked-topics', 'App\Http\Controllers\TopicLockingController@getLockedTopics');
+    
+    // Get topics locked by the current tutor
+    Route::get('/my-locked-topics', 'App\Http\Controllers\TopicLockingController@getMyLockedTopics');
+    
+    // Get lock information for a topic
+    Route::get('/topic/{topic}/lock-info', 'App\Http\Controllers\TopicLockingController@getLockInfo');
+});
+
 // Get question counts by source for a topic
 Route::get('/topic/{topic}/question-counts', function($topicId) {
     try {
@@ -68,5 +104,29 @@ Route::get('/topic/{topic}/question-counts', function($topicId) {
                 'Alexandria' => 0
             ]
         ], 500);
+    }
+})->middleware('auth');
+
+// Get available sources for a topic (for assignment creation)
+Route::get('/topics/{topicId}/sources', function($topicId) {
+    try {
+        \Log::info('API: Loading sources for topic ID: ' . $topicId);
+        $sources = \DB::table('questions')
+            ->where('topic_id', $topicId)
+            ->select('source')
+            ->distinct()
+            ->whereNotNull('source')
+            ->where('source', '!=', '')
+            ->pluck('source')
+            ->toArray();
+        
+        return response()->json($sources);
+    } catch (\Exception $e) {
+        Log::error('Error fetching topic sources: ' . $e->getMessage(), [
+            'topic_id' => $topicId,
+            'error' => $e->getMessage()
+        ]);
+        
+        return response()->json([], 500);
     }
 })->middleware('auth'); 

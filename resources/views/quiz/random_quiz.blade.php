@@ -697,7 +697,7 @@
                     </div>
                     <div class="d-flex justify-content-between align-items-center">
                         <div class="progress-text" id="progress-text">0 of {{ $questions->count() }} questions answered</div>
-                        <div class="timer" id="timer">{{ gmdate('i:s', $time_limit) }}</div>
+                        <div class="timer" id="timer">{{ gmdate('i:s', $duration_minutes * 60) }}</div>
                     </div>
                 </div>
 
@@ -761,7 +761,7 @@
                     <i class="fas fa-search"></i>
                     Review Answers
                 </button>
-                <a href="{{ route('topics.forCourse', ['course' => $selectedCourses->first()->id]) }}" class="popup-btn view-progress-btn">
+                <a href="{{ route('topics.forCourse', $selectedCourses->first()->id) }}" class="popup-btn view-progress-btn">
                     <i class="fas fa-chart-line"></i>
                     Back to Topics
                 </a>
@@ -920,7 +920,7 @@
             });
 
             // Timer functionality
-            let timeLimit = {{ $time_limit }};
+            let timeLimit = {{ $duration_minutes * 60 }};
             let timeRemaining = timeLimit;
             let timeTaken = 0;
             let timerInterval;

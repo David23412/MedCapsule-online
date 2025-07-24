@@ -10,6 +10,7 @@ use App\Models\QuizAttempt;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Collection;
 use App\Models\Mistake;
 
@@ -29,8 +30,19 @@ class TopicController extends Controller
     /**
      * ✅ Show topics for a specific course.
      */
-    public function forCourse(Course $course)
+    public function forCourse($courseId)
     {
+        // Convert courseId to integer
+        $requestedCourseId = (int) $courseId;
+        
+        // Find the course
+        $course = Course::find($requestedCourseId);
+        if (!$course) {
+            abort(404, "Course with ID {$requestedCourseId} not found");
+        }
+        
+
+        
         // Check if user has access to the course
         $user = auth()->user();
         
@@ -64,11 +76,13 @@ class TopicController extends Controller
         // Log the topics being loaded
         Log::info('Loading topics for course', [
             'course_id' => $course->id,
+            'course_type' => $course->type ?? 'medical',
             'topics' => $topics->map(function($topic) {
                 return [
                     'topic_id' => $topic->id,
                     'course_id' => $topic->course_id,
-                    'name' => $topic->name
+                    'name' => $topic->name,
+                    'case_type' => $topic->case_type
                 ];
             })
         ]);
@@ -78,10 +92,36 @@ class TopicController extends Controller
         if ($user->role === 'student') {
             $assignments = \App\Models\Assignment::where('student_id', $user->id)
                 ->where('course_id', $course->id)
-                ->with(['topic'])
+                ->with(['topic', 'completedAttempts' => function($query) use ($user) {
+                    $query->where('user_id', $user->id)
+                          ->orderBy('completed_at', 'desc');
+                }])
                 ->get()
                 ->keyBy('topic_id'); // Key by topic_id for easy lookup
         }
+
+        // Don't override the course type - let it be null if it's null in the database
+
+
+
+        // FINAL DEBUG: What are we actually passing to the view?
+        Log::emergency('FINAL DEBUG - Passing to view', [
+            'course_id' => $course->id,
+            'course_name' => $course->name,
+            'course_type' => $course->type,
+            'course_attributes' => $course->getAttributes(),
+            'topics_count' => $topics->count(),
+            'topics_course_ids' => $topics->pluck('course_id')->unique()->toArray()
+        ]);
+
+        // EMERGENCY DEBUG: Verify course object right before view
+        Log::emergency('RIGHT BEFORE VIEW', [
+            'course_object_id' => $course->id,
+            'course_object_name' => $course->name,
+            'course_object_type' => $course->type,
+            'course_object_hash' => spl_object_hash($course),
+            'course_fresh_from_db' => Course::find($course->id)->toArray()
+        ]);
 
         return view('topics_for_course', [
             'course' => $course,

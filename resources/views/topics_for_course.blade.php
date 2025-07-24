@@ -1,22 +1,181 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+    <!-- Fix for notification system errors -->
+    <script>
+        // Define missing functions to prevent errors
+        window.startPerformanceTracking = window.startPerformanceTracking || function() { return { startTime: Date.now() }; };
+        window.endPerformanceTracking = window.endPerformanceTracking || function() { return 0; };
+        window.loadNotifications = window.loadNotifications || function() {};
+        window.initializeNotificationSystem = window.initializeNotificationSystem || function() {};
+        window.performanceMetrics = window.performanceMetrics || { loadStartTime: Date.now(), retryAttempts: 0, networkErrors: 0 };
+    </script>
+    
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token() }}">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+    <!-- Disable source maps -->
+    <meta name="devtools-disable-sourcemaps" content="true">
     <title>MedCapsule</title>
     <!-- Favicon -->
     <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 50'%3E%3Crect fill='%23007bff' x='10' y='15' width='80' height='20' rx='10' ry='10' /%3E%3Crect x='50' y='15' width='40' height='20' fill='%23ff0000' rx='0 10 10 0' ry='10'/%3E%3Cline x1='50' y1='15' x2='50' y2='35' stroke='white' stroke-width='1.5' stroke-dasharray='2,1'/%3E%3C/svg%3E">
     <link rel="shortcut icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 50'%3E%3Crect fill='%23007bff' x='10' y='15' width='80' height='20' rx='10' ry='10' /%3E%3Crect x='50' y='15' width='40' height='20' fill='%23ff0000' rx='0 10 10 0' ry='10'/%3E%3Cline x1='50' y1='15' x2='50' y2='35' stroke='white' stroke-width='1.5' stroke-dasharray='2,1'/%3E%3C/svg%3E">
     <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 50'%3E%3Crect fill='%23007bff' x='10' y='15' width='80' height='20' rx='10' ry='10' /%3E%3Crect x='50' y='15' width='40' height='20' fill='%23ff0000' rx='0 10 10 0' ry='10'/%3E%3Cline x1='50' y1='15' x2='50' y2='35' stroke='white' stroke-width='1.5' stroke-dasharray='2,1'/%3E%3C/svg%3E">
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <!-- No source map versions of CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" crossorigin="anonymous">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet" crossorigin="anonymous">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" crossorigin="anonymous">
+    
+
+    <style>
+        /* Exact carbon copy of the original pills design */
+        .case-filters {display: flex;gap: 0.75rem;justify-content: center;flex-wrap: wrap;margin-bottom: 2rem;}
+        .case-filter {padding: 0.4rem 1.2rem;border-radius: 50px;font-size: 0.85rem;font-weight: 500;cursor: pointer;transition: all 0.2s ease;border: 1px solid #e9ecef;background: white;color: #6c757d;display: flex;align-items: center;gap: 0.5rem;box-shadow: 0 2px 4px rgba(0,0,0,0.05);}
+        .case-filter:hover {transform: translateY(-1px);box-shadow: 0 3px 6px rgba(0,0,0,0.08);border-color: #dee2e6;}
+        .case-filter.active {background: #0d6efd;color: white;border-color: #0d6efd;}
+        /* Add subtle color indications for each category */
+        .case-filter[data-filter="cases"] i, /* Cases */
+        .case-filter[data-filter="cases"] span:not(.count),
+        .case-filter[data-filter="cases"] .count {color: #ff8f00;} /* Orange for Cases */
+        .case-filter[data-filter="cases"].active {background-color: #0d6efd;border-color: #0d6efd;color: white;}
+        
+        .case-filter[data-filter="practical"] i, /* Practical */
+        .case-filter[data-filter="practical"] span:not(.count),
+        .case-filter[data-filter="practical"] .count {color: #7b1fa2;} /* Purple for Practical */
+        .case-filter[data-filter="practical"].active {background-color: #0d6efd;border-color: #0d6efd;color: white;}
+        
+        .case-filter[data-filter="quiz"] i, /* Quiz */
+        .case-filter[data-filter="quiz"] span:not(.count),
+        .case-filter[data-filter="quiz"] .count {color: #2e7d32;} /* Green for Quiz */
+        .case-filter[data-filter="quiz"].active {background-color: #0d6efd;border-color: #0d6efd;color: white;}
+        
+        /* Custom course category colors - use same rotation as medical courses */
+        .case-filter[data-filter]:not([data-filter="cases"]):not([data-filter="practical"]):not([data-filter="quiz"]):not([data-filter="assignments"]):not([data-filter="all"]) {
+            color: #ff8f00; /* Orange - same as Cases (default for unknown custom categories) */
+        }
+        .case-filter[data-filter]:not([data-filter="cases"]):not([data-filter="practical"]):not([data-filter="quiz"]):not([data-filter="assignments"]):not([data-filter="all"]) .count {
+            color: #ff8f00; /* Orange - same as Cases (default for unknown custom categories) */
+        }
+        .case-filter[data-filter]:not([data-filter="cases"]):not([data-filter="practical"]):not([data-filter="quiz"]):not([data-filter="assignments"]):not([data-filter="all"]).active {
+            background-color: #0d6efd;border-color: #0d6efd;color: white;
+        }
+        
+        /* CARBON COPY: Custom categories use exact same colors as medical courses in rotation */
+        .case-filter[data-filter="awaly"] {color: #ff8f00;} /* Orange - same as Cases */
+        .case-filter[data-filter="awaly"] .count {color: #ff8f00;} /* Orange - same as Cases */
+        .case-filter[data-filter="agamlo"] {color: #7b1fa2;} /* Purple - same as Practical */
+        .case-filter[data-filter="agamlo"] .count {color: #7b1fa2;} /* Purple - same as Practical */
+        .case-filter[data-filter="easy"] {color: #2e7d32;} /* Green - same as Quiz */
+        .case-filter[data-filter="easy"] .count {color: #2e7d32;} /* Green - same as Quiz */
+        
+        /* CSS PROTECTION - Force custom pills to be visible */
+        .case-filter[data-filter="awaly"],
+        .case-filter[data-filter="agamlo"], 
+        .case-filter[data-filter="easy"] {
+            display: flex !important;
+            visibility: visible !important;
+            opacity: 1 !important;
+        }
+        /* Additional custom categories - rotating through the same 3 colors as medical courses */
+        .case-filter[data-filter="homework"] {color: #ff8f00;} /* Orange - same as Cases */
+        .case-filter[data-filter="homework"] .count {color: #ff8f00;} /* Orange - same as Cases */
+        .case-filter[data-filter="lab"] {color: #7b1fa2;} /* Purple - same as Practical */
+        .case-filter[data-filter="lab"] .count {color: #7b1fa2;} /* Purple - same as Practical */
+        .case-filter[data-filter="reading"] {color: #2e7d32;} /* Green - same as Quiz */
+        .case-filter[data-filter="reading"] .count {color: #2e7d32;} /* Green - same as Quiz */
+        
+        /* Ensure any other custom categories follow the same pattern */
+        .case-filter[data-filter]:nth-child(2):not([data-filter="cases"]):not([data-filter="practical"]):not([data-filter="quiz"]):not([data-filter="assignments"]):not([data-filter="all"]) {color: #ff8f00;} /* Orange */
+        .case-filter[data-filter]:nth-child(2):not([data-filter="cases"]):not([data-filter="practical"]):not([data-filter="quiz"]):not([data-filter="assignments"]):not([data-filter="all"]) .count {color: #ff8f00;} /* Orange */
+        
+        .case-filter[data-filter]:nth-child(3):not([data-filter="cases"]):not([data-filter="practical"]):not([data-filter="quiz"]):not([data-filter="assignments"]):not([data-filter="all"]) {color: #7b1fa2;} /* Purple */
+        .case-filter[data-filter]:nth-child(3):not([data-filter="cases"]):not([data-filter="practical"]):not([data-filter="quiz"]):not([data-filter="assignments"]):not([data-filter="all"]) .count {color: #7b1fa2;} /* Purple */
+        
+        .case-filter[data-filter]:nth-child(4):not([data-filter="cases"]):not([data-filter="practical"]):not([data-filter="quiz"]):not([data-filter="assignments"]):not([data-filter="all"]) {color: #2e7d32;} /* Green */
+        .case-filter[data-filter]:nth-child(4):not([data-filter="cases"]):not([data-filter="practical"]):not([data-filter="quiz"]):not([data-filter="assignments"]):not([data-filter="all"]) .count {color: #2e7d32;} /* Green */
+        
+        /* Ensure all custom categories have the same active state as medical courses */
+        .case-filter[data-filter="awaly"].active,
+        .case-filter[data-filter="agamlo"].active,
+        .case-filter[data-filter="easy"].active,
+        .case-filter[data-filter="homework"].active,
+        .case-filter[data-filter="lab"].active,
+        .case-filter[data-filter="reading"].active,
+        .case-filter[data-filter]:not([data-filter="cases"]):not([data-filter="practical"]):not([data-filter="quiz"]):not([data-filter="assignments"]):not([data-filter="all"]).active {
+            background-color: #0d6efd !important;
+            border-color: #0d6efd !important;
+            color: white !important;
+        }
+        
+        .case-filter i {font-size: 0.8rem;}
+        .case-filter.active i,.case-filter.active span {color: white !important;}
+        .case-filter .count {background: rgba(0,0,0,0.05);padding: 0.15rem 0.5rem;border-radius: 50px;font-size: 0.75rem;min-width: 1.2rem;text-align: center;}
+        .case-filter.active .count {background: rgba(255,255,255,0.2);color: white !important;}
+        
+        /* Fixed position pills - Random and Review Mistakes */
+        .random-link {
+            color: #fd7e14;
+            text-decoration: none;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.4rem 1.2rem;
+            border-radius: 50px;
+            background: #fff8e1;
+            border: 1px solid #ffd54f;
+            transition: all 0.3s ease;
+            order: 98 !important; /* Always keep at the end */
+        }
+        
+        .random-link:hover {
+            background: #ffe082;
+            color: #f57c00;
+            transform: translateY(-1px);
+            box-shadow: 0 2px 4px rgba(255, 152, 0, 0.1);
+        }
+        
+        .mistakes-link {
+            color: #dc3545;
+            text-decoration: none;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.4rem 1.2rem;
+            border-radius: 50px;
+            background: #ffebee;
+            border: 1px solid #ef9a9a;
+            transition: all 0.3s ease;
+            order: 99 !important; /* Always keep at the very end */
+        }
+        
+        .mistakes-link:hover {
+            background: #ffcdd2;
+            color: #c62828;
+            transform: translateY(-1px);
+            box-shadow: 0 2px 4px rgba(198, 40, 40, 0.1);
+        }
+        
+        /* Assignment filter styling */
+        .assignment-filter {background: #fff5f5 !important;border-color: #fed7d7 !important;color: #c53030 !important;animation: assignmentPulse 3s infinite;}
+        .assignment-filter:hover {background: #fed7d7 !important;border-color: #fc8181 !important;color: #9b2c2c !important;}
+        .assignment-filter.active {background: #c53030 !important;border-color: #c53030 !important;color: white !important;}
+        .assignment-filter .assignment-count {background: rgba(197, 48, 48, 0.1) !important;color: #c53030 !important;}
+        .assignment-filter.active .assignment-count {background: rgba(255, 255, 255, 0.2) !important;color: white !important;}
+        @keyframes assignmentPulse {
+            0%, 100% {box-shadow: 0 2px 4px rgba(0,0,0,0.05), 0 0 0 0 rgba(197, 48, 48, 0.3);}
+            50% {box-shadow: 0 2px 4px rgba(0,0,0,0.05), 0 0 0 4px rgba(197, 48, 48, 0.1);}
+        }
+    </style>
     <style>
         body {
             font-family: 'Poppins', sans-serif;
             background-color: #f8f9fa;
-            zoom: 0.78; /* Precise zoom level for optimal viewing */
+            zoom: 0.72; /* Precise zoom level for optimal viewing */
             margin: 0;
             padding: 0;
             line-height: 1.6;
@@ -147,101 +306,8 @@
             animation: shimmer 8s linear infinite;
         }
 
-        .case-filters {
-            display: flex;
-            gap: 0.75rem;
-            justify-content: center;
-            flex-wrap: wrap;
-            margin-bottom: 2rem;
-        }
-
-        .case-filter {
-            padding: 0.4rem 1.2rem;
-            border-radius: 50px;
-            font-size: 0.85rem;
-            font-weight: 500;
-            cursor: pointer;
-            transition: all 0.2s ease;
-            border: 1px solid #e9ecef;
-            background: white;
-            color: #6c757d;
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
-        }
-
-        .case-filter:hover {
-            transform: translateY(-1px);
-            box-shadow: 0 3px 6px rgba(0,0,0,0.08);
-            border-color: #dee2e6;
-        }
-
-        .case-filter.active {
-            background: #0d6efd;
-            color: white;
-            border-color: #0d6efd;
-        }
-
-        /* Add subtle color indications for each category */
-        .case-filter:nth-child(2) i, /* Cases */
-        .case-filter:nth-child(2) span:not(.count),
-        .case-filter:nth-child(2) .count {
-            color: #ff8f00;
-        }
-
-        .case-filter:nth-child(2).active {
-            background-color: #0d6efd;
-            border-color: #0d6efd;
-            color: white;
-        }
-
-        .case-filter:nth-child(3) i, /* Practical */
-        .case-filter:nth-child(3) span:not(.count),
-        .case-filter:nth-child(3) .count {
-            color: #7b1fa2;
-        }
-
-        .case-filter:nth-child(3).active {
-            background-color: #0d6efd;
-            border-color: #0d6efd;
-            color: white;
-        }
-
-        .case-filter:nth-child(4) i, /* Quiz */
-        .case-filter:nth-child(4) span:not(.count),
-        .case-filter:nth-child(4) .count {
-            color: #2e7d32;
-        }
-
-        .case-filter:nth-child(4).active {
-            background-color: #0d6efd;
-            border-color: #0d6efd;
-            color: white;
-        }
-
-        .case-filter i {
-            font-size: 0.8rem;
-        }
-
-        .case-filter.active i,
-        .case-filter.active span {
-            color: white !important;
-        }
-
-        .case-filter .count {
-            background: rgba(0,0,0,0.05);
-            padding: 0.15rem 0.5rem;
-            border-radius: 50px;
-            font-size: 0.75rem;
-            min-width: 1.2rem;
-            text-align: center;
-        }
-
-        .case-filter.active .count {
-            background: rgba(255,255,255,0.2);
-            color: white !important;
-        }
+        /* Import categorization styles */
+        @import url('/css/categorization.css');
 
         .particle {
             position: absolute;
@@ -285,6 +351,16 @@
             border: 1px solid rgba(0, 0, 0, 0.04);
         }
         
+        /* HIDE ASSIGNMENT CARDS BY DEFAULT */
+        .topic-card[data-has-assignment="true"] {
+            display: none;
+        }
+        
+        /* SHOW ASSIGNMENT CARDS WHEN ASSIGNMENTS FILTER IS ACTIVE */
+        .assignments-filter-active .topic-card[data-has-assignment="true"] {
+            display: block;
+        }
+        
         /* Safari-specific sleek adjustments */
         @media screen and (-webkit-min-device-pixel-ratio:0) {
             .topic-card {
@@ -292,6 +368,42 @@
                 margin-bottom: 1rem;
                 border-radius: 18px;
                 box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
+            }
+            
+            .assignment-status-bar {
+                margin: -1.5rem -2.5rem 1rem -2.5rem;
+                padding: 0.35rem 2.5rem;
+                width: calc(100% + 5rem);
+                border-radius: 18px 18px 0 0;
+                background: #fff3cd;
+                border-bottom: 1px solid #ffeaa7;
+                color: #856404;
+                font-size: 0.75rem;
+                font-weight: 500;
+            }
+            
+            .assignment-status-bar.assignment-active {
+                background: #fff3cd;
+                color: #856404;
+            }
+            
+            .assignment-status-bar.assignment-overdue {
+                background: #f8d7da;
+                color: #721c24;
+                border-bottom-color: #f5c6cb;
+            }
+            
+            .assignment-status-bar.assignment-completed {
+                background: #d4edda;
+                color: #155724;
+                border-bottom-color: #c3e6cb;
+            }
+            
+            .assignment-info-minimal {
+                display: flex;
+                align-items: center;
+                gap: 0.5rem;
+                font-size: 0.7rem;
             }
             
             .topics-container {
@@ -339,6 +451,88 @@
             transform: translateY(-1px);
             box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
             border-color: rgba(0, 123, 255, 0.1);
+        }
+
+        /* Assignment Card Styling */
+        .assignment-card {
+            border-left: 4px solid #ffc107;
+            background: linear-gradient(135deg, #fff9e6 0%, #ffffff 100%);
+        }
+
+        .assignment-card:hover {
+            border-left-color: #ff9800;
+            box-shadow: 0 4px 12px rgba(255, 193, 7, 0.2);
+        }
+
+        .assignment-card .topic-name i {
+            color: #ffc107;
+        }
+
+        .assignment-description {
+            color: #6c757d;
+            font-size: 0.9rem;
+            margin-top: 0.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .assignment-description i {
+            color: #007bff;
+            font-size: 0.8rem;
+        }
+
+        .case-type-badge.assignment {
+            background: linear-gradient(135deg, #ffc107 0%, #ff9800 100%);
+            color: white;
+        }
+
+        /* Assignment Card Enhancements */
+        .assignment-card {
+            position: relative;
+            overflow: hidden;
+        }
+
+        .assignment-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: linear-gradient(90deg, #ffc107, #ff9800);
+            z-index: 1;
+        }
+
+        .assignment-card.assignment-completed {
+            border-left-color: #28a745;
+            background: linear-gradient(135deg, #f0fff4 0%, #ffffff 100%);
+        }
+
+        .assignment-card.assignment-completed::before {
+            background: linear-gradient(90deg, #28a745, #20c997);
+        }
+
+        .assignment-card.assignment-overdue {
+            border-left-color: #dc3545;
+            background: linear-gradient(135deg, #fff5f5 0%, #ffffff 100%);
+        }
+
+        .assignment-card.assignment-overdue::before {
+            background: linear-gradient(90deg, #dc3545, #e74c3c);
+        }
+
+        .assignment-start-btn {
+            background: linear-gradient(135deg, #ffc107 0%, #ff9800 100%);
+            border: none;
+            color: white;
+            font-weight: 600;
+        }
+
+        .assignment-start-btn:hover {
+            background: linear-gradient(135deg, #ff9800 0%, #f57c00 100%);
+            color: white;
+            transform: translateY(-1px);
         }
 
         .topic-info {
@@ -396,9 +590,9 @@
         }
 
         .progress {
-            height: 8px;
+            height: 10px;
             background-color: #e9ecef;
-            border-radius: 4px;
+            border-radius: 5px;
             overflow: hidden;
             margin-bottom: 0.6rem;
         }
@@ -762,6 +956,22 @@
         .case-type-badge.practical {
             background: #f3e5f5;  
             color: #7b1fa2;      
+        }
+
+        /* Custom course badge colors - matching medical course colors */
+        .case-type-badge.awaly {
+            background: #fff3e0;  
+            color: #ff8f00;      /* Orange - same as Cases */
+        }
+
+        .case-type-badge.agamlo {
+            background: #f3e5f5;  
+            color: #7b1fa2;      /* Purple - same as Practical */
+        }
+
+        .case-type-badge.easy {
+            background: #e8f5e9;  
+            color: #2e7d32;      /* Green - same as Quiz */
         }
 
         .case-type-badge i {
@@ -1673,6 +1883,13 @@
                 margin: -1.5rem -1.5rem 0 -1.5rem;
             }
             
+            .assignment-status-bar {
+                margin: -1.5rem -1.5rem 1rem -1.5rem;
+                padding: 0.5rem 1.5rem;
+                width: calc(100% + 3rem);
+                border-radius: 18px 18px 0 0;
+            }
+            
             .assignment-info {
                 padding: 0.75rem 1.5rem;
                 font-size: 0.8rem;
@@ -1685,9 +1902,24 @@
                 padding: 0.4rem 0.75rem;
                 font-size: 0.75rem;
             }
+            
+            .assignment-countdown-minimal {
+                margin-right: 0;
+                padding: 0.3rem 0.6rem;
+                font-size: 0.75rem;
+            }
         }
 
         @media (max-width: 480px) {
+            .assignment-status-bar {
+                margin: -1.5rem -1.5rem 1rem -1.5rem;
+                padding: 0.5rem 1.5rem;
+                width: calc(100% + 3rem);
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 0.5rem;
+            }
+            
             .assignment-info {
                 flex-direction: column;
                 align-items: flex-start;
@@ -1700,18 +1932,28 @@
                 margin-right: 0;
                 margin-top: 0.5rem;
             }
+            
+            .assignment-countdown-minimal {
+                margin-right: 0;
+                margin-top: 0.5rem;
+            }
         }
 
         /* Minimal Assignment Status Bar - Only at top */
         .assignment-status-bar {
-            margin: -2rem -2rem 1.5rem -2rem;
-            padding: 0.6rem 2rem;
+            margin: -2rem -2.5rem 1.5rem -2.5rem;
+            padding: 1.1rem 2.5rem 0.7rem 2.5rem;
             display: flex;
             align-items: center;
-            justify-content: space-between;
-            font-size: 0.85rem;
-            font-weight: 500;
-            border-radius: 12px 12px 0 0;
+            justify-content: flex-start;
+            font-size: 0.95rem;
+            font-weight: 600;
+            border-radius: 16px 16px 0 0;
+            position: relative;
+            width: calc(100% + 5rem);
+            left: 0;
+            box-sizing: border-box;
+            min-height: 56px;
         }
 
         .assignment-status-bar.assignment-active {
@@ -1736,26 +1978,33 @@
         .assignment-info-minimal {
             display: flex;
             align-items: center;
-            gap: 0.75rem;
+            gap: 1rem;
+            line-height: 1.2;
         }
 
         .assignment-info-minimal i {
-            font-size: 0.9rem;
+            font-size: 1rem;
             opacity: 0.8;
+            margin-right: 0.25rem;
+        }
+
+        .assignment-info-minimal span {
+            font-size: 1.15rem;
+            font-weight: 600;
+            letter-spacing: 0.02em;
         }
 
         .assignment-countdown-minimal {
             display: flex;
             align-items: center;
-            gap: 0.5rem;
+            gap: 0.4rem;
             background: rgba(255, 255, 255, 0.7);
-            padding: 0.25rem 0.75rem;
-            border-radius: 20px;
+            padding: 0.2rem 0.7rem;
+            border-radius: 18px;
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
             font-weight: 600;
-            font-size: 0.8rem;
+            font-size: 0.75rem;
             border: 1px solid rgba(0, 0, 0, 0.1);
-            margin-left: auto;
         }
 
         .countdown-display {
@@ -1763,9 +2012,20 @@
             font-variant-numeric: tabular-nums;
         }
 
+        /* Assignment status bar content alignment fixes */
+        .assignment-status-bar .assignment-info-minimal span {
+            white-space: nowrap;
+        }
+
+        .assignment-status-bar .assignment-countdown-minimal,
+        .assignment-status-bar .overdue-text,
+        .assignment-status-bar .completed-text {
+            white-space: nowrap;
+        }
+
         /* Minimal Locked Topic Styling */
         .topic-locked {
-            opacity: 0.6;
+            opacity: 0.5;
             position: relative;
         }
 
@@ -1776,7 +2036,7 @@
             left: 0;
             right: 0;
             bottom: 0;
-            background: rgba(248, 249, 250, 0.8);
+            background: rgba(241, 243, 244, 0.7);
             backdrop-filter: blur(1px);
             pointer-events: none;
             z-index: 2;
@@ -1784,11 +2044,30 @@
         }
 
         .topic-locked .start-quiz-btn {
-            background: #e9ecef !important;
-            color: #6c757d !important;
+            background: #f1f3f4 !important;
+            color: #9ca3af !important;
             cursor: not-allowed;
             pointer-events: none;
-            border: 1px solid #dee2e6 !important;
+            border: 2px solid #e5e7eb !important;
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            min-width: 180px !important;
+            min-height: 48px !important;
+        }
+
+        .topic-locked .start-quiz-btn .lock-icon {
+            color: #9ca3af !important;
+            font-size: 1.2em !important;
+            margin: 0 !important;
+        }
+
+        .topic-locked .start-quiz-btn span {
+            display: none !important;
+        }
+
+        .topic-locked .start-quiz-btn .fa-arrow-right {
+            display: none !important;
         }
 
         @keyframes subtleUrgent {
@@ -1869,20 +2148,39 @@
                             <div class="courses-container">
                                 @php
                                     $user = auth()->user();
-                                    $courses = $user->role === 'admin' ? \App\Models\Course::all() : $user->courses;
+                                    if ($user->role === 'admin') {
+                                        $availableCourses = \App\Models\Course::orderBy('name')->get();
+                                    } else {
+                                        // Get courses the user is enrolled in through the pivot table
+                                        $availableCourses = \App\Models\Course::whereHas('users', function($query) use ($user) {
+                                            $query->where('user_id', $user->id);
+                                        })->orderBy('name')->get();
+                                        
+                                        // If no enrolled courses found, get all courses (fallback)
+                                        if ($availableCourses->isEmpty()) {
+                                            $availableCourses = \App\Models\Course::orderBy('name')->get();
+                                        }
+                                    }
                                 @endphp
-                                @foreach($courses as $course)
-                                    <div class="form-check custom-checkbox">
-                                        <input class="form-check-input" type="checkbox" 
-                                            name="selected_courses[]" 
-                                            value="{{ $course->id }}" 
-                                            id="course{{ $course->id }}"
-                                            checked>
-                                        <label class="form-check-label" for="course{{ $course->id }}">
-                                            {{ $course->name }}
-                                        </label>
+                                @if($availableCourses->count() > 0)
+                                    @foreach($availableCourses as $availableCourse)
+                                        <div class="form-check custom-checkbox">
+                                            <input class="form-check-input" type="checkbox" 
+                                                name="selected_courses[]" 
+                                                value="{{ $availableCourse->id }}" 
+                                                id="course{{ $availableCourse->id }}"
+                                                checked>
+                                            <label class="form-check-label" for="course{{ $availableCourse->id }}">
+                                                {{ $availableCourse->name }}
+                                            </label>
+                                        </div>
+                                    @endforeach
+                                @else
+                                    <div class="text-center text-muted py-3">
+                                        <i class="fas fa-exclamation-circle mb-2"></i>
+                                        <p class="mb-0">No courses available. Please contact your administrator.</p>
                                     </div>
-                                @endforeach
+                                @endif
                             </div>
                         </div>
                         
@@ -1905,7 +2203,7 @@
                                 <i class="fas fa-clock text-warning"></i>
                                 <label for="timeLimit" class="form-label mb-2">Time Limit (minutes)</label>
                             </div>
-                            <select class="form-select custom-select" id="timeLimit" name="time_limit">
+                            <select class="form-select custom-select" id="timeLimit" name="duration_minutes">
                                 <option value="0.167">10 Seconds (Testing)</option>
                                 <option value="5">5 Minutes</option>
                                 <option value="10">10 Minutes</option>
@@ -2013,36 +2311,79 @@
         </div>
     </header>
 
+
+    
     <!-- Case Filters -->
-    <div class="case-filters">
-        <div class="case-filter active">
-            <i class="fas fa-all"></i>
+
+
+
+
+
+
+    <div class="case-filters" data-course-type="{{ $course->type }}" data-topics="{{ $topics->toJson() }}">
+        <!-- Always show "All" pill first -->
+        <div class="case-filter active" data-filter="all">
+            <i class="fas fa-th-large"></i>
             All
             <span class="count">{{ $topics->count() }}</span>
         </div>
-        <div class="case-filter">
-            <i class="fas fa-file-alt"></i>
-            Cases
-            <span class="count">{{ $topics->where('case_type', 'cases')->count() }}</span>
-        </div>
-        <div class="case-filter">
-            <i class="fas fa-flask"></i>
-            Practical
-            <span class="count">{{ $topics->where('case_type', 'practical')->count() }}</span>
-        </div>
-        <div class="case-filter">
-            <i class="fas fa-question-circle"></i>
-            Quiz
-            <span class="count">{{ $topics->where('case_type', 'quiz')->count() }}</span>
-        </div>
-        <a href="#" class="nav-link random-link" data-bs-toggle="modal" data-bs-target="#randomQuizModal">
-            <i class="fas fa-random"></i>
-            Random
-        </a>
-        <a href="{{ route('review.index') }}" class="mistakes-link">
-            <i class="fas fa-times-circle"></i>
-            Review Mistakes
-        </a>
+
+
+
+        @if($course->type === 'custom')
+
+            
+            @php
+                $categories = $topics->pluck('case_type')->unique()->filter()->values();
+            @endphp
+            
+            @foreach($categories as $category)
+                @php
+                    $categoryCount = $topics->where('case_type', $category)->count();
+                @endphp
+                
+
+                <div class="case-filter" data-filter="{{ strtolower($category) }}">
+                    {{ ucfirst($category) }}
+                    <span class="count">{{ $categoryCount }}</span>
+                </div>
+            @endforeach
+        @else
+            <!-- ========== MEDICAL COURSE CATEGORIZATION ========== -->
+
+            
+            @php
+                $casesCount = $topics->where('case_type', 'cases')->count();
+                $practicalCount = $topics->where('case_type', 'practical')->count();
+                $quizCount = $topics->where('case_type', 'quiz')->count();
+            @endphp
+            
+
+            
+            @if($casesCount > 0)
+                <div class="case-filter" data-filter="cases">
+                    <i class="fas fa-file-alt"></i>
+                    Cases
+                    <span class="count">{{ $casesCount }}</span>
+                </div>
+            @endif
+            
+            @if($practicalCount > 0)
+                <div class="case-filter" data-filter="practical">
+                    <i class="fas fa-flask"></i>
+                    Practical
+                    <span class="count">{{ $practicalCount }}</span>
+                </div>
+            @endif
+            
+            @if($quizCount > 0)
+                <div class="case-filter" data-filter="quiz">
+                    <i class="fas fa-question-circle"></i>
+                    Quiz
+                    <span class="count">{{ $quizCount }}</span>
+                </div>
+            @endif
+        @endif
         
         {{-- Conditional Assignment Filter - Only show if there are assignments --}}
         @if(isset($assignments) && (is_array($assignments) ? count($assignments) : $assignments->count()) > 0)
@@ -2052,46 +2393,190 @@
                 <span class="count assignment-count">{{ is_array($assignments) ? count($assignments) : $assignments->count() }}</span>
             </div>
         @endif
+        
+        <!-- Fixed position pills that are always present -->
+        <a href="#" class="random-link" data-bs-toggle="modal" data-bs-target="#randomQuizModal" style="order: 98;">
+            <i class="fas fa-random"></i>
+            Random
+        </a>
+        <a href="{{ route('review.index') }}" class="mistakes-link" style="order: 99;">
+            <i class="fas fa-times-circle"></i>
+            Review Mistakes
+        </a>
     </div>
 
     <!-- Topics List -->
     <div class="topics-container">
-        @if($topics->count() > 0)
-            @foreach($topics as $topic)
+        {{-- Assignment Cards Section --}}
+        @if(isset($assignments) && count($assignments) > 0)
+            @foreach($assignments as $topicId => $assignment)
                 @php
-                    $assignment = isset($assignments[$topic->id]) ? $assignments[$topic->id] : null;
-                    $isLocked = false;
+                    $topic = $topics->firstWhere('id', $topicId);
+                    if (!$topic) continue;
                     
-                    // Check if topic should be locked due to overdue assignment
-                    if ($assignment && $assignment->status === 'overdue' && $assignment->deadline < now()) {
-                        $isLocked = true;
+                    // Get assignment-specific progress from assignment attempts
+                    $assignmentProgress = 0;
+                    
+                    // Get the latest completed assignment attempt
+                    $latestAttempt = \App\Models\AssignmentAttempt::where('assignment_id', $assignment->id)
+                        ->where('student_id', auth()->id())
+                        ->where('status', 'completed')
+                        ->orderBy('completed_at', 'desc')
+                        ->first();
+                    
+                    if ($latestAttempt) {
+                        $assignmentProgress = $latestAttempt->score_percentage ?? 0;
                     }
                 @endphp
                 
-                <div class="topic-card {{ $isLocked ? 'topic-locked' : '' }} {{ $assignment ? 'has-assignment assignment-' . $assignment->status : '' }}" 
-                     data-case-type="{{ $topic->case_type }}" 
-                     data-topic-id="{{ $topic->id }}" 
-                     @if($assignment) data-has-assignment="true" data-assignment-deadline="{{ $assignment->deadline }}" data-assignment-status="{{ $assignment->status }}" @endif>
+                <div class="topic-card" 
+                     data-case-type="assignment" 
+                     data-topic-id="{{ $topic->id }}"
+                     data-has-assignment="true" 
+                     data-assignment-deadline="{{ $assignment->deadline }}" 
+                     data-assignment-status="{{ $assignment->status }}">
                     
-                    {{-- Minimal Assignment Status Bar (only at top) --}}
-                    @if($assignment)
-                        <div class="assignment-status-bar assignment-{{ $assignment->status }}">
-                            <div class="assignment-info-minimal">
-                                @if($assignment->status === 'active')
-                                    <span>Assignment Due:</span>
-                                    <div class="assignment-countdown-minimal" data-deadline="{{ $assignment->deadline }}">
-                                        <span class="countdown-display">Loading...</span>
-                                    </div>
-                                @elseif($assignment->status === 'overdue')
-                                    <i class="fas fa-exclamation-triangle"></i>
-                                    <span>ASSIGNMENT OVERDUE</span>
-                                @elseif($assignment->status === 'completed')
-                                    <i class="fas fa-check-circle"></i>
-                                    <span>Assignment Completed</span>
-                                @endif
-                            </div>
+                    {{-- Assignment Status Bar --}}
+                    <div class="assignment-status-bar assignment-{{ $assignment->status }}">
+                        <div class="assignment-info-minimal">
+                            @if($assignment->status === 'active')
+                                <span>Assignment Due:</span>
+                                <div class="assignment-countdown-minimal" data-deadline="{{ $assignment->deadline }}">
+                                    <span class="countdown-display">{{ \Carbon\Carbon::parse($assignment->deadline)->diffForHumans() }}</span>
+                                </div>
+                            @elseif($assignment->status === 'overdue')
+                                <i class="fas fa-exclamation-triangle"></i>
+                                <span>ASSIGNMENT OVERDUE</span>
+                            @elseif($assignment->status === 'completed')
+                                <i class="fas fa-check-circle"></i>
+                                <span>Assignment Completed</span>
+                            @endif
                         </div>
-                    @endif
+                    </div>
+                    
+                    <div class="topic-info">
+                        <div class="topic-main">
+                            <h3 class="topic-name">
+                                <i class="fas fa-tasks"></i>
+                                {{ $assignment->title }}
+                            </h3>
+                            
+                            @if($latestAttempt && $latestAttempt->completed_at)
+                                <div class="last-attempt">
+                                    <i class="far fa-clock"></i>
+                                    Last attempt: {{ $latestAttempt->completed_at->diffForHumans() }}
+                                </div>
+                            @endif
+                        </div>
+                        
+                        @if($assignmentProgress > 0)
+                            <div class="grade-badge
+                                {{ $assignmentProgress >= 100 ? 'grade-mastered' :
+                                   ($assignmentProgress >= 66 ? 'grade-good' :
+                                   ($assignmentProgress >= 33 ? 'grade-in-progress' : 'grade-bad')) }}">
+                                <i class="fas {{ $assignmentProgress >= 100 ? 'fa-star' :
+                                               ($assignmentProgress >= 66 ? 'fa-check' :
+                                               ($assignmentProgress >= 33 ? 'fa-sync-alt' : 'fa-times')) }}"></i>
+                                {{ $assignmentProgress >= 100 ? 'Mastered' :
+                                   ($assignmentProgress >= 66 ? 'Good' :
+                                   ($assignmentProgress >= 33 ? 'In Progress' : 'Just Started')) }}
+                            </div>
+                        @elseif($assignment->status === 'completed')
+                            <div class="grade-badge grade-mastered">
+                                <i class="fas fa-star"></i>
+                                Mastered
+                            </div>
+                        @else
+                            <div class="grade-badge grade-none">
+                                <i class="fas fa-rocket text-primary"></i>
+                                Ready to start
+                            </div>
+                        @endif
+                    </div>
+
+                    <div class="progress-container">
+                        <div class="progress">
+                            <div class="progress-bar" style="width: {{ $assignment->status === 'completed' ? 100 : $assignmentProgress }}%"></div>
+                        </div>
+                        <div class="progress-label">
+                            <span>Assignment Progress</span>
+                            <span>
+                                @if($latestAttempt)
+                                    {{ $latestAttempt->correct_answers }}/{{ $latestAttempt->total_questions }} Questions ({{ number_format($assignmentProgress, 1) }}%)
+                                @elseif($assignment->status === 'completed')
+                                    Completed (100%)
+                                @else
+                                    0/0 Questions (0%)
+                                @endif
+                            </span>
+                        </div>
+                    </div>
+
+                    <div class="topic-actions">
+                        <div class="stat-item">
+                            @if($assignment->status === 'completed')
+                                <i class="fas fa-check-circle text-success"></i>
+                                Assignment Complete
+                            @elseif($assignment->status === 'locked')
+                                <i class="fas fa-lock text-muted"></i>
+                                Assignment Locked
+                            @elseif($assignment->status === 'expired')
+                                <i class="fas fa-clock text-danger"></i>
+                                Assignment Expired
+                            @elseif($assignment->status === 'overdue')
+                                <i class="fas fa-exclamation-triangle text-danger"></i>
+                                Assignment Overdue
+                            @elseif($assignmentProgress > 0)
+                                <i class="fas fa-redo text-info"></i>
+                                Retake Assignment
+                            @else
+                                <i class="fas fa-play text-primary"></i>
+                                Start Assignment
+                            @endif
+                        </div>
+                        
+                        @php
+                            $quizUrl = secure_url(route('quiz.start', ['course' => $topic->course_id, 'topic' => $topic->id], false));
+                            // AGGRESSIVE LOCKING: Lock if completed, overdue, expired, or explicitly locked
+                            $isLocked = in_array($assignment->status, ['locked', 'expired', 'completed']) || 
+                                       ($assignment->status === 'overdue');
+                        @endphp
+                        
+                        @if($isLocked)
+                            <button class="start-quiz-btn assignment-start-btn locked" disabled data-topic-id="{{ $topic->id }}" data-course-id="{{ $topic->course_id }}" title="{{ $assignment->getLockReason() ?? 'Assignment is locked' }}">
+                                <i class="fas fa-lock lock-icon"></i>
+                            </button>
+                        @else
+                            <a href="{{ $quizUrl }}" class="start-quiz-btn assignment-start-btn" data-topic-id="{{ $topic->id }}" data-course-id="{{ $topic->course_id }}">
+                                @if($assignment->status === 'completed')
+                                    <span>Review Assignment</span>
+                                @elseif($assignmentProgress > 0)
+                                    <span>Retake Assignment</span>
+                                @else
+                                    <span>Start Assignment</span>
+                                @endif
+                                <i class="fas fa-arrow-right"></i>
+                            </a>
+                        @endif
+                    </div>
+                    {{-- Assignment cards don't need case type badges --}}
+                </div>
+            @endforeach
+        @endif
+
+        {{-- Regular Topic Cards Section --}}
+        @if($topics->count() > 0)
+            @foreach($topics as $topic)
+                @php
+                    // For regular topics, there's no assignment so no locking
+                    $isLocked = false;
+                @endphp
+                
+                <div class="topic-card" 
+                     data-case-type="{{ $topic->case_type }}" 
+                     data-topic-id="{{ $topic->id }}">
+                    
+                    {{-- Regular topics don't have assignment status bars --}}
                     
                     <div class="topic-info">
                         <div class="topic-main">
@@ -2185,13 +2670,24 @@
         @endif
     </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/alpinejs@2.8.2/dist/alpine.min.js" defer></script>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/alpinejs@2.8.2/dist/alpine.min.js" defer crossorigin="anonymous"></script>
+    
+
     <script>
         document.addEventListener('DOMContentLoaded', function() {
             // Case filter functionality
             const caseFilters = document.querySelectorAll('.case-filter');
             const topicCards = document.querySelectorAll('.topic-card');
+            
+            // ENSURE ASSIGNMENT CARDS ARE HIDDEN ON PAGE LOAD
+            topicCards.forEach(card => {
+                const hasAssignment = card.dataset.hasAssignment === 'true';
+                if (hasAssignment) {
+                    card.style.display = 'none';
+                }
+            });
 
             caseFilters.forEach(filter => {
                 filter.addEventListener('click', function() {
@@ -2204,6 +2700,16 @@
                     // Get the filter type
                     const filterType = this.dataset.filter || this.textContent.trim().toLowerCase();
                     
+                    // Get the topics container
+                    const topicsContainer = document.querySelector('.topics-container');
+                    
+                    // Add/remove assignments filter class
+                    if (filterType === 'assignments') {
+                        topicsContainer.classList.add('assignments-filter-active');
+                    } else {
+                        topicsContainer.classList.remove('assignments-filter-active');
+                    }
+                    
                     // Filter topic cards
                     topicCards.forEach(card => {
                         const caseType = card.dataset.caseType;
@@ -2212,15 +2718,14 @@
                         let shouldShow = false;
                         
                         if (filterType === 'assignments') {
+                            // Only show assignment cards
                             shouldShow = hasAssignment;
-                        } else if (filterType === 'all' || filterType.includes('all')) {
-                            shouldShow = true;
-                        } else if (filterType === 'cases') {
-                            shouldShow = caseType === 'cases';
-                        } else if (filterType === 'practical') {
-                            shouldShow = caseType === 'practical';
-                        } else if (filterType === 'quiz' || filterType.includes('quiz')) {
-                            shouldShow = caseType === 'quiz';
+                        } else if (filterType === 'all') {
+                            // Show only regular topics, NOT assignment cards
+                            shouldShow = !hasAssignment;
+                        } else {
+                            // Dynamic filtering based on case type (exclude assignment cards)
+                            shouldShow = !hasAssignment && caseType && caseType.toLowerCase() === filterType.toLowerCase();
                         }
                         
                         card.style.display = shouldShow ? 'block' : 'none';
@@ -2260,8 +2765,14 @@
                             const startBtn = topicCard.querySelector('.start-quiz-btn');
                             if (startBtn) {
                                 startBtn.style.pointerEvents = 'none';
-                                startBtn.style.background = '#6c757d';
-                                startBtn.innerHTML = '<i class="fas fa-lock"></i> Locked';
+                                startBtn.style.background = '#f1f3f4';
+                                startBtn.style.color = '#9ca3af';
+                                startBtn.style.border = '2px solid #e5e7eb';
+                                startBtn.style.opacity = '0.6';
+                                startBtn.style.display = 'flex';
+                                startBtn.style.alignItems = 'center';
+                                startBtn.style.justifyContent = 'center';
+                                startBtn.innerHTML = '<i class="fas fa-lock lock-icon" style="color: #9ca3af; font-size: 1.2em; margin: 0;"></i>';
                             }
                         }
                         return;
@@ -2339,7 +2850,7 @@
                 const modalElement = document.getElementById('sourceSelectionModal');
                 if (modalElement) {
                     sourceSelectionModal = new bootstrap.Modal(modalElement);
-                    console.log('✅ Modal initialized successfully');
+                    // Modal initialized successfully
                 } else {
                     console.error('❌ Modal element not found');
                 }
@@ -2460,13 +2971,15 @@
                         });
             }
             
+
+
             // ROBUST: Handle quiz button clicks with multiple prevention methods
-            console.log('🔍 Setting up quiz button handlers...');
+            // Setting up quiz button handlers
             const quizButtons = document.querySelectorAll('.start-quiz-btn');
-            console.log('🔍 Found', quizButtons.length, 'quiz buttons');
+            // Found quiz buttons
             
             quizButtons.forEach((button, index) => {
-                console.log('🔍 Setting up button', index, button);
+                // Setting up button
                 
                 // Remove any existing href to prevent navigation
                 const originalHref = button.href;
@@ -2474,7 +2987,7 @@
                 button.style.cursor = 'pointer';
                 
                 button.addEventListener('click', function(e) {
-                    console.log('🎯 BUTTON CLICKED - MULTIPLE PREVENTION');
+                    // Button clicked - preventing default behavior
                     
                     // Multiple ways to prevent default
                     e.preventDefault();
@@ -2486,12 +2999,20 @@
                         e.target.form.onsubmit = function() { return false; };
                     }
                     
-                    console.log('🔍 All prevention methods applied');
+                    // All prevention methods applied
                     
                     const topicId = this.dataset.topicId;
                     const courseId = this.dataset.courseId;
                     
-                    console.log('🔍 Topic ID:', topicId, 'Course ID:', courseId);
+                    // Check if this topic is part of an assignment
+                    const topicCard = document.querySelector(`[data-topic-id="${topicId}"]`);
+                    if (topicCard && topicCard.dataset.hasAssignment === 'true') {
+                        // Topic is assigned - redirect directly without showing source modal
+                        window.location.href = originalHref;
+                        return false;
+                    }
+                    
+                    // Debug info removed for production
                     
                     if (!topicId || !courseId) {
                         console.error('❌ Missing topic or course ID');
@@ -2510,10 +3031,10 @@
                         document.getElementById('source_course_id').value = courseId;
                         document.getElementById('sourceSelectionForm').action = originalHref;
                         
-                        console.log('✅ Form values set');
+                        // Form values set
                         
                         // Show modal immediately
-                        console.log('🔍 Showing modal immediately');
+                        // Showing modal
                         sourceSelectionModal.show();
                         
                         // Load sources in background
@@ -2533,7 +3054,7 @@
                         })
                         .then(response => response.json())
                         .then(data => {
-                            console.log('✅ Sources loaded');
+                            // Sources loaded
                             if (typeof updateSourcesContainer === 'function') {
                                 updateSourcesContainer(data);
                             }
@@ -2580,6 +3101,54 @@
                     : `/quiz/${courseId}/${topicId}`;
                     
                 window.location.href = `${baseUrl}?${sourceParams}`;
+            });
+
+            // Random Quiz Modal Validation
+            const randomQuizForm = document.getElementById('randomQuizForm');
+            if (randomQuizForm) {
+                randomQuizForm.addEventListener('submit', function(e) {
+                    // Check if at least one course is selected
+                    const selectedCourses = this.querySelectorAll('input[name="selected_courses[]"]:checked');
+                    
+                    if (selectedCourses.length === 0) {
+                        e.preventDefault();
+                        alert('Please select at least one course to start the random quiz.');
+                        return false;
+                    }
+                    
+                    // Show loading state on submit button
+                    const submitBtn = document.querySelector('button[form="randomQuizForm"]');
+                    if (submitBtn) {
+                        submitBtn.disabled = true;
+                        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Starting Quiz...';
+                    }
+                    
+                    return true;
+                });
+            }
+
+            // Random Quiz Modal - Course Selection Handling
+            const courseCheckboxes = document.querySelectorAll('#randomQuizModal input[name="selected_courses[]"]');
+            courseCheckboxes.forEach(checkbox => {
+                checkbox.addEventListener('change', function() {
+                    // Ensure at least one course remains selected
+                    const checkedCourses = document.querySelectorAll('#randomQuizModal input[name="selected_courses[]"]:checked');
+                    const submitBtn = document.querySelector('button[form="randomQuizForm"]');
+                    
+                    if (checkedCourses.length === 0) {
+                        // If no courses selected, disable submit button
+                        if (submitBtn) {
+                            submitBtn.disabled = true;
+                            submitBtn.innerHTML = '<i class="fas fa-exclamation-triangle me-2"></i>Select Courses';
+                        }
+                    } else {
+                        // Enable submit button if courses are selected
+                        if (submitBtn) {
+                            submitBtn.disabled = false;
+                            submitBtn.innerHTML = '<i class="fas fa-play me-2"></i>Start Quiz';
+                        }
+                    }
+                });
             });
             
 

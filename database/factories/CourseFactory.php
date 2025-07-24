@@ -40,6 +40,7 @@ class CourseFactory extends Factory
         return [
             'name' => $courseName,
             'description' => $this->faker->paragraph(3),
+            'type' => 'medical', // Default to medical for backward compatibility
             'image' => 'courses/' . Str::slug($courseName) . '.jpg',
             'color' => $this->faker->randomElement(['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#06B6D4']),
             'price' => $this->faker->boolean(70) ? $this->faker->randomFloat(2, 50, 500) : null, // 70% chance of being paid
@@ -77,6 +78,26 @@ class CourseFactory extends Factory
         return $this->state(fn (array $attributes) => [
             'name' => $name,
             'image' => 'courses/' . Str::slug($name) . '.jpg',
+        ]);
+    }
+
+    /**
+     * Indicate that the course is a medical course.
+     */
+    public function medical(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'type' => 'medical',
+        ]);
+    }
+
+    /**
+     * Indicate that the course is a custom course.
+     */
+    public function custom(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'type' => 'custom',
         ]);
     }
 } 

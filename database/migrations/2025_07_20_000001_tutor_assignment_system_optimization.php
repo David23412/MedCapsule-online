@@ -12,8 +12,41 @@ return new class extends Migration
      */
     private function indexExists(string $table, string $indexName): bool
     {
-        $indexes = collect(DB::select("SHOW INDEX FROM {$table}"));
-        return $indexes->contains('Key_name', $indexName);
+        try {
+            $indexes = collect(DB::select("SHOW INDEX FROM `{$table}`"));
+            return $indexes->contains('Key_name', $indexName);
+        } catch (\Exception $e) {
+            return false;
+        }
+    }
+
+    /**
+     * Check if an index is part of a foreign key constraint
+     */
+    private function isIndexPartOfForeignKey(string $table, string $indexName): bool
+    {
+        try {
+            $foreignKeys = collect(DB::select("
+                SELECT CONSTRAINT_NAME, COLUMN_NAME 
+                FROM information_schema.KEY_COLUMN_USAGE 
+                WHERE TABLE_SCHEMA = DATABASE() 
+                AND TABLE_NAME = '{$table}' 
+                AND REFERENCED_TABLE_NAME IS NOT NULL
+            "));
+            
+            $indexes = collect(DB::select("SHOW INDEX FROM `{$table}`"));
+            $indexColumns = $indexes->where('Key_name', $indexName)->pluck('Column_name');
+            
+            foreach ($foreignKeys as $fk) {
+                if ($indexColumns->contains($fk->COLUMN_NAME)) {
+                    return true;
+                }
+            }
+            
+            return false;
+        } catch (\Exception $e) {
+            return true; // Assume it's part of FK if we can't check
+        }
     }
 
     /**
@@ -161,59 +194,79 @@ return new class extends Migration
     }
 
     /**
+     * Safely drop an index if it exists and is not part of a foreign key
+     */
+    private function safeDropIndex(string $table, string $indexName): void
+    {
+        try {
+            if ($this->indexExists($table, $indexName) && !$this->isIndexPartOfForeignKey($table, $indexName)) {
+                DB::statement("ALTER TABLE `{$table}` DROP INDEX `{$indexName}`");
+            }
+        } catch (\Exception $e) {
+            // Silently continue if index can't be dropped
+        }
+    }
+
+    /**
      * Reverse the migrations.
      */
     public function down(): void
     {
-        // Drop views
-        DB::statement('DROP VIEW IF EXISTS assignment_dashboard_view');
-        DB::statement('DROP VIEW IF EXISTS student_progress_view');
+        // Drop views first - they don't have dependencies
+        try {
+            DB::statement('DROP VIEW IF EXISTS assignment_dashboard_view');
+            DB::statement('DROP VIEW IF EXISTS student_progress_view');
+        } catch (\Exception $e) {
+            // Views might not exist, continue
+        }
 
-        // Drop indexes in reverse order
-        Schema::table('mistakes', function (Blueprint $table) {
-            $table->dropIndex('idx_mistakes_user_question');
-            $table->dropIndex('idx_mistakes_mastered_user');
-        });
+        // Define all indexes to drop with their tables
+        $indexesToDrop = [
+            'assignments' => [
+                'idx_assignments_status_deadline',
+                'idx_assignments_tutor_status_deadline', 
+                'idx_assignments_student_course_status',
+                'idx_assignments_topic_status',
+                'idx_assignments_completed_status'
+            ],
+            'topics' => [
+                'idx_topics_course_locked_order',
+                'idx_topics_user_mastered',
+                'idx_topics_attempt_mastered'
+            ],
+            'courses' => [
+                'idx_courses_academic_year_price_currency',
+                'idx_courses_cache_version'
+            ],
+            'users' => [
+                'idx_users_role',
+                'idx_users_email_verified'
+            ],
+            'tutor_student_relationships' => [
+                'idx_tutor_student_active',
+                'idx_student_tutor_lookup'
+            ],
+            'questions' => [
+                'idx_questions_topic_deleted',
+                'idx_questions_source_type'
+            ],
+            'quiz_attempts' => [
+                'idx_quiz_attempts_user_topic',
+                'idx_quiz_attempts_score_time'
+            ],
+            'mistakes' => [
+                'idx_mistakes_user_question',
+                'idx_mistakes_mastered_user'
+            ]
+        ];
 
-        Schema::table('quiz_attempts', function (Blueprint $table) {
-            $table->dropIndex('idx_quiz_attempts_user_topic');
-            $table->dropIndex('idx_quiz_attempts_score_time');
-        });
-
-        Schema::table('questions', function (Blueprint $table) {
-            $table->dropIndex('idx_questions_topic_deleted');
-            $table->dropIndex('idx_questions_source_type');
-        });
-
-        Schema::table('tutor_student_relationships', function (Blueprint $table) {
-            $table->dropIndex('idx_tutor_student_active');
-            $table->dropIndex('idx_student_tutor_lookup');
-        });
-
-        Schema::table('users', function (Blueprint $table) {
-            $table->dropIndex('idx_users_role');
-            $table->dropIndex('idx_users_email_verified');
-        });
-
-        Schema::table('courses', function (Blueprint $table) {
-            $table->dropIndex('idx_courses_academic_year_price_currency');
-            $table->dropIndex('idx_courses_cache_version');
-        });
-
-        Schema::table('topics', function (Blueprint $table) {
-            $table->dropIndex('idx_topics_course_locked_order');
-            $table->dropIndex('idx_topics_user_mastered');
-            $table->dropIndex('idx_topics_attempt_mastered');
-        });
-
-        // Skip skipped_questions table - removed from schema
-
-        Schema::table('assignments', function (Blueprint $table) {
-            $table->dropIndex('idx_assignments_status_deadline');
-            $table->dropIndex('idx_assignments_tutor_status_deadline');
-            $table->dropIndex('idx_assignments_student_course_status');
-            $table->dropIndex('idx_assignments_topic_status');
-            $table->dropIndex('idx_assignments_completed_status');
-        });
+        // Drop indexes safely - reverse order for dependencies
+        foreach (array_reverse($indexesToDrop, true) as $table => $indexes) {
+            if (Schema::hasTable($table)) {
+                foreach ($indexes as $index) {
+                    $this->safeDropIndex($table, $index);
+                }
+            }
+        }
     }
 };

@@ -757,6 +757,22 @@
             color: #9ca3af;
         }
 
+        /* Green styling for free courses */
+        .action-btn.enroll.free {
+            background: #16a34a;
+            color: white;
+            border: 1px solid #16a34a;
+        }
+
+        .action-btn.enroll.free:hover {
+            background: #15803d;
+            transform: translateY(-2px);
+        }
+
+        .action-btn.enroll.free i {
+            color: white;
+        }
+
         .action-btn.enroll[disabled] {
             background: #fff7ed;
             color: #c2410c;
@@ -2016,17 +2032,17 @@
                         </div>
                         @if (auth()->check())
                             @if (Auth::user()->role === 'admin')
-                                <a href="{{ route('topics.forCourse', $course) }}" class="action-btn continue">
+                                <a href="{{ route('topics.forCourse', $course->id) }}" class="action-btn continue">
                                     <i class="fas fa-play"></i>
                                     Continue Learning
                                 </a>
                             @elseif ($course->is_enrolled)
-                                <a href="{{ route('topics.forCourse', $course) }}" class="action-btn continue">
+                                <a href="{{ route('topics.forCourse', $course->id) }}" class="action-btn continue">
                                     <i class="fas fa-play"></i>
                                     Continue Learning
                                 </a>
                             @elseif (!$course->price || $course->price <= 0)
-                                <a href="{{ route('topics.forCourse', $course) }}" class="action-btn enroll">
+                                <a href="{{ route('topics.forCourse', $course->id) }}" class="action-btn enroll free">
                                     <i class="fas fa-play"></i>
                                     Start Learning (Free)
                                 </a>
@@ -2043,7 +2059,7 @@
                             @endif
                         @else
                             @if (!$course->price || $course->price <= 0)
-                                <a href="{{ route('login') }}" class="action-btn enroll">
+                                <a href="{{ route('login') }}" class="action-btn enroll free">
                                     <i class="fas fa-play"></i>
                                     Sign in to Start (Free)
                                 </a>

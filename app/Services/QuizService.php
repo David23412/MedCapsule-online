@@ -486,7 +486,7 @@ class QuizService
     {
         return [
             'max_questions' => config('quiz.max_questions'),
-            'time_limit' => config('quiz.time_limit'),
+            'duration_minutes' => config('quiz.time_limit') / 60, // Convert seconds to minutes
             'passing_score' => config('quiz.passing_score'),
         ];
     }

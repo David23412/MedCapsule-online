@@ -5,368 +5,357 @@ namespace App\Services;
 use App\Models\Topic;
 use App\Models\User;
 use App\Models\Course;
-use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Collection;
+use Carbon\Carbon;
 
 class TopicLockingService
 {
     /**
-     * Lock a topic for students
+     * Lock a topic
+     *
+     * @param Topic $topic The topic to lock
+     * @param User $tutor The tutor locking the topic
+     * @param string|null $reason The reason for locking (optional)
+     * @return bool Whether the lock was successful
+     * @throws \InvalidArgumentException If the user doesn't have permission
      */
-    public function lockTopic(int $topicId, int $tutorId, string $reason = null): bool
+    public function lock(Topic $topic, User $tutor, ?string $reason = null): bool
     {
+        // Validate tutor permission
+        $this->validateTutorPermission($topic, $tutor);
+        
+        // Check if topic is already locked
+        if ($topic->is_locked) {
+            return true; // Already locked
+        }
+        
         try {
-            $topic = Topic::findOrFail($topicId);
+            DB::beginTransaction();
             
-            // Verify tutor has permission to lock this topic
-            if (!$this->canTutorLockTopic($tutorId, $topicId)) {
-                throw new \UnauthorizedAccessException('Tutor does not have permission to lock this topic');
-            }
-
+            // Lock the topic
             $topic->update([
                 'is_locked' => true,
-                'locked_by_tutor_id' => $tutorId,
+                'locked_by_tutor_id' => $tutor->id,
                 'lock_reason' => $reason,
-                'locked_at' => now()
+                'locked_at' => now(),
+                'unlocked_at' => null
             ]);
-
+            
+            // Invalidate cache
+            $this->invalidateCache($topic);
+            
+            // Log the action
             Log::info('Topic locked', [
-                'topic_id' => $topicId,
-                'tutor_id' => $tutorId,
+                'topic_id' => $topic->id,
+                'tutor_id' => $tutor->id,
                 'reason' => $reason
             ]);
-
+            
+            DB::commit();
             return true;
-
         } catch (\Exception $e) {
+            DB::rollBack();
             Log::error('Failed to lock topic', [
-                'topic_id' => $topicId,
-                'tutor_id' => $tutorId,
+                'topic_id' => $topic->id,
+                'tutor_id' => $tutor->id,
                 'error' => $e->getMessage()
             ]);
-            return false;
+            throw $e;
         }
     }
-
+    
     /**
      * Unlock a topic
+     *
+     * @param Topic $topic The topic to unlock
+     * @param User $tutor The tutor unlocking the topic
+     * @return bool Whether the unlock was successful
+     * @throws \InvalidArgumentException If the user doesn't have permission
      */
-    public function unlockTopic(int $topicId, int $tutorId): bool
+    public function unlock(Topic $topic, User $tutor): bool
     {
+        // Validate tutor permission
+        $this->validateTutorPermission($topic, $tutor);
+        
+        // Check if topic is already unlocked
+        if (!$topic->is_locked) {
+            return true; // Already unlocked
+        }
+        
         try {
-            $topic = Topic::findOrFail($topicId);
+            DB::beginTransaction();
             
-            // Verify tutor has permission to unlock this topic
-            if (!$this->canTutorUnlockTopic($tutorId, $topicId)) {
-                throw new \UnauthorizedAccessException('Tutor does not have permission to unlock this topic');
-            }
-
+            // Unlock the topic
             $topic->update([
                 'is_locked' => false,
                 'locked_by_tutor_id' => null,
                 'lock_reason' => null,
-                'locked_at' => null,
                 'unlocked_at' => now()
             ]);
-
+            
+            // Invalidate cache
+            $this->invalidateCache($topic);
+            
+            // Log the action
             Log::info('Topic unlocked', [
-                'topic_id' => $topicId,
-                'tutor_id' => $tutorId
+                'topic_id' => $topic->id,
+                'tutor_id' => $tutor->id
             ]);
-
+            
+            DB::commit();
             return true;
-
         } catch (\Exception $e) {
+            DB::rollBack();
             Log::error('Failed to unlock topic', [
-                'topic_id' => $topicId,
-                'tutor_id' => $tutorId,
+                'topic_id' => $topic->id,
+                'tutor_id' => $tutor->id,
                 'error' => $e->getMessage()
             ]);
-            return false;
+            throw $e;
         }
     }
-
+    
     /**
-     * Check if a topic is locked for a specific student
+     * Lock multiple topics at once
+     *
+     * @param array $topicIds Array of topic IDs to lock
+     * @param User $tutor The tutor locking the topics
+     * @param string|null $reason The reason for locking (optional)
+     * @return array Results of the operation with success/failure for each topic
      */
-    public function isTopicLocked(int $topicId, int $studentId = null): bool
+    public function bulkLock(array $topicIds, User $tutor, ?string $reason = null): array
     {
-        $topic = Topic::find($topicId);
+        $results = [];
         
-        if (!$topic) {
-            return false;
+        // Get all topics at once for efficiency
+        $topics = Topic::whereIn('id', $topicIds)->get();
+        
+        // Check if tutor has permission for all topics
+        $courseIds = $topics->pluck('course_id')->unique();
+        foreach ($courseIds as $courseId) {
+            if (!$this->tutorHasCoursePermission($tutor, $courseId)) {
+                throw new \InvalidArgumentException('You do not have permission to lock topics in one or more courses');
+            }
         }
-
-        // If topic is globally locked
-        if ($topic->is_locked) {
+        
+        // Process each topic
+        foreach ($topics as $topic) {
+            try {
+                $success = $this->lock($topic, $tutor, $reason);
+                $results[$topic->id] = [
+                    'success' => $success,
+                    'message' => $success ? 'Topic locked successfully' : 'Topic was already locked'
+                ];
+            } catch (\Exception $e) {
+                $results[$topic->id] = [
+                    'success' => false,
+                    'message' => 'Failed to lock topic: ' . $e->getMessage()
+                ];
+            }
+        }
+        
+        // Check for topics that weren't found
+        $foundTopicIds = $topics->pluck('id')->toArray();
+        foreach ($topicIds as $topicId) {
+            if (!in_array($topicId, $foundTopicIds)) {
+                $results[$topicId] = [
+                    'success' => false,
+                    'message' => 'Topic not found'
+                ];
+            }
+        }
+        
+        return $results;
+    }
+    
+    /**
+     * Unlock multiple topics at once
+     *
+     * @param array $topicIds Array of topic IDs to unlock
+     * @param User $tutor The tutor unlocking the topics
+     * @return array Results of the operation with success/failure for each topic
+     */
+    public function bulkUnlock(array $topicIds, User $tutor): array
+    {
+        $results = [];
+        
+        // Get all topics at once for efficiency
+        $topics = Topic::whereIn('id', $topicIds)->get();
+        
+        // Check if tutor has permission for all topics
+        $courseIds = $topics->pluck('course_id')->unique();
+        foreach ($courseIds as $courseId) {
+            if (!$this->tutorHasCoursePermission($tutor, $courseId)) {
+                throw new \InvalidArgumentException('You do not have permission to unlock topics in one or more courses');
+            }
+        }
+        
+        // Process each topic
+        foreach ($topics as $topic) {
+            try {
+                $success = $this->unlock($topic, $tutor);
+                $results[$topic->id] = [
+                    'success' => $success,
+                    'message' => $success ? 'Topic unlocked successfully' : 'Topic was already unlocked'
+                ];
+            } catch (\Exception $e) {
+                $results[$topic->id] = [
+                    'success' => false,
+                    'message' => 'Failed to unlock topic: ' . $e->getMessage()
+                ];
+            }
+        }
+        
+        // Check for topics that weren't found
+        $foundTopicIds = $topics->pluck('id')->toArray();
+        foreach ($topicIds as $topicId) {
+            if (!in_array($topicId, $foundTopicIds)) {
+                $results[$topicId] = [
+                    'success' => false,
+                    'message' => 'Topic not found'
+                ];
+            }
+        }
+        
+        return $results;
+    }
+    
+    /**
+     * Get all locked topics for a course
+     *
+     * @param Course $course The course to check
+     * @return Collection Collection of locked topics
+     */
+    public function getLockedTopics(Course $course): Collection
+    {
+        return $course->topics()
+            ->where('is_locked', true)
+            ->with('lockedByTutor')
+            ->get();
+    }
+    
+    /**
+     * Get all topics locked by a specific tutor
+     *
+     * @param User $tutor The tutor who locked the topics
+     * @return Collection Collection of topics locked by the tutor
+     */
+    public function getTopicsLockedByTutor(User $tutor): Collection
+    {
+        return Topic::where('locked_by_tutor_id', $tutor->id)
+            ->where('is_locked', true)
+            ->with('course')
+            ->get();
+    }
+    
+    /**
+     * Check if a topic is locked
+     *
+     * @param Topic $topic The topic to check
+     * @return bool Whether the topic is locked
+     */
+    public function isLocked(Topic $topic): bool
+    {
+        return (bool) $topic->is_locked;
+    }
+    
+    /**
+     * Get lock information for a topic
+     *
+     * @param Topic $topic The topic to get lock information for
+     * @return array|null Lock information or null if not locked
+     */
+    public function getLockInfo(Topic $topic): ?array
+    {
+        if (!$topic->is_locked) {
+            return null;
+        }
+        
+        return [
+            'is_locked' => true,
+            'locked_by_tutor_id' => $topic->locked_by_tutor_id,
+            'locked_by_tutor_name' => $topic->lockedByTutor ? $topic->lockedByTutor->name : 'Unknown',
+            'lock_reason' => $topic->lock_reason,
+            'locked_at' => $topic->locked_at ? $topic->locked_at->format('Y-m-d H:i:s') : null,
+            'locked_duration' => $topic->locked_at ? $topic->locked_at->diffForHumans() : null
+        ];
+    }
+    
+    /**
+     * Validate that a tutor has permission to lock/unlock a topic
+     *
+     * @param Topic $topic The topic to check
+     * @param User $tutor The tutor to check
+     * @return bool Whether the tutor has permission
+     * @throws \InvalidArgumentException If the user doesn't have permission
+     */
+    private function validateTutorPermission(Topic $topic, User $tutor): bool
+    {
+        // Admin users can lock/unlock any topic
+        if ($tutor->role === 'admin') {
             return true;
         }
-
-        // Check for student-specific locks (if implemented)
-        if ($studentId) {
-            return $this->isTopicLockedForStudent($topicId, $studentId);
-        }
-
-        return false;
-    }
-
-    /**
-     * Get lock status and details for a topic
-     */
-    public function getTopicLockStatus(int $topicId): array
-    {
-        $topic = Topic::with('lockedByTutor')->find($topicId);
         
-        if (!$topic) {
-            return ['exists' => false];
+        // Check if user is a tutor
+        if ($tutor->role !== 'tutor') {
+            throw new \InvalidArgumentException('Only tutors and admins can lock/unlock topics');
         }
-
-        return [
-            'exists' => true,
-            'is_locked' => $topic->is_locked,
-            'locked_by_tutor_id' => $topic->locked_by_tutor_id,
-            'locked_by_tutor_name' => $topic->lockedByTutor?->name,
-            'lock_reason' => $topic->lock_reason ?? null,
-            'locked_at' => $topic->locked_at,
-            'can_access' => !$topic->is_locked
+        
+        // Check if tutor has permission for this course
+        if (!$this->tutorHasCoursePermission($tutor, $topic->course_id)) {
+            throw new \InvalidArgumentException('You do not have permission to lock/unlock topics in this course');
+        }
+        
+        return true;
+    }
+    
+    /**
+     * Check if a tutor has permission for a course
+     *
+     * @param User $tutor The tutor to check
+     * @param int $courseId The course ID to check
+     * @return bool Whether the tutor has permission
+     */
+    private function tutorHasCoursePermission(User $tutor, int $courseId): bool
+    {
+        // Admin users have permission for all courses
+        if ($tutor->role === 'admin') {
+            return true;
+        }
+        
+        // Check if tutor is associated with the course
+        return DB::table('course_tutors')
+            ->where('tutor_id', $tutor->id)
+            ->where('course_id', $courseId)
+            ->exists();
+    }
+    
+    /**
+     * Invalidate cache for a topic
+     *
+     * @param Topic $topic The topic to invalidate cache for
+     */
+    private function invalidateCache(Topic $topic): void
+    {
+        // Increment cache version to invalidate all caches
+        $topic->increment('cache_version');
+        
+        // Clear specific caches
+        $cacheKeys = [
+            "topic:{$topic->id}:v{$topic->cache_version}",
+            "course:{$topic->course_id}:topics",
+            "course_categorization_counts_{$topic->course_id}"
         ];
-    }
-
-    /**
-     * Bulk lock multiple topics
-     */
-    public function bulkLockTopics(array $topicIds, int $tutorId, string $reason = null): array
-    {
-        $results = [
-            'successful' => [],
-            'failed' => []
-        ];
-
-        DB::transaction(function() use ($topicIds, $tutorId, $reason, &$results) {
-            foreach ($topicIds as $topicId) {
-                if ($this->lockTopic($topicId, $tutorId, $reason)) {
-                    $results['successful'][] = $topicId;
-                } else {
-                    $results['failed'][] = $topicId;
-                }
-            }
-        });
-
-        return $results;
-    }
-
-    /**
-     * Bulk unlock multiple topics
-     */
-    public function bulkUnlockTopics(array $topicIds, int $tutorId): array
-    {
-        $results = [
-            'successful' => [],
-            'failed' => []
-        ];
-
-        DB::transaction(function() use ($topicIds, $tutorId, &$results) {
-            foreach ($topicIds as $topicId) {
-                if ($this->unlockTopic($topicId, $tutorId)) {
-                    $results['successful'][] = $topicId;
-                } else {
-                    $results['failed'][] = $topicId;
-                }
-            }
-        });
-
-        return $results;
-    }
-
-    /**
-     * Get all locked topics for a tutor
-     */
-    public function getLockedTopicsForTutor(int $tutorId): Collection
-    {
-        return Topic::with(['course', 'lockedByTutor'])
-                   ->where('is_locked', true)
-                   ->where('locked_by_tutor_id', $tutorId)
-                   ->orderBy('locked_at', 'desc')
-                   ->get();
-    }
-
-    /**
-     * Get all locked topics in a course
-     */
-    public function getLockedTopicsInCourse(int $courseId): Collection
-    {
-        return Topic::with('lockedByTutor')
-                   ->where('course_id', $courseId)
-                   ->where('is_locked', true)
-                   ->orderBy('display_order')
-                   ->get();
-    }
-
-    /**
-     * Get accessible topics for a student
-     */
-    public function getAccessibleTopicsForStudent(int $studentId, int $courseId = null): Collection
-    {
-        $query = Topic::with('course')
-                     ->where('is_locked', false);
-
-        if ($courseId) {
-            $query->where('course_id', $courseId);
-        }
-
-        // Filter by courses the student has access to
-        $query->whereHas('course.users', function($q) use ($studentId) {
-            $q->where('users.id', $studentId);
-        });
-
-        return $query->orderBy('display_order')->get();
-    }
-
-    /**
-     * Lock all topics in a course
-     */
-    public function lockCourseTopics(int $courseId, int $tutorId, string $reason = null): array
-    {
-        $topicIds = Topic::where('course_id', $courseId)->pluck('id')->toArray();
         
-        return $this->bulkLockTopics($topicIds, $tutorId, $reason);
-    }
-
-    /**
-     * Unlock all topics in a course
-     */
-    public function unlockCourseTopics(int $courseId, int $tutorId): array
-    {
-        $topicIds = Topic::where('course_id', $courseId)
-                        ->where('is_locked', true)
-                        ->pluck('id')
-                        ->toArray();
-        
-        return $this->bulkUnlockTopics($topicIds, $tutorId);
-    }
-
-    /**
-     * Get locking statistics for a tutor
-     */
-    public function getLockingStatistics(int $tutorId): array
-    {
-        $totalLocked = Topic::where('locked_by_tutor_id', $tutorId)->count();
-        $recentlyLocked = Topic::where('locked_by_tutor_id', $tutorId)
-                              ->where('locked_at', '>=', now()->subDays(7))
-                              ->count();
-
-        $locksByCourse = Topic::select('courses.name as course_name', DB::raw('COUNT(*) as locked_count'))
-                             ->join('courses', 'topics.course_id', '=', 'courses.id')
-                             ->where('topics.locked_by_tutor_id', $tutorId)
-                             ->where('topics.is_locked', true)
-                             ->groupBy('courses.id', 'courses.name')
-                             ->get()
-                             ->toArray();
-
-        return [
-            'total_locked_topics' => $totalLocked,
-            'recently_locked' => $recentlyLocked,
-            'locks_by_course' => $locksByCourse,
-            'lock_activity' => $this->getLockActivity($tutorId)
-        ];
-    }
-
-    /**
-     * Check if student can access topic (considering all restrictions)
-     */
-    public function canStudentAccessTopic(int $studentId, int $topicId): array
-    {
-        $topic = Topic::with('course')->find($topicId);
-        
-        if (!$topic) {
-            return [
-                'can_access' => false,
-                'reason' => 'Topic not found'
-            ];
+        foreach ($cacheKeys as $key) {
+            Cache::forget($key);
         }
-
-        // Check if topic is locked
-        if ($topic->is_locked) {
-            return [
-                'can_access' => false,
-                'reason' => 'Topic is locked by tutor',
-                'locked_by' => $topic->lockedByTutor?->name,
-                'lock_reason' => $topic->lock_reason
-            ];
-        }
-
-        // Check if student has access to the course
-        $hasAccess = DB::table('course_user')
-                      ->where('user_id', $studentId)
-                      ->where('course_id', $topic->course_id)
-                      ->exists();
-
-        if (!$hasAccess) {
-            return [
-                'can_access' => false,
-                'reason' => 'No access to course'
-            ];
-        }
-
-        return [
-            'can_access' => true,
-            'reason' => null
-        ];
-    }
-
-    /**
-     * Private helper methods
-     */
-    private function canTutorLockTopic(int $tutorId, int $topicId): bool
-    {
-        // Check if tutor has students enrolled in the course containing this topic
-        return DB::table('topics')
-                ->join('courses', 'topics.course_id', '=', 'courses.id')
-                ->join('course_user', 'courses.id', '=', 'course_user.course_id')
-                ->join('tutor_student_relationships', 'course_user.user_id', '=', 'tutor_student_relationships.student_id')
-                ->where('topics.id', $topicId)
-                ->where('tutor_student_relationships.tutor_id', $tutorId)
-                ->exists();
-    }
-
-    private function canTutorUnlockTopic(int $tutorId, int $topicId): bool
-    {
-        $topic = Topic::find($topicId);
         
-        // Tutor can unlock if they locked it or if they have permission
-        return $topic && (
-            $topic->locked_by_tutor_id === $tutorId || 
-            $this->canTutorLockTopic($tutorId, $topicId)
-        );
-    }
-
-    private function isTopicLockedForStudent(int $topicId, int $studentId): bool
-    {
-        // This could be extended for student-specific locks
-        // For now, we only have global topic locks
-        return false;
-    }
-
-    private function getLockActivity(int $tutorId): array
-    {
-        $activity = [];
-        
-        for ($i = 6; $i >= 0; $i--) {
-            $date = now()->subDays($i)->format('Y-m-d');
-            $locked = Topic::where('locked_by_tutor_id', $tutorId)
-                          ->whereDate('locked_at', $date)
-                          ->count();
-            $unlocked = Topic::where('locked_by_tutor_id', $tutorId)
-                            ->whereDate('unlocked_at', $date)
-                            ->count();
-            
-            $activity[$date] = [
-                'locked' => $locked,
-                'unlocked' => $unlocked
-            ];
-        }
-
-        return $activity;
+        // Invalidate course categorization cache
+        app(CourseTypeService::class)->invalidateCache($topic->course);
     }
 }

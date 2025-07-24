@@ -272,22 +272,7 @@
             color: #64748b;
         }
 
-        /* Enhanced skipped badge visibility */
-        .skipped-badge {
-            animation: skippedPulse 2s infinite !important;
-            box-shadow: 0 2px 8px rgba(135, 206, 235, 0.4) !important;
-        }
 
-        @keyframes skippedPulse {
-            0%, 100% { 
-                background: rgba(135, 206, 235, 0.2) !important;
-                transform: scale(1);
-            }
-            50% { 
-                background: rgba(135, 206, 235, 0.3) !important;
-                transform: scale(1.05);
-            }
-        }
 
         .topic-badge, .time-badge {
             display: inline-flex;
@@ -738,6 +723,42 @@
             outline: none;
         }
 
+        /* ROBUST FILTER LOADING STATES */
+        .filter-section select:disabled {
+            background-color: #e2e8f0 !important;
+            color: #64748b !important;
+            cursor: not-allowed !important;
+            opacity: 0.7;
+        }
+
+        .filter-section select.loading {
+            background-image: url("data:image/svg+xml,%3csvg width='20' height='20' viewBox='0 0 20 20' fill='none' xmlns='http://www.w3.org/2000/svg'%3e%3cpath d='M10 3V6M10 14V17M17 10H14M6 10H3M15.364 4.636L13.536 6.464M6.464 13.536L4.636 15.364M15.364 15.364L13.536 13.536M6.464 6.464L4.636 4.636' stroke='%233b82f6' stroke-width='2' stroke-linecap='round'/%3e%3c/svg%3e");
+            background-repeat: no-repeat;
+            background-position: right 12px center;
+            background-size: 16px 16px;
+            animation: spin 1s linear infinite;
+            padding-right: 40px !important;
+        }
+
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+
+        .filter-section select.loading::after {
+            content: '';
+            position: absolute;
+            right: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 16px;
+            height: 16px;
+            border: 2px solid #3b82f6;
+            border-top: 2px solid transparent;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
         /* Style for dropdown options */
         .filter-section select option {
             padding: 10px;
@@ -1012,9 +1033,13 @@
                 </div>
             </div>
 
-            <!-- Course Filter Dropdown -->
+            <!-- ROBUST AS FUCK COURSE FILTER DROPDOWN -->
             <div class="filter-section">
-                <form action="{{ route('review.index') }}" method="GET" class="d-flex align-items-center w-100 gap-3">
+                <form id="robust-filter-form" action="{{ route('review.index') }}" method="GET" class="d-flex align-items-center w-100 gap-3" data-instant-submit="true">
+                    <!-- Hidden inputs for form robustness -->
+                    <input type="hidden" name="_token" value="{{ csrf_token() }}">
+                    <input type="hidden" name="filter_timestamp" value="{{ time() }}">
+                    
                     <div class="d-flex align-items-center flex-grow-1 flex-wrap">
                         <label for="courseFilter" class="me-3">
                             <i class="fas fa-filter me-2 text-primary"></i>
@@ -1035,9 +1060,15 @@
                                     ->groupBy('courses.id', 'courses.name')
                                     ->get()
                                     ->keyBy('id');
+                                
+                                // Get skipped count
+                                $skippedCount = App\Models\Mistake::where('user_id', auth()->id())->where('skipped', true)->count();
                             @endphp
                             <select id="courseFilter" name="course" class="form-select">
                                 <option value="">All Courses ({{ $totalMistakesCount }})</option>
+                                <option value="skipped" {{ ($selectedCourse ?? '') == 'skipped' ? 'selected' : '' }}>
+                                    Skipped Questions ({{ $skippedCount }})
+                                </option>
                                 @foreach($availableCourses->sortBy('name') as $course)
                                     <option value="{{ $course->id }}" {{ $selectedCourse == $course->id ? 'selected' : '' }}>
                                         {{ $course->name }} ({{ $allCourseCounts[$course->id]->count ?? 0 }})
@@ -1143,13 +1174,9 @@
                                 @endif
                                 <div class="info-boxes">
                                     @if($mistake->skipped)
-                                    <div class="info-box skipped-badge" style="background: rgba(135, 206, 235, 0.2) !important; border: 2px solid rgba(135, 206, 235, 0.6) !important; z-index: 10 !important;">
-                                        <i class="fas fa-forward" style="color: #4a90e2 !important; margin-right: 4px; font-size: 0.8rem;"></i>
-                                        <div class="info-box-value" style="color: #2c5aa0 !important; font-weight: 600 !important; font-size: 0.8rem;">SKIPPED</div>
-                                    </div>
-                                    <!-- Debug info for troubleshooting -->
-                                    <div style="display: block; font-size: 10px; color: red; background: yellow; padding: 2px;">
-                                        DEBUG: skipped={{ var_export($mistake->skipped, true) }} | type={{ gettype($mistake->skipped) }}
+                                    <div class="info-box" style="border-color: #5dade2; background-color: rgba(93, 173, 226, 0.15);">
+                                        <i class="fas fa-forward" style="color: #2980b9;"></i>
+                                        <div class="info-box-value" style="color: #2980b9;">skipped</div>
                                     </div>
                                     @endif
                                     <div class="info-box">
@@ -1396,22 +1423,124 @@
                 }
             });
 
-            // Handle course filter changes
-            const courseFilter = document.getElementById('courseFilter');
-            if (courseFilter) {
-                courseFilter.addEventListener('change', function() {
-                    const form = this.closest('form');
-                    if (form) {
-                        form.submit();
-                    }
+            // IMMORTAL FILTER SYSTEM - CANNOT BE DISABLED
+            console.log('🔥 IMMORTAL FILTER SYSTEM INITIALIZING');
+            
+            let filterBound = false;
+            let bindAttempts = 0;
+            
+            // Function to handle filter changes
+            function handleFilterChange(selectedValue) {
+                console.log('🎯 FILTER CHANGE HANDLED:', selectedValue);
+                
+                const baseUrl = '{{ route("review.index") }}';
+                const finalUrl = selectedValue ? `${baseUrl}?course=${encodeURIComponent(selectedValue)}` : baseUrl;
+                
+                console.log('🚀 NAVIGATING TO:', finalUrl);
+                window.location.href = finalUrl;
+            }
+            
+            // IMMORTAL BINDING - CONSTANTLY RE-BINDS
+            function immortalBind() {
+                bindAttempts++;
+                console.log(`🔄 IMMORTAL BIND ATTEMPT #${bindAttempts}`);
+                
+                const courseFilter = document.getElementById('courseFilter');
+                if (!courseFilter) {
+                    console.log('❌ FILTER NOT FOUND');
+                    return false;
+                }
+                
+                // Check if already bound
+                if (courseFilter.dataset.immortalBound === 'true') {
+                    console.log('✅ ALREADY BOUND');
+                    return true;
+                }
+                
+                console.log('🔗 BINDING IMMORTAL EVENTS');
+                
+                // Mark as bound
+                courseFilter.dataset.immortalBound = 'true';
+                
+                // Multiple binding methods for maximum reliability
+                courseFilter.onchange = function(e) {
+                    console.log('🔄 ONCHANGE TRIGGERED:', this.value);
+                    handleFilterChange(this.value);
+                };
+                
+                courseFilter.addEventListener('change', function(e) {
+                    console.log('📡 CHANGE LISTENER:', this.value);
+                    handleFilterChange(this.value);
                 });
                 
-                courseFilter.addEventListener('keydown', function(e) {
-                    if (e.key === 'Enter') {
-                        e.preventDefault();
+                courseFilter.addEventListener('input', function(e) {
+                    console.log('📝 INPUT LISTENER:', this.value);
+                    handleFilterChange(this.value);
+                });
+                
+                console.log('✅ IMMORTAL BINDING COMPLETE');
+                return true;
+            }
+            
+            // MUTATION OBSERVER - WATCHES FOR DOM CHANGES
+            const immortalObserver = new MutationObserver(function(mutations) {
+                mutations.forEach(function(mutation) {
+                    if (mutation.type === 'childList' || mutation.type === 'attributes') {
+                        const filter = document.getElementById('courseFilter');
+                        if (filter && filter.dataset.immortalBound !== 'true') {
+                            console.log('🔄 DOM CHANGED - RE-BINDING FILTER');
+                            immortalBind();
+                        }
                     }
                 });
-            }
+            });
+            
+            // Start observing the entire document
+            immortalObserver.observe(document, {
+                childList: true,
+                subtree: true,
+                attributes: true,
+                attributeFilter: ['data-immortal-bound']
+            });
+            
+            // AGGRESSIVE RE-BINDING - Every 500ms
+            setInterval(function() {
+                const filter = document.getElementById('courseFilter');
+                if (filter) {
+                    // Check if events are still working
+                    if (!filter.onchange || filter.dataset.immortalBound !== 'true') {
+                        console.log('🔧 PERIODIC RE-BINDING - EVENTS LOST');
+                        filter.dataset.immortalBound = 'false';
+                        immortalBind();
+                    }
+                }
+            }, 500);
+            
+            // DOCUMENT-LEVEL DELEGATION - ULTIMATE BACKUP
+            document.addEventListener('change', function(e) {
+                if (e.target && e.target.id === 'courseFilter') {
+                    console.log('🌐 DOCUMENT DELEGATION TRIGGERED:', e.target.value);
+                    handleFilterChange(e.target.value);
+                }
+            }, true);
+            
+            // CLICK DELEGATION - CATCH OPTION CLICKS
+            document.addEventListener('click', function(e) {
+                if (e.target && e.target.tagName === 'OPTION' && e.target.closest('#courseFilter')) {
+                    console.log('🖱️ OPTION CLICKED:', e.target.value);
+                    setTimeout(() => {
+                        const select = e.target.closest('select');
+                        if (select) {
+                            handleFilterChange(select.value);
+                        }
+                    }, 50);
+                }
+            }, true);
+            
+            // Initialize immortal system
+            immortalBind();
+            
+            console.log('⚡ IMMORTAL FILTER SYSTEM ACTIVE - CANNOT BE DISABLED');
 
             // Add error handling for flashcard mode toggle
             if (flashcardModeToggle) {

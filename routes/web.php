@@ -105,8 +105,26 @@ Route::middleware('auth')->group(function () {
     
     // Course enrollment and topic routes
     Route::post('/courses/{course}/enroll', [CourseController::class, 'enroll'])->name('courses.enroll');
-    Route::get('/topics/{course}', [TopicController::class, 'forCourse'])->name('topics.forCourse');
-    Route::get('/topics/course/{course}', [TopicController::class, 'forCourse'])->name('topics.forCourseLegacy');
+    Route::get('/topics/{courseId}', [TopicController::class, 'forCourse'])->name('topics.forCourse')->where('courseId', '[0-9]+')->middleware(\App\Http\Middleware\DebugRouteMiddleware::class);
+    
+    // EMERGENCY DEBUG ROUTE
+    Route::get('/debug-topics/{courseId}', function($courseId) {
+        return response()->json([
+            'received_courseId' => $courseId,
+            'courseId_type' => gettype($courseId),
+            'converted_id' => (int) $courseId,
+            'route_params' => request()->route()->parameters(),
+            'all_params' => request()->all(),
+            'url' => request()->url(),
+            'path' => request()->path(),
+            'method' => request()->method(),
+            'headers' => request()->headers->all(),
+            'server' => request()->server(),
+            'user_id' => auth()->id(),
+            'timestamp' => now()->toDateTimeString()
+        ]);
+    })->where('courseId', '[0-9]+')->middleware('auth');
+    Route::get('/topics/course/{courseId}', [TopicController::class, 'forCourse'])->name('topics.forCourseLegacy')->where('courseId', '[0-9]+');
     Route::get('/courses/{course}/cases', [TopicController::class, 'casesForCourse'])->name('cases.forCourse');
     Route::get('/courses/{course}/cases-count', [TopicController::class, 'casesCount'])->name('cases.count');
 
@@ -240,6 +258,28 @@ Route::middleware('auth')->group(function () {
         // AJAX endpoints for assignment creation
         Route::get('/courses/{course}/topics', [AssignmentController::class, 'getTopicsForCourse'])->name('course.topics');
         Route::get('/courses/{course}/students', [AssignmentController::class, 'getStudentsForCourse'])->name('course.students');
+        Route::get('/topics/{topicId}/sources', function($topicId) {
+            try {
+                \Log::info('Loading sources for topic ID: ' . $topicId);
+                $sources = \DB::table('questions')
+                    ->where('topic_id', $topicId)
+                    ->select('source')
+                    ->distinct()
+                    ->whereNotNull('source')
+                    ->where('source', '!=', '')
+                    ->pluck('source')
+                    ->toArray();
+                
+                return response()->json($sources);
+            } catch (\Exception $e) {
+                \Log::error('Error fetching topic sources: ' . $e->getMessage(), [
+                    'topic_id' => $topicId,
+                    'error' => $e->getMessage()
+                ]);
+                
+                return response()->json([], 500);
+            }
+        })->name('topic.sources');
         
         // Analytics and reporting
         Route::get('/analytics/dashboard', [AssignmentController::class, 'analytics'])->name('analytics');

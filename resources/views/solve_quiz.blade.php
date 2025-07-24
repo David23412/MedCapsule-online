@@ -146,16 +146,19 @@
             bottom: 0;
             left: 50%;
             transform: translate(-50%, 0);
-            background: rgba(248, 249, 250, 0.95);
-            backdrop-filter: blur(10px);
-            border-radius: 10px 10px 0 0;
-            padding: 1rem;
-            box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.1);
+            background: rgba(248, 249, 250, 0.98);
+            backdrop-filter: blur(15px);
+            -webkit-backdrop-filter: blur(15px);
+            border-radius: 12px 12px 0 0;
+            padding: 1rem 1.5rem;
+            box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.15), 0 -2px 10px rgba(0, 0, 0, 0.1);
             z-index: 999;
             max-width: 1000px;
             width: 100%;
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            border: 1px solid rgba(0, 0, 0, 0.1);
+            transition: all 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-bottom: none;
+            will-change: transform, opacity;
         }
 
         .progress-bar-container.at-form {
@@ -166,37 +169,200 @@
         }
 
         .progress-bar-container.hidden {
-            transform: translate(-50%, 100%) !important;
+            transform: translate(-50%, 200%) !important;
             opacity: 0 !important;
             pointer-events: none !important;
             visibility: hidden !important;
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+            display: none !important;
+            z-index: -999 !important;
+            bottom: -300px !important;
+            transition: all 0.2s ease !important;
+        }
+        
+        /* Smooth show animation */
+        .progress-bar-container:not(.hidden) {
+            animation: slideUpSmooth 0.4s cubic-bezier(0.25, 0.8, 0.25, 1) forwards;
+        }
+        
+        @keyframes slideUpSmooth {
+            from {
+                transform: translate(-50%, 100%);
+                opacity: 0;
+            }
+            to {
+                transform: translate(-50%, 0);
+                opacity: 1;
+            }
         }
 
+        .progress-bar {
+            width: 100%;
+            height: 10px;
+            background: #e9ecef;
+            border-radius: 5px;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background:
+                linear-gradient(90deg, #007bff, #00d4ff),
+                url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="120" height="20" viewBox="0 0 120 20"><path fill="%23ffffff" fill-opacity="0.3" d="M0 10 Q 10 0, 20 10 T 40 10 T 60 10 T 80 10 T 100 10 T 120 10 V20 H0 Z"/></svg>') repeat-x;
+            background-size: 100% 100%, 60px 20px;
+            background-repeat: no-repeat, repeat-x;
+            background-position: 0 0, 0 0;
+            width: 0;
+            transition: width 0.3s ease;
+            border-radius: 5px;
+            animation: waveMove 2s linear infinite, glowPulse 2s ease-in-out infinite alternate;
+            box-shadow: 0 0 10px rgba(0, 212, 255, 0.5), 0 0 20px rgba(0, 212, 255, 0.3);
+        }
+        
+        @keyframes waveMove {
+            0% {
+                background-position: 0 0, 0 0;
+            }
+            100% {
+                background-position: 0 0, 60px 0;
+            }
+        }
+        
+        @keyframes glowPulse {
+            0% {
+                box-shadow: 0 0 10px rgba(0, 212, 255, 0.5), 0 0 20px rgba(0, 212, 255, 0.3);
+            }
+            100% {
+                box-shadow: 0 0 20px rgba(0, 212, 255, 0.8), 0 0 30px rgba(0, 212, 255, 0.5);
+            }
+        }
+
+        .progress-text {
+            text-align: center;
+            color: #6c757d;
+            margin-top: 0.5rem;
+            font-size: 0.9rem;
+        }
+
+        .timer {
+            font-size: 0.9rem;
+            color: #666;
+            font-weight: 500;
+        }
+
+        /* BULLETPROOF SUBMIT BUTTON SPACING */
+        .submit-btn {
+            display: block;
+            width: 100%;
+            padding: 1rem;
+            background: #007bff;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 1.1rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-top: 2rem;
+            margin-bottom: 45px !important; /* BULLETPROOF: Always ensure space for progress bar */
+            position: relative;
+            z-index: 1;
+        }
+
+        /* ============================================================================
+           BULLETPROOF RESPONSIVE DESIGN - GOLDEN STANDARD MEDIA QUERIES
+           ============================================================================ */
         @media (max-width: 1100px) {
-            .container, .progress-bar-container {
-                max-width: 90%;
+            .container {
+                max-width: 95% !important;
+            }
+            
+            .progress-bar-container {
+                max-width: 850px !important;
+                width: calc(94% - 0.5rem) !important;
+                padding: 0.2rem 0.8rem !important;
+                min-height: 32px !important;
             }
         }
 
         @media (max-width: 850px) {
-            .container {
-                padding: 1.5rem;
-                width: 100%;
-                border-radius: 8px;
+            .progress-bar-container {
+                max-width: 100%;
+                border-radius: 0;
+                padding: 0.75rem 1rem;
+                left: 0;
+                transform: translateX(0);
+                width: 100vw;
             }
             
-            .progress-bar-container {
-                transform: translate(-50%, 0);
-            }
             .progress-bar-container.hidden {
-                transform: translate(-50%, 100%);
+                transform: translateY(120%) !important;
+            }
+            
+            .progress-bar-container:not(.hidden) {
+                transform: translateY(0) !important;
+            }
+        }
+        
+        @media (max-width: 480px) {
+            .progress-bar-container {
+                padding: 0.5rem 0.75rem;
+                font-size: 0.85rem;
+            }
+            
+            .progress-text {
+                font-size: 0.8rem;
+            }
+            
+            .timer {
+                font-size: 0.8rem;
             }
         }
 
-        @media (max-width: 576px) {
-            .container {
-                padding: 1rem;
+        /* BULLETPROOF: Handle very small screens */
+        @media (max-width: 320px) {
+            .progress-bar-container {
+                padding: 0.6rem !important;
+                min-height: 60px !important;
+            }
+            
+            .submit-btn {
+                margin-bottom: 65px !important;
+            }
+        }
+
+        /* BULLETPROOF: Handle landscape orientation on mobile */
+        @media (max-height: 500px) and (orientation: landscape) {
+            .progress-bar-container {
+                padding: 0.5rem 1rem !important;
+                min-height: 50px !important;
+            }
+            
+            .submit-btn {
+                margin-bottom: 55px !important;
+            }
+        }
+
+        /* BULLETPROOF: Handle iOS Safari bottom bar */
+        @supports (padding-bottom: env(safe-area-inset-bottom)) {
+            .progress-bar-container {
+                padding-bottom: calc(1.2rem + env(safe-area-inset-bottom)) !important;
+            }
+        }
+
+        /* BULLETPROOF: Prevent any possible z-index conflicts */
+        .progress-bar-container {
+            isolation: isolate !important;
+        }
+
+        /* BULLETPROOF: Ensure smooth animations on all devices */
+        @media (prefers-reduced-motion: reduce) {
+            .progress-bar-container {
+                transition: none !important;
+            }
+            
+            .progress-bar-container.hidden {
+                transition: none !important;
             }
         }
 
@@ -225,20 +391,9 @@
         }
 
         .timer {
-            font-size: 1.2rem;
-            color: #333;
-            font-weight: 600;
-            background: #f8f9fa;
-            padding: 0.5rem 1rem;
-            border-radius: 6px;
-            display: inline-flex;
-            align-items: center;
-            gap: 0.5rem;
-            margin-bottom: 0.5rem;
-        }
-
-        .timer i {
-            color: #007bff;
+            font-size: 0.9rem;
+            color: #666;
+            font-weight: 500;
         }
 
         .question-box {
@@ -358,20 +513,7 @@
             font-weight: 500;
         }
 
-        .submit-btn {
-            display: block;
-            width: 100%;
-            padding: 1rem;
-            background: #007bff;
-            color: white;
-            border: none;
-            border-radius: 8px;
-            font-size: 1.1rem;
-            font-weight: 500;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            margin-top: 2rem;
-        }
+
 
         .submit-btn:hover:not(:disabled) {
             background: #0056b3;
@@ -411,22 +553,7 @@
             border-radius: 5px;
         }
 
-        .timer {
-            font-size: 1.2rem;
-            color: #333;
-            font-weight: 600;
-            background: #f8f9fa;
-            padding: 0.5rem 1rem;
-            border-radius: 6px;
-            display: inline-flex;
-            align-items: center;
-            gap: 0.5rem;
-            margin-bottom: 0.5rem;
-        }
 
-        .timer i {
-            color: #007bff;
-        }
 
         .popup-overlay {
             position: fixed;
@@ -818,15 +945,20 @@
             @endif
 
             @if ($questions->isNotEmpty())
-                <div class="progress-bar-container">
-                    <div class="timer">
-                        <i class="fas fa-clock"></i>
-                        <span id="timer">00:00</span>
-                    </div>
+                <div class="progress-bar-container" id="progress-bar-container">
                     <div class="progress-bar">
                         <div class="progress-fill" id="progress-fill"></div>
                     </div>
-                    <div class="progress-text" id="progress-text">0 of {{ $questions->count() }} questions answered</div>
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div class="progress-text" id="progress-text">0 of {{ $questions->count() }} questions answered</div>
+                        <div class="timer" id="timer">
+                            @if(isset($assignment) && $assignment && $assignment->duration_minutes)
+                                <span class="countdown-timer" data-duration="{{ $assignment->duration_minutes }}">{{ gmdate('i:s', $assignment->duration_minutes * 60) }}</span>
+                            @else
+                                00:00
+                            @endif
+                        </div>
+                    </div>
                 </div>
 
                 <form id="quiz-form" action="{{ secure_url(route('quiz.grade', ['course' => $course->id, 'topic' => $topic->id], false)) }}" method="POST">
@@ -895,7 +1027,7 @@
                     <i class="fas fa-redo"></i>
                     Retry Quiz
                 </button>
-                <a href="{{ route('topics.forCourse', ['course' => $course->id]) }}" class="popup-btn view-progress-btn" id="view-progress-btn">
+                <a href="{{ route('topics.forCourse', $course->id) }}" class="popup-btn view-progress-btn" id="view-progress-btn">
                     <i class="fas fa-chart-line"></i>
                     View Progress
                 </a>
@@ -931,56 +1063,204 @@
 
             let selectedAnswers = {};
 
-            // AGGRESSIVE PROGRESS BAR POSITIONING SYSTEM
+            // ============================================================================
+            // BULLETPROOF PROGRESS BAR POSITIONING SYSTEM - GOLDEN STANDARD IMPLEMENTATION
+            // ============================================================================
             const progressBarContainer = document.querySelector('.progress-bar-container');
             const submitBtn = document.getElementById('submit-btn');
+            const quizContainer = document.querySelector('.container');
+            
             let rafId = null;
             let isProgressBarHidden = false;
+            let lastScrollY = 0;
+            let scrollDirection = 'down';
+            let progressBarHeight = 0;
+            let submitBtnHeight = 0;
+            let viewportHeight = 0;
             
-            function updateProgressBarPosition() {
-                if (!submitBtn || !progressBarContainer) return;
+            // BULLETPROOF INITIALIZATION
+            function initializeProgressBarSystem() {
+                if (!submitBtn || !progressBarContainer || !quizContainer) {
+                    console.warn('Progress bar system: Required elements not found');
+                    return false;
+                }
+                
+                // Cache measurements
+                progressBarHeight = progressBarContainer.offsetHeight || 80;
+                submitBtnHeight = submitBtn.offsetHeight || 60;
+                viewportHeight = window.innerHeight;
+                
+                // Add safety margin to submit button to prevent overlap
+                submitBtn.style.marginBottom = `${progressBarHeight + 20}px`;
+                
+                console.log('Progress bar system initialized:', {
+                    progressBarHeight,
+                    submitBtnHeight,
+                    viewportHeight
+                });
+                
+                return true;
+            }
+            
+            // BULLETPROOF POSITION CALCULATION
+            function calculateOptimalPosition() {
+                if (!submitBtn || !progressBarContainer) return { shouldHide: false, reason: 'missing-elements' };
                 
                 const submitBtnRect = submitBtn.getBoundingClientRect();
-                const windowHeight = window.innerHeight;
-                const scrollBuffer = 200; // Aggressive buffer zone
+                const progressBarRect = progressBarContainer.getBoundingClientRect();
+                const scrollY = window.scrollY;
+                const documentHeight = document.documentElement.scrollHeight;
+                const viewportBottom = viewportHeight;
                 
-                // AGGRESSIVE LOGIC: Hide when submit button is approaching viewport
-                const shouldHide = submitBtnRect.top <= windowHeight + scrollBuffer;
+                // Update scroll direction
+                scrollDirection = scrollY > lastScrollY ? 'down' : 'up';
+                lastScrollY = scrollY;
+                
+                // BULLETPROOF LOGIC: Multiple conditions for maximum reliability
+                const conditions = {
+                    // Condition 1: Submit button is visible or very close to viewport
+                    submitBtnVisible: submitBtnRect.top <= viewportBottom,
+                    
+                    // Condition 2: Submit button is within aggressive buffer zone
+                    submitBtnInBuffer: submitBtnRect.top <= viewportBottom + 300,
+                    
+                    // Condition 3: User is near bottom of page (percentage-based)
+                    nearPageBottom: (scrollY + viewportHeight) >= (documentHeight * 0.85),
+                    
+                    // Condition 4: Progress bar would overlap with submit button
+                    wouldOverlap: submitBtnRect.top <= (progressBarHeight + 100),
+                    
+                    // Condition 5: Submit button is in lower third of viewport
+                    inLowerThird: submitBtnRect.top <= (viewportBottom * 0.67),
+                    
+                    // Condition 6: Scrolling down and submit button approaching
+                    scrollingTowardsSubmit: scrollDirection === 'down' && submitBtnRect.top <= viewportBottom + 400
+                };
+                
+                // DECISION LOGIC: Hide if ANY critical condition is met
+                const shouldHide = conditions.submitBtnVisible || 
+                                 conditions.wouldOverlap || 
+                                 conditions.nearPageBottom ||
+                                 (conditions.scrollingTowardsSubmit && conditions.inLowerThird);
+                
+                // Determine reason for debugging
+                let reason = 'visible';
+                if (conditions.submitBtnVisible) reason = 'submit-visible';
+                else if (conditions.wouldOverlap) reason = 'overlap-prevention';
+                else if (conditions.nearPageBottom) reason = 'near-bottom';
+                else if (conditions.scrollingTowardsSubmit) reason = 'scrolling-towards';
+                else reason = 'should-show';
+                
+                return { shouldHide, reason, conditions, submitBtnRect };
+            }
+            
+            // BULLETPROOF VISIBILITY CONTROL
+            function updateProgressBarVisibility() {
+                const { shouldHide, reason, conditions } = calculateOptimalPosition();
                 
                 if (shouldHide && !isProgressBarHidden) {
-                    // NUCLEAR HIDE - multiple methods to ensure it's COMPLETELY GONE
+                    // NUCLEAR HIDE - Multiple redundant methods for 100% reliability
                     progressBarContainer.classList.add('hidden');
-                    progressBarContainer.style.transform = 'translate(-50%, 100%)';
-                    progressBarContainer.style.opacity = '0';
-                    progressBarContainer.style.visibility = 'hidden';
-                    progressBarContainer.style.pointerEvents = 'none';
+                    progressBarContainer.style.cssText += `
+                        transform: translate(-50%, 100%) !important;
+                        opacity: 0 !important;
+                        visibility: hidden !important;
+                        pointer-events: none !important;
+                        z-index: -1 !important;
+                        bottom: -200px !important;
+                    `;
+                    
                     isProgressBarHidden = true;
+                    console.log(`Progress bar HIDDEN - Reason: ${reason}`);
+                    
                 } else if (!shouldHide && isProgressBarHidden) {
-                    // AGGRESSIVE SHOW - when submit button is FAR AWAY (user scrolled back up)
+                    // AGGRESSIVE SHOW - When conditions are clearly safe
                     progressBarContainer.classList.remove('hidden');
+                    progressBarContainer.style.cssText = progressBarContainer.style.cssText.replace(/transform:[^;]*;?/gi, '');
+                    progressBarContainer.style.cssText = progressBarContainer.style.cssText.replace(/opacity:[^;]*;?/gi, '');
+                    progressBarContainer.style.cssText = progressBarContainer.style.cssText.replace(/visibility:[^;]*;?/gi, '');
+                    progressBarContainer.style.cssText = progressBarContainer.style.cssText.replace(/pointer-events:[^;]*;?/gi, '');
+                    progressBarContainer.style.cssText = progressBarContainer.style.cssText.replace(/z-index:[^;]*;?/gi, '');
+                    progressBarContainer.style.cssText = progressBarContainer.style.cssText.replace(/bottom:[^;]*;?/gi, '');
+                    
+                    // Restore original styles
                     progressBarContainer.style.transform = 'translate(-50%, 0)';
                     progressBarContainer.style.opacity = '1';
                     progressBarContainer.style.visibility = 'visible';
                     progressBarContainer.style.pointerEvents = 'auto';
+                    progressBarContainer.style.zIndex = '999';
+                    progressBarContainer.style.bottom = '0';
+                    
                     isProgressBarHidden = false;
+                    console.log(`Progress bar SHOWN - Reason: ${reason}`);
                 }
             }
-
+            
+            // BULLETPROOF SCROLL HANDLER
             function onScroll() {
                 if (rafId) return;
                 
                 rafId = requestAnimationFrame(() => {
-                    updateProgressBarPosition();
+                    updateProgressBarVisibility();
                     rafId = null;
                 });
             }
-
-            // Event listeners with passive scrolling for better performance
-            window.addEventListener('scroll', onScroll, { passive: true });
-            window.addEventListener('resize', onScroll, { passive: true });
             
-            // Initial position check
-            setTimeout(() => updateProgressBarPosition(), 100);
+            // BULLETPROOF RESIZE HANDLER
+            function onResize() {
+                viewportHeight = window.innerHeight;
+                progressBarHeight = progressBarContainer?.offsetHeight || 80;
+                submitBtnHeight = submitBtn?.offsetHeight || 60;
+                
+                // Update submit button margin
+                if (submitBtn) {
+                    submitBtn.style.marginBottom = `${progressBarHeight + 20}px`;
+                }
+                
+                // Force recalculation
+                setTimeout(() => {
+                    updateProgressBarVisibility();
+                }, 100);
+            }
+            
+            // BULLETPROOF ORIENTATION CHANGE HANDLER
+            function onOrientationChange() {
+                setTimeout(() => {
+                    onResize();
+                    updateProgressBarVisibility();
+                }, 300); // Wait for orientation change to complete
+            }
+            
+            // BULLETPROOF EVENT LISTENERS
+            if (initializeProgressBarSystem()) {
+                // Passive listeners for better performance
+                window.addEventListener('scroll', onScroll, { passive: true });
+                window.addEventListener('resize', onResize, { passive: true });
+                window.addEventListener('orientationchange', onOrientationChange, { passive: true });
+                
+                // Handle dynamic content changes
+                const observer = new MutationObserver(() => {
+                    setTimeout(updateProgressBarVisibility, 50);
+                });
+                
+                if (quizContainer) {
+                    observer.observe(quizContainer, {
+                        childList: true,
+                        subtree: true,
+                        attributes: true,
+                        attributeFilter: ['style', 'class']
+                    });
+                }
+                
+                // Initial position check with multiple attempts
+                setTimeout(() => updateProgressBarVisibility(), 100);
+                setTimeout(() => updateProgressBarVisibility(), 500);
+                setTimeout(() => updateProgressBarVisibility(), 1000);
+                
+                console.log('✅ BULLETPROOF Progress Bar System ACTIVATED');
+            } else {
+                console.error('❌ Progress Bar System FAILED to initialize');
+            }
 
             if (quizForm) {
                 // Handle multiple choice answers
@@ -1024,15 +1304,86 @@
                 // Add timer functionality
                 let startTime = new Date();
                 let timerInterval;
+                const timerElement = document.getElementById('timer');
+                const countdownSpan = timerElement.querySelector('.countdown-timer');
+                const isCountdown = countdownSpan !== null;
+                const durationMinutes = isCountdown ? parseFloat(countdownSpan.dataset.duration) : null;
+                let totalSeconds = isCountdown ? Math.floor(durationMinutes * 60) : 0;
                 
                 function updateTimer() {
-                    const currentTime = new Date();
-                    const elapsedSeconds = Math.floor((currentTime - startTime) / 1000);
-                    const minutes = Math.floor(elapsedSeconds / 60);
-                    const seconds = elapsedSeconds % 60;
-                    
-                    document.getElementById('timer').textContent = 
-                        `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+                    if (isCountdown) {
+                        // Countdown timer for assignments
+                        const currentTime = new Date();
+                        const elapsedSeconds = Math.floor((currentTime - startTime) / 1000);
+                        const remainingSeconds = Math.max(0, totalSeconds - elapsedSeconds);
+                        
+                        const minutes = Math.floor(remainingSeconds / 60);
+                        const seconds = remainingSeconds % 60;
+                        
+                        countdownSpan.textContent = 
+                            `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+                        
+                        // Change color based on time remaining
+                        if (remainingSeconds <= 60) { // Last minute - red
+                            countdownSpan.style.color = '#dc3545';
+                            countdownSpan.style.fontWeight = 'bold';
+                        } else if (remainingSeconds <= 300) { // Last 5 minutes - orange
+                            countdownSpan.style.color = '#fd7e14';
+                            countdownSpan.style.fontWeight = 'bold';
+                        } else if (remainingSeconds <= 600) { // Last 10 minutes - yellow
+                            countdownSpan.style.color = '#ffc107';
+                        }
+                        
+                        // RUTHLESS AUTO-SUBMIT when time runs out
+                        if (remainingSeconds <= 0) {
+                            clearTimeout(timerInterval);
+                            
+                            @if(isset($assignment) && $assignment && $assignment->duration_minutes)
+                                // COUNTDOWN ASSIGNMENT: RUTHLESS TIME-UP SUBMISSION
+                                alert('TIME IS UP! Quiz submitted automatically. Unanswered questions are marked INCORRECT.');
+                                
+                                // RUTHLESSLY mark ALL unanswered questions as empty = incorrect = mistakes
+                                const allQuestions = document.querySelectorAll('.question-box');
+                                allQuestions.forEach(questionBox => {
+                                    const questionId = questionBox.getAttribute('data-question-id');
+                                    if (!selectedAnswers[questionId]) {
+                                        selectedAnswers[questionId] = ''; // EMPTY = INCORRECT = MISTAKE
+                                        console.log(`Question ${questionId} UNANSWERED - MARKED AS INCORRECT MISTAKE`);
+                                    }
+                                });
+                                
+                                // Also handle written questions
+                                const textAreas = document.querySelectorAll('textarea[name^="answers["]');
+                                textAreas.forEach(textarea => {
+                                    const questionId = textarea.getAttribute('data-question-id');
+                                    if (!selectedAnswers[questionId] || selectedAnswers[questionId].trim() === '') {
+                                        selectedAnswers[questionId] = ''; // EMPTY = INCORRECT = MISTAKE
+                                        textarea.value = '';
+                                        console.log(`Written question ${questionId} UNANSWERED - MARKED AS INCORRECT MISTAKE`);
+                                    }
+                                });
+                                
+                                console.log('RUTHLESS TIME-UP: All unanswered questions will be recorded as mistakes');
+                                
+                            @else
+                                alert('Time is up! Your quiz will be submitted automatically.');
+                            @endif
+                            
+                            // Force submit - no mercy
+                            const submitEvent = new Event('submit', { bubbles: true, cancelable: true });
+                            document.getElementById('quiz-form').dispatchEvent(submitEvent);
+                            return;
+                        }
+                    } else {
+                        // Elapsed time timer for regular quizzes
+                        const currentTime = new Date();
+                        const elapsedSeconds = Math.floor((currentTime - startTime) / 1000);
+                        const minutes = Math.floor(elapsedSeconds / 60);
+                        const seconds = elapsedSeconds % 60;
+                        
+                        timerElement.textContent = 
+                            `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+                    }
                     
                     timerInterval = setTimeout(updateTimer, 1000);
                 }
@@ -1082,22 +1433,120 @@
                     formData.append('time_taken', durationSeconds);
                     formData.append('mode', '{{ $mode ?? 'quiz' }}');
                     
+                    // ENSURE ALL ANSWERS ARE INCLUDED
+                    // Double-check that all radio button answers are in the FormData
+                    const radioInputs = this.querySelectorAll('input[type="radio"]:checked');
+                    const textInputs = this.querySelectorAll('textarea[name^="answers["]');
+                    
+                    console.log('Radio inputs found:', radioInputs.length);
+                    console.log('Text inputs found:', textInputs.length);
+                    
+                    // Verify answers are in FormData
+                    let answersInFormData = 0;
+                    for (let [key, value] of formData.entries()) {
+                        if (key.startsWith('answers[')) {
+                            answersInFormData++;
+                        }
+                    }
+                    
+                    console.log('Answers in FormData:', answersInFormData);
+                    console.log('Total questions:', {{ $questions->count() }});
+                    
                     // DEBUG: Log form data
                     console.log('Form submission data:');
                     for (let [key, value] of formData.entries()) {
                         console.log(key, value);
                     }
                     
-                    // VALIDATE: Ensure we have answers
+                    // RUTHLESS VALIDATION: For countdown quizzes, FORCE submission with unanswered = incorrect
                     const totalQuestions = {{ $questions->count() }};
                     const answeredQuestions = Object.keys(selectedAnswers).length;
                     
-                    if (answeredQuestions !== totalQuestions) {
-                        alert(`Please answer all questions. You have answered ${answeredQuestions} out of ${totalQuestions} questions.`);
-                        submitButton.disabled = false;
-                        submitButton.innerHTML = 'Submit Quiz';
-                        return;
-                    }
+                    @if(isset($assignment) && $assignment && $assignment->duration_minutes)
+                        // COUNTDOWN ASSIGNMENT: RUTHLESS AUTO-SUBMISSION
+                        // Fill in ALL unanswered questions with empty strings (marked as incorrect)
+                        const allQuestions = document.querySelectorAll('.question-box');
+                        allQuestions.forEach(questionBox => {
+                            const questionId = questionBox.getAttribute('data-question-id');
+                            if (!selectedAnswers[questionId]) {
+                                selectedAnswers[questionId] = ''; // EMPTY = INCORRECT = MISTAKE
+                                
+                                // Also ensure FormData has this empty answer
+                                const answerKey = `answers[${questionId}]`;
+                                if (!formData.has(answerKey)) {
+                                    formData.set(answerKey, '');
+                                }
+                            }
+                        });
+                        
+                        // Also check text areas for written questions
+                        const textAreas = document.querySelectorAll('textarea[name^="answers["]');
+                        textAreas.forEach(textarea => {
+                            const questionId = textarea.getAttribute('data-question-id');
+                            if (!selectedAnswers[questionId] || selectedAnswers[questionId].trim() === '') {
+                                selectedAnswers[questionId] = ''; // EMPTY = INCORRECT = MISTAKE
+                                textarea.value = ''; // Ensure form field is empty
+                            }
+                        });
+                        
+                        console.log('RUTHLESS MODE: All unanswered questions marked as incorrect');
+                        console.log('Final selectedAnswers:', selectedAnswers);
+                        
+                    @else
+                        // For regular quizzes, require all questions to be answered
+                        if (answeredQuestions !== totalQuestions) {
+                            alert(`Please answer all questions. You have answered ${answeredQuestions} out of ${totalQuestions} questions.`);
+                            submitButton.disabled = false;
+                            submitButton.innerHTML = 'Submit Quiz';
+                            return;
+                        }
+                    @endif
+                    
+                    // ENSURE ALL ANSWERS ARE IN FORMDATA (including empty ones for assignments)
+                    @if(isset($assignment) && $assignment)
+                        // For assignments, FORCE all questions to have answers in FormData
+                        // Clear existing FormData answers and rebuild from selectedAnswers
+                        const keysToDelete = [];
+                        for (let [key, value] of formData.entries()) {
+                            if (key.startsWith('answers[')) {
+                                keysToDelete.push(key);
+                            }
+                        }
+                        keysToDelete.forEach(key => formData.delete(key));
+                        
+                        // Add all answers from selectedAnswers to FormData
+                        for (let questionId in selectedAnswers) {
+                            const answerKey = `answers[${questionId}]`;
+                            formData.set(answerKey, selectedAnswers[questionId]);
+                            console.log('FORCE Added to FormData:', answerKey, `"${selectedAnswers[questionId]}"`);
+                        }
+                        
+                        // Recount FormData answers after rebuilding
+                        answersInFormData = 0;
+                        for (let [key, value] of formData.entries()) {
+                            if (key.startsWith('answers[')) {
+                                answersInFormData++;
+                            }
+                        }
+                        console.log('FINAL FormData answers count:', answersInFormData);
+                        console.log('FINAL selectedAnswers count:', Object.keys(selectedAnswers).length);
+                    @else
+                        // For regular quizzes, ensure FormData matches selectedAnswers
+                        if (answersInFormData !== totalQuestions) {
+                            console.error('Mismatch between selectedAnswers and FormData');
+                            console.error('selectedAnswers:', selectedAnswers);
+                            console.error('FormData answers count:', answersInFormData);
+                            
+                            // Try to manually add missing answers to FormData
+                            for (let questionId in selectedAnswers) {
+                                const answerKey = `answers[${questionId}]`;
+                                if (!formData.has(answerKey)) {
+                                    formData.set(answerKey, selectedAnswers[questionId]);
+                                    console.log('Added missing answer:', answerKey, selectedAnswers[questionId]);
+                                }
+                            }
+                        }
+                    @endif
                     
                     // ENSURE CSRF TOKEN EXISTS
                     const csrfToken = document.querySelector('meta[name="csrf-token"]');
@@ -1335,7 +1784,7 @@
             });
 
             viewProgressButton.addEventListener("click", function () {
-                window.location.href = "{{ route('topics.forCourse', ['course' => $course->id]) }}";
+                window.location.href = "{{ route('topics.forCourse', $course->id) }}";
             });
         });
 

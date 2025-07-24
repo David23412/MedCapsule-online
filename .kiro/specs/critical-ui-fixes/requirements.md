@@ -2,109 +2,42 @@
 
 ## Introduction
 
-This feature addresses critical UI/UX issues across the MedCapsule platform that are impacting user experience and professional presentation. The fixes include course card styling, grading system consistency, notification system overhaul, navigation improvements, and tutor dashboard refinements. These fixes are essential for maintaining platform quality and preparing for client presentations.
+The course categorization system is experiencing a critical UI issue where custom course categorization pills are not displaying properly on the topics cards. Instead, debug information is showing "DEBUG: medical | ID: 7" and the custom categorization pills are not appearing. Additionally, there's a mismatch between the course ID being accessed (TUNA course ID 1) and what's being displayed (course ID 8), which is incorrectly being treated as a medical course. This issue needs to be fixed urgently to restore proper course categorization functionality.
 
 ## Requirements
 
-### Requirement 1: Course Card Visual Consistency
+### Requirement 1
 
-**User Story:** As a user viewing courses, I want course cards to display with consistent visual styling and proper color theming, so that the interface looks professional and cohesive.
-
-#### Acceptance Criteria
-
-1. WHEN a course is displayed THEN the course card SHALL have a complete colored border outline matching the course's assigned color
-2. WHEN a course color is set in the admin panel THEN the course card SHALL display the full outline in that exact color
-3. WHEN a course card is rendered THEN the course title SHALL always be visible and prominently displayed
-4. WHEN a course is deleted THEN it SHALL immediately disappear from the course listing without requiring cache clearing
-5. IF no course image is provided THEN the system SHALL display a default gradient background
-
-### Requirement 2: Grading System Audio Feedback
-
-**User Story:** As a user completing quizzes in any mode, I want consistent audio feedback based on my performance, so that I receive appropriate reinforcement for my learning progress.
+**User Story:** As a student viewing a custom course, I want to see the correct categorization pills without any debug information, so that I can filter topics by their proper categories.
 
 #### Acceptance Criteria
+1. WHEN viewing a custom course THEN the system SHALL NOT display any debug information on the page
+2. WHEN viewing a custom course THEN the system SHALL display the correct categorization pills based on the actual topic categories in the course
+3. WHEN viewing a custom course THEN the system SHALL correctly identify the course type as 'custom' and not 'medical'
+4. WHEN viewing the TUNA course (ID 1) THEN the system SHALL correctly load course ID 1 and not course ID 8
+5. WHEN viewing a course THEN the system SHALL NOT show "DEBUG: medical | ID: 7" or any similar debug output
+6. WHEN filtering topics by category THEN the system SHALL correctly filter based on the selected category
 
-1. WHEN a quiz is completed in tutor mode THEN the system SHALL play appropriate sound based on score (perfect, partial, or wrong)
-2. WHEN a quiz is completed in quiz mode THEN the system SHALL play appropriate sound based on score (perfect, partial, or wrong)
-3. WHEN a random quiz is completed THEN the system SHALL play appropriate sound based on score (perfect, partial, or wrong)
-4. WHEN any grading occurs THEN the audio feedback SHALL be consistent across all quiz modes
+### Requirement 2
 
-### Requirement 3: Grading Interface Consistency
-
-**User Story:** As a user receiving quiz results, I want all grading interfaces to look and behave consistently, so that I have a uniform experience across all quiz types.
-
-#### Acceptance Criteria
-
-1. WHEN any quiz grading popup appears THEN it SHALL use the same visual design and layout
-2. WHEN confetti animation is triggered THEN it SHALL appear in the correct location within the grading popup
-3. WHEN grading results are shown THEN all interfaces SHALL follow the same styling patterns
-4. IF confetti is misplaced THEN it SHALL be removed and reimplemented correctly
-
-### Requirement 4: Course Academic Year Categorization
-
-**User Story:** As a user browsing courses, I want to filter courses by academic year, so that I can focus on relevant coursework for my current academic level.
+**User Story:** As a developer, I want to ensure the course type detection is working correctly, so that the appropriate categorization pills are displayed for each course type.
 
 #### Acceptance Criteria
+1. WHEN loading a course THEN the system SHALL correctly determine if it's a medical or custom course based on the database value
+2. WHEN the course type is 'custom' THEN the system SHALL generate categorization pills based on the unique topic categories in that course
+3. WHEN the course type is 'medical' THEN the system SHALL display the standard medical categorization pills (Quiz, Cases, Practical)
+4. WHEN the course type is null or empty THEN the system SHALL default to treating it as a 'medical' course for backward compatibility
+5. WHEN the course type changes THEN the categorization pills SHALL update accordingly without requiring a page refresh
+6. WHEN debugging is needed THEN the system SHALL log information to the server logs and NOT display it on the frontend
 
-1. WHEN courses are displayed THEN they SHALL be categorized by academic year (Year 1, Year 2, etc.)
-2. WHEN a course is created THEN it SHALL include an academic year field
-3. WHEN courses are filtered THEN only courses matching the selected academic year SHALL be displayed
-4. WHEN academic year pills are shown THEN they SHALL match the course categorization system
+### Requirement 3
 
-### Requirement 5: Navigation Dropdown Consistency
-
-**User Story:** As a user with different account types, I want consistent navigation options available across all pages, so that I can access all relevant features regardless of my current location.
-
-#### Acceptance Criteria
-
-1. WHEN navigation dropdowns are displayed THEN they SHALL include all appropriate routes for the user's role
-2. WHEN a tutor accesses navigation THEN all tutor-specific routes SHALL be available
-3. WHEN an admin accesses navigation THEN all admin-specific routes SHALL be available
-4. WHEN navigation is accessed from any page THEN the options SHALL be consistent with the home page navigation
-
-### Requirement 6: Study Streak Navigation Enhancement
-
-**User Story:** As a user with study streak progress, I want enhanced navigation options accessible from the streak indicator, so that I can quickly access related features and maintain engagement.
+**User Story:** As a system administrator, I want to ensure the course ID resolution is working correctly, so that users always see the correct course content.
 
 #### Acceptance Criteria
-
-1. WHEN a study streak circle is displayed THEN it SHALL include an enhanced navigation dropdown
-2. WHEN the streak navigation is accessed THEN it SHALL provide relevant quick actions for all user types
-3. WHEN streak navigation is implemented THEN it SHALL be available on both home and course pages
-4. WHEN streak navigation is used THEN it SHALL maintain consistent styling and functionality
-
-### Requirement 7: Tutor Dashboard Professional Refinement
-
-**User Story:** As a tutor using the dashboard for client presentations, I want a clean, professional interface without unnecessary elements, so that I can maintain credibility and focus on essential information.
-
-#### Acceptance Criteria
-
-1. WHEN tutor dashboard cards are displayed THEN they SHALL NOT show email addresses (gmail references)
-2. WHEN action buttons are shown THEN they SHALL use minimal, professional styling
-3. WHEN dashboard elements are rendered THEN they SHALL maintain a sleek, business-appropriate appearance
-4. IF "Class summary" sections exist THEN they SHALL be removed as they serve no functional purpose
-
-### Requirement 8: Quiz Progress Bar Overlap Prevention
-
-**User Story:** As a user taking quizzes in solve quiz mode, I want the progress bar to intelligently disappear when I reach the submit button, so that there is no visual overlap or interference with quiz completion.
-
-#### Acceptance Criteria
-
-1. WHEN the submit button becomes visible in the viewport THEN the progress bar SHALL smoothly fade out or hide completely
-2. WHEN the submit button is far from view THEN the progress bar SHALL be fully visible and functional
-3. WHEN the submit button is approaching the viewport THEN the progress bar SHALL partially fade to indicate upcoming transition
-4. WHEN the quiz is submitted THEN the progress bar SHALL immediately disappear to avoid any visual conflicts
-5. WHEN scrolling occurs THEN the progress bar visibility SHALL update smoothly with optimized performance using requestAnimationFrame
-6. WHEN the page loads or resizes THEN the progress bar visibility SHALL be correctly calculated and applied
-
-### Requirement 9: Notification System Overhaul
-
-**User Story:** As a user receiving notifications, I want a highly efficient and well-designed notification system with proper icons and logic, so that I stay informed about important platform activities.
-
-#### Acceptance Criteria
-
-1. WHEN notifications are displayed THEN they SHALL use correct, contextually appropriate icons
-2. WHEN the notification system operates THEN it SHALL be the most efficient and productive implementation possible
-3. WHEN notifications are accessed THEN they SHALL be available consistently across all relevant pages
-4. WHEN notification logic executes THEN it SHALL follow best practices for performance and user experience
-5. WHEN notifications are rendered THEN they SHALL maintain consistent styling and behavior across the platform
+1. WHEN accessing a course by ID THEN the system SHALL load the correct course with that ID
+2. WHEN accessing the TUNA course (ID 1) THEN the system SHALL correctly load course ID 1 and not any other course
+3. WHEN a course is loaded THEN the system SHALL use the correct course ID for all related queries (topics, categorizations, etc.)
+4. WHEN a course ID mismatch occurs THEN the system SHALL log an error but NOT display it to the user
+5. WHEN a course is loaded THEN the system SHALL ensure all course attributes (including type) are correctly loaded from the database
+6. WHEN debugging course loading THEN the system SHALL use server-side logging and NOT client-side console logs or visible debug output

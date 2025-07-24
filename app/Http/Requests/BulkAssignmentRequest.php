@@ -27,7 +27,10 @@ class BulkAssignmentRequest extends FormRequest
             'title' => 'required|string|max:255',
             'description' => 'nullable|string|max:1000',
             'deadline' => 'required|date|after:now',
-            'duration_minutes' => 'nullable|integer|min:1|max:1440', // Max 24 hours
+            'duration_minutes' => 'nullable|numeric|min:0.1|max:1440', // Min 0.1 minutes (6 seconds) for testing
+            'assignment_mode' => 'nullable|in:source_specific,complete_topic',
+            'assigned_source' => 'nullable|string|max:255',
+            'duration_minutes' => 'nullable|numeric|min:0.1|max:1440', // Min 0.1 minutes (6 seconds) for testing
             'skip_existing' => 'nullable|boolean',
         ];
     }
@@ -53,8 +56,14 @@ class BulkAssignmentRequest extends FormRequest
             'deadline.required' => 'Assignment deadline is required.',
             'deadline.date' => 'Please provide a valid deadline date.',
             'deadline.after' => 'Assignment deadline must be in the future.',
-            'duration_minutes.integer' => 'Duration must be a valid number of minutes.',
-            'duration_minutes.min' => 'Duration must be at least 1 minute.',
+            'duration_minutes.numeric' => 'Duration must be a valid number of minutes.',
+            'duration_minutes.min' => 'Duration must be at least 0.1 minutes (6 seconds).',
+            'duration_minutes.max' => 'Duration cannot exceed 24 hours (1440 minutes).',
+            'assignment_mode.in' => 'Assignment mode must be either source_specific or complete_topic.',
+            'assigned_source.string' => 'Assigned source must be a valid string.',
+            'assigned_source.max' => 'Assigned source cannot exceed 255 characters.',
+            'duration_minutes.numeric' => 'Duration must be a valid number of minutes.',
+            'duration_minutes.min' => 'Duration must be at least 0.1 minutes (6 seconds).',
             'duration_minutes.max' => 'Duration cannot exceed 24 hours (1440 minutes).',
         ];
     }
@@ -116,6 +125,23 @@ class BulkAssignmentRequest extends FormRequest
                         "Some students already have assignments for this topic. Check 'Skip existing assignments' to proceed.");
                 }
             }
+
+            // Validate source for source-specific assignments
+            if ($this->assignment_mode === 'source_specific' && empty($this->assigned_source)) {
+                $validator->errors()->add('assigned_source', 'Source must be specified for source-specific assignments.');
+            }
+
+            // Validate that source exists for the topic if specified
+            if (!empty($this->assigned_source) && $this->topic_id) {
+                $sourceExists = \DB::table('questions')
+                    ->where('topic_id', $this->topic_id)
+                    ->where('source', $this->assigned_source)
+                    ->exists();
+
+                if (!$sourceExists) {
+                    $validator->errors()->add('assigned_source', 'The specified source does not exist for this topic.');
+                }
+            }
         });
     }
 
@@ -129,6 +155,9 @@ class BulkAssignmentRequest extends FormRequest
             'topic_id' => 'topic',
             'course_id' => 'course',
             'duration_minutes' => 'duration',
+            'assignment_mode' => 'assignment mode',
+            'assigned_source' => 'source',
+            'time_limit' => 'time limit',
         ];
     }
 

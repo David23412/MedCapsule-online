@@ -1,0 +1,171 @@
+/**
+ * Categorization Pills Styling
+ */
+
+/* Container for categorization pills */
+.categorization-pills-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-bottom: 1.5rem;
+    padding: 0.5rem 0;
+    position: sticky;
+    top: 0;
+    background-color: var(--background-color, #ffffff);
+    z-index: 10;
+    border-bottom: 1px solid var(--border-color, #e5e7eb);
+    transition: box-shadow 0.3s ease;
+}
+
+/* Add shadow when scrolled */
+.categorization-pills-container.scrolled {
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+}
+
+/* Individual pill styling */
+.categorization-pill {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.5rem 1rem;
+    border-radius: 9999px;
+    font-size: 0.875rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    border: 1px solid var(--border-color, #e5e7eb);
+    background-color: var(--pill-bg, #ffffff);
+    color: var(--text-color, #374151);
+    outline: none;
+    position: relative;
+    overflow: hidden;
+}
+
+/* Pill hover state */
+.categorization-pill:hover {
+    background-color: var(--pill-hover-bg, #f3f4f6);
+    transform: translateY(-1px);
+}
+
+/* Pill active state */
+.categorization-pill.active {
+    background-color: var(--pill-active-bg, #3b82f6);
+    color: var(--pill-active-text, #ffffff);
+    border-color: var(--pill-active-border, #2563eb);
+    transform: translateY(-1px);
+    box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+}
+
+/* Pill count badge */
+.pill-count {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 1.25rem;
+    height: 1.25rem;
+    padding: 0 0.25rem;
+    margin-left: 0.5rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+    border-radius: 9999px;
+    background-color: var(--badge-bg, rgba(0, 0, 0, 0.1));
+    color: inherit;
+    transition: all 0.2s ease;
+}
+
+/* Active pill count badge */
+.categorization-pill.active .pill-count {
+    background-color: var(--badge-active-bg, rgba(255, 255, 255, 0.2));
+}
+
+/* Ripple effect for pills */
+.categorization-pill .ripple {
+    position: absolute;
+    border-radius: 50%;
+    transform: scale(0);
+    animation: ripple 0.6s linear;
+    background-color: rgba(255, 255, 255, 0.3);
+}
+
+@keyframes ripple {
+    to {
+        transform: scale(4);
+        opacity: 0;
+    }
+}
+
+/* Topic card transitions */
+.topic-card {
+    transition: opacity 0.3s ease, transform 0.3s ease;
+}
+
+/* Empty state styling */
+.empty-state {
+    padding: 2rem;
+    text-align: center;
+    color: var(--text-muted, #6b7280);
+    font-style: italic;
+    background-color: var(--empty-state-bg, #f9fafb);
+    border-radius: 0.5rem;
+    margin: 1rem 0;
+    animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+/* Skeleton screens for loading state */
+.topic-skeleton {
+    height: 8rem;
+    background-color: var(--skeleton-bg, #e5e7eb);
+    border-radius: 0.5rem;
+    margin-bottom: 1rem;
+    position: relative;
+    overflow: hidden;
+}
+
+.topic-skeleton::after {
+    content: "";
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    transform: translateX(-100%);
+    background-image: linear-gradient(
+        90deg,
+        rgba(255, 255, 255, 0) 0,
+        rgba(255, 255, 255, 0.2) 20%,
+        rgba(255, 255, 255, 0.5) 60%,
+        rgba(255, 255, 255, 0)
+    );
+    animation: shimmer 2s infinite;
+}
+
+@keyframes shimmer {
+    100% {
+        transform: translateX(100%);
+    }
+}
+
+/* Responsive adjustments */
+@media (max-width: 640px) {
+    .categorization-pills-container {
+        padding: 0.5rem;
+        overflow-x: auto;
+        flex-wrap: nowrap;
+        -webkit-overflow-scrolling: touch;
+        scrollbar-width: none; /* Firefox */
+    }
+    
+    .categorization-pills-container::-webkit-scrollbar {
+        display: none; /* Chrome, Safari, Edge */
+    }
+    
+    .categorization-pill {
+        padding: 0.375rem 0.75rem;
+        font-size: 0.75rem;
+        white-space: nowrap;
+    }
+}

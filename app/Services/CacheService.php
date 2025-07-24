@@ -298,7 +298,7 @@ class CacheService
             // Clear session data for random quiz
             session()->forget([
                 'random_quiz_questions',
-                'random_quiz_time_limit'
+                'random_quiz_duration_minutes'
             ]);
             
             $pipeline->exec();

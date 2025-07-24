@@ -45,34 +45,52 @@
 </div>
 
 <style>
-/* === EXACT COPY OF OLD CLEAN LAYOUT === */
+/* === ULTRA-MODERN NOTIFICATION LAYOUT === */
 
-/* Header - JUST WIDER NOT BIGGER */
+/* Modern Header */
 .notification-header {
-    padding: 16px 24px 12px;
-    background: white;
-    border-bottom: 1px solid #e5e7eb;
+    padding: 20px 28px 16px;
+    background: linear-gradient(135deg, rgba(102, 126, 234, 0.05), rgba(118, 75, 162, 0.05));
+    border-bottom: 1px solid rgba(102, 126, 234, 0.1);
     text-align: center;
+    border-radius: 20px 20px 0 0;
 }
 
 .notification-title {
-    font-size: 16px;
-    font-weight: 600;
-    color: #3b82f6;
+    font-size: 18px;
+    font-weight: 700;
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
     margin: 0;
+    letter-spacing: -0.025em;
 }
 
-/* List - JUST WIDER NOT BIGGER */
+/* Modern List */
 .notification-list {
-    max-height: 320px;
+    max-height: 360px;
     overflow-y: auto;
-    padding: 8px 0;
-    scrollbar-width: none;
-    -ms-overflow-style: none;
+    padding: 12px 0;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(102, 126, 234, 0.3) transparent;
 }
 
 .notification-list::-webkit-scrollbar {
-    display: none;
+    width: 6px;
+}
+
+.notification-list::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.notification-list::-webkit-scrollbar-thumb {
+    background: rgba(102, 126, 234, 0.3);
+    border-radius: 3px;
+}
+
+.notification-list::-webkit-scrollbar-thumb:hover {
+    background: rgba(102, 126, 234, 0.5);
 }
 
 /* Empty State - JUST WIDER NOT BIGGER */

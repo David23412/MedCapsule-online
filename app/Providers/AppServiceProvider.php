@@ -117,6 +117,11 @@ class AppServiceProvider extends ServiceProvider
         $this->app->singleton(\App\Services\ResilientCacheService::class, function ($app) {
             return new \App\Services\ResilientCacheService();
         });
+        
+        // Register CourseTypeService as singleton
+        $this->app->singleton(\App\Services\CourseTypeService::class, function ($app) {
+            return new \App\Services\CourseTypeService();
+        });
     }
 
     /**

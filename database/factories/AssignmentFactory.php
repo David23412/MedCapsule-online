@@ -23,14 +23,23 @@ class AssignmentFactory extends Factory
             'description' => $this->faker->paragraph(),
             'deadline' => $this->faker->dateTimeBetween('now', '+30 days'),
             'duration_minutes' => $this->faker->numberBetween(30, 180),
+            'time_limit' => $this->faker->optional(0.7)->numberBetween(15, 120), // 70% chance of having a time limit
+            'assignment_mode' => $this->faker->randomElement([
+                Assignment::MODE_SOURCE_SPECIFIC,
+                Assignment::MODE_COMPLETE_TOPIC
+            ]),
+            'assigned_source' => null, // Will be set in sourceSpecific() state
             'status' => $this->faker->randomElement([
                 Assignment::STATUS_ACTIVE,
                 Assignment::STATUS_COMPLETED,
                 Assignment::STATUS_OVERDUE,
-                Assignment::STATUS_LOCKED
+                Assignment::STATUS_LOCKED,
+                Assignment::STATUS_EXPIRED
             ]),
             'completed_at' => null,
-            'score' => null
+            'expired_at' => null,
+            'score' => null,
+            'score_percentage' => null
         ];
     }
 
@@ -77,6 +86,47 @@ class AssignmentFactory extends Factory
         return $this->state(fn (array $attributes) => [
             'deadline' => now()->addHours($this->faker->numberBetween(1, $hours)),
             'status' => Assignment::STATUS_ACTIVE
+        ]);
+    }
+    
+    public function expired(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'status' => Assignment::STATUS_EXPIRED,
+            'expired_at' => $this->faker->dateTimeBetween('-30 days', 'now'),
+            'completed_at' => null,
+            'score' => $this->faker->optional(0.7)->numberBetween(0, 100),
+            'score_percentage' => $this->faker->optional(0.7)->randomFloat(2, 0, 100)
+        ]);
+    }
+    
+    public function sourceSpecific(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'assignment_mode' => Assignment::MODE_SOURCE_SPECIFIC,
+            'assigned_source' => $this->faker->randomElement(['Kaplan', 'Practice Sheet', 'UWorld', 'First Aid'])
+        ]);
+    }
+    
+    public function completeTopic(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'assignment_mode' => Assignment::MODE_COMPLETE_TOPIC,
+            'assigned_source' => null
+        ]);
+    }
+    
+    public function withDuration(int $minutes = null): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'duration_minutes' => $minutes ?? $this->faker->numberBetween(15, 120)
+        ]);
+    }
+    
+    public function withoutDuration(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'duration_minutes' => null
         ]);
     }
 }

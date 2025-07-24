@@ -26,6 +26,7 @@ use App\Services\InputValidationService;
 use App\Services\DatabaseService;
 use App\Services\ResilientCacheService;
 use App\Models\Assignment;
+use App\Models\AssignmentAttempt;
 use App\Services\AssignmentService;
 
 class QuizController extends Controller 
@@ -63,7 +64,7 @@ class QuizController extends Controller
                 'request_id' => $requestId,
                 'user_id' => $user->id,
                 'user_name' => $user->name,
-                'is_admin' => $user->is_admin,
+                'user_role' => $user->role,
                 'course_id' => $course->id,
                 'topic_id' => $topic->id,
                 'request_url' => request()->fullUrl(),
@@ -79,20 +80,20 @@ class QuizController extends Controller
                     'course_id' => $course->id,
                     'topic_course_id' => $topic->course_id
                 ]);
-                return redirect()->route('topics.forCourse', ['course' => $course->id])
+                return redirect()->route('topics.forCourse', $course->id)
                     ->with('error', 'Invalid topic for this course.');
             }
 
             // Check if user has access to the course (admin, enrolled, or free course)
-            if (!$user->is_admin && !$user->hasAccessToCourse($course->id) && $course->price && $course->price > 0) {
+            if (!$user->isAdmin() && !$user->hasAccessToCourse($course->id) && $course->price && $course->price > 0) {
                 Log::error('Access denied: User does not have access to course', [
                     'request_id' => $requestId,
                     'user_id' => $user->id,
                     'course_id' => $course->id,
-                    'is_admin' => $user->is_admin,
+                    'user_role' => $user->role,
                     'course_price' => $course->price
                 ]);
-                return redirect()->route('topics.forCourse', ['course' => $course->id])
+                return redirect()->route('topics.forCourse', $course->id)
                     ->with('error', 'You must be granted access to this course to take quizzes. Please contact an administrator.');
             }
 
@@ -110,6 +111,59 @@ class QuizController extends Controller
                 'topic_id' => $topic->id
             ]);
 
+            // Check for assignments for this topic and user
+            $assignment = Assignment::where('student_id', $user->id)
+                ->where('topic_id', $topic->id)
+                ->whereIn('status', [Assignment::STATUS_ACTIVE, Assignment::STATUS_OVERDUE, Assignment::STATUS_LOCKED])
+                ->first();
+            
+            // Handle assignment status updates
+            if ($assignment) {
+                // Check if assignment has expired due to time limit
+                if ($assignment->hasTimeLimitExpired() && $assignment->status === Assignment::STATUS_ACTIVE) {
+                    $assignment->markAsExpired();
+                    Log::info('Assignment expired due to time limit during quiz start', [
+                        'assignment_id' => $assignment->id,
+                        'user_id' => $user->id,
+                        'duration_minutes' => $assignment->duration_minutes
+                    ]);
+                    return redirect()->route('topics.forCourse', $course->id)
+                        ->with('error', 'This assignment has expired due to time limit.');
+                }
+                
+                // Check if assignment is overdue and should be marked as such
+                if ($assignment->deadline < now() && $assignment->status === Assignment::STATUS_ACTIVE) {
+                    $assignment->markAsOverdue();
+                    Log::info('Assignment marked as overdue during quiz start', [
+                        'assignment_id' => $assignment->id,
+                        'user_id' => $user->id,
+                        'deadline' => $assignment->deadline
+                    ]);
+                }
+                
+                // Check if assignment is locked
+                if ($assignment->isLocked()) {
+                    Log::info('User attempted to access locked assignment', [
+                        'assignment_id' => $assignment->id,
+                        'user_id' => $user->id,
+                        'topic_id' => $topic->id,
+                        'assignment_status' => $assignment->status
+                    ]);
+                    return redirect()->route('topics.forCourse', $course->id)
+                        ->with('error', 'This assignment is no longer available. It may have been completed or expired.');
+                }
+                
+                // Start the timer if this is the first access and assignment has duration limit
+                if ($assignment->duration_minutes && !$assignment->started_at && $assignment->status === Assignment::STATUS_ACTIVE) {
+                    $assignment->startTimer();
+                    Log::info('Assignment timer started', [
+                        'assignment_id' => $assignment->id,
+                        'user_id' => $user->id,
+                        'duration_minutes' => $assignment->duration_minutes
+                    ]);
+                }
+            }
+            
             // Use QuizService to initialize quiz
             $quizData = $this->quizService->initializeQuiz($user, $course, $topic, $sources, 'quiz');
             
@@ -118,7 +172,8 @@ class QuizController extends Controller
                 'request_id' => $requestId,
                 'execution_time_ms' => round($executionTime, 2),
                 'questions_count' => count($quizData['questions']),
-                'sources_count' => count($quizData['sources'])
+                'sources_count' => count($quizData['sources']),
+                'has_assignment' => $assignment ? true : false
             ]);
             
             return view('solve_quiz', [
@@ -126,7 +181,8 @@ class QuizController extends Controller
                 'questions' => $quizData['questions'],
                 'course' => $quizData['course'],
                 'selected_sources' => $quizData['sources'],
-                'mode' => $quizData['mode']
+                'mode' => $quizData['mode'],
+                'assignment' => $assignment
             ]);
 
         } catch (\InvalidArgumentException $e) {
@@ -139,7 +195,7 @@ class QuizController extends Controller
                 'user_id' => auth()->id(),
                 'execution_time_ms' => round($executionTime, 2)
             ]);
-            return redirect()->route('topics.forCourse', ['course' => $course->id])
+            return redirect()->route('topics.forCourse', $course->id)
                 ->with('error', $e->getMessage());
         } catch (\Exception $e) {
             $executionTime = (microtime(true) - $startTime) * 1000;
@@ -154,7 +210,7 @@ class QuizController extends Controller
                 'execution_time_ms' => round($executionTime, 2),
                 'trace' => $e->getTraceAsString()
             ]);
-            return redirect()->route('topics.forCourse', ['course' => $course->id])
+            return redirect()->route('topics.forCourse', $course->id)
                 ->with('error', 'An error occurred while loading the quiz. Please try again.');
         }
     }
@@ -187,16 +243,31 @@ class QuizController extends Controller
         ]);
         
         try {
+            // Check if this is an assignment quiz
+            $isAssignment = Assignment::where('student_id', $userId)
+                ->where('topic_id', $topic->id)
+                ->where('course_id', $course->id)
+                ->exists();
+            
             // BULLETPROOF VALIDATION: Use comprehensive validation service
-            $validated = InputValidationService::validateInput($request->all(), [
+            $validationRules = [
                 'answers' => 'required|array|min:1|max:100',
-                'answers.*' => 'nullable|string|max:2000|no_sql_injection',
-                'time_taken' => 'required|integer|min:1|max:86400',
+                'answers.*' => 'nullable|string|max:2000',
                 'mode' => 'nullable|string|in:quiz,tutor,random'
-            ], [], [
+            ];
+            
+            // For assignments, time_taken is nullable; for regular quizzes, it's required
+            if ($isAssignment) {
+                $validationRules['time_taken'] = 'nullable|integer|min:1|max:86400';
+            } else {
+                $validationRules['time_taken'] = 'required|integer|min:1|max:86400';
+            }
+            
+            $validated = InputValidationService::validateInput($request->all(), $validationRules, [], [
                 'user_id' => $userId,
                 'action' => 'quiz_grade',
-                'request_id' => $requestId
+                'request_id' => $requestId,
+                'is_assignment' => $isAssignment
             ]);
             
             // ACCESS CONTROL: Validate user permissions
@@ -219,11 +290,11 @@ class QuizController extends Controller
             Cache::put($cacheKey, true, 300); // Cache for 5 minutes
             
             // BULLETPROOF GRADING: Use database service for safe operations
-            $gradingResult = DatabaseService::safeTransaction(function () use ($validated, $topic, $course, $userId, $requestId) {
+            $gradingResult = DatabaseService::safeTransaction(function () use ($validated, $topic, $course, $userId, $requestId, $isAssignment) {
                 return $this->gradingService->gradeQuiz(
                     auth()->user(),
                     $validated['answers'],
-                    $validated['time_taken'],
+                    $validated['time_taken'] ?? 0, // Use 0 for assignments if time_taken is null
                     $validated['mode'] ?? 'quiz',
                     $topic,
                     $course
@@ -232,7 +303,8 @@ class QuizController extends Controller
                 'user_id' => $userId,
                 'topic_id' => $topic->id,
                 'request_id' => $requestId,
-                'action' => 'quiz_grading'
+                'action' => 'quiz_grading',
+                'is_assignment' => $isAssignment
             ]);
             
             if (!$gradingResult['success']) {
@@ -356,7 +428,8 @@ class QuizController extends Controller
                 'mistakes.question_id',
                 'mistakes.submitted_answer',
                 'mistakes.last_attempt_date',
-                'mistakes.correct_streak'
+                'mistakes.correct_streak',
+                'mistakes.skipped'
             ])
             ->with([
                 'question' => function($query) {
@@ -375,9 +448,13 @@ class QuizController extends Controller
             ])
             ->where('mistakes.user_id', $userId)
             ->when($courseFilter, function($query) use ($courseFilter) {
-                return $query->whereHas('question.topic.course', function($q) use ($courseFilter) {
-                    $q->where('id', $courseFilter);
-                });
+                if ($courseFilter === 'skipped') {
+                    return $query->where('mistakes.skipped', true);
+                } else {
+                    return $query->whereHas('question.topic.course', function($q) use ($courseFilter) {
+                        $q->where('id', $courseFilter);
+                    });
+                }
             })
             ->orderByDesc('mistakes.last_attempt_date')
             ->get();
@@ -530,7 +607,7 @@ class QuizController extends Controller
                 'request_id' => $requestId,
                 'user_id' => $user->id,
                 'user_name' => $user->name,
-                'is_admin' => $user->is_admin,
+                'user_role' => $user->role,
                 'course_id' => $course->id,
                 'topic_id' => $topic->id,
                 'request_url' => request()->fullUrl(),
@@ -538,15 +615,15 @@ class QuizController extends Controller
                 'ip_address' => request()->ip()
             ]);
             
-            if (!$user->is_admin && !$user->hasAccessToCourse($course->id) && $course->price && $course->price > 0) {
+            if (!$user->isAdmin() && !$user->hasAccessToCourse($course->id) && $course->price && $course->price > 0) {
                 Log::error('Access denied: User does not have access to course', [
                     'request_id' => $requestId,
                     'user_id' => $user->id,
                     'course_id' => $course->id,
-                    'is_admin' => $user->is_admin,
+                    'user_role' => $user->role,
                     'course_price' => $course->price
                 ]);
-                return redirect()->route('topics.forCourse', ['course' => $course->id])
+                return redirect()->route('topics.forCourse', $course->id)
                     ->with('error', 'You must be granted access to this course to take quizzes.');
             }
 
@@ -603,7 +680,7 @@ class QuizController extends Controller
                 'user_id' => auth()->id(),
                 'execution_time_ms' => round($executionTime, 2)
             ]);
-            return redirect()->route('topics.forCourse', ['course' => $course->id])
+            return redirect()->route('topics.forCourse', $course->id)
                 ->with('error', $e->getMessage());
         } catch (\Exception $e) {
             $executionTime = (microtime(true) - $startTime) * 1000;
@@ -618,7 +695,7 @@ class QuizController extends Controller
                 'execution_time_ms' => round($executionTime, 2),
                 'trace' => $e->getTraceAsString()
             ]);
-            return redirect()->route('topics.forCourse', ['course' => $course->id])
+            return redirect()->route('topics.forCourse', $course->id)
                 ->with('error', 'An error occurred while loading the quiz. Please try again.');
         }
     }
@@ -702,6 +779,7 @@ class QuizController extends Controller
 
     /**
      * Handle assignment completion when quiz is completed
+     * Enhanced with comprehensive locking logic
      */
     private function handleAssignmentCompletion(int $userId, int $topicId, float $percentageGrade): void
     {
@@ -709,27 +787,138 @@ class QuizController extends Controller
             // Find active assignments for this user and topic
             $assignments = Assignment::where('student_id', $userId)
                                    ->where('topic_id', $topicId)
-                                   ->where('status', Assignment::STATUS_ACTIVE)
+                                   ->whereIn('status', [Assignment::STATUS_ACTIVE, Assignment::STATUS_OVERDUE])
                                    ->get();
 
             foreach ($assignments as $assignment) {
+                // Check if assignment is expired due to time limit
+                if ($assignment->hasTimeLimitExpired()) {
+                    $assignment->markAsExpired();
+                    Log::info('Assignment expired due to time limit', [
+                        'assignment_id' => $assignment->id,
+                        'user_id' => $userId,
+                        'duration_minutes' => $assignment->duration_minutes
+                    ]);
+                    continue;
+                }
+
                 if ($assignment->canBeCompleted()) {
+                    // Create separate assignment attempt record
+                    $this->createAssignmentAttempt($assignment, $userId, $percentageGrade);
+                    
                     // Complete the assignment with the quiz score
                     $assignment->markAsCompleted((int) round($percentageGrade));
                     
-                    Log::info('Assignment completed via quiz', [
+                    // LOCK the assignment to prevent retakes
+                    $assignment->lock();
+                    
+                    Log::info('Assignment completed and LOCKED via quiz', [
                         'assignment_id' => $assignment->id,
                         'user_id' => $userId,
                         'topic_id' => $topicId,
-                        'score' => round($percentageGrade)
+                        'score' => round($percentageGrade),
+                        'was_overdue' => $assignment->isOverdue(),
+                        'completion_time' => now()
                     ]);
                 }
             }
+
+            // Also check for any overdue assignments that should be locked
+            $this->lockOverdueAssignments($userId, $topicId);
+
         } catch (\Exception $e) {
             // Don't let assignment completion failure affect quiz grading
             Log::error('Failed to complete assignment after quiz', [
                 'user_id' => $userId,
                 'topic_id' => $topicId,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+        }
+    }
+
+    /**
+     * Lock assignments that are overdue and should no longer be accessible
+     */
+    private function lockOverdueAssignments(int $userId, int $topicId): void
+    {
+        try {
+            $overdueAssignments = Assignment::where('student_id', $userId)
+                                          ->where('topic_id', $topicId)
+                                          ->where('status', Assignment::STATUS_OVERDUE)
+                                          ->where('deadline', '<', now()->subHours(24)) // Grace period of 24 hours
+                                          ->get();
+
+            foreach ($overdueAssignments as $assignment) {
+                $assignment->lock();
+                Log::info('Overdue assignment locked after grace period', [
+                    'assignment_id' => $assignment->id,
+                    'user_id' => $userId,
+                    'deadline' => $assignment->deadline,
+                    'hours_overdue' => now()->diffInHours($assignment->deadline)
+                ]);
+            }
+        } catch (\Exception $e) {
+            Log::error('Failed to lock overdue assignments', [
+                'user_id' => $userId,
+                'topic_id' => $topicId,
+                'error' => $e->getMessage()
+            ]);
+        }
+    }
+
+    /**
+     * Create a separate assignment attempt record
+     */
+    private function createAssignmentAttempt(Assignment $assignment, int $userId, float $percentageGrade): void
+    {
+        try {
+            // Get quiz session data from the current request
+            $request = request();
+            $answers = $request->input('answers', []);
+            $timeTaken = $request->input('time_taken', 0);
+            
+            // Calculate question statistics
+            $totalQuestions = count($answers);
+            $correctAnswers = (int) round(($percentageGrade / 100) * $totalQuestions);
+            $incorrectAnswers = $totalQuestions - $correctAnswers;
+            
+            // Check if submission is late
+            $isLateSubmission = now() > $assignment->deadline;
+            
+            AssignmentAttempt::create([
+                'assignment_id' => $assignment->id,
+                'student_id' => $userId,
+                'topic_id' => $assignment->topic_id,
+                'course_id' => $assignment->course_id,
+                'total_questions' => $totalQuestions,
+                'correct_answers' => $correctAnswers,
+                'incorrect_answers' => $incorrectAnswers,
+                'score_percentage' => $percentageGrade,
+                'time_taken_seconds' => $timeTaken,
+                'question_responses' => $answers,
+                'assignment_mode' => $assignment->assignment_mode ?? 'complete_topic',
+                'assigned_source' => $assignment->assigned_source,
+                'status' => AssignmentAttempt::STATUS_COMPLETED,
+                'started_at' => now()->subSeconds($timeTaken), // Approximate start time
+                'completed_at' => now(),
+                'is_late_submission' => $isLateSubmission,
+                'notes' => $isLateSubmission ? 'Submitted after deadline' : null
+            ]);
+            
+            Log::info('Assignment attempt recorded separately', [
+                'assignment_id' => $assignment->id,
+                'student_id' => $userId,
+                'total_questions' => $totalQuestions,
+                'correct_answers' => $correctAnswers,
+                'score_percentage' => $percentageGrade,
+                'is_late' => $isLateSubmission
+            ]);
+            
+        } catch (\Exception $e) {
+            Log::error('Failed to create assignment attempt record', [
+                'assignment_id' => $assignment->id,
+                'student_id' => $userId,
                 'error' => $e->getMessage()
             ]);
         }

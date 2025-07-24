@@ -1,0 +1,397 @@
+# Implementation Plan
+
+- [x] 1. Database Schema Optimization and Course Type Foundation
+  - Modify existing courses table to add `type` ENUM('medical', 'custom') DEFAULT 'medical' field with proper indexing
+  - Add comprehensive indexes: `idx_courses_type`, `idx_courses_type_created_by` for optimal query performance
+  - Enhance assignments table with `time_limit` INT UNSIGNED NULL, `assignment_mode` ENUM('source_specific', 'complete_topic'), `assigned_source` VARCHAR(255) NULL, `expired_at` TIMESTAMP NULL fields
+  - Add assignment indexes: `idx_assignments_mode`, `idx_assignments_source`, `idx_assignments_status_deadline`, `idx_assignments_student_status`
+  - Add topic locking fields: `is_locked` BOOLEAN DEFAULT FALSE, `locked_by_tutor_id` BIGINT UNSIGNED NULL, `lock_reason` TEXT NULL, `locked_at` TIMESTAMP NULL
+  - Create topic indexes: `idx_topics_locked`, `idx_topics_categorization`, `idx_topics_course_categorization`
+  - Write zero-downtime migration scripts with proper rollback capability and data integrity checks
+  - Test migration performance with large datasets to ensure sub-second execution
+  - _Requirements: 2.1, 15.11, 15.12, 15.13, 15.14_
+
+- [x] 2. Course Type Service and Dynamic Categorization Backend
+  - Create CourseTypeService class with determineCourseType(Course $course) method that returns explicit type or defaults to 'medical'
+  - Implement getMedicalCategorizations(Course $course) that checks for topics in ['Quiz', 'Cases', 'Practical'] and returns only categories with existing topics
+  - Implement getCustomCategorizations(Course $course) that queries distinct categorizations from topics table for that course
+  - Add getCategorizations(Course $course) method that routes to appropriate categorization method based on course type
+  - Create CourseCategorizationCache class with remember(), invalidate(), and warmCache() methods using 1-hour TTL
+  - Implement cache invalidation triggers on topic creation, update, and deletion
+  - Add backward compatibility handling for courses with undefined type (default to 'medical')
+  - Write comprehensive unit tests covering all categorization scenarios, edge cases, and cache behavior
+  - Test performance with courses containing 100+ topics to ensure sub-50ms response times
+  - _Requirements: 2.2, 2.3, 2.4, 2.5, 2.6, 2.9, 15.9_
+
+- [x] 3. Enhanced Assignment Service with Dual Mode Support
+  - Extend AssignmentService with createAssignment(array $data) method supporting both 'source_specific' and 'complete_topic' modes
+  - Implement assignment validation: deadline must be future, tutor-student relationship must exist, time_limit must be positive integer
+  - Add database transaction wrapping for assignment creation with proper rollback on failure
+  - Create calculateSourceSpecificScore(Assignment $assignment, array $answers) that calculates score based only on assigned source questions
+  - Create calculateCompleteTopicScore(Assignment $assignment, array $answers) that calculates score across all topic sources
+  - Implement handleAssignmentExpiry(Assignment $assignment) that sets status to 'expired' but preserves topic access
+  - Add updateAssignmentSettings(Assignment $assignment, array $data) with immediate reflection for active assignments
+  - Create getAssignmentReports(User $tutor) with detailed completion status per required source
+  - Implement partial completion percentage calculation for incomplete assignments
+  - Add source availability validation with tutor notification system for unavailable sources
+  - Write unit tests for all assignment modes, scoring calculations, and expiry handling
+  - _Requirements: 5.1, 5.2, 5.3, 5.4, 5.5, 5.7, 5.8, 5.9, 7.1, 7.3, 7.4, 7.8, 7.9_
+
+- [x] 4. Topic Access Control and Security Layer
+  - Create TopicAccessController with checkAccess(Topic $topic, User $user) method returning access permissions array
+  - Implement topic locking validation: locked topics return can_access: false with lock_reason
+  - Add active assignment detection with assignment mode and source restrictions
+  - Create getTopicSources(Topic $topic, User $user) that returns appropriate sources based on access mode
+  - Implement AssignmentSecurityMiddleware validating tutor-student relationships and assignment status
+  - Add SourceAccessValidator class enforcing source restrictions at API level, not just frontend
+  - Create permission validation for every assignment access attempt with 403 responses for unauthorized access
+  - Implement direct URL access blocking for locked topics and restricted sources
+  - Add concurrent user handling with proper session management and race condition prevention
+  - Write security tests for unauthorized access attempts, source restriction bypassing, and permission escalation
+  - _Requirements: 3.1, 3.6, 3.7, 13.2, 13.4, 15.1, 15.3, 15.5, 15.7_
+
+- [x] 5. Topic Locking Management System
+  - Create TopicLockingService with lock(Topic $topic, User $tutor, string $reason = null) method
+  - Implement unlock(Topic $topic, User $tutor) method with immediate access restoration
+  - Add authorization validation ensuring only course tutors can lock/unlock topics
+  - Create bulkLock(array $topicIds, User $tutor, string $reason) for multiple topic management
+  - Implement bulkUnlock(array $topicIds, User $tutor) with batch processing
+  - Add student progress preservation when topics are locked (preserve existing attempts, block new ones)
+  - Create topic locking management interface with lock/unlock controls for each topic
+  - Implement lock reason display for students with clear messaging
+  - Add locked topic exclusion from categorization pill counts and filtering
+  - Create instant UI updates across all student interfaces when topics are locked/unlocked
+  - Write unit tests for locking authorization, bulk operations, and progress preservation
+  - _Requirements: 13.1, 13.2, 13.3, 13.4, 13.5, 13.6, 13.7, 14.9_
+
+- [x] 6. Frontend Dynamic Categorization System with Instant Filtering
+  - Create DynamicCategorization JavaScript class with constructor(courseType, topics, containerId)
+  - Implement generateMedicalPills() method checking for topics in ['Quiz', 'Cases', 'Practical'] categories
+  - Implement generateCustomPills() method extracting unique categorizations from topic data
+  - Add renderPills() method creating clickable pill elements with proper event handlers
+  - Create filterTopics(selectedPill) method with instant client-side filtering using display: none/block
+  - Implement updateURL(selectedPill) method updating URL parameters for bookmarking support
+  - Add loadFromURL() method applying filter from URL parameters on page load
+  - Create smooth animations for pill activation and topic filtering transitions
+  - Implement empty state handling - never show pills for categories with no topics
+  - Add OptimizedTopicFilter with debounced filtering (100ms) and requestAnimationFrame optimization
+  - Ensure sub-200ms page load times with proper loading states and skeleton screens
+  - Create responsive design supporting mobile and desktop interfaces
+  - Write JavaScript tests for filtering accuracy, URL state management, and performance
+  - _Requirements: 1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.7, 2.4, 2.6, 2.7, 14.1, 14.2, 14.7, 16.4_
+
+- [ ] 7. Assignment Flow Controller and Real-Time Timer System
+  - Create AssignmentFlowController class with startAssignment(topicId, assignmentData) method
+  - Implement complete source selection modal bypass for assigned topics
+  - Add startSourceSpecificAssignment() redirecting directly to quiz with assigned source
+  - Add startCompleteTopicAssignment() redirecting to quiz with all sources in single session
+  - Create AssignmentCountdown class with constructor(assignmentId, timeLimit, startTime)
+  - Implement real-time countdown with 1-second interval updates and smooth display transitions
+  - Add timer persistence across page navigation using localStorage and session recovery
+  - Create urgent visual styling when timer reaches 10% remaining time (red colors, pulsing animation)
+  - Implement automatic progress submission when timer expires with secure API call
+  - Add timer display throughout quiz session with consistent positioning and visibility
+  - Create handleExpiration() method with graceful auto-submit and redirect to expired page
+  - Implement timer synchronization with server time to prevent client-side manipulation
+  - Add emergency contact options for technical issues during assignments
+  - Write tests for timer accuracy, auto-submit functionality, and persistence across sessions
+  - _Requirements: 3.1, 3.2, 3.3, 3.4, 3.5, 4.1, 4.2, 4.3, 4.4, 4.5, 4.6, 4.7, 9.6, 14.3, 14.4_
+
+- [ ] 8. Assignment Creation and Management Interface
+  - Create assignment creation form with time limit fields (hours/minutes dropdowns) and deadline date picker
+  - Implement assignment mode selection radio buttons: "Source-Specific" vs "Complete Topic"
+  - Add dynamic source selection dropdown appearing only for "Source-Specific" mode
+  - Create source priority suggestion system based on defined course priorities
+  - Implement bulk assignment creation interface for multiple student selection
+  - Add assignment management dashboard with filtering by student, topic, date range, and completion status
+  - Create assignment deadline extension functionality with student notification
+  - Implement assignment settings update with immediate reflection for active assignments
+  - Add assignment analytics showing completion rates, average scores, and time usage
+  - Create source availability monitoring with tutor notifications for unavailable sources
+  - Implement assignment duplication feature for recurring assignments
+  - Add assignment template system for common assignment patterns
+  - Write form validation ensuring future deadlines, positive time limits, and valid source selections
+  - _Requirements: 5.1, 5.2, 5.3, 5.8, 5.9, 7.3, 7.5_
+
+- [ ] 9. Student Assignment Interface with Visual Distinction
+  - Create student assignment dashboard with distinct visual styling for assignment vs practice topics
+  - Implement separate "Start Assignment" and "Practice Mode" buttons for topics with both modes available
+  - Add progressive urgency indicators for approaching deadlines (green → yellow → red color progression)
+  - Create assignment completion status display with score and completion percentage
+  - Implement "Assignment Expired - Practice Mode" messaging with clear transition guidance
+  - Add assignment vs practice mode visual distinction without requiring text reading (icons, colors, borders)
+  - Create assignment deadline countdown display on topic cards with real-time updates
+  - Implement overdue assignment urgent visual indicators (red borders, warning icons)
+  - Add assignment history view showing past assignments, scores, and completion dates
+  - Create post-assignment topic access with clear indication of available sources
+  - Implement assignment notification system with deadline reminders and status changes
+  - Add assignment progress tracking with detailed source completion status
+  - Write accessibility tests ensuring screen reader compatibility and keyboard navigation
+  - _Requirements: 6.1, 6.2, 6.3, 6.4, 6.5, 12.1, 12.2, 12.3, 16.1, 16.2_
+
+- [ ] 10. Quiz System Integration with Source Bypass
+  - Modify QuizController to detect assignment mode and bypass source selection modal completely
+  - Implement automatic source selection based on assignment configuration (assigned_source field)
+  - Add assignment context to quiz sessions with timer integration and assignment ID tracking
+  - Create complete-topic quiz mode presenting all sources in single session without categorization
+  - Implement assignment score calculation using only assigned source questions (not entire topic)
+  - Add quiz attempt recording as single attempt with score from assigned source only
+  - Create assignment mode interface hiding non-essential navigation and source switching options
+  - Implement streamlined assignment quiz interface focused on core functionality
+  - Add assignment completion confirmation with clear next steps and score display
+  - Create assignment time expiry handling with automatic submission and progress preservation
+  - Implement assignment vs practice mode detection with appropriate interface adjustments
+  - Add assignment completion validation ensuring all required sources were attempted
+  - Write integration tests for complete assignment workflows from creation to completion
+  - _Requirements: 3.2, 3.3, 3.4, 3.7, 3.8, 3.9, 5.6, 5.7, 7.8, 7.9, 9.1, 9.2, 9.3, 9.4, 9.5_
+
+- [ ] 11. Source Priority Management and Default Ordering
+  - Create SourcePriorityService for managing course topic source priorities
+  - Implement setSourcePriority(Topic $topic, array $sourcePriorities) method
+  - Add getOrderedSources(Topic $topic) returning sources in defined priority order
+  - Create alphabetical fallback ordering when no priority is set
+  - Implement priority-based source suggestions in assignment creation interface
+  - Add automatic priority promotion when high-priority sources become unavailable
+  - Create source priority management interface for course creators
+  - Implement immediate priority changes application to new topic attempts
+  - Add source availability monitoring with automatic fallback handling
+  - Create source priority analytics showing usage patterns and effectiveness
+  - Write unit tests for priority ordering, fallback behavior, and availability handling
+  - _Requirements: 8.1, 8.2, 8.3, 8.4, 8.5, 8.6_
+
+- [ ] 12. Post-Assignment Topic Access and Dual Status Tracking
+  - Implement assignment expiry handling preserving topic access for practice mode
+  - Create dual status tracking: assignment completion vs overall topic completion
+  - Add post-assignment practice mode with access to all sources including non-assigned ones
+  - Implement "Assignment Expired - Practice Mode" clear messaging and interface
+  - Create separate completion status display for assignment vs topic mastery
+  - Add tutor reporting showing both assignment performance and post-assignment topic completion
+  - Implement remaining source completion tracking after assignment expiry
+  - Create topic completion status updates when students complete remaining sources
+  - Add normal topic functionality for never-assigned topics with full source access
+  - Implement assignment vs practice mode instant switching with clear visual indicators
+  - Create assignment history preservation while allowing continued learning
+  - Write tests for dual status tracking accuracy and post-assignment access functionality
+  - _Requirements: 7.2, 7.6, 7.7, 7.10, 12.1, 12.2, 12.3, 12.4, 12.5, 12.6, 12.7_
+
+- [ ] 13. Custom Course Categorization Flexibility
+  - Implement dynamic categorization pill generation based on existing topic categorizations
+  - Create flat topic list display for custom courses without any categorizations
+  - Add mixed categorization handling with uncategorized topics in default section
+  - Implement adaptive interface layout based on course content structure
+  - Create automatic pill display updates when topics are added or categorizations change
+  - Add support for custom categorization names like "Homework", "Lab", "Reading"
+  - Implement categorization-free course support for tutors preferring flat structure
+  - Create categorization management interface for custom course creators
+  - Add categorization validation preventing empty categories from displaying
+  - Implement categorization analytics showing usage patterns and student engagement
+  - Write tests for all categorization scenarios and adaptive interface behavior
+  - _Requirements: 2.5, 2.6, 2.7, 10.1, 10.2, 10.3, 10.4, 10.5, 10.6_
+
+- [ ] 14. Frontend Data Integration and Course Type Handling
+  - Modify course page Blade templates to include course type in data passed to frontend
+  - Add topic categorization field inclusion in all topic data responses
+  - Create JavaScript course type availability as data attribute or global variable
+  - Implement API endpoint course type field inclusion in all course data responses
+  - Add unique categorizations extraction for frontend pill building
+  - Create backward compatibility handling for missing course type (default to 'medical')
+  - Implement course type-based frontend logic routing for categorization approach
+  - Add real-time course type change handling without page refresh
+  - Create course type validation and data integrity checks
+  - Write tests for data availability, course type handling, and backward compatibility
+  - _Requirements: 11.1, 11.2, 11.3, 11.4, 11.5, 11.6, 2.8, 2.9_
+
+- [ ] 15. Performance Optimization and Lightning-Fast Response
+  - Implement sub-200ms page load times with optimized database queries and proper indexing
+  - Create instant categorization filtering with smooth animations and zero lag
+  - Add seamless assignment transition to quiz mode without page refresh delays
+  - Implement smooth countdown timer updates without UI lag or flicker
+  - Create immediate interface response for assignment vs practice mode switching
+  - Add instant topic lock/unlock UI changes across all student interfaces
+  - Implement categorization pill generation without layout shifts or loading delays
+  - Create immediate assignment score display after quiz completion
+  - Add consistent performance handling for large courses with 100+ topics
+  - Implement lazy loading, debounced filtering, and request animation frame optimization
+  - Create performance monitoring and alerting for response time degradation
+  - Write performance tests ensuring all timing requirements are met consistently
+  - _Requirements: 14.1, 14.2, 14.3, 14.4, 14.5, 14.6, 14.7, 14.8, 14.9, 14.10_
+
+- [ ] 16. Security Hardening and Data Protection
+  - Implement comprehensive permission validation at every API endpoint with proper 403 responses
+  - Add automatic and secure assignment progress submission without data loss on timer expiry
+  - Create API-level source restriction enforcement preventing frontend bypass attempts
+  - Implement tamper-proof assignment score calculation with server-side validation
+  - Add direct URL access blocking for locked topics and unauthorized assignment access
+  - Create data integrity validation for course type changes preventing corruption
+  - Implement race condition prevention for concurrent user handling
+  - Add database transaction safety for all assignment submissions and critical operations
+  - Create immediate cache invalidation for categorization data changes
+  - Implement graceful error handling with clear user feedback and automatic recovery
+  - Add audit logging for sensitive operations (assignment creation, topic locking, score changes)
+  - Write comprehensive security tests for all access control and data protection measures
+  - _Requirements: 15.1, 15.2, 15.3, 15.4, 15.5, 15.6, 15.7, 15.8, 15.9, 15.10_
+
+- [ ] 17. User Experience Excellence and Interface Polish
+  - Create immediately obvious visual distinction for assignment topics without requiring text reading
+  - Implement progressive and non-intrusive urgency indicators for approaching deadlines
+  - Add smooth and contextually appropriate interface changes when switching course types
+  - Ensure categorization pills never appear for empty categories to avoid confusion
+  - Create cognitive load reduction by hiding non-essential UI elements in assignment mode
+  - Implement clear, readable timer formatting with appropriate color coding for urgency
+  - Add specific, actionable error messages with recovery options for all error scenarios
+  - Create skeleton screens and progress indicators instead of blank loading screens
+  - Implement clear assignment expiry transition messages guiding users to next steps
+  - Add immediate and satisfying feedback for all user actions and topic completions
+  - Create intuitive navigation and consistent interaction patterns throughout the system
+  - Write usability tests ensuring error-free and confusion-free user experience
+  - _Requirements: 16.1, 16.2, 16.3, 16.4, 16.5, 16.6, 16.7, 16.8, 16.9, 16.10_
+
+- [ ] 18. Backward Compatibility and Seamless Migration
+  - Ensure existing medical courses continue functioning with current categorizations without disruption
+  - Create graceful legacy data handling without errors for undefined course types
+  - Implement data migration scripts preserving existing course and topic data integrity
+  - Add feature flags for gradual rollout and immediate rollback capability
+  - Create comprehensive regression testing for all existing course functionality
+  - Implement data integrity prioritization when conflicts arise between old and new systems
+  - Add medical course user experience preservation during system updates
+  - Create migration validation ensuring no data loss or functionality degradation
+  - Implement rollback procedures for emergency system restoration
+  - Write migration tests covering all legacy data scenarios and edge cases
+  - _Requirements: 17.1, 17.2, 17.3, 17.4, 17.5, 17.6_
+
+- [ ] 19. Assignment Notification and Communication System
+  - Create assignment notification service sending immediate notifications when assignments are created
+  - Implement deadline change notifications when tutors modify assignment deadlines
+  - Add deadline reminder notifications sent automatically as deadlines approach
+  - Create assignment completion notifications for both students and tutors
+  - Implement overdue assignment alert system with escalating notification frequency
+  - Add consolidated reminder notifications for students with multiple overdue assignments
+  - Create assignment status change notifications (created, modified, completed, expired)
+  - Implement real-time notification delivery without page refresh using WebSockets or polling
+  - Add notification preferences allowing users to customize notification frequency and types
+  - Create notification history and read/unread status tracking
+  - Implement emergency notification system for technical issues during assignments
+  - Write tests for all notification scenarios and delivery reliability
+  - _Requirements: 7.3, 9.6, notification system integration_
+
+- [ ] 20. Assignment Analytics and Reporting Dashboard
+  - Create comprehensive assignment analytics dashboard for tutors showing completion rates, scores, and time usage
+  - Implement detailed assignment reports with completion status for each required source
+  - Add assignment performance analytics comparing student scores across different sources and topics
+  - Create time usage analytics showing average completion times and time distribution patterns
+  - Implement assignment difficulty analysis based on completion rates and scores
+  - Add student progress tracking with detailed assignment history and performance trends
+  - Create bulk assignment performance reports for classroom management
+  - Implement assignment effectiveness metrics helping tutors optimize assignment design
+  - Add assignment completion forecasting based on current progress and historical data
+  - Create exportable reports in PDF and Excel formats for external analysis
+  - Implement real-time dashboard updates showing current assignment status across all students
+  - Write tests for all analytics calculations and report generation accuracy
+  - _Requirements: 7.3, 7.6, 12.6, assignment management and analytics_
+
+- [ ] 21. Mixed Categorization Handling and Uncategorized Topic Management
+  - Implement mixed categorization support for custom courses with both categorized and uncategorized topics
+  - Create "General" or "Uncategorized" default section for topics without assigned categories
+  - Add adaptive interface layout automatically adjusting based on course content structure
+  - Implement automatic categorization detection and pill generation for mixed content
+  - Create categorization management interface allowing tutors to assign/remove categories from topics
+  - Add bulk categorization operations for managing multiple topics simultaneously
+  - Implement categorization validation preventing empty categories from appearing in interface
+  - Create categorization analytics showing usage patterns and student engagement by category
+  - Add categorization migration tools for converting between medical and custom course types
+  - Implement categorization search and filtering for large courses with many categories
+  - Create categorization templates for common course structures and subject areas
+  - Write tests for all mixed categorization scenarios and edge cases
+  - _Requirements: 10.3, 10.4, 10.5, 10.6, custom course flexibility_
+
+- [ ] 22. Assignment Mode Interface Streamlining and Distraction Elimination
+  - Implement complete non-essential navigation hiding when assignment mode is active
+  - Create streamlined assignment interface focusing solely on core quiz functionality
+  - Add assignment mode detection with appropriate interface element hiding/showing
+  - Implement source switching and topic browsing disabling during assignment completion
+  - Create assignment completion confirmation interface with clear next steps and score display
+  - Add time awareness prioritization when assignment time is running out (timer prominence, reduced distractions)
+  - Implement emergency contact options for technical issues during assignment completion
+  - Create assignment mode visual indicators clearly showing this is an assignment with time constraints
+  - Add assignment progress indicators showing completion status and remaining requirements
+  - Implement assignment mode exit prevention with confirmation dialogs for accidental navigation
+  - Create assignment mode help system with contextual assistance without breaking focus
+  - Write tests for assignment mode interface behavior and distraction elimination effectiveness
+  - _Requirements: 9.1, 9.2, 9.3, 9.4, 9.5, 9.6, 3.8, streamlined assignment experience_
+
+- [ ] 23. Deadline Information Display and Time Limit Handling
+  - Implement deadline information display for assignments without time limits
+  - Create dual display system showing both countdown timers and deadline dates appropriately
+  - Add deadline vs time limit differentiation in assignment creation and display
+  - Implement deadline approaching visual indicators with progressive urgency styling
+  - Create deadline passed handling with clear messaging and transition to practice mode
+  - Add deadline extension functionality with immediate reflection across all interfaces
+  - Implement deadline validation ensuring future dates and logical time constraints
+  - Create deadline reminder system with customizable notification timing
+  - Add deadline analytics showing completion patterns relative to deadlines
+  - Implement deadline conflict detection for students with multiple assignments
+  - Create deadline calendar view for tutors managing multiple assignments
+  - Write tests for all deadline scenarios, edge cases, and time zone handling
+  - _Requirements: 4.8, 5.1, deadline management and display_
+
+- [ ] 24. Complete Topic Assignment Mode Implementation
+  - Implement complete topic assignment mode presenting all sources in single quiz session
+  - Create source categorization bypass for complete topic assignments
+  - Add all-source question aggregation and presentation without source separation
+  - Implement complete topic scoring across all sources with proper weighting
+  - Create complete topic progress tracking showing completion across all sources
+  - Add complete topic time management ensuring students can complete entire topic within timeframe
+  - Implement complete topic assignment creation interface with appropriate warnings and guidance
+  - Create complete topic assignment analytics showing completion patterns across all sources
+  - Add complete topic assignment validation ensuring sufficient time allocation
+  - Implement complete topic assignment reporting with detailed source-by-source breakdown
+  - Create complete topic assignment student interface with clear progress indicators
+  - Write tests for complete topic assignment functionality and edge cases
+  - _Requirements: 3.3, 3.9, 5.4, 5.6, complete topic assignment mode_
+
+- [ ] 25. Source Availability Monitoring and Fallback System
+  - Implement source availability monitoring system checking source accessibility
+  - Create tutor notification system for unavailable sources with fallback options
+  - Add automatic source fallback promotion when high-priority sources become unavailable
+  - Implement source availability validation during assignment creation
+  - Create source availability dashboard for course administrators
+  - Add source availability history tracking and analytics
+  - Implement source availability testing and health checks
+  - Create source availability alerts and escalation procedures
+  - Add source availability recovery procedures and automatic restoration
+  - Implement source availability impact analysis on assignments and student progress
+  - Create source availability documentation and troubleshooting guides
+  - Write tests for all source availability scenarios and fallback procedures
+  - _Requirements: 5.9, 8.6, source availability and fallback handling_
+
+- [ ] 26. Assignment Requirements Change Handling and Recalculation
+  - Implement assignment requirements change detection and validation
+  - Create automatic completion status recalculation when assignment requirements change
+  - Add assignment modification impact analysis showing affected students and progress
+  - Implement assignment change notification system for affected students
+  - Create assignment change history tracking and audit logging
+  - Add assignment change rollback functionality for emergency corrections
+  - Implement assignment change validation preventing invalid or harmful modifications
+  - Create assignment change approval workflow for sensitive modifications
+  - Add assignment change impact reporting showing before/after completion statistics
+  - Implement assignment change testing and validation before applying to active assignments
+  - Create assignment change documentation and change management procedures
+  - Write tests for all assignment change scenarios and recalculation accuracy
+  - _Requirements: 7.5, 5.8, assignment modification and change management_
+
+- [ ] 27. Comprehensive Testing and Quality Assurance
+  - Write performance tests ensuring 200ms load times and instant filtering across all scenarios
+  - Create security tests for assignment access control, source restrictions, and permission validation
+  - Implement integration tests for complete assignment workflows from creation to completion
+  - Add stress tests for concurrent users and large course handling (100+ topics, 1000+ students)
+  - Create automated tests for timer accuracy, auto-submit functionality, and persistence
+  - Write accessibility tests ensuring screen reader compatibility and keyboard navigation
+  - Add cross-browser compatibility tests for all major browsers and mobile devices
+  - Create data integrity tests for all database operations and migration scenarios
+  - Implement error handling tests for all failure scenarios and recovery procedures
+  - Add usability tests ensuring intuitive interface and error-free user experience
+  - Create load tests simulating real-world usage patterns and peak traffic scenarios
+  - Write comprehensive test coverage reports ensuring minimum 95% code coverage
+  - Test all notification delivery, analytics accuracy, and reporting functionality
+  - Validate all assignment modes, categorization scenarios, and edge cases
+  - _Requirements: All requirements validation and quality assurance_

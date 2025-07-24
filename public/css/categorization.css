@@ -1,0 +1,306 @@
+.case-filters {
+    display: flex;
+    gap: 0.75rem;
+    justify-content: center;
+    flex-wrap: wrap;
+    margin-bottom: 2rem;
+}
+
+.case-filter {
+    padding: 0.4rem 1.2rem;
+    border-radius: 50px;
+    font-size: 0.85rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    border: 1px solid #e9ecef;
+    background: white;
+    color: #6c757d;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.case-filter:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 3px 6px rgba(0, 0, 0, 0.08);
+    border-color: #dee2e6;
+}
+
+.case-filter.active {
+    background: #0d6efd;
+    color: white;
+    border-color: #0d6efd;
+}
+
+/* MEDICAL COURSE PILLS - Original styling with higher specificity */
+.case-filter[data-filter="cases"] i,
+.case-filter[data-filter="cases"] span:not(.count),
+.case-filter[data-filter="cases"] .count {
+    color: #ff8f00 !important; /* Orange for Cases */
+}
+
+.case-filter[data-filter="cases"].active {
+    background-color: #0d6efd !important;
+    border-color: #0d6efd !important;
+    color: white !important;
+}
+
+.case-filter[data-filter="practical"] i,
+.case-filter[data-filter="practical"] span:not(.count),
+.case-filter[data-filter="practical"] .count {
+    color: #7b1fa2 !important; /* Purple for Practical */
+}
+
+.case-filter[data-filter="practical"].active {
+    background-color: #0d6efd !important;
+    border-color: #0d6efd !important;
+    color: white !important;
+}
+
+.case-filter[data-filter="quiz"] i,
+.case-filter[data-filter="quiz"] span:not(.count),
+.case-filter[data-filter="quiz"] .count {
+    color: #2e7d32 !important; /* Green for Quiz */
+}
+
+.case-filter[data-filter="quiz"].active {
+    background-color: #0d6efd !important;
+    border-color: #0d6efd !important;
+    color: white !important;
+}
+
+/* CUSTOM COURSE PILLS - EXACT SAME STYLING AS MEDICAL */
+.case-filter[data-filter="awaly"] i,
+.case-filter[data-filter="awaly"] span:not(.count),
+.case-filter[data-filter="awaly"] .count {
+    color: #ff8f00 !important; /* Orange - same as Cases */
+}
+
+.case-filter[data-filter="awaly"].active {
+    background-color: #0d6efd !important;
+    border-color: #0d6efd !important;
+    color: white !important;
+}
+
+.case-filter[data-filter="agamlo"] i,
+.case-filter[data-filter="agamlo"] span:not(.count),
+.case-filter[data-filter="agamlo"] .count {
+    color: #7b1fa2 !important; /* Purple - same as Practical */
+}
+
+.case-filter[data-filter="agamlo"].active {
+    background-color: #0d6efd !important;
+    border-color: #0d6efd !important;
+    color: white !important;
+}
+
+.case-filter[data-filter="easy"] i,
+.case-filter[data-filter="easy"] span:not(.count),
+.case-filter[data-filter="easy"] .count {
+    color: #2e7d32 !important; /* Green - same as Quiz */
+}
+
+.case-filter[data-filter="easy"].active {
+    background-color: #0d6efd !important;
+    border-color: #0d6efd !important;
+    color: white !important;
+}
+
+/* Additional custom categories - rotating through the same 3 colors */
+.case-filter[data-filter="homework"] i,
+.case-filter[data-filter="homework"] span:not(.count),
+.case-filter[data-filter="homework"] .count {
+    color: #ff8f00;
+    /* Orange */
+}
+
+.case-filter[data-filter="homework"].active {
+    background-color: #0d6efd;
+    border-color: #0d6efd;
+    color: white;
+}
+
+.case-filter[data-filter="lab"] i,
+.case-filter[data-filter="lab"] span:not(.count),
+.case-filter[data-filter="lab"] .count {
+    color: #7b1fa2;
+    /* Purple */
+}
+
+.case-filter[data-filter="lab"].active {
+    background-color: #0d6efd;
+    border-color: #0d6efd;
+    color: white;
+}
+
+.case-filter[data-filter="reading"] i,
+.case-filter[data-filter="reading"] span:not(.count),
+.case-filter[data-filter="reading"] .count {
+    color: #2e7d32;
+    /* Green */
+}
+
+.case-filter[data-filter="reading"].active {
+    background-color: #0d6efd;
+    border-color: #0d6efd;
+    color: white;
+}
+
+/* Legacy nth-child selectors for backward compatibility */
+.case-filter:nth-child(2) i,
+/* Cases */
+.case-filter:nth-child(2) span:not(.count),
+.case-filter:nth-child(2) .count {
+    color: #ff8f00;
+}
+
+.case-filter:nth-child(2).active {
+    background-color: #0d6efd;
+    border-color: #0d6efd;
+    color: white;
+}
+
+.case-filter:nth-child(3) i,
+/* Practical */
+.case-filter:nth-child(3) span:not(.count),
+.case-filter:nth-child(3) .count {
+    color: #7b1fa2;
+}
+
+.case-filter:nth-child(3).active {
+    background-color: #0d6efd;
+    border-color: #0d6efd;
+    color: white;
+}
+
+.case-filter:nth-child(4) i,
+/* Quiz */
+.case-filter:nth-child(4) span:not(.count),
+.case-filter:nth-child(4) .count {
+    color: #2e7d32;
+}
+
+.case-filter:nth-child(4).active {
+    background-color: #0d6efd;
+    border-color: #0d6efd;
+    color: white;
+}
+
+.case-filter i {
+    font-size: 0.8rem;
+}
+
+.case-filter.active i,
+.case-filter.active span {
+    color: white !important;
+}
+
+.case-filter .count {
+    background: rgba(0, 0, 0, 0.05);
+    padding: 0.15rem 0.5rem;
+    border-radius: 50px;
+    font-size: 0.75rem;
+    min-width: 1.2rem;
+    text-align: center;
+}
+
+.case-filter.active .count {
+    background: rgba(255, 255, 255, 0.2);
+    color: white !important;
+}
+
+/* Fixed position for Random and Review Mistakes pills */
+.random-link,
+.mistakes-link {
+    order: 999;
+    /* Always at the end */
+    position: relative;
+}
+
+/* Ensure the Random pill is always in the same position */
+.random-link {
+    color: #fd7e14;
+    text-decoration: none;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.4rem 1.2rem;
+    border-radius: 50px;
+    background: #fff8e1;
+    border: 1px solid #ffd54f;
+    transition: all 0.3s ease;
+}
+
+.random-link:hover {
+    background: #ffe082;
+    color: #f57c00;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 4px rgba(255, 152, 0, 0.1);
+}
+
+/* Ensure the Review Mistakes pill is always in the same position */
+.mistakes-link {
+    color: #dc3545;
+    text-decoration: none;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.4rem 1.2rem;
+    border-radius: 50px;
+    background: #ffebee;
+    border: 1px solid #ef9a9a;
+    transition: all 0.3s ease;
+}
+
+.mistakes-link:hover {
+    background: #ffcdd2;
+    color: #c62828;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 4px rgba(198, 40, 40, 0.1);
+}
+
+/* Assignment filter styling */
+.assignment-filter {
+    background: #fff5f5 !important;
+    border-color: #fed7d7 !important;
+    color: #c53030 !important;
+    animation: assignmentPulse 3s infinite;
+}
+
+.assignment-filter:hover {
+    background: #fed7d7 !important;
+    border-color: #fc8181 !important;
+    color: #9b2c2c !important;
+}
+
+.assignment-filter.active {
+    background: #c53030 !important;
+    border-color: #c53030 !important;
+    color: white !important;
+}
+
+.assignment-filter .assignment-count {
+    background: rgba(197, 48, 48, 0.1) !important;
+    color: #c53030 !important;
+}
+
+.assignment-filter.active .assignment-count {
+    background: rgba(255, 255, 255, 0.2) !important;
+    color: white !important;
+}
+
+@keyframes assignmentPulse {
+
+    0%,
+    100% {
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05), 0 0 0 0 rgba(197, 48, 48, 0.3);
+    }
+
+    50% {
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05), 0 0 0 4px rgba(197, 48, 48, 0.1);
+    }
+}

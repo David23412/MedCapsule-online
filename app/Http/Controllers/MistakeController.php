@@ -52,9 +52,15 @@ class MistakeController extends Controller
         
         // Apply course filter if specified
         if ($courseFilter) {
-            $mistakesQuery->whereHas('question.topic.course', function($query) use ($courseFilter) {
-                $query->where('id', $courseFilter);
-            });
+            if ($courseFilter === 'skipped') {
+                // Filter for skipped questions only
+                $mistakesQuery->where('skipped', true);
+            } else {
+                // Filter by course ID
+                $mistakesQuery->whereHas('question.topic.course', function($query) use ($courseFilter) {
+                    $query->where('id', $courseFilter);
+                });
+            }
         }
 
         $mistakes = $mistakesQuery->orderBy('last_attempt_date', 'desc')->get();
@@ -91,7 +97,8 @@ class MistakeController extends Controller
             ] : null
         ]);
 
-        return view('mistakes', compact('mistakes', 'courses', 'courseFilter'));
+        return view('mistakes', compact('mistakes', 'courses'))
+            ->with('selectedCourse', $courseFilter);
     }
 
     /**

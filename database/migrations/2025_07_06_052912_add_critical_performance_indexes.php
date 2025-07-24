@@ -8,6 +8,32 @@ use Illuminate\Support\Facades\DB;
 return new class extends Migration
 {
     /**
+     * Check if an index exists on a table
+     */
+    private function indexExists(string $table, string $indexName): bool
+    {
+        try {
+            $indexes = collect(DB::select("SHOW INDEX FROM `{$table}`"));
+            return $indexes->contains('Key_name', $indexName);
+        } catch (\Exception $e) {
+            return false;
+        }
+    }
+
+    /**
+     * Safely drop an index if it exists
+     */
+    private function safeDropIndex(string $table, string $indexName): void
+    {
+        try {
+            if (Schema::hasTable($table) && $this->indexExists($table, $indexName)) {
+                DB::statement("ALTER TABLE `{$table}` DROP INDEX `{$indexName}`");
+            }
+        } catch (\Exception $e) {
+            // Silently continue if index can't be dropped
+        }
+    }
+    /**
      * Run the migrations.
      */
     public function up(): void
@@ -136,58 +162,42 @@ return new class extends Migration
      */
     public function down(): void
     {
-        // Drop all indexes in reverse order
-        Schema::table('notifications', function (Blueprint $table) {
-            $table->dropIndex('notifications_notifiable_read_index');
-            $table->dropIndex('notifications_read_at_index');
-            $table->dropIndex('notifications_notifiable_index');
-        });
+        // Drop all indexes safely in reverse order
+        $this->safeDropIndex('notifications', 'notifications_notifiable_read_index');
+        $this->safeDropIndex('notifications', 'notifications_read_at_index');
+        $this->safeDropIndex('notifications', 'notifications_notifiable_index');
 
-        Schema::table('mistakes', function (Blueprint $table) {
-            $table->dropIndex('mistakes_created_at_index');
-            $table->dropIndex('mistakes_user_question_index');
-            $table->dropIndex('mistakes_question_index');
-            $table->dropIndex('mistakes_user_index');
-        });
+        $this->safeDropIndex('mistakes', 'mistakes_created_at_index');
+        $this->safeDropIndex('mistakes', 'mistakes_user_question_index');
+        $this->safeDropIndex('mistakes', 'mistakes_question_index');
+        $this->safeDropIndex('mistakes', 'mistakes_user_index');
 
-        Schema::table('payments', function (Blueprint $table) {
-            $table->dropIndex('payments_created_at_index');
-            $table->dropIndex('payments_user_status_index');
-            $table->dropIndex('payments_status_index');
-            $table->dropIndex('payments_user_index');
-        });
+        $this->safeDropIndex('payments', 'payments_created_at_index');
+        $this->safeDropIndex('payments', 'payments_user_status_index');
+        $this->safeDropIndex('payments', 'payments_status_index');
+        $this->safeDropIndex('payments', 'payments_user_index');
 
-        Schema::table('user_progress', function (Blueprint $table) {
-            $table->dropIndex('user_progress_user_topic_index');
-            $table->dropIndex('user_progress_topic_index');
-            $table->dropIndex('user_progress_user_index');
-        });
+        if (Schema::hasTable('user_progress')) {
+            $this->safeDropIndex('user_progress', 'user_progress_user_topic_index');
+            $this->safeDropIndex('user_progress', 'user_progress_topic_index');
+            $this->safeDropIndex('user_progress', 'user_progress_user_index');
+        }
 
-        Schema::table('quiz_attempts', function (Blueprint $table) {
-            $table->dropIndex('quiz_attempts_created_at_index');
-            $table->dropIndex('quiz_attempts_user_topic_index');
-            $table->dropIndex('quiz_attempts_topic_index');
-            $table->dropIndex('quiz_attempts_user_index');
-        });
+        $this->safeDropIndex('quiz_attempts', 'quiz_attempts_created_at_index');
+        $this->safeDropIndex('quiz_attempts', 'quiz_attempts_user_topic_index');
+        $this->safeDropIndex('quiz_attempts', 'quiz_attempts_topic_index');
+        $this->safeDropIndex('quiz_attempts', 'quiz_attempts_user_index');
 
-        Schema::table('courses', function (Blueprint $table) {
-            $table->dropIndex('courses_created_at_index');
-            $table->dropIndex('courses_active_index');
-        });
+        $this->safeDropIndex('courses', 'courses_created_at_index');
+        $this->safeDropIndex('courses', 'courses_active_index');
 
-        Schema::table('topics', function (Blueprint $table) {
-            $table->dropIndex('topics_course_order_index');
-            $table->dropIndex('topics_course_id_index');
-        });
+        $this->safeDropIndex('topics', 'topics_course_order_index');
+        $this->safeDropIndex('topics', 'topics_course_id_index');
 
-        Schema::table('questions', function (Blueprint $table) {
-            $table->dropIndex('questions_created_at_index');
-            $table->dropIndex('questions_topic_id_index');
-        });
+        $this->safeDropIndex('questions', 'questions_created_at_index');
+        $this->safeDropIndex('questions', 'questions_topic_id_index');
 
-        Schema::table('users', function (Blueprint $table) {
-            $table->dropIndex('users_admin_verified_index');
-            $table->dropIndex('users_created_at_index');
-        });
+        $this->safeDropIndex('users', 'users_admin_verified_index');
+        $this->safeDropIndex('users', 'users_created_at_index');
     }
 };

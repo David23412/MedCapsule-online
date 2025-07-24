@@ -136,17 +136,45 @@
                         </div>
                         <div class="col-md-6">
                             <div class="mb-3">
-                                <label for="duration_minutes" class="form-label">Duration (minutes)</label>
-                                <select class="form-select" id="duration_minutes" name="duration_minutes">
+                                <label for="duration_minutes" class="form-label">Duration (minutes) *</label>
+                                <select class="form-select" id="duration_minutes" name="duration_minutes" required>
+                                    <option value="0.17">10 seconds (testing)</option>
+                                    <option value="15">15 minutes</option>
                                     <option value="30">30 minutes</option>
+                                    <option value="45">45 minutes</option>
                                     <option value="60" selected>1 hour</option>
                                     <option value="90">1.5 hours</option>
                                     <option value="120">2 hours</option>
                                     <option value="180">3 hours</option>
                                 </select>
+                                <div class="form-text">Countdown timer duration for the assignment</div>
                             </div>
                         </div>
                     </div>
+
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="assignment_mode" class="form-label">Assignment Mode *</label>
+                                <select class="form-select" id="assignment_mode" name="assignment_mode" required>
+                                    <option value="complete_topic" {{ old('assignment_mode', 'complete_topic') == 'complete_topic' ? 'selected' : '' }}>Complete Topic</option>
+                                    <option value="source_specific" {{ old('assignment_mode') == 'source_specific' ? 'selected' : '' }}>Source Specific</option>
+                                </select>
+                                <div class="form-text">Choose whether students complete the entire topic or a specific source</div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="assigned_source" class="form-label">Source <span id="source-required" style="display: none;">*</span></label>
+                                <select class="form-select" id="assigned_source" name="assigned_source" disabled>
+                                    <option value="">Select a topic first</option>
+                                </select>
+                                <div class="form-text">Required when assignment mode is "Source Specific"</div>
+                            </div>
+                        </div>
+                    </div>
+
+
 
                     <div class="row">
                         <div class="col-md-6">
@@ -155,6 +183,7 @@
                                 <input type="datetime-local" class="form-control" id="deadline" name="deadline" 
                                        required min="{{ now()->format('Y-m-d\TH:i') }}">
                                 <div class="quick-deadline-buttons mt-2">
+                                    <button type="button" class="btn btn-sm btn-outline-warning me-1" onclick="setQuickDeadlineSeconds(10)">10 Sec (Test)</button>
                                     <button type="button" class="btn btn-sm btn-outline-secondary me-1" onclick="setQuickDeadline(1)">Tomorrow</button>
                                     <button type="button" class="btn btn-sm btn-outline-secondary me-1" onclick="setQuickDeadline(3)">3 Days</button>
                                     <button type="button" class="btn btn-sm btn-outline-secondary me-1" onclick="setQuickDeadline(7)">1 Week</button>
@@ -269,10 +298,19 @@
             document.getElementById('deadline').value = formatted;
         }
 
+        function setQuickDeadlineSeconds(seconds) {
+            const now = new Date();
+            now.setSeconds(now.getSeconds() + seconds);
+            
+            const formatted = now.toISOString().slice(0, 16);
+            document.getElementById('deadline').value = formatted;
+        }
+
         // Load topics when course is selected
         document.getElementById('course_id').addEventListener('change', function() {
             const courseId = this.value;
             const topicSelect = document.getElementById('topic_id');
+            const sourceSelect = document.getElementById('assigned_source');
             
             if (courseId) {
                 topicSelect.disabled = true;
@@ -294,8 +332,70 @@
             } else {
                 topicSelect.innerHTML = '<option value="">Select a course first</option>';
                 topicSelect.disabled = true;
+                sourceSelect.innerHTML = '<option value="">Select a topic first</option>';
+                sourceSelect.disabled = true;
             }
         });
+
+        // Load sources when topic is selected
+        document.getElementById('topic_id').addEventListener('change', function() {
+            const topicId = this.value;
+            const sourceSelect = document.getElementById('assigned_source');
+            
+            if (topicId) {
+                sourceSelect.disabled = true;
+                sourceSelect.innerHTML = '<option value="">Loading sources...</option>';
+                
+                console.log('Loading sources for topic ID:', topicId);
+                fetch(`/assignments/topics/${topicId}/sources`, {
+                        headers: {
+                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
+                            'Accept': 'application/json',
+                            'Content-Type': 'application/json'
+                        }
+                    })
+                    .then(response => response.json())
+                    .then(sources => {
+                        sourceSelect.innerHTML = '<option value="">Select a source</option>';
+                        sources.forEach(source => {
+                            sourceSelect.innerHTML += `<option value="${source}">${source}</option>`;
+                        });
+                        sourceSelect.disabled = false;
+                        updateSourceRequirement();
+                    })
+                    .catch(error => {
+                        console.error('Error loading sources:', error);
+                        sourceSelect.innerHTML = '<option value="">Error loading sources - Check console</option>';
+                        sourceSelect.disabled = false;
+                        alert('Error loading sources. Please check the browser console for details.');
+                    });
+            } else {
+                sourceSelect.innerHTML = '<option value="">Select a topic first</option>';
+                sourceSelect.disabled = true;
+            }
+        });
+
+        // Handle assignment mode changes
+        document.getElementById('assignment_mode').addEventListener('change', updateSourceRequirement);
+
+        function updateSourceRequirement() {
+            const assignmentMode = document.getElementById('assignment_mode').value;
+            const sourceSelect = document.getElementById('assigned_source');
+            const sourceRequired = document.getElementById('source-required');
+            
+            if (assignmentMode === 'source_specific') {
+                sourceSelect.required = true;
+                sourceRequired.style.display = 'inline';
+                if (sourceSelect.disabled && document.getElementById('topic_id').value) {
+                    // Re-enable if topic is selected
+                    sourceSelect.disabled = false;
+                }
+            } else {
+                sourceSelect.required = false;
+                sourceRequired.style.display = 'none';
+                sourceSelect.value = '';
+            }
+        }
 
         // Form validation
         document.getElementById('assignmentForm').addEventListener('submit', function(e) {
@@ -315,10 +415,21 @@
                 alert('Deadline must be in the future.');
                 return false;
             }
+
+            // Check source requirement for source-specific assignments
+            const assignmentMode = document.getElementById('assignment_mode').value;
+            const assignedSource = document.getElementById('assigned_source').value;
+            
+            if (assignmentMode === 'source_specific' && !assignedSource) {
+                e.preventDefault();
+                alert('Please select a source for source-specific assignments.');
+                return false;
+            }
         });
 
         // Initialize
         updateSelectedCount();
+        updateSourceRequirement();
     </script>
 </body>
 </html>

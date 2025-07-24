@@ -48,7 +48,7 @@ class QuizAttempt extends Model
     public static $rules = [
         'user_id' => 'required|exists:users,id',
         'topic_id' => 'nullable|exists:topics,id',
-        'quiz_type' => 'required|in:normal,random,tutor,mistake_review',
+        'quiz_type' => 'required|in:normal,random,tutor,mistake_review,assignment',
         'study_mode' => 'nullable|in:quiz,tutor,random,mistake_review',
         'source' => 'nullable|string',
         'score' => 'required|integer|min:0',

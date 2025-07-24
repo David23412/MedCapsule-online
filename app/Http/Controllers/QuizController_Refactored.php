@@ -63,7 +63,7 @@ class QuizController extends Controller
             $quizResult = $this->quizService->generateQuizQuestions($topic, $sources, $user);
             
             if (!$quizResult['success']) {
-                return redirect()->route('topics.forCourse', ['course' => $course->id])
+                return redirect()->route('topics.forCourse', $course->id)
                     ->with('error', $quizResult['message']);
             }
 
@@ -85,7 +85,7 @@ class QuizController extends Controller
                 'course_id' => $course->id ?? null,
                 'user_id' => auth()->id()
             ]);
-            return redirect()->route('topics.forCourse', ['course' => $course->id])
+            return redirect()->route('topics.forCourse', $course->id)
                 ->with('error', 'An error occurred while loading the quiz. Please try again.');
         }
     }
@@ -199,7 +199,7 @@ class QuizController extends Controller
             $tutorResult = $this->quizService->generateTutorQuiz($topic, $sources, $user);
             
             if (!$tutorResult['success']) {
-                return redirect()->route('topics.forCourse', ['course' => $course->id])
+                return redirect()->route('topics.forCourse', $course->id)
                     ->with('error', $tutorResult['message']);
             }
 
@@ -220,7 +220,7 @@ class QuizController extends Controller
                 'user_id' => auth()->id()
             ]);
             
-            return redirect()->route('topics.forCourse', ['course' => $course->id])
+            return redirect()->route('topics.forCourse', $course->id)
                 ->with('error', 'An error occurred while loading the tutor quiz.');
         }
     }

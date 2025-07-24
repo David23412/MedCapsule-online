@@ -76,6 +76,21 @@ class Kernel extends ConsoleKernel
             ->at('01:00')
             ->runInBackground()
             ->withoutOverlapping();
+            
+        // ASSIGNMENT LOCKING SYSTEM - AGGRESSIVE ENFORCEMENT
+        // Lock overdue assignments every hour (24-hour grace period)
+        $schedule->command('assignments:lock-overdue --grace-hours=24')
+                ->hourly()
+                ->withoutOverlapping()
+                ->runInBackground()
+                ->appendOutputTo(storage_path('logs/assignment-locking.log'));
+        
+        // Expire time-limited assignments every 15 minutes
+        $schedule->command('assignments:expire-time-limited')
+                ->everyFifteenMinutes()
+                ->withoutOverlapping()
+                ->runInBackground()
+                ->appendOutputTo(storage_path('logs/assignment-expiration.log'));
     }
 
     /**
@@ -106,5 +121,7 @@ class Kernel extends ConsoleKernel
         Commands\SummarizePaymentLogs::class,
         Commands\CleanupNotifications::class,
         Commands\TestNotificationSystem::class,
+        Commands\LockOverdueAssignments::class,
+        Commands\ExpireTimeLimitedAssignments::class,
     ];
 } 

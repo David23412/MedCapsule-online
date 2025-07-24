@@ -25,7 +25,7 @@ class LearnController extends Controller
     /**
      * Show the mistakes that need to be reviewed.
      */
-    public function learnMistakes()
+    public function learnMistakes(Request $request)
     {
         $startTime = microtime(true);
         $requestId = uniqid('learn_mistakes_');
@@ -33,16 +33,26 @@ class LearnController extends Controller
         try {
             $userId = auth()->id();
             $mode = session('learn_mode', 'quiz');
+            $courseFilter = $request->input('course');
             
             Log::info('Starting learnMistakes for user', [
                 'request_id' => $requestId,
                 'user_id' => $userId, 
                 'mode' => $mode,
+                'course_filter' => $courseFilter,
                 'ip_address' => request()->ip()
             ]);
 
             // Get all mistakes for the user (including mastered ones)
             $mistakes = Mistake::where('user_id', $userId)
+                ->select([
+                    'mistakes.id',
+                    'mistakes.question_id',
+                    'mistakes.submitted_answer',
+                    'mistakes.last_attempt_date',
+                    'mistakes.correct_streak',
+                    'mistakes.skipped'
+                ])
                 ->with(['question' => function($query) {  // Eager load question with specific fields
                     $query->select(
                         'id',
@@ -59,6 +69,15 @@ class LearnController extends Controller
                 }])
                 ->with('question.topic:id,name,course_id')  // Eager load topic with course_id
                 ->with('question.topic.course:id,name')     // Eager load course
+                ->when($courseFilter, function($query) use ($courseFilter) {
+                    if ($courseFilter === 'skipped') {
+                        return $query->where('mistakes.skipped', true);
+                    } else {
+                        return $query->whereHas('question.topic.course', function($q) use ($courseFilter) {
+                            $q->where('id', $courseFilter);
+                        });
+                    }
+                })
                 ->orderBy('correct_streak', 'desc')  // Show ones closer to mastery first
                 ->get();
 
@@ -112,7 +131,7 @@ class LearnController extends Controller
                 'courses_count' => $courses->count()
             ]);
 
-            return view('mistakes.learn', compact('mistakes', 'courses'));
+            return view('mistakes.learn', compact('mistakes', 'courses', 'courseFilter'));
         } catch (\Exception $e) {
             $executionTime = (microtime(true) - $startTime) * 1000;
             Log::error('❌ Error in learnMistakes', [

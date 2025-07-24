@@ -335,33 +335,143 @@
             font-size: 1.2em;
         }
 
-        .completion-message {
+        /* Quiz-style popup styles */
+        .popup-overlay {
             position: fixed;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            background: white;
-            padding: 40px;
-            border-radius: 20px;
-            box-shadow: 0 12px 48px rgba(0, 0, 0, 0.2);
-            text-align: center;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.5);
             display: none;
-            z-index: 10000;
-            max-width: 600px;
-            width: 90%;
-            border: 3px solid #4CAF50;
-            background: linear-gradient(to bottom, #ffffff, #f8f9fa);
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            backdrop-filter: blur(5px);
         }
 
-        .completion-message h1 {
-            font-size: 3em;
+        /* Ensure confetti appears above popup */
+        canvas {
+            z-index: 10001 !important;
+            pointer-events: none;
+            position: fixed !important;
+            top: 0 !important;
+            left: 0 !important;
+            width: 100vw !important;
+            height: 100vh !important;
+        }
+
+        .popup-overlay.show {
+            display: flex;
+        }
+
+        .popup {
+            background: white;
+            padding: 2.5rem;
+            border-radius: 20px;
+            text-align: center;
+            max-width: 600px;
+            width: 90%;
+            position: relative;
+            transform: translateY(20px);
+            opacity: 0;
+            transition: all 0.3s ease;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            z-index: 1001;
+        }
+
+        .popup.show {
+            transform: translateY(0);
+            opacity: 1;
+        }
+
+        .popup-title {
+            font-size: 2.5rem;
+            color: #2c3e50;
+            margin-bottom: 1.5rem;
             font-weight: 700;
-            margin-bottom: 20px;
-            color: #4CAF50;
+        }
+
+        .time-container {
+            background: linear-gradient(135deg, #f8f9fa, #e9ecef);
+            padding: 2rem;
+            border-radius: 16px;
+            margin: 1.5rem 0;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .popup-time {
+            font-size: 4rem;
+            font-weight: 800;
+            color: #007bff;
+            margin: 0;
+            text-shadow: 2px 2px 4px rgba(0, 123, 255, 0.2);
+        }
+
+        .time-details {
+            font-size: 1.2rem;
+            color: #6c757d;
+            margin-top: 0.5rem;
+        }
+
+        .popup-message {
+            color: #495057;
+            font-size: 1.2rem;
+            margin: 1.5rem 0;
+            line-height: 1.6;
+        }
+
+        .popup-buttons {
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+            flex-wrap: nowrap;
+            margin-top: 2rem;
+        }
+
+        .popup-btn {
+            padding: 0.6rem 1.5rem;
+            border: none;
+            border-radius: 8px;
+            font-weight: 500;
+            font-size: 0.95rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
             display: flex;
             align-items: center;
-            justify-content: center;
-            gap: 15px;
+            gap: 0.5rem;
+            text-decoration: none;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08);
+        }
+
+        .review-btn {
+            background: #f8f9fa;
+            color: #495057;
+        }
+
+        .review-btn:hover {
+            background: #e9ecef;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.1);
+            color: #495057;
+            text-decoration: none;
+        }
+
+        .retry-btn {
+            background: #007bff;
+            color: white;
+        }
+
+        .retry-btn:hover {
+            background: #0056b3;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 12px rgba(0, 123, 255, 0.2);
+        }
+
+        .grade-icon {
+            font-size: 4rem;
+            margin-bottom: 1rem;
         }
 
         .completion-stats {
@@ -621,12 +731,7 @@
             outline: 0;
         }
         
-        .answer-character-count {
-            text-align: right;
-            font-size: 0.8rem;
-            color: #6c757d;
-            margin-bottom: 0.5rem;
-        }
+
         
         .answer-hint {
             margin: 8px 0;
@@ -773,17 +878,30 @@
                 
                 <!-- Course filter dropdown -->
                 <div class="course-filter mb-4">
-                    <select id="course-filter" class="form-select">
-                        <option value="all">All Courses ({{ $mistakes->count() }})</option>
-                        @foreach($courses ?? [] as $course)
+                    <form action="{{ route('review.learn') }}" method="GET" id="filter-form">
+                        <select id="course-filter" name="course" class="form-select">
                             @php
-                                $courseCount = $mistakes->filter(function($mistake) use ($course) {
-                                    return $mistake->question->topic->course_id == $course->id;
-                                })->count();
+                                // Get total count from all mistakes (unfiltered)
+                                $totalMistakesCount = App\Models\Mistake::where('user_id', auth()->id())->count();
+                                $skippedCount = App\Models\Mistake::where('user_id', auth()->id())->where('skipped', true)->count();
                             @endphp
-                            <option value="{{ $course->id }}">{{ $course->name }} ({{ $courseCount }})</option>
-                        @endforeach
-                    </select>
+                            <option value="">All Courses ({{ $totalMistakesCount }})</option>
+                            <option value="skipped" {{ ($courseFilter ?? '') == 'skipped' ? 'selected' : '' }}>
+                                Skipped Questions ({{ $skippedCount }})
+                            </option>
+                            @foreach($courses ?? [] as $course)
+                                @php
+                                    $courseCount = App\Models\Mistake::where('user_id', auth()->id())
+                                        ->whereHas('question.topic.course', function($q) use ($course) {
+                                            $q->where('id', $course->id);
+                                        })->count();
+                                @endphp
+                                <option value="{{ $course->id }}" {{ ($courseFilter ?? '') == $course->id ? 'selected' : '' }}>
+                                    {{ $course->name }} ({{ $courseCount }})
+                                </option>
+                            @endforeach
+                        </select>
+                    </form>
                 </div>
                 
                 <div class="difficulty-options">
@@ -820,14 +938,7 @@
                     <div class="written-answer-container">
                         <div class="form-group">
                             <textarea class="form-control written-answer" rows="4" placeholder="Type your answer here..."></textarea>
-                            <div class="answer-hint">
-                                <small class="text-muted">
-                                    <i class="fas fa-lightbulb"></i> Provide a complete answer with enough detail to demonstrate your understanding.
-                                </small>
-                            </div>
-                            <div class="answer-character-count">
-                                <span class="char-count">0</span> characters
-                            </div>
+
                         </div>
                         <button class="btn btn-primary submit-written-answer" data-question-id="{{ $mistake->question_id }}">
                             Submit Answer
@@ -873,41 +984,37 @@
         <p>You're making great progress!</p>
     </div>
 
-    <div class="completion-message">
-        <h1 style="font-size: 3em; font-weight: 700; margin-bottom: 20px; color: #4CAF50; display: flex; align-items: center; justify-content: center; gap: 15px;">
-            <span style="display: inline-block; transform: rotate(-15deg);">🎉</span>
-            <span style="background: linear-gradient(135deg, #4CAF50, #8BC34A); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;">Congratulations!</span>
-            <span style="display: inline-block; transform: rotate(15deg);">🎉</span>
-        </h1>
-        <p>All mistakes have been mastered! Your dedication to learning is impressive!</p>
-        <div class="completion-stats">
-            <div class="stat-item" style="border-top: 4px solid #4361ee;">
-                <h3 id="totalQuestions" style="color: #4361ee;">0</h3>
-                <p>Questions Mastered</p>
+    <!-- Quiz-style completion popup -->
+    <div class="popup-overlay" id="popup-overlay">
+        <div class="popup" id="popup">
+            <div class="grade-icon" id="grade-icon">🎉</div>
+            <h2 class="popup-title" id="popup-title">Session Complete!</h2>
+            <div class="time-container">
+                <div class="popup-time" id="popup-time">0:00</div>
+                <div class="time-details">Study Time</div>
             </div>
-            <div class="stat-item" style="border-top: 4px solid #3a86ff;">
-                <h3 id="accuracyRate" style="color: #3a86ff;">0%</h3>
-                <p>Accuracy Rate</p>
+            <p class="popup-message" id="popup-message">Great work! You're making excellent progress!</p>
+            <div class="popup-buttons">
+                <a href="{{ route('review.index') }}" class="popup-btn review-btn">
+                    <i class="fas fa-arrow-left"></i>
+                    Back to Review
+                </a>
+                <button class="popup-btn retry-btn" id="continue-learning">
+                    <i class="fas fa-redo"></i>
+                    Continue Learning
+                </button>
             </div>
-            <div class="stat-item" style="border-top: 4px solid #38b000;">
-                <h3 id="timeSpent" style="color: #38b000;">0:00</h3>
-                <p>Time Spent Learning</p>
-            </div>
-        </div>
-        <div class="completion-actions">
-            <a href="{{ route('review.index') }}" class="completion-button">Back to Review</a>
-            <button id="continue-learning" class="completion-button" style="background: #28a745; margin-left: 10px;">Continue Learning</button>
         </div>
     </div>
 
     <!-- Add audio elements for all sounds -->
-    <audio id="correctSound" preload="auto">
+    <audio id="correctSound" preload="auto" volume="0.7">
         <source src="{{ asset('sounds/Single-correct.mp3') }}" type="audio/mpeg">
     </audio>
-    <audio id="wrongSound" preload="auto">
+    <audio id="wrongSound" preload="auto" volume="0.6">
         <source src="{{ asset('sounds/quiz-wrong.mp3') }}" type="audio/mpeg">
     </audio>
-    <audio id="encouragementSound" preload="auto">
+    <audio id="encouragementSound" preload="auto" volume="0.7">
         <source src="{{ asset('sounds/encouragement.mp3') }}" type="audio/mpeg">
     </audio>
 
@@ -924,6 +1031,60 @@
             const wrongSound = document.getElementById('wrongSound');
             const encouragementSound = document.getElementById('encouragementSound');
             const courseFilter = document.getElementById('course-filter');
+
+            // Robust sound system with instant feedback
+            const soundSystem = {
+                playSound: function(audioElement) {
+                    if (!audioElement) return;
+                    
+                    try {
+                        // Stop any current playback
+                        audioElement.pause();
+                        audioElement.currentTime = 0;
+                        
+                        // Play immediately
+                        const playPromise = audioElement.play();
+                        if (playPromise !== undefined) {
+                            playPromise.catch(e => {
+                                // Fallback: try to play again after a tiny delay
+                                setTimeout(() => {
+                                    audioElement.play().catch(() => {
+                                        // Silent fail - don't log to avoid spam
+                                    });
+                                }, 10);
+                            });
+                        }
+                    } catch (e) {
+                        // Silent fail for instant feedback
+                    }
+                },
+                
+                playCorrect: function() {
+                    this.playSound(correctSound);
+                },
+                
+                playWrong: function() {
+                    this.playSound(wrongSound);
+                },
+                
+                playEncouragement: function() {
+                    this.playSound(encouragementSound);
+                }
+            };
+
+            // Preload sounds for instant playback
+            [correctSound, wrongSound, encouragementSound].forEach(sound => {
+                if (sound) {
+                    sound.load();
+                    // Attempt to prime the audio context
+                    sound.play().then(() => {
+                        sound.pause();
+                        sound.currentTime = 0;
+                    }).catch(() => {
+                        // Expected to fail on first load, that's fine
+                    });
+                }
+            });
 
             // Initialize questions data and mode-specific settings
             const MODE_SETTINGS = {
@@ -960,19 +1121,18 @@
                 card.classList.remove('active');
             });
 
-            // Setup character count for written answers
-            document.querySelectorAll('.written-answer').forEach(textarea => {
-                textarea.addEventListener('input', function() {
-                    const charCount = this.closest('.written-answer-container').querySelector('.char-count');
-                    charCount.textContent = this.value.length;
-                });
-            });
+
 
             // Setup continue learning button
             document.getElementById('continue-learning').addEventListener('click', function() {
-                // Hide completion message and overlay
-                document.querySelector('.completion-message').style.display = 'none';
-                difficultyOverlay.style.display = 'none';
+                // Hide popup
+                const popupOverlay = document.getElementById('popup-overlay');
+                const popup = document.getElementById('popup');
+                
+                popup.classList.remove('show');
+                setTimeout(() => {
+                    popupOverlay.classList.remove('show');
+                }, 300);
                 
                 // Reset tracking variables
                 totalAttempts = 0;
@@ -1053,7 +1213,7 @@
                             
                             if (isCorrect) {
                                 // Play correct sound
-                                correctSound.play().catch(e => console.log('Sound play failed:', e));
+                                soundSystem.playCorrect();
                                 
                                 // Show correct feedback
                                 feedbackElement.textContent = 'Correct! Well done.';
@@ -1081,9 +1241,8 @@
                                     }, 1000);
                                 }
                             } else {
-                                // Play wrong sound at lower volume
-                                wrongSound.volume = 0.6;
-                                wrongSound.play().catch(e => console.log('Sound play failed:', e));
+                                // Play wrong sound
+                                soundSystem.playWrong();
                                 
                                 // Show incorrect feedback with the specific message from backend
                                 feedbackElement.textContent = data.message || 'Incorrect. Try again!';
@@ -1228,7 +1387,7 @@
                         
                         if (isCorrect) {
                             // Play correct sound
-                            correctSound.play().catch(e => console.log('Sound play failed:', e));
+                            soundSystem.playCorrect();
 
                             // Increment streak for this question
                             currentQuestion.correctStreak++;
@@ -1249,9 +1408,8 @@
                             // Update stage indicator
                             updateStageIndicator();
                         } else {
-                            // Play wrong sound at lower volume
-                            wrongSound.volume = 0.6;
-                            wrongSound.play().catch(e => console.log('Sound play failed:', e));
+                            // Play wrong sound
+                            soundSystem.playWrong();
                             
                             // Reset streak on wrong answer
                             currentQuestion.correctStreak = 0;
@@ -1373,18 +1531,31 @@
             }
 
             function showCompletion() {
-                const completionMessage = document.querySelector('.completion-message');
-                const totalQuestions = document.getElementById('totalQuestions');
-                const timeSpent = document.getElementById('timeSpent');
+                const popupOverlay = document.getElementById('popup-overlay');
+                const popup = document.getElementById('popup');
+                const popupTitle = document.getElementById('popup-title');
+                const popupScore = document.getElementById('popup-score');
+                const popupMessage = document.getElementById('popup-message');
+                const gradeIcon = document.getElementById('grade-icon');
                 
-                // Update stats
-                totalQuestions.textContent = questionsData.length;
-                
-                // Calculate time spent
+                // Calculate stats
+                const totalQuestions = questionsData.length;
+                const masteredQuestions = questionsData.length - activeQuestions.size;
                 const timeSpentValue = Math.round((Date.now() - startTime) / 1000);
-                const minutes = Math.floor(timeSpentValue / 60);
-                const seconds = timeSpentValue % 60;
-                timeSpent.textContent = `${minutes}:${seconds < 10 ? '0' : ''}${seconds}`;
+                
+                // Calculate and display study time
+                const studyTimeSeconds = Math.floor((Date.now() - startTime) / 1000);
+                const minutes = Math.floor(studyTimeSeconds / 60);
+                const seconds = studyTimeSeconds % 60;
+                const timeString = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+                
+                // Update popup content
+                popupTitle.textContent = 'Session Complete!';
+                document.getElementById('popup-time').textContent = timeString;
+                
+                // Always show celebration message
+                gradeIcon.innerHTML = '🎉';
+                popupMessage.textContent = 'Great work! You\'re making excellent progress!';
                 
                 // Save the study time to the database
                 fetch('{{ secure_url("/learn/save-time") }}', {
@@ -1395,8 +1566,8 @@
                     },
                     body: JSON.stringify({
                         study_time: timeSpentValue,
-                        total_questions: questionsData.length,
-                        completed_questions: questionsData.length - activeQuestions.size
+                        total_questions: totalQuestions,
+                        completed_questions: masteredQuestions
                     })
                 })
                 .then(response => {
@@ -1408,71 +1579,33 @@
                 .then(data => {
                     if (!data.success) {
                         console.error('Failed to save study time:', data.message);
-                        alert('Failed to save your study time. Please try again or contact support if the problem persists.');
                     }
                 })
                 .catch(error => {
                     console.error('Error saving study time:', error);
-                    alert('Failed to save your study time. Please try again or contact support if the problem persists.');
                 });
                 
                 // Play encouragement sound
-                encouragementSound.play().catch(e => console.log('Sound play failed:', e));
+                soundSystem.playEncouragement();
                 
-                // Make sure overlay is visible to prevent clicking elsewhere
-                difficultyOverlay.style.display = 'block';
-                
-                // Show completion message
-                completionMessage.style.display = 'block';
-                completionMessage.style.zIndex = '2000'; // Ensure it's above other elements
-                
-                // Ensure confetti canvas has proper z-index
-                const confettiCanvas = document.querySelector('canvas');
-                if (confettiCanvas) {
-                    confettiCanvas.style.zIndex = '9999';
-                    confettiCanvas.style.pointerEvents = 'none';
-                }
-                
-                // Simple, elegant confetti effect with proper positioning
-                const confettiConfig = {
-                    particleCount: 150,
-                    spread: 60,
-                    origin: { x: 0.5, y: 0.4 }, // Slightly above center where popup is
-                    colors: ['#007bff', '#0056b3', '#3b82f6', '#60a5fa'],
-                    ticks: 400,
-                    disableForReducedMotion: true,
-                    scalar: 1.0,
-                    gravity: 0.6,
-                    drift: 0
-                };
-                
-                // Fire confetti bursts
-                confetti(confettiConfig);
+                // Show popup with animation
+                popupOverlay.classList.add('show');
                 setTimeout(() => {
+                    popup.classList.add('show');
+                    
+                    // Dead center confetti - no calculations, just center
                     confetti({
-                        ...confettiConfig,
-                        particleCount: 100,
-                        spread: 80,
-                        origin: { x: 0.3, y: 0.4 }
+                        particleCount: 150,
+                        spread: 60,
+                        origin: { x: 0.5, y: 0.5 },
+                        colors: ['#007bff', '#0056b3', '#3b82f6', '#60a5fa'],
+                        ticks: 400,
+                        disableForReducedMotion: true,
+                        scalar: 1.0,
+                        gravity: 0.6,
+                        drift: 0,
+                        zIndex: 10000
                     });
-                }, 200);
-                setTimeout(() => {
-                    confetti({
-                        ...confettiConfig,
-                        particleCount: 100,
-                        spread: 80,
-                        origin: { x: 0.7, y: 0.4 }
-                    });
-                }, 400);
-                
-                // Fix canvas z-index after confetti is created
-                setTimeout(() => {
-                    const canvas = document.querySelector('canvas');
-                    if (canvas) {
-                        canvas.style.zIndex = '9999';
-                        canvas.style.position = 'fixed';
-                        canvas.style.pointerEvents = 'none';
-                    }
                 }, 100);
             }
 
@@ -1564,6 +1697,71 @@
                         button.style.transform = 'translateY(0)';
                     });
                 });
+            }
+
+            // BULLETPROOF SMOOTH FILTER - WORKS EVERY FUCKING TIME
+            if (courseFilter) {
+                console.log('🔥 BULLETPROOF FILTER INITIALIZED');
+                
+                // Store original state for restoration
+                const originalOpacity = courseFilter.style.opacity || '1';
+                const originalCursor = courseFilter.style.cursor || 'pointer';
+                
+                const handleFilterChange = function(e) {
+                    const selectedValue = this.value;
+                    console.log('🎯 FILTER CHANGE:', selectedValue);
+                    
+                    // DON'T disable the element - just provide visual feedback
+                    this.style.opacity = '0.8';
+                    this.style.cursor = 'wait';
+                    
+                    // Create a temporary loading option
+                    const loadingOption = document.createElement('option');
+                    loadingOption.value = '';
+                    loadingOption.textContent = 'Loading...';
+                    loadingOption.selected = true;
+                    this.appendChild(loadingOption);
+                    
+                    // Use setTimeout to ensure smooth UI update before navigation
+                    setTimeout(() => {
+                        // Build the URL manually for instant navigation
+                        const baseUrl = '{{ route("review.learn") }}';
+                        const newUrl = selectedValue ? `${baseUrl}?course=${encodeURIComponent(selectedValue)}` : baseUrl;
+                        
+                        console.log('🚀 NAVIGATING TO:', newUrl);
+                        window.location.href = newUrl;
+                    }, 50); // Tiny delay for smooth UI feedback
+                };
+                
+                // Single, clean event listener
+                courseFilter.addEventListener('change', handleFilterChange);
+                
+                // Keyboard support
+                courseFilter.addEventListener('keydown', function(e) {
+                    if (e.key === 'Enter') {
+                        e.preventDefault();
+                        handleFilterChange.call(this, e);
+                    }
+                });
+                
+                // Restore state on focus (in case something went wrong)
+                courseFilter.addEventListener('focus', function() {
+                    this.style.opacity = originalOpacity;
+                    this.style.cursor = originalCursor;
+                    this.disabled = false;
+                    
+                    // Remove any loading options
+                    const loadingOptions = this.querySelectorAll('option[value=""]:not([data-original])');
+                    loadingOptions.forEach(opt => {
+                        if (opt.textContent === 'Loading...') {
+                            opt.remove();
+                        }
+                    });
+                });
+                
+                console.log('✅ BULLETPROOF FILTER READY - NO DISABLING, SMOOTH AS FUCK');
+            } else {
+                console.error('❌ COURSE FILTER NOT FOUND');
             }
 
             function removeMistake(questionId) {

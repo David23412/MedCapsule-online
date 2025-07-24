@@ -786,7 +786,7 @@
                     <i class="fas fa-redo"></i>
                     Retry Quiz
                 </button>
-                <a href="{{ route('topics.forCourse', ['course' => $course->id]) }}" class="popup-btn view-progress-btn" id="view-progress-btn">
+                <a href="{{ route('topics.forCourse', $course->id) }}" class="popup-btn view-progress-btn" id="view-progress-btn">
                     <i class="fas fa-chart-line"></i>
                     Back to Topics
                 </a>

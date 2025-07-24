@@ -3,376 +3,344 @@
 namespace Tests\Unit\Services;
 
 use Tests\TestCase;
-use App\Services\TopicLockingService;
 use App\Models\Topic;
 use App\Models\User;
 use App\Models\Course;
+use App\Services\TopicLockingService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
 
 class TopicLockingServiceTest extends TestCase
 {
     use RefreshDatabase;
 
-    private $topicLockingService;
-    private $tutor;
-    private $student;
-    private $course;
-    private $topic;
+    private TopicLockingService $service;
 
     protected function setUp(): void
     {
         parent::setUp();
-        
-        $this->topicLockingService = new TopicLockingService();
-        $this->tutor = User::factory()->create(['role' => 'tutor']);
-        $this->student = User::factory()->create(['role' => 'student']);
-        $this->course = Course::factory()->create();
-        $this->topic = Topic::factory()->create(['course_id' => $this->course->id]);
-
-        // Create necessary relationships
-        DB::table('tutor_student_relationships')->insert([
-            'tutor_id' => $this->tutor->id,
-            'student_id' => $this->student->id,
-            'created_at' => now(),
-            'updated_at' => now()
-        ]);
-
-        DB::table('course_user')->insert([
-            'user_id' => $this->student->id,
-            'course_id' => $this->course->id,
-            'created_at' => now(),
-            'updated_at' => now()
-        ]);
+        $this->service = new TopicLockingService();
     }
 
     /** @test */
-    public function it_can_lock_topic()
+    public function it_locks_a_topic()
     {
-        Log::shouldReceive('info')->atLeast()->once();
-
-        $result = $this->topicLockingService->lockTopic(
-            $this->topic->id,
-            $this->tutor->id,
-            'Testing lock functionality'
-        );
-
-        $this->assertTrue($result);
+        // Arrange
+        $tutor = User::factory()->create(['role' => 'tutor']);
+        $course = Course::factory()->create();
+        $topic = Topic::factory()->create(['course_id' => $course->id]);
         
-        $topic = $this->topic->fresh();
+        // Create tutor-course relationship
+        DB::table('course_tutors')->insert([
+            'tutor_id' => $tutor->id,
+            'course_id' => $course->id,
+            'created_at' => now(),
+            'updated_at' => now()
+        ]);
+        
+        // Act
+        $result = $this->service->lock($topic, $tutor, 'Testing lock');
+        
+        // Assert
+        $this->assertTrue($result);
+        $topic->refresh();
         $this->assertTrue($topic->is_locked);
-        $this->assertEquals($this->tutor->id, $topic->locked_by_tutor_id);
-        $this->assertEquals('Testing lock functionality', $topic->lock_reason);
+        $this->assertEquals($tutor->id, $topic->locked_by_tutor_id);
+        $this->assertEquals('Testing lock', $topic->lock_reason);
         $this->assertNotNull($topic->locked_at);
     }
-
+    
     /** @test */
-    public function it_can_unlock_topic()
+    public function it_unlocks_a_topic()
     {
-        // First lock the topic
-        $this->topic->update([
+        // Arrange
+        $tutor = User::factory()->create(['role' => 'tutor']);
+        $course = Course::factory()->create();
+        $topic = Topic::factory()->create([
+            'course_id' => $course->id,
             'is_locked' => true,
-            'locked_by_tutor_id' => $this->tutor->id,
-            'lock_reason' => 'Test lock',
+            'locked_by_tutor_id' => $tutor->id,
+            'lock_reason' => 'Testing lock',
             'locked_at' => now()
         ]);
-
-        Log::shouldReceive('info')->atLeast()->once();
-
-        $result = $this->topicLockingService->unlockTopic($this->topic->id, $this->tutor->id);
-
-        $this->assertTrue($result);
         
-        $topic = $this->topic->fresh();
+        // Create tutor-course relationship
+        DB::table('course_tutors')->insert([
+            'tutor_id' => $tutor->id,
+            'course_id' => $course->id,
+            'created_at' => now(),
+            'updated_at' => now()
+        ]);
+        
+        // Act
+        $result = $this->service->unlock($topic, $tutor);
+        
+        // Assert
+        $this->assertTrue($result);
+        $topic->refresh();
         $this->assertFalse($topic->is_locked);
         $this->assertNull($topic->locked_by_tutor_id);
         $this->assertNull($topic->lock_reason);
-        $this->assertNull($topic->locked_at);
         $this->assertNotNull($topic->unlocked_at);
     }
-
+    
     /** @test */
-    public function it_can_check_if_topic_is_locked()
+    public function it_allows_admin_to_lock_any_topic()
     {
-        // Topic not locked
-        $this->assertFalse($this->topicLockingService->isTopicLocked($this->topic->id));
-
-        // Lock the topic
-        $this->topic->update(['is_locked' => true]);
-
-        $this->assertTrue($this->topicLockingService->isTopicLocked($this->topic->id));
+        // Arrange
+        $admin = User::factory()->create(['role' => 'admin']);
+        $course = Course::factory()->create();
+        $topic = Topic::factory()->create(['course_id' => $course->id]);
+        
+        // Act
+        $result = $this->service->lock($topic, $admin, 'Admin lock');
+        
+        // Assert
+        $this->assertTrue($result);
+        $topic->refresh();
+        $this->assertTrue($topic->is_locked);
+        $this->assertEquals($admin->id, $topic->locked_by_tutor_id);
+        $this->assertEquals('Admin lock', $topic->lock_reason);
     }
-
+    
     /** @test */
-    public function it_returns_false_for_non_existent_topic()
+    public function it_prevents_non_tutors_from_locking_topics()
     {
-        $this->assertFalse($this->topicLockingService->isTopicLocked(99999));
+        // Arrange
+        $student = User::factory()->create(['role' => 'student']);
+        $course = Course::factory()->create();
+        $topic = Topic::factory()->create(['course_id' => $course->id]);
+        
+        // Assert
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage('Only tutors and admins can lock/unlock topics');
+        
+        // Act
+        $this->service->lock($topic, $student, 'Student lock attempt');
     }
-
+    
     /** @test */
-    public function it_can_get_topic_lock_status()
+    public function it_prevents_tutors_without_course_permission_from_locking_topics()
     {
-        $this->topic->update([
+        // Arrange
+        $tutor = User::factory()->create(['role' => 'tutor']);
+        $course = Course::factory()->create();
+        $topic = Topic::factory()->create(['course_id' => $course->id]);
+        
+        // No tutor-course relationship created
+        
+        // Assert
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage('You do not have permission to lock/unlock topics in this course');
+        
+        // Act
+        $this->service->lock($topic, $tutor, 'Unauthorized lock attempt');
+    }
+    
+    /** @test */
+    public function it_bulk_locks_topics()
+    {
+        // Arrange
+        $tutor = User::factory()->create(['role' => 'tutor']);
+        $course = Course::factory()->create();
+        $topics = Topic::factory()->count(3)->create(['course_id' => $course->id]);
+        
+        // Create tutor-course relationship
+        DB::table('course_tutors')->insert([
+            'tutor_id' => $tutor->id,
+            'course_id' => $course->id,
+            'created_at' => now(),
+            'updated_at' => now()
+        ]);
+        
+        $topicIds = $topics->pluck('id')->toArray();
+        
+        // Act
+        $results = $this->service->bulkLock($topicIds, $tutor, 'Bulk lock test');
+        
+        // Assert
+        $this->assertCount(3, $results);
+        foreach ($topicIds as $topicId) {
+            $this->assertTrue($results[$topicId]['success']);
+            $topic = Topic::find($topicId);
+            $this->assertTrue($topic->is_locked);
+            $this->assertEquals($tutor->id, $topic->locked_by_tutor_id);
+            $this->assertEquals('Bulk lock test', $topic->lock_reason);
+        }
+    }
+    
+    /** @test */
+    public function it_bulk_unlocks_topics()
+    {
+        // Arrange
+        $tutor = User::factory()->create(['role' => 'tutor']);
+        $course = Course::factory()->create();
+        $topics = Topic::factory()->count(3)->create([
+            'course_id' => $course->id,
             'is_locked' => true,
-            'locked_by_tutor_id' => $this->tutor->id,
-            'lock_reason' => 'Test reason',
+            'locked_by_tutor_id' => $tutor->id,
+            'lock_reason' => 'Pre-locked',
             'locked_at' => now()
         ]);
-
-        $status = $this->topicLockingService->getTopicLockStatus($this->topic->id);
-
-        $this->assertTrue($status['exists']);
-        $this->assertTrue($status['is_locked']);
-        $this->assertEquals($this->tutor->id, $status['locked_by_tutor_id']);
-        $this->assertEquals('Test reason', $status['lock_reason']);
-        $this->assertFalse($status['can_access']);
-    }
-
-    /** @test */
-    public function it_returns_proper_status_for_non_existent_topic()
-    {
-        $status = $this->topicLockingService->getTopicLockStatus(99999);
-
-        $this->assertFalse($status['exists']);
-    }
-
-    /** @test */
-    public function it_can_bulk_lock_topics()
-    {
-        $topic2 = Topic::factory()->create(['course_id' => $this->course->id]);
-        $topic3 = Topic::factory()->create(['course_id' => $this->course->id]);
-
-        $results = $this->topicLockingService->bulkLockTopics(
-            [$this->topic->id, $topic2->id, $topic3->id],
-            $this->tutor->id,
-            'Bulk lock test'
-        );
-
-        $this->assertCount(3, $results['successful']);
-        $this->assertEmpty($results['failed']);
-
-        // Verify all topics are locked
-        $this->assertTrue($this->topic->fresh()->is_locked);
-        $this->assertTrue($topic2->fresh()->is_locked);
-        $this->assertTrue($topic3->fresh()->is_locked);
-    }
-
-    /** @test */
-    public function it_can_bulk_unlock_topics()
-    {
-        $topic2 = Topic::factory()->create([
-            'course_id' => $this->course->id,
-            'is_locked' => true,
-            'locked_by_tutor_id' => $this->tutor->id
-        ]);
-
-        $this->topic->update([
-            'is_locked' => true,
-            'locked_by_tutor_id' => $this->tutor->id
-        ]);
-
-        $results = $this->topicLockingService->bulkUnlockTopics(
-            [$this->topic->id, $topic2->id],
-            $this->tutor->id
-        );
-
-        $this->assertCount(2, $results['successful']);
-        $this->assertEmpty($results['failed']);
-
-        // Verify all topics are unlocked
-        $this->assertFalse($this->topic->fresh()->is_locked);
-        $this->assertFalse($topic2->fresh()->is_locked);
-    }
-
-    /** @test */
-    public function it_can_get_locked_topics_for_tutor()
-    {
-        $topic2 = Topic::factory()->create([
-            'course_id' => $this->course->id,
-            'is_locked' => true,
-            'locked_by_tutor_id' => $this->tutor->id
-        ]);
-
-        $anotherTutor = User::factory()->create(['role' => 'tutor']);
-        $topic3 = Topic::factory()->create([
-            'course_id' => $this->course->id,
-            'is_locked' => true,
-            'locked_by_tutor_id' => $anotherTutor->id
-        ]);
-
-        $lockedTopics = $this->topicLockingService->getLockedTopicsForTutor($this->tutor->id);
-
-        $this->assertEquals(1, $lockedTopics->count());
-        $this->assertEquals($topic2->id, $lockedTopics->first()->id);
-    }
-
-    /** @test */
-    public function it_can_get_locked_topics_in_course()
-    {
-        $this->topic->update([
-            'is_locked' => true,
-            'locked_by_tutor_id' => $this->tutor->id
-        ]);
-
-        $topic2 = Topic::factory()->create([
-            'course_id' => $this->course->id,
-            'is_locked' => true,
-            'locked_by_tutor_id' => $this->tutor->id
-        ]);
-
-        $anotherCourse = Course::factory()->create();
-        $topic3 = Topic::factory()->create([
-            'course_id' => $anotherCourse->id,
-            'is_locked' => true,
-            'locked_by_tutor_id' => $this->tutor->id
-        ]);
-
-        $lockedTopics = $this->topicLockingService->getLockedTopicsInCourse($this->course->id);
-
-        $this->assertEquals(2, $lockedTopics->count());
-        $this->assertTrue($lockedTopics->contains('id', $this->topic->id));
-        $this->assertTrue($lockedTopics->contains('id', $topic2->id));
-        $this->assertFalse($lockedTopics->contains('id', $topic3->id));
-    }
-
-    /** @test */
-    public function it_can_get_accessible_topics_for_student()
-    {
-        // Create locked and unlocked topics
-        $this->topic->update(['is_locked' => false]);
         
-        $lockedTopic = Topic::factory()->create([
-            'course_id' => $this->course->id,
-            'is_locked' => true
+        // Create tutor-course relationship
+        DB::table('course_tutors')->insert([
+            'tutor_id' => $tutor->id,
+            'course_id' => $course->id,
+            'created_at' => now(),
+            'updated_at' => now()
         ]);
-
-        $accessibleTopics = $this->topicLockingService->getAccessibleTopicsForStudent(
-            $this->student->id,
-            $this->course->id
-        );
-
-        $this->assertEquals(1, $accessibleTopics->count());
-        $this->assertEquals($this->topic->id, $accessibleTopics->first()->id);
-    }
-
-    /** @test */
-    public function it_can_lock_all_course_topics()
-    {
-        $topic2 = Topic::factory()->create(['course_id' => $this->course->id]);
-        $topic3 = Topic::factory()->create(['course_id' => $this->course->id]);
-
-        $results = $this->topicLockingService->lockCourseTopics(
-            $this->course->id,
-            $this->tutor->id,
-            'Course-wide lock'
-        );
-
-        $this->assertCount(3, $results['successful']);
-        $this->assertEmpty($results['failed']);
-
-        // Verify all course topics are locked
-        $courseTopics = Topic::where('course_id', $this->course->id)->get();
-        foreach ($courseTopics as $topic) {
-            $this->assertTrue($topic->is_locked);
-            $this->assertEquals($this->tutor->id, $topic->locked_by_tutor_id);
-        }
-    }
-
-    /** @test */
-    public function it_can_unlock_all_course_topics()
-    {
-        // Lock all topics first
-        Topic::where('course_id', $this->course->id)->update([
-            'is_locked' => true,
-            'locked_by_tutor_id' => $this->tutor->id
-        ]);
-
-        $results = $this->topicLockingService->unlockCourseTopics($this->course->id, $this->tutor->id);
-
-        $this->assertNotEmpty($results['successful']);
-        $this->assertEmpty($results['failed']);
-
-        // Verify all course topics are unlocked
-        $courseTopics = Topic::where('course_id', $this->course->id)->get();
-        foreach ($courseTopics as $topic) {
+        
+        $topicIds = $topics->pluck('id')->toArray();
+        
+        // Act
+        $results = $this->service->bulkUnlock($topicIds, $tutor);
+        
+        // Assert
+        $this->assertCount(3, $results);
+        foreach ($topicIds as $topicId) {
+            $this->assertTrue($results[$topicId]['success']);
+            $topic = Topic::find($topicId);
             $this->assertFalse($topic->is_locked);
+            $this->assertNull($topic->locked_by_tutor_id);
+            $this->assertNull($topic->lock_reason);
         }
     }
-
+    
     /** @test */
-    public function it_can_get_locking_statistics()
+    public function it_handles_nonexistent_topics_in_bulk_operations()
     {
-        // Create some locked topics - old ones
-        Topic::factory()->count(2)->create([
-            'course_id' => $this->course->id,
-            'is_locked' => true,
-            'locked_by_tutor_id' => $this->tutor->id,
-            'locked_at' => now()->subDays(10) // Old
-        ]);
-
-        // Create recent locked topic
-        Topic::factory()->create([
-            'course_id' => $this->course->id,
-            'is_locked' => true,
-            'locked_by_tutor_id' => $this->tutor->id,
-            'locked_at' => now()->subDays(1) // Recent (within 7 days)
-        ]);
-
-        $stats = $this->topicLockingService->getLockingStatistics($this->tutor->id);
-
-        $this->assertArrayHasKey('total_locked_topics', $stats);
-        $this->assertArrayHasKey('recently_locked', $stats);
-        $this->assertArrayHasKey('locks_by_course', $stats);
-        $this->assertArrayHasKey('lock_activity', $stats);
-
-        $this->assertEquals(3, $stats['total_locked_topics']);
-        $this->assertEquals(1, $stats['recently_locked']);
-        $this->assertIsArray($stats['locks_by_course']);
-        $this->assertIsArray($stats['lock_activity']);
+        // Arrange
+        $admin = User::factory()->create(['role' => 'admin']);
+        $topicIds = [999999, 888888]; // Non-existent IDs
+        
+        // Act
+        $results = $this->service->bulkLock($topicIds, $admin, 'Test');
+        
+        // Assert
+        $this->assertCount(2, $results);
+        foreach ($topicIds as $topicId) {
+            $this->assertFalse($results[$topicId]['success']);
+            $this->assertEquals('Topic not found', $results[$topicId]['message']);
+        }
     }
-
+    
     /** @test */
-    public function it_can_check_student_topic_access()
+    public function it_gets_locked_topics_for_a_course()
     {
-        // Test accessible topic
-        $access = $this->topicLockingService->canStudentAccessTopic($this->student->id, $this->topic->id);
+        // Arrange
+        $tutor = User::factory()->create(['role' => 'tutor']);
+        $course = Course::factory()->create();
         
-        $this->assertTrue($access['can_access']);
-        $this->assertNull($access['reason']);
-
-        // Test locked topic
-        $this->topic->update([
+        // Create some locked and unlocked topics
+        $lockedTopics = Topic::factory()->count(2)->create([
+            'course_id' => $course->id,
             'is_locked' => true,
-            'locked_by_tutor_id' => $this->tutor->id,
-            'lock_reason' => 'Test lock'
+            'locked_by_tutor_id' => $tutor->id,
+            'lock_reason' => 'Test lock',
+            'locked_at' => now()
         ]);
-
-        $access = $this->topicLockingService->canStudentAccessTopic($this->student->id, $this->topic->id);
         
-        $this->assertFalse($access['can_access']);
-        $this->assertEquals('Topic is locked by tutor', $access['reason']);
-        $this->assertEquals('Test lock', $access['lock_reason']);
+        $unlockedTopics = Topic::factory()->count(3)->create([
+            'course_id' => $course->id,
+            'is_locked' => false
+        ]);
+        
+        // Act
+        $result = $this->service->getLockedTopics($course);
+        
+        // Assert
+        $this->assertCount(2, $result);
+        foreach ($result as $topic) {
+            $this->assertTrue($topic->is_locked);
+            $this->assertEquals($tutor->id, $topic->locked_by_tutor_id);
+        }
     }
-
+    
     /** @test */
-    public function it_handles_non_existent_topic_access_check()
+    public function it_gets_topics_locked_by_a_tutor()
     {
-        $access = $this->topicLockingService->canStudentAccessTopic($this->student->id, 99999);
+        // Arrange
+        $tutor1 = User::factory()->create(['role' => 'tutor']);
+        $tutor2 = User::factory()->create(['role' => 'tutor']);
+        $course = Course::factory()->create();
         
-        $this->assertFalse($access['can_access']);
-        $this->assertEquals('Topic not found', $access['reason']);
+        // Create topics locked by different tutors
+        $tutor1Topics = Topic::factory()->count(2)->create([
+            'course_id' => $course->id,
+            'is_locked' => true,
+            'locked_by_tutor_id' => $tutor1->id,
+            'lock_reason' => 'Tutor 1 lock',
+            'locked_at' => now()
+        ]);
+        
+        $tutor2Topics = Topic::factory()->count(3)->create([
+            'course_id' => $course->id,
+            'is_locked' => true,
+            'locked_by_tutor_id' => $tutor2->id,
+            'lock_reason' => 'Tutor 2 lock',
+            'locked_at' => now()
+        ]);
+        
+        // Act
+        $result = $this->service->getTopicsLockedByTutor($tutor1);
+        
+        // Assert
+        $this->assertCount(2, $result);
+        foreach ($result as $topic) {
+            $this->assertTrue($topic->is_locked);
+            $this->assertEquals($tutor1->id, $topic->locked_by_tutor_id);
+            $this->assertEquals('Tutor 1 lock', $topic->lock_reason);
+        }
     }
-
+    
     /** @test */
-    public function it_checks_course_access_for_student()
+    public function it_checks_if_a_topic_is_locked()
     {
-        // Remove student from course
-        DB::table('course_user')->where('user_id', $this->student->id)->delete();
-
-        $access = $this->topicLockingService->canStudentAccessTopic($this->student->id, $this->topic->id);
+        // Arrange
+        $lockedTopic = Topic::factory()->create([
+            'is_locked' => true,
+            'locked_by_tutor_id' => 1,
+            'locked_at' => now()
+        ]);
         
-        $this->assertFalse($access['can_access']);
-        $this->assertEquals('No access to course', $access['reason']);
+        $unlockedTopic = Topic::factory()->create([
+            'is_locked' => false
+        ]);
+        
+        // Act & Assert
+        $this->assertTrue($this->service->isLocked($lockedTopic));
+        $this->assertFalse($this->service->isLocked($unlockedTopic));
+    }
+    
+    /** @test */
+    public function it_gets_lock_info_for_a_topic()
+    {
+        // Arrange
+        $tutor = User::factory()->create(['role' => 'tutor', 'name' => 'Test Tutor']);
+        $lockedTopic = Topic::factory()->create([
+            'is_locked' => true,
+            'locked_by_tutor_id' => $tutor->id,
+            'lock_reason' => 'Testing lock info',
+            'locked_at' => now()
+        ]);
+        
+        $unlockedTopic = Topic::factory()->create([
+            'is_locked' => false
+        ]);
+        
+        // Act
+        $lockedInfo = $this->service->getLockInfo($lockedTopic);
+        $unlockedInfo = $this->service->getLockInfo($unlockedTopic);
+        
+        // Assert
+        $this->assertNotNull($lockedInfo);
+        $this->assertTrue($lockedInfo['is_locked']);
+        $this->assertEquals($tutor->id, $lockedInfo['locked_by_tutor_id']);
+        $this->assertEquals('Test Tutor', $lockedInfo['locked_by_tutor_name']);
+        $this->assertEquals('Testing lock info', $lockedInfo['lock_reason']);
+        $this->assertNotNull($lockedInfo['locked_at']);
+        
+        $this->assertNull($unlockedInfo);
     }
 }

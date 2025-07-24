@@ -15,6 +15,7 @@ class Course extends Model
     protected $fillable = [
         'name',
         'description',
+        'type',
         'image',
         'price',
         'currency',
@@ -30,6 +31,12 @@ class Course extends Model
         'mastered_topics_count',
         'formatted_price',
         'image_url'
+    ];
+
+    protected $casts = [
+        'type' => 'string',
+        'price' => 'decimal:2',
+        'cache_version' => 'integer'
     ];
 
     const CACHE_TTL = 3600; // 1 hour
@@ -345,5 +352,29 @@ class Course extends Model
     public function getImageUrlAttribute()
     {
         return $this->image;
+    }
+
+    /** -------------------
+     * COURSE TYPE METHODS
+     * ------------------- */
+
+    public function getTypeAttribute($value)
+    {
+        return $value; // Return the actual value from database
+    }
+
+    public function isMedicalCourse(): bool
+    {
+        return $this->type === 'medical';
+    }
+
+    public function isCustomCourse(): bool
+    {
+        return $this->type === 'custom';
+    }
+
+    public function getCategorizations(): array
+    {
+        return app(\App\Services\CourseTypeService::class)->getCategorizations($this);
     }
 }
