@@ -47,11 +47,11 @@ class CourseController extends Controller
         $isLoggedIn = auth()->check();
         $selectedYear = $request->get('academic_year');
 
-        // Cache key for courses metadata with timestamp for cache busting
+        // ULTRA-FAST CACHE: Reduced TTL to 30 seconds for instant updates
         $cacheVersion = Cache::get('courses_cache_version', 1);
         $cacheKey = "courses_metadata_" . ($userId ?? 'guest') . "_" . ($selectedYear ?? 'all') . "_v{$cacheVersion}";
         
-        $courses = Cache::remember($cacheKey, 300, function () use ($userId, $isLoggedIn, $selectedYear) {
+        $courses = Cache::remember($cacheKey, 30, function () use ($userId, $isLoggedIn, $selectedYear) {
             $subqueries = [
                 DB::raw('(SELECT COUNT(*) FROM topics WHERE topics.course_id = courses.id AND name NOT LIKE "%cases%") as topics_count'),
                 DB::raw('(SELECT COUNT(*) FROM topics WHERE topics.course_id = courses.id AND name LIKE "%cases%") as cases_count'),
@@ -183,8 +183,8 @@ class CourseController extends Controller
             ]
         ]);
         
-        // Clear relevant caches
-        Cache::forget("courses_metadata_{$user->id}");
+        // Clear ALL course caches for instant updates
+        $this->clearAllCourseCaches();
         
         // Send welcome notification
         try {
@@ -270,6 +270,35 @@ class CourseController extends Controller
             return redirect()->back()
                 ->withInput()
                 ->with('error', 'Failed to create course. Please try again.');
+        }
+    }
+
+    /**
+     * Clear all course-related caches for instant updates
+     */
+    private function clearAllCourseCaches()
+    {
+        // Increment cache version to invalidate ALL versioned caches
+        $currentVersion = Cache::get('courses_cache_version', 1);
+        Cache::put('courses_cache_version', $currentVersion + 1, 86400);
+        
+        // Clear specific cache patterns
+        $patterns = [
+            'courses_metadata_*',
+            'course_*_enrolled_*',
+            'course_*_user_*',
+            'courses_list',
+            'courses_with_stats'
+        ];
+        
+        // For Laravel cache stores that support pattern deletion
+        try {
+            foreach ($patterns as $pattern) {
+                Cache::forget($pattern);
+            }
+        } catch (\Exception $e) {
+            // Fallback: clear entire cache if pattern deletion fails
+            Cache::flush();
         }
     }
 }

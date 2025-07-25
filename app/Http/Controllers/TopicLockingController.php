@@ -17,7 +17,63 @@ class TopicLockingController extends Controller
     public function __construct(TopicLockingService $lockingService)
     {
         $this->lockingService = $lockingService;
-        $this->middleware(['auth', 'role:admin,tutor']);
+        $this->middleware('auth');
+    }
+    
+    /**
+     * Check if user has permission for topic management
+     */
+    private function checkPermission()
+    {
+        $user = Auth::user();
+        if (!$user || (!$user->isAdmin() && !$user->isTutor())) {
+            abort(403, 'You do not have permission to manage topics.');
+        }
+        return $user;
+    }
+    
+    /**
+     * Display the topic management index page
+     *
+     * @return \Illuminate\View\View
+     */
+    public function index()
+    {
+        $user = $this->checkPermission();
+        
+        // Get all courses the user has access to
+        if ($user->isAdmin()) {
+            $courses = \App\Models\Course::with(['topics' => function($query) {
+                $query->orderBy('name');
+            }])->orderBy('name')->get();
+        } else {
+            // For tutors, get courses they're assigned to
+            $courses = $user->courses()->with(['topics' => function($query) {
+                $query->orderBy('name');
+            }])->orderBy('name')->get();
+        }
+        
+        return view('topic-locking.index', compact('courses'));
+    }
+    
+    /**
+     * Display topics for a specific course
+     *
+     * @param \App\Models\Course $course
+     * @return \Illuminate\View\View
+     */
+    public function courseTopics(\App\Models\Course $course)
+    {
+        $user = $this->checkPermission();
+        
+        // Check if user has access to this course
+        if (!$user->isAdmin() && !$user->courses()->where('course_id', $course->id)->exists()) {
+            abort(403, 'You do not have access to this course.');
+        }
+        
+        $topics = $course->topics()->orderBy('name')->get();
+        
+        return view('topic-locking.course', compact('course', 'topics'));
     }
     
     /**
@@ -29,6 +85,8 @@ class TopicLockingController extends Controller
      */
     public function lock(Request $request, int $topicId)
     {
+        $user = $this->checkPermission();
+        
         $validator = Validator::make($request->all(), [
             'reason' => 'nullable|string|max:500'
         ]);
@@ -43,7 +101,6 @@ class TopicLockingController extends Controller
         
         try {
             $topic = Topic::findOrFail($topicId);
-            $user = Auth::user();
             $reason = $request->input('reason');
             
             $result = $this->lockingService->lock($topic, $user, $reason);
@@ -80,9 +137,10 @@ class TopicLockingController extends Controller
      */
     public function unlock(Request $request, int $topicId)
     {
+        $user = $this->checkPermission();
+        
         try {
             $topic = Topic::findOrFail($topicId);
-            $user = Auth::user();
             
             $result = $this->lockingService->unlock($topic, $user);
             
@@ -116,6 +174,8 @@ class TopicLockingController extends Controller
      */
     public function bulkLock(Request $request)
     {
+        $user = $this->checkPermission();
+        
         $validator = Validator::make($request->all(), [
             'topic_ids' => 'required|array',
             'topic_ids.*' => 'required|integer|exists:topics,id',
@@ -131,7 +191,6 @@ class TopicLockingController extends Controller
         }
         
         try {
-            $user = Auth::user();
             $topicIds = $request->input('topic_ids');
             $reason = $request->input('reason');
             
@@ -172,6 +231,8 @@ class TopicLockingController extends Controller
      */
     public function bulkUnlock(Request $request)
     {
+        $user = $this->checkPermission();
+        
         $validator = Validator::make($request->all(), [
             'topic_ids' => 'required|array',
             'topic_ids.*' => 'required|integer|exists:topics,id'
@@ -186,7 +247,6 @@ class TopicLockingController extends Controller
         }
         
         try {
-            $user = Auth::user();
             $topicIds = $request->input('topic_ids');
             
             $results = $this->lockingService->bulkUnlock($topicIds, $user);
@@ -262,8 +322,9 @@ class TopicLockingController extends Controller
      */
     public function getMyLockedTopics(Request $request)
     {
+        $user = $this->checkPermission();
+        
         try {
-            $user = Auth::user();
             $lockedTopics = $this->lockingService->getTopicsLockedByTutor($user);
             
             return response()->json([

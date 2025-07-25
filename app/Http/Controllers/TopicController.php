@@ -96,8 +96,15 @@ class TopicController extends Controller
                     $query->where('user_id', $user->id)
                           ->orderBy('completed_at', 'desc');
                 }])
-                ->get()
-                ->keyBy('topic_id'); // Key by topic_id for easy lookup
+                ->get(); // FIXED: Removed keyBy('topic_id') to allow multiple assignments per topic
+            
+            // FIXED: Update overdue assignment statuses
+            foreach ($assignments as $assignment) {
+                if ($assignment->status === 'active' && \Carbon\Carbon::parse($assignment->deadline)->isPast()) {
+                    $assignment->update(['status' => 'overdue']);
+                    $assignment->refresh(); // Refresh to get updated status
+                }
+            }
         }
 
         // Don't override the course type - let it be null if it's null in the database

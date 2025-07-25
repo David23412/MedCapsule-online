@@ -1,0 +1,349 @@
+/* Topics Page Main Styles */
+
+body {
+    font-family: 'Poppins', sans-serif;
+    background-color: #f8f9fa;
+    zoom: 0.72; /* Precise zoom level for optimal viewing */
+    margin: 0;
+    padding: 0;
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+/* Universal modal backdrop fix - force consistent rendering */
+.modal-backdrop {
+    background: rgba(0, 0, 0, 0.5) !important;
+    backdrop-filter: none !important;
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 100% !important;
+    height: 100% !important;
+    z-index: 1040 !important;
+    transform: none !important;
+    will-change: auto !important;
+    transition: none !important;
+}
+
+.modal-backdrop.show {
+    opacity: 1 !important;
+}
+
+.modal-backdrop.fade {
+    opacity: 0 !important;
+    transition: none !important;
+}
+
+.modal-backdrop.fade.show {
+    opacity: 1 !important;
+    transition: none !important;
+}
+
+/* Edge-specific modal backdrop override */
+@supports (-ms-ime-align: auto) {
+    .modal-backdrop,
+    .modal-backdrop.show,
+    .modal-backdrop.fade.show {
+        background: rgba(0, 0, 0, 0.5) !important;
+        opacity: 1 !important;
+        position: fixed !important;
+        top: 0 !important;
+        left: 0 !important;
+        right: 0 !important;
+        bottom: 0 !important;
+        width: 100% !important;
+        height: 100% !important;
+        z-index: 1040 !important;
+        backdrop-filter: none !important;
+        filter: none !important;
+        transform: none !important;
+        transition: none !important;
+    }
+}
+
+/* Navbar Styles */
+.navbar {
+    background-color: white;
+    padding: 1rem 2rem;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 1000;
+    backdrop-filter: blur(10px);
+    background-color: rgba(255, 255, 255, 0.95);
+}
+
+.navbar-brand {
+    color: #007bff;
+    font-weight: 700;
+    font-size: 1.5rem;
+    text-decoration: none;
+    display: flex;
+    align-items: center;
+    transition: transform 0.3s ease;
+}
+
+.navbar-brand:hover {
+    color: #0056b3;
+    transform: translateY(-1px);
+}
+
+.nav-link {
+    color: #495057;
+    text-decoration: none;
+    margin-left: 1.5rem;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.nav-link:hover {
+    color: #007bff;
+}
+
+.nav-links {
+    display: flex;
+    align-items: center;
+    gap: 1.5rem;
+}
+
+.profile-circle {
+    width: 36px;
+    height: 36px;
+    background: #2196f3;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-weight: 600;
+    font-size: 0.9rem;
+    transition: transform 0.2s ease;
+    background-size: cover;
+    background-position: center;
+    text-decoration: none;
+}
+
+.profile-circle.no-image {
+    background: #2196f3;
+}
+
+.profile-circle:hover {
+    transform: scale(1.1);
+    color: white;
+    text-decoration: none;
+}
+
+/* Course Header Styles */
+@keyframes float-particle {
+    0%, 100% { transform: translate(0, 0) rotate(0deg); }
+    25% { transform: translate(10px, -10px) rotate(5deg); }
+    50% { transform: translate(0, -15px) rotate(0deg); }
+    75% { transform: translate(-10px, -10px) rotate(-5deg); }
+}
+
+@keyframes glow {
+    0%, 100% { text-shadow: 0 0 20px rgba(255,255,255,0.3); }
+    50% { text-shadow: 0 0 30px rgba(255,255,255,0.5); }
+}
+
+@keyframes shimmer {
+    0% { background-position: -1000px 0; }
+    100% { background-position: 1000px 0; }
+}
+
+.course-header {
+    background: linear-gradient(135deg, #0072ff, #00c6ff);
+    color: white;
+    padding: 4rem 3rem;
+    padding-top: 6rem;
+    text-align: center;
+    margin-bottom: 2rem;
+    position: relative;
+    overflow: hidden;
+    min-height: 280px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.course-header::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.1), transparent);
+    background-size: 1000px 100%;
+    animation: shimmer 8s linear infinite;
+}
+
+.particle {
+    position: absolute;
+    width: 3px;
+    height: 3px;
+    background: rgba(255,255,255,0.3);
+    border-radius: 50%;
+    pointer-events: none;
+    filter: blur(0.5px);
+}
+
+.particle:nth-child(1) { top: 15%; left: 10%; animation: float-particle 6s infinite; }
+.particle:nth-child(2) { top: 25%; right: 15%; animation: float-particle 7s infinite 0.5s; }
+.particle:nth-child(3) { top: 35%; left: 25%; animation: float-particle 8s infinite 1s; }
+.particle:nth-child(4) { top: 20%; right: 25%; animation: float-particle 7.5s infinite 1.5s; }
+.particle:nth-child(5) { top: 30%; left: 35%; animation: float-particle 6.5s infinite 2s; }
+.particle:nth-child(6) { top: 40%; right: 35%; animation: float-particle 7.2s infinite 2.5s; }
+.particle:nth-child(7) { top: 25%; left: 45%; animation: float-particle 6.8s infinite 3s; }
+.particle:nth-child(8) { top: 35%; right: 45%; animation: float-particle 7.8s infinite 3.5s; }
+
+/* Course Progress Bar */
+.course-progress {
+    background: rgba(255, 255, 255, 0.15);
+    padding: 1.25rem 1.75rem;
+    border-radius: 16px;
+    display: inline-flex;
+    align-items: center;
+    gap: 1.5rem;
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    transition: all 0.3s ease;
+    cursor: pointer;
+    max-width: 400px;
+    margin: 0;
+}
+
+.course-progress:hover {
+    transform: translateY(-2px);
+    background: rgba(255, 255, 255, 0.2);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+}
+
+.progress-circle {
+    width: 64px;
+    height: 64px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.1);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.2rem;
+    font-weight: 600;
+    position: relative;
+    transition: all 0.3s ease;
+}
+
+.progress-circle::before {
+    content: '';
+    position: absolute;
+    top: -2px;
+    left: -2px;
+    right: -2px;
+    bottom: -2px;
+    border-radius: 50%;
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    border-top-color: white;
+    animation: spin 1s linear infinite;
+}
+
+.progress-circle::after {
+    content: '';
+    position: absolute;
+    top: -3px;
+    left: -3px;
+    right: -3px;
+    bottom: -3px;
+    border-radius: 50%;
+    border: 3px solid rgba(255, 255, 255, 0.2);
+    animation: pulseRing 2s infinite;
+}
+
+@keyframes spin {
+    0% {
+        transform: rotate(0deg);
+    }
+    100% {
+        transform: rotate(360deg);
+    }
+}
+
+@keyframes pulseRing {
+    0% {
+        transform: scale(1);
+        opacity: 0.6;
+    }
+    50% {
+        transform: scale(1.1);
+        opacity: 0.3;
+    }
+    100% {
+        transform: scale(1);
+        opacity: 0.6;
+    }
+}
+
+.course-progress:hover .progress-circle {
+    transform: scale(1.05);
+    background: rgba(255, 255, 255, 0.15);
+}
+
+.progress-text {
+    text-align: left;
+    transition: all 0.3s ease;
+}
+
+.progress-text-title {
+    font-size: 1.3rem;
+    font-weight: 600;
+    margin-bottom: 0.3rem;
+    color: white;
+}
+
+.progress-text-subtitle {
+    font-size: 1rem;
+    opacity: 0.9;
+    font-weight: 500;
+}
+
+.course-progress:hover .progress-text-subtitle {
+    opacity: 1;
+}
+
+/* Topics Container */
+.topics-container {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 2rem;
+}
+
+/* Empty State */
+.empty-state {
+    text-align: center;
+    padding: 3rem;
+    color: #6c757d;
+}
+
+/* Safari-specific adjustments */
+@media screen and (-webkit-min-device-pixel-ratio:0) {
+    .topics-container {
+        max-width: 1400px;
+        padding: 1.5rem 3rem;
+    }
+    
+    /* Navbar positioning fix for Safari */
+    .navbar .container {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        width: 100%;
+    }
+    
+    .navbar-brand {
+        margin-right: auto;
+    }
+}

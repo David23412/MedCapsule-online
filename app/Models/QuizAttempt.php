@@ -270,6 +270,7 @@ class QuizAttempt extends Model
                 'study_mode' => $studyMode,
                 'source' => $source
             ])
+            ->where('quiz_type', '!=', 'assignment') // EMERGENCY FIX: Exclude assignment attempts from regular topic progress
             ->orderBy('created_at', 'desc')
             ->first();
 

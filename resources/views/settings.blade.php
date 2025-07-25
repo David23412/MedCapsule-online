@@ -215,7 +215,7 @@
                     <nav class="ml-8 space-x-8">
                         <a href="{{ route('home') }}" class="nav-link">Home</a>
                         <a href="{{ route('courses.index') }}" class="nav-link">Courses</a>
-                        <a href="{{ route('mistakes.index') }}" class="nav-link">Mistakes</a>
+                        <a href="{{ route('review.index') }}" class="nav-link">Mistakes</a>
                         <a href="{{ route('settings.index') }}" class="nav-link active">Settings</a>
                     </nav>
                 </div>

@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Topic Card Fix Test</title>
+</head>
+<body>
+    <h1>Testing Topic Card JavaScript Fix</h1>
+    
+    <!-- Simulate Assignment Cards (rendered first) -->
+    <div class="topic-card" data-topic-id="1" data-has-assignment="true">
+        <h3>Assignment Card 1</h3>
+        <button class="start-quiz-btn assignment-start-btn" data-topic-id="1" data-course-id="1">
+            Assignment Button 1
+        </button>
+    </div>
+    
+    <div class="topic-card" data-topic-id="1" data-has-assignment="true">
+        <h3>Assignment Card 2</h3>
+        <button class="start-quiz-btn assignment-start-btn" data-topic-id="1" data-course-id="1">
+            Assignment Button 2
+        </button>
+    </div>
+    
+    <!-- Simulate Regular Topic Card (rendered after assignments) -->
+    <div class="topic-card" data-topic-id="1" data-has-assignment="false">
+        <h3>Regular Topic Card</h3>
+        <button class="start-quiz-btn" data-topic-id="1" data-course-id="1">
+            Regular Topic Button (Should Show Source Modal)
+        </button>
+    </div>
+    
+    <script>
+        // Simulate the FIXED JavaScript logic
+        document.querySelectorAll('.start-quiz-btn:not(.assignment-start-btn)').forEach(button => {
+            button.addEventListener('click', function(e) {
+                e.preventDefault();
+                
+                const topicId = this.dataset.topicId;
+                
+                // OLD BROKEN LOGIC (would always find first assignment card)
+                // const topicCard = document.querySelector(`[data-topic-id="${topicId}"]`);
+                
+                // NEW FIXED LOGIC (finds the specific card containing this button)
+                const topicCard = this.closest('.topic-card');
+                const hasAssignment = topicCard && topicCard.dataset.hasAssignment === 'true';
+                
+                console.log('Button clicked in card:', topicCard);
+                console.log('Has assignment:', hasAssignment);
+                
+                if (hasAssignment) {
+                    console.log('❌ WRONG: Bypassing source modal (this should not happen for regular topic)');
+                    alert('❌ BUG: Regular topic button is bypassing source modal!');
+                } else {
+                    console.log('✅ CORRECT: Showing source modal for regular topic');
+                    alert('✅ SUCCESS: Source modal would be shown!');
+                }
+            });
+        });
+        
+        // Test assignment buttons too
+        document.querySelectorAll('.assignment-start-btn').forEach(button => {
+            button.addEventListener('click', function(e) {
+                e.preventDefault();
+                
+                const topicCard = this.closest('.topic-card');
+                const hasAssignment = topicCard && topicCard.dataset.hasAssignment === 'true';
+                
+                console.log('Assignment button clicked in card:', topicCard);
+                console.log('Has assignment:', hasAssignment);
+                
+                if (hasAssignment) {
+                    console.log('✅ CORRECT: Assignment button bypassing source modal');
+                    alert('✅ SUCCESS: Assignment button bypasses source modal!');
+                } else {
+                    console.log('❌ WRONG: Assignment button should bypass source modal');
+                    alert('❌ BUG: Assignment button is not bypassing source modal!');
+                }
+            });
+        });
+    </script>
+</body>
+</html>

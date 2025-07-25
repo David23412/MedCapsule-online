@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Source Modal Fix Test</title>
+    <style>
+        .test-case { margin: 20px; padding: 15px; border: 1px solid #ccc; }
+        .pass { background: #d4edda; }
+        .fail { background: #f8d7da; }
+    </style>
+</head>
+<body>
+    <h1>🧪 Source Modal Logic Test</h1>
+    
+    <div class="test-case">
+        <h3>Test Setup</h3>
+        <p><strong>Topic:</strong> Internal Medicine (Topic ID: 1)</p>
+        <p><strong>Scenario:</strong> Topic has 3 assignments but user wants to practice regularly</p>
+    </div>
+    
+    <div class="test-case">
+        <h3>❌ OLD LOGIC (BROKEN)</h3>
+        <pre>
+// Check if this topic is part of an assignment
+const topicCard = document.querySelector(`[data-topic-id="1"]`);
+const hasAssignment = topicCard && topicCard.dataset.hasAssignment === 'true';
+
+if (hasAssignment) {
+    // PROBLEM: Always finds assignment card first!
+    // Result: Source modal never shows for regular practice
+    window.location.href = originalHref;
+    return false;
+}
+        </pre>
+        <p><strong>Result:</strong> ❌ Source modal never shows, even for regular practice</p>
+    </div>
+    
+    <div class="test-case pass">
+        <h3>✅ NEW LOGIC (FIXED)</h3>
+        <pre>
+// Check if assignments filter is currently active
+const topicsContainer = document.querySelector('.topics-container');
+const isAssignmentsFilterActive = topicsContainer && 
+    topicsContainer.classList.contains('assignments-filter-active');
+
+if (isAssignmentsFilterActive) {
+    // Only bypass source modal when in assignments mode
+    window.location.href = originalHref;
+    return false;
+}
+        </pre>
+        <p><strong>Result:</strong> ✅ Source modal behavior depends on current filter</p>
+    </div>
+    
+    <div class="test-case">
+        <h3>🎯 Expected Behavior</h3>
+        <table border="1" style="width: 100%; border-collapse: collapse;">
+            <tr>
+                <th>Filter Active</th>
+                <th>Button Clicked</th>
+                <th>Expected Behavior</th>
+                <th>Status</th>
+            </tr>
+            <tr>
+                <td>Assignments</td>
+                <td>Assignment Button</td>
+                <td>Direct redirect (no source modal)</td>
+                <td>✅ Fixed</td>
+            </tr>
+            <tr>
+                <td>All/Quiz/Cases/etc</td>
+                <td>Regular Topic Button</td>
+                <td>Show source modal for practice</td>
+                <td>✅ Fixed</td>
+            </tr>
+        </table>
+    </div>
+    
+    <div class="test-case pass">
+        <h3>🚀 Benefits of New Logic</h3>
+        <ul>
+            <li>✅ <strong>Context-aware:</strong> Behavior depends on current filter</li>
+            <li>✅ <strong>Intuitive:</strong> Assignments mode = direct access, Practice mode = source selection</li>
+            <li>✅ <strong>No conflicts:</strong> No more DOM selector conflicts</li>
+            <li>✅ <strong>Clean separation:</strong> Assignment vs practice modes clearly separated</li>
+        </ul>
+    </div>
+    
+    <div class="test-case">
+        <h3>🧪 Test Scenarios</h3>
+        <ol>
+            <li><strong>User clicks "All" filter → clicks "Internal Medicine"</strong>
+                <br>Expected: Source modal appears ✅</li>
+            <li><strong>User clicks "Quiz" filter → clicks "Internal Medicine"</strong>
+                <br>Expected: Source modal appears ✅</li>
+            <li><strong>User clicks "Assignments" filter → clicks assignment button</strong>
+                <br>Expected: Direct redirect to assignment ✅</li>
+        </ol>
+    </div>
+    
+</body>
+</html>

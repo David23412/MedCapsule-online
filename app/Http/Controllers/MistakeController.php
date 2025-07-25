@@ -186,7 +186,7 @@ class MistakeController extends Controller
             Log::warning('⚠️ No mistake found to delete');
         }
 
-        return redirect()->route('mistakes.index')->with('success', 'Mistake removed.');
+        return redirect()->route('review.index')->with('success', 'Mistake removed.');
     }
 
     /**

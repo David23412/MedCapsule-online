@@ -39,7 +39,7 @@ class Course extends Model
         'cache_version' => 'integer'
     ];
 
-    const CACHE_TTL = 3600; // 1 hour
+    const CACHE_TTL = 30; // 30 seconds for INSTANT updates
 
     /** -------------------
      * RELATIONSHIPS
@@ -169,9 +169,12 @@ class Course extends Model
         }
 
         $userId = auth()->id();
-        return Cache::remember("course_{$this->id}_user_{$userId}_mastered", self::CACHE_TTL, function () {
+        return Cache::remember("course_{$this->id}_user_{$userId}_mastered", self::CACHE_TTL, function () use ($userId) {
+            // Count topics where user has >= 80% progress (considered mastered)
             return $this->topics()
-                       ->where('mastered', true)
+                       ->join('user_topic_progress', 'topics.id', '=', 'user_topic_progress.topic_id')
+                       ->where('user_topic_progress.user_id', $userId)
+                       ->where('user_topic_progress.percentage_grade', '>=', 80)
                        ->count();
         });
     }

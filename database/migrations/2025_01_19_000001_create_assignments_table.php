@@ -37,8 +37,8 @@ return new class extends Migration
             $table->index('deadline', 'idx_deadline');
             $table->index(['course_id', 'status'], 'idx_course_status');
             
-            // Unique constraint to prevent duplicate assignments
-            $table->unique(['tutor_id', 'student_id', 'topic_id'], 'unique_assignment');
+            // REMOVED: Unique constraint to allow maximum flexibility for tutors
+            // Tutors can now create as many assignments as they want for the same student/topic combination
         });
 
         // Create assignment_attempts table

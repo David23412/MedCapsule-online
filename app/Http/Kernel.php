@@ -38,6 +38,7 @@ class Kernel extends HttpKernel
             \Illuminate\Routing\Middleware\SubstituteBindings::class,
             \App\Http\Middleware\TrackUserActivity::class,
             \App\Http\Middleware\PerformanceMonitoring::class,
+            \App\Http\Middleware\CourseCacheBuster::class,
         ],
 
         'api' => [
@@ -77,5 +78,6 @@ class Kernel extends HttpKernel
         'role' => \App\Http\Middleware\RoleMiddleware::class,
         'assignment.security' => \App\Http\Middleware\AssignmentSecurityMiddleware::class,
         'assignment.access' => \App\Http\Middleware\CheckAssignmentAccess::class,
+        'course.cache.buster' => \App\Http\Middleware\CourseCacheBuster::class,
     ];
 } 

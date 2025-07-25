@@ -10,14 +10,14 @@ return new class extends Migration {
         Schema::create('topics', function (Blueprint $table) {
             $table->id();
             $table->foreignId('course_id')->constrained()->onDelete('cascade'); // Foreign key for course
-            $table->foreignId('user_id')->nullable()->constrained(); // Add this line to track per-user progress
+            // REMOVED: user_id field - topics belong to courses, not users!
+            // Individual user progress is tracked in user_topic_progress table
             $table->string('name'); // Name of the topic (quiz)
             $table->text('description')->nullable(); // Description for the topic (optional)
             $table->string('case_type')->default('quiz'); // Type: quiz (regular topic), cases, or practical
             $table->integer('display_order')->default(0); // Order of topics within a course
-            $table->boolean('mastered')->default(false); // Mastery status
-            $table->integer('percentage_grade')->nullable()->default(0); // Grade percentage
-            $table->timestamp('last_attempt_date')->nullable(); // Last attempt timestamp
+            // REMOVED: User-specific fields (mastered, percentage_grade, last_attempt_date)
+            // These are tracked per-user in user_topic_progress table
             $table->boolean('is_locked')->default(false); // Topic locking status
             $table->foreignId('locked_by_tutor_id')->nullable()->constrained('users')->onDelete('set null'); // Tutor who locked the topic
             $table->unsignedInteger('cache_version')->default(1); // Cache version for invalidation
@@ -29,8 +29,7 @@ return new class extends Migration {
             $table->index('display_order'); // To speed up ordering within courses
             $table->index('case_type'); // For filtering by case type
             $table->index(['is_locked', 'locked_by_tutor_id'], 'idx_topics_locked'); // For topic locking queries
-            $table->index('percentage_grade', 'idx_percentage_grade'); // For grade-based queries
-            $table->index('mastered', 'idx_mastered'); // For mastery filtering
+            // REMOVED: Indexes for user-specific fields that no longer exist
         });
     }
 

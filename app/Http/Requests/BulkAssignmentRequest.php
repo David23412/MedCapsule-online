@@ -27,10 +27,9 @@ class BulkAssignmentRequest extends FormRequest
             'title' => 'required|string|max:255',
             'description' => 'nullable|string|max:1000',
             'deadline' => 'required|date|after:now',
-            'duration_minutes' => 'nullable|numeric|min:0.1|max:1440', // Min 0.1 minutes (6 seconds) for testing
+            'duration_minutes' => 'nullable|numeric|min:0.1|max:1440', // Min 0.1 minutes (6 seconds) for testing, NULL for no limit
             'assignment_mode' => 'nullable|in:source_specific,complete_topic',
             'assigned_source' => 'nullable|string|max:255',
-            'duration_minutes' => 'nullable|numeric|min:0.1|max:1440', // Min 0.1 minutes (6 seconds) for testing
             'skip_existing' => 'nullable|boolean',
         ];
     }
@@ -62,9 +61,6 @@ class BulkAssignmentRequest extends FormRequest
             'assignment_mode.in' => 'Assignment mode must be either source_specific or complete_topic.',
             'assigned_source.string' => 'Assigned source must be a valid string.',
             'assigned_source.max' => 'Assigned source cannot exceed 255 characters.',
-            'duration_minutes.numeric' => 'Duration must be a valid number of minutes.',
-            'duration_minutes.min' => 'Duration must be at least 0.1 minutes (6 seconds).',
-            'duration_minutes.max' => 'Duration cannot exceed 24 hours (1440 minutes).',
         ];
     }
 
@@ -112,19 +108,8 @@ class BulkAssignmentRequest extends FormRequest
                 }
             }
 
-            // Check for existing assignments if not skipping
-            if (!$this->skip_existing && $this->student_ids && $this->topic_id) {
-                $existingCount = \DB::table('assignments')
-                    ->where('tutor_id', auth()->id())
-                    ->where('topic_id', $this->topic_id)
-                    ->whereIn('student_id', $this->student_ids)
-                    ->count();
-
-                if ($existingCount > 0) {
-                    $validator->errors()->add('student_ids', 
-                        "Some students already have assignments for this topic. Check 'Skip existing assignments' to proceed.");
-                }
-            }
+            // NO DUPLICATE RESTRICTIONS - Tutors can create as many assignments as they want!
+            // The skip_existing option is still available for convenience, but no validation errors for duplicates
 
             // Validate source for source-specific assignments
             if ($this->assignment_mode === 'source_specific' && empty($this->assigned_source)) {
@@ -176,6 +161,11 @@ class BulkAssignmentRequest extends FormRequest
         // Set default for skip_existing
         if (!$this->has('skip_existing')) {
             $this->merge(['skip_existing' => false]);
+        }
+
+        // Convert empty duration_minutes to NULL for "No Time Limit"
+        if ($this->has('duration_minutes') && $this->duration_minutes === '') {
+            $this->merge(['duration_minutes' => null]);
         }
     }
 }

@@ -51,7 +51,7 @@
                         </a>
                     </li>
                     <li>
-                        <a class="dropdown-item" href="{{ route('mistakes.index') }}">
+                        <a class="dropdown-item" href="{{ route('review.index') }}">
                             <i class="fas fa-exclamation-triangle me-2"></i>Review Mistakes
                         </a>
                     </li>
@@ -86,7 +86,7 @@
                             </a>
                         </li>
                         <li>
-                            <a class="dropdown-item" href="{{ route('assignments.bulk-create') }}">
+                            <a class="dropdown-item" href="{{ route('assignments.create') }}">
                                 <i class="fas fa-plus-circle me-2"></i>Create Assignment
                             </a>
                         </li>
@@ -99,12 +99,12 @@
                             <i class="fas fa-crown me-2 text-warning"></i>Admin Tools
                         </li>
                         <li>
-                            <a class="dropdown-item" href="{{ route('admin.tutor-management.index') }}">
+                            <a class="dropdown-item" href="{{ route('admin.tutors.index') }}">
                                 <i class="fas fa-users-cog me-2"></i>Manage Tutors
                             </a>
                         </li>
                         <li>
-                            <a class="dropdown-item" href="{{ route('admin.payments.index') }}">
+                            <a class="dropdown-item" href="{{ route('admin.payment-history') }}">
                                 <i class="fas fa-credit-card me-2"></i>Payment Management
                             </a>
                         </li>

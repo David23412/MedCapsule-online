@@ -153,8 +153,9 @@ class StudentAssignmentController extends Controller
         }
 
         // Redirect to the topic quiz with assignment context
-        return redirect()->route('quiz.topic', [
-            'topic' => $assignment->topic,
+        return redirect()->route('quiz.start', [
+            'course' => $assignment->course_id,
+            'topic' => $assignment->topic_id,
             'assignment_id' => $assignment->id
         ]);
     }

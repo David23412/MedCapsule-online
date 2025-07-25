@@ -111,11 +111,30 @@ class QuizController extends Controller
                 'topic_id' => $topic->id
             ]);
 
-            // Check for assignments for this topic and user
-            $assignment = Assignment::where('student_id', $user->id)
-                ->where('topic_id', $topic->id)
-                ->whereIn('status', [Assignment::STATUS_ACTIVE, Assignment::STATUS_OVERDUE, Assignment::STATUS_LOCKED])
-                ->first();
+            // Check for assignments ONLY if explicitly accessing an assignment
+            $assignmentId = request()->input('assignment_id');
+            $assignment = null;
+            
+            if ($assignmentId) {
+                // User is explicitly accessing an assignment
+                $assignment = Assignment::where('id', $assignmentId)
+                    ->where('student_id', $user->id)
+                    ->where('topic_id', $topic->id)
+                    ->whereIn('status', [Assignment::STATUS_ACTIVE, Assignment::STATUS_OVERDUE, Assignment::STATUS_LOCKED])
+                    ->first();
+                    
+                if (!$assignment) {
+                    Log::warning('Assignment not found or not accessible', [
+                        'request_id' => $requestId,
+                        'assignment_id' => $assignmentId,
+                        'user_id' => $user->id,
+                        'topic_id' => $topic->id
+                    ]);
+                    return redirect()->route('topics.forCourse', $course->id)
+                        ->with('error', 'Assignment not found or not accessible.');
+                }
+            }
+            // If no assignment_id provided, this is regular topic practice - no assignment constraints
             
             // Handle assignment status updates
             if ($assignment) {
@@ -160,6 +179,17 @@ class QuizController extends Controller
                         'assignment_id' => $assignment->id,
                         'user_id' => $user->id,
                         'duration_minutes' => $assignment->duration_minutes
+                    ]);
+                }
+                
+                // CRITICAL FIX: Override sources for source-specific assignments
+                if ($assignment->assignment_mode === 'source_specific' && $assignment->assigned_source) {
+                    $sources = [$assignment->assigned_source];
+                    Log::info('Source-specific assignment - overriding sources', [
+                        'assignment_id' => $assignment->id,
+                        'original_sources' => request()->input('sources', ['all']),
+                        'assigned_source' => $assignment->assigned_source,
+                        'final_sources' => $sources
                     ]);
                 }
             }
@@ -289,15 +319,19 @@ class QuizController extends Controller
             $cacheKey = "user_access_{$userId}_{$course->id}_{$topic->id}";
             Cache::put($cacheKey, true, 300); // Cache for 5 minutes
             
+            // Get assignment context before transaction
+            $assignmentId = $request->input('assignment_id');
+            
             // BULLETPROOF GRADING: Use database service for safe operations
-            $gradingResult = DatabaseService::safeTransaction(function () use ($validated, $topic, $course, $userId, $requestId, $isAssignment) {
+            $gradingResult = DatabaseService::safeTransaction(function () use ($validated, $topic, $course, $userId, $requestId, $isAssignment, $assignmentId) {
                 return $this->gradingService->gradeQuiz(
                     auth()->user(),
                     $validated['answers'],
                     $validated['time_taken'] ?? 0, // Use 0 for assignments if time_taken is null
                     $validated['mode'] ?? 'quiz',
                     $topic,
-                    $course
+                    $course,
+                    $assignmentId // Pass assignment context to prevent regular topic contamination
                 );
             }, [
                 'user_id' => $userId,
@@ -324,8 +358,8 @@ class QuizController extends Controller
             ResilientCacheService::safeForget("user_progress_{$userId}_{$topic->id}");
             ResilientCacheService::safeForget("quiz_cache_{$userId}_{$topic->id}");
             
-            // ASSIGNMENT INTEGRATION: Check and complete assignments
-            $this->handleAssignmentCompletion($userId, $topic->id, $gradingResult['data']['percentageGrade'] ?? 0);
+            // ASSIGNMENT INTEGRATION: Check and complete assignments (assignmentId already retrieved above)
+            $this->handleAssignmentCompletion($userId, $topic->id, $gradingResult['data']['percentageGrade'] ?? 0, $assignmentId);
             
             $processingTime = (microtime(true) - $startTime) * 1000;
             
@@ -781,49 +815,65 @@ class QuizController extends Controller
      * Handle assignment completion when quiz is completed
      * Enhanced with comprehensive locking logic
      */
-    private function handleAssignmentCompletion(int $userId, int $topicId, float $percentageGrade): void
+    private function handleAssignmentCompletion(int $userId, int $topicId, float $percentageGrade, ?int $assignmentId = null): void
     {
         try {
-            // Find active assignments for this user and topic
-            $assignments = Assignment::where('student_id', $userId)
-                                   ->where('topic_id', $topicId)
-                                   ->whereIn('status', [Assignment::STATUS_ACTIVE, Assignment::STATUS_OVERDUE])
-                                   ->get();
+            if ($assignmentId) {
+                // SPECIFIC ASSIGNMENT: Complete only the specified assignment
+                $assignment = Assignment::where('id', $assignmentId)
+                                       ->where('student_id', $userId)
+                                       ->where('topic_id', $topicId)
+                                       ->whereIn('status', [Assignment::STATUS_ACTIVE, Assignment::STATUS_OVERDUE])
+                                       ->first();
+                
+                if ($assignment) {
+                    // Check if assignment is expired due to time limit
+                    if ($assignment->hasTimeLimitExpired()) {
+                        $assignment->markAsExpired();
+                        Log::info('Assignment expired due to time limit', [
+                            'assignment_id' => $assignment->id,
+                            'user_id' => $userId,
+                            'duration_minutes' => $assignment->duration_minutes
+                        ]);
+                        return;
+                    }
 
-            foreach ($assignments as $assignment) {
-                // Check if assignment is expired due to time limit
-                if ($assignment->hasTimeLimitExpired()) {
-                    $assignment->markAsExpired();
-                    Log::info('Assignment expired due to time limit', [
-                        'assignment_id' => $assignment->id,
+                    if ($assignment->canBeCompleted()) {
+                        // Create separate assignment attempt record
+                        $this->createAssignmentAttempt($assignment, $userId, $percentageGrade);
+                        
+                        // Complete the assignment with the quiz score
+                        $assignment->markAsCompleted((int) round($percentageGrade));
+                        
+                        // LOCK the assignment to prevent retakes
+                        $assignment->lock();
+                        
+                        Log::info('SPECIFIC assignment completed and LOCKED via quiz', [
+                            'assignment_id' => $assignment->id,
+                            'user_id' => $userId,
+                            'topic_id' => $topicId,
+                            'score' => round($percentageGrade),
+                            'was_overdue' => $assignment->isOverdue(),
+                            'completion_time' => now()
+                        ]);
+                    }
+                } else {
+                    Log::warning('Assignment not found for completion', [
+                        'assignment_id' => $assignmentId,
                         'user_id' => $userId,
-                        'duration_minutes' => $assignment->duration_minutes
-                    ]);
-                    continue;
-                }
-
-                if ($assignment->canBeCompleted()) {
-                    // Create separate assignment attempt record
-                    $this->createAssignmentAttempt($assignment, $userId, $percentageGrade);
-                    
-                    // Complete the assignment with the quiz score
-                    $assignment->markAsCompleted((int) round($percentageGrade));
-                    
-                    // LOCK the assignment to prevent retakes
-                    $assignment->lock();
-                    
-                    Log::info('Assignment completed and LOCKED via quiz', [
-                        'assignment_id' => $assignment->id,
-                        'user_id' => $userId,
-                        'topic_id' => $topicId,
-                        'score' => round($percentageGrade),
-                        'was_overdue' => $assignment->isOverdue(),
-                        'completion_time' => now()
+                        'topic_id' => $topicId
                     ]);
                 }
+            } else {
+                // REGULAR QUIZ: Don't complete any assignments, this is regular practice
+                Log::info('Regular quiz completed - no assignments affected', [
+                    'user_id' => $userId,
+                    'topic_id' => $topicId,
+                    'score' => round($percentageGrade)
+                ]);
             }
 
-            // Also check for any overdue assignments that should be locked
+            // Always check for overdue assignments that should be locked (separate from completion)
             $this->lockOverdueAssignments($userId, $topicId);
 
         } catch (\Exception $e) {
@@ -831,6 +881,7 @@ class QuizController extends Controller
             Log::error('Failed to complete assignment after quiz', [
                 'user_id' => $userId,
                 'topic_id' => $topicId,
+                'assignment_id' => $assignmentId,
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString()
             ]);
@@ -888,14 +939,17 @@ class QuizController extends Controller
             
             AssignmentAttempt::create([
                 'assignment_id' => $assignment->id,
+                'user_id' => $userId, // CRITICAL FIX: Add missing user_id field
                 'student_id' => $userId,
                 'topic_id' => $assignment->topic_id,
                 'course_id' => $assignment->course_id,
+                'attempt_number' => 1, // CRITICAL FIX: Add missing required field
                 'total_questions' => $totalQuestions,
                 'correct_answers' => $correctAnswers,
                 'incorrect_answers' => $incorrectAnswers,
                 'score_percentage' => $percentageGrade,
                 'time_taken_seconds' => $timeTaken,
+                'answers' => $answers, // CRITICAL FIX: Use answers instead of question_responses
                 'question_responses' => $answers,
                 'assignment_mode' => $assignment->assignment_mode ?? 'complete_topic',
                 'assigned_source' => $assignment->assigned_source,
@@ -903,6 +957,7 @@ class QuizController extends Controller
                 'started_at' => now()->subSeconds($timeTaken), // Approximate start time
                 'completed_at' => now(),
                 'is_late_submission' => $isLateSubmission,
+                'auto_submitted' => false, // CRITICAL FIX: Add missing required field
                 'notes' => $isLateSubmission ? 'Submitted after deadline' : null
             ]);
             

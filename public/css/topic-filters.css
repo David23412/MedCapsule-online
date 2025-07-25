@@ -1,3 +1,6 @@
+/* Topic Filter Pills Styling */
+/* Comprehensive filter system with medical and custom course support */
+
 .case-filters {
     display: flex;
     gap: 0.75rem;
@@ -112,8 +115,7 @@
 .case-filter[data-filter="homework"] i,
 .case-filter[data-filter="homework"] span:not(.count),
 .case-filter[data-filter="homework"] .count {
-    color: #ff8f00;
-    /* Orange */
+    color: #ff8f00; /* Orange */
 }
 
 .case-filter[data-filter="homework"].active {
@@ -125,8 +127,7 @@
 .case-filter[data-filter="lab"] i,
 .case-filter[data-filter="lab"] span:not(.count),
 .case-filter[data-filter="lab"] .count {
-    color: #7b1fa2;
-    /* Purple */
+    color: #7b1fa2; /* Purple */
 }
 
 .case-filter[data-filter="lab"].active {
@@ -138,8 +139,7 @@
 .case-filter[data-filter="reading"] i,
 .case-filter[data-filter="reading"] span:not(.count),
 .case-filter[data-filter="reading"] .count {
-    color: #2e7d32;
-    /* Green */
+    color: #2e7d32; /* Green */
 }
 
 .case-filter[data-filter="reading"].active {
@@ -149,8 +149,7 @@
 }
 
 /* Legacy nth-child selectors for backward compatibility */
-.case-filter:nth-child(2) i,
-/* Cases */
+.case-filter:nth-child(2) i, /* Cases */
 .case-filter:nth-child(2) span:not(.count),
 .case-filter:nth-child(2) .count {
     color: #ff8f00;
@@ -162,8 +161,7 @@
     color: white;
 }
 
-.case-filter:nth-child(3) i,
-/* Practical */
+.case-filter:nth-child(3) i, /* Practical */
 .case-filter:nth-child(3) span:not(.count),
 .case-filter:nth-child(3) .count {
     color: #7b1fa2;
@@ -175,8 +173,7 @@
     color: white;
 }
 
-.case-filter:nth-child(4) i,
-/* Quiz */
+.case-filter:nth-child(4) i, /* Quiz */
 .case-filter:nth-child(4) span:not(.count),
 .case-filter:nth-child(4) .count {
     color: #2e7d32;
@@ -214,8 +211,7 @@
 /* Fixed position for Random and Review Mistakes pills */
 .random-link,
 .mistakes-link {
-    order: 999;
-    /* Always at the end */
+    order: 999; /* Always at the end */
     position: relative;
 }
 
@@ -294,12 +290,9 @@
 }
 
 @keyframes assignmentPulse {
-
-    0%,
-    100% {
+    0%, 100% {
         box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05), 0 0 0 0 rgba(197, 48, 48, 0.3);
     }
-
     50% {
         box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05), 0 0 0 4px rgba(197, 48, 48, 0.1);
     }

@@ -81,12 +81,8 @@ return new class extends Migration
             if (!$this->indexExists('topics', 'idx_topics_course_locked_order')) {
                 $table->index(['course_id', 'is_locked', 'display_order'], 'idx_topics_course_locked_order');
             }
-            if (!$this->indexExists('topics', 'idx_topics_user_mastered')) {
-                $table->index(['user_id', 'mastered'], 'idx_topics_user_mastered');
-            }
-            if (!$this->indexExists('topics', 'idx_topics_attempt_mastered')) {
-                $table->index(['last_attempt_date', 'mastered'], 'idx_topics_attempt_mastered');
-            }
+            // REMOVED: Indexes for user_id, mastered, last_attempt_date - these fields are in user_topic_progress table
+            // Topics belong to courses, not individual users
         });
 
         Schema::table('courses', function (Blueprint $table) {
@@ -179,14 +175,15 @@ return new class extends Migration
                 c.id as course_id,
                 c.name as course_name,
                 COUNT(t.id) as total_topics,
-                COUNT(CASE WHEN t.mastered = 1 THEN 1 END) as mastered_topics,
-                AVG(t.percentage_grade) as average_grade,
+                COUNT(CASE WHEN utp.percentage_grade >= 80 THEN 1 END) as mastered_topics,
+                AVG(COALESCE(utp.percentage_grade, 0)) as average_grade,
                 COUNT(a.id) as total_assignments,
                 COUNT(CASE WHEN a.status = "completed" THEN 1 END) as completed_assignments
             FROM users u
             JOIN course_user cu ON u.id = cu.user_id
             JOIN courses c ON cu.course_id = c.id
-            LEFT JOIN topics t ON c.id = t.course_id AND t.user_id = u.id
+            LEFT JOIN topics t ON c.id = t.course_id
+            LEFT JOIN user_topic_progress utp ON t.id = utp.topic_id AND u.id = utp.user_id
             LEFT JOIN assignments a ON u.id = a.student_id AND c.id = a.course_id
             WHERE u.role = "student"
             GROUP BY u.id, c.id

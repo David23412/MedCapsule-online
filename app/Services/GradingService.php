@@ -50,7 +50,7 @@ class GradingService
      * @return array
      * @throws \Exception
      */
-    public function gradeQuiz(User $user, array $answers, int $duration, string $mode, Topic $topic, Course $course): array
+    public function gradeQuiz(User $user, array $answers, int $duration, string $mode, Topic $topic, Course $course, ?int $assignmentId = null): array
     {
         DB::beginTransaction();
         try {
@@ -64,7 +64,7 @@ class GradingService
             $gradingResult = $this->processAnswers($user, $questions, $answers, $topic);
 
             // Check if this is an assignment quiz
-            $isAssignment = $this->isAssignmentQuiz($user, $topic, $course);
+            $isAssignment = $this->isAssignmentQuiz($user, $topic, $course, $assignmentId);
 
             // Create quiz attempts for each source
             $this->createQuizAttempts($user, $gradingResult['sourceData'], $duration, $mode, $topic, $isAssignment);
@@ -80,8 +80,17 @@ class GradingService
             // Calculate and award XP
             $xpResult = $this->calculateAndAwardXP($user, $gradingResult['score'], $duration, $gradingResult['percentageGrade']);
 
-            // Update topic progress
-            $this->updateTopicProgress($user, $topic, $gradingResult['score'], $gradingResult['totalQuestions']);
+            // Update topic progress ONLY for regular quizzes, NOT assignments
+            if (!$assignmentId) {
+                $this->updateTopicProgress($user, $topic, $gradingResult['score'], $gradingResult['totalQuestions']);
+            } else {
+                // Assignment completion - don't update regular topic progress
+                Log::info('Assignment quiz completed - skipping regular topic progress update', [
+                    'assignment_id' => $assignmentId,
+                    'user_id' => $user->id,
+                    'topic_id' => $topic->id
+                ]);
+            }
 
             // Clear relevant caches
             $this->cacheService->clearTopicProgressCaches($topic->id, $user->id, 'quiz');
@@ -308,16 +317,20 @@ class GradingService
     }
 
     /**
-     * Check if this quiz is being solved for an assignment
+     * Check if this quiz is being solved for an assignment based on assignment_id parameter
      *
      * @param User $user
      * @param Topic $topic
      * @param Course $course
+     * @param int|null $assignmentId
      * @return bool
      */
-    private function isAssignmentQuiz(User $user, Topic $topic, Course $course): bool
+    private function isAssignmentQuiz(User $user, Topic $topic, Course $course, ?int $assignmentId = null): bool
     {
-        return \App\Models\Assignment::where('student_id', $user->id)
+        // CRITICAL FIX: Only return true if assignment_id is explicitly provided
+        // Don't assume it's an assignment just because assignments exist for the topic
+        return $assignmentId !== null && \App\Models\Assignment::where('id', $assignmentId)
+            ->where('student_id', $user->id)
             ->where('topic_id', $topic->id)
             ->where('course_id', $course->id)
             ->whereIn('status', [\App\Models\Assignment::STATUS_ACTIVE, \App\Models\Assignment::STATUS_OVERDUE])

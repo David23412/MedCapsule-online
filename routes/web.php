@@ -332,10 +332,10 @@ Route::middleware('auth')->group(function () {
         Route::get('/courses/{course}', [TopicLockingController::class, 'courseTopics'])->name('course');
         
         // Individual topic locking
-        Route::post('/topics/{topic}/lock', [TopicLockingController::class, 'lock'])
+        Route::post('/{topicId}/lock', [TopicLockingController::class, 'lock'])
             ->name('lock')
             ->middleware(['throttle:30,1']);
-        Route::post('/topics/{topic}/unlock', [TopicLockingController::class, 'unlock'])
+        Route::post('/{topicId}/unlock', [TopicLockingController::class, 'unlock'])
             ->name('unlock')
             ->middleware(['throttle:30,1']);
         Route::post('/topics/{topic}/toggle', [TopicLockingController::class, 'toggle'])
@@ -343,11 +343,11 @@ Route::middleware('auth')->group(function () {
             ->middleware(['throttle:30,1']);
         
         // Bulk operations
-        Route::post('/bulk/lock', [TopicLockingController::class, 'bulkLock'])
-            ->name('bulk.lock')
+        Route::post('/bulk-lock', [TopicLockingController::class, 'bulkLock'])
+            ->name('bulk-lock')
             ->middleware(['throttle:10,1']);
-        Route::post('/bulk/unlock', [TopicLockingController::class, 'bulkUnlock'])
-            ->name('bulk.unlock')
+        Route::post('/bulk-unlock', [TopicLockingController::class, 'bulkUnlock'])
+            ->name('bulk-unlock')
             ->middleware(['throttle:10,1']);
         
         // Course-wide operations

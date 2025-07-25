@@ -92,9 +92,9 @@ return new class extends Migration
 
         // 3. TOPIC AND COURSE OPTIMIZATION
         Schema::table('topics', function (Blueprint $table) {
-            // Hot path: Course topic ordering with progress
+            // Hot path: Course topic ordering (removed percentage_grade - it's in user_topic_progress table)
             if (!$this->indexExists('topics', 'idx_topics_course_progress')) {
-                $table->index(['course_id', 'display_order', 'percentage_grade'], 'idx_topics_course_progress');
+                $table->index(['course_id', 'display_order'], 'idx_topics_course_progress');
             }
         });
 

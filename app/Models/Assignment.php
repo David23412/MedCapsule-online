@@ -206,7 +206,8 @@ class Assignment extends Model
 
     public function isLocked(): bool
     {
-        return $this->status === self::STATUS_LOCKED;
+        // FIXED: Both locked and completed assignments should be considered locked
+        return in_array($this->status, [self::STATUS_LOCKED, self::STATUS_COMPLETED]);
     }
 
     public function markAsCompleted(int $score = null): bool
@@ -236,8 +237,10 @@ class Assignment extends Model
 
     public function lock(): bool
     {
+        // FIXED: Completed assignments should remain completed, not be changed to locked
+        // The isLocked() method should check for both LOCKED and COMPLETED status
         if ($this->status === self::STATUS_COMPLETED) {
-            return false;
+            return true; // Already effectively locked (completed assignments can't be retaken)
         }
 
         $this->update(['status' => self::STATUS_LOCKED]);

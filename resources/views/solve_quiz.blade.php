@@ -955,7 +955,7 @@
                             @if(isset($assignment) && $assignment && $assignment->duration_minutes)
                                 <span class="countdown-timer" data-duration="{{ $assignment->duration_minutes }}">{{ gmdate('i:s', $assignment->duration_minutes * 60) }}</span>
                             @else
-                                00:00
+                                <span class="countup-timer">00:00</span>
                             @endif
                         </div>
                     </div>
@@ -963,6 +963,9 @@
 
                 <form id="quiz-form" action="{{ secure_url(route('quiz.grade', ['course' => $course->id, 'topic' => $topic->id], false)) }}" method="POST">
                     @csrf
+                    @if(isset($assignment) && $assignment)
+                        <input type="hidden" name="assignment_id" value="{{ $assignment->id }}">
+                    @endif
                     @foreach($questions as $question)
                         @if($question->question_type === 'written')
                             @include('components.question-written', ['question' => $question])
@@ -1306,7 +1309,9 @@
                 let timerInterval;
                 const timerElement = document.getElementById('timer');
                 const countdownSpan = timerElement.querySelector('.countdown-timer');
+                const countupSpan = timerElement.querySelector('.countup-timer');
                 const isCountdown = countdownSpan !== null;
+                const isCountup = countupSpan !== null;
                 const durationMinutes = isCountdown ? parseFloat(countdownSpan.dataset.duration) : null;
                 let totalSeconds = isCountdown ? Math.floor(durationMinutes * 60) : 0;
                 
@@ -1340,7 +1345,6 @@
                             
                             @if(isset($assignment) && $assignment && $assignment->duration_minutes)
                                 // COUNTDOWN ASSIGNMENT: RUTHLESS TIME-UP SUBMISSION
-                                alert('TIME IS UP! Quiz submitted automatically. Unanswered questions are marked INCORRECT.');
                                 
                                 // RUTHLESSLY mark ALL unanswered questions as empty = incorrect = mistakes
                                 const allQuestions = document.querySelectorAll('.question-box');
@@ -1374,8 +1378,21 @@
                             document.getElementById('quiz-form').dispatchEvent(submitEvent);
                             return;
                         }
+                    } else if (isCountup) {
+                        // Count up timer for no-duration assignments
+                        const currentTime = new Date();
+                        const elapsedSeconds = Math.floor((currentTime - startTime) / 1000);
+                        const minutes = Math.floor(elapsedSeconds / 60);
+                        const seconds = elapsedSeconds % 60;
+                        
+                        countupSpan.textContent = 
+                            `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+                        
+                        // Keep neutral styling for count-up
+                        countupSpan.style.color = '#6c757d';
+                        countupSpan.style.fontWeight = 'normal';
                     } else {
-                        // Elapsed time timer for regular quizzes
+                        // Elapsed time timer for regular practice quizzes
                         const currentTime = new Date();
                         const elapsedSeconds = Math.floor((currentTime - startTime) / 1000);
                         const minutes = Math.floor(elapsedSeconds / 60);
@@ -1647,6 +1664,11 @@
                             const event = new CustomEvent('sourceProgressUpdated', {
                                 detail: {
                                     topicId: {{ $topic->id }},
+                                    @if(isset($assignment) && $assignment)
+                                    assignmentId: {{ $assignment->id }}, // Assignment context for proper card targeting
+                                    @else
+                                    assignmentId: null, // Regular quiz - no assignment context
+                                    @endif
                                     progress: data.source_progress,
                                     availableSources: Object.keys(data.source_progress),
                                     allSourcesMastered: Object.values(data.source_progress).every(p => p.percentage >= 90)

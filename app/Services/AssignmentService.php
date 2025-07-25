@@ -87,8 +87,9 @@ class AssignmentService
     public function createBulkAssignments(int $tutorId, array $studentIds, array $assignmentData): \Illuminate\Support\Collection
     {
         $assignments = collect();
+        $skipExisting = $assignmentData['skip_existing'] ?? false;
 
-        DB::transaction(function() use ($tutorId, $studentIds, $assignmentData, &$assignments) {
+        DB::transaction(function() use ($tutorId, $studentIds, $assignmentData, &$assignments, $skipExisting) {
             foreach ($studentIds as $studentId) {
                 // Verify tutor-student relationship (skip for admins)
                 $currentUser = auth()->user();
@@ -96,10 +97,18 @@ class AssignmentService
                     throw new \InvalidArgumentException("Invalid tutor-student relationship for student ID: {$studentId}");
                 }
 
+                // Check if assignment already exists and skip if requested
+                if ($skipExisting && $this->assignmentExists($tutorId, $studentId, $assignmentData)) {
+                    continue; // Skip this student
+                }
+
                 $data = array_merge($assignmentData, [
                     'tutor_id' => $tutorId,
                     'student_id' => $studentId
                 ]);
+
+                // Remove skip_existing from the data before creating assignment
+                unset($data['skip_existing']);
 
                 $assignments->push($this->createAssignment($data));
             }
@@ -557,6 +566,19 @@ class AssignmentService
                 ->where('tutor_id', $tutorId)
                 ->where('student_id', $studentId)
                 ->exists();
+    }
+
+    /**
+     * Check if a similar assignment already exists (used only for skip_existing convenience feature)
+     */
+    private function assignmentExists(int $tutorId, int $studentId, array $assignmentData): bool
+    {
+        // Simple check for any assignment with same tutor, student, and topic
+        // This is just for the skip_existing convenience feature - not for blocking duplicates
+        return Assignment::where('tutor_id', $tutorId)
+                        ->where('student_id', $studentId)
+                        ->where('topic_id', $assignmentData['topic_id'])
+                        ->exists();
     }
 
     private function getAverageCompletionTime(int $tutorId): float

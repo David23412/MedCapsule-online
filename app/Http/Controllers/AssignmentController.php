@@ -162,19 +162,50 @@ class AssignmentController extends Controller
         
         // For admins, get all courses and students
         if ($user->isAdmin()) {
-            $courses = Course::orderBy('name')->get();
+            $courses = Course::withCount(['topics' => function($query) {
+                $query->where('is_locked', false);
+            }])->orderBy('name')->get();
             $students = User::where('role', User::ROLE_STUDENT)->orderBy('name')->get();
         } else {
             // For tutors, get courses that have students assigned to this tutor
             $studentIds = $user->assignedStudents()->pluck('users.id');
-            $courses = Course::whereHas('users', function($query) use ($studentIds) {
+            $courses = Course::withCount(['topics' => function($query) {
+                $query->where('is_locked', false);
+            }])->whereHas('users', function($query) use ($studentIds) {
                 $query->whereIn('users.id', $studentIds);
             })->orderBy('name')->get();
             
             $students = $user->assignedStudents()->orderBy('name')->get();
         }
 
-        return view('assignments.bulk-create', compact('courses', 'students'));
+        // Preload ALL topics with question counts for instant loading
+        $allTopics = [];
+        $allSources = [];
+        
+        foreach ($courses as $course) {
+            $topics = Topic::where('course_id', $course->id)
+                          ->where('is_locked', false)
+                          ->withCount('questions')
+                          ->orderBy('display_order')
+                          ->get(['id', 'name', 'course_id']);
+            
+            $allTopics[$course->id] = $topics;
+            
+            // Preload sources for each topic
+            foreach ($topics as $topic) {
+                $sources = \DB::table('questions')
+                    ->where('topic_id', $topic->id)
+                    ->distinct()
+                    ->pluck('source')
+                    ->filter()
+                    ->sort()
+                    ->values();
+                
+                $allSources[$topic->id] = $sources;
+            }
+        }
+
+        return view('assignments.create', compact('courses', 'students', 'allTopics', 'allSources'));
     }
 
     /**

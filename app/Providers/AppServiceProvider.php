@@ -138,5 +138,8 @@ class AppServiceProvider extends ServiceProvider
         
         // Register the Question model observer with dependency injection
         \App\Models\Question::observe(app()->make(\App\Observers\QuestionObserver::class));
+        
+        // Register the Course model observer for INSTANT cache clearing
+        \App\Models\Course::observe(\App\Observers\CourseObserver::class);
     }
 }

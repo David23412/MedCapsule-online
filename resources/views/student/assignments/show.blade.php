@@ -195,7 +195,7 @@
                                 <br>Your score: {{ $assignment->score }}%
                             @endif
                         </div>
-                        <a href="{{ route('quiz.start', ['course' => $assignment->course_id, 'topic' => $assignment->topic_id]) }}" 
+                        <a href="{{ route('quiz.start', ['course' => $assignment->course_id, 'topic' => $assignment->topic_id, 'assignment_id' => $assignment->id]) }}" 
                            class="btn btn-outline-primary">
                             <i class="fas fa-redo me-2"></i>Practice Again
                         </a>
