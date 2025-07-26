@@ -16,7 +16,7 @@ class AssignmentFactory extends Factory
     {
         return [
             'tutor_id' => User::factory()->create(['role' => 'tutor'])->id,
-            'student_id' => User::factory()->create(['role' => 'student'])->id,
+            'user_id' => User::factory()->create(['role' => 'student'])->id,
             'topic_id' => Topic::factory()->create()->id,
             'course_id' => Course::factory()->create()->id,
             'title' => $this->faker->sentence(3),

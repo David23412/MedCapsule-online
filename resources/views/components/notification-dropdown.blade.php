@@ -45,24 +45,21 @@
 </div>
 
 <style>
-/* === ULTRA-MODERN NOTIFICATION LAYOUT === */
+/* === MINIMAL WHITE NOTIFICATION LAYOUT === */
 
-/* Modern Header */
+/* Minimal Header */
 .notification-header {
     padding: 20px 28px 16px;
-    background: linear-gradient(135deg, rgba(102, 126, 234, 0.05), rgba(118, 75, 162, 0.05));
-    border-bottom: 1px solid rgba(102, 126, 234, 0.1);
+    background: white;
+    border-bottom: 1px solid #e5e7eb;
     text-align: center;
-    border-radius: 20px 20px 0 0;
+    border-radius: 12px 12px 0 0;
 }
 
 .notification-title {
-    font-size: 18px;
-    font-weight: 700;
-    background: linear-gradient(135deg, #667eea, #764ba2);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
+    font-size: 16px;
+    font-weight: 600;
+    color: #374151;
     margin: 0;
     letter-spacing: -0.025em;
 }
@@ -118,29 +115,28 @@
     color: #9ca3af;
 }
 
-/* Notification Items - JUST WIDER NOT BIGGER */
+/* Minimal Notification Items */
 .notification-item {
     display: flex;
     align-items: flex-start;
     gap: 12px;
-    padding: 12px 20px;
+    padding: 16px 20px;
     background: white;
     border-bottom: 1px solid #f3f4f6;
-    border-left: 3px solid transparent;
-    transition: all 0.2s ease;
+    border-left: 2px solid #e5e7eb;
+    transition: all 0.15s ease;
 }
 
 .notification-item:hover {
-    background: #f9fafb;
+    background: #fafafa;
+    border-left-color: #9ca3af;
 }
 
 .notification-item:last-child {
     border-bottom: none;
 }
 
-/* Clean styling - All notifications look the same since they're auto-read */
-
-/* Icon - Clean circular background like the old design */
+/* Minimal Icon with subtle outline */
 .notification-icon {
     width: 36px;
     height: 36px;
@@ -148,12 +144,14 @@
     align-items: center;
     justify-content: center;
     flex-shrink: 0;
-    background: #f5f5f5;
+    background: white;
+    border: 1px solid #e5e7eb;
     border-radius: 50%;
 }
 
 .notification-icon i {
     font-size: 16px;
+    color: #6b7280;
 }
 
 /* Content */

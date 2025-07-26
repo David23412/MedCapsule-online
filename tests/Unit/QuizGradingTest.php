@@ -40,7 +40,7 @@ class QuizGradingTest extends TestCase
         $this->user = User::factory()->create([
             'name' => 'Test User',
             'email' => 'test@example.com',
-            'is_admin' => true
+            'role' => 'admin'
         ]);
         
         $this->course = Course::factory()->create([
@@ -459,7 +459,7 @@ class QuizGradingTest extends TestCase
     {
         // Test with a user who shouldn't have access to the course
         $restrictedUser = User::factory()->create([
-            'is_admin' => false
+            'role' => 'student'
         ]);
         
         $this->actingAs($restrictedUser);

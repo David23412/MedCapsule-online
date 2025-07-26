@@ -77,21 +77,25 @@ class Kernel extends ConsoleKernel
             ->runInBackground()
             ->withoutOverlapping();
             
-        // ASSIGNMENT LOCKING SYSTEM - AGGRESSIVE ENFORCEMENT
-        // Lock overdue assignments every hour (24-hour grace period)
+        // REAL-TIME ASSIGNMENT SYSTEM - No scheduled tasks needed!
+        // Status updates happen INSTANTLY via model accessors and API endpoints
+        
+        // Keep only essential background tasks for cleanup
+        // Lock overdue assignments daily (24-hour grace period) - for cleanup only
         $schedule->command('assignments:lock-overdue --grace-hours=24')
-                ->hourly()
+                ->daily()
+                ->at('02:00')
                 ->withoutOverlapping()
                 ->runInBackground()
                 ->appendOutputTo(storage_path('logs/assignment-locking.log'));
         
-        // Expire time-limited assignments every 15 minutes
+        // Expire time-limited assignments daily - for cleanup only
         $schedule->command('assignments:expire-time-limited')
-                ->everyFifteenMinutes()
+                ->daily()
+                ->at('02:30')
                 ->withoutOverlapping()
                 ->runInBackground()
-                ->appendOutputTo(storage_path('logs/assignment-expiration.log'));
-    }
+                ->appendOutputTo(storage_path('logs/assignment-expiration.log'));}
 
     /**
      * Register the commands for the application.

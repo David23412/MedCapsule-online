@@ -743,8 +743,8 @@
     <div class="page-header">
         <h1 class="page-title">Assignments</h1>
         <div class="header-actions">
-            <button type="button" class="btn btn-outline btn-sm" onclick="updateOverdueAssignments()" title="Sync overdue status">
-                <i class="fas fa-sync"></i>
+            <button type="button" class="btn btn-outline btn-sm" onclick="updateOverdueAssignments()" title="INSTANT Real-Time Status Update">
+                <i class="fas fa-bolt"></i> INSTANT
             </button>
             <a href="{{ route('assignments.analytics') }}" class="btn btn-outline btn-sm" title="View analytics">
                 <i class="fas fa-chart-bar"></i>
@@ -975,32 +975,52 @@ function deleteAssignment(assignmentId) {
 }
 
 function updateOverdueAssignments() {
+    enforceRealTimeStatus();
+}
+
+function enforceRealTimeStatus(assignmentId = null) {
     const btn = event.target;
     const originalHTML = btn.innerHTML;
-    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+    btn.innerHTML = '<i class="fas fa-bolt fa-spin"></i> INSTANT';
+    btn.disabled = true;
     
-    fetch('/assignments/update-overdue', {
+    const payload = assignmentId ? { assignment_id: assignmentId } : {};
+    
+    fetch('/assignments/enforce-real-time-status', {
         method: 'POST',
         headers: {
             'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
             'Content-Type': 'application/json',
-        }
+        },
+        body: JSON.stringify(payload)
     })
     .then(response => response.json())
     .then(data => {
         if (data.success) {
-            location.reload();
+            // Show instant feedback
+            btn.innerHTML = '<i class="fas fa-check text-success"></i> UPDATED!';
+            
+            // Reload page to show updated statuses
+            setTimeout(() => {
+                location.reload();
+            }, 500);
         } else {
             btn.innerHTML = originalHTML;
+            btn.disabled = false;
             alert('Error: ' + data.message);
         }
     })
-    .catch(() => {
+    .catch(error => {
         btn.innerHTML = originalHTML;
-        alert('An error occurred');
+        btn.disabled = false;
+        console.error('Real-time enforcement error:', error);
+        alert('An error occurred during real-time status enforcement');
     });
 }
 </script>
+
+<!-- REAL-TIME ASSIGNMENT STATUS ENFORCER -->
+<script src="{{ asset('js/real-time-assignments.js') }}"></script>
 
 </body>
 </html>

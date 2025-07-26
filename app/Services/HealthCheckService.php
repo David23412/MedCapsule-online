@@ -17,9 +17,26 @@ class HealthCheckService
     ];
 
     /**
-     * Perform comprehensive health check
+     * Perform comprehensive health check with caching
      */
     public static function performHealthCheck(): array
+    {
+        // Cache health check results for 30 seconds to avoid excessive DB queries
+        return ResilientCacheService::safeRemember(
+            'health_check_status',
+            30,
+            function () {
+                return self::executeHealthCheck();
+            },
+            ['overall_status' => 'unknown', 'error' => 'Cache fallback'],
+            ['operation' => 'health_check']
+        );
+    }
+
+    /**
+     * Execute the actual health check
+     */
+    private static function executeHealthCheck(): array
     {
         $startTime = microtime(true);
         $healthStatus = [

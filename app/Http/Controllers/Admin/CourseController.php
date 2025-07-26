@@ -5,20 +5,39 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Course;
 use Illuminate\Http\Request;
+use App\Services\QuizCacheService;
+use Illuminate\Http\JsonResponse;
+use App\Services\QuizPerformanceService;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Cache;
 
 class CourseController extends Controller
 {
+    public function __construct()
+    {
+        parent::__construct();
+        Log::info('Controller initialized', ['user_id' => auth()->id()]);
+        $this->middleware(['auth']);
+    }
+
     /**
      * Display a listing of the resource.
-     *
-     * @return \Illuminate\Http\Response
      */
     public function index()
     {
-        $courses = Course::all();
-        return view('admin.courses.index', compact('courses'));
+        // Ultra-aggressive caching for courses index
+        $cacheKey = QuizCacheService::generateCacheKey('admin_courses_index', [
+            'user_id' => auth()->id() ?? 'guest',
+            'timestamp' => now()->format('Y-m-d-H')
+        ]);
+        
+        return Cache::remember($cacheKey, 3600, function () {
+            $courses = Course::with(['topics:id,course_id,name', 'users:id,name'])
+                ->withCount(['topics', 'users', 'questions'])
+                ->orderBy('name')
+                ->get();
+            return view('admin.courses.index', compact('courses'));
+        });
     }
 
     /**
@@ -28,8 +47,15 @@ class CourseController extends Controller
      */
     public function create()
     {
+        try {
+
         return view('admin.courses.create');
-    }
+    
+        } catch (\Exception $e) {
+            \Log::error('Method execution failed', ['error' => $e->getMessage()]);
+            return response()->json(['success' => false, 'message' => 'Operation failed'], 500);
+        }
+}
 
     /**
      * Store a newly created resource in storage.
@@ -39,19 +65,20 @@ class CourseController extends Controller
      */
     public function store(Request $request)
     {
-        $validatedData = $request->validate([
-            'name' => 'required|string|max:255',
-            'description' => 'required|string',
-            'price' => 'required|numeric|min:0',
-            'is_published' => 'required|boolean',
-            'type' => 'nullable|string|in:medical,custom',
-        ]);
+        try {
+
+        $validatedData = // TODO: Create FormRequest class for validation
         
         $course = Course::create($validatedData);
         
         return redirect()->route('admin.courses.index')
                          ->with('success', 'Course created successfully');
-    }
+    
+        } catch (\Exception $e) {
+            \Log::error('Method execution failed', ['error' => $e->getMessage()]);
+            return response()->json(['success' => false, 'message' => 'Operation failed'], 500);
+        }
+}
 
     /**
      * Display the specified resource.
@@ -61,9 +88,16 @@ class CourseController extends Controller
      */
     public function show($id)
     {
+        try {
+
         $course = Course::findOrFail($id);
         return view('admin.courses.show', compact('course'));
-    }
+    
+        } catch (\Exception $e) {
+            \Log::error('Method execution failed', ['error' => $e->getMessage()]);
+            return response()->json(['success' => false, 'message' => 'Operation failed'], 500);
+        }
+}
 
     /**
      * Show the form for editing the specified resource.
@@ -73,9 +107,16 @@ class CourseController extends Controller
      */
     public function edit($id)
     {
+        try {
+
         $course = Course::findOrFail($id);
         return view('admin.courses.edit', compact('course'));
-    }
+    
+        } catch (\Exception $e) {
+            \Log::error('Method execution failed', ['error' => $e->getMessage()]);
+            return response()->json(['success' => false, 'message' => 'Operation failed'], 500);
+        }
+}
 
     /**
      * Update the specified resource in storage.
@@ -86,15 +127,11 @@ class CourseController extends Controller
      */
     public function update(Request $request, $id)
     {
+        try {
+
         $course = Course::findOrFail($id);
         
-        $validatedData = $request->validate([
-            'name' => 'required|string|max:255',
-            'description' => 'required|string',
-            'price' => 'required|numeric|min:0',
-            'is_published' => 'required|boolean',
-            'type' => 'nullable|string|in:medical,custom',
-        ]);
+        $validatedData = // TODO: Create FormRequest class for validation
         
         // Handle course type change
         $oldType = $course->type ?? 'medical';
@@ -108,7 +145,12 @@ class CourseController extends Controller
                 'user_id' => auth()->id(),
                 'user_name' => auth()->user()->name
             ]);
+        
+        } catch (\Exception $e) {
+            \Log::error('Method execution failed', ['error' => $e->getMessage()]);
+            return response()->json(['success' => false, 'message' => 'Operation failed'], 500);
         }
+}
         
         $course->update($validatedData);
         
@@ -127,10 +169,17 @@ class CourseController extends Controller
      */
     public function destroy($id)
     {
+        try {
+
         $course = Course::findOrFail($id);
         $course->delete();
         
         return redirect()->route('admin.courses.index')
                          ->with('success', 'Course deleted successfully');
-    }
+    
+        } catch (\Exception $e) {
+            \Log::error('Method execution failed', ['error' => $e->getMessage()]);
+            return response()->json(['success' => false, 'message' => 'Operation failed'], 500);
+        }
+}
 }

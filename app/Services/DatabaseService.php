@@ -44,7 +44,14 @@ class DatabaseService
 
                 if (self::isRetriableError($e)) {
                     if ($attempt < self::MAX_RETRIES) {
-                        usleep(self::RETRY_DELAY_MS * 1000 * $attempt); // Exponential backoff
+                        // Non-blocking exponential backoff
+                        $backoffDelay = self::RETRY_DELAY_MS * pow(2, $attempt - 1);
+                        $startTime = microtime(true);
+                        while ((microtime(true) - $startTime) * 1000 < $backoffDelay) {
+                            if (function_exists('sched_yield')) {
+                                sched_yield();
+                            }
+                        }
                         continue;
                     }
                 } else {
@@ -120,7 +127,14 @@ class DatabaseService
                 ]);
 
                 if (self::isRetriableError($e) && $attempt < self::MAX_RETRIES) {
-                    usleep(self::RETRY_DELAY_MS * 1000 * $attempt);
+                    // Non-blocking exponential backoff
+                    $backoffDelay = self::RETRY_DELAY_MS * pow(2, $attempt - 1);
+                    $startTime = microtime(true);
+                    while ((microtime(true) - $startTime) * 1000 < $backoffDelay) {
+                        if (function_exists('sched_yield')) {
+                            sched_yield();
+                        }
+                    }
                     continue;
                 } else {
                     break;

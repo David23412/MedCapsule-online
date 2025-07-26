@@ -90,7 +90,7 @@ class QuizServiceTest extends TestCase
         // Arrange
         $this->cacheService->shouldReceive('get')->andReturn(null);
         $this->cacheService->shouldReceive('put')->andReturn(true);
-        $adminUser = User::factory()->create(['is_admin' => true]);
+        $adminUser = User::factory()->create(['role' => 'admin']);
         Question::factory()->count(5)->create(['topic_id' => $this->topic->id]);
 
         // Act & Assert - Admin should have access
@@ -105,7 +105,7 @@ class QuizServiceTest extends TestCase
         $this->cacheService->shouldReceive('get')->andReturn(null);
         $this->cacheService->shouldReceive('put')->andReturn(true);
         $enrolledUser = \Mockery::mock(User::class)->makePartial();
-        $enrolledUser->is_admin = false;
+        $enrolledUser->role = 'student';
         Question::factory()->count(5)->create(['topic_id' => $this->topic->id]);
         // Mock the hasAccessToCourse method
         $enrolledUser->shouldReceive('hasAccessToCourse')
@@ -122,7 +122,7 @@ class QuizServiceTest extends TestCase
         $this->cacheService->shouldReceive('get')->andReturn(null);
         $this->cacheService->shouldReceive('put')->andReturn(true);
         $unauthorizedUser = \Mockery::mock(User::class)->makePartial();
-        $unauthorizedUser->is_admin = false;
+        $unauthorizedUser->role = 'student';
         $paidCourse = Course::factory()->create(['price' => 99.99]);
         $topic = Topic::factory()->create(['course_id' => $paidCourse->id]);
         // Mock the hasAccessToCourse method
@@ -373,7 +373,7 @@ class QuizServiceTest extends TestCase
         $this->cacheService->shouldReceive('get')->andReturn(null);
         $this->cacheService->shouldReceive('put')->andReturn(true);
         $user = \Mockery::mock(User::class)->makePartial();
-        $user->is_admin = true;
+        $user->role = 'admin';
         Question::factory()->count(5)->create([
             'topic_id' => $this->topic->id
         ]);
@@ -411,7 +411,7 @@ class QuizServiceTest extends TestCase
         $paidCourse = Course::factory()->create(['price' => 99.99]);
         $topic = Topic::factory()->create(['course_id' => $paidCourse->id]);
         $regularUser = \Mockery::mock(User::class)->makePartial();
-        $regularUser->is_admin = false;
+        $regularUser->role = 'student';
         // Mock the hasAccessToCourse method
         $regularUser->shouldReceive('hasAccessToCourse')
             ->with($paidCourse->id)
@@ -429,7 +429,7 @@ class QuizServiceTest extends TestCase
         $this->cacheService->shouldReceive('put')->andReturn(true);
         $paidCourse = Course::factory()->create(['price' => 99.99]);
         $topic = Topic::factory()->create(['course_id' => $paidCourse->id]);
-        $adminUser = User::factory()->create(['is_admin' => true]);
+        $adminUser = User::factory()->create(['role' => 'admin']);
         Question::factory()->count(5)->create(['topic_id' => $topic->id]);
 
         // Act & Assert - Admin should have access
@@ -444,7 +444,7 @@ class QuizServiceTest extends TestCase
         $this->cacheService->shouldReceive('get')->andReturn(null);
         $this->cacheService->shouldReceive('put')->andReturn(true);
         $user = \Mockery::mock(User::class)->makePartial();
-        $user->is_admin = true;
+        $user->role = 'admin';
         Question::factory()->count(3)->create([
             'topic_id' => $this->topic->id,
             'source' => 'textbook'
@@ -468,7 +468,7 @@ class QuizServiceTest extends TestCase
         $this->cacheService->shouldReceive('get')->andReturn(null);
         $this->cacheService->shouldReceive('put')->andReturn(true);
         $user = \Mockery::mock(User::class)->makePartial();
-        $user->is_admin = true;
+        $user->role = 'admin';
         Question::factory()->count(5)->create([
             'topic_id' => $this->topic->id
         ]);
@@ -514,7 +514,7 @@ class QuizServiceTest extends TestCase
         $this->cacheService->shouldReceive('get')->andReturn(null);
         $this->cacheService->shouldReceive('put')->andReturn(true);
         $user = \Mockery::mock(User::class)->makePartial();
-        $user->is_admin = true;
+        $user->role = 'admin';
         $emptyTopic = Topic::factory()->create(['course_id' => $this->course->id]);
         // Act & Assert
         $this->expectException(\InvalidArgumentException::class);
@@ -531,7 +531,7 @@ class QuizServiceTest extends TestCase
         $this->cacheService->shouldReceive('get')->andReturn($cachedQuestions);
         $this->cacheService->shouldNotReceive('put');
         $user = \Mockery::mock(User::class)->makePartial();
-        $user->is_admin = true;
+        $user->role = 'admin';
         // Act
         $result = $this->quizService->generateQuizQuestions($this->topic, ['all'], $user);
         // Assert
@@ -572,7 +572,7 @@ class QuizServiceTest extends TestCase
         $this->cacheService->shouldReceive('get')->andReturn(null);
         $this->cacheService->shouldReceive('put')->andReturn(true);
         $user = \Mockery::mock(User::class)->makePartial();
-        $user->is_admin = true;
+        $user->role = 'admin';
         $question1 = Question::factory()->create([
             'topic_id' => $this->topic->id,
             'question_type' => 'multiple_choice',
@@ -778,7 +778,7 @@ class QuizServiceTest extends TestCase
         $this->cacheService->shouldReceive('get')->andReturn(null);
         $this->cacheService->shouldReceive('put')->andReturn(true);
         $user = \Mockery::mock(User::class)->makePartial();
-        $user->is_admin = true;
+        $user->role = 'admin';
         Question::factory()->count(5)->create([
             'topic_id' => $this->topic->id
         ]);

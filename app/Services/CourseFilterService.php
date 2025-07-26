@@ -12,21 +12,21 @@ class CourseFilterService
      * Academic year mapping for display and filtering
      */
     const ACADEMIC_YEARS = [
-        'year-1-sem-1' => 'Year 1 - First Semester',
-        'year-1-sem-2' => 'Year 1 - Second Semester',
-        'year-2-sem-1' => 'Year 2 - First Semester',
-        'year-2-sem-2' => 'Year 2 - Second Semester',
-        'year-3-sem-1' => 'Year 3 - First Semester',
-        'year-3-sem-2' => 'Year 3 - Second Semester',
-        'year-4-sem-1' => 'Year 4 - First Semester',
-        'year-4-sem-2' => 'Year 4 - Second Semester',
-        'year-5-sem-1' => 'Year 5 - First Semester',
-        'year-5-sem-2' => 'Year 5 - Second Semester',
-        'year-6-sem-1' => 'Year 6 - First Semester',
-        'year-6-sem-2' => 'Year 6 - Second Semester',
-        'sat-prep' => 'SAT Preparation',
-        'est-prep' => 'EST Preparation',
-        'act-prep' => 'ACT Preparation'
+        'YEAR 1 - SEMESTER 1' => 'YEAR 1 - SEMESTER 1',
+        'YEAR 1 - SEMESTER 2' => 'YEAR 1 - SEMESTER 2',
+        'YEAR 2 - SEMESTER 1' => 'YEAR 2 - SEMESTER 1',
+        'YEAR 2 - SEMESTER 2' => 'YEAR 2 - SEMESTER 2',
+        'YEAR 3 - SEMESTER 1' => 'YEAR 3 - SEMESTER 1',
+        'YEAR 3 - SEMESTER 2' => 'YEAR 3 - SEMESTER 2',
+        'YEAR 4 - SEMESTER 1' => 'YEAR 4 - SEMESTER 1',
+        'YEAR 4 - SEMESTER 2' => 'YEAR 4 - SEMESTER 2',
+        'YEAR 5 - SEMESTER 1' => 'YEAR 5 - SEMESTER 1',
+        'YEAR 5 - SEMESTER 2' => 'YEAR 5 - SEMESTER 2',
+        'YEAR 6 - SEMESTER 1' => 'YEAR 6 - SEMESTER 1',
+        'YEAR 6 - SEMESTER 2' => 'YEAR 6 - SEMESTER 2',
+        'SAT' => 'SAT',
+        'EST' => 'EST',
+        'ACT' => 'ACT'
     ];
 
     /**
@@ -82,21 +82,21 @@ class CourseFilterService
     public static function getShortLabel(string $academicYear): string
     {
         $shortLabels = [
-            'year-1-sem-1' => 'Y1S1',
-            'year-1-sem-2' => 'Y1S2',
-            'year-2-sem-1' => 'Y2S1',
-            'year-2-sem-2' => 'Y2S2',
-            'year-3-sem-1' => 'Y3S1',
-            'year-3-sem-2' => 'Y3S2',
-            'year-4-sem-1' => 'Y4S1',
-            'year-4-sem-2' => 'Y4S2',
-            'year-5-sem-1' => 'Y5S1',
-            'year-5-sem-2' => 'Y5S2',
-            'year-6-sem-1' => 'Y6S1',
-            'year-6-sem-2' => 'Y6S2',
-            'sat-prep' => 'SAT',
-            'est-prep' => 'EST',
-            'act-prep' => 'ACT'
+            'YEAR 1 - SEMESTER 1' => 'Y1S1',
+            'YEAR 1 - SEMESTER 2' => 'Y1S2',
+            'YEAR 2 - SEMESTER 1' => 'Y2S1',
+            'YEAR 2 - SEMESTER 2' => 'Y2S2',
+            'YEAR 3 - SEMESTER 1' => 'Y3S1',
+            'YEAR 3 - SEMESTER 2' => 'Y3S2',
+            'YEAR 4 - SEMESTER 1' => 'Y4S1',
+            'YEAR 4 - SEMESTER 2' => 'Y4S2',
+            'YEAR 5 - SEMESTER 1' => 'Y5S1',
+            'YEAR 5 - SEMESTER 2' => 'Y5S2',
+            'YEAR 6 - SEMESTER 1' => 'Y6S1',
+            'YEAR 6 - SEMESTER 2' => 'Y6S2',
+            'SAT' => 'SAT',
+            'EST' => 'EST',
+            'ACT' => 'ACT'
         ];
 
         return $shortLabels[$academicYear] ?? strtoupper($academicYear);
@@ -127,17 +127,17 @@ class CourseFilterService
             'medical' => [
                 'label' => 'Medical School',
                 'years' => [
-                    'year-1-sem-1', 'year-1-sem-2',
-                    'year-2-sem-1', 'year-2-sem-2',
-                    'year-3-sem-1', 'year-3-sem-2',
-                    'year-4-sem-1', 'year-4-sem-2',
-                    'year-5-sem-1', 'year-5-sem-2',
-                    'year-6-sem-1', 'year-6-sem-2'
+                    'YEAR 1 - SEMESTER 1', 'YEAR 1 - SEMESTER 2',
+                    'YEAR 2 - SEMESTER 1', 'YEAR 2 - SEMESTER 2',
+                    'YEAR 3 - SEMESTER 1', 'YEAR 3 - SEMESTER 2',
+                    'YEAR 4 - SEMESTER 1', 'YEAR 4 - SEMESTER 2',
+                    'YEAR 5 - SEMESTER 1', 'YEAR 5 - SEMESTER 2',
+                    'YEAR 6 - SEMESTER 1', 'YEAR 6 - SEMESTER 2'
                 ]
             ],
             'prep' => [
                 'label' => 'Test Preparation',
-                'years' => ['sat-prep', 'est-prep', 'act-prep']
+                'years' => ['SAT', 'EST', 'ACT']
             ]
         ];
     }

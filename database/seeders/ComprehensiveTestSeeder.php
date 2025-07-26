@@ -162,7 +162,7 @@ class ComprehensiveTestSeeder extends Seeder
                 Topic::firstOrCreate(
                     ['name' => $topicName, 'course_id' => $course->id],
                     [
-                        'description' => "Topic covering {$topicName}",
+
                         'display_order' => array_search($topicName, $topicNames[$courseData['name']]) + 1,
                     ]
                 );
@@ -346,7 +346,7 @@ class ComprehensiveTestSeeder extends Seeder
             foreach ($assignedStudents as $student) {
                 TutorStudentRelationship::firstOrCreate([
                     'tutor_id' => $tutor->id,
-                    'student_id' => $student->id,
+                    'user_id' => $student->id,
                 ], [
                     'assigned_at' => now()->subDays(rand(1, 30)),
                 ]);
@@ -414,7 +414,7 @@ class ComprehensiveTestSeeder extends Seeder
                     
                     Assignment::firstOrCreate([
                         'tutor_id' => $tutor->id,
-                        'student_id' => $student->id,
+                        'user_id' => $student->id,
                         'topic_id' => $topic->id,
                     ], [
                         'course_id' => $topic->course_id,
@@ -493,7 +493,7 @@ class ComprehensiveTestSeeder extends Seeder
             
             // Assignment notifications for students
             if ($user->role === 'student') {
-                $assignments = Assignment::where('student_id', $user->id)
+                $assignments = Assignment::where('user_id', $user->id)
                     ->where('status', 'active')
                     ->get();
                     

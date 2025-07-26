@@ -1005,6 +1005,15 @@ cript src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle
                 return false;
             }
             
+            // AUTO-GENERATE TITLE IF EMPTY
+            const titleField = document.getElementById('title');
+            const topicSelect = document.getElementById('topic_id');
+            
+            if (!titleField.value.trim() && topicSelect.value) {
+                const topicName = topicSelect.options[topicSelect.selectedIndex].text;
+                titleField.value = topicName;
+            }
+            
             // Show loading state
             const createBtn = document.getElementById('createBtn');
             createBtn.innerHTML = '<div class="spinner me-2"></div>Creating...';

@@ -30,7 +30,6 @@ class QuestionSeeder extends Seeder
                     'name' => 'Topic 1 for Internal Medicine'
                 ],
                 [
-                    'description' => 'Introduction to Internal Medicine',
                     'case_type' => 'quiz',
                     'display_order' => 1
                 ]

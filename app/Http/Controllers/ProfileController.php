@@ -3,6 +3,12 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
+use App\Http\Requests\ProfileUpdateRequest;
+use App\Services\QuizCacheService;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Facades\Log;
+use App\Services\QuizPerformanceService;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use App\Models\Mistake;
@@ -11,8 +17,18 @@ use App\Models\Topic;
 use App\Models\User;
 use App\Models\QuizAttempt;
 
-class ProfileController extends Controller
+// TODO: Inject services in constructor
+    // TODO: Inject services in constructor
+    // TODO: Inject services in constructor
+    class ProfileController extends Controller
 {
+    public function __construct()
+    {
+        // Don't call parent::__construct() to avoid double auth middleware
+        Log::info('Controller initialized', ['user_id' => auth()->id()]);
+        $this->middleware(['auth']);
+    }
+
 
     public function getProgress()
     {
@@ -26,34 +42,23 @@ class ProfileController extends Controller
     {
         $user = Auth::user();
         
-        // Calculate accuracy from user's total attempts and correct answers
-        $totalQuestions = $user->total_questions_attempted ?? 0;
-        $totalCorrect = $user->correct_answers_count ?? 0;
-        $accuracyRate = $totalQuestions > 0 ? round(($totalCorrect / $totalQuestions) * 100, 1) : 0;
+        // Ultra-aggressive caching for profile data
+        $cacheKey = QuizCacheService::generateCacheKey('user_profile', [
+            'user_id' => $user->id,
+            'timestamp' => now()->format('Y-m-d-H')
+        ]);
+        
+        $profileData = Cache::remember($cacheKey, 3600, function () use ($user) {
+            // Calculate accuracy from user's total attempts and correct answers
+            $totalQuestions = $user->total_questions_attempted ?? 0;
+            $totalCorrect = $user->correct_answers_count ?? 0;
+            $accuracyRate = $totalQuestions > 0 ? round(($totalCorrect / $totalQuestions) * 100, 1) : 0;
 
-        // Get the study streak value directly from the user model
-        $studyStreak = $user->study_streak_days ?? 0;
+            // Get the study streak value directly from the user model
+            $studyStreak = $user->study_streak_days ?? 0;
 
-        // Calculate study time breakdowns
-        $studyTimeBreakdown = [
-            'quiz' => QuizAttempt::where('user_id', $user->id)
-                ->where('quiz_type', 'normal')
-                ->where('study_mode', 'quiz')
-                ->where('topic_id', '!=', null)
-                ->sum('duration_seconds'),
-            'tutor' => QuizAttempt::where('user_id', $user->id)
-                ->where('study_mode', 'tutor')
-                ->sum('duration_seconds'),
-            'random_quiz' => QuizAttempt::where('user_id', $user->id)
-                ->where('quiz_type', 'random')
-                ->sum('duration_seconds'),
-            'mistake_review' => QuizAttempt::where('user_id', $user->id)
-                ->where('quiz_type', 'mistake_review')
-                ->sum('duration_seconds')
-        ];
-
-        // Calculate total from all quiz types
-        $studyTimeBreakdown['total'] = array_sum($studyTimeBreakdown);
+            // COMPLEXITY REDUCTION: Extract study time calculation
+            $studyTimeBreakdown = $this->calculateStudyTimeBreakdown($user);
 
         // Format study times without redundant labels
         $formattedStudyTimes = [
@@ -64,17 +69,25 @@ class ProfileController extends Controller
             'mistake_review' => $this->formatStudyTime($studyTimeBreakdown['mistake_review'])
         ];
 
+            return compact('accuracyRate', 'totalQuestions', 'studyStreak', 'formattedStudyTimes');
+        });
+
+        // Extract cached data
+        extract($profileData);
+
         // Get user's rank
         $userRank = null;
         if ($user->xp > 0) {
-            $userRank = DB::table('users')
-                ->whereRaw('users.total_questions_attempted > 0')
-                ->where('xp', '>', $user->xp)
-                ->count() + 1;
+            $userRank = Cache::remember("user_rank_{$user->id}_{$user->xp}", 300, function() use ($user) { 
+                return User::whereRaw('total_questions_attempted > 0')
+                    ->where('xp', '>', $user->xp)
+                    ->count() + 1; 
+            });
         }
 
         // Get performance data for the chart (from quiz_attempts)
-        $performanceData = DB::table('quiz_attempts')
+        $performanceData = Cache::remember("performance_data_{$user->id}", 300, function() use ($user) { 
+            return QuizAttempt::select('created_at as date', 'percentage_grade', 'quiz_type', 'topic_id')
             ->where('user_id', $user->id)
             ->where('quiz_type', '!=', 'mistake_review')  // Exclude mistake review sessions
             ->orderBy('created_at', 'desc')
@@ -91,6 +104,7 @@ class ProfileController extends Controller
             ->get()
             ->sortBy('date')
             ->values();
+        });
 
         // Format data for the chart
         $chartData = $performanceData->map(function($attempt) {
@@ -128,27 +142,29 @@ class ProfileController extends Controller
         
         // Calculate XP and get leaderboard
         // Get leaderboard using stored XP values
-        $leaderboard = DB::table('users')
-            ->select(
-                'users.id',
-                'users.name',
-                'users.total_questions_attempted',
-                'users.correct_answers_count',
-                'users.xp'
-            )
-            ->whereRaw('users.total_questions_attempted > 0')
-            ->orderBy('xp', 'desc')
-            ->limit(10)
-            ->get()
-            ->map(function($user) {
-                return (object) [
-                    'id' => $user->id,
-                    'name' => $user->name,
-                    'xp' => $user->xp ?? 0,
-                    'level' => floor(($user->xp ?? 0) / 1000) + 1, // Every 1000 XP is a new level
-                    'correct_answers' => $user->correct_answers_count
-                ];
-            });
+        $leaderboard = Cache::remember('leaderboard_cache', 300, function() { 
+            return DB::table('users')
+                ->select(
+                    'users.id',
+                    'users.name',
+                    'users.total_questions_attempted',
+                    'users.correct_answers_count',
+                    'users.xp'
+                )
+                ->whereRaw('users.total_questions_attempted > 0')
+                ->orderBy('xp', 'desc')
+                ->limit(10)
+                ->get()
+                ->map(function($user) {
+                    return (object) [
+                        'id' => $user->id,
+                        'name' => $user->name,
+                        'xp' => $user->xp ?? 0,
+                        'level' => floor(($user->xp ?? 0) / 1000) + 1, // Every 1000 XP is a new level
+                        'correct_answers' => $user->correct_answers_count
+                    ];
+                });
+        });
 
         return view('profile', compact(
             'accuracyRate',
@@ -183,13 +199,68 @@ class ProfileController extends Controller
     }
 
     /**
+     * COMPLEXITY REDUCTION: Calculate study time breakdown
+     */
+    private function calculateStudyTimeBreakdown($user): array
+    {
+        $studyTimeBreakdown = [
+            'quiz' => QuizAttempt::where('user_id', $user->id)
+                ->where('quiz_type', 'normal')
+                ->where('study_mode', 'quiz')
+                ->where('topic_id', '!=', null)
+                ->sum('duration_seconds'),
+            'tutor' => QuizAttempt::where('user_id', $user->id)
+                ->where('study_mode', 'tutor')
+                ->sum('duration_seconds'),
+            'random_quiz' => QuizAttempt::where('user_id', $user->id)
+                ->where('quiz_type', 'random')
+                ->sum('duration_seconds'),
+            'mistake_review' => QuizAttempt::where('user_id', $user->id)
+                ->where('quiz_type', 'mistake_review')
+                ->sum('duration_seconds')
+        ];
+
+        $studyTimeBreakdown['total'] = array_sum($studyTimeBreakdown);
+        return $studyTimeBreakdown;
+    }
+
+    /**
+     * COMPLEXITY REDUCTION: Get performance data for charts
+     */
+    private function getPerformanceData($user): array
+    {
+        return QuizAttempt::select('created_at as date', 'percentage_grade', 'quiz_type', 'topic_id')
+            ->where('user_id', $user->id)
+            ->where('quiz_type', '!=', 'mistake_review')
+            ->orderBy('created_at', 'desc')
+            ->take(7)
+            ->get()
+            ->sortBy('date')
+            ->values()
+            ->toArray();
+    }
+
+    /**
+     * COMPLEXITY REDUCTION: Format performance data for charts
+     */
+    private function formatChartData($performanceData): array
+    {
+        return collect($performanceData)->map(function($attempt) {
+            return [
+                'x' => Carbon::parse($attempt['date'])->timestamp * 1000,
+                'y' => round($attempt['percentage_grade'] ?? 0, 1),
+                'topic' => $attempt['topic'] ?? 'Unknown Topic',
+                'date' => Carbon::parse($attempt['date'])->format('M j, Y g:i A')
+            ];
+        })->toArray();
+    }
+
+    /**
      * Handle profile picture upload
      */
-    public function updateProfilePicture(Request $request)
+    public function updateProfilePicture(ProfileUpdateRequest $request)
     {
-        $request->validate([
-            'profile_picture' => 'required|image|mimes:jpeg,png,jpg,gif|max:2048'
-        ]);
+        // TODO: Create FormRequest for validation
 
         try {
             $user = auth()->user();

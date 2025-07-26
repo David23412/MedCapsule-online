@@ -29,7 +29,6 @@ class TopicSeeder extends Seeder
                 Topic::create([
                     'course_id' => $course->id,
                     'name' => "Topic " . ($i + 1) . " for " . $course->name,
-                    'description' => "This is a sample topic for " . $course->name,
                     'case_type' => $type,
                     'display_order' => $i,
                 ]);

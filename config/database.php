@@ -57,12 +57,15 @@ return [
             'prefix_indexes' => true,
             'strict' => env('DB_STRICT', false),  // Better performance for bulk operations
             'engine' => null,
+            'timezone' => '+03:00',
             'options' => extension_loaded('pdo_mysql') ? array_filter([
                 PDO::MYSQL_ATTR_SSL_CA => env('MYSQL_ATTR_SSL_CA'),
                 PDO::ATTR_EMULATE_PREPARES => false,
                 PDO::ATTR_STRINGIFY_FETCHES => false,
                 PDO::MYSQL_ATTR_USE_BUFFERED_QUERY => true,
                 PDO::MYSQL_ATTR_LOCAL_INFILE => true,
+                PDO::ATTR_TIMEOUT => 300, // 5 minutes timeout
+                PDO::MYSQL_ATTR_INIT_COMMAND => "SET time_zone = '+00:00', wait_timeout = 28800, interactive_timeout = 28800, net_read_timeout = 300, net_write_timeout = 300",
             ]) : [],
         ],
 

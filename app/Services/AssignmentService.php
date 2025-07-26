@@ -104,7 +104,7 @@ class AssignmentService
 
                 $data = array_merge($assignmentData, [
                     'tutor_id' => $tutorId,
-                    'student_id' => $studentId
+                    'user_id' => $studentId
                 ]);
 
                 // Remove skip_existing from the data before creating assignment
@@ -288,7 +288,7 @@ class AssignmentService
         }
 
         if (isset($filters['student_id'])) {
-            $query->where('student_id', $filters['student_id']);
+            $query->where('user_id', $filters['student_id']);
         }
 
         if (isset($filters['due_within_hours'])) {
@@ -339,11 +339,12 @@ class AssignmentService
     }
 
     /**
-     * Update overdue assignments automatically
+     * @deprecated Real-time status updates happen automatically via model accessors
+     * Use Assignment::enforceAllStatuses() for manual enforcement if needed
      */
     public function updateOverdueAssignments(): int
     {
-        return Assignment::updateOverdueAssignments();
+        return Assignment::enforceAllStatuses();
     }
 
     /**
@@ -484,8 +485,7 @@ class AssignmentService
             // Create assignment attempt record
             DB::table('assignment_attempts')->insert([
                 'assignment_id' => $assignment->id,
-                'user_id' => $assignment->student_id,
-                'student_id' => $assignment->student_id,
+                'user_id' => $assignment->user_id,
                 'source' => $assignment->isSourceSpecific() ? $assignment->assigned_source : 'all',
                 'questions_answered' => count($answers),
                 'correct_answers' => $scoreData['correct_answers'],
@@ -519,7 +519,7 @@ class AssignmentService
      */
     private function validateAssignmentData(array $data): void
     {
-        $required = ['tutor_id', 'student_id', 'topic_id', 'course_id', 'title', 'deadline'];
+        $required = ['tutor_id', 'user_id', 'topic_id', 'course_id', 'title', 'deadline'];
         
         foreach ($required as $field) {
             if (!isset($data[$field]) || empty($data[$field])) {
@@ -532,7 +532,7 @@ class AssignmentService
             throw new \InvalidArgumentException('Invalid tutor ID');
         }
 
-        if (!User::where('id', $data['student_id'])->where('role', 'student')->exists()) {
+        if (!User::where('id', $data['user_id'])->where('role', 'student')->exists()) {
             throw new \InvalidArgumentException('Invalid student ID');
         }
 
@@ -564,7 +564,7 @@ class AssignmentService
     {
         return DB::table('tutor_student_relationships')
                 ->where('tutor_id', $tutorId)
-                ->where('student_id', $studentId)
+                ->where('user_id', $studentId)
                 ->exists();
     }
 
@@ -576,7 +576,7 @@ class AssignmentService
         // Simple check for any assignment with same tutor, student, and topic
         // This is just for the skip_existing convenience feature - not for blocking duplicates
         return Assignment::where('tutor_id', $tutorId)
-                        ->where('student_id', $studentId)
+                        ->where('user_id', $studentId)
                         ->where('topic_id', $assignmentData['topic_id'])
                         ->exists();
     }
@@ -656,7 +656,7 @@ class AssignmentService
         }
         
         if (isset($filters['student_id'])) {
-            $query->where('student_id', $filters['student_id']);
+            $query->where('user_id', $filters['student_id']);
         }
         
         if (isset($filters['status'])) {

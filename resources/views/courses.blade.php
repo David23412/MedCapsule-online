@@ -1927,35 +1927,17 @@
                 @php
                     $availableYears = $courses->pluck('academic_year')->filter()->unique()->sort();
                     $medicalYears = $availableYears->filter(function($year) {
-                        return str_starts_with($year, 'year-');
+                        return str_starts_with($year, 'YEAR');
                     });
                     $testPrep = $availableYears->filter(function($year) {
-                        return in_array($year, ['sat-prep', 'est-prep', 'act-prep']);
+                        return in_array($year, ['SAT', 'EST', 'ACT']);
                     });
-                    
-                    $yearLabels = [
-                        'year-1-sem-1' => 'Year 1 - First Semester',
-                        'year-1-sem-2' => 'Year 1 - Second Semester',
-                        'year-2-sem-1' => 'Year 2 - First Semester',
-                        'year-2-sem-2' => 'Year 2 - Second Semester',
-                        'year-3-sem-1' => 'Year 3 - First Semester',
-                        'year-3-sem-2' => 'Year 3 - Second Semester',
-                        'year-4-sem-1' => 'Year 4 - First Semester',
-                        'year-4-sem-2' => 'Year 4 - Second Semester',
-                        'year-5-sem-1' => 'Year 5 - First Semester',
-                        'year-5-sem-2' => 'Year 5 - Second Semester',
-                        'year-6-sem-1' => 'Year 6 - First Semester',
-                        'year-6-sem-2' => 'Year 6 - Second Semester',
-                        'sat-prep' => 'SAT Preparation',
-                        'est-prep' => 'EST Preparation',
-                        'act-prep' => 'ACT Preparation'
-                    ];
                 @endphp
                 
                 @if($medicalYears->isNotEmpty())
                     <optgroup label="Medical School Years">
                         @foreach($medicalYears as $year)
-                            <option value="{{ $year }}">{{ $yearLabels[$year] ?? $year }}</option>
+                            <option value="{{ $year }}">{{ $year }}</option>
                         @endforeach
                     </optgroup>
                 @endif
@@ -1963,7 +1945,7 @@
                 @if($testPrep->isNotEmpty())
                     <optgroup label="Standardized Tests">
                         @foreach($testPrep as $year)
-                            <option value="{{ $year }}">{{ $yearLabels[$year] ?? $year }}</option>
+                            <option value="{{ $year }}">{{ $year }}</option>
                         @endforeach
                     </optgroup>
                 @endif

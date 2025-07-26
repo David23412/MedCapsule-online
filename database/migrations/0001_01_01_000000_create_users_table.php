@@ -23,6 +23,7 @@ return new class extends Migration
                 $table->integer('correct_answers_count')->default(0);
                 $table->integer('total_questions_attempted')->default(0);
                 $table->integer('xp')->default(0);
+                $table->integer('level')->default(1);
                 $table->integer('study_streak_days')->default(0);
                 $table->unsignedBigInteger('study_time_seconds')->default(0);
                 $table->timestamp('last_study_date')->nullable();

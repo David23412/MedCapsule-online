@@ -14,32 +14,24 @@
     <!-- Bootstrap CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <!-- Google Fonts -->
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <!-- Font Awesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 
     <style>
-        /* 80% Zoom */
-        html {
-            font-size: 12.8px; /* 80% of 16px */
-        }
-        
         body {
-            background-color: #f8f9fa;
-            font-family: 'Poppins', sans-serif;
-            overflow-x: hidden;
-            scroll-behavior: smooth;
-            zoom: 0.80;
-            -webkit-text-size-adjust: 100%;
-            margin: 0;
-            padding: 0;
+            background-color: #f8fafc;
+            font-family: 'Inter', sans-serif;
+            font-size: 14px;
+            line-height: 1.5;
+            color: #334155;
         }
 
-        /* Navbar - Consistent with MedCapsule design */
+        /* Navbar */
         .navbar {
             background-color: white;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-            padding: 1.5rem 0;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            padding: 0.75rem 0;
             position: fixed;
             top: 0;
             left: 0;
@@ -48,32 +40,21 @@
         }
 
         .navbar-brand {
-            display: flex;
-            align-items: center;
-            font-weight: 700;
-            font-size: 2rem;
-            color: #007bff;
-            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
-            position: relative;
-            transition: all 0.3s ease;
+            font-weight: 600;
+            font-size: 1.5rem;
+            color: #3b82f6;
             text-decoration: none;
-        }
-
-        .navbar-brand:hover {
-            transform: scale(1.05);
-            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
         }
 
         .nav-link {
-            color: #333;
+            color: #64748b;
             font-weight: 500;
             padding: 0.5rem 1rem;
             text-decoration: none;
-            transition: color 0.3s ease;
         }
 
         .nav-link:hover {
-            color: #007bff;
+            color: #3b82f6;
         }
 
         .dropdown-menu {
@@ -82,161 +63,175 @@
             border-radius: 8px;
         }
 
-        .dropdown-item {
-            padding: 0.5rem 1rem;
-            transition: background-color 0.3s ease;
-        }
-
-        .dropdown-item:hover {
-            background-color: #f8f9fa;
-        }
-
         .profile-circle {
-            width: 40px;
-            height: 40px;
+            width: 32px;
+            height: 32px;
             border-radius: 50%;
             background-size: cover;
             background-position: center;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-weight: 600;
+            font-weight: 500;
+            font-size: 12px;
             color: white;
             text-decoration: none;
-            transition: transform 0.3s ease;
-        }
-
-        .profile-circle.no-image {
-            background-color: #007bff;
-        }
-
-        .profile-circle:hover {
-            transform: scale(1.1);
+            background-color: #3b82f6;
         }
 
         /* Main Content */
         .main-content {
-            margin-top: 80px;
-            padding: 2rem;
-            min-height: calc(100vh - 80px);
+            margin-top: 70px;
+            padding: 1.5rem;
+            min-height: calc(100vh - 70px);
         }
 
-        /* Tutor Dashboard Specific Styles */
+        /* Minimal Dashboard Header */
         .dashboard-header {
             background: white;
-            border-radius: 12px;
-            padding: 1.5rem;
-            margin-bottom: 2rem;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+            border-radius: 8px;
+            padding: 1.25rem;
+            margin-bottom: 1.5rem;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            border: 1px solid #e5e7eb;
+            border-left: 3px solid #3b82f6;
         }
 
         .dashboard-title {
-            color: #2c3e50;
+            color: #1f2937;
             font-weight: 600;
             margin: 0;
-            font-size: 1.8rem;
+            font-size: 1.5rem;
         }
 
         .dashboard-subtitle {
-            color: #6c757d;
-            margin: 0.5rem 0 0 0;
-            font-size: 0.9rem;
+            color: #6b7280;
+            margin: 0.25rem 0 0 0;
+            font-size: 0.875rem;
         }
 
-        /* Student Cards */
+        /* Minimal Filters */
+        .filters-section {
+            background: white;
+            border-radius: 8px;
+            padding: 1rem;
+            margin-bottom: 1.5rem;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            border: 1px solid #e5e7eb;
+        }
+
+        .filter-group {
+            display: flex;
+            gap: 1rem;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .filter-input {
+            border: 1px solid #d1d5db;
+            border-radius: 6px;
+            padding: 0.5rem 0.75rem;
+            font-size: 0.875rem;
+            min-width: 200px;
+        }
+
+        .filter-select {
+            border: 1px solid #d1d5db;
+            border-radius: 6px;
+            padding: 0.5rem 0.75rem;
+            font-size: 0.875rem;
+            min-width: 150px;
+        }
+
+        /* Minimal White Student Cards */
         .student-card {
             background: white;
-            border-radius: 12px;
-            padding: 1.5rem;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
-            transition: all 0.3s ease;
+            border-radius: 8px;
+            padding: 1rem;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            transition: all 0.2s ease;
             cursor: pointer;
-            border: 2px solid transparent;
+            border: 1px solid #e5e7eb;
             height: 100%;
         }
 
         .student-card:hover {
-            transform: translateY(-4px);
-            box-shadow: 0 8px 25px rgba(0,0,0,0.15);
-            border-color: #007bff;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            border-color: #d1d5db;
+            border-left: 3px solid #3b82f6;
         }
 
         .student-header {
             display: flex;
             align-items: center;
-            margin-bottom: 1rem;
+            margin-bottom: 0.75rem;
         }
 
         .student-avatar {
-            margin-right: 1rem;
+            margin-right: 0.75rem;
         }
 
         .avatar-img {
-            width: 50px;
-            height: 50px;
+            width: 36px;
+            height: 36px;
             border-radius: 50%;
             object-fit: cover;
-            border: 3px solid #e9ecef;
+            border: 2px solid #e2e8f0;
         }
 
         .avatar-placeholder {
-            width: 50px;
-            height: 50px;
+            width: 36px;
+            height: 36px;
             border-radius: 50%;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: #3b82f6;
             display: flex;
             align-items: center;
             justify-content: center;
             color: white;
-            font-weight: 600;
-            font-size: 18px;
+            font-weight: 500;
+            font-size: 14px;
         }
 
         .student-name {
-            margin: 0 0 0.3rem 0;
-            color: #2c3e50;
+            margin: 0;
+            color: #1e293b;
             font-weight: 600;
-            font-size: 1.1rem;
-        }
-
-        .student-email {
-            margin: 0 0 0.5rem 0;
-            color: #6c757d;
-            font-size: 0.8rem;
+            font-size: 0.95rem;
         }
 
         .student-status {
             display: flex;
             align-items: center;
             font-size: 0.75rem;
-            color: #6c757d;
+            color: #64748b;
+            margin-top: 0.25rem;
         }
 
         .status-dot {
-            width: 8px;
-            height: 8px;
+            width: 6px;
+            height: 6px;
             border-radius: 50%;
-            margin-right: 6px;
+            margin-right: 4px;
         }
 
         .status-dot.active {
-            background-color: #28a745;
-            box-shadow: 0 0 0 2px rgba(40, 167, 69, 0.3);
+            background-color: #10b981;
         }
 
         .status-dot.inactive {
-            background-color: #dc3545;
+            background-color: #ef4444;
         }
 
         /* Student Stats */
         .student-stats {
             display: grid;
             grid-template-columns: 1fr 1fr 1fr;
-            gap: 1rem;
-            margin: 1rem 0;
-            padding: 1rem 0;
-            border-top: 1px solid #f1f3f4;
-            border-bottom: 1px solid #f1f3f4;
+            gap: 0.75rem;
+            margin: 0.75rem 0;
+            padding: 0.75rem 0;
+            border-top: 1px solid #f1f5f9;
+            border-bottom: 1px solid #f1f5f9;
         }
 
         .stat-item {
@@ -244,27 +239,28 @@
         }
 
         .stat-label {
-            font-size: 0.7rem;
-            color: #6c757d;
+            font-size: 0.65rem;
+            color: #64748b;
             text-transform: uppercase;
-            font-weight: 600;
-            margin-bottom: 0.3rem;
+            font-weight: 500;
+            margin-bottom: 0.25rem;
+            letter-spacing: 0.025em;
         }
 
         .stat-value {
-            font-size: 1.2rem;
-            font-weight: 700;
-            color: #2c3e50;
+            font-size: 1rem;
+            font-weight: 600;
+            color: #1e293b;
         }
 
-        .stat-value.excellent { color: #28a745; }
-        .stat-value.good { color: #17a2b8; }
-        .stat-value.average { color: #ffc107; }
-        .stat-value.poor { color: #dc3545; }
+        .stat-value.excellent { color: #10b981; }
+        .stat-value.good { color: #06b6d4; }
+        .stat-value.average { color: #f59e0b; }
+        .stat-value.poor { color: #ef4444; }
 
         /* Progress Indicator */
         .student-progress {
-            margin-bottom: 1rem;
+            margin-bottom: 0.75rem;
         }
 
         .progress-indicator {
@@ -274,31 +270,31 @@
         }
 
         .progress-label {
-            font-size: 0.75rem;
-            color: #6c757d;
+            font-size: 0.7rem;
+            color: #64748b;
             font-weight: 500;
         }
 
         .trend {
-            font-size: 0.7rem;
-            font-weight: 600;
-            padding: 0.2rem 0.5rem;
-            border-radius: 12px;
+            font-size: 0.65rem;
+            font-weight: 500;
+            padding: 0.15rem 0.4rem;
+            border-radius: 6px;
         }
 
         .trend.improving {
-            background-color: #d4edda;
-            color: #155724;
+            background-color: #dcfce7;
+            color: #166534;
         }
 
         .trend.declining {
-            background-color: #f8d7da;
-            color: #721c24;
+            background-color: #fecaca;
+            color: #991b1b;
         }
 
         .trend.stable {
-            background-color: #e2e3e5;
-            color: #383d41;
+            background-color: #f1f5f9;
+            color: #475569;
         }
 
         /* Student Actions */
@@ -309,82 +305,104 @@
 
         .student-actions .btn {
             flex: 1;
-            font-size: 0.75rem;
-            padding: 0.4rem 0.8rem;
-            border-radius: 6px;
+            font-size: 0.7rem;
+            padding: 0.35rem 0.6rem;
+            border-radius: 4px;
+            font-weight: 500;
         }
 
-        /* Summary Card */
+        .btn-sm-custom {
+            font-size: 0.7rem;
+            padding: 0.25rem 0.5rem;
+            border-radius: 4px;
+        }
+
+        /* Minimal Summary Card */
         .summary-card {
             background: white;
-            padding: 1.5rem;
-            border-radius: 12px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
-        }
-
-        .summary-stats {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 1rem;
-            margin-top: 1rem;
+            padding: 1rem;
+            border-radius: 8px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            border: 1px solid #e5e7eb;
+            border-top: 3px solid #6b7280;
         }
 
         .summary-item {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 0.8rem 0;
-            border-bottom: 1px solid #f1f3f4;
+            text-align: center;
+            padding: 0.5rem 0;
+            border-right: 1px solid #f3f4f6;
         }
 
         .summary-item:last-child {
-            border-bottom: none;
+            border-right: none;
         }
 
         .summary-label {
             font-weight: 500;
-            color: #6c757d;
+            color: #6b7280;
+            font-size: 0.8rem;
+            display: block;
+            margin-bottom: 0.25rem;
         }
 
         .summary-value {
-            font-weight: 700;
-            color: #2c3e50;
-            font-size: 1.1rem;
+            font-weight: 600;
+            color: #1f2937;
+            font-size: 1.25rem;
         }
 
-        /* Stat Cards */
+        /* Premium Minimal White Stat Cards */
         .stat-card {
             background: white;
-            border-radius: 12px;
-            padding: 1.5rem;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+            border-radius: 8px;
+            padding: 1.25rem;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
             display: flex;
             align-items: center;
-            color: white;
+            color: #374151;
             margin-bottom: 1rem;
+            border: 1px solid #e5e7eb;
+            transition: all 0.2s ease;
+            position: relative;
         }
 
-        .stat-card.bg-primary { background: linear-gradient(135deg, #007bff, #0056b3) !important; }
-        .stat-card.bg-success { background: linear-gradient(135deg, #28a745, #1e7e34) !important; }
-        .stat-card.bg-info { background: linear-gradient(135deg, #17a2b8, #117a8b) !important; }
-        .stat-card.bg-warning { background: linear-gradient(135deg, #ffc107, #e0a800) !important; }
+        .stat-card:hover {
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            transform: translateY(-1px);
+        }
+
+        /* Minimal color accents - only subtle left border */
+        .stat-card.stat-primary { border-left: 3px solid #3b82f6; }
+        .stat-card.stat-success { border-left: 3px solid #10b981; }
+        .stat-card.stat-info { border-left: 3px solid #06b6d4; }
+        .stat-card.stat-warning { border-left: 3px solid #f59e0b; }
 
         .stat-icon {
-            font-size: 2.5rem;
+            font-size: 1.5rem;
             margin-right: 1rem;
+            color: #9ca3af;
             opacity: 0.8;
         }
 
+        /* Subtle icon color hints */
+        .stat-card.stat-primary .stat-icon { color: #3b82f6; opacity: 0.7; }
+        .stat-card.stat-success .stat-icon { color: #10b981; opacity: 0.7; }
+        .stat-card.stat-info .stat-icon { color: #06b6d4; opacity: 0.7; }
+        .stat-card.stat-warning .stat-icon { color: #f59e0b; opacity: 0.7; }
+
         .stat-content h3 {
             margin: 0;
-            font-size: 2rem;
-            font-weight: 700;
+            font-size: 1.75rem;
+            font-weight: 600;
+            color: #1f2937;
+            line-height: 1.2;
         }
 
         .stat-content p {
             margin: 0;
-            font-size: 0.9rem;
-            opacity: 0.9;
+            font-size: 0.875rem;
+            color: #6b7280;
+            font-weight: 500;
         }
 
         /* Course Assignments */
@@ -433,13 +451,9 @@
 
         /* Responsive Design */
         @media (max-width: 768px) {
-            body {
-                zoom: 0.9;
-            }
-
             .student-stats {
                 grid-template-columns: 1fr 1fr;
-                gap: 0.8rem;
+                gap: 0.5rem;
             }
 
             .student-actions {
@@ -452,6 +466,15 @@
 
             .main-content {
                 padding: 1rem;
+            }
+
+            .filter-group {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            .filter-input, .filter-select {
+                min-width: auto;
             }
         }
     </style>
@@ -509,112 +532,122 @@
                         Welcome, {{ $tutor->name }}
                     </h2>
                     <p class="dashboard-subtitle">
-                        <strong>{{ $students->count() }}</strong> students assigned • 
-                        <strong>{{ $analytics['active_students'] }}</strong> active this week • 
-                        <strong>{{ number_format($analytics['average_score'], 1) }}%</strong> class average
+                        <strong>{{ $students->count() }}</strong> students • 
+                        <strong>{{ $analytics['active_students'] }}</strong> active • 
+                        <strong>{{ number_format($analytics['average_score'], 1) }}%</strong> avg score
                     </p>
                     @if(auth()->user()->isAdmin())
                         <span class="badge bg-warning">
-                            <i class="fas fa-crown me-1"></i>Admin View - You can see all students
+                            <i class="fas fa-crown me-1"></i>Admin View
                         </span>
                     @endif
                 </div>
                 <div class="col-md-4 text-end">
                     <div class="btn-group me-2" role="group">
-                        <a href="{{ route('assignments.create') }}" class="btn btn-success">
-                            <i class="fas fa-plus"></i> Create Assignment
+                        <a href="{{ route('assignments.create') }}" class="btn btn-success btn-sm-custom">
+                            <i class="fas fa-plus"></i> Create
                         </a>
-                        <a href="{{ route('assignments.index') }}" class="btn btn-outline-success">
+                        <a href="{{ route('assignments.index') }}" class="btn btn-outline-success btn-sm-custom">
                             <i class="fas fa-clipboard-list"></i> Manage
                         </a>
                     </div>
-                    <button class="btn btn-outline-primary me-2" onclick="exportGradeReports()">
-                        <i class="fas fa-file-export"></i> Export Reports
+                    <button class="btn btn-outline-primary btn-sm-custom me-2" onclick="exportGradeReports()">
+                        <i class="fas fa-file-export"></i> Export
                     </button>
-                    <button class="btn btn-primary" onclick="refreshDashboard()">
+                    <button class="btn btn-primary btn-sm-custom" onclick="refreshDashboard()">
                         <i class="fas fa-sync-alt"></i> Refresh
                     </button>
                 </div>
             </div>
         </div>
 
+        <!-- Filters Section -->
+        <div class="filters-section">
+            <div class="filter-group">
+                <div>
+                    <input type="text" id="studentSearch" class="filter-input" placeholder="Search students..." onkeyup="filterStudents()">
+                </div>
+                <div>
+                    <select id="statusFilter" class="filter-select" onchange="filterStudents()">
+                        <option value="">All Students</option>
+                        <option value="active">Active Only</option>
+                        <option value="inactive">Inactive Only</option>
+                    </select>
+                </div>
+                <div>
+                    <select id="performanceFilter" class="filter-select" onchange="filterStudents()">
+                        <option value="">All Performance</option>
+                        <option value="excellent">Excellent (80%+)</option>
+                        <option value="good">Good (70-79%)</option>
+                        <option value="average">Average (60-69%)</option>
+                        <option value="poor">Needs Help (<60%)</option>
+                    </select>
+                </div>
+                <div>
+                    <button class="btn btn-outline-secondary btn-sm-custom" onclick="clearFilters()">
+                        <i class="fas fa-times"></i> Clear
+                    </button>
+                </div>
+            </div>
+        </div>
+
         <!-- Quick Stats -->
-        <div class="row mb-4">
-            <div class="col-md-3">
-                <div class="stat-card bg-primary">
+        <div class="row mb-3">
+            <div class="col-md-3 col-sm-6">
+                <div class="stat-card stat-primary">
                     <div class="stat-icon">
                         <i class="fas fa-users"></i>
                     </div>
                     <div class="stat-content">
                         <h3>{{ $analytics['total_students'] }}</h3>
-                        <p>Total Students</p>
+                        <p>Students</p>
                     </div>
                 </div>
             </div>
-            <div class="col-md-3">
-                <div class="stat-card bg-success">
+            <div class="col-md-3 col-sm-6">
+                <div class="stat-card stat-success">
                     <div class="stat-icon">
                         <i class="fas fa-user-check"></i>
                     </div>
                     <div class="stat-content">
                         <h3>{{ $analytics['active_students'] }}</h3>
-                        <p>Active This Week</p>
+                        <p>Active</p>
                     </div>
                 </div>
             </div>
-            <div class="col-md-3">
-                <div class="stat-card bg-info">
+            <div class="col-md-3 col-sm-6">
+                <div class="stat-card stat-info">
                     <div class="stat-icon">
                         <i class="fas fa-chart-line"></i>
                     </div>
                     <div class="stat-content">
                         <h3>{{ number_format($analytics['average_score'], 1) }}%</h3>
-                        <p>Class Average</p>
+                        <p>Average</p>
                     </div>
                 </div>
             </div>
-            <div class="col-md-3">
-                <div class="stat-card bg-warning">
+            <div class="col-md-3 col-sm-6">
+                <div class="stat-card stat-warning">
                     <div class="stat-icon">
                         <i class="fas fa-exclamation-triangle"></i>
                     </div>
                     <div class="stat-content">
                         <h3>{{ $analytics['struggling_students'] }}</h3>
-                        <p>Need Attention</p>
+                        <p>Need Help</p>
                     </div>
                 </div>
             </div>
         </div>
 
-        <!-- Course Assignments Overview -->
-        @if(isset($courseAssignments) && count($courseAssignments) > 0)
-        <div class="row mb-4">
-            <div class="col-12">
-                <div class="course-assignments-card">
-                    <h5><i class="fas fa-book me-2"></i>Course Assignments Overview</h5>
-                    <div class="course-grid">
-                        @foreach($courseAssignments as $courseId => $assignment)
-                        <div class="course-assignment-item">
-                            <div class="course-header">
-                                <h6>{{ $assignment['course_name'] }}</h6>
-                                <span class="badge bg-secondary">{{ $assignment['total_students'] }} students</span>
-                            </div>
-                            <div class="progress mb-2">
-                                <div class="progress-bar" style="width: {{ $assignment['average_progress'] }}%"></div>
-                            </div>
-                            <small class="text-muted">{{ number_format($assignment['average_progress'], 1) }}% average progress</small>
-                        </div>
-                        @endforeach
-                    </div>
-                </div>
-            </div>
-        </div>
-        @endif
+
 
         <!-- Students Grid -->
-        <div class="row">
+        <div class="row" id="studentsGrid">
             @forelse($students as $student)
-            <div class="col-md-6 col-lg-4 mb-3">
+            <div class="col-md-6 col-lg-4 col-xl-3 mb-3 student-item" 
+                 data-name="{{ strtolower($student->name) }}"
+                 data-status="{{ $student->last_active_at && $student->last_active_at->gte(now()->subDays(3)) ? 'active' : 'inactive' }}"
+                 data-performance="{{ $student->quizAttempts->avg('score') >= 80 ? 'excellent' : ($student->quizAttempts->avg('score') >= 70 ? 'good' : ($student->quizAttempts->avg('score') >= 60 ? 'average' : 'poor')) }}">
                 <div class="student-card" onclick="viewStudentProfile({{ $student->id }})">
                     <div class="student-header">
                         <div class="student-avatar">
@@ -630,7 +663,6 @@
                         </div>
                         <div class="student-info">
                             <h5 class="student-name">{{ $student->name }}</h5>
-                            <p class="student-email">{{ $student->email }}</p>
                             <div class="student-status">
                                 @php
                                     $lastActive = $student->last_active_at;
@@ -707,24 +739,30 @@
             @endforelse
         </div>
 
-        <!-- Quick Stats Summary -->
+        <!-- Class Summary -->
         @if($students->count() > 0)
-        <div class="row mt-4">
+        <div class="row mt-3">
             <div class="col-12">
                 <div class="summary-card">
-                    <h5>Class Summary</h5>
-                    <div class="summary-stats">
-                        <div class="summary-item">
-                            <span class="summary-label">Class Average:</span>
-                            <span class="summary-value">{{ number_format($students->avg(function($s) { return $s->quizAttempts->avg('score') ?? 0; }), 1) }}%</span>
+                    <h6 class="mb-3">Class Summary</h6>
+                    <div class="row">
+                        <div class="col-md-4">
+                            <div class="summary-item">
+                                <span class="summary-label">Class Average</span>
+                                <span class="summary-value">{{ number_format($students->avg(function($s) { return $s->quizAttempts->avg('score') ?? 0; }), 1) }}%</span>
+                            </div>
                         </div>
-                        <div class="summary-item">
-                            <span class="summary-label">Total Quiz Attempts:</span>
-                            <span class="summary-value">{{ $students->sum(function($s) { return $s->quizAttempts->count(); }) }}</span>
+                        <div class="col-md-4">
+                            <div class="summary-item">
+                                <span class="summary-label">Quiz Attempts</span>
+                                <span class="summary-value">{{ $students->sum(function($s) { return $s->quizAttempts->count(); }) }}</span>
+                            </div>
                         </div>
-                        <div class="summary-item">
-                            <span class="summary-label">Active Students:</span>
-                            <span class="summary-value">{{ $students->filter(function($s) { return $s->last_active_at && $s->last_active_at->gte(now()->subDays(7)); })->count() }}/{{ $students->count() }}</span>
+                        <div class="col-md-4">
+                            <div class="summary-item">
+                                <span class="summary-label">Active Students</span>
+                                <span class="summary-value">{{ $students->filter(function($s) { return $s->last_active_at && $s->last_active_at->gte(now()->subDays(7)); })->count() }}/{{ $students->count() }}</span>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -739,18 +777,15 @@
     <script>
         // Student Profile Functions
         function viewStudentProfile(studentId) {
-            // Redirect to the student's profile page via tutor route
             window.location.href = `/tutor/student/${studentId}/profile`;
         }
 
         function generateStudentReport(studentId) {
-            // Generate a grade report for the specific student
             const form = document.createElement('form');
             form.method = 'POST';
             form.action = '/tutor/student/' + studentId + '/report';
             form.target = '_blank';
             
-            // Add CSRF token
             const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
             const csrfInput = document.createElement('input');
             csrfInput.type = 'hidden';
@@ -764,13 +799,11 @@
         }
 
         function exportGradeReports() {
-            // Export grade reports for all students
             const form = document.createElement('form');
             form.method = 'POST';
             form.action = '/tutor/reports/export';
             form.target = '_blank';
             
-            // Add CSRF token
             const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
             const csrfInput = document.createElement('input');
             csrfInput.type = 'hidden';
@@ -784,16 +817,80 @@
         }
 
         function refreshDashboard() {
-            // Show loading state
             const refreshBtn = document.querySelector('[onclick="refreshDashboard()"]');
             const originalText = refreshBtn.innerHTML;
             refreshBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Refreshing...';
             refreshBtn.disabled = true;
             
-            // Reload the page
             setTimeout(() => {
                 window.location.reload();
             }, 500);
+        }
+
+        // Filtering Functions
+        function filterStudents() {
+            const searchTerm = document.getElementById('studentSearch').value.toLowerCase();
+            const statusFilter = document.getElementById('statusFilter').value;
+            const performanceFilter = document.getElementById('performanceFilter').value;
+            
+            const studentItems = document.querySelectorAll('.student-item');
+            let visibleCount = 0;
+            
+            studentItems.forEach(item => {
+                const name = item.getAttribute('data-name');
+                const status = item.getAttribute('data-status');
+                const performance = item.getAttribute('data-performance');
+                
+                let showItem = true;
+                
+                // Search filter
+                if (searchTerm && !name.includes(searchTerm)) {
+                    showItem = false;
+                }
+                
+                // Status filter
+                if (statusFilter && status !== statusFilter) {
+                    showItem = false;
+                }
+                
+                // Performance filter
+                if (performanceFilter && performance !== performanceFilter) {
+                    showItem = false;
+                }
+                
+                if (showItem) {
+                    item.style.display = 'block';
+                    visibleCount++;
+                } else {
+                    item.style.display = 'none';
+                }
+            });
+            
+            // Show/hide empty state
+            const emptyState = document.getElementById('emptyState');
+            if (visibleCount === 0 && !emptyState) {
+                const grid = document.getElementById('studentsGrid');
+                const emptyDiv = document.createElement('div');
+                emptyDiv.id = 'emptyState';
+                emptyDiv.className = 'col-12';
+                emptyDiv.innerHTML = `
+                    <div class="empty-state">
+                        <i class="fas fa-search fa-2x text-muted mb-3"></i>
+                        <h5>No students found</h5>
+                        <p class="text-muted">Try adjusting your filters or search terms.</p>
+                    </div>
+                `;
+                grid.appendChild(emptyDiv);
+            } else if (visibleCount > 0 && emptyState) {
+                emptyState.remove();
+            }
+        }
+
+        function clearFilters() {
+            document.getElementById('studentSearch').value = '';
+            document.getElementById('statusFilter').value = '';
+            document.getElementById('performanceFilter').value = '';
+            filterStudents();
         }
     </script>
 </body>

@@ -44,6 +44,7 @@
   "author": "E2E Testing Team",
   "license": "MIT",
   "devDependencies": {
+    "@babel/core": "^7.28.0",
     "@babel/plugin-transform-runtime": "^7.28.0",
     "@babel/preset-env": "^7.28.0",
     "@playwright/test": "^1.40.0",

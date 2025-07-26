@@ -152,7 +152,7 @@ class PaymentSecurityTest extends TestCase
     /** @test */
     public function it_verifies_course_access_after_successful_payment()
     {
-        $admin = User::factory()->create(['is_admin' => true]);
+        $admin = User::factory()->create(['role' => 'admin']);
         
         $payment = Payment::factory()->create([
             'user_id' => $this->user->id,

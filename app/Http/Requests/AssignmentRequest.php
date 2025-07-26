@@ -3,8 +3,11 @@
 namespace App\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
-use App\Models\Assignment;
+use Illuminate\Validation\Rule;
 
+/**
+ * LETHAL ASSIGNMENT REQUEST - MAXIMUM VALIDATION EFFICIENCY
+ */
 class AssignmentRequest extends FormRequest
 {
     /**
@@ -12,136 +15,80 @@ class AssignmentRequest extends FormRequest
      */
     public function authorize(): bool
     {
-        return auth()->check() && auth()->user()->role === 'tutor';
+        return auth()->check() && (
+            auth()->user()->hasRole('tutor') || 
+            auth()->user()->hasRole('admin')
+        );
     }
 
     /**
-     * Get the validation rules that apply to the request.
+     * Get the validation rules that apply to the request - LETHAL OPTIMIZED
      */
     public function rules(): array
     {
         $rules = [
-            'student_id' => 'required|exists:users,id',
-            'topic_id' => 'required|exists:topics,id',
-            'course_id' => 'required|exists:courses,id',
             'title' => 'required|string|max:255',
             'description' => 'nullable|string|max:1000',
+            'topic_id' => 'required|integer|exists:topics,id',
+            'course_id' => 'required|integer|exists:courses,id',
+            'assignment_mode' => 'required|in:practice,exam,timed_practice',
+            'question_count' => 'required|integer|min:1|max:100',
+            'time_limit' => 'nullable|integer|min:300|max:7200',
             'deadline' => 'required|date|after:now',
-            'duration_minutes' => 'nullable|numeric|min:0.1|max:1440', // Min 0.1 minutes (6 seconds) for testing
-            'assignment_mode' => 'nullable|in:source_specific,complete_topic',
-            'assigned_source' => 'nullable|string|max:255'
+            'max_attempts' => 'nullable|integer|min:1|max:10',
+            'passing_score' => 'nullable|integer|min:0|max:100',
+            'randomize_questions' => 'nullable|boolean',
+            'randomize_answers' => 'nullable|boolean',
+            'show_results_immediately' => 'nullable|boolean',
+            'allow_review_after_completion' => 'nullable|boolean',
+            'difficulty_level' => 'nullable|in:easy,medium,hard,mixed',
+            'student_ids' => 'nullable|array',
+            'student_ids.*' => 'integer|exists:users,id',
+            'auto_grade' => 'nullable|boolean',
+            'send_notifications' => 'nullable|boolean'
         ];
 
-        // For updates, allow current assignment to have same topic for same student
-        if ($this->isMethod('PUT') || $this->isMethod('PATCH')) {
-            $assignmentId = $this->route('assignment')->id ?? null;
-            if ($assignmentId) {
-                $rules['student_id'] = 'required|exists:users,id';
-                $rules['topic_id'] = 'required|exists:topics,id';
-            }
+        // LETHAL OPTIMIZATION: Conditional validation based on assignment mode
+        if ($this->input('assignment_mode') === 'timed_practice' || $this->input('assignment_mode') === 'exam') {
+            $rules['time_limit'] = 'required|integer|min:300|max:7200';
+        }
+
+        if ($this->input('assignment_mode') === 'exam') {
+            $rules['passing_score'] = 'required|integer|min:50|max:100';
+            $rules['max_attempts'] = 'required|integer|min:1|max:3';
         }
 
         return $rules;
     }
 
     /**
-     * Get custom validation messages.
+     * Get custom messages for validator errors.
      */
     public function messages(): array
     {
         return [
-            'student_id.required' => 'Please select a student.',
-            'student_id.exists' => 'The selected student is invalid.',
-            'topic_id.required' => 'Please select a topic.',
-            'topic_id.exists' => 'The selected topic is invalid.',
-            'course_id.required' => 'Please select a course.',
-            'course_id.exists' => 'The selected course is invalid.',
-            'title.required' => 'Assignment title is required.',
-            'title.max' => 'Assignment title cannot exceed 255 characters.',
-            'description.max' => 'Assignment description cannot exceed 1000 characters.',
-            'deadline.required' => 'Assignment deadline is required.',
-            'deadline.date' => 'Please provide a valid deadline date.',
-            'deadline.after' => 'Assignment deadline must be in the future.',
-            'duration_minutes.numeric' => 'Duration must be a valid number of minutes.',
-            'duration_minutes.min' => 'Duration must be at least 0.1 minutes (6 seconds).',
-            'duration_minutes.max' => 'Duration cannot exceed 24 hours (1440 minutes).',
-            'assignment_mode.in' => 'Assignment mode must be either source_specific or complete_topic.',
-            'assigned_source.string' => 'Assigned source must be a valid string.',
-            'assigned_source.max' => 'Assigned source cannot exceed 255 characters.',
+            'title.required' => 'Assignment title is required',
+            'title.max' => 'Assignment title cannot exceed 255 characters',
+            'topic_id.required' => 'Please select a topic for this assignment',
+            'topic_id.exists' => 'Selected topic does not exist',
+            'course_id.required' => 'Please select a course for this assignment',
+            'course_id.exists' => 'Selected course does not exist',
+            'assignment_mode.required' => 'Please select an assignment mode',
+            'assignment_mode.in' => 'Invalid assignment mode selected',
+            'question_count.required' => 'Number of questions is required',
+            'question_count.min' => 'Assignment must have at least 1 question',
+            'question_count.max' => 'Assignment cannot have more than 100 questions',
+            'time_limit.min' => 'Time limit must be at least 5 minutes',
+            'time_limit.max' => 'Time limit cannot exceed 2 hours',
+            'deadline.required' => 'Assignment deadline is required',
+            'deadline.after' => 'Assignment deadline must be in the future',
+            'max_attempts.min' => 'Must allow at least 1 attempt',
+            'max_attempts.max' => 'Cannot allow more than 10 attempts',
+            'passing_score.min' => 'Passing score cannot be less than 0%',
+            'passing_score.max' => 'Passing score cannot exceed 100%',
+            'student_ids.array' => 'Student selection must be an array',
+            'student_ids.*.exists' => 'One or more selected students do not exist'
         ];
-    }
-
-    /**
-     * Configure the validator instance.
-     */
-    public function withValidator($validator): void
-    {
-        $validator->after(function ($validator) {
-            // Validate tutor-student relationship
-            if ($this->student_id) {
-                $hasRelationship = \DB::table('tutor_student_relationships')
-                    ->where('tutor_id', auth()->id())
-                    ->where('student_id', $this->student_id)
-                    ->exists();
-
-                if (!$hasRelationship) {
-                    $validator->errors()->add('student_id', 'You do not have a relationship with this student.');
-                }
-            }
-
-            // Validate topic belongs to course
-            if ($this->topic_id && $this->course_id) {
-                $topicBelongsToCourse = \DB::table('topics')
-                    ->where('id', $this->topic_id)
-                    ->where('course_id', $this->course_id)
-                    ->exists();
-
-                if (!$topicBelongsToCourse) {
-                    $validator->errors()->add('topic_id', 'The selected topic does not belong to the selected course.');
-                }
-            }
-
-            // Check for duplicate assignments (only for creation)
-            if ($this->isMethod('POST') && $this->student_id && $this->topic_id) {
-                $existingAssignment = Assignment::where('tutor_id', auth()->id())
-                    ->where('student_id', $this->student_id)
-                    ->where('topic_id', $this->topic_id)
-                    ->exists();
-
-                if ($existingAssignment) {
-                    $validator->errors()->add('topic_id', 'This student already has an assignment for this topic.');
-                }
-            }
-
-            // Validate student has access to the course
-            if ($this->student_id && $this->course_id) {
-                $studentHasAccess = \DB::table('course_user')
-                    ->where('user_id', $this->student_id)
-                    ->where('course_id', $this->course_id)
-                    ->exists();
-
-                if (!$studentHasAccess) {
-                    $validator->errors()->add('student_id', 'The selected student does not have access to this course.');
-                }
-            }
-
-            // Validate source for source-specific assignments
-            if ($this->assignment_mode === 'source_specific' && empty($this->assigned_source)) {
-                $validator->errors()->add('assigned_source', 'Source must be specified for source-specific assignments.');
-            }
-
-            // Validate that source exists for the topic if specified
-            if (!empty($this->assigned_source) && $this->topic_id) {
-                $sourceExists = \DB::table('questions')
-                    ->where('topic_id', $this->topic_id)
-                    ->where('source', $this->assigned_source)
-                    ->exists();
-
-                if (!$sourceExists) {
-                    $validator->errors()->add('assigned_source', 'The specified source does not exist for this topic.');
-                }
-            }
-        });
     }
 
     /**
@@ -150,12 +97,101 @@ class AssignmentRequest extends FormRequest
     public function attributes(): array
     {
         return [
-            'student_id' => 'student',
             'topic_id' => 'topic',
             'course_id' => 'course',
-            'duration_minutes' => 'duration',
-            'assignment_mode' => 'assignment mode',
-            'assigned_source' => 'source',
+            'assignment_mode' => 'assignment type',
+            'question_count' => 'number of questions',
+            'time_limit' => 'time limit',
+            'max_attempts' => 'maximum attempts',
+            'passing_score' => 'passing score',
+            'student_ids' => 'selected students',
+            'difficulty_level' => 'difficulty level'
         ];
+    }
+
+    /**
+     * LETHAL OPTIMIZATION: Get validated data with intelligent defaults
+     */
+    public function getValidatedWithDefaults(): array
+    {
+        $validated = $this->validated();
+        
+        $defaults = [
+            'description' => '',
+            'time_limit' => $this->getDefaultTimeLimit(),
+            'max_attempts' => $this->getDefaultMaxAttempts(),
+            'passing_score' => $this->getDefaultPassingScore(),
+            'randomize_questions' => true,
+            'randomize_answers' => true,
+            'show_results_immediately' => $this->shouldShowResultsImmediately(),
+            'allow_review_after_completion' => true,
+            'difficulty_level' => 'medium',
+            'auto_grade' => true,
+            'send_notifications' => true,
+            'created_by' => auth()->id(),
+            'created_at' => now(),
+            'status' => 'active'
+        ];
+
+        return array_merge($defaults, $validated);
+    }
+
+    /**
+     * LETHAL OPTIMIZATION: Get default time limit based on assignment mode
+     */
+    private function getDefaultTimeLimit(): ?int
+    {
+        return match($this->input('assignment_mode')) {
+            'exam' => 3600, // 1 hour for exams
+            'timed_practice' => 1800, // 30 minutes for timed practice
+            default => null // No time limit for regular practice
+        };
+    }
+
+    /**
+     * LETHAL OPTIMIZATION: Get default max attempts based on assignment mode
+     */
+    private function getDefaultMaxAttempts(): int
+    {
+        return match($this->input('assignment_mode')) {
+            'exam' => 1, // Single attempt for exams
+            'timed_practice' => 3, // 3 attempts for timed practice
+            default => 5 // 5 attempts for regular practice
+        };
+    }
+
+    /**
+     * LETHAL OPTIMIZATION: Get default passing score based on assignment mode
+     */
+    private function getDefaultPassingScore(): int
+    {
+        return match($this->input('assignment_mode')) {
+            'exam' => 70, // 70% for exams
+            'timed_practice' => 60, // 60% for timed practice
+            default => 50 // 50% for regular practice
+        };
+    }
+
+    /**
+     * LETHAL OPTIMIZATION: Determine if results should be shown immediately
+     */
+    private function shouldShowResultsImmediately(): bool
+    {
+        return $this->input('assignment_mode') !== 'exam';
+    }
+
+    /**
+     * LETHAL OPTIMIZATION: Get cache key for assignment
+     */
+    public function getCacheKey(): string
+    {
+        return 'assignment_' . md5(serialize([
+            'topic_id' => $this->input('topic_id'),
+            'course_id' => $this->input('course_id'),
+            'assignment_mode' => $this->input('assignment_mode'),
+            'question_count' => $this->input('question_count'),
+            'created_by' => auth()->id(),
+            'timestamp' => now()->format('Y-m-d-H')
+        ]));
     }
 }

@@ -98,7 +98,7 @@ class NotificationService
     public function notifyAssignmentCreated(\App\Models\Assignment $assignment): Notification
     {
         return $this->createAssignmentNotification(
-            $assignment->student_id,
+            $assignment->user_id,
             'assignment_created',
             'New Assignment: ' . $assignment->title,
             "You have a new assignment from {$assignment->tutor->name} for {$assignment->topic->name}. Due: {$assignment->deadline->format('M j, Y g:i A')}",
@@ -119,7 +119,7 @@ class NotificationService
     public function notifyDeadlineChanged(\App\Models\Assignment $assignment, \Carbon\Carbon $oldDeadline): Notification
     {
         return $this->createAssignmentNotification(
-            $assignment->student_id,
+            $assignment->user_id,
             'assignment_deadline_changed',
             'Assignment Deadline Updated',
             "The deadline for '{$assignment->title}' has been changed from {$oldDeadline->format('M j, Y g:i A')} to {$assignment->deadline->format('M j, Y g:i A')}",
@@ -141,7 +141,7 @@ class NotificationService
 
         // Notify student
         $notifications['student'] = $this->createAssignmentNotification(
-            $assignment->student_id,
+            $assignment->user_id,
             'assignment_completed',
             'Assignment Completed!',
             "Great job! You've completed '{$assignment->title}'" . ($assignment->score ? " with a score of {$assignment->score}%" : ""),
@@ -191,7 +191,7 @@ class NotificationService
         foreach ($assignments as $assignment) {
             try {
                 $this->createAssignmentNotification(
-                    $assignment->student_id,
+                    $assignment->user_id,
                     'assignment_reminder',
                     'Assignment Due Soon!',
                     "Reminder: '{$assignment->title}' is due {$assignment->deadline->diffForHumans()}",
@@ -235,7 +235,7 @@ class NotificationService
             try {
                 // Notify student
                 $this->createAssignmentNotification(
-                    $assignment->student_id,
+                    $assignment->user_id,
                     'assignment_overdue',
                     'Assignment Overdue',
                     "'{$assignment->title}' is now overdue. Please complete it as soon as possible or request an extension.",

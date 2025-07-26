@@ -68,14 +68,14 @@ class EnhancedAssignmentServiceTest extends TestCase
         // Create tutor-student relationship
         DB::table('tutor_student_relationships')->insert([
             'tutor_id' => $tutor->id,
-            'student_id' => $student->id,
+            'user_id' => $student->id,
             'created_at' => now(),
             'updated_at' => now()
         ]);
         
         $data = [
             'tutor_id' => $tutor->id,
-            'student_id' => $student->id,
+            'user_id' => $student->id,
             'topic_id' => $topic->id,
             'course_id' => $course->id,
             'title' => 'Test Assignment',
@@ -110,14 +110,14 @@ class EnhancedAssignmentServiceTest extends TestCase
         // Create tutor-student relationship
         DB::table('tutor_student_relationships')->insert([
             'tutor_id' => $tutor->id,
-            'student_id' => $student->id,
+            'user_id' => $student->id,
             'created_at' => now(),
             'updated_at' => now()
         ]);
         
         $data = [
             'tutor_id' => $tutor->id,
-            'student_id' => $student->id,
+            'user_id' => $student->id,
             'topic_id' => $topic->id,
             'course_id' => $course->id,
             'title' => 'Test Assignment',
@@ -151,14 +151,14 @@ class EnhancedAssignmentServiceTest extends TestCase
         // Create tutor-student relationship
         DB::table('tutor_student_relationships')->insert([
             'tutor_id' => $tutor->id,
-            'student_id' => $student->id,
+            'user_id' => $student->id,
             'created_at' => now(),
             'updated_at' => now()
         ]);
         
         $data = [
             'tutor_id' => $tutor->id,
-            'student_id' => $student->id,
+            'user_id' => $student->id,
             'topic_id' => $topic->id,
             'course_id' => $course->id,
             'title' => 'Test Assignment',
@@ -189,14 +189,14 @@ class EnhancedAssignmentServiceTest extends TestCase
         // Create tutor-student relationship
         DB::table('tutor_student_relationships')->insert([
             'tutor_id' => $tutor->id,
-            'student_id' => $student->id,
+            'user_id' => $student->id,
             'created_at' => now(),
             'updated_at' => now()
         ]);
         
         $data = [
             'tutor_id' => $tutor->id,
-            'student_id' => $student->id,
+            'user_id' => $student->id,
             'topic_id' => $topic->id,
             'course_id' => $course->id,
             'title' => 'Test Assignment',
@@ -479,7 +479,7 @@ class EnhancedAssignmentServiceTest extends TestCase
             ->sourceSpecific()
             ->create([
                 'tutor_id' => $tutor->id,
-                'student_id' => $student->id,
+                'user_id' => $student->id,
                 'topic_id' => $topic->id,
                 'course_id' => $course->id,
                 'title' => 'Test Assignment',
@@ -549,7 +549,7 @@ class EnhancedAssignmentServiceTest extends TestCase
         // Create assignments
         $assignment1 = Assignment::factory()->create([
             'tutor_id' => $tutor->id,
-            'student_id' => $student1->id,
+            'user_id' => $student1->id,
             'topic_id' => $topic->id,
             'course_id' => $course1->id,
             'status' => Assignment::STATUS_ACTIVE,
@@ -558,7 +558,7 @@ class EnhancedAssignmentServiceTest extends TestCase
         
         $assignment2 = Assignment::factory()->create([
             'tutor_id' => $tutor->id,
-            'student_id' => $student2->id,
+            'user_id' => $student2->id,
             'topic_id' => $topic->id,
             'course_id' => $course2->id,
             'status' => Assignment::STATUS_COMPLETED,
@@ -636,7 +636,7 @@ class EnhancedAssignmentServiceTest extends TestCase
             ->completeTopic()
             ->create([
                 'tutor_id' => $tutor->id,
-                'student_id' => $student->id,
+                'user_id' => $student->id,
                 'topic_id' => $topic->id,
                 'course_id' => $course->id,
                 'status' => Assignment::STATUS_ACTIVE

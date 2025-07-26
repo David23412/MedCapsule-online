@@ -14,32 +14,69 @@ class Assignment extends Model
 
     protected $fillable = [
         'tutor_id',
-        'student_id',
+        'user_id',
         'topic_id',
         'course_id',
         'title',
-        'description',
         'deadline',
         'duration_minutes',
         'assignment_mode',
         'assigned_source',
         'status',
-        'completed_at',
-        'expired_at',
-        'started_at',
-        'score',
         'score_percentage'
     ];
 
     protected $casts = [
         'deadline' => 'datetime',
-        'completed_at' => 'datetime',
-        'expired_at' => 'datetime',
-        'started_at' => 'datetime',
         'duration_minutes' => 'decimal:2',
-        'score' => 'integer',
         'score_percentage' => 'decimal:2'
     ];
+
+    /**
+     * REAL-TIME INSTANT STATUS ENFORCER - Updates status IMMEDIATELY when accessed
+     * NO DELAYS, NO SCHEDULING, INSTANT UPDATES!
+     */
+    public function getStatusAttribute($value)
+    {
+        // INSTANT ENFORCEMENT: Never allow active assignments past their deadline
+        if ($value === self::STATUS_ACTIVE && $this->deadline < now()) {
+            // INSTANT DATABASE UPDATE - NO DELAYS!
+            $this->updateQuietly(['status' => self::STATUS_OVERDUE]);
+            
+            // Broadcast real-time update if needed
+            $this->broadcastStatusChange(self::STATUS_ACTIVE, self::STATUS_OVERDUE);
+            
+            return self::STATUS_OVERDUE;
+        }
+        
+        // INSTANT REACTIVATION: If deadline was extended and not completed/locked
+        if ($value === self::STATUS_OVERDUE && 
+            $this->deadline > now() && 
+            !in_array($this->getOriginal('status'), [self::STATUS_COMPLETED, self::STATUS_LOCKED])) {
+            
+            // INSTANT DATABASE UPDATE - NO DELAYS!
+            $this->updateQuietly(['status' => self::STATUS_ACTIVE]);
+            
+            // Broadcast real-time update if needed
+            $this->broadcastStatusChange(self::STATUS_OVERDUE, self::STATUS_ACTIVE);
+            
+            return self::STATUS_ACTIVE;
+        }
+        
+        // INSTANT COMPLETION PROTECTION: Never allow completed assignments to change
+        if ($value === self::STATUS_COMPLETED) {
+            return self::STATUS_COMPLETED;
+        }
+        
+        // INSTANT TIME LIMIT EXPIRATION
+        if ($value === self::STATUS_ACTIVE && $this->hasTimeLimitExpired()) {
+            $this->updateQuietly(['status' => self::STATUS_EXPIRED]);
+            $this->broadcastStatusChange(self::STATUS_ACTIVE, self::STATUS_EXPIRED);
+            return self::STATUS_EXPIRED;
+        }
+        
+        return $value;
+    }
 
     // Status constants
     const STATUS_ACTIVE = 'active';
@@ -60,9 +97,14 @@ class Assignment extends Model
         return $this->belongsTo(User::class, 'tutor_id');
     }
 
+    public function user(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'user_id');
+    }
+
     public function student(): BelongsTo
     {
-        return $this->belongsTo(User::class, 'student_id');
+        return $this->belongsTo(User::class, 'user_id');
     }
 
     public function topic(): BelongsTo
@@ -77,12 +119,17 @@ class Assignment extends Model
 
     public function attempts(): HasMany
     {
-        return $this->hasMany(AssignmentAttempt::class);
+        return $this->hasMany(QuizAttempt::class, 'topic_id', 'topic_id')
+            ->where('user_id', $this->user_id)
+            ->where('quiz_type', 'assignment');
     }
 
     public function completedAttempts(): HasMany
     {
-        return $this->hasMany(AssignmentAttempt::class)->whereNotNull('completed_at');
+        return $this->hasMany(QuizAttempt::class, 'topic_id', 'topic_id')
+            ->where('user_id', $this->user_id)
+            ->where('quiz_type', 'assignment')
+            ->orderBy('created_at', 'desc');
     }
 
     /**
@@ -90,16 +137,14 @@ class Assignment extends Model
      */
     public function scopeActive($query)
     {
+        // REAL-TIME: Status is updated instantly via accessor, no need for batch updates
         return $query->where('status', self::STATUS_ACTIVE);
     }
 
     public function scopeOverdue($query)
     {
-        return $query->where('status', self::STATUS_OVERDUE)
-                    ->orWhere(function($q) {
-                        $q->where('status', self::STATUS_ACTIVE)
-                          ->where('deadline', '<', now());
-                    });
+        // REAL-TIME: Status is updated instantly via accessor, no need for batch updates
+        return $query->where('status', self::STATUS_OVERDUE);
     }
 
     public function scopeForTutor($query, $tutorId)
@@ -109,7 +154,7 @@ class Assignment extends Model
 
     public function scopeForStudent($query, $studentId)
     {
-        return $query->where('student_id', $studentId);
+        return $query->where('user_id', $studentId);
     }
 
     public function scopeForCourse($query, $courseId)
@@ -140,8 +185,7 @@ class Assignment extends Model
     public function isActive(): bool
     {
         return $this->status === self::STATUS_ACTIVE && 
-               $this->deadline > now() && 
-               !$this->completed_at;
+               $this->deadline > now();
     }
 
     public function isExpired(): bool
@@ -210,7 +254,7 @@ class Assignment extends Model
         return in_array($this->status, [self::STATUS_LOCKED, self::STATUS_COMPLETED]);
     }
 
-    public function markAsCompleted(int $score = null): bool
+    public function markAsCompleted(?int $score = null): bool
     {
         if (!$this->canBeCompleted()) {
             return false;
@@ -218,8 +262,7 @@ class Assignment extends Model
 
         $this->update([
             'status' => self::STATUS_COMPLETED,
-            'completed_at' => now(),
-            'score' => $score
+            'score_percentage' => $score
         ]);
 
         return true;
@@ -315,12 +358,8 @@ class Assignment extends Model
             return null;
         }
 
-        // If no start time recorded yet, return full time limit
-        if (!$this->started_at) {
-            return (float)$this->duration_minutes * 60; // Convert minutes to seconds
-        }
-
-        $startTime = Carbon::parse($this->started_at);
+        // Calculate time limit from creation time
+        $startTime = $this->created_at;
         $endTime = $startTime->copy()->addMinutes((float)$this->duration_minutes);
         
         $remaining = now()->diffInSeconds($endTime, false);
@@ -347,21 +386,97 @@ class Assignment extends Model
         }
 
         $this->update([
-            'status' => self::STATUS_EXPIRED,
-            'expired_at' => now()
+            'status' => self::STATUS_EXPIRED
         ]);
         
         return true;
     }
 
     /**
-     * Auto-update overdue assignments
+     * BULLETPROOF: Auto-update overdue assignments with comprehensive logging
      */
     public static function updateOverdueAssignments(): int
     {
-        return self::where('status', self::STATUS_ACTIVE)
-                  ->where('deadline', '<', now())
-                  ->update(['status' => self::STATUS_OVERDUE]);
+        $assignments = self::where('status', self::STATUS_ACTIVE)
+                          ->where('deadline', '<', now())
+                          ->get();
+        
+        $updatedCount = 0;
+        
+        foreach ($assignments as $assignment) {
+            $oldStatus = $assignment->status;
+            $assignment->update(['status' => self::STATUS_OVERDUE]);
+            
+            // Log each correction for audit trail
+            \Log::info("Assignment auto-updated to overdue", [
+                'assignment_id' => $assignment->id,
+                'title' => $assignment->title,
+                'deadline' => $assignment->deadline,
+                'old_status' => $oldStatus,
+                'new_status' => self::STATUS_OVERDUE,
+                'overdue_by_minutes' => now()->diffInMinutes($assignment->deadline),
+                'updated_at' => now()
+            ]);
+            
+            $updatedCount++;
+        }
+        
+        return $updatedCount;
+    }
+    
+    /**
+     * BULLETPROOF: Get real-time status regardless of database value
+     */
+    public function getRealTimeStatus(): string
+    {
+        // Check if completed first
+        if ($this->status === self::STATUS_COMPLETED) {
+            return self::STATUS_COMPLETED;
+        }
+        
+        // Check if expired due to time limit
+        if ($this->hasTimeLimitExpired()) {
+            return self::STATUS_EXPIRED;
+        }
+        
+        // Check if overdue
+        if ($this->deadline < now()) {
+            return self::STATUS_OVERDUE;
+        }
+        
+        // Check if locked
+        if ($this->getOriginal('status') === self::STATUS_LOCKED) {
+            return self::STATUS_LOCKED;
+        }
+        
+        // Default to active if none of the above
+        return self::STATUS_ACTIVE;
+    }
+    
+    /**
+     * BULLETPROOF: Verify and correct status if needed
+     */
+    public function verifyAndCorrectStatus(): bool
+    {
+        $currentStatus = $this->getOriginal('status');
+        $correctStatus = $this->getRealTimeStatus();
+        
+        if ($currentStatus !== $correctStatus) {
+            $this->update(['status' => $correctStatus]);
+            
+            \Log::warning("Assignment status corrected", [
+                'assignment_id' => $this->id,
+                'title' => $this->title,
+                'deadline' => $this->deadline,
+                'old_status' => $currentStatus,
+                'correct_status' => $correctStatus,
+                'corrected_at' => now()
+            ]);
+            
+            return true;
+        }
+        
+        return false;
     }
 
     /**
@@ -390,7 +505,6 @@ class Assignment extends Model
     {
         $assignments = self::where('status', self::STATUS_ACTIVE)
                           ->whereNotNull('duration_minutes')
-                          ->whereNotNull('started_at')
                           ->get()
                           ->filter(function ($assignment) {
                               return $assignment->hasTimeLimitExpired();
@@ -454,6 +568,76 @@ class Assignment extends Model
         return 'Assignment is not accessible';
     }
 
+
+    /**
+     * BULLETPROOF TIMEZONE PROTECTION
+     * These methods ensure deadlines are NEVER timezone-converted incorrectly
+     */
+    
+    /**
+     * Prevent Laravel from auto-converting deadline timezone
+     */
+    public function setDeadlineAttribute($value)
+    {
+        // Store deadline exactly as provided - NO CONVERSION
+        if ($value instanceof \Carbon\Carbon) {
+            $this->attributes['deadline'] = $value->format('Y-m-d H:i:s');
+        } else {
+            $this->attributes['deadline'] = $value;
+        }
+    }
+    
+    /**
+     * Ensure deadline is returned in consistent timezone
+     */
+    public function getDeadlineAttribute($value)
+    {
+        // Always return deadline in app timezone
+        return $this->asDateTime($value)->setTimezone(config('app.timezone'));
+    }
+    
+    /**
+     * Create assignment with bulletproof deadline handling
+     */
+    public static function createWithSafeDeadline(array $attributes)
+    {
+        // If deadline is provided, ensure it's in the correct format
+        if (isset($attributes['deadline'])) {
+            $deadline = $attributes['deadline'];
+            
+            // Convert to Carbon in app timezone
+            if (!($deadline instanceof \Carbon\Carbon)) {
+                $deadline = \Carbon\Carbon::parse($deadline, config('app.timezone'));
+            }
+            
+            // Store as string to prevent conversion
+            $attributes['deadline'] = $deadline->format('Y-m-d H:i:s');
+        }
+        
+        return self::create($attributes);
+    }
+    
+    /**
+     * Update deadline with bulletproof handling
+     */
+    public function updateDeadlineSafely($newDeadline)
+    {
+        // Convert to Carbon in app timezone
+        if (!($newDeadline instanceof \Carbon\Carbon)) {
+            $newDeadline = \Carbon\Carbon::parse($newDeadline, config('app.timezone'));
+        }
+        
+        // Update directly in database to prevent conversion
+        DB::table('assignments')
+          ->where('id', $this->id)
+          ->update(['deadline' => $newDeadline->format('Y-m-d H:i:s')]);
+        
+        // Refresh the model
+        $this->refresh();
+        
+        return $this;
+    }
+    
     /**
      * Check if assignment is accessible for taking
      */
@@ -469,18 +653,79 @@ class Assignment extends Model
      */
     public function startTimer(): bool
     {
-        if ($this->status !== self::STATUS_ACTIVE || $this->started_at !== null) {
-            return false;
-        }
-        
-        $this->update(['started_at' => now()]);
-        return true;
+        // Timer starts from creation time, no need to track separately
+        return $this->status === self::STATUS_ACTIVE;
     }
 
     /**
-     * Get assignment statistics
+     * REAL-TIME STATUS BROADCAST - Notify frontend instantly of status changes
      */
-    public static function getStatistics(int $tutorId = null): array
+    protected function broadcastStatusChange(string $oldStatus, string $newStatus): void
+    {
+        // Only broadcast if we have listeners (avoid unnecessary processing)
+        if (config('broadcasting.default') !== 'null') {
+            try {
+                broadcast(new \App\Events\AssignmentStatusChanged([
+                    'assignment_id' => $this->id,
+                    'user_id' => $this->user_id,
+                    'tutor_id' => $this->tutor_id,
+                    'old_status' => $oldStatus,
+                    'new_status' => $newStatus,
+                    'title' => $this->title,
+                    'deadline' => $this->deadline,
+                    'updated_at' => now()
+                ]));
+            } catch (\Exception $e) {
+                // Don't let broadcasting failures break the status update
+                \Log::warning('Assignment status broadcast failed', [
+                    'assignment_id' => $this->id,
+                    'error' => $e->getMessage()
+                ]);
+            }
+        }
+    }
+
+    /**
+     * INSTANT STATUS ENFORCER - Force immediate status check and update
+     */
+    public function enforceRealTimeStatus(): string
+    {
+        // Force accessor to run and update status if needed
+        $currentStatus = $this->status;
+        
+        // Refresh from database to get the updated status
+        $this->refresh();
+        
+        return $currentStatus;
+    }
+
+    /**
+     * BULK REAL-TIME ENFORCEMENT - Update all assignments instantly
+     */
+    public static function enforceAllStatuses(): int
+    {
+        $updatedCount = 0;
+        
+        // Get all assignments that might need status updates
+        $assignments = self::whereIn('status', [self::STATUS_ACTIVE, self::STATUS_OVERDUE])
+                          ->get();
+        
+        foreach ($assignments as $assignment) {
+            $oldStatus = $assignment->getOriginal('status');
+            $newStatus = $assignment->enforceRealTimeStatus();
+            
+            if ($oldStatus !== $newStatus) {
+                $updatedCount++;
+            }
+        }
+        
+        return $updatedCount;
+    }
+
+    /**
+     * Get assignment statistics with REAL-TIME status enforcement
+     */
+    public static function getStatistics(?int $tutorId = null): array
     {
         $baseQuery = self::query();
         
@@ -488,12 +733,18 @@ class Assignment extends Model
             $baseQuery->where('tutor_id', $tutorId);
         }
 
-        $total = $baseQuery->count();
-        $active = (clone $baseQuery)->where('status', self::STATUS_ACTIVE)->count();
-        $completed = (clone $baseQuery)->where('status', self::STATUS_COMPLETED)->count();
-        $overdue = (clone $baseQuery)->where('status', self::STATUS_OVERDUE)->count();
-        $locked = (clone $baseQuery)->where('status', self::STATUS_LOCKED)->count();
-        $averageScore = (clone $baseQuery)->whereNotNull('score')->avg('score') ?? 0;
+        // Force real-time status updates by accessing status attribute
+        $assignments = $baseQuery->get();
+        $assignments->each(function ($assignment) {
+            $assignment->status; // This triggers the real-time status check
+        });
+
+        $total = $assignments->count();
+        $active = $assignments->where('status', self::STATUS_ACTIVE)->count();
+        $completed = $assignments->where('status', self::STATUS_COMPLETED)->count();
+        $overdue = $assignments->where('status', self::STATUS_OVERDUE)->count();
+        $locked = $assignments->where('status', self::STATUS_LOCKED)->count();
+        $averageScore = $assignments->whereNotNull('score')->avg('score') ?? 0;
 
         return [
             'total' => $total,

@@ -153,7 +153,7 @@ class ULTIMATE_RAW_DATA_SEEDER extends Seeder
                 Topic::updateOrCreate(
                     ['name' => $topicData['name'], 'course_id' => $course->id],
                     [
-                        'description' => "Topic about {$topicData['name']}",
+
                         'display_order' => $topicData['order'],
                         'is_locked' => $topicData['locked'],
                     ]

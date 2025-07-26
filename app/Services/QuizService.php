@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\Question;
 use App\Models\Topic;
 use App\Models\Course;
+use Illuminate\Support\Facades\Schema;
 use App\Models\User;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Cache;
@@ -590,16 +591,25 @@ class QuizService
             $difficulty = $options['difficulty'] ?? 'mixed';
             $sources = $options['sources'] ?? ['all'];
             $excludeTopics = $options['exclude_topics'] ?? [];
+            $courseIds = $options['course_ids'] ?? [];
 
             Log::info('Generating random quiz', [
                 'user_id' => $user->id,
                 'question_count' => $questionCount,
                 'difficulty' => $difficulty,
-                'sources' => $sources
+                'sources' => $sources,
+                'course_ids' => $courseIds
             ]);
 
             // Build query for questions
             $questionsQuery = Question::query();
+
+            // Apply course filtering if specified
+            if (!empty($courseIds)) {
+                $questionsQuery->whereHas('topic', function($query) use ($courseIds) {
+                    $query->whereIn('course_id', $courseIds);
+                });
+            }
 
             // Apply source filtering
             if (!in_array('all', $sources)) {
@@ -611,8 +621,8 @@ class QuizService
                 $questionsQuery->whereNotIn('topic_id', $excludeTopics);
             }
 
-            // Apply difficulty filtering if specified
-            if ($difficulty !== 'mixed') {
+            // Apply difficulty filtering if specified and column exists
+            if ($difficulty !== 'mixed' && Schema::hasColumn('questions', 'difficulty')) {
                 $questionsQuery->where('difficulty', $difficulty);
             }
 

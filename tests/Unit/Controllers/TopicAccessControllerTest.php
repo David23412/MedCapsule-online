@@ -39,7 +39,7 @@ class TopicAccessControllerTest extends TestCase
         
         // Assert
         $this->assertTrue($result['can_access']);
-        $this->assertTrue($result['is_admin']);
+        $this->assertEquals('admin', $admin->role);
         $this->assertEquals(Response::HTTP_OK, $result['status_code']);
     }
     
@@ -136,7 +136,7 @@ class TopicAccessControllerTest extends TestCase
         // Create an active assignment
         $assignment = Assignment::factory()->create([
             'tutor_id' => $tutor->id,
-            'student_id' => $student->id,
+            'user_id' => $student->id,
             'topic_id' => $topic->id,
             'course_id' => $course->id,
             'status' => Assignment::STATUS_ACTIVE,
@@ -210,7 +210,7 @@ class TopicAccessControllerTest extends TestCase
         // Create a complete topic assignment
         $assignment = Assignment::factory()->create([
             'tutor_id' => $tutor->id,
-            'student_id' => $student->id,
+            'user_id' => $student->id,
             'topic_id' => $topic->id,
             'course_id' => $course->id,
             'status' => Assignment::STATUS_ACTIVE,
@@ -283,7 +283,7 @@ class TopicAccessControllerTest extends TestCase
         // Create an expired assignment
         $assignment = Assignment::factory()->create([
             'tutor_id' => $tutor->id,
-            'student_id' => $student->id,
+            'user_id' => $student->id,
             'topic_id' => $topic->id,
             'course_id' => $course->id,
             'status' => Assignment::STATUS_EXPIRED,
@@ -489,7 +489,7 @@ class TopicAccessControllerTest extends TestCase
         // Create a source-specific assignment
         Assignment::factory()->create([
             'tutor_id' => $tutor->id,
-            'student_id' => $student->id,
+            'user_id' => $student->id,
             'topic_id' => $topic->id,
             'course_id' => $course->id,
             'status' => Assignment::STATUS_ACTIVE,

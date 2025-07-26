@@ -41,7 +41,7 @@ class RandomQuizTestSeeder extends Seeder
                         'name' => "Random Quiz Test Topic {$topicNum}"
                     ],
                     [
-                        'description' => "Test topic {$topicNum} for random quiz feature",
+
                         'case_type' => 'quiz',
                         'display_order' => $topicNum
                     ]

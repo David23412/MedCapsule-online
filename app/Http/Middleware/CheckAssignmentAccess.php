@@ -30,7 +30,7 @@ class CheckAssignmentAccess
         }
 
         // Find any assignments for this user and topic
-        $assignments = Assignment::where('student_id', $user->id)
+        $assignments = Assignment::where('user_id', $user->id)
                                 ->where('topic_id', $topicId)
                                 ->whereIn('status', [
                                     Assignment::STATUS_ACTIVE,

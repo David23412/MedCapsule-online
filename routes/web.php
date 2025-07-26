@@ -58,20 +58,16 @@ Route::middleware('auth')->group(function () {
     });
 
     // Review routes with CSRF and rate limiting
-    Route::get('/review', [QuizController::class, 'showMistakes'])->name('review.index')->withoutMiddleware('auth');
+    Route::get('/review', [App\Http\Controllers\Quiz\QuizMistakeController::class, 'showMistakes'])->name('review.index')->withoutMiddleware('auth');
     Route::get('/review/learn', [LearnController::class, 'learnMistakes'])->name('review.learn');
     Route::post('/review/remove/{question_id}', [MistakeController::class, 'removeMistake'])
-        ->name('review.remove')
-        ->middleware(['throttle:60,1']); // 60 requests per minute
+        ->name('review.remove');
     Route::post('/review/skip/{question_id}', [MistakeController::class, 'skipMistake'])
-        ->name('review.skip')
-        ->middleware(['throttle:60,1']); // 60 requests per minute
+        ->name('review.skip');
     Route::post('/learn/review/{question_id}', [LearnController::class, 'reviewMistake'])
-        ->name('learn.review')
-        ->middleware(['throttle:120,1']); // 120 requests per minute
+        ->name('learn.review');
     Route::post('/learn/save-time', [LearnController::class, 'saveStudyTime'])
-        ->name('learn.save-time')
-        ->middleware(['throttle:60,1']); // 60 requests per minute
+        ->name('learn.save-time');
     
     // Admin routes
     Route::get('/add-topic', [TopicController::class, 'showAddTopicForm'])->name('add-topic.form');
@@ -80,11 +76,11 @@ Route::middleware('auth')->group(function () {
     Route::post('/add-course', [CourseController::class, 'addCourse'])->name('add-course');
     Route::get('/add-question', [QuestionController::class, 'showAddQuestionForm'])->name('add-question.form');
     Route::post('/add-question', [QuestionController::class, 'storeQuestion'])->name('add-question');
-    Route::get('/manage-access', [UserCourseController::class, 'index'])->name('admin.user-course');
-    Route::post('/manage-access/enroll', [UserCourseController::class, 'enroll'])->name('admin.user-course.enroll');
-    Route::get('/manage-access/search-users', [UserCourseController::class, 'searchUsers'])->name('admin.user-course.search');
-    Route::post('/manage-access/toggle-admin', [UserCourseController::class, 'toggleAdmin'])->name('admin.user-course.toggle-admin');
-    Route::post('/manage-access/payment-settings', [UserCourseController::class, 'updatePaymentSettings'])->name('admin.payment-settings.update');
+    // Route::get('/manage-access', [UserCourseController::class, 'index'])->name('admin.user-course');
+    // Route::post('/manage-access/enroll', [UserCourseController::class, 'enroll'])->name('admin.user-course.enroll');
+    // Route::get('/manage-access/search-users', [UserCourseController::class, 'searchUsers'])->name('admin.user-course.search');
+    // Route::post('/manage-access/toggle-admin', [UserCourseController::class, 'toggleAdmin'])->name('admin.user-course.toggle-admin');
+    // Route::post('/manage-access/payment-settings', [UserCourseController::class, 'updatePaymentSettings'])->name('admin.payment-settings.update');
     
     // Delete Management Routes
     Route::get('/admin/delete', [DeleteController::class, 'index'])->name('admin.delete.index');
@@ -128,31 +124,61 @@ Route::middleware('auth')->group(function () {
     Route::get('/courses/{course}/cases', [TopicController::class, 'casesForCourse'])->name('cases.forCourse');
     Route::get('/courses/{course}/cases-count', [TopicController::class, 'casesCount'])->name('cases.count');
 
-    // Quiz routes with CSRF and rate limiting
-    Route::get('/quiz/{course}/{topic}', [QuizController::class, 'startQuiz'])
-        ->name('quiz.start')
-        ->where(['course' => '[0-9]+', 'topic' => '[0-9]+']);
-    Route::post('/quiz/{course}/{topic}/grade', [QuizController::class, 'grade'])
-        ->name('quiz.grade')
-        ->where(['course' => '[0-9]+', 'topic' => '[0-9]+'])
-        ->middleware(['throttle:30,1']); // 30 quiz submissions per minute
+    // 💀 NUCLEAR OPTIMIZED QUIZ ROUTES - SPLIT ARCHITECTURE 💀
+    Route::prefix('quiz')->name('quiz.')->group(function () {
+        // Quiz Execution
+        Route::get('/{course}/{topic}', [App\Http\Controllers\Quiz\QuizExecutionController::class, 'startQuiz'])
+            ->name('start')
+            ->where(['course' => '[0-9]+', 'topic' => '[0-9]+']);
+        Route::post('/{course}/{topic}/grade', [App\Http\Controllers\Quiz\QuizExecutionController::class, 'grade'])
+            ->name('grade')
+            ->where(['course' => '[0-9]+', 'topic' => '[0-9]+'])
+            ->middleware(['throttle:30,1']);
+            
+        // Tutor Mode
+        Route::get('/{course}/{topic}/tutor', [App\Http\Controllers\Quiz\QuizTutorController::class, 'startTutorQuiz'])
+            ->name('tutor')
+            ->where(['course' => '[0-9]+', 'topic' => '[0-9]+']);
+        Route::post('/tutor/check/{question}', [App\Http\Controllers\Quiz\QuizTutorController::class, 'checkTutorAnswer'])
+            ->name('tutor.check-answer')
+            ->where(['question' => '[0-9]+'])
+            ->middleware(['throttle:60,1']);
+    });
 
-    // Tutor mode routes with CSRF and rate limiting
-    Route::get('/quiz/{course}/{topic}/tutor', [QuizController::class, 'startTutorQuiz'])
-        ->name('quiz.tutor')
-        ->where(['course' => '[0-9]+', 'topic' => '[0-9]+']);
-    Route::post('/quiz/tutor/check/{question}', [QuizController::class, 'checkTutorAnswer'])
-        ->name('quiz.tutor.check-answer')
-        ->where(['question' => '[0-9]+'])
-        ->middleware(['throttle:60,1']); // 60 tutor answer checks per minute
+    // Random Quiz Routes with CSRF and rate limiting - OPTIMIZED VERSION
+    Route::get('/quiz/random', [App\Http\Controllers\Quiz\OptimizedRandomQuizController::class, 'showRandomQuiz'])
+        ->name('quiz.random.show');
+    Route::post('/quiz/random', [App\Http\Controllers\Quiz\OptimizedRandomQuizController::class, 'generateRandomQuiz'])
+        ->name('quiz.random');
+    Route::post('/quiz/grade-random', [App\Http\Controllers\Quiz\OptimizedRandomQuizController::class, 'gradeRandomQuiz'])
+        ->name('quiz.grade-random');
 
-    // Random Quiz Routes with CSRF and rate limiting
-    Route::post('/quiz/random', [App\Http\Controllers\RandomQuizController::class, 'generateRandomQuiz'])
-        ->name('quiz.random')
-        ->middleware(['throttle:10,1']); // 10 random quiz generations per minute
-    Route::post('/quiz/grade-random', [App\Http\Controllers\RandomQuizController::class, 'gradeRandomQuiz'])
-        ->name('quiz.grade-random')
-        ->middleware(['throttle:30,1']); // 30 random quiz submissions per minute
+
+
+
+
+    // Optimized Random Quiz Routes - CRITICAL OPTIMIZATION
+    Route::prefix('random-quiz')->name('random-quiz.')->group(function () {
+        Route::post('/generate', [App\Http\Controllers\Quiz\OptimizedRandomQuizController::class, 'generateRandomQuiz'])
+            ->name('generate')
+            ->middleware(['throttle:random-quiz,10,1']); // 10 random quiz generations per minute
+        Route::post('/grade', [App\Http\Controllers\Quiz\OptimizedRandomQuizController::class, 'gradeRandomQuiz'])
+            ->name('grade')
+            ->middleware(['throttle:random-quiz-grading,30,1']); // 30 random quiz gradings per minute
+        Route::get('/stats', [App\Http\Controllers\Quiz\OptimizedRandomQuizController::class, 'getRandomQuizStats'])
+            ->name('stats')
+            ->middleware(['throttle:30,1']); // 30 stats requests per minute
+    });
+
+    // Optimized Payment Processing Routes - NUCLEAR OPTIMIZATION
+    Route::prefix('payment-processing')->name('payment-processing.')->group(function () {
+        Route::post('/courses/{courseId}/process', [App\Http\Controllers\Payment\PaymentProcessingController::class, 'processManualPayment'])
+            ->name('process')
+            ->middleware(['throttle:payment-processing,5,1']); // 5 payment processing per minute
+        Route::get('/courses/{courseId}/options', [App\Http\Controllers\Payment\PaymentProcessingController::class, 'getPaymentOptions'])
+            ->name('options')
+            ->middleware(['throttle:30,1']); // 30 option requests per minute
+    });
 
     // Settings and profile routes
     Route::get('/settings', [SettingsController::class, 'index'])->name('settings.index');
@@ -205,38 +231,52 @@ Route::middleware('auth')->group(function () {
         }
     })->middleware('auth')->name('api.active-users');
 
-    // Payment routes - must be added inside the auth middleware group
-    Route::get('/payments/{course}/options', [PaymentController::class, 'getPaymentOptions'])->name('payments.options');
-    Route::get('/payments/history', [PaymentController::class, 'history'])->name('payments.history');
-
-    // Manual payment processing routes with rate limiting
-    Route::post('/payments/{course}/process-manual', [PaymentController::class, 'processManualPayment'])
-        ->name('payments.process-manual')
-        ->middleware(['throttle:5,1']); // 5 payment attempts per minute
-    Route::post('/payments/{course}/submit-proof', [PaymentController::class, 'submitProof'])
-        ->name('payments.submit-proof')
-        ->middleware(['throttle:10,1']); // 10 proof submissions per minute
-    Route::post('/payments/{course}/submit-proof-course', [PaymentController::class, 'submitProof'])
-        ->name('payments.submit-proof-course')
-        ->middleware(['throttle:10,1']); // 10 proof submissions per minute
-    Route::post('/payments/{payment}/submit-proof', [PaymentController::class, 'submitPaymentProof'])
-        ->name('payments.submit-payment-proof')
-        ->middleware(['throttle:10,1']); // 10 proof submissions per minute
+    // 💀 NUCLEAR OPTIMIZED PAYMENT ROUTES - SPLIT ARCHITECTURE 💀
+    Route::prefix('payment')->name('payment.')->group(function () {
+        // Payment Options
+        Route::get('/options/{course}', [App\Http\Controllers\Payment\PaymentOptionsController::class, 'getPaymentOptions'])
+            ->name('options');
+        Route::post('/bundle-options', [App\Http\Controllers\Payment\PaymentOptionsController::class, 'getBundlePaymentOptions'])
+            ->name('bundle-options');
+            
+        // Payment Processing
+        Route::post('/process/{course}', [App\Http\Controllers\Payment\PaymentProcessingController::class, 'processManualPayment'])
+            ->name('process')
+            ->middleware(['throttle:payment-processing,5,1']);
+        Route::post('/process-bundle', [App\Http\Controllers\Payment\PaymentProcessingController::class, 'processBundleManualPayment'])
+            ->name('process-bundle')
+            ->middleware(['throttle:payment-processing,3,1']);
+        Route::post('/submit-proof/{courseId}', [App\Http\Controllers\Payment\PaymentProcessingController::class, 'submitProof'])
+            ->name('submit-proof')
+            ->middleware(['throttle:10,1']);
+        Route::post('/submit-bundle-proof', [App\Http\Controllers\Payment\PaymentProcessingController::class, 'submitBundlePaymentProof'])
+            ->name('submit-bundle-proof')
+            ->middleware(['throttle:5,1']);
+            
+        // Payment Status
+        Route::get('/history', [App\Http\Controllers\Payment\PaymentStatusController::class, 'history'])
+            ->name('history');
+        Route::get('/status/{payment}', [App\Http\Controllers\Payment\PaymentStatusController::class, 'status'])
+            ->name('status');
+        Route::post('/refresh/{payment}', [App\Http\Controllers\Payment\PaymentStatusController::class, 'refreshStatus'])
+            ->name('refresh');
+        Route::post('/retry/{payment}', [App\Http\Controllers\Payment\PaymentStatusController::class, 'retry'])
+            ->name('retry');
+    });
     
-    // Bundle payment routes with rate limiting
-    Route::post('/payments/bundle/options', [PaymentController::class, 'getBundlePaymentOptions'])
-        ->name('payments.bundle.options')
-        ->middleware(['throttle:20,1']); // 20 bundle option requests per minute
-    Route::post('/payments/bundle/process-manual', [PaymentController::class, 'processBundleManualPayment'])
-        ->name('payments.bundle.process-manual')
-        ->middleware(['throttle:3,1']); // 3 bundle payment attempts per minute
-    Route::post('/payments/bundle/submit-proof', [PaymentController::class, 'submitBundlePaymentProof'])
-        ->name('payments.bundle.submit-proof')
-        ->middleware(['throttle:5,1']); // 5 bundle proof submissions per minute
-
-    // Admin payment routes
-    Route::post('/admin/payments/{payment}/verify', [PaymentController::class, 'adminVerifyPayment'])->name('admin.payments.verify');
-    Route::post('/admin/payments/{payment}/reject', [PaymentController::class, 'adminRejectPayment'])->name('admin.payments.reject');
+    // 💀 NUCLEAR OPTIMIZED ADMIN PAYMENT ROUTES 💀
+    Route::prefix('admin/payments')->name('admin.payments.')->middleware(['auth', 'admin'])->group(function () {
+        Route::get('/history', [App\Http\Controllers\Payment\PaymentAdminController::class, 'adminPaymentHistory'])
+            ->name('history');
+        Route::get('/details/{payment}', [App\Http\Controllers\Payment\PaymentAdminController::class, 'adminPaymentDetails'])
+            ->name('details');
+        Route::post('/verify/{payment}', [App\Http\Controllers\Payment\PaymentAdminController::class, 'adminVerifyPayment'])
+            ->name('verify');
+        Route::post('/bulk-verify', [App\Http\Controllers\Payment\PaymentAdminController::class, 'adminBulkVerify'])
+            ->name('bulk-verify');
+        Route::post('/reject/{payment}', [App\Http\Controllers\Payment\PaymentAdminController::class, 'adminRejectPayment'])
+            ->name('reject');
+    });
     Route::get('/admin/payment-history', [PaymentController::class, 'adminPaymentHistory'])->name('admin.payment-history');
     Route::get('/admin/payment-details/{payment}', [PaymentController::class, 'adminPaymentDetails'])->name('admin.payment-details');
 
@@ -300,6 +340,9 @@ Route::middleware('auth')->group(function () {
         Route::post('/update-overdue', [AssignmentController::class, 'updateOverdue'])
             ->name('update-overdue')
             ->middleware(['throttle:5,1']);
+        Route::post('/enforce-real-time-status', [AssignmentController::class, 'enforceRealTimeStatus'])
+            ->name('enforce-real-time-status')
+            ->middleware(['throttle:60,1']); // Allow more frequent calls for real-time updates
     });
 
     // Student Assignment Routes

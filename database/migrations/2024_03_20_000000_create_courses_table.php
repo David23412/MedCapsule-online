@@ -15,14 +15,13 @@ return new class extends Migration
             $table->id();
             $table->string('name'); // Name of the course
             $table->text('description')->nullable(); // Description of the course (optional)
+            $table->enum('type', ['medical', 'custom'])->default('medical'); // Course type
             $table->string('academic_year')->default('2024-1'); // Academic year and semester (e.g., 2024-1)
             $table->string('image')->nullable(); // Image URL for the course
             $table->string('color')->nullable(); // Color for the course
             $table->string('title_color')->default('#FFFFFF'); // Title color for the course
-            $table->float('progress')->default(0); // Progress in the course based on mastered topics
             $table->string('image_path')->nullable();
             $table->decimal('price', 10, 2)->nullable(); // Course price (null for free courses)
-            $table->string('currency')->default('EGP'); // Currency for the price
             $table->unsignedInteger('cache_version')->default(1); // Cache version for invalidation
             $table->timestamps();
             

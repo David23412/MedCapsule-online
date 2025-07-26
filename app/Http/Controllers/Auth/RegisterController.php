@@ -5,30 +5,68 @@ namespace App\Http\Controllers\Auth;
 use App\Http\Controllers\Controller;
 use App\Models\User;
 use Illuminate\Http\Request;
+use Illuminate\Http\JsonResponse;
+use App\Services\QuizPerformanceService;
+use Illuminate\Support\Facades\Cache;
+use App\Services\QuizCacheService;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
 
 class RegisterController extends Controller
 {
-    public function showRegistrationForm()
+    public function __construct()
     {
-        return view('auth.register');
+        // DON'T call parent::__construct() to avoid auth middleware
+        $this->middleware('guest');
     }
 
-    public function register(Request $request)
+    public function showRegistrationForm()
+    {
+        // LETHAL CACHING: Ultra-aggressive caching for registration form data
+        $cacheKey = 'registration_form_data_' . now()->format('Y-m-d');
+        
+        $formData = Cache::remember($cacheKey, 86400, function () {
+            return [
+                'universities' => $this->getUniversitiesList(),
+                'countries' => $this->getCountriesList(),
+                'terms_version' => config('app.terms_version', '1.0')
+            ];
+        });
+        
+        return view('auth.register', $formData);
+    }
+
+    /**
+     * LETHAL CACHING: Get universities list
+     */
+    private function getUniversitiesList(): array
+    {
+        return [
+            'University of Ghana',
+            'Kwame Nkrumah University of Science and Technology',
+            'University of Cape Coast',
+            'University for Development Studies',
+            'Other'
+        ];
+    }
+
+    /**
+     * LETHAL CACHING: Get countries list
+     */
+    private function getCountriesList(): array
+    {
+        return [
+            'Ghana', 'Nigeria', 'Kenya', 'South Africa', 'Other'
+        ];
+    }
+
+    public function register(\App\Http\Requests\RegisterRequest $request)
     {
         Log::info('Registration attempt', ['email' => $request->email]);
 
         try {
-            // Validate the input data
-            $validated = $request->validate([
-                'name' => ['required', 'string', 'max:255'],
-                'email' => ['required', 'string', 'email', 'max:255', 'unique:users'],
-                'university' => ['required', 'string', 'max:255'],
-                'password' => ['required', 'string', 'min:8', 'confirmed'],
-                'terms' => ['required', 'accepted'],
-            ]);
+            $validated = $request->validated();
 
             Log::info('Validation passed', ['email' => $validated['email']]);
 

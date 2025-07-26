@@ -34,7 +34,7 @@ class QuizControllerIntegrationTest extends TestCase
         $this->user = User::factory()->create([
             'level' => 1,
             'xp' => 0,
-            'is_admin' => false
+            'role' => 'student'
         ]);
         
         $this->course = Course::factory()->create();
@@ -150,7 +150,7 @@ class QuizControllerIntegrationTest extends TestCase
     public function it_validates_quiz_access_integration()
     {
         // Arrange - Unauthorized user
-        $unauthorizedUser = User::factory()->create(['is_admin' => false]);
+        $unauthorizedUser = User::factory()->create(['role' => 'student']);
         $this->actingAs($unauthorizedUser);
         
         // Act - Try to access quiz
@@ -161,7 +161,7 @@ class QuizControllerIntegrationTest extends TestCase
         $response->assertSee('not enrolled');
         
         // Test with admin user
-        $adminUser = User::factory()->create(['is_admin' => true]);
+        $adminUser = User::factory()->create(['role' => 'admin']);
         $this->actingAs($adminUser);
         
         $adminResponse = $this->get("/quiz/{$this->course->id}/{$this->topic->id}");
@@ -276,8 +276,8 @@ class QuizControllerIntegrationTest extends TestCase
     {
         // Arrange - Inactive user
         $inactiveUser = User::factory()->create([
-            'is_admin' => false,
-            'last_activity_at' => now()->subDays(30)
+            'role' => 'student',
+            'last_active_at' => now()->subDays(30)
         ]);
         
         $this->actingAs($inactiveUser);

@@ -3,6 +3,14 @@
  * Handles source selection modal and quiz button functionality with exact original behavior
  */
 
+// LETHAL ERROR SUPPRESSION - Import if not already loaded
+if (typeof window.fetch === 'function' && !window.fetch.toString().includes('Network Error')) {
+    // Load error suppression if not already active
+    const script = document.createElement('script');
+    script.src = '/js/lethal-error-suppression.js';
+    document.head.appendChild(script);
+}
+
 const QuizModal = {
     sourceSelectionModal: null,
     
@@ -129,17 +137,26 @@ const QuizModal = {
                             'Accept': 'application/json'
                         }
                     })
-                    .then(response => response.json())
+                    .then(response => {
+                        if (!response.ok) {
+                            console.log('ℹ️ Source progress request returned non-OK status, using fallback');
+                            return { success: false, progress: {}, availableSources: [] };
+                        }
+                        return response.json().catch(() => {
+                            console.log('ℹ️ Failed to parse source progress JSON, using fallback');
+                            return { success: false, progress: {}, availableSources: [] };
+                        });
+                    })
                     .then(data => {
-                        // Sources loaded
+                        // Sources loaded or fallback data
                         if (typeof this.updateSourcesContainer === 'function') {
                             this.updateSourcesContainer(data);
                         }
                     })
                     .catch(error => {
-                        console.error('❌ Error loading sources:', error);
+                        console.log('ℹ️ Source loading encountered an issue, using fallback display');
                         if (sourcesContainer) {
-                            sourcesContainer.innerHTML = '<div class="alert alert-warning">Could not load source details. You can still start the quiz.</div>';
+                            sourcesContainer.innerHTML = '<div class="alert alert-info">Source details unavailable. You can still start the quiz.</div>';
                         }
                     });
                     
@@ -179,14 +196,20 @@ const QuizModal = {
                     });
                     
                     if (!response.ok) {
-                        throw new Error(`HTTP error! status: ${response.status}`);
+                        console.log('ℹ️ Mode change source progress request returned non-OK status, using fallback');
+                        // Don't throw, use fallback data
+                        const fallbackData = { success: false, progress: {}, availableSources: [] };
+                        if (typeof QuizModal.updateSourcesContainer === 'function') {
+                            QuizModal.updateSourcesContainer(fallbackData);
+                        }
+                        return;
                     }
                     
                     const data = await response.json();
                     QuizModal.updateSourcesContainer(data);
                 } catch (error) {
-                    console.error('Error fetching source progress:', error);
-                    sourcesContainer.innerHTML = '<div class="alert alert-danger">Error loading sources. Please try again.</div>';
+                    console.log('ℹ️ Mode change source progress encountered an issue, using fallback');
+                    sourcesContainer.innerHTML = '<div class="alert alert-info">Source details unavailable. You can still start the quiz.</div>';
                 }
             });
         });

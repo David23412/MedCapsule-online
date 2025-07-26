@@ -176,32 +176,9 @@
             background: #f8f9fa;
         }
 
-        .progress-bar-container.hidden {
-            transform: translate(-50%, 200%) !important;
-            opacity: 0 !important;
-            pointer-events: none !important;
-            visibility: hidden !important;
-            display: none !important;
-            z-index: -999 !important;
-            bottom: -300px !important;
-            transition: all 0.2s ease !important;
-        }
+        /* SIMPLIFIED: Progress bar always visible */
         
-        /* Smooth show animation */
-        .progress-bar-container:not(.hidden) {
-            animation: slideUpSmooth 0.4s cubic-bezier(0.25, 0.8, 0.25, 1) forwards;
-        }
-        
-        @keyframes slideUpSmooth {
-            from {
-                transform: translate(-50%, 100%);
-                opacity: 0;
-            }
-            to {
-                transform: translate(-50%, 0);
-                opacity: 1;
-            }
-        }
+        /* REMOVED: No animations needed */
 
         .progress-bar {
             width: 100%;
@@ -690,6 +667,7 @@
         <div class="container">
             <h1>Random Quiz</h1>
 
+
             @if ($questions->isNotEmpty())
                 <div class="progress-bar-container" id="progress-bar-container">
                     <div class="progress-bar">
@@ -697,7 +675,7 @@
                     </div>
                     <div class="d-flex justify-content-between align-items-center">
                         <div class="progress-text" id="progress-text">0 of {{ $questions->count() }} questions answered</div>
-                        <div class="timer" id="timer">{{ gmdate('i:s', $duration_minutes * 60) }}</div>
+                        <div class="timer" id="timer">{{ gmdate('i:s', floor($duration_minutes * 60)) }} remaining</div>
                     </div>
                 </div>
 
@@ -801,81 +779,14 @@
             }
             
             function initializeProgressBarSystem() {
-                if (!progressBarContainer || !submitBtn) {
-                    console.error('CRITICAL ERROR: Elements not found!');
-                    return;
-                }
+                if (!progressBarContainer || !submitBtn) return;
                 
-                // BRUTALLY AGGRESSIVE PROGRESS BAR SYSTEM
-                let rafId = null;
-                let isProgressBarHidden = false;
+                // LEAN SOLUTION: Single Intersection Observer
+                const observer = new IntersectionObserver(([entry]) => {
+                    progressBarContainer.style.display = entry.isIntersecting ? 'none' : '';
+                }, { rootMargin: '100px' });
                 
-                function updateProgressBarPosition() {
-                    if (!submitBtn || !progressBarContainer) {
-                        console.warn('Elements missing during update');
-                        return;
-                    }
-                    
-                    const submitBtnRect = submitBtn.getBoundingClientRect();
-                    const windowHeight = window.innerHeight;
-                    const scrollBuffer = 400; // EVEN MORE MASSIVE buffer zone
-                    
-                    console.log('Submit button top:', submitBtnRect.top, 'Window height:', windowHeight, 'Buffer:', scrollBuffer);
-                    
-                    // BRUTAL LOGIC: Hide when submit button is ANYWHERE NEAR viewport
-                    const shouldHide = submitBtnRect.top <= windowHeight + scrollBuffer;
-                    
-                    console.log('Should hide:', shouldHide, 'Currently hidden:', isProgressBarHidden);
-                    
-                    if (shouldHide && !isProgressBarHidden) {
-                        // NUCLEAR ANNIHILATION - OBLITERATE THE PROGRESS BAR
-                        console.log('🔥 NUCLEAR HIDING PROGRESS BAR 🔥');
-                        progressBarContainer.classList.add('hidden');
-                        progressBarContainer.style.transform = 'translate(-50%, 200%)';
-                        progressBarContainer.style.opacity = '0';
-                        progressBarContainer.style.visibility = 'hidden';
-                        progressBarContainer.style.pointerEvents = 'none';
-                        progressBarContainer.style.display = 'none';
-                        progressBarContainer.style.zIndex = '-999';
-                        progressBarContainer.style.bottom = '-500px';
-                        isProgressBarHidden = true;
-                    } else if (!shouldHide && isProgressBarHidden) {
-                        // AGGRESSIVE RESURRECTION
-                        console.log('🚀 AGGRESSIVELY SHOWING PROGRESS BAR 🚀');
-                        progressBarContainer.classList.remove('hidden');
-                        progressBarContainer.style.transform = 'translate(-50%, 0)';
-                        progressBarContainer.style.opacity = '1';
-                        progressBarContainer.style.visibility = 'visible';
-                        progressBarContainer.style.pointerEvents = 'auto';
-                        progressBarContainer.style.display = '';
-                        progressBarContainer.style.zIndex = '999';
-                        progressBarContainer.style.bottom = '0';
-                        isProgressBarHidden = false;
-                    }
-                }
-
-                function onScroll() {
-                    if (rafId) return;
-                    
-                    rafId = requestAnimationFrame(() => {
-                        updateProgressBarPosition();
-                        rafId = null;
-                    });
-                }
-
-                // BULLETPROOF EVENT LISTENERS
-                window.addEventListener('scroll', onScroll, { passive: true });
-                window.addEventListener('resize', onScroll, { passive: true });
-                
-                // MULTIPLE BRUTAL INITIALIZATION CHECKS
-                updateProgressBarPosition();
-                setTimeout(() => updateProgressBarPosition(), 100);
-                setTimeout(() => updateProgressBarPosition(), 300);
-                setTimeout(() => updateProgressBarPosition(), 500);
-                setTimeout(() => updateProgressBarPosition(), 1000);
-                setTimeout(() => updateProgressBarPosition(), 2000);
-                
-                console.log('🔥 PROGRESS BAR SYSTEM INITIALIZED 🔥');
+                observer.observe(submitBtn);
             }
             
             let selectedAnswers = {};
@@ -920,7 +831,7 @@
             });
 
             // Timer functionality
-            let timeLimit = {{ $duration_minutes * 60 }};
+            let timeLimit = Math.floor({{ $duration_minutes * 60 }});
             let timeRemaining = timeLimit;
             let timeTaken = 0;
             let timerInterval;
@@ -1312,88 +1223,7 @@
                 
                 let isHidden = false;
                 
-                function NUCLEAR_HIDE() {
-                    if (isHidden) return;
-                    console.log('💥 NUCLEAR HIDE ENGAGED 💥');
-                    
-                    // OBLITERATE WITH EXTREME PREJUDICE
-                    progressBar.style.display = 'none !important';
-                    progressBar.style.opacity = '0 !important';
-                    progressBar.style.visibility = 'hidden !important';
-                    progressBar.style.transform = 'translate(-50%, 500px) !important';
-                    progressBar.style.zIndex = '-9999 !important';
-                    progressBar.style.bottom = '-1000px !important';
-                    progressBar.style.height = '0 !important';
-                    progressBar.style.overflow = 'hidden !important';
-                    progressBar.style.pointerEvents = 'none !important';
-                    progressBar.classList.add('hidden');
-                    
-                    // NUCLEAR OPTION - REMOVE FROM DOM
-                    progressBar.remove();
-                    
-                    isHidden = true;
-                    console.log('✅ TARGET ELIMINATED');
-                }
-                
-                function NUCLEAR_SHOW() {
-                    if (!isHidden) return;
-                    console.log('🔄 NUCLEAR RESURRECTION ENGAGED 🔄');
-                    
-                    // RESURRECT THE PROGRESS BAR
-                    document.body.appendChild(progressBar);
-                    progressBar.style.display = '';
-                    progressBar.style.opacity = '1';
-                    progressBar.style.visibility = 'visible';
-                    progressBar.style.transform = 'translate(-50%, 0)';
-                    progressBar.style.zIndex = '999';
-                    progressBar.style.bottom = '0';
-                    progressBar.style.height = '';
-                    progressBar.style.overflow = '';
-                    progressBar.style.pointerEvents = 'auto';
-                    progressBar.classList.remove('hidden');
-                    
-                    isHidden = false;
-                    console.log('✅ TARGET RESURRECTED');
-                }
-                
-                function CHECK_AND_DESTROY() {
-                    const submitRect = submitButton.getBoundingClientRect();
-                    const windowHeight = window.innerHeight;
-                    const NUCLEAR_BUFFER = 500; // MASSIVE BUFFER
-                    
-                    const shouldDestroy = submitRect.top <= windowHeight + NUCLEAR_BUFFER;
-                    
-                    console.log(`📊 SCAN RESULTS: Submit top: ${submitRect.top}, Window: ${windowHeight}, Should destroy: ${shouldDestroy}`);
-                    
-                    if (shouldDestroy && !isHidden) {
-                        NUCLEAR_HIDE();
-                    } else if (!shouldDestroy && isHidden) {
-                        NUCLEAR_SHOW();
-                    }
-                }
-                
-                // ACTIVATE CONTINUOUS MONITORING
-                let rafId;
-                function MONITOR() {
-                    if (rafId) return;
-                    rafId = requestAnimationFrame(() => {
-                        CHECK_AND_DESTROY();
-                        rafId = null;
-                    });
-                }
-                
-                // ENGAGE ALL MONITORING SYSTEMS
-                window.addEventListener('scroll', MONITOR, { passive: true });
-                window.addEventListener('resize', MONITOR, { passive: true });
-                window.addEventListener('orientationchange', MONITOR, { passive: true });
-                
-                // INITIAL SCAN
-                CHECK_AND_DESTROY();
-                
-                // CONTINUOUS MONITORING EVERY 100MS
-                setInterval(CHECK_AND_DESTROY, 100);
-                
-                console.log('🎯 NUCLEAR SYSTEM FULLY OPERATIONAL');
+                // REMOVED: No complex positioning needed
                 
             }, 1000);
         });

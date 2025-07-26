@@ -1,0 +1,235 @@
+<?php
+
+namespace App\Http\Controllers\Quiz;
+
+use App\Http\Controllers\Controller;
+use App\Http\Requests\RandomQuizRequest;
+use App\Services\QuizService;
+use App\Services\QuizCacheService;
+use App\Services\QuizPerformanceService;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Log;
+
+/**
+ * Optimized Random Quiz Controller
+ * Handles random quiz generation with maximum performance
+ */
+class OptimizedRandomQuizController extends Controller
+{
+    protected $quizService;
+
+    public function __construct(QuizService $quizService)
+    {
+        $this->middleware('auth');
+        $this->quizService = $quizService;
+    }
+
+    /**
+     * Show random quiz page
+     */
+    public function showRandomQuiz(Request $request)
+    {
+        // Get parameters from the modal form
+        $questionCount = (int) $request->input('question_limit', 10);
+        $durationMinutes = (float) $request->input('duration_minutes', 15);
+        $selectedCourseIds = $request->input('selected_courses', []);
+        
+        // Generate a random quiz for display
+        $user = auth()->user();
+        
+        // Build options for quiz generation
+        $options = [
+            'sources' => ['all'],
+            'course_ids' => $selectedCourseIds,
+            'difficulty' => 'mixed'
+        ];
+        
+        $result = $this->quizService->generateRandomQuiz($user, $questionCount, $options);
+        
+        if (!$result['success']) {
+            return redirect()->back()->with('error', 'Unable to generate random quiz. Please try again.');
+        }
+        
+        // If we got fewer questions than requested, adjust the count
+        $actualQuestionCount = count($result['questions']);
+        if ($actualQuestionCount < $questionCount) {
+            Log::info("Requested {$questionCount} questions but only {$actualQuestionCount} available");
+        }
+        
+        // Get selected courses for navigation
+        $selectedCourses = collect();
+        if (!empty($selectedCourseIds)) {
+            $selectedCourses = \App\Models\Course::whereIn('id', $selectedCourseIds)->get();
+        }
+        
+        // Fallback to first available course if none selected
+        if ($selectedCourses->isEmpty()) {
+            $selectedCourses = \App\Models\Course::take(1)->get();
+            if ($selectedCourses->isEmpty()) {
+                $selectedCourses = collect([new \App\Models\Course(['id' => 1, 'name' => 'General'])]);
+            }
+        }
+        
+        return view('quiz.random_quiz', [
+            'questions' => $result['questions'],
+            'selectedCourses' => $selectedCourses,
+            'duration_minutes' => $durationMinutes,
+            'requested_questions' => $questionCount,
+            'actual_questions' => $actualQuestionCount
+        ]);
+    }
+
+    /**
+     * Generate random quiz with ultra-fast performance
+     */
+    public function generateRandomQuiz(RandomQuizRequest $request): JsonResponse
+    {
+        return QuizPerformanceService::trackQuizGeneration(0, auth()->id(), function () use ($request) {
+            try {
+                $validatedData = $request->getValidatedWithDefaults();
+                
+                // Ultra-fast cache key for random quiz
+                $cacheKey = "random_quiz_fixed_{$validatedData['user_id']}_" . 
+                           hash('xxh3', serialize($validatedData));
+                
+                // Aggressive caching with shorter TTL for random content
+                $result = Cache::remember($cacheKey, 60, function () use ($validatedData) {
+                    return $this->quizService->generateRandomQuiz(
+                        auth()->user(),
+                        $validatedData['question_count'] ?? 10,
+                        $validatedData
+                    );
+                });
+
+                return response()->json([
+                    'success' => true,
+                    'data' => $result,
+                    'cache_key' => $cacheKey,
+                    'performance' => [
+                        'cached' => Cache::has($cacheKey),
+                        'generation_type' => 'random'
+                    ]
+                ]);
+
+            } catch (\Exception $e) {
+                Log::error('Random quiz generation failed', [
+                    'user_id' => auth()->id(),
+                    'error' => $e->getMessage(),
+                    'trace' => $e->getTraceAsString()
+                ]);
+
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Random quiz generation failed. Please try again.',
+                    'error_code' => 'RANDOM_QUIZ_FAILED'
+                ], 500);
+            }
+        });
+    }
+
+    /**
+     * Grade random quiz with optimized performance
+     */
+    public function gradeRandomQuiz(Request $request): JsonResponse
+    {
+        try {
+            $user = auth()->user();
+            
+            // Validate the submission data
+            $validated = $request->validate([
+                'answers' => 'required|array',
+                'answers.*' => 'nullable|string|max:2000',
+                'time_taken' => 'required|integer|min:0',
+                'mode' => 'nullable|string|in:quiz,tutor,random'
+            ]);
+
+            // For random quizzes, we need to handle grading differently since questions come from multiple topics
+            // We'll create a synthetic topic/course context for the grading service
+            $answers = $validated['answers'];
+            $timeTaken = $validated['time_taken'];
+            $mode = $validated['mode'] ?? 'random';
+
+            // Get the questions to determine topics
+            $questionIds = array_keys($answers);
+            $questions = \App\Models\Question::whereIn('id', $questionIds)
+                ->with(['topic', 'topic.course'])
+                ->get();
+
+            if ($questions->isEmpty()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'No valid questions found for grading'
+                ], 400);
+            }
+
+            // For random quiz, we'll use the first question's topic/course as context
+            // This is a simplification - in a more complex system, you might want to handle multi-topic grading differently
+            $firstQuestion = $questions->first();
+            $topic = $firstQuestion->topic;
+            $course = $topic->course;
+
+            // Use the GradingService to grade the quiz
+            $gradingResult = app(\App\Services\GradingService::class)->gradeQuiz(
+                $user,
+                $answers,
+                $timeTaken,
+                $mode,
+                $topic,
+                $course
+            );
+
+            // Ensure the response has the correct field names for the frontend
+            $gradingResult['total'] = $gradingResult['totalQuestions'];
+            $gradingResult['message'] = $gradingResult['encouragement'] ?? 'Quiz completed!';
+
+            return response()->json($gradingResult);
+
+        } catch (\Exception $e) {
+            Log::error('Random quiz grading failed', [
+                'user_id' => auth()->id(),
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Random quiz grading failed. Please try again.',
+                'error_code' => 'RANDOM_QUIZ_GRADING_FAILED'
+            ], 500);
+        }
+    }
+
+    /**
+     * Get random quiz statistics
+     */
+    public function getRandomQuizStats(): JsonResponse
+    {
+        try {
+            $cacheKey = QuizCacheService::generateCacheKey('random_quiz_stats', [
+                'user_id' => auth()->id()
+            ]);
+            
+            $stats = Cache::remember($cacheKey, 600, function () {
+                return $this->quizService->getRandomQuizStats(auth()->id());
+            });
+
+            return response()->json([
+                'success' => true,
+                'data' => $stats
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Random quiz stats failed', [
+                'user_id' => auth()->id(),
+                'error' => $e->getMessage()
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Unable to load quiz statistics'
+            ], 500);
+        }
+    }
+}

@@ -42,7 +42,7 @@ class QuizIntegrationTest extends TestCase
             'name' => 'Test User',
             'email' => 'test@example.com',
             'password' => bcrypt('password'),
-            'is_admin' => false,
+            'role' => 'student',
             'xp' => 0,
             'correct_answers_count' => 0,
             'total_questions_attempted' => 0

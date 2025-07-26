@@ -308,7 +308,7 @@ class DatabaseIntegrityTest extends TestCase
             'description' => 'Test Description',
             'color' => '#FF0000',
             'price' => null, // Should be allowed
-            'currency' => 'USD'
+
         ]);
         
         $this->assertDatabaseHas('courses', [

@@ -14,8 +14,7 @@
             
             <p class="text-muted">Challenge yourself with questions from multiple courses!</p>
             
-            <form action="{{ secure_url(route('quiz.random', [], false)) }}" method="POST" class="row g-3">
-                @csrf
+            <form action="{{ route('quiz.random.show') }}" method="GET" class="row g-3">
                 <div class="col-md-6">
                     <label class="form-label">Select Courses:</label>
                     <div class="border rounded p-3" style="max-height: 150px; overflow-y: auto;">
@@ -51,14 +50,34 @@
                     </div>
                 </div>
                 
-                <div class="col-md-6">
+                <div class="col-md-3">
                     <label for="questionLimit" class="form-label">Number of Questions:</label>
-                    <select class="form-select" id="questionLimit" name="question_limit">
+                    <select class="form-select" id="questionLimit" name="question_limit" required>
+                        <option value="">Select questions</option>
+                        <option value="5">5 Questions</option>
                         <option value="10">10 Questions</option>
+                        <option value="15">15 Questions</option>
                         <option value="20">20 Questions</option>
                         <option value="30">30 Questions</option>
                         <option value="50">50 Questions</option>
                         <option value="100">100 Questions</option>
+                    </select>
+                </div>
+                
+                <div class="col-md-3">
+                    <label for="timeLimit" class="form-label">Time Limit:</label>
+                    <select class="form-select" id="timeLimit" name="duration_minutes" required>
+                        <option value="">Select time</option>
+                        <option value="0.167">10 Seconds (Test)</option>
+                        <option value="5">5 Minutes</option>
+                        <option value="10">10 Minutes</option>
+                        <option value="15">15 Minutes</option>
+                        <option value="20">20 Minutes</option>
+                        <option value="30">30 Minutes</option>
+                        <option value="45">45 Minutes</option>
+                        <option value="60">60 Minutes</option>
+                        <option value="90">90 Minutes</option>
+                        <option value="120">2 Hours</option>
                     </select>
                 </div>
                 

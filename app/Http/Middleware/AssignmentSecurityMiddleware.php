@@ -50,7 +50,7 @@ class AssignmentSecurityMiddleware
         }
         
         // Check if user is the student assigned to this assignment
-        if ($user->id === $assignment->student_id) {
+        if ($user->id === $assignment->user_id) {
             // Check if assignment is accessible (not locked)
             if ($assignment->isLocked()) {
                 return response()->json([
@@ -77,7 +77,7 @@ class AssignmentSecurityMiddleware
         
         // Check if user is a tutor with a relationship to the student
         if ($user->role === 'tutor') {
-            $hasRelationship = $this->verifyTutorStudentRelationship($user->id, $assignment->student_id);
+            $hasRelationship = $this->verifyTutorStudentRelationship($user->id, $assignment->user_id);
             
             if ($hasRelationship) {
                 return $next($request);

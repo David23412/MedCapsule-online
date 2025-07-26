@@ -33,7 +33,7 @@ class QuizAttempt extends Model
         'total_questions' => 'integer',
         'duration_seconds' => 'integer',
         'question_data' => 'array',
-        'correct_answers' => 'integer',
+        'correct_answers' => 'integer',  // Simple count of correct answers
         'topic_id' => 'integer'
     ];
 
@@ -152,6 +152,8 @@ class QuizAttempt extends Model
     {
         return $this->belongsTo(Topic::class)->withDefault(); // withDefault() handles null topic_id
     }
+
+
 
     /**
      * Get commonly missed questions for a user in a topic with error handling

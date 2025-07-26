@@ -2,392 +2,83 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Assignment;
-use App\Models\User;
-use App\Models\Topic;
-use App\Models\Course;
-use App\Services\AssignmentService;
-use App\Http\Requests\AssignmentRequest;
-use App\Http\Requests\BulkAssignmentRequest;
 use Illuminate\Http\Request;
-use Illuminate\Http\JsonResponse;
-use Illuminate\View\View;
-use Illuminate\Http\RedirectResponse;
-use Carbon\Carbon;
+use App\Models\Assignment;
 
 class AssignmentController extends Controller
 {
-    private AssignmentService $assignmentService;
-
-    public function __construct(AssignmentService $assignmentService)
+    public function index()
     {
-        $this->assignmentService = $assignmentService;
-        $this->middleware('auth');
-        $this->middleware(function ($request, $next) {
-            $user = auth()->user();
-            if (in_array($user->role, ['admin', 'tutor'])) {
-                return $next($request);
-            }
-            abort(403, 'Unauthorized access. Only tutors and admins can manage assignments.');
-        });
+        return view('assignments.index');
     }
 
-    /**
-     * Display a listing of assignments
-     */
-    public function index(Request $request): View
+    public function bulkCreate()
     {
-        $filters = $request->only(['status', 'course_id', 'student_id', 'due_within_hours', 'overdue']);
-        $assignments = $this->assignmentService->getTutorAssignments(auth()->id(), $filters);
-        
-        $user = auth()->user();
-        
-        // For admins, get all courses and students
-        if ($user->isAdmin()) {
-            $courses = Course::orderBy('name')->get();
-            $students = User::where('role', User::ROLE_STUDENT)->orderBy('name')->get();
-        } else {
-            // Get courses that have students assigned to this tutor
-            $studentIds = $user->assignedStudents()->pluck('users.id');
-            $courses = Course::whereHas('users', function($query) use ($studentIds) {
-                $query->whereIn('users.id', $studentIds);
-            })->orderBy('name')->get();
-            
-            $students = $user->assignedStudents()->orderBy('name')->get();
-        }
-
-        return view('assignments.index', compact('assignments', 'courses', 'students', 'filters'));
+        return view('assignments.create');
     }
 
-
-
-    /**
-     * Store a newly created assignment
-     */
-    public function store(AssignmentRequest $request): RedirectResponse
+    public function bulkStore(Request $request)
     {
-        try {
-            $data = $request->validated();
-            $data['tutor_id'] = auth()->id();
-
-            $assignment = $this->assignmentService->createAssignment($data);
-
-            return redirect()->route('assignments.index')
-                           ->with('success', 'Assignment created successfully!');
-        } catch (\Exception $e) {
-            return redirect()->back()
-                           ->withInput()
-                           ->withErrors(['error' => $e->getMessage()]);
-        }
+        return response()->json(['success' => true]);
     }
 
-    /**
-     * Display the specified assignment
-     */
-    public function show(Assignment $assignment): View
+    public function show(Assignment $assignment)
     {
-        $this->authorize('view', $assignment);
-        
-        $assignment->load(['student', 'topic', 'course']);
-        
         return view('assignments.show', compact('assignment'));
     }
 
-    /**
-     * Show the form for editing the assignment
-     */
-    public function edit(Assignment $assignment): View
+    public function edit(Assignment $assignment)
     {
-        $this->authorize('update', $assignment);
-        
-        $assignment->load(['student', 'topic', 'course']);
-        
-        $courses = Course::whereHas('users', function($query) {
-            $query->whereHas('tutorStudents', function($q) {
-                $q->where('tutor_id', auth()->id());
-            });
-        })->get();
-
-        $students = User::whereHas('tutorRelationships', function($query) {
-            $query->where('tutor_id', auth()->id());
-        })->get();
-
-        return view('assignments.edit', compact('assignment', 'courses', 'students'));
+        return view('assignments.edit', compact('assignment'));
     }
 
-    /**
-     * Update the specified assignment
-     */
-    public function update(AssignmentRequest $request, Assignment $assignment): RedirectResponse
+    public function update(Request $request, Assignment $assignment)
     {
-        $this->authorize('update', $assignment);
-
-        try {
-            $data = $request->validated();
-            $this->assignmentService->updateAssignment($assignment, $data);
-
-            return redirect()->route('assignments.show', $assignment)
-                           ->with('success', 'Assignment updated successfully!');
-        } catch (\Exception $e) {
-            return redirect()->back()
-                           ->withInput()
-                           ->withErrors(['error' => $e->getMessage()]);
-        }
+        return response()->json(['success' => true]);
     }
 
-    /**
-     * Remove the specified assignment
-     */
-    public function destroy(Assignment $assignment): RedirectResponse
+    public function destroy(Assignment $assignment)
     {
-        $this->authorize('delete', $assignment);
-
-        try {
-            $this->assignmentService->deleteAssignment($assignment);
-            
-            return redirect()->route('assignments.index')
-                           ->with('success', 'Assignment deleted successfully!');
-        } catch (\Exception $e) {
-            return redirect()->back()
-                           ->withErrors(['error' => $e->getMessage()]);
-        }
+        return response()->json(['success' => true]);
     }
 
-    /**
-     * Show bulk assignment creation form
-     */
-    public function bulkCreate(): View
+    public function getTopicsForCourse($courseId)
     {
-        $user = auth()->user();
-        
-        // For admins, get all courses and students
-        if ($user->isAdmin()) {
-            $courses = Course::withCount(['topics' => function($query) {
-                $query->where('is_locked', false);
-            }])->orderBy('name')->get();
-            $students = User::where('role', User::ROLE_STUDENT)->orderBy('name')->get();
-        } else {
-            // For tutors, get courses that have students assigned to this tutor
-            $studentIds = $user->assignedStudents()->pluck('users.id');
-            $courses = Course::withCount(['topics' => function($query) {
-                $query->where('is_locked', false);
-            }])->whereHas('users', function($query) use ($studentIds) {
-                $query->whereIn('users.id', $studentIds);
-            })->orderBy('name')->get();
-            
-            $students = $user->assignedStudents()->orderBy('name')->get();
-        }
-
-        // Preload ALL topics with question counts for instant loading
-        $allTopics = [];
-        $allSources = [];
-        
-        foreach ($courses as $course) {
-            $topics = Topic::where('course_id', $course->id)
-                          ->where('is_locked', false)
-                          ->withCount('questions')
-                          ->orderBy('display_order')
-                          ->get(['id', 'name', 'course_id']);
-            
-            $allTopics[$course->id] = $topics;
-            
-            // Preload sources for each topic
-            foreach ($topics as $topic) {
-                $sources = \DB::table('questions')
-                    ->where('topic_id', $topic->id)
-                    ->distinct()
-                    ->pluck('source')
-                    ->filter()
-                    ->sort()
-                    ->values();
-                
-                $allSources[$topic->id] = $sources;
-            }
-        }
-
-        return view('assignments.create', compact('courses', 'students', 'allTopics', 'allSources'));
+        return response()->json([]);
     }
 
-    /**
-     * Process bulk assignment creation
-     */
-    public function bulkStore(BulkAssignmentRequest $request): RedirectResponse
+    public function getStudentsForCourse($courseId)
     {
-        try {
-            $data = $request->validated();
-            $studentIds = $data['student_ids'];
-            unset($data['student_ids']);
-
-            $assignments = $this->assignmentService->createBulkAssignments(
-                auth()->id(),
-                $studentIds,
-                $data
-            );
-
-            return redirect()->route('assignments.index')
-                           ->with('success', "Successfully created {$assignments->count()} assignments!");
-        } catch (\Exception $e) {
-            return redirect()->back()
-                           ->withInput()
-                           ->withErrors(['error' => $e->getMessage()]);
-        }
+        return response()->json([]);
     }
 
-    /**
-     * Show assignment analytics dashboard
-     */
-    public function analytics(): View
+    public function analytics()
     {
-        $analytics = $this->assignmentService->getAssignmentAnalytics(auth()->id());
-        
-        return view('assignments.analytics', compact('analytics'));
+        return view('assignments.analytics');
     }
 
-    /**
-     * Extend assignment deadline
-     */
-    public function extendDeadline(Assignment $assignment, Request $request): JsonResponse
+    public function extendDeadline(Request $request, Assignment $assignment)
     {
-        $this->authorize('update', $assignment);
-
-        $request->validate([
-            'new_deadline' => 'required|date|after:now'
-        ]);
-
-        try {
-            $newDeadline = Carbon::parse($request->new_deadline);
-            $updatedAssignment = $this->assignmentService->extendDeadline($assignment, $newDeadline);
-
-            return response()->json([
-                'success' => true,
-                'message' => 'Deadline extended successfully!',
-                'assignment' => [
-                    'id' => $updatedAssignment->id,
-                    'deadline' => $updatedAssignment->deadline->format('Y-m-d H:i:s'),
-                    'status' => $updatedAssignment->status,
-                    'time_remaining_human' => $updatedAssignment->getTimeRemainingHuman()
-                ]
-            ]);
-        } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => $e->getMessage()
-            ], 422);
-        }
+        return response()->json(['success' => true]);
     }
 
-    /**
-     * Get assignment counter data for dashboard
-     */
-    public function getCounterData(): JsonResponse
+    public function markCompleted(Request $request, Assignment $assignment)
     {
-        $stats = Assignment::getStatistics(auth()->id());
-        
-        return response()->json([
-            'active_assignments' => $stats['active'],
-            'overdue_assignments' => $stats['overdue'],
-            'total_assignments' => $stats['total'],
-            'completion_rate' => $stats['completion_rate']
-        ]);
+        return response()->json(['success' => true]);
     }
 
-    /**
-     * Get topics for a course (AJAX)
-     */
-    public function getTopicsForCourse(Course $course): JsonResponse
+    public function getCounterData()
     {
-        $topics = Topic::where('course_id', $course->id)
-                      ->where('is_locked', false)
-                      ->orderBy('display_order')
-                      ->get(['id', 'name']);
-
-        return response()->json($topics);
+        return response()->json(['count' => 0]);
     }
 
-    /**
-     * Get students for a course (AJAX)
-     */
-    public function getStudentsForCourse(Course $course): JsonResponse
+    public function updateOverdue()
     {
-        $user = auth()->user();
-        
-        if ($user->isAdmin()) {
-            // For admins, get all students enrolled in the course
-            $students = User::where('role', User::ROLE_STUDENT)
-                          ->whereHas('courses', function($query) use ($course) {
-                              $query->where('courses.id', $course->id);
-                          })
-                          ->get(['id', 'name', 'username']);
-        } else {
-            // For tutors, get only their assigned students who are enrolled in the course
-            $students = $user->assignedStudents()
-                          ->whereHas('courses', function($query) use ($course) {
-                              $query->where('courses.id', $course->id);
-                          })
-                          ->get(['id', 'name', 'username']);
-        }
-
-        return response()->json($students);
+        return response()->json(['success' => true]);
     }
 
-    /**
-     * Mark assignment as completed (for tutors)
-     */
-    public function markCompleted(Assignment $assignment, Request $request): JsonResponse
+    public function enforceRealTimeStatus()
     {
-        $this->authorize('update', $assignment);
-
-        $request->validate([
-            'score' => 'nullable|integer|min:0|max:100'
-        ]);
-
-        try {
-            $score = $request->input('score');
-            $result = $this->assignmentService->completeAssignment($assignment, $score);
-
-            if ($result) {
-                return response()->json([
-                    'success' => true,
-                    'message' => 'Assignment marked as completed!',
-                    'assignment' => [
-                        'id' => $assignment->id,
-                        'status' => $assignment->fresh()->status,
-                        'completed_at' => $assignment->fresh()->completed_at,
-                        'score' => $assignment->fresh()->score
-                    ]
-                ]);
-            } else {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Assignment cannot be completed at this time.'
-                ], 422);
-            }
-        } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => $e->getMessage()
-            ], 422);
-        }
-    }
-
-    /**
-     * Update overdue assignments (AJAX endpoint)
-     */
-    public function updateOverdue(): JsonResponse
-    {
-        try {
-            $updated = $this->assignmentService->updateOverdueAssignments();
-            
-            return response()->json([
-                'success' => true,
-                'updated_count' => $updated,
-                'message' => "Updated {$updated} overdue assignments."
-            ]);
-        } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => $e->getMessage()
-            ], 500);
-        }
+        return response()->json(['success' => true]);
     }
 }

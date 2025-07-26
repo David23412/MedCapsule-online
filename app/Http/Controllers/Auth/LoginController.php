@@ -4,22 +4,44 @@ namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
+use App\Http\Requests\LoginRequest;
+use App\Services\QuizCacheService;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Facades\Log;
+use App\Services\QuizPerformanceService;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Cache;
 
-class LoginController extends Controller
+// TODO: Inject services in constructor
+    // TODO: Inject services in constructor
+    // TODO: Inject services in constructor
+    class LoginController extends Controller
 {
-    public function showLoginForm()
+    public function __construct()
     {
-        return view('auth.login');
+        // DON'T call parent::__construct() to avoid auth middleware
+        Log::info('Controller initialized', ['user_id' => auth()->id()]);
     }
 
-    public function login(Request $request)
+    public function showLoginForm()
     {
-        $credentials = $request->validate([
-            'email' => ['required', 'email'],
-            'password' => ['required'],
-        ]);
+        // Cache login form data for performance
+        $cacheKey = QuizCacheService::generateCacheKey('login_form_data', ['timestamp' => now()->format('Y-m-d')]);
+        $formData = Cache::remember($cacheKey, 86400, function () {
+            return [
+                'csrf_token' => csrf_token(),
+                'app_name' => config('app.name'),
+                'login_attempts_remaining' => 5
+            ];
+        });
+        
+        return view('auth.login', $formData);
+    }
+
+    public function login(\App\Http\Requests\LoginRequest $request)
+    {
+        $credentials = $request->validated();
 
         if (Auth::attempt($credentials)) {
             $request->session()->regenerate();
@@ -29,8 +51,13 @@ class LoginController extends Controller
                 ->where('id', $request->session()->getId())
                 ->update(['is_visitor' => false]);
 
-            // Auto-enroll in all free courses
-            $user = Auth::user();
+            // Auto-enroll in all free courses with eager loading
+            $user = Auth::user()->load([
+                'courses:id,name,price',
+                'quizAttempts:id,user_id,score,created_at',
+                'assignments:id,user_id,status,deadline'
+            ]);
+            
             try {
                 $enrolledCount = $user->enrollInAllFreeCourses();
                 if ($enrolledCount > 0) {
@@ -51,8 +78,7 @@ class LoginController extends Controller
         }
 
         return back()->withErrors([
-            'email' => 'The provided credentials do not match our records.',
-        ])->onlyInput('email');
+            'email' => 'The provided credentials do not match our records.'])->onlyInput('email');
     }
 
     public function logout(Request $request)

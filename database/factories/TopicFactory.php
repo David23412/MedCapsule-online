@@ -39,12 +39,8 @@ class TopicFactory extends Factory
         return [
             'name' => $this->faker->randomElement($topicNames),
             'course_id' => Course::factory(),
-            'user_id' => User::factory(),
-            'description' => $this->faker->paragraph(2),
             'display_order' => $this->faker->numberBetween(1, 20),
             'case_type' => $this->faker->randomElement(['quiz', 'cases', 'practical']),
-            'percentage_grade' => $this->faker->optional(0.7)->randomFloat(2, 0, 100),
-            'last_attempt_date' => $this->faker->optional(0.6)->dateTimeBetween('-6 months', 'now'),
             'created_at' => $this->faker->dateTimeBetween('-1 year', 'now'),
             'updated_at' => $this->faker->dateTimeBetween('-1 month', 'now'),
         ];
@@ -60,15 +56,7 @@ class TopicFactory extends Factory
         ]);
     }
 
-    /**
-     * Create a topic for a specific user.
-     */
-    public function forUser(User $user): static
-    {
-        return $this->state(fn (array $attributes) => [
-            'user_id' => $user->id,
-        ]);
-    }
+
 
     /**
      * Create a topic with a specific name.
@@ -81,46 +69,32 @@ class TopicFactory extends Factory
     }
 
     /**
-     * Create a mastered topic (100% grade).
+     * Create a topic with specific case type.
      */
-    public function mastered(): static
+    public function quiz(): static
     {
         return $this->state(fn (array $attributes) => [
-            'percentage_grade' => 100.0,
-            'last_attempt_date' => $this->faker->dateTimeBetween('-1 month', 'now'),
+            'case_type' => 'quiz',
         ]);
     }
 
     /**
-     * Create a weak topic (< 60% grade).
+     * Create a cases topic.
      */
-    public function weak(): static
+    public function cases(): static
     {
         return $this->state(fn (array $attributes) => [
-            'percentage_grade' => $this->faker->randomFloat(2, 0, 59.99),
-            'last_attempt_date' => $this->faker->dateTimeBetween('-6 months', 'now'),
+            'case_type' => 'cases',
         ]);
     }
 
     /**
-     * Create a good topic (60-79% grade).
+     * Create a practical topic.
      */
-    public function good(): static
+    public function practical(): static
     {
         return $this->state(fn (array $attributes) => [
-            'percentage_grade' => $this->faker->randomFloat(2, 60, 79.99),
-            'last_attempt_date' => $this->faker->dateTimeBetween('-3 months', 'now'),
-        ]);
-    }
-
-    /**
-     * Create a great topic (80-99% grade).
-     */
-    public function great(): static
-    {
-        return $this->state(fn (array $attributes) => [
-            'percentage_grade' => $this->faker->randomFloat(2, 80, 99.99),
-            'last_attempt_date' => $this->faker->dateTimeBetween('-2 months', 'now'),
+            'case_type' => 'practical',
         ]);
     }
 } 

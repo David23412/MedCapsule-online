@@ -129,8 +129,8 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        if (app()->environment('production') || 
-            \Illuminate\Support\Str::contains(config('app.url'), 'ngrok')) {
+        // Only force HTTPS in production, not for ngrok development
+        if (app()->environment('production')) {
             \URL::forceScheme('https');
         }
         // Register the Payment model observer

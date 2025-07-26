@@ -60,14 +60,22 @@ class GradingService
             // Get questions and validate they belong to the topic
             $questions = $this->getAndValidateQuestions($answers);
 
-            // Process answers and calculate scores
-            $gradingResult = $this->processAnswers($user, $questions, $answers, $topic);
+            // LETHAL FIX: Use appropriate processing method based on mode
+            if ($mode === 'tutor') {
+                $gradingResult = $this->processTutorAnswers($user, $questions, $answers, $topic);
+            } else {
+                $gradingResult = $this->processAnswers($user, $questions, $answers, $topic);
+            }
 
             // Check if this is an assignment quiz
             $isAssignment = $this->isAssignmentQuiz($user, $topic, $course, $assignmentId);
 
-            // Create quiz attempts for each source
-            $this->createQuizAttempts($user, $gradingResult['sourceData'], $duration, $mode, $topic, $isAssignment);
+            // Create quiz attempts - handle random mode differently
+            if ($mode === 'random') {
+                $this->createRandomQuizAttempt($user, $gradingResult, $duration, $mode, $topic, $isAssignment);
+            } else {
+                $this->createQuizAttempts($user, $gradingResult['sourceData'], $duration, $mode, $topic, $isAssignment);
+            }
 
             // Update user statistics
             $this->userStatsService->updateAfterQuizAttempt(
@@ -80,13 +88,14 @@ class GradingService
             // Calculate and award XP
             $xpResult = $this->calculateAndAwardXP($user, $gradingResult['score'], $duration, $gradingResult['percentageGrade']);
 
-            // Update topic progress ONLY for regular quizzes, NOT assignments
-            if (!$assignmentId) {
+            // Update topic progress ONLY for regular quizzes, NOT assignments or tutor mode
+            if (!$assignmentId && $mode === 'quiz') {
                 $this->updateTopicProgress($user, $topic, $gradingResult['score'], $gradingResult['totalQuestions']);
             } else {
-                // Assignment completion - don't update regular topic progress
-                Log::info('Assignment quiz completed - skipping regular topic progress update', [
+                // Assignment completion or tutor mode - don't update regular topic progress
+                Log::info('Non-regular quiz completed - skipping regular topic progress update', [
                     'assignment_id' => $assignmentId,
+                    'mode' => $mode,
                     'user_id' => $user->id,
                     'topic_id' => $topic->id
                 ]);
@@ -221,6 +230,7 @@ class GradingService
 
         foreach ($questions as $question) {
             $submittedAnswer = $answers[$question->id] ?? null;
+            $originalSubmittedAnswer = $submittedAnswer; // Keep track of original answer
             
             // Handle unanswered questions (set as wrong but don't throw exception)
             if ($submittedAnswer === null || $submittedAnswer === '') {
@@ -245,9 +255,17 @@ class GradingService
                 $score++;
                 $sourceData[$source]['score']++;
             } else {
-                // Record mistake
-                $this->recordMistake($user, $question, $submittedAnswer);
-                $mistakes[] = $question->id;
+                // LETHAL FIX: Only record mistake if there was an actual answer
+                // Don't record mistakes for truly unanswered questions unless explicitly needed
+                if ($originalSubmittedAnswer !== null && $originalSubmittedAnswer !== '') {
+                    // User gave a wrong answer - record the actual wrong answer
+                    $this->recordMistake($user, $question, $originalSubmittedAnswer);
+                    $mistakes[] = $question->id;
+                } else {
+                    // Question was truly unanswered (time ran out) - record as unanswered
+                    $this->recordMistake($user, $question, 'unanswered');
+                    $mistakes[] = $question->id;
+                }
             }
 
             $sourceData[$source]['question_data'][] = [
@@ -284,6 +302,111 @@ class GradingService
         }
 
         return $question->isAnswerCorrect($submittedAnswer);
+    }
+
+    /**
+     * Process tutor mode answers using correct_answers_by_source data
+     *
+     * @param User $user
+     * @param $questions
+     * @param array $answers
+     * @param Topic $topic
+     * @return array
+     */
+    private function processTutorAnswers(User $user, $questions, array $answers, Topic $topic): array
+    {
+        $correctAnswersBySource = json_decode(request()->input('correct_answers_by_source', '{}'), true);
+        
+        Log::info('🔥 TUTOR MODE: Processing tutor answers', [
+            'user_id' => $user->id,
+            'topic_id' => $topic->id,
+            'correct_answers_by_source' => $correctAnswersBySource,
+            'total_questions' => $questions->count()
+        ]);
+
+        $score = 0;
+        $totalQuestions = $questions->count();
+        $sourceData = [];
+        $mistakes = [];
+
+        // Group questions by source
+        $questionsBySource = $questions->groupBy(function($question) {
+            return $question->source ?: 'General';
+        });
+
+        foreach ($questionsBySource as $source => $sourceQuestions) {
+            $sourceCorrect = 0;
+            $sourceTotal = $sourceQuestions->count();
+            
+            // Initialize source data
+            $sourceData[$source] = [
+                'score' => 0, // Will be calculated below
+                'total' => $sourceTotal,
+                'question_data' => []
+            ];
+
+            // Actually evaluate each answer instead of trusting frontend data
+            foreach ($sourceQuestions as $question) {
+                $submittedAnswer = $answers[$question->id] ?? null;
+                $originalSubmittedAnswer = $submittedAnswer; // Keep track of original answer
+                $isCorrect = false;
+                
+                // Handle unanswered questions
+                if ($submittedAnswer === null || $submittedAnswer === '') {
+                    $submittedAnswer = 'unanswered';
+                    $isCorrect = false;
+                } else {
+                    $isCorrect = $this->evaluateAnswer($question, $submittedAnswer);
+                }
+                
+                if ($isCorrect) {
+                    $sourceCorrect++;
+                } else {
+                    // LETHAL FIX: Record the actual wrong answer, not 'unanswered' for incorrect answers
+                    if ($originalSubmittedAnswer !== null && $originalSubmittedAnswer !== '') {
+                        // User gave a wrong answer - record the actual wrong answer
+                        $this->recordMistake($user, $question, $originalSubmittedAnswer);
+                        $mistakes[] = $question->id;
+                    } else {
+                        // Question was truly unanswered (time ran out) - record as unanswered
+                        $this->recordMistake($user, $question, 'unanswered');
+                        $mistakes[] = $question->id;
+                    }
+                }
+
+                $sourceData[$source]['question_data'][] = [
+                    'question_id' => $question->id,
+                    'user_answer' => $submittedAnswer,
+                    'is_correct' => $isCorrect
+                ];
+            }
+            
+            // Update the actual score for this source
+            $sourceData[$source]['score'] = $sourceCorrect;
+            $score += $sourceCorrect;
+        }
+
+        $percentageGrade = $totalQuestions > 0 ? min(100, ($score / $totalQuestions) * 100) : 0;
+
+        Log::info('✅ TUTOR MODE: Processed tutor answers', [
+            'user_id' => $user->id,
+            'topic_id' => $topic->id,
+            'total_score' => $score,
+            'total_questions' => $totalQuestions,
+            'percentage' => $percentageGrade,
+            'source_data' => array_map(function($data) {
+                return ['score' => $data['score'], 'total' => $data['total']];
+            }, $sourceData)
+        ]);
+
+        return [
+            'score' => $score,
+            'totalQuestions' => $totalQuestions,
+            'percentageGrade' => $percentageGrade,
+            'sourceData' => $sourceData,
+            'mistakes' => $mistakes,
+            'totalCorrect' => $score
+        ];
     }
 
     /**
@@ -330,7 +453,7 @@ class GradingService
         // CRITICAL FIX: Only return true if assignment_id is explicitly provided
         // Don't assume it's an assignment just because assignments exist for the topic
         return $assignmentId !== null && \App\Models\Assignment::where('id', $assignmentId)
-            ->where('student_id', $user->id)
+            ->where('user_id', $user->id)
             ->where('topic_id', $topic->id)
             ->where('course_id', $course->id)
             ->whereIn('status', [\App\Models\Assignment::STATUS_ACTIVE, \App\Models\Assignment::STATUS_OVERDUE])
@@ -390,9 +513,45 @@ class GradingService
                 'percentage_grade' => $percentage,
                 'duration_seconds' => $durationPerSource,
                 'question_data' => $data['question_data'],
-                'correct_answers' => $score
+                'correct_answers' => $score  // Simple count of correct answers
             ]);
         }
+    }
+
+    /**
+     * Create a single quiz attempt for random quizzes (no source)
+     *
+     * @param User $user
+     * @param array $gradingResult
+     * @param int $duration
+     * @param string $mode
+     * @param Topic $topic
+     * @param bool $isAssignment
+     */
+    private function createRandomQuizAttempt(User $user, array $gradingResult, int $duration, string $mode, Topic $topic, bool $isAssignment = false): void
+    {
+        // Determine quiz type based on assignment status
+        $quizType = $isAssignment ? 'assignment' : 'normal';
+        
+        // Consolidate all question data from all sources
+        $allQuestionData = [];
+        foreach ($gradingResult['sourceData'] as $sourceData) {
+            $allQuestionData = array_merge($allQuestionData, $sourceData['question_data']);
+        }
+        
+        QuizAttempt::create([
+            'user_id' => $user->id,
+            'topic_id' => $topic->id,
+            'quiz_type' => $quizType,
+            'study_mode' => $mode,
+            'source' => null, // Random quizzes have no specific source
+            'score' => $gradingResult['score'],
+            'total_questions' => $gradingResult['totalQuestions'],
+            'percentage_grade' => $gradingResult['percentageGrade'],
+            'duration_seconds' => $duration,
+            'question_data' => $allQuestionData,
+            'correct_answers' => $gradingResult['score']
+        ]);
     }
 
     /**
@@ -725,7 +884,7 @@ class GradingService
                 'percentage_grade' => ($sourceProgress['correct'] / max(1, $sourceProgress['total'])) * 100,
                 'duration_seconds' => $sourceDuration,
                 'question_data' => $questionData,
-                'correct_answers' => $sourceProgress['correct']
+                'correct_answers' => $sourceProgress['correct']  // LETHAL FIX: Use correct count from progress
             ]);
             $this->userStatsService->updateAfterQuizAttempt(
                 $user,
@@ -759,24 +918,29 @@ class GradingService
      */
     private function getTutorSourceProgress(User $user, Topic $topic, string $source): array
     {
-        $tutorProgress = session()->get('tutor_progress', ['sources' => []]);
+        // LETHAL FIX: Eliminated session dependency - now uses database exclusively
         $source = $source ?: 'General';
 
-        if (!isset($tutorProgress['sources'][$source])) {
-            return ['completed' => 0, 'total' => 0, 'percentage' => 0];
-        }
+        // Get the latest tutor attempt for this source
+        $latestAttempt = QuizAttempt::where([
+            'user_id' => $user->id,
+            'topic_id' => $topic->id,
+            'study_mode' => 'tutor',
+            'source' => $source
+        ])->orderBy('created_at', 'desc')->first();
 
         $totalQuestionsInSource = Question::where('topic_id', $topic->id)
             ->where('source', $source)
             ->count();
 
-        $completedQuestionsInSource = count(array_unique($tutorProgress['sources'][$source]['completed_questions']));
-        $progressPercentage = $totalQuestionsInSource > 0 ? ($completedQuestionsInSource / $totalQuestionsInSource) * 100 : 0;
+        if (!$latestAttempt) {
+            return ['completed' => 0, 'total' => $totalQuestionsInSource, 'percentage' => 0];
+        }
 
         return [
-            'completed' => $completedQuestionsInSource,
+            'completed' => $latestAttempt->score,
             'total' => $totalQuestionsInSource,
-            'percentage' => round($progressPercentage, 2)
+            'percentage' => round($latestAttempt->percentage_grade, 2)
         ];
     }
 } 

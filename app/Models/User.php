@@ -102,6 +102,14 @@ class User extends Authenticatable
     }
 
     /**
+     * Get the user's assignments (as a student).
+     */
+    public function assignments()
+    {
+        return $this->hasMany(Assignment::class, 'user_id');
+    }
+
+    /**
      * Get the user's topic progress.
      */
     public function userTopicProgress()

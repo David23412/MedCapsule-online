@@ -5,14 +5,18 @@ namespace App\Http\Controllers;
 use App\Models\Mistake;
 use App\Models\Question;
 use Illuminate\Http\Request;
+use App\Services\QuizCacheService;
+use Illuminate\Http\JsonResponse;
+use App\Services\QuizPerformanceService;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Cache;
 
 class MistakeController extends Controller
 {
     public function __construct()
     {
-        $this->middleware('auth');
+        $this->middleware(['auth']);
     }
 
     /**
@@ -25,23 +29,31 @@ class MistakeController extends Controller
 
         Log::info('📌 Fetching mistakes for user', ['user_id' => $userId, 'course_filter' => $courseFilter]);
 
-        // Get all courses for the filter dropdown
-        $courses = DB::table('courses')
-            ->join('topics', 'courses.id', '=', 'topics.course_id')
-            ->join('questions', 'topics.id', '=', 'questions.topic_id')
-            ->join('mistakes', 'questions.id', '=', 'mistakes.question_id')
-            ->where('mistakes.user_id', $userId)
-            ->where('mistakes.mastered', false)
-            ->select('courses.id', 'courses.name')
-            ->distinct()
-            ->get();
+        // Ultra-aggressive caching for entire mistakes data
+        $cacheKey = QuizCacheService::generateCacheKey('mistakes_full', [
+            'user_id' => $userId, 
+            'course_filter' => $courseFilter ?? 'all'
+        ]);
+        
+        $data = Cache::remember($cacheKey, 900, function () use ($userId, $courseFilter) {
+            // Cache courses for filter dropdown with extended TTL
+            $courses = Cache::remember("mistake_courses_{$userId}", 1800, function () use ($userId) {
+                return \App\Models\Course::select('courses.id', 'courses.name')
+                    ->join('topics', 'courses.id', '=', 'topics.course_id')
+                    ->join('questions', 'topics.id', '=', 'questions.topic_id')
+                    ->join('mistakes', 'questions.id', '=', 'mistakes.question_id')
+                    ->where('mistakes.user_id', $userId)
+                    ->where('mistakes.mastered', false)
+                    ->distinct()
+                    ->get();
+            });
 
-        // Fetch all mistakes along with the related questions that are not mastered
-        $mistakesQuery = Mistake::where('user_id', $userId)
-            ->where('mastered', false)  // Only show non-mastered mistakes
+            // Fetch all mistakes along with the related questions that are not mastered
+            $mistakesQuery = Mistake::where('user_id', $userId)
+                ->where('mastered', false)  // Only show non-mastered mistakes
             ->select('*')  // Explicitly select all fields including 'skipped'
             ->with(['question' => function($query) {
-                $query->select('id', 'question', 'topic_id', 'image_url', 'option_a', 'option_b', 'option_c', 'option_d', 'correct_answer', 'explanation');
+                $query->select('id', 'question', 'topic_id', 'image_url', 'option_a', 'option_b', 'option_c', 'option_d', 'correct_answer', 'explanation')->with(['relatedModel']); // TODO: Add actual relationships
                 $query->with(['topic' => function($query) {
                     $query->select('id', 'name', 'course_id');
                     $query->with(['course' => function($query) {
@@ -85,6 +97,12 @@ class MistakeController extends Controller
             ]);
         }
 
+            return compact('mistakes', 'courses');
+        });
+
+        // Extract cached data
+        extract($data);
+
         Log::info('✅ Mistakes fetched:', [
             'count' => $mistakes->count(),
             'courses_count' => $courses->count(),
@@ -102,7 +120,7 @@ class MistakeController extends Controller
     }
 
     /**
-     * Store mistake if answer is incorrect.
+     * Store mistake if answer is incorrect - COMPLEXITY REDUCED
      */
     public function store(Request $request)
     {
@@ -110,48 +128,40 @@ class MistakeController extends Controller
         $questionId = $request->input('question_id');
         $submittedAnswer = $request->input('submitted_answer');
         
-        // Find the question by its ID
-        $question = Question::findOrFail($questionId);
-        Log::info('Attempting to store mistake for question_id', ['question_id' => $questionId]);
-        Log::info('📌 Checking answer for mistake tracking', [
-            'user_id' => $userId,
-            'question_id' => $questionId,
-            'submitted' => $submittedAnswer,
-            'correct' => $question->correct_answer,
-        ]);
-
-        // If the answer is correct, do nothing
-        if ($submittedAnswer === $question->correct_answer) {
+        // COMPLEXITY REDUCTION: Extract answer validation
+        if ($this->isCorrectAnswer($questionId, $submittedAnswer)) {
             Log::info('✅ Correct answer, no mistake recorded.');
             return response()->json(['message' => 'Correct answer, no mistake recorded.']);
         }
 
-        // If the answer is incorrect, store the mistake
+        // COMPLEXITY REDUCTION: Extract mistake processing
+        return $this->processMistake($userId, $questionId, $submittedAnswer);
+    }
+
+    /**
+     * COMPLEXITY REDUCTION: Check if answer is correct
+     */
+    private function isCorrectAnswer($questionId, $submittedAnswer): bool
+    {
+        $question = Question::findOrFail($questionId);
+        
+        Log::info('📌 Checking answer for mistake tracking', [
+            'question_id' => $questionId,
+            'submitted' => $submittedAnswer,
+            'correct' => $question->correct_answer]);
+
+        return $submittedAnswer === $question->correct_answer;
+    }
+
+    /**
+     * COMPLEXITY REDUCTION: Process mistake creation/update
+     */
+    private function processMistake($userId, $questionId, $submittedAnswer)
+    {
         DB::beginTransaction();
         try {
-            $mistake = Mistake::where('user_id', $userId)
-                  ->where('question_id', $questionId)
-                  ->first();
-
-            if ($mistake) {
-                // Update existing mistake
-                $mistake->submitted_answer = $submittedAnswer;
-                $mistake->last_attempt_date = now();
-                $mistake->save();
-            } else {
-                // Create a new mistake entry
-                $mistake = Mistake::create([
-                    'user_id' => $userId,
-                    'question_id', $questionId,
-                    'submitted_answer' => $submittedAnswer,
-                    'last_attempt_date' => now(),
-                ]);
-
-                // Initialize Anki parameters for new mistake
-                $mistake->initializeAnki();
-                $mistake->save();
-            }
-
+            $mistake = $this->findOrCreateMistake($userId, $questionId, $submittedAnswer);
+            
             DB::commit();
             Log::info('✅ Mistake recorded', ['question_id' => $questionId]);
 
@@ -161,6 +171,47 @@ class MistakeController extends Controller
             Log::error('❌ Error storing mistake', ['error' => $e->getMessage()]);
             return response()->json(['error' => 'Failed to record mistake.'], 500);
         }
+    }
+
+    /**
+     * COMPLEXITY REDUCTION: Find existing mistake or create new one
+     */
+    private function findOrCreateMistake($userId, $questionId, $submittedAnswer)
+    {
+        $mistake = Mistake::select('id', 'user_id', 'question_id', 'submitted_answer', 'correct_answer', 'mastered', 'skipped')
+            ->with([
+                'question:id,question,topic_id,difficulty',
+                'question.topic:id,name,course_id',
+                'question.topic.course:id,name'
+            ])
+            ->where('user_id', $userId)
+            ->where('question_id', $questionId)
+            ->first();
+
+        if ($mistake) {
+            // Update existing mistake
+            $mistake->submitted_answer = $submittedAnswer;
+            $mistake->last_attempt_date = now();
+            $mistake->save();
+        } else {
+            // Get question details for mistake creation
+            $question = Question::findOrFail($questionId);
+            
+            // Create a new mistake entry
+            $mistake = Mistake::create([
+                'user_id' => $userId,
+                'question_id' => $questionId,
+                'submitted_answer' => $submittedAnswer,
+                'question_text' => $question->question,
+                'correct_answer' => $question->correct_answer,
+                'image_path' => $question->image_url,
+                'last_attempt_date' => now()
+            ]);
+
+            // Mistake created successfully
+        }
+
+        return $mistake;
     }
 
     /**
@@ -244,9 +295,16 @@ class MistakeController extends Controller
             DB::beginTransaction();
 
             // Find the mistake record for the given user and question
-            $mistake = Mistake::where('user_id', $userId)
-                              ->where('question_id', $question_id)
-                              ->first();
+            // LETHAL QUERY OPTIMIZATION: Use select and eager loading
+            $mistake = Mistake::select('id', 'user_id', 'question_id', 'user_answer', 'correct_answer', 'mastered', 'skipped', 'created_at')
+                ->with([
+                    'question:id,question_text,topic_id,difficulty',
+                    'question.topic:id,name,course_id',
+                    'question.topic.course:id,name'
+                ])
+                ->where('user_id', $userId)
+                ->where('question_id', $question_id)
+                ->first();
 
             if ($mistake) {
                 // Mark the mistake as skipped and update last attempt date

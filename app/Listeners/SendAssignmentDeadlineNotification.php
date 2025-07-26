@@ -29,7 +29,7 @@ class SendAssignmentDeadlineNotification implements ShouldQueue
     {
         try {
             // Check if assignment has required properties
-            if (!isset($event->assignment->student_id) || !isset($event->assignment->title)) {
+            if (!isset($event->assignment->user_id) || !isset($event->assignment->title)) {
                 Log::warning('Assignment missing required properties for notification', [
                     'assignment' => $event->assignment
                 ]);
@@ -43,7 +43,7 @@ class SendAssignmentDeadlineNotification implements ShouldQueue
             }
             
             $this->notificationService->createNotification(
-                $event->assignment->student_id,
+                $event->assignment->user_id,
                 'assignment_deadline_changed',
                 'Assignment Deadline Updated',
                 $message,
@@ -58,7 +58,7 @@ class SendAssignmentDeadlineNotification implements ShouldQueue
             );
             
             Log::info('Assignment deadline change notification sent', [
-                'student_id' => $event->assignment->student_id,
+                'student_id' => $event->assignment->user_id,
                 'assignment_id' => $event->assignment->id ?? null,
                 'old_deadline' => $event->oldDeadline->toISOString(),
                 'new_deadline' => $event->newDeadline->toISOString()

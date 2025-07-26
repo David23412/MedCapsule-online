@@ -33,6 +33,8 @@
     <link rel="stylesheet" href="{{ asset('css/topic-cards.css') }}">
     <link rel="stylesheet" href="{{ asset('css/assignment-cards.css') }}">
     
+    <!-- LETHAL ERROR SUPPRESSION SYSTEM -->
+    <script src="{{ asset('js/lethal-error-suppression.js') }}"></script>
 
     <style>
         /* Exact carbon copy of the original pills design */
@@ -495,21 +497,9 @@
             border: 1px solid rgba(0, 0, 0, 0.04);
         }
         
-        /* HIDE ASSIGNMENT CARDS BY DEFAULT - EXCEPT OVERDUE ONES */
+        /* ASSIGNMENT CARD VISIBILITY RULES - HIDE ALL BY DEFAULT */
         .topic-card[data-has-assignment="true"] {
             display: none !important;
-        }
-        
-        /* SHOW OVERDUE ASSIGNMENT CARDS BY DEFAULT */
-        .topic-card[data-has-assignment="true"].assignment-overdue,
-        .topic-card[data-has-assignment="true"] .assignment-status-bar.assignment-overdue {
-            display: block !important;
-        }
-        
-        .topic-card[data-has-assignment="true"].assignment-overdue {
-            display: block !important;
-            opacity: 1 !important;
-            transform: translateY(0) !important;
         }
         
         /* SHOW ASSIGNMENT CARDS WHEN ASSIGNMENTS FILTER IS ACTIVE */
@@ -2329,8 +2319,7 @@
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">
-                    <form action="{{ secure_url(route('quiz.random', [], false)) }}" method="POST" id="randomQuizForm">
-                        @csrf
+                    <form action="{{ route('quiz.random.show') }}" method="GET" id="randomQuizForm">
                         <div class="mb-4">
                             <div class="setting-header">
                                 <i class="fas fa-book-open text-warning"></i>
@@ -2380,8 +2369,11 @@
                                 <i class="fas fa-list-ol text-warning"></i>
                                 <label for="questionLimit" class="form-label mb-2">Number of Questions</label>
                             </div>
-                            <select class="form-select custom-select" id="questionLimit" name="question_limit">
+                            <select class="form-select custom-select" id="questionLimit" name="question_limit" required>
+                                <option value="">Select number of questions</option>
+                                <option value="5">5 Questions</option>
                                 <option value="10">10 Questions</option>
+                                <option value="15">15 Questions</option>
                                 <option value="20">20 Questions</option>
                                 <option value="30">30 Questions</option>
                                 <option value="50">50 Questions</option>
@@ -2394,7 +2386,8 @@
                                 <i class="fas fa-clock text-warning"></i>
                                 <label for="timeLimit" class="form-label mb-2">Time Limit (minutes)</label>
                             </div>
-                            <select class="form-select custom-select" id="timeLimit" name="duration_minutes">
+                            <select class="form-select custom-select" id="timeLimit" name="duration_minutes" required>
+                                <option value="">Select time limit</option>
                                 <option value="0.167">10 Seconds (Testing)</option>
                                 <option value="5">5 Minutes</option>
                                 <option value="10">10 Minutes</option>
@@ -2403,6 +2396,8 @@
                                 <option value="30">30 Minutes</option>
                                 <option value="45">45 Minutes</option>
                                 <option value="60">60 Minutes</option>
+                                <option value="90">90 Minutes</option>
+                                <option value="120">2 Hours</option>
                             </select>
                         </div>
                     </form>
@@ -2640,22 +2635,11 @@
                     $topic = $topics->firstWhere('id', $assignment->topic_id);
                     if (!$topic) continue;
                     
-                    // Get assignment-specific progress from assignment attempts
-                    $assignmentProgress = 0;
-                    
-                    // Get the latest completed assignment attempt
-                    $latestAttempt = \App\Models\AssignmentAttempt::where('assignment_id', $assignment->id)
-                        ->where('student_id', auth()->id())
-                        ->where('status', 'completed')
-                        ->orderBy('completed_at', 'desc')
-                        ->first();
-                    
-                    if ($latestAttempt) {
-                        $assignmentProgress = $latestAttempt->score_percentage ?? 0;
-                    }
+                    // OPTIMIZED: Use pre-calculated progress from controller
+                    $assignmentProgress = $assignment->progress ?? 0;
                 @endphp
                 
-                <div class="topic-card" 
+                <div class="topic-card assignment-{{ $assignment->status }}" 
                      data-case-type="assignment" 
                      data-topic-id="{{ $topic->id }}"
                      data-assignment-id="{{ $assignment->id }}"
@@ -2686,12 +2670,7 @@
                                 {{ $assignment->title }}
                             </h3>
                             
-                            @if($latestAttempt && $latestAttempt->completed_at)
-                                <div class="last-attempt">
-                                    <i class="far fa-clock"></i>
-                                    Last attempt: {{ $latestAttempt->completed_at->diffForHumans() }}
-                                </div>
-                            @endif
+                            {{-- Last attempt info removed for performance optimization --}}
                         </div>
                     </div>
 
@@ -2742,7 +2721,7 @@
                                 <i class="fas fa-lock"></i>
                             </div>
                         @else
-                            <a href="{{ $quizUrl }}" class="start-quiz-btn assignment-start-btn" data-topic-id="{{ $topic->id }}" data-course-id="{{ $topic->course_id }}">
+                            <a href="javascript:void(0)" class="start-quiz-btn assignment-start-btn" data-topic-id="{{ $topic->id }}" data-course-id="{{ $topic->course_id }}" data-quiz-url="{{ $quizUrl }}">
                                 @if($assignment->status === 'completed')
                                     <span>Review Assignment</span>
                                 @elseif($assignmentProgress > 0)
@@ -2849,7 +2828,7 @@
                         @php
                             $quizUrl = secure_url(route('quiz.start', ['course' => $topic->course_id, 'topic' => $topic->id], false));
                         @endphp
-                        <a href="{{ $quizUrl }}" class="start-quiz-btn" data-topic-id="{{ $topic->id }}" data-course-id="{{ $topic->course_id }}">
+                        <a href="javascript:void(0)" class="start-quiz-btn" data-topic-id="{{ $topic->id }}" data-course-id="{{ $topic->course_id }}" data-quiz-url="{{ route('quiz.start', ['course' => $topic->course_id, 'topic' => $topic->id]) }}">
                             @if($percentageGrade !== null)
                                 <span>Retake Quiz</span>
                             @else
@@ -2884,12 +2863,48 @@
             const caseFilters = document.querySelectorAll('.case-filter');
             const topicCards = document.querySelectorAll('.topic-card');
             
-            // Assignment cards visibility is now controlled by CSS and filtering logic
+            // Assignment icon click handler
+            const assignmentIcon = document.querySelector('.assignment-icon-circle');
+            if (assignmentIcon) {
+                assignmentIcon.addEventListener('click', function() {
+                    // Remove active class from all filters
+                    caseFilters.forEach(f => f.classList.remove('active'));
+                    
+                    // Add active class to assignment circle
+                    this.querySelector('.assignment-circle').classList.add('active');
+                    
+                    // Get the topics container
+                    const topicsContainer = document.querySelector('.topics-container');
+                    topicsContainer.classList.add('assignments-filter-active');
+                    
+                    console.log('Added assignments-filter-active class');
+                    
+                    // Filter topic cards to show only assignments
+                    topicCards.forEach(card => {
+                        const hasAssignment = card.dataset.hasAssignment === 'true';
+                        
+                        if (hasAssignment) {
+                            card.style.display = 'block';
+                            card.style.opacity = '1';
+                            card.style.transform = 'translateY(0)';
+                        } else {
+                            card.style.display = 'none';
+                        }
+                    });
+                });
+            }
 
+            // Regular case filter functionality
             caseFilters.forEach(filter => {
                 filter.addEventListener('click', function() {
                     // Remove active class from all filters
                     caseFilters.forEach(f => f.classList.remove('active'));
+                    
+                    // Remove active class from assignment icon
+                    const assignmentCircle = document.querySelector('.assignment-circle');
+                    if (assignmentCircle) {
+                        assignmentCircle.classList.remove('active');
+                    }
                     
                     // Add active class to clicked filter
                     this.classList.add('active');
@@ -3198,13 +3213,12 @@
             quizButtons.forEach((button, index) => {
                 // Setting up button
                 
-                // Remove any existing href to prevent navigation
-                const originalHref = button.href;
-                button.removeAttribute('href');
+                // Get the quiz URL from data attribute
+                const originalHref = button.dataset.quizUrl;
                 button.style.cursor = 'pointer';
                 
                 button.addEventListener('click', function(e) {
-                    // Button clicked - preventing default behavior
+                    console.log('🔥 QUIZ BUTTON CLICKED - Event listener triggered');
                     
                     // Multiple ways to prevent default
                     e.preventDefault();
@@ -3225,17 +3239,22 @@
                     const topicsContainer = document.querySelector('.topics-container');
                     const isAssignmentsFilterActive = topicsContainer && topicsContainer.classList.contains('assignments-filter-active');
                     
+                    console.log('🔥 QUIZ BUTTON: Assignments filter check:', {
+                        topicsContainer: !!topicsContainer,
+                        isAssignmentsFilterActive: isAssignmentsFilterActive
+                    });
+                    
                     if (isAssignmentsFilterActive) {
                         // Assignments filter is active - redirect directly without showing source modal
-                        console.log(`Assignments filter active: Bypassing source modal for topic ${topicId}`);
+                        console.log(`🔥 QUIZ BUTTON: Assignments filter active - Bypassing source modal for topic ${topicId}`);
                         window.location.href = originalHref;
                         return false;
                     }
                     
                     // Regular topic practice - show source selection modal
-                    console.log(`Regular topic practice for topic ${topicId}: Showing source selection modal`);
-                    console.log('Modal object:', sourceSelectionModal);
-                    console.log('Modal element exists:', document.getElementById('sourceSelectionModal') !== null);
+                    console.log(`🔥 QUIZ BUTTON: Regular topic practice for topic ${topicId}: Showing source selection modal`);
+                    console.log('🔥 QUIZ BUTTON: Modal object:', sourceSelectionModal);
+                    console.log('🔥 QUIZ BUTTON: Modal element exists:', document.getElementById('sourceSelectionModal') !== null);
                     
                     // Debug info removed for production
                     
@@ -3259,9 +3278,9 @@
                         // Form values set
                         
                         // Show modal immediately
-                        console.log('About to show modal...');
+                        console.log('🔥 QUIZ BUTTON: About to show modal...');
                         sourceSelectionModal.show();
-                        console.log('Modal show() called');
+                        console.log('🔥 QUIZ BUTTON: Modal show() called successfully');
                         
                         // Load sources in background
                         const sourcesContainer = document.querySelector('.sources-container');
@@ -3342,6 +3361,24 @@
                         return false;
                     }
                     
+                    // Check if question count is selected
+                    const questionLimit = document.getElementById('questionLimit');
+                    if (!questionLimit.value) {
+                        e.preventDefault();
+                        alert('Please select the number of questions for your quiz.');
+                        questionLimit.focus();
+                        return false;
+                    }
+                    
+                    // Check if time limit is selected
+                    const timeLimit = document.getElementById('timeLimit');
+                    if (!timeLimit.value) {
+                        e.preventDefault();
+                        alert('Please select a time limit for your quiz.');
+                        timeLimit.focus();
+                        return false;
+                    }
+                    
                     // Show loading state on submit button
                     const submitBtn = document.querySelector('button[form="randomQuizForm"]');
                     if (submitBtn) {
@@ -3353,29 +3390,55 @@
                 });
             }
 
-            // Random Quiz Modal - Course Selection Handling
+            // Random Quiz Modal - Course Selection Handling (STABLE VERSION)
             const courseCheckboxes = document.querySelectorAll('#randomQuizModal input[name="selected_courses[]"]');
+            let isSubmitting = false; // Prevent button state changes during submission
+            
             courseCheckboxes.forEach(checkbox => {
                 checkbox.addEventListener('change', function() {
-                    // Ensure at least one course remains selected
+                    if (isSubmitting) return; // Don't change button during submission
+                    
                     const checkedCourses = document.querySelectorAll('#randomQuizModal input[name="selected_courses[]"]:checked');
                     const submitBtn = document.querySelector('button[form="randomQuizForm"]');
                     
-                    if (checkedCourses.length === 0) {
-                        // If no courses selected, disable submit button
-                        if (submitBtn) {
+                    if (submitBtn && !submitBtn.disabled) { // Only update if not already disabled
+                        if (checkedCourses.length === 0) {
                             submitBtn.disabled = true;
                             submitBtn.innerHTML = '<i class="fas fa-exclamation-triangle me-2"></i>Select Courses';
-                        }
-                    } else {
-                        // Enable submit button if courses are selected
-                        if (submitBtn) {
+                        } else {
                             submitBtn.disabled = false;
                             submitBtn.innerHTML = '<i class="fas fa-play me-2"></i>Start Quiz';
                         }
                     }
                 });
             });
+            
+            // Prevent button state changes during form submission
+            if (randomQuizForm) {
+                randomQuizForm.addEventListener('submit', function() {
+                    isSubmitting = true;
+                });
+            }
+            
+            // Reset button state when modal is opened
+            const randomQuizModal = document.getElementById('randomQuizModal');
+            if (randomQuizModal) {
+                randomQuizModal.addEventListener('shown.bs.modal', function() {
+                    isSubmitting = false; // Reset submission state
+                    const submitBtn = document.querySelector('button[form="randomQuizForm"]');
+                    const checkedCourses = document.querySelectorAll('#randomQuizModal input[name="selected_courses[]"]:checked');
+                    
+                    if (submitBtn) {
+                        if (checkedCourses.length === 0) {
+                            submitBtn.disabled = true;
+                            submitBtn.innerHTML = '<i class="fas fa-exclamation-triangle me-2"></i>Select Courses';
+                        } else {
+                            submitBtn.disabled = false;
+                            submitBtn.innerHTML = '<i class="fas fa-play me-2"></i>Start Quiz';
+                        }
+                    }
+                });
+            }
             
 
         });
@@ -3423,6 +3486,9 @@
                 });
             });
         }
+
+        // REMOVED: showQuizModal function - using proper event handler instead
+        // The quiz buttons now use the proper event handler that shows the source selection modal
     </script>
     
     <!-- Topic Filters JavaScript -->

@@ -19,7 +19,7 @@ return new class extends Migration
                   ->constrained('users')
                   ->onDelete('cascade');
                   
-            $table->foreignId('student_id')
+            $table->foreignId('user_id')
                   ->constrained('users')
                   ->onDelete('cascade');
 
@@ -28,10 +28,10 @@ return new class extends Migration
             $table->timestamps();
 
             // Add unique constraint to prevent duplicate assignments
-            $table->unique(['tutor_id', 'student_id'], 'unique_tutor_student');
+            $table->unique(['tutor_id', 'user_id'], 'unique_tutor_user');
 
             // Add composite index for faster lookups
-            $table->index(['tutor_id', 'student_id', 'created_at']);
+            $table->index(['tutor_id', 'user_id', 'created_at']);
         });
     }
 

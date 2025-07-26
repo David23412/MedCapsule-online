@@ -29,7 +29,7 @@ class AssignmentPolicy
         }
 
         // Students can view assignments assigned to them
-        if ($user->role === 'student' && $assignment->student_id === $user->id) {
+        if ($user->role === 'student' && $assignment->user_id === $user->id) {
             return true;
         }
 
@@ -87,7 +87,7 @@ class AssignmentPolicy
     public function complete(User $user, Assignment $assignment): bool
     {
         // Students can complete their own assignments
-        if ($user->role === 'student' && $assignment->student_id === $user->id) {
+        if ($user->role === 'student' && $assignment->user_id === $user->id) {
             return $assignment->canBeCompleted();
         }
 

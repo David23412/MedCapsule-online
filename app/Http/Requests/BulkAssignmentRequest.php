@@ -6,166 +6,45 @@ use Illuminate\Foundation\Http\FormRequest;
 
 class BulkAssignmentRequest extends FormRequest
 {
-    /**
-     * Determine if the user is authorized to make this request.
-     */
     public function authorize(): bool
     {
-        return auth()->check() && in_array(auth()->user()->role, ['admin', 'tutor']);
+        return auth()->check() && (auth()->user()->hasRole('admin') || auth()->user()->hasRole('tutor'));
     }
 
-    /**
-     * Get the validation rules that apply to the request.
-     */
     public function rules(): array
     {
         return [
-            'student_ids' => 'required|array|min:1',
-            'student_ids.*' => 'required|exists:users,id',
-            'topic_id' => 'required|exists:topics,id',
-            'course_id' => 'required|exists:courses,id',
-            'title' => 'required|string|max:255',
-            'description' => 'nullable|string|max:1000',
+            'title_template' => 'required|string|max:255',
+            'description_template' => 'nullable|string|max:1000',
+            'course_ids' => 'required|array|min:1',
+            'course_ids.*' => 'integer|exists:courses,id',
+            'topic_ids' => 'required|array|min:1',
+            'topic_ids.*' => 'integer|exists:topics,id',
+            'student_ids' => 'required|array|min:1|max:100',
+            'student_ids.*' => 'integer|exists:users,id',
+            'assignment_mode' => 'required|in:practice,exam,timed_practice',
+            'question_count' => 'required|integer|min:1|max:100',
+            'time_limit' => 'nullable|integer|min:300|max:7200',
             'deadline' => 'required|date|after:now',
-            'duration_minutes' => 'nullable|numeric|min:0.1|max:1440', // Min 0.1 minutes (6 seconds) for testing, NULL for no limit
-            'assignment_mode' => 'nullable|in:source_specific,complete_topic',
-            'assigned_source' => 'nullable|string|max:255',
-            'skip_existing' => 'nullable|boolean',
+            'max_attempts' => 'nullable|integer|min:1|max:10',
+            'passing_score' => 'nullable|integer|min:0|max:100',
+            'randomize_questions' => 'nullable|boolean',
+            'send_notifications' => 'nullable|boolean'
         ];
     }
 
-    /**
-     * Get custom validation messages.
-     */
     public function messages(): array
     {
         return [
-            'student_ids.required' => 'Please select at least one student.',
-            'student_ids.array' => 'Student selection is invalid.',
-            'student_ids.min' => 'Please select at least one student.',
-            'student_ids.*.required' => 'All selected students must be valid.',
-            'student_ids.*.exists' => 'One or more selected students are invalid.',
-            'topic_id.required' => 'Please select a topic.',
-            'topic_id.exists' => 'The selected topic is invalid.',
-            'course_id.required' => 'Please select a course.',
-            'course_id.exists' => 'The selected course is invalid.',
-            'title.required' => 'Assignment title is required.',
-            'title.max' => 'Assignment title cannot exceed 255 characters.',
-            'description.max' => 'Assignment description cannot exceed 1000 characters.',
-            'deadline.required' => 'Assignment deadline is required.',
-            'deadline.date' => 'Please provide a valid deadline date.',
-            'deadline.after' => 'Assignment deadline must be in the future.',
-            'duration_minutes.numeric' => 'Duration must be a valid number of minutes.',
-            'duration_minutes.min' => 'Duration must be at least 0.1 minutes (6 seconds).',
-            'duration_minutes.max' => 'Duration cannot exceed 24 hours (1440 minutes).',
-            'assignment_mode.in' => 'Assignment mode must be either source_specific or complete_topic.',
-            'assigned_source.string' => 'Assigned source must be a valid string.',
-            'assigned_source.max' => 'Assigned source cannot exceed 255 characters.',
+            'title_template.required' => 'Assignment title template is required',
+            'course_ids.required' => 'At least one course must be selected',
+            'topic_ids.required' => 'At least one topic must be selected',
+            'student_ids.required' => 'At least one student must be selected',
+            'student_ids.max' => 'Cannot assign to more than 100 students at once',
+            'assignment_mode.required' => 'Assignment mode is required',
+            'question_count.required' => 'Number of questions is required',
+            'deadline.required' => 'Assignment deadline is required',
+            'deadline.after' => 'Assignment deadline must be in the future'
         ];
-    }
-
-    /**
-     * Configure the validator instance.
-     */
-    public function withValidator($validator): void
-    {
-        $validator->after(function ($validator) {
-            // Validate all students have tutor relationship (skip for admins)
-            if ($this->student_ids && is_array($this->student_ids) && auth()->user()->role !== 'admin') {
-                foreach ($this->student_ids as $index => $studentId) {
-                    $hasRelationship = \DB::table('tutor_student_relationships')
-                        ->where('tutor_id', auth()->id())
-                        ->where('student_id', $studentId)
-                        ->exists();
-
-                    if (!$hasRelationship) {
-                        $validator->errors()->add("student_ids.{$index}", 'You do not have a relationship with this student.');
-                    }
-
-                    // Validate student has access to the course (skip for admins)
-                    if ($this->course_id && auth()->user()->role !== 'admin') {
-                        $studentHasAccess = \DB::table('course_user')
-                            ->where('user_id', $studentId)
-                            ->where('course_id', $this->course_id)
-                            ->exists();
-
-                        if (!$studentHasAccess) {
-                            $validator->errors()->add("student_ids.{$index}", 'This student does not have access to the selected course.');
-                        }
-                    }
-                }
-            }
-
-            // Validate topic belongs to course
-            if ($this->topic_id && $this->course_id) {
-                $topicBelongsToCourse = \DB::table('topics')
-                    ->where('id', $this->topic_id)
-                    ->where('course_id', $this->course_id)
-                    ->exists();
-
-                if (!$topicBelongsToCourse) {
-                    $validator->errors()->add('topic_id', 'The selected topic does not belong to the selected course.');
-                }
-            }
-
-            // NO DUPLICATE RESTRICTIONS - Tutors can create as many assignments as they want!
-            // The skip_existing option is still available for convenience, but no validation errors for duplicates
-
-            // Validate source for source-specific assignments
-            if ($this->assignment_mode === 'source_specific' && empty($this->assigned_source)) {
-                $validator->errors()->add('assigned_source', 'Source must be specified for source-specific assignments.');
-            }
-
-            // Validate that source exists for the topic if specified
-            if (!empty($this->assigned_source) && $this->topic_id) {
-                $sourceExists = \DB::table('questions')
-                    ->where('topic_id', $this->topic_id)
-                    ->where('source', $this->assigned_source)
-                    ->exists();
-
-                if (!$sourceExists) {
-                    $validator->errors()->add('assigned_source', 'The specified source does not exist for this topic.');
-                }
-            }
-        });
-    }
-
-    /**
-     * Get custom attributes for validator errors.
-     */
-    public function attributes(): array
-    {
-        return [
-            'student_ids' => 'students',
-            'topic_id' => 'topic',
-            'course_id' => 'course',
-            'duration_minutes' => 'duration',
-            'assignment_mode' => 'assignment mode',
-            'assigned_source' => 'source',
-            'time_limit' => 'time limit',
-        ];
-    }
-
-    /**
-     * Prepare the data for validation.
-     */
-    protected function prepareForValidation(): void
-    {
-        // Ensure student_ids is an array
-        if ($this->has('student_ids') && !is_array($this->student_ids)) {
-            $this->merge([
-                'student_ids' => explode(',', $this->student_ids)
-            ]);
-        }
-
-        // Set default for skip_existing
-        if (!$this->has('skip_existing')) {
-            $this->merge(['skip_existing' => false]);
-        }
-
-        // Convert empty duration_minutes to NULL for "No Time Limit"
-        if ($this->has('duration_minutes') && $this->duration_minutes === '') {
-            $this->merge(['duration_minutes' => null]);
-        }
     }
 }

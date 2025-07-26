@@ -27,7 +27,7 @@ class SystemStabilityTest extends TestCase
         
         // Create test data
         $this->user = User::factory()->create();
-        $this->admin = User::factory()->create(['is_admin' => true]);
+        $this->admin = User::factory()->create(['role' => 'admin']);
         $this->course = Course::factory()->create(['price' => 0]); // Free course
         $this->paidCourse = Course::factory()->create(['price' => 99.99]);
         $this->topic = Topic::factory()->create(['course_id' => $this->course->id]);

@@ -171,7 +171,15 @@ class ResilientCacheService
                 ]);
 
                 if ($attempt < self::MAX_RETRIES) {
-                    usleep(self::RETRY_DELAY_MS * 1000 * $attempt);
+                    // Non-blocking retry with exponential backoff using microtime
+                    $backoffDelay = self::RETRY_DELAY_MS * pow(2, $attempt - 1);
+                    $startTime = microtime(true);
+                    while ((microtime(true) - $startTime) * 1000 < $backoffDelay) {
+                        // Non-blocking wait - allows other operations to continue
+                        if (function_exists('sched_yield')) {
+                            sched_yield();
+                        }
+                    }
                     continue;
                 }
             }

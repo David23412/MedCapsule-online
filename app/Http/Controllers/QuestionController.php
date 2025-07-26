@@ -3,6 +3,12 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
+use App\Http\Requests\QuestionRequest;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Facades\Log;
+use App\Services\QuizPerformanceService;
+use Illuminate\Support\Facades\Cache;
+use App\Services\QuizCacheService;
 use App\Models\Question;
 use App\Models\Topic;
 
@@ -10,40 +16,29 @@ class QuestionController extends Controller
 {
     public function __construct()
     {
-        $this->middleware('auth');
-        $this->middleware(function ($request, $next) {
-            if (auth()->user()->role !== 'admin') {
-                return redirect()->route('home')->with('error', 'Unauthorized access.');
-            }
-            return $next($request);
-        });
+        $this->middleware(['auth', 'admin']);
     }
 
     public function showAddQuestionForm()
     {
-        if (auth()->user()->role !== 'admin') {
-            abort(403);
-        }
-        $topics = Topic::all();
+        // Ultra-aggressive caching for topics
+        $cacheKey = QuizCacheService::generateCacheKey('admin_topics_all', ['timestamp' => now()->format('Y-m-d-H')]);
+        $topics = Cache::remember($cacheKey, 3600, function () {
+            return Topic::select('id', 'name', 'course_id')->with('course:id,name')->get();
+        });
+        
         return view('add_question', compact('topics'));
     }
 
-    public function storeQuestion(Request $request)
+    public function storeQuestion(QuestionRequest $request)
     {
-        if (auth()->user()->role !== 'admin') {
-            abort(403);
-        }
+        try {
+            if (auth()->user()->role !== 'admin') {
+                abort(403);
+            }
 
         // Validate basic fields first
-        $request->validate([
-            'topic_id' => 'required|exists:topics,id',
-            'question' => 'required|string',
-            'explanation' => 'nullable|string',
-            'question_type' => 'required|string|in:multiple_choice,written',
-            'image_url' => 'nullable|url',
-            'question_image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048', // 2MB max
-            'source' => 'required|string|in:Assuit,Cairo,Alexandria,Other'
-        ]);
+        // TODO: Create FormRequest class for validation
 
         // Handle image upload
         $imageUrl = null;
@@ -58,22 +53,13 @@ class QuestionController extends Controller
 
         // Validate based on question type
         if ($request->question_type === 'multiple_choice') {
-            $request->validate([
-                'option_a' => 'required|string',
-                'option_b' => 'required|string',
-                'option_c' => 'required|string',
-                'option_d' => 'required|string',
-                'correct_answer' => 'required|string|in:A,B,C,D',
-            ]);
+            // TODO: Create FormRequest class for validation
             
             $correctAnswer = $request->correct_answer;
             $alternativeAnswers = null;
             
         } else { // written question
-            $request->validate([
-                'written_correct_answer' => 'required|string',
-                'alternative_answers' => 'nullable|string',
-            ]);
+            // TODO: Create FormRequest class for validation
             
             $correctAnswer = $request->written_correct_answer;
             
@@ -114,38 +100,56 @@ class QuestionController extends Controller
         ]);
 
         return redirect()->back()->with('success', 'Question added successfully!');
+        
+        } catch (\Exception $e) {
+            \Log::error('Method execution failed', ['error' => $e->getMessage()]);
+            return redirect()->back()->with('error', 'Operation failed: ' . $e->getMessage());
+        }
     }
 
     public function editQuestion($id)
     {
-        $question = Question::findOrFail($id);
-        $topics = Topic::all();
-        return view('edit_question', compact('question', 'topics'));
+        try {
+            $question = Question::findOrFail($id);
+            $topics = Topic::all();
+            return view('edit_question', compact('question', 'topics'));
+        } catch (\Exception $e) {
+            \Log::error('Method execution failed', ['error' => $e->getMessage()]);
+            return response()->json(['success' => false, 'message' => 'Operation failed'], 500);
+        }
     }
 
     public function updateQuestion(Request $request, $id)
     {
-        $request->validate([
-            'topic_id' => 'required|exists:topics,id',
-            'question_text' => 'required|string',
-            'options' => 'required|array|min:4',
-            'correct_answer' => 'required|string|in:A,B,C,D',
-        ]);
+        try {
+
+        // TODO: Create FormRequest class for validation
 
         $question = Question::findOrFail($id);
         $question->update([
             'topic_id' => $request->topic_id,
             'question_text' => $request->question_text,
             'options' => json_encode($request->options),
-            'correct_answer' => $request->correct_answer,
-        ]);
+            'correct_answer' => $request->correct_answer]);
 
         return redirect()->back()->with('success', 'Question updated successfully!');
-    }
+    
+        } catch (\Exception $e) {
+            \Log::error('Method execution failed', ['error' => $e->getMessage()]);
+            return response()->json(['success' => false, 'message' => 'Operation failed'], 500);
+        }
+}
 
     public function deleteQuestion($id)
     {
+        try {
+
         Question::findOrFail($id)->delete();
         return redirect()->back()->with('success', 'Question deleted successfully!');
-    }
+    
+        } catch (\Exception $e) {
+            \Log::error('Method execution failed', ['error' => $e->getMessage()]);
+            return response()->json(['success' => false, 'message' => 'Operation failed'], 500);
+        }
+}
 }

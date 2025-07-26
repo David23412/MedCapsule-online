@@ -6,37 +6,60 @@ use App\Http\Controllers\Controller;
 use App\Models\Course;
 use App\Models\Topic;
 use Illuminate\Http\Request;
+use App\Http\Requests\CoursePreviewRequest;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Facades\Log;
+use App\Services\QuizPerformanceService;
+use Illuminate\Support\Facades\Cache;
+use App\Services\QuizCacheService;
 
 class CoursePreviewController extends Controller
 {
+    public function __construct()
+    {
+        parent::__construct();
+        Log::info('Controller initialized', ['user_id' => auth()->id()]);
+        $this->middleware(['auth']);
+    }
+
     /**
-     * Get preview data for a course
+     * Get preview data for a course - LETHAL CACHED
      *
      * @param Request $request
      * @param int $id Course ID
      * @return \Illuminate\Http\JsonResponse
      */
-    public function getPreviewData(Request $request, $id)
+    public function getPreviewData(CoursePreviewRequest $request, $id)
     {
-        $course = Course::findOrFail($id);
-        $previewType = $request->input('type', 'medical');
-        
-        // Get topic counts
-        $topicCount = Topic::where('course_id', $course->id)->count();
-        
-        if ($previewType === 'medical') {
-            // Medical course preview data
-            $casesCount = Topic::where('course_id', $course->id)
-                ->where('case_type', 'cases')
-                ->count();
+        try {
+            $previewType = $request->input('type', 'medical');
+            
+            // LETHAL CACHING: Ultra-aggressive caching for course preview
+            $cacheKey = QuizCacheService::generateCacheKey('course_preview', [
+                'course_id' => $id,
+                'type' => $previewType,
+                'timestamp' => now()->format('Y-m-d-H')
+            ]);
+
+            return Cache::remember($cacheKey, 3600, function () use ($id, $previewType) {
+                $course = Course::select('id', 'name', 'description', 'price')
+                    ->with([
+                        'topics:id,course_id,name,case_type',
+                        'topics.questions:id,topic_id,difficulty'
+                    ])
+                    ->findOrFail($id);
                 
-            $practicalCount = Topic::where('course_id', $course->id)
-                ->where('case_type', 'practical')
-                ->count();
+                // Get topic counts with eager loaded data
+                $topicCount = $course->topics->count();
+                
+                if ($previewType === 'medical') {
+                    // Medical course preview data
+                    $casesCount = $course->topics->where('case_type', 'cases')->count();
+                    $practicalCount = $course->topics->where('case_type', 'practical')->count();
                 
             $quizCount = Topic::where('course_id', $course->id)
                 ->where('case_type', 'quiz')
-                ->count();
+                ->count()->with(['relatedModel']); // TODO: Add actual relationships
             
             return response()->json([
                 'topicCount' => $topicCount,
@@ -44,14 +67,19 @@ class CoursePreviewController extends Controller
                 'practicalCount' => $practicalCount,
                 'quizCount' => $quizCount
             ]);
-        } else {
+        
+        } catch (\Exception $e) {
+            \Log::error('Method execution failed', ['error' => $e->getMessage()]);
+            return response()->json(['success' => false, 'message' => 'Operation failed'], 500);
+        }
+} else {
             // Custom course preview data
             $categories = Topic::where('course_id', $course->id)
                 ->select('case_type')
                 ->distinct()
                 ->whereNotNull('case_type')
                 ->pluck('case_type')
-                ->toArray();
+                ->toArray()->with(['relatedModel']); // TODO: Add actual relationships
             
             $categoryCounts = [];
             foreach ($categories as $category) {

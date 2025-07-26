@@ -1,0 +1,152 @@
+<?php
+
+namespace App\Http\Controllers\Course;
+
+use App\Http\Controllers\Controller;
+use App\Http\Requests\HomeRequest;
+use App\Models\Course;
+use App\Services\QuizCacheService;
+use App\Services\CourseFilterService;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
+
+/**
+ * LETHAL OPTIMIZED COURSE VIEW CONTROLLER
+ * Handles course display and listing operations
+ */
+class CourseViewController extends Controller
+{
+    public function __construct()
+    {
+        $this->middleware([]);
+        $this->middleware(['auth'])->except(['index']);
+    }
+
+    /**
+     * Show detailed course list with metadata for authenticated users - COMPLEXITY REDUCED
+     */
+    public function index(HomeRequest $request)
+    {
+        $userId = auth()->id();
+        $isLoggedIn = auth()->check();
+        $selectedYear = $request->get('academic_year');
+
+        // ULTRA-FAST CACHE: Reduced TTL to 30 seconds for instant updates
+        $cacheVersion = Cache::get('courses_cache_version', 1);
+        $cacheKey = "courses_metadata_" . ($userId ?? 'guest') . "_" . ($selectedYear ?? 'all') . "_v{$cacheVersion}";
+        
+        $courses = Cache::remember($cacheKey, 30, function () use ($userId, $isLoggedIn, $selectedYear) {
+            // COMPLEXITY REDUCTION: Extract query building
+            $query = $this->buildCourseQuery($userId, $isLoggedIn);
+
+            // Apply academic year filter if provided
+            if ($selectedYear && CourseFilterService::isValidAcademicYear($selectedYear)) {
+                $query = CourseFilterService::filterByAcademicYear($query, $selectedYear);
+            }
+
+            return $query->get();
+        });
+
+        // COMPLEXITY REDUCTION: Extract course formatting
+        $this->formatCoursesForDisplay($courses);
+
+        // Get available academic years for filter dropdown
+        $availableYears = CourseFilterService::getAvailableAcademicYears();
+
+        return view('courses', compact('courses', 'availableYears', 'selectedYear'));
+    }
+
+    /**
+     * Show individual course detail and enrollment logic
+     */
+    public function show($id)
+    {
+        // Use eager loading to prevent N+1 queries
+        $course = Course::with([
+                'topics' => function($query) {
+                    $query->select('id', 'name', 'course_id', 'display_order')
+                        ->orderBy('display_order');
+                }
+            ])
+            ->findOrFail($id);
+            
+        $user = auth()->user();
+        $isEnrolled = false;
+
+        if ($user) {
+            $isEnrolled = $user->courses()
+                ->where('course_id', $course->id)
+                ->where('enrollment_status', 'active')
+                ->exists();
+        }
+
+        return view('course', compact('course', 'isEnrolled'));
+    }
+
+    /**
+     * COMPLEXITY REDUCTION: Format courses for display
+     */
+    private function formatCoursesForDisplay($courses): void
+    {
+        foreach ($courses as $course) {
+            $course->is_enrolled = isset($course->is_enrolled) ? (bool)$course->is_enrolled : false;
+            $course->completion_percentage = 0;
+            $course->mastered_topics_count = 0;
+            
+            // Format enrolled users for display
+            $course->enrolled_preview = $course->users->take(3)->map(function($user) {
+                return [
+                    'name' => $user->name,
+                    'profile_picture_url' => $user->profile_picture_url,
+                    'initial' => strtoupper(substr($user->name, 0, 1))
+                ];
+            });
+            $course->has_more = $course->users->count() > 3;
+        }
+    }
+
+    /**
+     * COMPLEXITY REDUCTION: Build course query with subqueries
+     */
+    private function buildCourseQuery($userId, $isLoggedIn): \Illuminate\Database\Eloquent\Builder
+    {
+        $subqueries = [
+            'topics_count' => Topic::selectRaw('COUNT(*)')
+                ->whereColumn('course_id', 'courses.id')
+                ->where('name', 'NOT LIKE', '%cases%'),
+            'cases_count' => Topic::selectRaw('COUNT(*)')
+                ->whereColumn('course_id', 'courses.id')
+                ->where('name', 'LIKE', '%cases%'),
+            DB::raw('(
+                SELECT COUNT(*)
+                FROM course_user
+                WHERE course_user.course_id = courses.id
+                AND course_user.enrollment_status = "active"
+            ) as enrolled_users_count')
+        ];
+
+        if ($isLoggedIn) {
+            $subqueries[] = DB::raw("(
+                SELECT enrollment_status = 'active'
+                FROM course_user
+                WHERE course_user.course_id = courses.id
+                AND course_user.user_id = {$userId}
+            ) as is_enrolled");
+            
+            $subqueries[] = DB::raw("(
+                SELECT COUNT(*) > 0
+                FROM payments
+                WHERE payments.course_id = courses.id
+                AND payments.user_id = {$userId}
+                AND payments.status = 'pending'
+            ) as has_pending_payment");
+        }
+
+        return Course::select('courses.*', ...$subqueries)
+            ->with(['users' => function($query) {
+                $query->select('users.id', 'users.name', 'users.email', 'users.profile_picture_url')
+                    ->where('course_user.enrollment_status', 'active')
+                    ->take(4);
+            }]);
+    }
+}
