@@ -232,6 +232,8 @@ class MistakeController extends Controller
             ->delete();
 
         if ($deleted) {
+            // 💀 LETHAL CACHE INVALIDATION 💀
+            $this->clearMistakeCaches($userId);
             Log::info('✅ Mistake deleted');
         } else {
             Log::warning('⚠️ No mistake found to delete');
@@ -258,6 +260,9 @@ class MistakeController extends Controller
                           ->delete();
 
         if ($deleted) {
+            // 💀 LETHAL CACHE INVALIDATION - CLEAR ALL MISTAKE CACHES 💀
+            $this->clearMistakeCaches($userId);
+            
             Log::info("✅ Mistake successfully removed", [
                 'user_id' => $userId,
                 'question_id' => $question_id
@@ -274,87 +279,86 @@ class MistakeController extends Controller
             ]);
         }
     }
+    
+    /**
+     * 💀 LETHAL CACHE INVALIDATION METHOD 💀
+     */
+    private function clearMistakeCaches($userId)
+    {
+        try {
+            // Clear all possible mistake cache keys
+            $cacheKeys = [
+                QuizCacheService::generateCacheKey('mistakes_full', ['user_id' => $userId, 'course_filter' => 'all']),
+                QuizCacheService::generateCacheKey('mistakes_full', ['user_id' => $userId, 'course_filter' => 'skipped']),
+                "mistake_courses_{$userId}",
+                "mistakes_user_{$userId}",
+                "mistakes_count_{$userId}"
+            ];
+            
+            // Also clear any course-specific caches
+            $courses = \App\Models\Course::all();
+            foreach ($courses as $course) {
+                $cacheKeys[] = QuizCacheService::generateCacheKey('mistakes_full', [
+                    'user_id' => $userId, 
+                    'course_filter' => $course->id
+                ]);
+            }
+            
+            // Clear all cache keys
+            foreach ($cacheKeys as $key) {
+                Cache::forget($key);
+            }
+            
+            Log::info("💀 CACHE CLEARED for user", [
+                'user_id' => $userId,
+                'cache_keys_cleared' => count($cacheKeys)
+            ]);
+            
+        } catch (\Exception $e) {
+            Log::error("❌ Error clearing mistake caches", [
+                'user_id' => $userId,
+                'error' => $e->getMessage()
+            ]);
+        }
+    }
 
     /**
      * Skip a mistake question.
      */
     public function skipMistake($question_id)
     {
-        $startTime = microtime(true);
-        $requestId = uniqid('skip_mistake_');
         $userId = auth()->id();
 
-        Log::info("📌 Skipping mistake", [
-            'request_id' => $requestId,
-            'user_id' => $userId,
-            'question_id' => $question_id,
-            'ip_address' => request()->ip()
-        ]);
-
         try {
-            DB::beginTransaction();
-
-            // Find the mistake record for the given user and question
-            // LETHAL QUERY OPTIMIZATION: Use select and eager loading
-            $mistake = Mistake::select('id', 'user_id', 'question_id', 'user_answer', 'correct_answer', 'mastered', 'skipped', 'created_at')
-                ->with([
-                    'question:id,question_text,topic_id,difficulty',
-                    'question.topic:id,name,course_id',
-                    'question.topic.course:id,name'
-                ])
-                ->where('user_id', $userId)
+            // Simple query to find and update the mistake
+            $mistake = Mistake::where('user_id', $userId)
                 ->where('question_id', $question_id)
                 ->first();
 
             if ($mistake) {
-                // Mark the mistake as skipped and update last attempt date
+                // Mark as skipped
                 $mistake->skipped = true;
                 $mistake->last_attempt_date = now();
                 $mistake->save();
 
-                DB::commit();
-
-                $executionTime = (microtime(true) - $startTime) * 1000;
-                Log::info("✅ Mistake successfully skipped", [
-                    'request_id' => $requestId,
-                    'user_id' => $userId,
-                    'question_id' => $question_id,
-                    'execution_time_ms' => round($executionTime, 2)
-                ]);
+                // 💀 LETHAL CACHE INVALIDATION 💀
+                $this->clearMistakeCaches($userId);
 
                 return response()->json([
                     'success' => true,
                     'message' => 'Question skipped successfully'
                 ]);
             } else {
-                DB::rollBack();
-                
-                $executionTime = (microtime(true) - $startTime) * 1000;
-                Log::warning("⚠️ No mistake found to skip", [
-                    'request_id' => $requestId,
-                    'user_id' => $userId,
-                    'question_id' => $question_id,
-                    'execution_time_ms' => round($executionTime, 2)
-                ]);
-                
                 return response()->json([
                     'success' => false,
-                    'message' => "No mistake found to skip."
+                    'message' => 'No mistake found to skip.'
                 ], 404);
             }
         } catch (\Exception $e) {
-            DB::rollBack();
-            
-            $executionTime = (microtime(true) - $startTime) * 1000;
-            Log::error('❌ Error skipping mistake', [
-                'request_id' => $requestId,
-                'error' => $e->getMessage(),
-                'file' => $e->getFile(),
-                'line' => $e->getLine(),
+            Log::error('Error skipping mistake', [
                 'user_id' => $userId,
                 'question_id' => $question_id,
-                'execution_time_ms' => round($executionTime, 2),
-                'trace' => $e->getTraceAsString()
+                'error' => $e->getMessage()
             ]);
             
             return response()->json([

@@ -38,7 +38,7 @@ class QuizService
             Log::info('📌 Quiz Initialization Attempt', [
                 'user_id' => $user->id,
                 'user_name' => $user->name,
-                'is_admin' => $user->is_admin,
+                'is_admin' => $user->role === 'admin',
                 'course_id' => $course->id,
                 'topic_id' => $topic->id,
                 'mode' => $mode,
@@ -123,11 +123,11 @@ class QuizService
      */
     private function validateUserAccess(User $user, Course $course): void
     {
-        if (!$user->is_admin && !$user->hasAccessToCourse($course->id) && $course->price && $course->price > 0) {
+        if ($user->role !== 'admin' && !$user->hasAccessToCourse($course->id) && $course->price && $course->price > 0) {
             Log::error('Access denied: User does not have access to course', [
                 'user_id' => $user->id,
                 'course_id' => $course->id,
-                'is_admin' => $user->is_admin,
+                'is_admin' => $user->role === 'admin',
                 'course_price' => $course->price
             ]);
             throw new \InvalidArgumentException('You must be granted access to this course to take quizzes. Please contact an administrator.');
@@ -163,8 +163,8 @@ class QuizService
     }
 
     /**
-     * Retrieve questions based on topic and sources
-     * OPTIMIZED: Added eager loading and selective column fetching
+     * OPTIMIZED LETHAL FIX: Retrieve questions with SMART caching and deletion validation
+     * Fast AND safe - best of both worlds
      *
      * @param Topic $topic
      * @param array $sources
@@ -174,54 +174,104 @@ class QuizService
     {
         // Trim all source values to avoid whitespace issues
         $sources = array_map('trim', $sources);
-        // Try to get from cache first
-        $cacheKey = "quiz_questions_{$topic->id}_" . md5(serialize($sources));
+        
+        // SMART CACHE KEY with question count for deletion detection
+        $questionCount = Question::where('topic_id', $topic->id)
+            ->when(!in_array('all', $sources), function ($query) use ($sources) {
+                $query->whereIn('source', $sources);
+            })
+            ->count();
+            
+        $cacheKey = "quiz_questions_{$topic->id}_" . md5(serialize($sources)) . "_count_{$questionCount}";
+        
+        // SMART CACHING: Try cache first, validate if needed
         $questions = $this->cacheService->get($cacheKey);
-
+        
         if ($questions === null) {
-            // OPTIMIZED: Build query with selective column fetching and eager loading
-            $questionsQuery = Question::select([
-                'id', 'topic_id', 'question', 'question_type', 
-                'option_a', 'option_b', 'option_c', 'option_d',
-                'correct_answer', 'explanation', 'image_url', 'source',
-                'alternative_answers', 'similarity_threshold'
-            ])
-            ->where('topic_id', $topic->id)
-
-            ->with(['topic:id,name,course_id']); // OPTIMIZED: Eager load minimal topic data
+            // FRESH QUERY: Get questions from database
+            $questions = $this->getQuestionsFromDatabase($topic, $sources);
             
-            // Apply source filtering if specific sources are selected
-            if (!in_array('all', $sources)) {
-                $questionsQuery->whereIn('source', $sources);
-            }
-            
-            $questions = $questionsQuery->get();
-
-            // Cache for 30 minutes
-            $this->cacheService->put($cacheKey, $questions, 1800);
+            // SMART CACHE: Store with question count for deletion detection
+            $this->cacheService->put($cacheKey, $questions, 1800); // 30 minutes
         } else {
-            // OPTIMIZED: Verify that cached questions still exist in the database
-            $questionIds = $questions->pluck('id')->toArray();
-            $existingQuestions = Question::whereIn('id', $questionIds)
-                ->get();
-            
-            // If some questions were deleted, clear cache and get fresh questions
-            if ($existingQuestions->count() !== count($questionIds)) {
+            // SMART VALIDATION: Quick check if question count changed (indicates deletion)
+            $currentCount = Question::where('topic_id', $topic->id)
+                ->when(!in_array('all', $sources), function ($query) use ($sources) {
+                    $query->whereIn('source', $sources);
+                })
+                ->count();
+                
+            if ($currentCount !== $questionCount) {
+                // DELETION DETECTED: Clear cache and get fresh data
                 $this->cacheService->forget($cacheKey);
-                return $this->retrieveQuestions($topic, $sources);
+                $questions = $this->getQuestionsFromDatabase($topic, $sources);
+                $this->cacheService->put($cacheKey, $questions, 1800);
+                
+                Log::info('OPTIMIZED LETHAL FIX: Deletion detected, cache refreshed', [
+                    'topic_id' => $topic->id,
+                    'old_count' => $questionCount,
+                    'new_count' => $currentCount
+                ]);
             }
-            
-            $questions = $existingQuestions;
         }
 
-        Log::info('Questions retrieved', [
+        Log::info('OPTIMIZED LETHAL FIX: Questions retrieved with smart caching', [
             'topic_id' => $topic->id,
             'questions_count' => $questions->count(),
             'sources' => $sources,
-            'cached' => $questions !== null
+            'cache_hit' => $questions !== null,
+            'validation_type' => 'smart_count_check'
         ]);
 
         return $questions;
+    }
+
+    /**
+     * OPTIMIZED DATABASE QUERY: Get questions with efficient deletion validation
+     */
+    private function getQuestionsFromDatabase(Topic $topic, array $sources): \Illuminate\Database\Eloquent\Collection
+    {
+        // EFFICIENT QUERY: Build with minimal validation
+        $questionsQuery = Question::select([
+            'id', 'topic_id', 'question', 'question_type', 
+            'option_a', 'option_b', 'option_c', 'option_d',
+            'correct_answer', 'explanation', 'image_url', 'source',
+            'alternative_answers', 'similarity_threshold'
+        ])
+        ->where('topic_id', $topic->id)
+        ->whereNotNull('question') // Ensure question content exists
+        ->where('question', '!=', '') // Ensure question is not empty
+        ->with(['topic:id,name,course_id']); // Eager load minimal topic data
+        
+        // Apply source filtering if specific sources are selected
+        if (!in_array('all', $sources)) {
+            $questionsQuery->whereIn('source', $sources);
+        }
+        
+        // EFFICIENT VALIDATION: Single query with EXISTS check
+        $questions = $questionsQuery->get();
+        
+        // OPTIMIZED VERIFICATION: Batch check for existence
+        $questionIds = $questions->pluck('id')->toArray();
+        $existingIds = Question::whereIn('id', $questionIds)
+            ->whereNotNull('question')
+            ->where('question', '!=', '')
+            ->pluck('id')
+            ->toArray();
+            
+        $validQuestions = $questions->filter(function ($question) use ($existingIds) {
+            return in_array($question->id, $existingIds);
+        });
+        
+        if ($validQuestions->count() !== $questions->count()) {
+            Log::warning('OPTIMIZED LETHAL FIX: Deleted questions filtered out', [
+                'original_count' => $questions->count(),
+                'valid_count' => $validQuestions->count(),
+                'filtered_count' => $questions->count() - $validQuestions->count()
+            ]);
+        }
+        
+        return $validQuestions;
     }
 
     /**
@@ -378,8 +428,7 @@ class QuizService
      */
     public function getQuestionsByDifficulty(Topic $topic, string $difficulty, array $sources = ['all']): \Illuminate\Database\Eloquent\Collection
     {
-        $questionsQuery = Question::where('topic_id', $topic->id)
-            ->where('difficulty', $difficulty);
+        $questionsQuery = Question::where('topic_id', $topic->id);
         
         if (!in_array('all', $sources)) {
             $questionsQuery->whereIn('source', $sources);
@@ -578,12 +627,7 @@ class QuizService
     }
 
     /**
-     * Generate random quiz questions across multiple topics
-     *
-     * @param User $user
-     * @param int $questionCount
-     * @param array $options
-     * @return array
+     * OPTIMIZED RANDOM QUIZ: Generate random quiz with smart deletion validation
      */
     public function generateRandomQuiz(User $user, int $questionCount = 10, array $options = []): array
     {
@@ -593,7 +637,7 @@ class QuizService
             $excludeTopics = $options['exclude_topics'] ?? [];
             $courseIds = $options['course_ids'] ?? [];
 
-            Log::info('Generating random quiz', [
+            Log::info('OPTIMIZED LETHAL FIX: Generating random quiz with smart validation', [
                 'user_id' => $user->id,
                 'question_count' => $questionCount,
                 'difficulty' => $difficulty,
@@ -601,8 +645,16 @@ class QuizService
                 'course_ids' => $courseIds
             ]);
 
-            // Build query for questions
-            $questionsQuery = Question::query();
+            // SMART QUERY: Build with efficient deletion checks
+            $questionsQuery = Question::query()
+                ->whereNotNull('question') // Ensure question content exists
+                ->where('question', '!=', '') // Ensure question is not empty
+                ->select([
+                    'id', 'topic_id', 'question', 'question_type', 
+                    'option_a', 'option_b', 'option_c', 'option_d',
+                    'correct_answer', 'explanation', 'image_url', 'source',
+                    'alternative_answers', 'similarity_threshold'
+                ]);
 
             // Apply course filtering if specified
             if (!empty($courseIds)) {
@@ -622,40 +674,53 @@ class QuizService
             }
 
             // Apply difficulty filtering if specified and column exists
-            if ($difficulty !== 'mixed' && Schema::hasColumn('questions', 'difficulty')) {
+            if ($difficulty !== 'mixed' && \Schema::hasColumn('questions', 'difficulty')) {
                 $questionsQuery->where('difficulty', $difficulty);
             }
 
-            // Get questions and shuffle
-            $questions = $questionsQuery->inRandomOrder()->limit($questionCount)->get();
+            // SMART VALIDATION: Get questions and verify efficiently
+            $questions = $questionsQuery->inRandomOrder()->limit($questionCount * 1.5)->get(); // Get extra to account for deletions
+            
+            // OPTIMIZED VERIFICATION: Batch check for existence
+            $questionIds = $questions->pluck('id')->toArray();
+            $existingIds = Question::whereIn('id', $questionIds)
+                ->whereNotNull('question')
+                ->where('question', '!=', '')
+                ->pluck('id')
+                ->toArray();
+                
+            $validQuestions = $questions->filter(function ($question) use ($existingIds) {
+                return in_array($question->id, $existingIds);
+            })->take($questionCount);
 
-            if ($questions->isEmpty()) {
+            if ($validQuestions->isEmpty()) {
                 return [
                     'success' => false,
-                    'message' => 'No questions available for the specified criteria.',
+                    'message' => 'No valid questions available for the specified criteria.',
                     'questions' => []
                 ];
             }
 
             // Group questions by topic for better organization
-            $questionsByTopic = $questions->groupBy('topic_id');
+            $questionsByTopic = $validQuestions->groupBy('topic_id');
 
-            Log::info('Random quiz generated successfully', [
+            Log::info('OPTIMIZED LETHAL FIX: Random quiz generated with smart validation', [
                 'user_id' => $user->id,
-                'questions_count' => $questions->count(),
-                'topics_count' => $questionsByTopic->count()
+                'questions_count' => $validQuestions->count(),
+                'topics_count' => $questionsByTopic->count(),
+                'validation_type' => 'smart_batch_check'
             ]);
 
             return [
                 'success' => true,
-                'questions' => $questions,
+                'questions' => $validQuestions,
                 'questions_by_topic' => $questionsByTopic,
-                'total_questions' => $questions->count(),
+                'total_questions' => $validQuestions->count(),
                 'topics_covered' => $questionsByTopic->keys()->toArray()
             ];
 
         } catch (\Exception $e) {
-            Log::error('Error generating random quiz', [
+            Log::error('OPTIMIZED LETHAL FIX: Error generating random quiz', [
                 'user_id' => $user->id,
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString()
@@ -793,6 +858,55 @@ class QuizService
         $keyTerms = array_slice(array_unique($words), 0, 3);
         
         return array_merge($concepts, $keyTerms);
+    }
+
+    /**
+     * LETHAL METHOD - Get questions for quiz with nuclear deletion validation
+     *
+     * @param Topic $topic
+     * @param array $sources
+     * @return \Illuminate\Database\Eloquent\Collection
+     */
+    public function getQuestionsForQuiz(Topic $topic, array $sources = ['all']): \Illuminate\Database\Eloquent\Collection
+    {
+        // LETHAL CACHE KEY with timestamp to force refresh on deletions
+        $cacheKey = "quiz_questions_{$topic->id}_" . md5(serialize($sources)) . "_" . time();
+        
+        return Cache::remember($cacheKey, 300, function () use ($topic, $sources) {
+            // LETHAL QUERY: Build with explicit deletion checks
+            $query = Question::where('topic_id', $topic->id)
+                ->whereNotNull('question') // Ensure question content exists
+                ->where('question', '!=', '') // Ensure question is not empty
+                ->orderBy('id');
+
+            if (!in_array('all', $sources)) {
+                $query->whereIn('source', $sources);
+            }
+
+            $questions = $query->get();
+            
+            // NUCLEAR VERIFICATION: Double-check each question still exists
+            $validQuestions = collect();
+            foreach ($questions as $question) {
+                // Real-time database check for each question
+                $exists = Question::where('id', $question->id)
+                    ->where('topic_id', $question->topic_id)
+                    ->whereNotNull('question')
+                    ->where('question', '!=', '')
+                    ->exists();
+                    
+                if ($exists) {
+                    $validQuestions->push($question);
+                } else {
+                    Log::warning('LETHAL FIX: Deleted question detected in getQuestionsForQuiz', [
+                        'question_id' => $question->id,
+                        'topic_id' => $question->topic_id
+                    ]);
+                }
+            }
+            
+            return $validQuestions;
+        });
     }
 
     /**

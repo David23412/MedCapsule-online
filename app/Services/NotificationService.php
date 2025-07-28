@@ -304,6 +304,20 @@ class NotificationService
             ]
         );
         
+        // 🔥 LETHAL FIX: Also create cache notification for UI
+        UniversalNotificationService::create(
+            $user,
+            'level_up',
+            'Level Up!',
+            "Congratulations! You've reached level $newLevel",
+            [
+                'new_level' => $newLevel,
+                'xp_needed_for_next' => $xpNeeded,
+                'total_xp' => $user->calculateXP()
+            ],
+            UniversalNotificationService::PRIORITY_HIGH
+        );
+        
         // Clear notification cache to ensure immediate visibility
         $this->clearUserNotificationCache($user->id);
         
@@ -317,13 +331,25 @@ class NotificationService
         User $user,
         string $topicName
     ): Notification {
-        return $this->createNotification(
+        $notification = $this->createNotification(
             $user->id,
             'topic_mastery',
             'Quiz Mastered!',
             "You've mastered the quiz for $topicName. Keep practicing with all sources to achieve full topic mastery!",
             ['topic_name' => $topicName]
         );
+        
+        // 🔥 LETHAL FIX: Also create cache notification for UI
+        UniversalNotificationService::create(
+            $user,
+            'topic_mastery',
+            'Quiz Mastered!',
+            "You've mastered the quiz for $topicName. Keep practicing with all sources to achieve full topic mastery!",
+            ['topic_name' => $topicName],
+            UniversalNotificationService::PRIORITY_HIGH
+        );
+        
+        return $notification;
     }
 
     /**
@@ -354,13 +380,25 @@ class NotificationService
             ? "You have 1 mistake that needs review. Let's clear it up!"
             : "You have $mistakeCount mistakes that need review. Let's clear them up!";
 
-        return $this->createNotification(
+        $notification = $this->createNotification(
             $user->id,
             'review_mistakes',
             'Review Your Mistakes',
             $message,
             ['mistake_count' => $mistakeCount]
         );
+        
+        // 🔥 LETHAL FIX: Also create cache notification for UI
+        UniversalNotificationService::create(
+            $user,
+            'review_mistakes',
+            'Review Your Mistakes',
+            $message,
+            ['mistake_count' => $mistakeCount],
+            UniversalNotificationService::PRIORITY_HIGH
+        );
+        
+        return $notification;
     }
 
     /**
@@ -437,37 +475,8 @@ class NotificationService
      */
     public function createStudyStreakNotification(User $user, int $streakDays): Notification
     {
-        // Create personalized titles and messages based on the streak day count
-        $title = 'Study Streak!';
-        $message = '';
-        
-        if ($streakDays == 1) {
-            $message = "You've started a study streak! Come back tomorrow to keep it going!";
-        } else if ($streakDays == 2) {
-            $message = "Two days in a row! You're building momentum!";
-        } else if ($streakDays == 3) {
-            $message = "Three day streak! You're developing a great habit!";
-        } else if ($streakDays >= 4 && $streakDays <= 6) {
-            $message = "Impressive $streakDays day streak! You're making steady progress!";
-        } else if ($streakDays == 7) {
-            $title = "Week-long Streak!";
-            $message = "Amazing! You've maintained your study streak for a full week!";
-        } else if ($streakDays > 7 && $streakDays < 14) {
-            $message = "$streakDays days and counting! Your consistency is paying off!";
-        } else if ($streakDays == 14) {
-            $title = "Two Week Streak!";
-            $message = "Two full weeks of consistent studying! That's real dedication!";
-        } else if ($streakDays > 14 && $streakDays < 30) {
-            $message = "$streakDays day streak! You're becoming a study master!";
-        } else if ($streakDays == 30) {
-            $title = "Month-long Streak!";
-            $message = "A full month of daily studying! Your commitment is incredible!";
-        } else if ($streakDays > 30 && $streakDays < 60) {
-            $message = "$streakDays days of consistent study! Keep up the excellent work!";
-        } else if ($streakDays >= 60) {
-            $title = "Legendary Streak!";
-            $message = "$streakDays days of unbroken study! You're in the elite tier of dedicated learners!";
-        }
+        $title = "{$streakDays}-Day Study Streak!";
+        $message = "Congratulations! You've maintained a {$streakDays}-day study streak. Keep up the excellent work!";
         
         $notification = $this->createNotification(
             $user->id,
@@ -475,6 +484,16 @@ class NotificationService
             $title,
             $message,
             ['streak_days' => $streakDays]
+        );
+        
+        // 🔥 LETHAL FIX: Also create cache notification for UI
+        UniversalNotificationService::create(
+            $user,
+            'study_streak',
+            $title,
+            $message,
+            ['streak_days' => $streakDays],
+            UniversalNotificationService::PRIORITY_HIGH
         );
         
         // Clear notification cache to ensure immediate visibility
@@ -569,6 +588,19 @@ class NotificationService
                 'milestone' => $milestone,
                 'correct_answers_count' => $correctAnswersCount
             ]
+        );
+        
+        // 🔥 LETHAL FIX: Also create cache notification for UI
+        UniversalNotificationService::create(
+            $user,
+            'correct_answers_milestone',
+            "You've reached $milestone correct answers!",
+            "Congratulations! You've correctly answered $milestone questions. Your knowledge is growing stronger!",
+            [
+                'milestone' => $milestone,
+                'correct_answers_count' => $correctAnswersCount
+            ],
+            UniversalNotificationService::PRIORITY_HIGH
         );
         
         // Clear notification cache to ensure immediate visibility
@@ -879,7 +911,7 @@ class NotificationService
     {
         try {
             // Get all admin users
-            $admins = User::where('is_admin', true)->get();
+            $admins = User::where('role', 'admin')->get();
             
             if ($admins->isEmpty()) {
                 Log::warning('No admin users found to notify about payment', [
@@ -980,7 +1012,7 @@ class NotificationService
         
         try {
             // Get all admin users
-            $admins = User::where('is_admin', true)->get();
+            $admins = User::where('role', 'admin')->get();
             
             if ($admins->isEmpty()) {
                 Log::warning('No admin users found for daily payment digest');

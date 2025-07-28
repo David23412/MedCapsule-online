@@ -54,7 +54,7 @@ class AggressiveNotificationSystemTest extends TestCase
         
         // Verify they are the most recent 5
         $firstNotification = $notifications->first();
-        $this->assertStringContains('Test Notification #10', $firstNotification['title']);
+        $this->assertStringContainsString('Test Notification #10', $firstNotification['title']);
         
         echo "✅ HARD LIMIT TEST PASSED - System enforces 5 notification maximum\n";
     }

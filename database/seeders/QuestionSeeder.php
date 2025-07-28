@@ -47,7 +47,9 @@ class QuestionSeeder extends Seeder
                     'option_d' => 'Legionella pneumophila',
                     'correct_answer' => 'A',
                     'explanation' => 'Streptococcus pneumoniae (pneumococcus) is the most common cause of community-acquired pneumonia in adults.',
-                    'source' => 'Assuit'
+                    'source' => 'Assuit',
+                    'created_at' => now(),
+                    'updated_at' => now()
                 ],
                 // Multiple choice with image - using placeholder
                 [
@@ -61,34 +63,29 @@ class QuestionSeeder extends Seeder
                     'correct_answer' => 'A',
                     'explanation' => 'The X-ray shows a dense consolidation in the right lower lobe with air bronchograms, characteristic of lobar pneumonia.',
                     'source' => 'Cairo',
-                    'image_url' => null // Temporarily removing image until we have proper assets
+                    'created_at' => now(),
+                    'updated_at' => now()
                 ],
                 // Written question with multiple acceptable answers
                 [
                     'topic_id' => $topic->id,
                     'question_type' => Question::TYPE_WRITTEN,
                     'question' => 'Describe the pathophysiology of diabetic ketoacidosis (DKA) and list three key clinical manifestations.',
-                    'option_a' => null,
-                    'option_b' => null,
-                    'option_c' => null,
-                    'option_d' => null,
                     'correct_answer' => 'DKA occurs due to insulin deficiency leading to hyperglycemia, ketone production, and metabolic acidosis. Key manifestations: 1) Polyuria/polydipsia 2) Kussmaul breathing 3) Nausea/vomiting',
                     'alternative_answers' => json_encode([
                         'DKA pathophysiology involves severe insulin deficiency causing hyperglycemia and ketogenesis. Clinical signs: polyuria, Kussmaul respirations, vomiting',
                         'In DKA, lack of insulin leads to high blood sugar and ketone formation. Main symptoms are excessive thirst/urination, deep rapid breathing, and GI symptoms'
                     ]),
                     'explanation' => 'DKA is a serious complication of diabetes characterized by the triad of hyperglycemia, ketosis, and acidosis. Understanding the pathophysiology and clinical manifestations is crucial for prompt diagnosis and treatment.',
-                    'source' => 'Assuit'
+                    'source' => 'Assuit',
+                    'created_at' => now(),
+                    'updated_at' => now()
                 ],
                 // Written question with image - using placeholder
                 [
                     'topic_id' => $topic->id,
                     'question_type' => Question::TYPE_WRITTEN,
                     'question' => 'Describe the ECG abnormalities shown in this image and provide the most likely diagnosis.',
-                    'option_a' => null,
-                    'option_b' => null,
-                    'option_c' => null,
-                    'option_d' => null,
                     'correct_answer' => 'ST-segment elevation in leads V1-V4 with reciprocal ST depression in leads II, III, aVF, consistent with anterior STEMI (ST-elevation myocardial infarction)',
                     'alternative_answers' => json_encode([
                         'Anterior STEMI with ST elevation in V1-V4 and reciprocal changes',
@@ -96,7 +93,8 @@ class QuestionSeeder extends Seeder
                     ]),
                     'explanation' => 'The ECG shows classic findings of an anterior wall STEMI with ST-segment elevation in the precordial leads. Prompt recognition is essential for timely reperfusion therapy.',
                     'source' => 'Assuit',
-                    'image_url' => null // Temporarily removing image until we have proper assets
+                    'created_at' => now(),
+                    'updated_at' => now()
                 ],
                 // Multiple choice question
                 [
@@ -109,17 +107,15 @@ class QuestionSeeder extends Seeder
                     'option_d' => 'DPP-4 inhibitors',
                     'correct_answer' => 'A',
                     'explanation' => 'Metformin is the first-line medication for type 2 diabetes due to its efficacy, safety profile, and cost-effectiveness.',
-                    'source' => 'Assuit'
+                    'source' => 'Assuit',
+                    'created_at' => now(),
+                    'updated_at' => now()
                 ],
                 // Written question
                 [
                     'topic_id' => $topic->id,
                     'question_type' => Question::TYPE_WRITTEN,
                     'question' => 'Name three symptoms of acute appendicitis.',
-                    'option_a' => null,
-                    'option_b' => null,
-                    'option_c' => null,
-                    'option_d' => null,
                     'correct_answer' => 'Right lower quadrant pain, nausea/vomiting, fever',
                     'alternative_answers' => json_encode([
                         'Abdominal pain, nausea, fever',
@@ -127,7 +123,9 @@ class QuestionSeeder extends Seeder
                         'McBurney point tenderness, nausea, pyrexia'
                     ]),
                     'explanation' => 'The classic triad of appendicitis includes right lower quadrant pain (or pain migration to RLQ), nausea/vomiting, and fever. However, not all patients present with all symptoms.',
-                    'source' => 'Cairo'
+                    'source' => 'Cairo',
+                    'created_at' => now(),
+                    'updated_at' => now()
                 ]
             ];
 

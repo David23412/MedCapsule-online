@@ -208,14 +208,15 @@ class PaymentProcessingController extends Controller
     public function submitProof(Request $request, $courseId)
     {
         $validated = $request->validate([
-            'payment_proof' => 'required|image|mimes:jpeg,png,jpg,gif|max:5120',
+            'transaction_id' => 'required|string|max:100',
+            'payment_proof' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:5120',
             'transaction_reference' => 'nullable|string|max:100'
         ]);
 
         try {
             $user = Auth::user();
             
-            // Find pending payment
+            // Find or create payment record
             $payment = Payment::where('user_id', $user->id)
                 ->where('course_id', $courseId)
                 ->where('status', 'pending')
@@ -223,17 +224,39 @@ class PaymentProcessingController extends Controller
                 ->first();
 
             if (!$payment) {
-                return back()->with('error', 'No pending payment found for this course.');
+                // Create new payment record if none exists
+                $course = Course::findOrFail($courseId);
+                $payment = Payment::create([
+                    'user_id' => $user->id,
+                    'course_id' => $courseId,
+                    'amount' => $course->price,
+                    'payment_method' => 'manual',
+                    'status' => 'pending',
+                    'payment_data' => json_encode([
+                        'course_name' => $course->name,
+                        'transaction_id' => $validated['transaction_id']
+                    ])
+                ]);
+                
+                Log::info('Payment record created for proof submission', [
+                    'payment_id' => $payment->id,
+                    'user_id' => $user->id,
+                    'course_id' => $courseId,
+                    'transaction_id' => $validated['transaction_id']
+                ]);
             }
 
-            // Store payment proof
-            $proofPath = $request->file('payment_proof')->store('payment_proofs', 'public');
-            
-            // Update payment with proof
-            $paymentData = json_decode($payment->payment_data, true);
-            $paymentData['proof_path'] = $proofPath;
-            $paymentData['transaction_reference'] = $validated['transaction_reference'];
+            // Update payment with transaction ID
+            $paymentData = is_array($payment->payment_data) ? $payment->payment_data : (json_decode($payment->payment_data, true) ?: []);
+            $paymentData['transaction_id'] = $validated['transaction_id'];
+            $paymentData['transaction_reference'] = $validated['transaction_reference'] ?? $validated['transaction_id'];
             $paymentData['proof_submitted_at'] = now();
+            
+            // Handle file upload if provided
+            if ($request->hasFile('payment_proof')) {
+                $proofPath = $request->file('payment_proof')->store('payment_proofs', 'public');
+                $paymentData['proof_path'] = $proofPath;
+            }
             
             $payment->update([
                 'payment_data' => json_encode($paymentData),
@@ -243,19 +266,21 @@ class PaymentProcessingController extends Controller
             Log::info('Payment proof submitted', [
                 'payment_id' => $payment->id,
                 'user_id' => $user->id,
-                'proof_path' => $proofPath
+                'transaction_id' => $validated['transaction_id'],
+                'proof_path' => $paymentData['proof_path'] ?? null
             ]);
 
-            return back()->with('success', 'Payment proof submitted successfully. We will verify it within 24 hours.');
+            return back()->with('success', 'Payment submitted successfully! Transaction ID: ' . $validated['transaction_id'] . '. We will verify it within 24 hours.');
 
         } catch (\Exception $e) {
             Log::error('Payment proof submission failed', [
                 'error' => $e->getMessage(),
                 'course_id' => $courseId,
-                'user_id' => Auth::id()
+                'user_id' => Auth::id(),
+                'transaction_id' => $validated['transaction_id'] ?? 'not provided'
             ]);
 
-            return back()->with('error', 'Failed to submit payment proof. Please try again.');
+            return back()->with('error', 'Failed to submit payment. Error: ' . $e->getMessage());
         }
     }
 
@@ -289,7 +314,7 @@ class PaymentProcessingController extends Controller
             
             // Update all bundle payments
             foreach ($payments as $payment) {
-                $paymentData = json_decode($payment->payment_data, true);
+                $paymentData = is_array($payment->payment_data) ? $payment->payment_data : (json_decode($payment->payment_data, true) ?: []);
                 $paymentData['proof_path'] = $proofPath;
                 $paymentData['transaction_reference'] = $validated['transaction_reference'];
                 $paymentData['proof_submitted_at'] = now();

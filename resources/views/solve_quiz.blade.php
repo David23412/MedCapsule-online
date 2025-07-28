@@ -513,6 +513,13 @@
             font-weight: 500;
         }
 
+        /* Ensure correct answer card stays green even when inside incorrect feedback */
+        .feedback.incorrect .correct-answer-card {
+            background-color: #e3fcef !important;
+            border: 1px solid #00a854 !important;
+            color: #00a854 !important;
+        }
+
 
 
         .submit-btn:hover:not(:disabled) {
@@ -899,9 +906,11 @@
         .correct-answer-card {
             margin-top: 10px;
             padding: 10px;
-            background-color: rgba(82, 196, 26, 0.1);
-            border-radius: 4px;
-            border-left: 3px solid #52c41a;
+            background-color: #e3fcef !important;
+            border-radius: 8px;
+            border: 1px solid #00a854 !important;
+            color: #00a854 !important;
+            font-weight: 500;
         }
 
         .xp-total {
@@ -915,6 +924,9 @@
     </style>
 </head>
 <body>
+    <!-- LIGHTNING-FAST FOUC ELIMINATOR -->
+    @include('components.lightning-preloader')
+
     <!-- Navigation Bar -->
     <nav class="navbar">
         <div class="container">
@@ -933,7 +945,7 @@
 
     <div class="main-content">
         <div class="container">
-            <h1>{{ $topic->name }}</h1>
+            <h1>@if(isset($assignment) && $assignment && $assignment->title){{ $assignment->title }}@else{{ $topic->name }}@endif</h1>
 
             <!-- Source information display -->
             @if(isset($selected_sources) && count($selected_sources) > 0 && !in_array('all', $selected_sources))
@@ -952,8 +964,10 @@
                     <div class="d-flex justify-content-between align-items-center">
                         <div class="progress-text" id="progress-text">0 of {{ $questions->count() }} questions answered</div>
                         <div class="timer" id="timer">
-                            @if(isset($assignment) && $assignment && $assignment->duration_minutes)
+                            @if(isset($assignment) && $assignment && $assignment->duration_minutes !== null && $assignment->duration_minutes > 0)
                                 <span class="countdown-timer" data-duration="{{ $assignment->duration_minutes }}">{{ gmdate('i:s', $assignment->duration_minutes * 60) }}</span>
+                            @elseif(isset($assignment) && $assignment && $assignment->duration_minutes == 0)
+                                <span class="countup-timer">00:00</span>
                             @else
                                 <span class="countup-timer">00:00</span>
                             @endif
@@ -1065,205 +1079,77 @@
             const viewProgressButton = document.getElementById("view-progress-btn");
 
             let selectedAnswers = {};
+            const totalQuestions = {{ $questions->count() }};
 
-            // ============================================================================
-            // BULLETPROOF PROGRESS BAR POSITIONING SYSTEM - GOLDEN STANDARD IMPLEMENTATION
-            // ============================================================================
+            // 💀 SIMPLIFIED PROGRESS BAR - NO OVERLAP COMPLEXITY 💀
             const progressBarContainer = document.querySelector('.progress-bar-container');
             const submitBtn = document.getElementById('submit-btn');
-            const quizContainer = document.querySelector('.container');
             
-            let rafId = null;
-            let isProgressBarHidden = false;
-            let lastScrollY = 0;
-            let scrollDirection = 'down';
-            let progressBarHeight = 0;
-            let submitBtnHeight = 0;
-            let viewportHeight = 0;
-            
-            // BULLETPROOF INITIALIZATION
-            function initializeProgressBarSystem() {
-                if (!submitBtn || !progressBarContainer || !quizContainer) {
-                    console.warn('Progress bar system: Required elements not found');
-                    return false;
-                }
-                
-                // Cache measurements
-                progressBarHeight = progressBarContainer.offsetHeight || 80;
-                submitBtnHeight = submitBtn.offsetHeight || 60;
-                viewportHeight = window.innerHeight;
-                
-                // Add safety margin to submit button to prevent overlap
-                submitBtn.style.marginBottom = `${progressBarHeight + 20}px`;
-                
-                console.log('Progress bar system initialized:', {
-                    progressBarHeight,
-                    submitBtnHeight,
-                    viewportHeight
-                });
-                
-                return true;
-            }
-            
-            // BULLETPROOF POSITION CALCULATION
-            function calculateOptimalPosition() {
-                if (!submitBtn || !progressBarContainer) return { shouldHide: false, reason: 'missing-elements' };
-                
-                const submitBtnRect = submitBtn.getBoundingClientRect();
-                const progressBarRect = progressBarContainer.getBoundingClientRect();
-                const scrollY = window.scrollY;
-                const documentHeight = document.documentElement.scrollHeight;
-                const viewportBottom = viewportHeight;
-                
-                // Update scroll direction
-                scrollDirection = scrollY > lastScrollY ? 'down' : 'up';
-                lastScrollY = scrollY;
-                
-                // BULLETPROOF LOGIC: Multiple conditions for maximum reliability
-                const conditions = {
-                    // Condition 1: Submit button is visible or very close to viewport
-                    submitBtnVisible: submitBtnRect.top <= viewportBottom,
-                    
-                    // Condition 2: Submit button is within aggressive buffer zone
-                    submitBtnInBuffer: submitBtnRect.top <= viewportBottom + 300,
-                    
-                    // Condition 3: User is near bottom of page (percentage-based)
-                    nearPageBottom: (scrollY + viewportHeight) >= (documentHeight * 0.85),
-                    
-                    // Condition 4: Progress bar would overlap with submit button
-                    wouldOverlap: submitBtnRect.top <= (progressBarHeight + 100),
-                    
-                    // Condition 5: Submit button is in lower third of viewport
-                    inLowerThird: submitBtnRect.top <= (viewportBottom * 0.67),
-                    
-                    // Condition 6: Scrolling down and submit button approaching
-                    scrollingTowardsSubmit: scrollDirection === 'down' && submitBtnRect.top <= viewportBottom + 400
-                };
-                
-                // DECISION LOGIC: Hide if ANY critical condition is met
-                const shouldHide = conditions.submitBtnVisible || 
-                                 conditions.wouldOverlap || 
-                                 conditions.nearPageBottom ||
-                                 (conditions.scrollingTowardsSubmit && conditions.inLowerThird);
-                
-                // Determine reason for debugging
-                let reason = 'visible';
-                if (conditions.submitBtnVisible) reason = 'submit-visible';
-                else if (conditions.wouldOverlap) reason = 'overlap-prevention';
-                else if (conditions.nearPageBottom) reason = 'near-bottom';
-                else if (conditions.scrollingTowardsSubmit) reason = 'scrolling-towards';
-                else reason = 'should-show';
-                
-                return { shouldHide, reason, conditions, submitBtnRect };
-            }
-            
-            // BULLETPROOF VISIBILITY CONTROL
+            // LETHAL PROGRESS BAR - Ultra-fast with safety checks
             function updateProgressBarVisibility() {
-                const { shouldHide, reason, conditions } = calculateOptimalPosition();
+                if (!submitBtn || !progressBarContainer || !document.body) return;
                 
-                if (shouldHide && !isProgressBarHidden) {
-                    // NUCLEAR HIDE - Multiple redundant methods for 100% reliability
-                    progressBarContainer.classList.add('hidden');
-                    progressBarContainer.style.cssText += `
-                        transform: translate(-50%, 100%) !important;
-                        opacity: 0 !important;
-                        visibility: hidden !important;
-                        pointer-events: none !important;
-                        z-index: -1 !important;
-                        bottom: -200px !important;
-                    `;
+                try {
+                    const submitBtnRect = submitBtn.getBoundingClientRect();
+                    const isSubmitVisible = submitBtnRect.top < window.innerHeight;
                     
-                    isProgressBarHidden = true;
-                    console.log(`Progress bar HIDDEN - Reason: ${reason}`);
-                    
-                } else if (!shouldHide && isProgressBarHidden) {
-                    // AGGRESSIVE SHOW - When conditions are clearly safe
-                    progressBarContainer.classList.remove('hidden');
-                    progressBarContainer.style.cssText = progressBarContainer.style.cssText.replace(/transform:[^;]*;?/gi, '');
-                    progressBarContainer.style.cssText = progressBarContainer.style.cssText.replace(/opacity:[^;]*;?/gi, '');
-                    progressBarContainer.style.cssText = progressBarContainer.style.cssText.replace(/visibility:[^;]*;?/gi, '');
-                    progressBarContainer.style.cssText = progressBarContainer.style.cssText.replace(/pointer-events:[^;]*;?/gi, '');
-                    progressBarContainer.style.cssText = progressBarContainer.style.cssText.replace(/z-index:[^;]*;?/gi, '');
-                    progressBarContainer.style.cssText = progressBarContainer.style.cssText.replace(/bottom:[^;]*;?/gi, '');
-                    
-                    // Restore original styles
-                    progressBarContainer.style.transform = 'translate(-50%, 0)';
-                    progressBarContainer.style.opacity = '1';
-                    progressBarContainer.style.visibility = 'visible';
-                    progressBarContainer.style.pointerEvents = 'auto';
-                    progressBarContainer.style.zIndex = '999';
-                    progressBarContainer.style.bottom = '0';
-                    
-                    isProgressBarHidden = false;
-                    console.log(`Progress bar SHOWN - Reason: ${reason}`);
+                    if (isSubmitVisible) {
+                        progressBarContainer.style.display = 'none';
+                    } else {
+                        progressBarContainer.style.display = 'block';
+                    }
+                } catch (error) {
+                    // LETHAL FALLBACK - Hide progress bar if any error occurs
+                    if (progressBarContainer) {
+                        progressBarContainer.style.display = 'none';
+                    }
                 }
             }
             
-            // BULLETPROOF SCROLL HANDLER
-            function onScroll() {
-                if (rafId) return;
-                
-                rafId = requestAnimationFrame(() => {
-                    updateProgressBarVisibility();
-                    rafId = null;
-                });
-            }
+            // 💀 LETHAL CLIENT-SIDE ANSWER CHECKING 💀
+            let questionData = {};
+            let answerCache = {};
             
-            // BULLETPROOF RESIZE HANDLER
-            function onResize() {
-                viewportHeight = window.innerHeight;
-                progressBarHeight = progressBarContainer?.offsetHeight || 80;
-                submitBtnHeight = submitBtn?.offsetHeight || 60;
-                
-                // Update submit button margin
-                if (submitBtn) {
-                    submitBtn.style.marginBottom = `${progressBarHeight + 20}px`;
-                }
-                
-                // Force recalculation
-                setTimeout(() => {
-                    updateProgressBarVisibility();
-                }, 100);
-            }
+            // PRELOAD ALL QUESTION DATA ON PAGE LOAD
+            console.log('🔥 PRELOADING QUESTION DATA FOR INSTANT CHECKING...');
             
-            // BULLETPROOF ORIENTATION CHANGE HANDLER
-            function onOrientationChange() {
-                setTimeout(() => {
-                    onResize();
-                    updateProgressBarVisibility();
-                }, 300); // Wait for orientation change to complete
-            }
+            // Extract question data from DOM
+            @foreach($questions as $index => $question)
+                @php $qObj = is_array($question) ? $question['question'] : $question; @endphp
+                questionData[{{ $qObj->id ?? 0 }}] = {
+                    correct_answer: '{{ $qObj->correct_answer ?? '' }}',
+                    explanation: `{!! addslashes($qObj->explanation ?? '') !!}`,
+                    question_type: '{{ $qObj->question_type ?? 'multiple_choice' }}'
+                };
+            @endforeach
             
-            // BULLETPROOF EVENT LISTENERS
-            if (initializeProgressBarSystem()) {
-                // Passive listeners for better performance
-                window.addEventListener('scroll', onScroll, { passive: true });
-                window.addEventListener('resize', onResize, { passive: true });
-                window.addEventListener('orientationchange', onOrientationChange, { passive: true });
-                
-                // Handle dynamic content changes
-                const observer = new MutationObserver(() => {
-                    setTimeout(updateProgressBarVisibility, 50);
-                });
-                
-                if (quizContainer) {
-                    observer.observe(quizContainer, {
-                        childList: true,
-                        subtree: true,
-                        attributes: true,
-                        attributeFilter: ['style', 'class']
-                    });
-                }
-                
-                // Initial position check with multiple attempts
-                setTimeout(() => updateProgressBarVisibility(), 100);
-                setTimeout(() => updateProgressBarVisibility(), 500);
-                setTimeout(() => updateProgressBarVisibility(), 1000);
-                
-                console.log('✅ BULLETPROOF Progress Bar System ACTIVATED');
-            } else {
-                console.error('❌ Progress Bar System FAILED to initialize');
-            }
+            console.log('✅ Question data preloaded for', Object.keys(questionData).length, 'questions');
+            
+            // PERFORMANCE MONITORING
+            window.performanceStats = {
+                instantChecks: 0,
+                cacheHits: 0,
+                networkRequests: 0,
+                totalTime: 0
+            };
+            
+            window.getPerformanceStats = function() {
+                console.log('📊 PERFORMANCE STATS:', window.performanceStats);
+                const avgTime = window.performanceStats.totalTime / (window.performanceStats.instantChecks + window.performanceStats.cacheHits + window.performanceStats.networkRequests);
+                console.log(`📊 AVERAGE RESPONSE TIME: ${Math.round(avgTime)}ms`);
+                return window.performanceStats;
+            };
+
+            // SIMPLE PROGRESS BAR - SAME AS QUIZ MODE
+
+            // SIMPLE SCROLL LISTENER - SAME AS QUIZ MODE
+            window.addEventListener('scroll', updateProgressBarVisibility, { passive: true });
+            window.addEventListener('resize', updateProgressBarVisibility, { passive: true });
+            
+            // Initial check
+            setTimeout(updateProgressBarVisibility, 100);
+            
+            console.log('✅ SIMPLIFIED Progress Bar System ACTIVATED');
 
             if (quizForm) {
                 // Handle multiple choice answers
@@ -1290,7 +1176,6 @@
 
                 // Function to update progress
                 function updateProgress() {
-                    const totalQuestions = {{ $questions->count() }};
                     const answeredQuestions = Object.keys(selectedAnswers).length;
                     
                     // Update progress bar
@@ -1306,6 +1191,7 @@
 
                 // Add timer functionality
                 let startTime = new Date();
+                window.quizStartTime = startTime.getTime(); // LETHAL FIX: Set global quiz start time
                 let timerInterval;
                 const timerElement = document.getElementById('timer');
                 const countdownSpan = timerElement.querySelector('.countdown-timer');
@@ -1315,7 +1201,79 @@
                 const durationMinutes = isCountdown ? parseFloat(countdownSpan.dataset.duration) : null;
                 let totalSeconds = isCountdown ? Math.floor(durationMinutes * 60) : 0;
                 
+                // FALLBACK: If assignment has duration but countdown not detected, force countdown mode
+                @if(isset($assignment) && $assignment && $assignment->duration_minutes !== null && $assignment->duration_minutes > 0)
+                    if (!isCountdown && {{ $assignment->duration_minutes }} > 0) {
+                        console.log('🔄 FALLBACK: Forcing countdown mode for assignment');
+                        // Create countdown span if it doesn't exist
+                        if (!countdownSpan) {
+                            const newCountdownSpan = document.createElement('span');
+                            newCountdownSpan.className = 'countdown-timer';
+                            newCountdownSpan.setAttribute('data-duration', '{{ $assignment->duration_minutes }}');
+                            newCountdownSpan.textContent = '{{ gmdate("i:s", $assignment->duration_minutes * 60) }}';
+                            timerElement.appendChild(newCountdownSpan);
+                            
+                            // Update references
+                            const newCountdownSpanRef = timerElement.querySelector('.countdown-timer');
+                            const newDurationMinutes = parseFloat(newCountdownSpanRef.dataset.duration);
+                            const newTotalSeconds = Math.floor(newDurationMinutes * 60);
+                            
+                            // Override variables
+                            Object.assign(window, {
+                                isCountdown: true,
+                                isCountup: false,
+                                durationMinutes: newDurationMinutes,
+                                totalSeconds: newTotalSeconds,
+                                countdownSpan: newCountdownSpanRef
+                            });
+                            
+                            console.log('✅ FALLBACK: Countdown mode activated');
+                        }
+                    }
+                @endif
+                
+                // FALLBACK: If assignment has no time limit but countup not detected, force countup mode
+                @if(isset($assignment) && $assignment && $assignment->duration_minutes == 0)
+                    if (!isCountup && {{ $assignment->duration_minutes }} == 0) {
+                        console.log('🔄 FALLBACK: Forcing countup mode for assignment with no time limit');
+                        // Create countup span if it doesn't exist
+                        if (!countupSpan) {
+                            const newCountupSpan = document.createElement('span');
+                            newCountupSpan.className = 'countup-timer';
+                            newCountupSpan.textContent = '00:00';
+                            timerElement.appendChild(newCountupSpan);
+                            
+                            // Update references
+                            const newCountupSpanRef = timerElement.querySelector('.countup-timer');
+                            
+                            // Override variables
+                            Object.assign(window, {
+                                isCountdown: false,
+                                isCountup: true,
+                                durationMinutes: 0,
+                                totalSeconds: 0,
+                                countupSpan: newCountupSpanRef
+                            });
+                            
+                            console.log('✅ FALLBACK: Countup mode activated');
+                        }
+                    }
+                @endif
+                
+                // DEBUG: Log timer detection
+                console.log('🔍 TIMER DEBUG:');
+                console.log('Timer element:', timerElement);
+                console.log('Countdown span:', countdownSpan);
+                console.log('Countup span:', countupSpan);
+                console.log('Is countdown:', isCountdown);
+                console.log('Is countup:', isCountup);
+                console.log('Duration minutes:', durationMinutes);
+                console.log('Total seconds:', totalSeconds);
+                console.log('Assignment duration:', '{{ isset($assignment) && $assignment ? ($assignment->duration_minutes ?? "null") : "no assignment" }}');
+                
                 function updateTimer() {
+                    // LETHAL TIMER - No excessive logging for performance
+                    
                     if (isCountdown) {
                         // Countdown timer for assignments
                         const currentTime = new Date();
@@ -1408,6 +1366,52 @@
                 // Start the timer
                 updateTimer();
 
+                // LETHAL FLAG - Prevent double sound playing
+                let soundPlayed = false;
+                
+                // Reset flag when quiz starts
+                soundPlayed = false;
+                
+                // Function to show quiz results popup
+                function showQuizResults(data) {
+                    const popupOverlay = document.getElementById('popup-overlay');
+                    const popupTitle = document.getElementById('popup-title');
+                    const popupScore = document.getElementById('popup-score');
+                    const popupMessage = document.getElementById('popup-message');
+                    const gradeIcon = document.getElementById('grade-icon');
+                    
+                    // Update popup content
+                    popupScore.textContent = `${data.score}/${data.total}`;
+                    
+                    // Set title and message based on performance
+                    if (data.percentage === 100) {
+                        popupTitle.textContent = 'Perfect Score!';
+                        popupMessage.textContent = 'Outstanding! You got everything right!';
+                        gradeIcon.innerHTML = '<i class="fas fa-star" style="color: #ffd700;"></i>';
+                    } else if (data.percentage >= 80) {
+                        popupTitle.textContent = 'Well Done!';
+                        popupMessage.textContent = 'Great job! You\'re making excellent progress!';
+                        gradeIcon.innerHTML = '<i class="fas fa-thumbs-up" style="color: #28a745;"></i>';
+                    } else if (data.percentage >= 60) {
+                        popupTitle.textContent = 'Good Effort!';
+                        popupMessage.textContent = 'You\'re on the right track! Keep practicing!';
+                        gradeIcon.innerHTML = '<i class="fas fa-check-circle" style="color: #17a2b8;"></i>';
+                    } else {
+                        popupTitle.textContent = 'Keep Learning!';
+                        popupMessage.textContent = 'Don\'t worry! Review the material and try again!';
+                        gradeIcon.innerHTML = '<i class="fas fa-lightbulb" style="color: #ffc107;"></i>';
+                    }
+                    
+                    // Show popup
+                    popupOverlay.classList.add('show');
+                    
+                    // LETHAL FIX: Play sound only once
+                    if (!soundPlayed) {
+                        playQuizCompletionSound(data.score, data.total);
+                        soundPlayed = true;
+                    }
+                }
+
                 // Function to update source progress
                 function updateSourceProgress(sourceProgress) {
                     if (!sourceProgress) return;
@@ -1433,22 +1437,57 @@
 
                 quizForm.addEventListener("submit", function (event) {
                     event.preventDefault();
+                    
+                    const startTime = performance.now();
+                    console.log('� SF16 RAPTOR QUIZ GRADING...');
 
-                    // Disable submit button
+                    // INSTANT UI FEEDBACK
                     submitButton.disabled = true;
-                    submitButton.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Submitting...';
+                    submitButton.textContent = 'Grading...';
                     
-                    // Calculate duration
-                    const endTime = new Date();
-                    const durationSeconds = Math.floor((endTime - startTime) / 1000);
+                    // INSTANT DURATION CALC
+                    const endTime = Date.now();
+                    let durationSeconds = Math.floor((endTime - (window.quizStartTime || startTime.getTime())) / 1000);
                     
-                    // Clear timer interval
+                    // LETHAL FIX: Ensure duration is a valid integer
+                    if (isNaN(durationSeconds) || durationSeconds < 0) {
+                        console.error('Invalid duration calculated:', durationSeconds);
+                        durationSeconds = 1; // Fallback to 1 second if calculation fails
+                    }
+                    
                     clearTimeout(timerInterval);
                     
-                    // BRUTAL DATA VALIDATION AND PREPARATION
+                    // 💀 NUCLEAR SPEED GRADING 💀
+                    let score = 0;
+                    
+                    // LEAN GRADING LOOP
+                    for (const [questionId, userAnswer] of Object.entries(selectedAnswers)) {
+                        const questionInfo = questionData[questionId];
+                        if (questionInfo && userAnswer.toLowerCase().trim() === questionInfo.correct_answer.toLowerCase().trim()) {
+                            score++;
+                        }
+                    }
+                    
+                    const percentage = Math.round((score / totalQuestions) * 100);
+                    const gradingTime = performance.now() - startTime;
+                    
+                    console.log(`✅ GRADED in ${Math.round(gradingTime)}ms: ${score}/${totalQuestions} (${percentage}%)`);
+                    
+                    // INSTANT RESULTS
+                    showQuizResults({
+                        score: score,
+                        total: totalQuestions,
+                        percentage: percentage,
+                        processing_time: gradingTime
+                    });
+                    
+                    // LETHAL DATA PREPARATION - Ultra-fast
                     const formData = new FormData(this);
-                    formData.append('time_taken', durationSeconds);
+                    formData.append('time_taken', parseInt(durationSeconds) || 1); // LETHAL FIX: Ensure integer with fallback
                     formData.append('mode', '{{ $mode ?? 'quiz' }}');
+                    
+                    // LETHAL DEBUG: Log what we're sending
+                    console.log('🔥 SENDING time_taken:', parseInt(durationSeconds) || 1, 'type:', typeof (parseInt(durationSeconds) || 1));
                     
                     // ENSURE ALL ANSWERS ARE INCLUDED
                     // Double-check that all radio button answers are in the FormData
@@ -1476,7 +1515,6 @@
                     }
                     
                     // RUTHLESS VALIDATION: For countdown quizzes, FORCE submission with unanswered = incorrect
-                    const totalQuestions = {{ $questions->count() }};
                     const answeredQuestions = Object.keys(selectedAnswers).length;
                     
                     @if(isset($assignment) && $assignment && $assignment->duration_minutes)
@@ -1660,9 +1698,8 @@
                         
                         // Update source progress if available
                         if (data.source_progress) {
-                            // Dispatch a custom event with the source progress data
-                            const event = new CustomEvent('sourceProgressUpdated', {
-                                detail: {
+                            // Store progress data in localStorage for real-time updates
+                            const progressData = {
                                     topicId: {{ $topic->id }},
                                     @if(isset($assignment) && $assignment)
                                     assignmentId: {{ $assignment->id }}, // Assignment context for proper card targeting
@@ -1671,11 +1708,95 @@
                                     @endif
                                     progress: data.source_progress,
                                     availableSources: Object.keys(data.source_progress),
-                                    allSourcesMastered: Object.values(data.source_progress).every(p => p.percentage >= 90)
-                                }
+                                allSourcesMastered: Object.values(data.source_progress).every(p => p.percentage >= 90),
+                                timestamp: Date.now()
+                            };
+                            
+                            // Store in localStorage for cross-page communication
+                            localStorage.setItem('quizProgressUpdate', JSON.stringify(progressData));
+                            
+                            // Dispatch event for current page (if any listeners)
+                            const event = new CustomEvent('sourceProgressUpdated', {
+                                detail: progressData
                             });
-                            window.parent.document.dispatchEvent(event);
+                            document.dispatchEvent(event);
+                            
+                            // 🔥 SERVER-SIDE STORAGE - For cross-tab communication
+                            fetch('{{ route("progress.store-update") }}', {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+                                },
+                                body: JSON.stringify({
+                                    topicId: {{ $topic->id }},
+                                    @if(isset($assignment) && $assignment)
+                                    assignmentId: {{ $assignment->id }},
+                                    @else
+                                    assignmentId: null,
+                                    @endif
+                                    progress: data.source_progress,
+                                    availableSources: Object.keys(data.source_progress),
+                                    allSourcesMastered: Object.values(data.source_progress).every(p => p.percentage >= 90),
+                                    userId: {{ auth()->id() }}
+                                })
+                            }).then(response => response.json())
+                            .then(result => {
+                                console.log('🔥 Server progress update stored:', result);
+                            })
+                            .catch(error => {
+                                console.error('Failed to store progress update on server:', error);
+                            });
+                            
+                            console.log('🔥 Quiz progress updated and stored for real-time sync (localStorage + server)');
                         }
+                        
+                        // LETHAL ASSIGNMENT COMPLETION EVENT - Only for assignments
+                        @if(isset($assignment) && $assignment)
+                        if (data.assignment_completed) {
+                            console.log('🔥 DISPATCHING ASSIGNMENT COMPLETION EVENT');
+                            const assignmentData = {
+                                assignmentId: {{ $assignment->id }},
+                                percentage: data.percentage,
+                                score: data.score,
+                                total: data.total,
+                                timestamp: Date.now()
+                            };
+                            
+                            // Store in localStorage for cross-page communication
+                            localStorage.setItem('assignmentCompleted', JSON.stringify(assignmentData));
+                            
+                            // Dispatch event for current page (if any listeners)
+                            const assignmentEvent = new CustomEvent('assignmentCompleted', {
+                                detail: assignmentData
+                            });
+                            document.dispatchEvent(assignmentEvent);
+                            
+                            // 🔥 SERVER-SIDE STORAGE - For cross-tab communication
+                            fetch('{{ route("progress.store-assignment") }}', {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+                                },
+                                body: JSON.stringify({
+                                    assignmentId: {{ $assignment->id }},
+                                    percentage: data.percentage,
+                                    score: data.score,
+                                    total: data.total,
+                                    userId: {{ auth()->id() }}
+                                })
+                            }).then(response => response.json())
+                            .then(result => {
+                                console.log('🔥 Server assignment completion stored:', result);
+                            })
+                            .catch(error => {
+                                console.error('Failed to store assignment completion on server:', error);
+                            });
+                            
+                            console.log('🔥 Assignment completion stored for real-time sync (localStorage + server)');
+                        }
+                        @endif
                         
                         // Mark correct and incorrect answers only if we have the data
                         if (data.correct_answers) {
@@ -1746,8 +1867,7 @@
                             });
                         }
                         
-                        // Play completion sound
-                        playQuizCompletionSound(data.score, data.total);
+                        // LETHAL FIX: Sound already played in showQuizResults - no duplicate
                         
                         // Show popup
                         popupOverlay.classList.add('show');
@@ -1810,8 +1930,18 @@
             });
         });
 
+        // LETHAL GLOBAL FLAG - Prevent any duplicate sound plays
+        let globalSoundPlayed = false;
+        
         // SIMPLE RELIABLE AUDIO SYSTEM
         function playQuizCompletionSound(score, total) {
+            // LETHAL CHECK - Prevent duplicate plays
+            if (globalSoundPlayed) {
+                console.log('🚫 Sound already played - preventing duplicate');
+                return;
+            }
+            
+            globalSoundPlayed = true;
             const percentage = (score / total) * 100;
             
             let audioElement;

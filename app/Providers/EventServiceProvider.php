@@ -15,6 +15,7 @@ use App\Events\UserProgressUpdated;
 use App\Events\QuizAttemptCompleted;
 use App\Events\NotificationCreated;
 use App\Events\PaymentCompleted;
+use App\Events\SourceProgressUpdated;
 
 // Import notification events
 use App\Events\StudyStreakUpdated;
@@ -27,6 +28,8 @@ use App\Events\SkippedQuestionsDetected;
 use App\Events\TopicUnlockedByTutor;
 use App\Events\AssignmentDeadlineChanged;
 use App\Events\CorrectAnswersMilestoneReached;
+use App\Events\PaymentSuccessful;
+use App\Events\PaymentFailed;
 
 // Import our custom listeners
 use App\Listeners\InvalidateCourseCache;
@@ -36,6 +39,7 @@ use App\Listeners\InvalidateUserProgressCache;
 use App\Listeners\InvalidateQuizCache;
 use App\Listeners\InvalidateNotificationCache;
 use App\Listeners\InvalidatePaymentCache;
+use App\Listeners\SourceProgressUpdatedListener;
 
 // Import notification listeners
 use App\Listeners\SendStudyStreakNotification;
@@ -80,6 +84,10 @@ class EventServiceProvider extends ServiceProvider
 
         QuizAttemptCompleted::class => [
             InvalidateQuizCache::class,
+        ],
+
+        SourceProgressUpdated::class => [
+            SourceProgressUpdatedListener::class,
         ],
 
         NotificationCreated::class => [
@@ -129,6 +137,15 @@ class EventServiceProvider extends ServiceProvider
 
         CorrectAnswersMilestoneReached::class => [
             SendCorrectAnswersMilestoneNotification::class,
+        ],
+
+        // 🔥 LETHAL FIX: Payment events
+        PaymentSuccessful::class => [
+            // We'll need to create this listener
+        ],
+
+        PaymentFailed::class => [
+            // We'll need to create this listener
         ],
     ];
 

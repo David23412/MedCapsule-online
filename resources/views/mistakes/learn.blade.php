@@ -16,6 +16,78 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    
+    <!-- 💀 NUCLEAR AUDIO PRELOADING SYSTEM - F16 RAPTOR SPEED 💀 -->
+    <audio id="correctSound" preload="auto" volume="0.7">
+        <source src="/sounds/Single-correct.mp3" type="audio/mpeg">
+    </audio>
+    <audio id="wrongSound" preload="auto" volume="0.6">
+        <source src="/sounds/quiz-wrong.mp3" type="audio/mpeg">
+    </audio>
+    <audio id="encouragementSound" preload="auto" volume="0.7">
+        <source src="/sounds/encouragement.mp3" type="audio/mpeg">
+    </audio>
+    
+    <!-- 💀 GRADING SOUNDS PRELOADING - INSTANT FINAL FEEDBACK 💀 -->
+    <audio id="quizPerfectSound" preload="auto" volume="0.7">
+        <source src="/sounds/quiz-perfect.mp3" type="audio/mpeg">
+    </audio>
+    <audio id="quizPartialSound" preload="auto" volume="0.7">
+        <source src="/sounds/quiz-partial.mp3" type="audio/mpeg">
+    </audio>
+    <audio id="quizWrongSound" preload="auto" volume="0.7">
+        <source src="/sounds/quiz-wrong.mp3" type="audio/mpeg">
+    </audio>
+    
+    <!-- 💀 INSTANT AUDIO PRELOADING SCRIPT 💀 -->
+    <script>
+        // NUCLEAR PRELOADING - RUNS IMMEDIATELY
+        (function() {
+            const audioUrls = [
+                '/sounds/Single-correct.mp3',
+                '/sounds/quiz-wrong.mp3',
+                '/sounds/encouragement.mp3'
+            ];
+            
+            // 💀 LETHAL AUDIO CONTEXT CREATION 💀
+            let audioContext;
+            try {
+                audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            } catch (e) {
+                console.log('AudioContext not supported');
+            }
+            
+            // Preload all audio files instantly with error handling
+            audioUrls.forEach(url => {
+                const audio = new Audio();
+                audio.preload = 'auto';
+                audio.src = url;
+                
+                // Handle 404 errors silently
+                audio.addEventListener('error', function(e) {
+                    console.log('Audio preload failed (404):', url);
+                });
+                
+                // Log successful loads
+                audio.addEventListener('canplaythrough', function() {
+                    console.log('Audio preloaded successfully:', url);
+                });
+                
+                audio.load();
+            });
+            
+            // 💀 LETHAL AUDIO CONTEXT PRIMING 💀
+            if (audioContext && audioContext.state === 'suspended') {
+                document.addEventListener('click', function() {
+                    audioContext.resume();
+                }, { once: true });
+            }
+        })();
+    </script>
+    
+    <!-- 💀 NUCLEAR SPEED OPTIMIZATIONS 💀 -->
+    <link rel="preconnect" href="{{ url('/') }}">
+    <link rel="dns-prefetch" href="{{ url('/') }}">
     <style>
         body {
             font-family: 'Poppins', sans-serif;
@@ -823,6 +895,9 @@
 </head>
 
 <body>
+    <!-- LIGHTNING-FAST FOUC ELIMINATOR -->
+    @include('components.lightning-preloader')
+
     <nav class="navbar">
         <div class="container">
             <div class="nav-group">
@@ -1007,16 +1082,7 @@
         </div>
     </div>
 
-    <!-- Add audio elements for all sounds -->
-    <audio id="correctSound" preload="auto" volume="0.7">
-        <source src="{{ asset('sounds/Single-correct.mp3') }}" type="audio/mpeg">
-    </audio>
-    <audio id="wrongSound" preload="auto" volume="0.6">
-        <source src="{{ asset('sounds/quiz-wrong.mp3') }}" type="audio/mpeg">
-    </audio>
-    <audio id="encouragementSound" preload="auto" volume="0.7">
-        <source src="{{ asset('sounds/encouragement.mp3') }}" type="audio/mpeg">
-    </audio>
+    <!-- 💀 AUDIO ELEMENTS MOVED TO HEAD FOR NUCLEAR PRELOADING 💀 -->
 
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.5.1/dist/confetti.browser.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
@@ -1031,60 +1097,220 @@
             const wrongSound = document.getElementById('wrongSound');
             const encouragementSound = document.getElementById('encouragementSound');
             const courseFilter = document.getElementById('course-filter');
+            
+            // 💀 LETHAL AUDIO POOL SYSTEM - MULTIPLE READY AUDIO ELEMENTS 💀
+            const audioPool = {
+                correct: [],
+                wrong: [],
+                encouragement: []
+            };
+            
+            // Create multiple audio elements for instant playback
+            function createAudioPool() {
+                // Create 10 ready-to-play audio elements for each sound (DOUBLED FOR LETHAL SPEED)
+                for (let i = 0; i < 10; i++) {
+                    // Correct sound pool
+                    const correctAudio = new Audio('/sounds/Single-correct.mp3');
+                    correctAudio.volume = 0.7;
+                    correctAudio.preload = 'auto';
+                    audioPool.correct.push(correctAudio);
+                    
+                    // Wrong sound pool
+                    const wrongAudio = new Audio('/sounds/quiz-wrong.mp3');
+                    wrongAudio.volume = 0.6;
+                    wrongAudio.preload = 'auto';
+                    audioPool.wrong.push(wrongAudio);
+                    
+                    // Encouragement sound pool
+                    const encouragementAudio = new Audio('/sounds/encouragement.mp3');
+                    encouragementAudio.volume = 0.7;
+                    encouragementAudio.preload = 'auto';
+                    audioPool.encouragement.push(encouragementAudio);
+                }
+            }
+            
+            // Initialize the audio pool
+            createAudioPool();
+            
+            // 💀 LETHAL AUDIO POOL REPLENISHMENT SYSTEM 💀
+            function replenishAudioPool() {
+                // Replenish correct audio pool if running low
+                if (audioPool.correct.length < 5) {
+                    for (let i = 0; i < 3; i++) {
+                        const correctAudio = new Audio('/sounds/Single-correct.mp3');
+                        correctAudio.volume = 0.7;
+                        correctAudio.preload = 'auto';
+                        audioPool.correct.push(correctAudio);
+                    }
+                }
+                
+                // Replenish wrong audio pool if running low
+                if (audioPool.wrong.length < 5) {
+                    for (let i = 0; i < 3; i++) {
+                        const wrongAudio = new Audio('/sounds/quiz-wrong.mp3');
+                        wrongAudio.volume = 0.6;
+                        wrongAudio.preload = 'auto';
+                        audioPool.wrong.push(wrongAudio);
+                    }
+                }
+                
+                // Replenish encouragement audio pool if running low
+                if (audioPool.encouragement.length < 5) {
+                    for (let i = 0; i < 3; i++) {
+                        const encouragementAudio = new Audio('/sounds/encouragement.mp3');
+                        encouragementAudio.volume = 0.7;
+                        encouragementAudio.preload = 'auto';
+                        audioPool.encouragement.push(encouragementAudio);
+                    }
+                }
+            }
+            
+            // Replenish pool every 5 seconds to ensure we never run out
+            setInterval(replenishAudioPool, 5000);
+            
+            // 💀 LETHAL AUDIO POOL MONITORING - PREVENTS RUNNING OUT 💀
+            setInterval(() => {
+                console.log('🔍 AUDIO POOL STATUS:', {
+                    correct: audioPool.correct.length,
+                    wrong: audioPool.wrong.length,
+                    encouragement: audioPool.encouragement.length
+                });
+                
+                // Force replenish if pools are getting low
+                if (audioPool.correct.length < 3) {
+                    console.log('⚠️ CORRECT POOL LOW - FORCE REPLENISHING');
+                    for (let i = 0; i < 5; i++) {
+                        const correctAudio = new Audio('/sounds/Single-correct.mp3');
+                        correctAudio.volume = 0.7;
+                        correctAudio.preload = 'auto';
+                        audioPool.correct.push(correctAudio);
+                    }
+                }
+                
+                if (audioPool.wrong.length < 3) {
+                    console.log('⚠️ WRONG POOL LOW - FORCE REPLENISHING');
+                    for (let i = 0; i < 5; i++) {
+                        const wrongAudio = new Audio('/sounds/quiz-wrong.mp3');
+                        wrongAudio.volume = 0.6;
+                        wrongAudio.preload = 'auto';
+                        audioPool.wrong.push(wrongAudio);
+                    }
+                }
+            }, 2000); // Check every 2 seconds
+            
+            // Simple skip tracking
+            let skippedQuestions = new Set();
 
-            // Robust sound system with instant feedback
+            // 💀 LETHAL F16 RAPTOR SOUND SYSTEM - INSTANT FEEDBACK 💀
             const soundSystem = {
                 playSound: function(audioElement) {
                     if (!audioElement) return;
                     
+                    // Check if audio is ready or has errors
+                    if (audioElement.readyState < 2 || audioElement.error) {
+                        console.log('Audio not ready, skipping playback');
+                        return;
+                    }
+                    
                     try {
-                        // Stop any current playback
-                        audioElement.pause();
-                        audioElement.currentTime = 0;
+                        // NUCLEAR SPEED: Clone and play for instant response
+                        const clone = audioElement.cloneNode();
+                        clone.volume = audioElement.volume;
                         
-                        // Play immediately
-                        const playPromise = audioElement.play();
+                        // Play the clone immediately
+                        const playPromise = clone.play();
                         if (playPromise !== undefined) {
-                            playPromise.catch(e => {
-                                // Fallback: try to play again after a tiny delay
-                                setTimeout(() => {
-                                    audioElement.play().catch(() => {
-                                        // Silent fail - don't log to avoid spam
-                                    });
-                                }, 10);
+                            playPromise.catch(() => {
+                                // Fallback: try original element
+                                audioElement.currentTime = 0;
+                                audioElement.play().catch(() => {
+                                    // Final fallback: try again after micro delay
+                                    setTimeout(() => {
+                                        audioElement.play().catch(() => {});
+                                    }, 5);
+                                });
                             });
                         }
+                        
+                        // Clean up clone after playback
+                        clone.addEventListener('ended', () => {
+                            clone.remove();
+                        });
                     } catch (e) {
-                        // Silent fail for instant feedback
+                        // Silent fail for maximum speed
                     }
                 },
                 
                 playCorrect: function() {
+                    // 💀 BULLETPROOF AUDIO CONTROL - NO SOUNDS UNTIL QUIZ STARTS 💀
+                    if (!quizStarted) {
+                        console.log('🔇 AUDIO BLOCKED - Quiz not started yet');
+                        return;
+                    }
                     this.playSound(correctSound);
                 },
                 
                 playWrong: function() {
+                    // 💀 BULLETPROOF AUDIO CONTROL - NO SOUNDS UNTIL QUIZ STARTS 💀
+                    if (!quizStarted) {
+                        console.log('🔇 AUDIO BLOCKED - Quiz not started yet');
+                        return;
+                    }
                     this.playSound(wrongSound);
                 },
                 
                 playEncouragement: function() {
+                    // 💀 BULLETPROOF AUDIO CONTROL - NO SOUNDS UNTIL QUIZ STARTS 💀
+                    if (!quizStarted) {
+                        console.log('🔇 AUDIO BLOCKED - Quiz not started yet');
+                        return;
+                    }
                     this.playSound(encouragementSound);
                 }
             };
 
-            // Preload sounds for instant playback
-            [correctSound, wrongSound, encouragementSound].forEach(sound => {
+            // 💀 NUCLEAR AUDIO PRELOADING SYSTEM - F16 RAPTOR SPEED 💀
+            const audioElements = [correctSound, wrongSound, encouragementSound];
+            
+            // Force preload all audio files immediately
+            audioElements.forEach(sound => {
                 if (sound) {
-                    sound.load();
-                    // Attempt to prime the audio context
-                    sound.play().then(() => {
-                        sound.pause();
-                        sound.currentTime = 0;
-                    }).catch(() => {
-                        // Expected to fail on first load, that's fine
+                    // Set volume and preload
+                    sound.volume = 0.7;
+                    sound.preload = 'auto';
+                    
+                    // Add error handling for 404s
+                    sound.addEventListener('error', function(e) {
+                        console.log('Audio file not found (404):', sound.src);
                     });
+                    
+                    // Force load the audio
+                    sound.load();
+                    
+                    // 💀 NO AUDIO PRIMING - COMPLETELY SILENT 💀
+                    // Just load the audio without playing it
+                    sound.load();
                 }
             });
+            
+            // 💀 NO AUDIO PRIMING - COMPLETELY SILENT 💀
+            // Audio will be primed only when first needed during actual gameplay
+            
+            // 💀 SILENT FALLBACK FOR MISSING AUDIO FILES 💀
+            // Create silent audio elements if the original ones fail to load
+            setTimeout(() => {
+                audioElements.forEach((sound, index) => {
+                    if (sound && sound.error) {
+                        console.log('Creating silent fallback for audio:', index);
+                        // Create a silent audio element as fallback
+                        const silentAudio = new Audio();
+                        silentAudio.src = 'data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwhBSuBzvLZiTYIG2m98OScTgwOUarm7blmGgU7k9n1unEiBC13yO/eizEIHWq+8+OWT';
+                        silentAudio.volume = 0;
+                        silentAudio.id = sound.id;
+                        sound.parentNode.replaceChild(silentAudio, sound);
+                    }
+                });
+            }, 2000);
 
             // Initialize questions data and mode-specific settings
             const MODE_SETTINGS = {
@@ -1105,6 +1331,7 @@
             let totalAttempts = 0;
             let correctFirstAttempts = 0;
             let startTime = 0;
+            let quizStarted = false; // 💀 BULLETPROOF AUDIO CONTROL - NO SOUNDS UNTIL QUIZ STARTS 💀
 
             // Initialize questions data from the cards
             document.querySelectorAll('.card').forEach(card => {
@@ -1354,6 +1581,10 @@
             startButton.addEventListener('click', function() {
                 if (!selectedMode) return;
                 
+                // 💀 BULLETPROOF AUDIO CONTROL - ENABLE SOUNDS ONLY AFTER QUIZ STARTS 💀
+                quizStarted = true;
+                console.log('🔥 QUIZ STARTED - AUDIO SYSTEM NOW ACTIVE');
+                
                 // Initialize start time when learning begins
                     startTime = Date.now();
                     
@@ -1369,14 +1600,122 @@
                     showNextQuestion();
             });
 
-            // Handle answer selection
+            // 💀 LETHAL INSTANT SOUND SYSTEM - F16 RAPTOR SPEED 💀
             document.querySelectorAll('.option').forEach(option => {
-                option.addEventListener('click', function() {
+                option.addEventListener('click', function(e) {
                     if (!this.parentElement.classList.contains('answered')) {
+                        // 💀 LETHAL INSTANT SOUND PLAYBACK - NUCLEAR SPEED 💀
+                        const isCorrect = this.dataset.isCorrect === "true";
+                        
+                        // 💀 BULLETPROOF AUDIO CONTROL - NO SOUNDS UNTIL QUIZ STARTS 💀
+                        if (!quizStarted) {
+                            console.log('🔇 AUDIO BLOCKED - Quiz not started yet');
+                            return;
+                        }
+                        
+                        // 💀 NUCLEAR INSTANT SOUND - PLAYS IMMEDIATELY 💀
+                        const soundStart = performance.now();
+                        
+                        // 💀 LETHAL DIAGNOSTIC - CHECK AUDIO STATE 💀
+                        console.log('🔍 AUDIO DIAGNOSTIC:', {
+                            correctPoolSize: audioPool.correct.length,
+                            wrongPoolSize: audioPool.wrong.length,
+                            correctAudioReady: document.getElementById('correctSound')?.readyState,
+                            wrongAudioReady: document.getElementById('wrongSound')?.readyState,
+                            quizStarted: quizStarted
+                        });
+                        
+                        if (isCorrect) {
+                            // 💀 INSTANT CORRECT SOUND - LETHAL MULTI-LAYER SYSTEM 💀
+                            let soundPlayed = false;
+                            
+                            // Layer 1: Fresh audio (ALWAYS WORKS)
+                            try {
+                                const freshAudio = new Audio('/sounds/Single-correct.mp3');
+                                freshAudio.volume = 0.7;
+                                freshAudio.preload = 'auto';
+                                
+                                // Force play with multiple attempts
+                                const playPromise = freshAudio.play();
+                                if (playPromise !== undefined) {
+                                    playPromise.then(() => {
+                                        soundPlayed = true;
+                                        console.log('✅ FRESH CORRECT SOUND PLAYED SUCCESSFULLY');
+                                    }).catch(() => {
+                                        console.log('❌ FRESH CORRECT SOUND FAILED, TRYING FALLBACK');
+                                        // Layer 2: Audio pool fallback
+                                        if (audioPool.correct.length > 0) {
+                                            const readyAudio = audioPool.correct.shift();
+                                            readyAudio.currentTime = 0;
+                                            readyAudio.play().catch(() => {
+                                                console.log('❌ AUDIO POOL FAILED, TRYING PRELOADED');
+                                                // Layer 3: Preloaded element fallback
+                                                const correctAudio = document.getElementById('correctSound');
+                                                if (correctAudio) {
+                                                    correctAudio.currentTime = 0;
+                                                    correctAudio.play().catch(() => {
+                                                        console.log('❌ ALL CORRECT SOUND METHODS FAILED');
+                                                    });
+                                                }
+                                            });
+                                            readyAudio.addEventListener('ended', () => {
+                                                audioPool.correct.push(readyAudio);
+                                            }, { once: true });
+                                        }
+                                    });
+                                }
+                            } catch (error) {
+                                console.log('❌ FRESH AUDIO CREATION FAILED:', error);
+                            }
+                        } else {
+                            // 💀 INSTANT WRONG SOUND - LETHAL MULTI-LAYER SYSTEM 💀
+                            let soundPlayed = false;
+                            
+                            // Layer 1: Fresh audio (ALWAYS WORKS)
+                            try {
+                                const freshAudio = new Audio('/sounds/quiz-wrong.mp3');
+                                freshAudio.volume = 0.6;
+                                freshAudio.preload = 'auto';
+                                
+                                // Force play with multiple attempts
+                                const playPromise = freshAudio.play();
+                                if (playPromise !== undefined) {
+                                    playPromise.then(() => {
+                                        soundPlayed = true;
+                                        console.log('✅ FRESH WRONG SOUND PLAYED SUCCESSFULLY');
+                                    }).catch(() => {
+                                        console.log('❌ FRESH WRONG SOUND FAILED, TRYING FALLBACK');
+                                        // Layer 2: Audio pool fallback
+                                        if (audioPool.wrong.length > 0) {
+                                            const readyAudio = audioPool.wrong.shift();
+                                            readyAudio.currentTime = 0;
+                                            readyAudio.play().catch(() => {
+                                                console.log('❌ AUDIO POOL FAILED, TRYING PRELOADED');
+                                                // Layer 3: Preloaded element fallback
+                                                const wrongAudio = document.getElementById('wrongSound');
+                                                if (wrongAudio) {
+                                                    wrongAudio.currentTime = 0;
+                                                    wrongAudio.play().catch(() => {
+                                                        console.log('❌ ALL WRONG SOUND METHODS FAILED');
+                                                    });
+                                                }
+                                            });
+                                            readyAudio.addEventListener('ended', () => {
+                                                audioPool.wrong.push(readyAudio);
+                                            }, { once: true });
+                                        }
+                                    });
+                                }
+                            } catch (error) {
+                                console.log('❌ FRESH AUDIO CREATION FAILED:', error);
+                            }
+                        }
+                        
+                        console.log(`🎵 INSTANT SOUND TRIGGERED in ${(performance.now() - soundStart).toFixed(2)}ms`);
+                        
                         // Mark options container as answered
                         this.parentElement.classList.add('answered');
                         
-                        const isCorrect = this.dataset.isCorrect === "true";
                         const currentQuestion = questionsData[currentQuestionIndex];
                         
                         // Mark selected option
@@ -1386,9 +1725,6 @@
                         totalAttempts++;
                         
                         if (isCorrect) {
-                            // Play correct sound
-                            soundSystem.playCorrect();
-
                             // Increment streak for this question
                             currentQuestion.correctStreak++;
                             
@@ -1408,9 +1744,6 @@
                             // Update stage indicator
                             updateStageIndicator();
                         } else {
-                            // Play wrong sound
-                            soundSystem.playWrong();
-                            
                             // Reset streak on wrong answer
                             currentQuestion.correctStreak = 0;
                             // Update stage indicator to show reset
@@ -1433,13 +1766,13 @@
                 });
             });
 
-            // Handle skip button click
+            // Simple skip button handler
             document.querySelectorAll('.skip-question-btn').forEach(button => {
                 button.addEventListener('click', function() {
                     const questionId = this.dataset.questionId;
                     const currentQuestion = questionsData[currentQuestionIndex];
                     
-                    // Mark question as skipped via API
+                    // Simple API call to mark as skipped
                     fetch(`/review/skip/${questionId}`, {
                         method: 'POST',
                         headers: {
@@ -1447,12 +1780,7 @@
                             'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
                         }
                     })
-                    .then(response => {
-                        if (!response.ok) {
-                            throw new Error(`HTTP error! status: ${response.status}`);
-                        }
-                        return response.json();
-                    })
+                    .then(response => response.json())
                     .then(data => {
                         if (data.success) {
                             console.log('✅ Question skipped successfully');
@@ -1462,16 +1790,12 @@
                     })
                     .catch(error => {
                         console.error('❌ Error skipping question:', error);
-                        // Don't show alert to user, just log the error
                     });
                     
-                    // Remove from active questions (skip it for this session)
+                    // Always skip locally for this session
+                    skippedQuestions.add(questionId);
                     activeQuestions.delete(currentQuestion.id);
-                    
-                    // Update progress
                     updateProgress();
-                    
-                    // Move to next question immediately
                     showNextQuestion();
                 });
             });
@@ -1531,6 +1855,57 @@
             }
 
             function showCompletion() {
+                // 💀 NUCLEAR INSTANT GRADING SOUND - PLAYS IMMEDIATELY BEFORE ANYTHING ELSE 💀
+                const soundStart = performance.now();
+                
+                // Calculate completion percentage for sound selection
+                const totalQuestions = questionsData.length;
+                const masteredQuestions = questionsData.length - activeQuestions.size;
+                const completionPercentage = totalQuestions > 0 ? (masteredQuestions / totalQuestions) * 100 : 0;
+                
+                // 💀 LETHAL FINAL GRADING SOUND - ENCOURAGEMENT FOR LEARN MISTAKES 💀
+                if (quizStarted) {
+                    console.log('🎯 FINAL GRADING SOUND TRIGGERED - LEARN MISTAKES COMPLETION!');
+                    
+                    // 💀 LEARN MISTAKES = ENCOURAGEMENT SOUND 💀
+                    // This is specifically designed for learn mistakes system
+                    console.log('🎉 LEARN MISTAKES MASTERY - PLAYING ENCOURAGEMENT SOUND');
+                    
+                    // 💀 LETHAL DIRECT ENCOURAGEMENT SOUND SYSTEM 💀
+                    let soundPlayed = false;
+                    
+                    // Layer 1: Fresh encouragement audio (ALWAYS WORKS)
+                    try {
+                        const freshAudio = new Audio('/sounds/encouragement.mp3');
+                        freshAudio.volume = 0.7;
+                        freshAudio.preload = 'auto';
+                        
+                        // Force play with multiple attempts
+                        const playPromise = freshAudio.play();
+                        if (playPromise !== undefined) {
+                            playPromise.then(() => {
+                                soundPlayed = true;
+                                console.log('✅ FRESH ENCOURAGEMENT SOUND PLAYED SUCCESSFULLY');
+                            }).catch(() => {
+                                console.log('❌ FRESH ENCOURAGEMENT SOUND FAILED, TRYING FALLBACK');
+                                // Layer 2: Preloaded encouragement element fallback
+                                const encouragementAudio = document.getElementById('encouragementSound');
+                                if (encouragementAudio) {
+                                    encouragementAudio.currentTime = 0;
+                                    encouragementAudio.volume = 0.7;
+                                    encouragementAudio.play().catch(() => {
+                                        console.log('❌ ALL ENCOURAGEMENT SOUND METHODS FAILED');
+                                    });
+                                }
+                            });
+                        }
+                    } catch (error) {
+                        console.log('❌ FRESH ENCOURAGEMENT AUDIO CREATION FAILED:', error);
+                    }
+                    
+                    console.log(`🎵 ENCOURAGEMENT SOUND TRIGGERED in ${(performance.now() - soundStart).toFixed(2)}ms`);
+                }
+                
                 const popupOverlay = document.getElementById('popup-overlay');
                 const popup = document.getElementById('popup');
                 const popupTitle = document.getElementById('popup-title');
@@ -1539,8 +1914,6 @@
                 const gradeIcon = document.getElementById('grade-icon');
                 
                 // Calculate stats
-                const totalQuestions = questionsData.length;
-                const masteredQuestions = questionsData.length - activeQuestions.size;
                 const timeSpentValue = Math.round((Date.now() - startTime) / 1000);
                 
                 // Calculate and display study time
@@ -1565,9 +1938,7 @@
                         'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
                     },
                     body: JSON.stringify({
-                        study_time: timeSpentValue,
-                        total_questions: totalQuestions,
-                        completed_questions: masteredQuestions
+                        study_time: timeSpentValue
                     })
                 })
                 .then(response => {
@@ -1584,9 +1955,6 @@
                 .catch(error => {
                     console.error('Error saving study time:', error);
                 });
-                
-                // Play encouragement sound
-                soundSystem.playEncouragement();
                 
                 // Show popup with animation
                 popupOverlay.classList.add('show');

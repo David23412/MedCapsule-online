@@ -89,7 +89,7 @@
     </div>
     
     <!-- Admin Note -->
-    @if(Auth::user()->is_admin)
+    @if(Auth::user()->role === 'admin')
         <div class="text-muted mb-3">
             <i class="fas fa-info-circle me-1"></i> Admin: All payment methods visible
         </div>
@@ -97,22 +97,22 @@
     
     <!-- Payment Method Tabs -->
     <ul class="nav nav-tabs nav-fill mb-0" id="paymentMethodTabs" role="tablist">
-        @if(config('payment.vodafone_cash.enabled', true) || Auth::user()->is_admin)
+        @if(config('payment.vodafone_cash.enabled', true) || Auth::user()->role === 'admin')
             <li class="nav-item" role="presentation">
                 <button class="nav-link active payment-tab-vodafone py-3" id="vodafone-tab" data-bs-toggle="tab" data-bs-target="#vodafone-panel" type="button" role="tab">
                     <i class="fas fa-mobile-alt me-2"></i>Vodafone Cash
-                    @if(Auth::user()->is_admin && !config('payment.vodafone_cash.enabled', true))
+                    @if(Auth::user()->role === 'admin' && !config('payment.vodafone_cash.enabled', true))
                         <span class="badge bg-warning text-dark ms-1" style="font-size: 0.7rem;">Disabled</span>
                     @endif
                 </button>
             </li>
         @endif
         
-        @if(config('payment.fawry.enabled', true) || Auth::user()->is_admin)
+        @if(config('payment.fawry.enabled', true) || Auth::user()->role === 'admin')
             <li class="nav-item" role="presentation">
                 <button class="nav-link payment-tab-fawry py-3" id="fawry-tab" data-bs-toggle="tab" data-bs-target="#fawry-panel" type="button" role="tab">
                     <i class="fas fa-store me-2"></i>Fawry
-                    @if(Auth::user()->is_admin && !config('payment.fawry.enabled', true))
+                    @if(Auth::user()->role === 'admin' && !config('payment.fawry.enabled', true))
                         <span class="badge bg-warning text-dark ms-1" style="font-size: 0.7rem;">Disabled</span>
                     @endif
                 </button>

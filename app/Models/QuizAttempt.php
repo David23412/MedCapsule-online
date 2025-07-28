@@ -24,7 +24,8 @@ class QuizAttempt extends Model
         'percentage_grade',
         'duration_seconds',
         'question_data',     // JSON array of {question_id, user_answer, is_correct} for potential review
-        'correct_answers'    // Number of correct answers in the quiz
+        'correct_answers',   // Number of correct answers in the quiz
+        'assignment_id'      // Link to assignment if this is an assignment quiz
     ];
 
     protected $casts = [
@@ -34,12 +35,14 @@ class QuizAttempt extends Model
         'duration_seconds' => 'integer',
         'question_data' => 'array',
         'correct_answers' => 'integer',  // Simple count of correct answers
-        'topic_id' => 'integer'
+        'topic_id' => 'integer',
+        'assignment_id' => 'integer'
     ];
 
     protected $attributes = [
         'study_mode' => null,
-        'source' => null
+        'source' => null,
+        'correct_answers' => 0
     ];
 
     /**
@@ -49,16 +52,15 @@ class QuizAttempt extends Model
         'user_id' => 'required|exists:users,id',
         'topic_id' => 'nullable|exists:topics,id',
         'quiz_type' => 'required|in:normal,random,tutor,mistake_review,assignment',
-        'study_mode' => 'nullable|in:quiz,tutor,random,mistake_review',
+        'study_mode' => 'nullable|in:quiz,tutor,random,mistake_review,assignment',
         'source' => 'nullable|string',
         'score' => 'required|integer|min:0',
         'total_questions' => 'required|integer|min:1',
         'percentage_grade' => 'required|numeric|min:0|max:100',
         'duration_seconds' => 'required|integer|min:0',
         'question_data' => 'required|array',
-        'question_data.*.question_id' => 'required|exists:questions,id',
-        'question_data.*.user_answer' => 'nullable|string',
-        'question_data.*.is_correct' => 'required|boolean'
+        'correct_answers' => 'nullable|integer|min:0',
+        'assignment_id' => 'nullable|exists:assignments,id'
     ];
 
     /**
@@ -101,14 +103,46 @@ class QuizAttempt extends Model
         });
 
         static::creating(function ($model) {
-            // Validate data before saving
-            $validator = Validator::make(
-                $model->toArray(),
-                static::$rules
-            );
+            // CRITICAL FIX: Ensure correct_answers is set if not provided
+            if (!isset($model->correct_answers) || $model->correct_answers === null) {
+                $model->correct_answers = $model->score ?? 0;
+            }
+            
+            // CRITICAL FIX: Ensure assignment_id is nullable
+            if (empty($model->assignment_id)) {
+                $model->assignment_id = null;
+            }
+            
+            // CRITICAL FIX: Ensure study_mode is set for tutor mode
+            if ($model->study_mode === null && $model->quiz_type === 'tutor') {
+                $model->study_mode = 'tutor';
+            }
+            
+            // CRITICAL FIX: Ensure source is set for tutor mode
+            if ($model->source === null && $model->study_mode === 'tutor') {
+                $model->source = 'General';
+            }
+            
+            // Validate data before saving with error handling
+            try {
+                $validator = Validator::make(
+                    $model->toArray(),
+                    static::$rules
+                );
 
-            if ($validator->fails()) {
-                throw new \Illuminate\Validation\ValidationException($validator);
+                if ($validator->fails()) {
+                    \Log::error('QuizAttempt validation failed', [
+                        'errors' => $validator->errors()->toArray(),
+                        'data' => $model->toArray()
+                    ]);
+                    throw new \Illuminate\Validation\ValidationException($validator);
+                }
+            } catch (\Exception $e) {
+                \Log::error('QuizAttempt validation error', [
+                    'error' => $e->getMessage(),
+                    'data' => $model->toArray()
+                ]);
+                throw $e;
             }
 
             // Ensure percentage_grade is calculated correctly
@@ -124,9 +158,22 @@ class QuizAttempt extends Model
             // Add timestamp to question_data for better tracking
             $questionData = $model->question_data;
             foreach ($questionData as $key => $data) {
-                $questionData[$key]['answered_at'] = now()->toIso8601String();
+                if (is_array($data)) {
+                    $questionData[$key]['answered_at'] = now()->toIso8601String();
+                }
             }
             $model->question_data = $questionData;
+            
+            \Log::info('QuizAttempt being created', [
+                'user_id' => $model->user_id,
+                'topic_id' => $model->topic_id,
+                'quiz_type' => $model->quiz_type,
+                'study_mode' => $model->study_mode,
+                'source' => $model->source,
+                'score' => $model->score,
+                'total_questions' => $model->total_questions,
+                'correct_answers' => $model->correct_answers
+            ]);
         });
 
         static::updating(function ($model) {
@@ -153,7 +200,10 @@ class QuizAttempt extends Model
         return $this->belongsTo(Topic::class)->withDefault(); // withDefault() handles null topic_id
     }
 
-
+    public function assignment(): BelongsTo
+    {
+        return $this->belongsTo(Assignment::class)->withDefault();
+    }
 
     /**
      * Get commonly missed questions for a user in a topic with error handling
@@ -161,70 +211,58 @@ class QuizAttempt extends Model
     public static function getCommonMistakes($userId, $topicId, $limit = 10)
     {
         try {
-            // Get incorrect answers from question_data of recent attempts
-            $recentAttempts = self::where([
-                'user_id' => $userId,
-                'topic_id' => $topicId
-            ])
-            ->orderBy('created_at', 'desc')
-            ->limit(50) // Look at last 50 attempts max
-            ->get();
-
-            if ($recentAttempts->isEmpty()) {
-                return collect([]);
-            }
-
-            $questionData = $recentAttempts->pluck('question_data')
-                ->filter()
-                ->flatten(1)
-                ->filter(function ($data) {
-                    return isset($data['is_correct']) && !$data['is_correct'] && isset($data['question_id']);
-                });
-
-            if ($questionData->isEmpty()) {
-                return collect([]);
-            }
-
-            // Count frequency of each missed question
-            $questionCounts = array_count_values($questionData->pluck('question_id')->toArray());
-            arsort($questionCounts);
-
-            // Get the most commonly missed question IDs
-            $commonMistakeIds = array_slice($questionCounts, 0, $limit, true);
-
-            return Question::whereIn('id', array_keys($commonMistakeIds))
-                ->with(['topic.course']) // Eager load relationships
-                ->get()
-                ->sortBy(function ($question) use ($commonMistakeIds) {
-                    return array_search($question->id, array_keys($commonMistakeIds));
-                });
+            return DB::table('mistakes')
+                ->select([
+                    'mistakes.question_id',
+                    'questions.question',
+                    'questions.correct_answer',
+                    'questions.explanation',
+                    'questions.topic_id',
+                    DB::raw('COUNT(*) as mistake_count')
+                ])
+                ->join('questions', 'mistakes.question_id', '=', 'questions.id')
+                ->where('mistakes.user_id', $userId)
+                ->where('questions.topic_id', $topicId)
+                ->groupBy('mistakes.question_id', 'questions.question', 'questions.correct_answer', 'questions.explanation', 'questions.topic_id')
+                ->orderBy('mistake_count', 'desc')
+                ->limit($limit)
+                ->get();
         } catch (\Exception $e) {
-            \Log::error('Error in getCommonMistakes', [
-                'error' => $e->getMessage(),
+            \Log::error('Error getting common mistakes', [
                 'user_id' => $userId,
-                'topic_id' => $topicId
+                'topic_id' => $topicId,
+                'error' => $e->getMessage()
             ]);
-            return collect([]);
+            return collect();
         }
     }
 
     /**
-     * Safely get question data with error handling
+     * Get question data with proper JSON handling
      */
     public function getQuestionDataAttribute($value)
     {
-        try {
-            if (is_string($value)) {
-                $decoded = json_decode($value, true);
-                return is_array($decoded) ? $decoded : [];
-            }
-            return is_array($value) ? $value : [];
-        } catch (\Exception $e) {
-            \Log::error('Error decoding question_data', [
-                'error' => $e->getMessage(),
-                'quiz_attempt_id' => $this->id
-            ]);
-            return [];
+        if (is_string($value)) {
+            $decoded = json_decode($value, true);
+            return is_array($decoded) ? $decoded : [];
+        }
+        
+        if (is_array($value)) {
+            return $value;
+        }
+        
+        return [];
+    }
+
+    /**
+     * Set question data with proper JSON handling
+     */
+    public function setQuestionDataAttribute($value)
+    {
+        if (is_array($value)) {
+            $this->attributes['question_data'] = json_encode($value);
+        } else {
+            $this->attributes['question_data'] = $value;
         }
     }
 
@@ -235,77 +273,106 @@ class QuizAttempt extends Model
     {
         try {
             $cutoffDate = now()->subDays($daysOld);
-            return self::where('created_at', '<', $cutoffDate)->delete();
+            $deletedCount = self::where('created_at', '<', $cutoffDate)->delete();
+            
+            \Log::info('Cleaned up old quiz attempts', [
+                'deleted_count' => $deletedCount,
+                'cutoff_date' => $cutoffDate->toDateString()
+            ]);
+            
+            return $deletedCount;
         } catch (\Exception $e) {
             \Log::error('Error cleaning up old quiz attempts', [
-                'error' => $e->getMessage(),
-                'days_old' => $daysOld
+                'error' => $e->getMessage()
             ]);
             return 0;
         }
     }
 
     /**
-     * Get both source-specific and overall progress for a user in a topic
+     * Get topic progress for a user with error handling
      */
     public static function getTopicProgress($userId, $topicId, $studyMode = 'quiz')
     {
-        // Get total questions in topic
-        $totalTopicQuestions = Question::where('topic_id', $topicId)->count();
-        
-        // Get all sources for this topic
-        $sources = Question::where('topic_id', $topicId)
-            ->distinct('source')
-            ->pluck('source')
-            ->filter()
-            ->values();
+        try {
+            $attempts = self::where('user_id', $userId)
+                ->where('topic_id', $topicId)
+                ->where('study_mode', $studyMode)
+                ->get();
 
-        // Get the latest attempt for each source
-        $sourceProgress = [];
-        $totalScore = 0;
-        $totalAttempted = 0;
+            if ($attempts->isEmpty()) {
+                return [
+                    'overall' => [
+                        'score' => 0,
+                        'total' => 0,
+                        'percentage' => 0
+                    ],
+                    'sources' => []
+                ];
+            }
 
-        foreach ($sources as $source) {
-            $latestAttempt = self::where([
+            // Get the actual number of questions available in each source
+            $sourceQuestionCounts = \App\Models\Question::where('topic_id', $topicId)
+                ->whereNotNull('source')
+                ->selectRaw('source, COUNT(*) as count')
+                ->groupBy('source')
+                ->pluck('count', 'source')
+                ->toArray();
+
+            $totalScore = $attempts->sum('score');
+            $totalQuestions = $attempts->sum('total_questions');
+            $overallPercentage = $totalQuestions > 0 ? ($totalScore / $totalQuestions) * 100 : 0;
+
+            // Group by source and calculate correct answers per source
+            $sourceProgress = [];
+            foreach ($attempts as $attempt) {
+                $source = $attempt->source ?: 'General';
+                if (!isset($sourceProgress[$source])) {
+                    $sourceProgress[$source] = [
+                        'score' => 0,
+                        'total' => 0,
+                        'percentage' => 0
+                    ];
+                }
+                $sourceProgress[$source]['score'] += $attempt->score;
+                $sourceProgress[$source]['total'] += $attempt->total_questions;
+            }
+
+            // Calculate percentages for each source based on available questions
+            foreach ($sourceProgress as $source => $data) {
+                $availableQuestions = $sourceQuestionCounts[$source] ?? 0;
+                $completedQuestions = min($data['score'], $availableQuestions); // Cap at available questions
+                
+                $sourceProgress[$source]['percentage'] = $availableQuestions > 0 
+                    ? ($completedQuestions / $availableQuestions) * 100 
+                    : 0;
+            }
+
+            return [
+                'overall' => [
+                    'score' => $totalScore,
+                    'total' => $totalQuestions,
+                    'percentage' => $overallPercentage
+                ],
+                'sources' => $sourceProgress
+            ];
+        } catch (\Exception $e) {
+            \Log::error('Error getting topic progress', [
                 'user_id' => $userId,
                 'topic_id' => $topicId,
                 'study_mode' => $studyMode,
-                'source' => $source
-            ])
-            ->where('quiz_type', '!=', 'assignment') // EMERGENCY FIX: Exclude assignment attempts from regular topic progress
-            ->orderBy('created_at', 'desc')
-            ->first();
-
-            if ($latestAttempt) {
-                $totalSourceQuestions = Question::where('topic_id', $topicId)
-                    ->where('source', $source)
-                    ->count();
-
-            $sourceProgress[$source] = [
-                    'score' => $latestAttempt->score,
-                    'total' => $latestAttempt->total_questions,
-                    'total_available' => $totalSourceQuestions,
-                    'percentage' => $latestAttempt->percentage_grade
+                'error' => $e->getMessage()
+            ]);
+            
+            return [
+                'overall' => [
+                    'score' => 0,
+                    'total' => 0,
+                    'percentage' => 0
+                ],
+                'sources' => []
             ];
-
-                $totalScore += $latestAttempt->score;
-                $totalAttempted += $latestAttempt->total_questions;
-            }
         }
-
-        // Calculate overall progress
-        $overallPercentage = $totalTopicQuestions > 0 
-            ? round(($totalScore / $totalTopicQuestions) * 100, 2)
-            : 0;
-
-        return [
-            'overall' => [
-                'score' => $totalScore,
-                'total' => $totalTopicQuestions,
-                'percentage' => $overallPercentage
-            ],
-            'sources' => $sourceProgress
-        ];
     }
 
     /**
@@ -313,34 +380,54 @@ class QuizAttempt extends Model
      */
     public static function createWithProgress($data)
     {
-        // Calculate percentage for this attempt
-        $percentage = $data['total_questions'] > 0 
-            ? round(($data['score'] / $data['total_questions']) * 100, 2)
-            : 0;
+        try {
+            // Calculate percentage for this attempt
+            $percentage = $data['total_questions'] > 0 
+                ? round(($data['score'] / $data['total_questions']) * 100, 2)
+                : 0;
 
-        // Ensure question_data is an array of objects with required fields
-        $questionData = array_map(function($q) {
+            // Ensure question_data is an array of objects with required fields
+            $questionData = array_map(function($q) {
+                return [
+                    'question_id' => $q['question_id'],
+                    'user_answer' => $q['user_answer'] ?? null,
+                    'is_correct' => $q['is_correct'] ?? false
+                ];
+            }, $data['question_data'] ?? []);
+
+            // CRITICAL FIX: Ensure correct_answers is set
+            if (!isset($data['correct_answers'])) {
+                $data['correct_answers'] = $data['score'] ?? 0;
+            }
+
+            // Create attempt with calculated data
+            $attempt = self::create(array_merge($data, [
+                'percentage_grade' => $percentage,
+                'question_data' => $questionData
+            ]));
+
+            // Clear relevant caches
+            try {
+                app(CacheService::class)->clearUserTopicProgressCache($data['user_id'], $data['topic_id']);
+            } catch (\Exception $e) {
+                \Log::warning('Failed to clear cache after quiz attempt creation', [
+                    'error' => $e->getMessage()
+                ]);
+            }
+
+            // Return both the attempt and updated progress
             return [
-                'question_id' => $q['question_id'],
-                'user_answer' => $q['user_answer'] ?? null,
-                'is_correct' => $q['is_correct'] ?? false
+                'attempt' => $attempt,
+                'progress' => self::getTopicProgress($data['user_id'], $data['topic_id'], $data['study_mode'] ?? 'quiz')
             ];
-        }, $data['question_data'] ?? []);
-
-        // Create attempt with calculated data
-        $attempt = self::create(array_merge($data, [
-            'percentage_grade' => $percentage,
-            'question_data' => $questionData
-        ]));
-
-        // Clear relevant caches
-        app(CacheService::class)->clearUserTopicProgressCache($data['user_id'], $data['topic_id']);
-
-        // Return both the attempt and updated progress
-        return [
-            'attempt' => $attempt,
-            'progress' => self::getTopicProgress($data['user_id'], $data['topic_id'], $data['study_mode'] ?? 'quiz')
-        ];
+        } catch (\Exception $e) {
+            \Log::error('Error creating quiz attempt with progress', [
+                'data' => $data,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            throw $e;
+        }
     }
 
     // Format duration as human-readable string

@@ -53,4 +53,12 @@ class SourceProgressUpdated implements ShouldBroadcast
             'all_sources_mastered' => $this->allSourcesMastered,
         ];
     }
+    
+    /**
+     * 🔥 LETHAL FIX: Dispatch frontend event for real-time modal updates
+     */
+    public function broadcastAs(): string
+    {
+        return 'sourceProgressUpdated';
+    }
 } 

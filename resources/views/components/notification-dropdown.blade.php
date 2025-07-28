@@ -1,11 +1,15 @@
 @php
     use App\Services\UniversalNotificationService;
     
-    // PERFORMANCE OPTIMIZED - AUTO-CLEANUP ON EVERY ACCESS
+    // DISABLED: PERFORMANCE OPTIMIZED - AUTO-CLEANUP ON EVERY ACCESS
     if (auth()->check()) {
-        // This triggers aggressive cleanup automatically
-        $notifications = UniversalNotificationService::getNotifications(auth()->user(), 5)->take(5);
-        $unreadCount = min(UniversalNotificationService::getUnreadCount(auth()->user()), 5);
+        // DISABLED: This triggers aggressive cleanup automatically
+        // $notifications = UniversalNotificationService::getNotifications(auth()->user(), 5)->take(5);
+        // $unreadCount = min(UniversalNotificationService::getUnreadCount(auth()->user()), 5);
+        
+        // ENABLED: Get notifications without auto-cleanup
+        $notifications = UniversalNotificationService::getNotifications(auth()->user(), 20);
+        $unreadCount = UniversalNotificationService::getUnreadCount(auth()->user());
     } else {
         $notifications = collect();
         $unreadCount = 0;
@@ -45,49 +49,34 @@
 </div>
 
 <style>
-/* === MINIMAL WHITE NOTIFICATION LAYOUT === */
+/* === EXACT COPY OF OLD CLEAN LAYOUT === */
 
-/* Minimal Header */
+/* Header - JUST WIDER NOT BIGGER */
 .notification-header {
-    padding: 20px 28px 16px;
+    padding: 16px 24px 12px;
     background: white;
     border-bottom: 1px solid #e5e7eb;
     text-align: center;
-    border-radius: 12px 12px 0 0;
 }
 
 .notification-title {
     font-size: 16px;
     font-weight: 600;
-    color: #374151;
+    color: #3b82f6;
     margin: 0;
-    letter-spacing: -0.025em;
 }
 
-/* Modern List */
+/* List - JUST WIDER NOT BIGGER */
 .notification-list {
-    max-height: 360px;
+    max-height: 320px;
     overflow-y: auto;
-    padding: 12px 0;
-    scrollbar-width: thin;
-    scrollbar-color: rgba(102, 126, 234, 0.3) transparent;
+    padding: 8px 0;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
 }
 
 .notification-list::-webkit-scrollbar {
-    width: 6px;
-}
-
-.notification-list::-webkit-scrollbar-track {
-    background: transparent;
-}
-
-.notification-list::-webkit-scrollbar-thumb {
-    background: rgba(102, 126, 234, 0.3);
-    border-radius: 3px;
-}
-
-.notification-list::-webkit-scrollbar-thumb:hover {
-    background: rgba(102, 126, 234, 0.5);
+    display: none;
 }
 
 /* Empty State - JUST WIDER NOT BIGGER */
@@ -115,28 +104,29 @@
     color: #9ca3af;
 }
 
-/* Minimal Notification Items */
+/* Notification Items - JUST WIDER NOT BIGGER */
 .notification-item {
     display: flex;
     align-items: flex-start;
     gap: 12px;
-    padding: 16px 20px;
+    padding: 12px 20px;
     background: white;
     border-bottom: 1px solid #f3f4f6;
-    border-left: 2px solid #e5e7eb;
-    transition: all 0.15s ease;
+    border-left: 3px solid transparent;
+    transition: all 0.2s ease;
 }
 
 .notification-item:hover {
-    background: #fafafa;
-    border-left-color: #9ca3af;
+    background: #f9fafb;
 }
 
 .notification-item:last-child {
     border-bottom: none;
 }
 
-/* Minimal Icon with subtle outline */
+/* Clean styling - All notifications look the same since they're auto-read */
+
+/* Icon - Clean circular background like the old design */
 .notification-icon {
     width: 36px;
     height: 36px;
@@ -144,14 +134,12 @@
     align-items: center;
     justify-content: center;
     flex-shrink: 0;
-    background: white;
-    border: 1px solid #e5e7eb;
+    background: #f5f5f5;
     border-radius: 50%;
 }
 
 .notification-icon i {
     font-size: 16px;
-    color: #6b7280;
 }
 
 /* Content */
@@ -240,7 +228,15 @@ function getNotificationIcon($type) {
         'error' => 'fas fa-exclamation-circle',
         'success' => 'fas fa-check',
         'warning' => 'fas fa-exclamation-triangle',
-        'info' => 'fas fa-info-circle'
+        'info' => 'fas fa-info-circle',
+        'level_up' => 'fas fa-level-up-alt',
+        'topic_mastery' => 'fas fa-graduation-cap',
+        'study_streak' => 'fas fa-fire',
+        'correct_answers_milestone' => 'fas fa-trophy',
+        'review_mistakes' => 'fas fa-exclamation-triangle',
+        'weak_topic_identified' => 'fas fa-exclamation-circle',
+        'skipped_questions_detected' => 'fas fa-forward',
+        'test' => 'fas fa-bell'
     ];
     
     return $icons[$type] ?? 'fas fa-bell';
@@ -248,23 +244,71 @@ function getNotificationIcon($type) {
 
 function getNotificationIconColor($type) {
     $colors = [
+        // 🎓 ACADEMIC & LEARNING
         'course_welcome' => '#10b981',    // emerald-500
         'quiz_completed' => '#3b82f6',    // blue-500
+        'topic_mastery' => '#10b981',     // emerald-500
+        'level_up' => '#fbbf24',          // amber-400 (LIGHTNING YELLOW!)
+        'assignment_due' => '#ef4444',     // red-500
+        'grade_released' => '#8b5cf6',    // violet-500
+        
+        // 🏆 ACHIEVEMENTS & MILESTONES
         'achievement' => '#f59e0b',       // amber-500
         'streak_milestone' => '#f97316',  // orange-500
-        'assignment_due' => '#ef4444',    // red-500
-        'grade_released' => '#8b5cf6',    // violet-500
-        'system_update' => '#6b7280',     // gray-500
+        'study_streak' => '#f97316',      // orange-500
+        'correct_answers_milestone' => '#f59e0b', // amber-500
+        'quiz_mastered' => '#10b981',     // emerald-500
+        
+        // ⚡ ENERGY & PROGRESS (LIGHTNING YELLOW ONE!)
+        'energy_boost' => '#fbbf24',      // amber-400
+        'power_up' => '#fbbf24',          // amber-400
+        'momentum' => '#fbbf24',          // amber-400
+        
+        // 🔥 STREAKS & MOTIVATION
+        'streak_reset' => '#f97316',      // orange-500
+        'burning_streak' => '#f97316',    // orange-500
+        
+        // ⚠️ WARNINGS & REVIEWS
+        'review_mistakes' => '#ef4444',   // red-500
+        'weak_topic_identified' => '#ef4444', // red-500
+        'skipped_questions_detected' => '#f59e0b', // amber-500
+        'topic_needs_review' => '#ef4444', // red-500
+        'review_reminder' => '#06b6d4',   // cyan-500
+        
+        // 💳 PAYMENT & ACCESS
         'payment_success' => '#10b981',   // emerald-500
         'payment_failed' => '#ef4444',    // red-500
         'course_access_granted' => '#10b981', // emerald-500
         'course_access_denied' => '#ef4444',  // red-500
-        'reminder' => '#06b6d4',          // cyan-500
+        
+        // 🔔 SYSTEM & GENERAL
+        'system_update' => '#6b7280',     // gray-500
         'announcement' => '#3b82f6',      // blue-500
-        'error' => '#ef4444',             // red-500
+        'reminder' => '#06b6d4',          // cyan-500
+        'info' => '#06b6d4',              // cyan-500
         'success' => '#10b981',           // emerald-500
         'warning' => '#f59e0b',           // amber-500
-        'info' => '#06b6d4'               // cyan-500
+        'error' => '#ef4444',             // red-500
+        'test' => '#3b82f6',              // blue-500
+        
+        // 🎯 SPECIAL ACHIEVEMENTS
+        'perfect_score' => '#fbbf24',     // amber-400
+        'first_attempt' => '#fbbf24',     // amber-400
+        'speed_demon' => '#fbbf24',       // amber-400
+        'consistency_king' => '#fbbf24',  // amber-400
+        'knowledge_master' => '#8b5cf6',  // violet-500
+        
+        // 📚 SUBJECT SPECIFIC
+        'anatomy_mastered' => '#ef4444',  // red-500
+        'cardiology_completed' => '#ef4444', // red-500
+        'pharmacology_quiz' => '#06b6d4', // cyan-500
+        'physiology_quiz' => '#8b5cf6',   // violet-500
+        
+        // 🎨 CUSTOM TYPES
+        'milestone_reached' => '#10b981', // emerald-500
+        'goal_achieved' => '#f59e0b',     // amber-500
+        'breakthrough' => '#fbbf24',      // amber-400
+        'inspiration' => '#fbbf24'        // amber-400
     ];
     
     return $colors[$type] ?? '#6b7280';

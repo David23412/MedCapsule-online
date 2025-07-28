@@ -66,4 +66,19 @@ class CourseTypeService
         
         return $categorizations;
     }
+    
+    /**
+     * Invalidate cache for a course
+     *
+     * @param Course $course
+     * @return void
+     */
+    public function invalidateCache(Course $course): void
+    {
+        $cacheKey = "course_{$course->id}_categorizations_v{$course->cache_version}";
+        Cache::forget($cacheKey);
+        
+        // Also clear related cache keys
+        Cache::forget("course_categorization_counts_{$course->id}");
+    }
 }

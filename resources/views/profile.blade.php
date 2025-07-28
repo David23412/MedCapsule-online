@@ -1263,6 +1263,9 @@
     </style>
 </head>
 <body>
+    <!-- LIGHTNING-FAST FOUC ELIMINATOR -->
+    @include('components.lightning-preloader')
+
     <!-- Sidebar -->
     <div class="sidebar">
         <a href="{{ route('home') }}" class="text-decoration-none">
@@ -1281,7 +1284,7 @@
             <a class="nav-link" href="{{ route('review.index') }}">
                 <i class="fas fa-redo"></i> Review Mistakes
             </a>
-            @if(auth()->user()->is_admin)
+            @if(auth()->user()->role === 'admin')
             <a class="nav-link" href="{{ route('admin.user-course') }}">
                 <i class="fas fa-users-cog"></i> Manage Access
             </a>

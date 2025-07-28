@@ -21,7 +21,7 @@ class PaymentAdminController extends Controller
     {
         $this->middleware(['auth']);
         $this->middleware(function ($request, $next) {
-            if (!auth()->user()->is_admin) {
+            if (auth()->user()->role !== 'admin') {
                 abort(403, 'Unauthorized access.');
             }
             return $next($request);
@@ -114,59 +114,109 @@ class PaymentAdminController extends Controller
      */
     public function adminVerifyPayment(Request $request, Payment $payment)
     {
+        // Check if user is authenticated and is admin
+        if (!auth()->check() || !auth()->user()->hasRole('admin')) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Unauthorized access'
+            ], 403);
+        }
+
         $validated = $request->validate([
-            'action' => 'required|string|in:verify,reject',
-            'rejection_reason' => 'required_if:action,reject|string|max:500'
+            'action' => 'nullable|string|in:verify,reject',
+            'rejection_reason' => 'required_if:action,reject|string|max:500',
+            'admin_notes' => 'nullable|string|max:1000'
         ]);
 
         try {
-            if ($validated['action'] === 'verify') {
+            // Default to verify if no action specified
+            $action = $validated['action'] ?? 'verify';
+            
+            if ($action === 'verify') {
                 $payment->update([
                     'status' => 'completed',
-                    'paid_at' => now()
+                    'paid_at' => now(),
+                    'payment_data' => array_merge($payment->payment_data ?? [], [
+                        'verified_by' => auth()->user()->name,
+                        'verified_at' => now()->toDateTimeString(),
+                        'admin_notes' => $validated['admin_notes'] ?? null
+                    ])
                 ]);
-                
+
                 // Enroll user in course
-                $user = User::select('id', 'name', 'email')->find($payment->user_id);
-                $user->courses()->syncWithoutDetaching([$payment->course_id]);
-                
-                Log::info('Payment verified by admin', [
+                $user = User::find($payment->user_id);
+                if ($user) {
+                    $user->courses()->syncWithoutDetaching([$payment->course_id]);
+                }
+
+                // 🔔 CRITICAL NOTIFICATION INTEGRATION - Payment Success
+                \App\Services\NotificationTriggerService::onPaymentSuccess($user, [
+                    'amount' => $payment->amount,
+                    'course_name' => $payment->course->name ?? 'Course',
                     'payment_id' => $payment->id,
-                    'admin_id' => Auth::id(),
-                    'user_id' => $payment->user_id
+                    'payment_method' => $payment->payment_method ?? 'manual'
                 ]);
+
+                // 🔥 LETHAL FIX: Dispatch PaymentSuccessful event
+                try {
+                    // Create a PaymentSuccessful event (we'll need to create this)
+                    event(new \App\Events\PaymentSuccessful($payment, $user));
+                } catch (\Exception $e) {
+                    Log::error('Failed to dispatch payment successful event', [
+                        'payment_id' => $payment->id,
+                        'error' => $e->getMessage()
+                    ]);
+                }
 
                 return response()->json([
                     'success' => true,
-                    'message' => 'Payment verified successfully.'
+                    'message' => 'Payment verified successfully',
+                    'payment_id' => $payment->id,
+                    'status' => $payment->status
                 ]);
             } else {
                 $payment->update([
                     'status' => 'rejected',
-                    'rejection_reason' => $validated['rejection_reason']
+                    'payment_data' => array_merge($payment->payment_data ?? [], [
+                        'rejected_by' => auth()->user()->name,
+                        'rejected_at' => now()->toDateTimeString(),
+                        'rejection_reason' => $validated['rejection_reason'],
+                        'admin_notes' => $validated['admin_notes'] ?? null
+                    ])
                 ]);
 
-                Log::info('Payment rejected by admin', [
-                    'payment_id' => $payment->id,
-                    'admin_id' => Auth::id(),
-                    'reason' => $validated['rejection_reason']
-                ]);
+                // 🔔 CRITICAL NOTIFICATION INTEGRATION - Payment Failed
+                $user = User::find($payment->user_id);
+                if ($user) {
+                    \App\Services\NotificationTriggerService::onPaymentFailed($user, [
+                        'course_name' => $payment->course->name ?? 'Course',
+                        'payment_id' => $payment->id,
+                        'rejection_reason' => $validated['rejection_reason'],
+                        'amount' => $payment->amount
+                    ]);
+                }
+
+                // 🔥 LETHAL FIX: Dispatch PaymentFailed event
+                try {
+                    event(new \App\Events\PaymentFailed($payment, $user, $validated['rejection_reason']));
+                } catch (\Exception $e) {
+                    Log::error('Failed to dispatch payment failed event', [
+                        'payment_id' => $payment->id,
+                        'error' => $e->getMessage()
+                    ]);
+                }
 
                 return response()->json([
                     'success' => true,
-                    'message' => 'Payment rejected successfully.'
+                    'message' => 'Payment rejected successfully',
+                    'payment_id' => $payment->id,
+                    'status' => $payment->status
                 ]);
             }
         } catch (\Exception $e) {
-            Log::error('Payment verification failed', [
-                'payment_id' => $payment->id,
-                'admin_id' => Auth::id(),
-                'error' => $e->getMessage()
-            ]);
-
             return response()->json([
                 'success' => false,
-                'message' => 'Payment verification failed. Please try again.'
+                'message' => 'Error processing payment: ' . $e->getMessage()
             ], 500);
         }
     }

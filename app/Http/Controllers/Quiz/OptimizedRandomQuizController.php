@@ -82,7 +82,7 @@ class OptimizedRandomQuizController extends Controller
     }
 
     /**
-     * Generate random quiz with ultra-fast performance
+     * Generate random quiz with ultra-fast performance - LETHAL FIX
      */
     public function generateRandomQuiz(RandomQuizRequest $request): JsonResponse
     {
@@ -90,31 +90,26 @@ class OptimizedRandomQuizController extends Controller
             try {
                 $validatedData = $request->getValidatedWithDefaults();
                 
-                // Ultra-fast cache key for random quiz
-                $cacheKey = "random_quiz_fixed_{$validatedData['user_id']}_" . 
-                           hash('xxh3', serialize($validatedData));
-                
-                // Aggressive caching with shorter TTL for random content
-                $result = Cache::remember($cacheKey, 60, function () use ($validatedData) {
-                    return $this->quizService->generateRandomQuiz(
-                        auth()->user(),
-                        $validatedData['question_count'] ?? 10,
-                        $validatedData
-                    );
-                });
+                // LETHAL FIX: NUCLEAR CACHE BYPASS - Force fresh generation every time
+                $result = $this->quizService->generateRandomQuiz(
+                    auth()->user(),
+                    $validatedData['question_count'] ?? 10,
+                    $validatedData
+                );
 
                 return response()->json([
                     'success' => true,
                     'data' => $result,
-                    'cache_key' => $cacheKey,
+                    'cache_key' => 'nuclear_bypass_' . time(),
                     'performance' => [
-                        'cached' => Cache::has($cacheKey),
-                        'generation_type' => 'random'
+                        'cached' => false,
+                        'generation_type' => 'nuclear_fresh',
+                        'validation_type' => 'nuclear_database_check'
                     ]
                 ]);
 
             } catch (\Exception $e) {
-                Log::error('Random quiz generation failed', [
+                Log::error('LETHAL FIX: Random quiz generation failed', [
                     'user_id' => auth()->id(),
                     'error' => $e->getMessage(),
                     'trace' => $e->getTraceAsString()
@@ -184,6 +179,17 @@ class OptimizedRandomQuizController extends Controller
             $gradingResult['total'] = $gradingResult['totalQuestions'];
             $gradingResult['message'] = $gradingResult['encouragement'] ?? 'Quiz completed!';
 
+            // 🔔 CRITICAL NOTIFICATION INTEGRATION - Random Quiz Completion
+            \App\Services\NotificationTriggerService::onQuizCompleted(auth()->user(), [
+                'score' => $gradingResult['score'] ?? 0,
+                'total_questions' => $gradingResult['totalQuestions'] ?? 1,
+                'percentage' => $gradingResult['percentageGrade'] ?? 0,
+                'course_name' => $course->name ?? 'Random Quiz',
+                'topic_name' => $topic->name ?? 'Mixed Topics',
+                'user_quiz_count' => $this->getUserQuizCount(auth()->id()),
+                'quiz_type' => 'random'
+            ]);
+
             return response()->json($gradingResult);
 
         } catch (\Exception $e) {
@@ -199,6 +205,19 @@ class OptimizedRandomQuizController extends Controller
                 'error_code' => 'RANDOM_QUIZ_GRADING_FAILED'
             ], 500);
         }
+    }
+
+    /**
+     * Get user's total quiz count for first attempt detection
+     */
+    private function getUserQuizCount(int $userId): int
+    {
+        $cacheKey = "user_quiz_count_{$userId}";
+        return \Illuminate\Support\Facades\Cache::remember($cacheKey, 3600, function () use ($userId) {
+            return \Illuminate\Support\Facades\DB::table('user_stats')
+                ->where('user_id', $userId)
+                ->value('total_quizzes_taken') ?? 0;
+        });
     }
 
     /**

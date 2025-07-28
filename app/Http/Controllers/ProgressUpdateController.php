@@ -1,0 +1,184 @@
+<?php
+
+namespace App\Http\Controllers;
+
+use Illuminate\Http\Request;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Log;
+
+class ProgressUpdateController extends Controller
+{
+    /**
+     * Store progress update for real-time synchronization
+     */
+    public function storeProgressUpdate(Request $request): JsonResponse
+    {
+        try {
+            $validated = $request->validate([
+                'topicId' => 'required|integer',
+                'assignmentId' => 'nullable|integer',
+                'progress' => 'required|array',
+                'availableSources' => 'required|array',
+                'allSourcesMastered' => 'required|boolean',
+                'userId' => 'required|integer'
+            ]);
+
+            // Store progress update with timestamp
+            $progressData = array_merge($validated, [
+                'timestamp' => now()->timestamp,
+                'created_at' => now()->toISOString()
+            ]);
+
+            // Store in cache for cross-tab communication
+            $cacheKey = "progress_update_{$validated['userId']}_{$validated['topicId']}";
+            Cache::put($cacheKey, $progressData, 300); // 5 minutes
+
+            // Also store globally for this user
+            $globalKey = "user_progress_updates_{$validated['userId']}";
+            $globalUpdates = Cache::get($globalKey, []);
+            $globalUpdates[] = $progressData;
+            
+            // Keep only last 10 updates
+            if (count($globalUpdates) > 10) {
+                $globalUpdates = array_slice($globalUpdates, -10);
+            }
+            
+            Cache::put($globalKey, $globalUpdates, 300);
+
+            Log::info('Progress update stored for real-time sync', [
+                'user_id' => $validated['userId'],
+                'topic_id' => $validated['topicId'],
+                'assignment_id' => $validated['assignmentId'],
+                'timestamp' => $progressData['timestamp']
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Progress update stored successfully',
+                'timestamp' => $progressData['timestamp']
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Failed to store progress update', [
+                'error' => $e->getMessage(),
+                'request_data' => $request->all()
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to store progress update'
+            ], 500);
+        }
+    }
+
+    /**
+     * Get recent progress updates for a user
+     */
+    public function getRecentUpdates(Request $request): JsonResponse
+    {
+        try {
+            $userId = auth()->id();
+            $topicId = $request->input('topicId');
+            $since = $request->input('since', 0);
+
+            $updates = [];
+
+            if ($topicId) {
+                // Get specific topic updates
+                $cacheKey = "progress_update_{$userId}_{$topicId}";
+                $update = Cache::get($cacheKey);
+                if ($update && $update['timestamp'] > $since) {
+                    $updates[] = $update;
+                }
+            } else {
+                // Get all recent updates for user
+                $globalKey = "user_progress_updates_{$userId}";
+                $globalUpdates = Cache::get($globalKey, []);
+                
+                $updates = array_filter($globalUpdates, function($update) use ($since) {
+                    return $update['timestamp'] > $since;
+                });
+            }
+
+            return response()->json([
+                'success' => true,
+                'updates' => $updates,
+                'timestamp' => now()->timestamp
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Failed to get recent updates', [
+                'error' => $e->getMessage(),
+                'user_id' => auth()->id()
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to get recent updates'
+            ], 500);
+        }
+    }
+
+    /**
+     * Store assignment completion for real-time synchronization
+     */
+    public function storeAssignmentCompletion(Request $request): JsonResponse
+    {
+        try {
+            $validated = $request->validate([
+                'assignmentId' => 'required|integer',
+                'percentage' => 'required|numeric',
+                'score' => 'required|integer',
+                'total' => 'required|integer',
+                'userId' => 'required|integer'
+            ]);
+
+            // Store assignment completion with timestamp
+            $assignmentData = array_merge($validated, [
+                'timestamp' => now()->timestamp,
+                'created_at' => now()->toISOString()
+            ]);
+
+            // Store in cache for cross-tab communication
+            $cacheKey = "assignment_completion_{$validated['userId']}_{$validated['assignmentId']}";
+            Cache::put($cacheKey, $assignmentData, 300); // 5 minutes
+
+            // Also store globally for this user
+            $globalKey = "user_assignment_completions_{$validated['userId']}";
+            $globalCompletions = Cache::get($globalKey, []);
+            $globalCompletions[] = $assignmentData;
+            
+            // Keep only last 10 completions
+            if (count($globalCompletions) > 10) {
+                $globalCompletions = array_slice($globalCompletions, -10);
+            }
+            
+            Cache::put($globalKey, $globalCompletions, 300);
+
+            Log::info('Assignment completion stored for real-time sync', [
+                'user_id' => $validated['userId'],
+                'assignment_id' => $validated['assignmentId'],
+                'percentage' => $validated['percentage'],
+                'timestamp' => $assignmentData['timestamp']
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Assignment completion stored successfully',
+                'timestamp' => $assignmentData['timestamp']
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Failed to store assignment completion', [
+                'error' => $e->getMessage(),
+                'request_data' => $request->all()
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to store assignment completion'
+            ], 500);
+        }
+    }
+} 

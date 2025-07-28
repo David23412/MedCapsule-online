@@ -14,13 +14,14 @@
 </head>
 <body>
 
-<!-- Preloader -->
+<!-- LETHAL PRELOADER - ELIMINATES FOUC -->
 <div class="preloader" id="preloader">
     <div class="spinner"></div>
+    <div class="preloader-brand">MedCapsule</div>
 </div>
 
 <!-- Minimal Navigation -->
-<nav class="navbar">
+<nav class="navbar" style="opacity: 0; transition: opacity 0.3s ease;">
     <div class="nav-container">
         <a href="{{ route('home') }}" class="brand">MedCapsule</a>
         <a href="{{ route('home') }}" class="nav-link">
@@ -243,6 +244,7 @@
     
     .stat-overdue .stat-number { color: #ef4444; }
     .stat-completed .stat-number { color: #10b981; }
+    .stat-active .stat-number { color: #3b82f6; }
     
     /* Ultra-slim filters */
     .filters {
@@ -308,6 +310,170 @@
         display: grid;
         grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
         gap: 1.5rem;
+        transition: all 0.3s ease;
+    }
+    
+    /* Stacked View (Email-like) */
+    .assignment-grid.stacked-view {
+        display: flex;
+        flex-direction: column;
+        gap: 1.25rem;
+        max-width: 100%;
+    }
+    
+    .assignment-grid.stacked-view .assignment-card {
+        width: 100%;
+        max-width: none;
+        border-radius: 8px;
+        border-left: 4px solid #e5e7eb;
+        transition: all 0.2s ease;
+        background: white;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+    }
+    
+    .assignment-grid.stacked-view .assignment-card:hover {
+        transform: translateX(4px);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        background: #fafbfc;
+    }
+    
+    .assignment-grid.stacked-view .assignment-card:not(:last-child) {
+        border-bottom: 1px solid #f1f5f9;
+    }
+    
+    .assignment-grid.stacked-view .assignment-card[data-status="active"] {
+        border-left-color: #3b82f6;
+    }
+    
+    .assignment-grid.stacked-view .assignment-card[data-status="overdue"] {
+        border-left-color: #ef4444;
+    }
+    
+    .assignment-grid.stacked-view .assignment-card[data-status="completed"] {
+        border-left-color: #10b981;
+    }
+    
+    .assignment-grid.stacked-view .card-content {
+        padding: 1.5rem 2rem;
+        flex-direction: row;
+        align-items: center;
+        gap: 2rem;
+        flex: 1;
+        min-height: 100%;
+    }
+    
+    .assignment-grid.stacked-view .card-header {
+        flex: 1;
+        margin-bottom: 0;
+        min-width: 0;
+    }
+    
+    .assignment-grid.stacked-view .assignment-title {
+        font-size: 1rem;
+        margin-bottom: 0.25rem;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    
+    .assignment-grid.stacked-view .assignment-meta {
+        font-size: 0.75rem;
+        margin-bottom: 0.25rem;
+    }
+    
+    .assignment-grid.stacked-view .card-body {
+        flex: 1;
+        flex-direction: row;
+        gap: 2rem;
+        align-items: center;
+    }
+    
+    .assignment-grid.stacked-view .deadline-section {
+        flex: 0 0 auto;
+        min-width: 140px;
+        text-align: right;
+        display: flex;
+        flex-direction: row;
+        gap: 1rem;
+        align-items: center;
+        margin-left: auto;
+    }
+    
+    .assignment-grid.stacked-view .time-remaining.completed {
+        margin-left: auto;
+        flex-shrink: 0;
+    }
+    
+    .assignment-grid.stacked-view .topic-section {
+        flex: 1;
+        padding: 0.75rem 1rem;
+        background: #f8fafc;
+        border: 1px solid #e2e8f0;
+        border-radius: 6px;
+        border-left: none;
+        min-width: 200px;
+        max-width: 300px;
+    }
+    
+
+    
+    .assignment-grid.stacked-view .duration-info {
+        margin-top: 0.25rem;
+        font-size: 0.7rem;
+    }
+    
+
+    
+    /* Hide topic section in stacked view */
+    .assignment-grid.stacked-view .topic-section.stacked-hidden {
+        display: none;
+    }
+    
+    /* Hide status indicator in stacked view */
+    .assignment-grid.stacked-view .status-indicator {
+        display: none;
+    }
+    
+    .assignment-grid.stacked-view .card-actions {
+        flex: 0 0 auto;
+        margin-top: 0;
+        padding-top: 0;
+        border-top: none;
+        gap: 0.75rem;
+    }
+    
+    .assignment-grid.stacked-view .action-btn {
+        width: 32px;
+        height: 32px;
+        font-size: 0.8rem;
+    }
+    
+    /* Responsive stacked view */
+    @media (max-width: 768px) {
+        .assignment-grid.stacked-view .card-content {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 1rem;
+        }
+        
+        .assignment-grid.stacked-view .card-body {
+            flex-direction: column;
+            gap: 1rem;
+            width: 100%;
+        }
+        
+        .assignment-grid.stacked-view .deadline-section {
+            min-width: auto;
+            width: 100%;
+        }
+        
+        .assignment-grid.stacked-view .card-actions {
+            width: 100%;
+            justify-content: flex-end;
+        }
     }
     
     .assignment-card {
@@ -457,6 +623,23 @@
         font-size: 0.875rem;
         font-weight: 500;
         color: #374151;
+    }
+    
+    /* Stacked view specific topic styling */
+    .assignment-grid.stacked-view .topic-label {
+        font-size: 0.7rem;
+        font-weight: 600;
+        color: #64748b;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        margin-bottom: 0.25rem;
+    }
+    
+    .assignment-grid.stacked-view .topic-name {
+        font-size: 0.875rem;
+        font-weight: 500;
+        color: #374151;
+        line-height: 1.4;
     }
     
     .deadline-section {
@@ -624,6 +807,8 @@
         
         .header-actions {
             justify-content: center;
+            flex-wrap: wrap;
+            gap: 0.5rem;
         }
         
         .stats-grid {
@@ -661,6 +846,43 @@
         
         .assignment-card {
             animation-delay: 0.1s !important;
+        }
+        
+        /* Mobile stacked view adjustments */
+        .assignment-grid.stacked-view .assignment-card {
+            margin-bottom: 1rem;
+        }
+        
+        .assignment-grid.stacked-view .card-content {
+            padding: 1rem 1.25rem;
+        }
+        
+        .assignment-grid.stacked-view .assignment-title {
+            font-size: 0.9rem;
+        }
+        
+        .assignment-grid.stacked-view .assignment-meta {
+            font-size: 0.7rem;
+        }
+        
+        .assignment-grid.stacked-view .card-body {
+            flex-direction: column;
+            gap: 1rem;
+            width: 100%;
+        }
+        
+        .assignment-grid.stacked-view .deadline-section {
+            min-width: auto;
+            width: 100%;
+            flex-direction: column;
+            gap: 0.5rem;
+            align-items: flex-end;
+        }
+        
+        .assignment-grid.stacked-view .score-section {
+            margin-left: 0;
+            margin-top: 0.5rem;
+            justify-content: center;
         }
     }
     
@@ -704,7 +926,7 @@
         }
     }
     
-    /* Preloader styles */
+    /* LETHAL PRELOADER STYLES - ELIMINATES FOUC */
     .preloader {
         position: fixed;
         top: 0;
@@ -713,14 +935,16 @@
         height: 100%;
         background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
         display: flex;
+        flex-direction: column;
         justify-content: center;
         align-items: center;
         z-index: 9999;
-        transition: opacity 0.5s ease;
+        transition: opacity 0.5s ease, visibility 0.5s ease;
     }
     
     .preloader.hidden {
         opacity: 0;
+        visibility: hidden;
         pointer-events: none;
     }
     
@@ -731,24 +955,352 @@
         border-top: 3px solid #3b82f6;
         border-radius: 50%;
         animation: spin 1s linear infinite;
+        margin-bottom: 1rem;
+    }
+
+    .preloader-brand {
+        font-size: 1.5rem;
+        font-weight: 700;
+        color: #3b82f6;
+        margin-top: 1rem;
     }
     
     @keyframes spin {
         0% { transform: rotate(0deg); }
         100% { transform: rotate(360deg); }
     }
+
+    @keyframes slideInDown {
+        0% {
+            transform: translateY(-20px);
+            opacity: 0;
+        }
+        100% {
+            transform: translateY(0);
+            opacity: 1;
+        }
+    }
+    
+    /* Modal Styles */
+    .modal-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.5);
+        backdrop-filter: blur(4px);
+        z-index: 10000;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        opacity: 0;
+        transition: opacity 0.3s ease;
+    }
+    
+    .modal-overlay.show {
+        opacity: 1;
+    }
+    
+    .modal-container {
+        max-width: 420px;
+        width: 90%;
+        max-height: 85vh;
+        overflow-y: auto;
+        transform: scale(0.9) translateY(20px);
+        transition: transform 0.3s ease;
+    }
+    
+    .modal-overlay.show .modal-container {
+        transform: scale(1) translateY(0);
+    }
+    
+    .modal-content-wrapper {
+        background: white;
+        border-radius: 8px;
+        box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+        overflow: hidden;
+    }
+    
+    .modal-header-custom {
+        background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+        color: white;
+        padding: 1rem 1.25rem;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+    
+    .modal-title-custom {
+        font-size: 1rem;
+        font-weight: 600;
+        margin: 0;
+        display: flex;
+        align-items: center;
+        gap: 0.375rem;
+    }
+    
+    .modal-close-btn {
+        background: none;
+        border: none;
+        color: white;
+        font-size: 1rem;
+        cursor: pointer;
+        padding: 0.25rem;
+        border-radius: 50%;
+        transition: all 0.2s ease;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 28px;
+        height: 28px;
+    }
+    
+    .modal-close-btn:hover {
+        background: rgba(255, 255, 255, 0.2);
+        transform: scale(1.1);
+    }
+    
+    .modal-body-custom {
+        padding: 1.25rem;
+    }
+    
+    /* Modal Form Styles */
+    .modal-form-group {
+        margin-bottom: 1rem;
+    }
+    
+    .modal-form-label {
+        display: flex;
+        align-items: center;
+        gap: 0.375rem;
+        font-weight: 500;
+        color: #374151;
+        margin-bottom: 0.375rem;
+        font-size: 0.8rem;
+    }
+    
+    .modal-form-control, .modal-form-select {
+        width: 100%;
+        padding: 0.5rem 0.75rem;
+        border: 1px solid #d1d5db;
+        border-radius: 6px;
+        font-size: 0.8rem;
+        transition: all 0.2s ease;
+        background: white;
+    }
+    
+    .modal-form-control:focus, .modal-form-select:focus {
+        outline: none;
+        border-color: #3b82f6;
+        box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.1);
+    }
+    
+    .modal-form-text {
+        font-size: 0.7rem;
+        color: #6b7280;
+        margin-top: 0.2rem;
+    }
+    
+    .modal-assignment-info {
+        background: #f8fafc;
+        border-radius: 6px;
+        padding: 0.875rem;
+        margin-bottom: 1.25rem;
+        border-left: 3px solid #3b82f6;
+    }
+    
+    .modal-info-title {
+        font-size: 0.875rem;
+        font-weight: 600;
+        color: #374151;
+        margin-bottom: 0.75rem;
+        display: flex;
+        align-items: center;
+        gap: 0.375rem;
+    }
+    
+    .modal-info-grid {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 0.5rem;
+    }
+    
+    .modal-info-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 0.25rem;
+    }
+    
+    .modal-info-label {
+        font-weight: 500;
+        color: #6b7280;
+        font-size: 0.75rem;
+    }
+    
+    .modal-info-value {
+        color: #374151;
+        font-weight: 500;
+        font-size: 0.75rem;
+    }
+    
+    .modal-status-badge {
+        padding: 0.2rem 0.5rem;
+        border-radius: 12px;
+        font-size: 0.7rem;
+        font-weight: 600;
+    }
+    
+    .modal-status-active { background: #dcfce7; color: #166534; }
+    .modal-status-completed { background: #dbeafe; color: #1e40af; }
+    .modal-status-overdue { background: #fee2e2; color: #dc2626; }
+    .modal-status-locked { background: #fef3c7; color: #d97706; }
+    .modal-status-expired { background: #fecaca; color: #dc2626; }
+    
+    .modal-actions {
+        display: flex;
+        gap: 0.75rem;
+        margin-top: 1.25rem;
+    }
+    
+    .modal-btn {
+        flex: 1;
+        padding: 0.5rem 1rem;
+        border-radius: 6px;
+        font-weight: 500;
+        font-size: 0.8rem;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.375rem;
+        border: none;
+    }
+    
+    .modal-btn-primary {
+        background: #3b82f6;
+        color: white;
+    }
+    
+    .modal-btn-primary:hover {
+        background: #2563eb;
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+    }
+    
+    .modal-btn-secondary {
+        background: #f3f4f6;
+        color: #6b7280;
+        border: 1px solid #e5e7eb;
+    }
+    
+    .modal-btn-secondary:hover {
+        background: #e5e7eb;
+        color: #374151;
+    }
+    
+    .modal-loading {
+        text-align: center;
+        padding: 2rem 1rem;
+        color: #6b7280;
+    }
+    
+    .modal-loading-spinner {
+        width: 28px;
+        height: 28px;
+        border: 2px solid #e5e7eb;
+        border-top: 2px solid #3b82f6;
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+        margin: 0 auto 0.75rem;
+    }
+    
+    .modal-alert {
+        padding: 0.75rem;
+        border-radius: 6px;
+        margin-bottom: 0.75rem;
+        display: flex;
+        align-items: center;
+        gap: 0.375rem;
+        font-size: 0.8rem;
+    }
+    
+    .modal-alert-success {
+        background: #dcfce7;
+        color: #166534;
+        border: 1px solid #bbf7d0;
+    }
+    
+    .modal-alert-error {
+        background: #fee2e2;
+        color: #dc2626;
+        border: 1px solid #fecaca;
+    }
+    
+    /* Responsive modal */
+    @media (max-width: 768px) {
+        .modal-container {
+            width: 95%;
+            max-height: 90vh;
+        }
+        
+        .modal-header-custom {
+            padding: 0.875rem 1rem;
+        }
+        
+        .modal-body-custom {
+            padding: 1rem;
+        }
+        
+        .modal-info-grid {
+            grid-template-columns: 1fr;
+        }
+        
+        .modal-actions {
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+        
+        .modal-form-group {
+            margin-bottom: 0.875rem;
+        }
+    }
 </style>
 <div class="main-content">
+    <!-- Success Message -->
+    @if(session('success'))
+        <div class="alert alert-success alert-dismissible fade show" role="alert" style="animation: slideInDown 0.5s ease;">
+            <i class="fas fa-check-circle me-2"></i>
+            {{ session('success') }}
+            @if(session('created_count'))
+                <div class="mt-1">
+                    <small class="text-success-emphasis">
+                        <i class="fas fa-info-circle me-1"></i>
+                        {{ session('created_count') }} assignment{{ session('created_count') > 1 ? 's' : '' }} created successfully
+                    </small>
+                </div>
+            @endif
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    @endif
+
     <!-- Header -->
     <div class="page-header">
         <h1 class="page-title">Assignments</h1>
         <div class="header-actions">
-            <button type="button" class="btn btn-outline btn-sm" onclick="updateOverdueAssignments()" title="INSTANT Real-Time Status Update">
-                <i class="fas fa-bolt"></i> INSTANT
+            <!-- View Toggle Button -->
+            <button type="button" class="btn btn-outline btn-sm" id="viewToggle" title="Toggle View">
+                <i class="fas fa-th-large" id="gridIcon"></i>
+                <i class="fas fa-list" id="listIcon" style="display: none;"></i>
+                <span id="viewText">Grid</span>
             </button>
-            <a href="{{ route('assignments.analytics') }}" class="btn btn-outline btn-sm" title="View analytics">
-                <i class="fas fa-chart-bar"></i>
-            </a>
+            
+            <button type="button" class="btn btn-outline btn-sm" onclick="updateOverdueAssignments()" title="Refresh Assignment Status">
+                <i class="fas fa-refresh"></i>
+            </button>
+
             <a href="{{ route('assignments.create') }}" class="btn btn-success btn-sm">
                 <i class="fas fa-plus"></i>
                 <span>New Assignment</span>
@@ -758,7 +1310,7 @@
 
     <!-- Stats -->
     <div class="stats-grid">
-        <div class="stat-card">
+        <div class="stat-card stat-active">
             <div class="stat-number">{{ $assignments->where('status', 'active')->count() }}</div>
             <div class="stat-label">Active</div>
         </div>
@@ -841,9 +1393,9 @@
                         <span class="status-indicator status-{{ $assignment->status }}"></span>
                     </div>
                     
-                    <!-- Topic and deadline info -->
+                                        <!-- Topic and deadline info -->
                     <div class="card-body">
-                        <div class="topic-section">
+                        <div class="topic-section stacked-hidden">
                             <span class="topic-label">Topic</span>
                             <span class="topic-name">{{ $assignment->topic->name }}</span>
                         </div>
@@ -857,20 +1409,28 @@
                                 <div class="time-remaining {{ $assignment->isOverdue() ? 'overdue' : '' }}">
                                     {{ $assignment->getTimeRemainingHuman() }}
                                 </div>
-                            @elseif($assignment->score)
+                            @endif
+                            @if($assignment->duration_minutes)
+                                <div class="duration-info">
+                                    <small class="text-muted">{{ $assignment->duration_minutes }} min</small>
+                                </div>
+                            @endif
+                            @if($assignment->status === 'completed' && $assignment->score_percentage)
                                 <div class="time-remaining completed">
-                                    {{ $assignment->score }}%
+                                    {{ $assignment->score_percentage }}%
                                 </div>
                             @endif
                         </div>
+                        
+ 
                     </div>
                     
                     <!-- Actions -->
                     @if($assignment->status !== 'completed')
                         <div class="card-actions">
-                            <a href="{{ route('assignments.edit', $assignment) }}" class="action-btn edit-btn">
+                            <button type="button" class="action-btn edit-btn" onclick="openEditModal({{ $assignment->id }})">
                                 <i class="fas fa-edit"></i>
-                            </a>
+                            </button>
                             <button type="button" class="action-btn delete-btn" onclick="deleteAssignment({{ $assignment->id }})">
                                 <i class="fas fa-trash"></i>
                             </button>
@@ -899,12 +1459,65 @@
 <script>
 // Performance optimizations and smooth effects
 document.addEventListener('DOMContentLoaded', function() {
-    // Hide preloader
+    // LETHAL PRELOADER HANDLER - ELIMINATES FOUC
     const preloader = document.getElementById('preloader');
+    const navbar = document.querySelector('.navbar');
     setTimeout(() => {
         preloader.classList.add('hidden');
+        navbar.style.opacity = '1';
         setTimeout(() => preloader.remove(), 500);
     }, 300);
+
+    // LETHAL PAGE TRANSITION HANDLER
+    document.addEventListener('beforeunload', function() {
+        const preloader = document.getElementById('preloader');
+        if (preloader) {
+            preloader.classList.remove('hidden');
+            navbar.style.opacity = '0';
+        }
+    });
+    
+    // View Toggle Functionality
+    const viewToggle = document.getElementById('viewToggle');
+    const assignmentGrid = document.querySelector('.assignment-grid');
+    const gridIcon = document.getElementById('gridIcon');
+    const listIcon = document.getElementById('listIcon');
+    const viewText = document.getElementById('viewText');
+    
+    // Load saved view preference
+    const savedView = localStorage.getItem('assignmentViewMode') || 'grid';
+    if (savedView === 'stacked') {
+        assignmentGrid.classList.add('stacked-view');
+        gridIcon.style.display = 'none';
+        listIcon.style.display = 'inline';
+        viewText.textContent = 'List';
+    }
+    
+    viewToggle.addEventListener('click', function() {
+        const isStacked = assignmentGrid.classList.contains('stacked-view');
+        
+        if (isStacked) {
+            // Switch to grid view
+            assignmentGrid.classList.remove('stacked-view');
+            gridIcon.style.display = 'inline';
+            listIcon.style.display = 'none';
+            viewText.textContent = 'Grid';
+            localStorage.setItem('assignmentViewMode', 'grid');
+        } else {
+            // Switch to stacked view
+            assignmentGrid.classList.add('stacked-view');
+            gridIcon.style.display = 'none';
+            listIcon.style.display = 'inline';
+            viewText.textContent = 'List';
+            localStorage.setItem('assignmentViewMode', 'stacked');
+        }
+        
+        // Smooth transition effect
+        assignmentGrid.style.opacity = '0.8';
+        setTimeout(() => {
+            assignmentGrid.style.opacity = '1';
+        }, 150);
+    });
     
     // Auto-submit on select change for instant filtering
     const selects = document.querySelectorAll('.form-select');
@@ -981,7 +1594,7 @@ function updateOverdueAssignments() {
 function enforceRealTimeStatus(assignmentId = null) {
     const btn = event.target;
     const originalHTML = btn.innerHTML;
-    btn.innerHTML = '<i class="fas fa-bolt fa-spin"></i> INSTANT';
+    btn.innerHTML = '<i class="fas fa-refresh fa-spin"></i>';
     btn.disabled = true;
     
     const payload = assignmentId ? { assignment_id: assignmentId } : {};
@@ -1021,6 +1634,171 @@ function enforceRealTimeStatus(assignmentId = null) {
 
 <!-- REAL-TIME ASSIGNMENT STATUS ENFORCER -->
 <script src="{{ asset('js/real-time-assignments.js') }}"></script>
+
+<!-- Edit Assignment Modal -->
+<div id="editAssignmentModal" class="modal-overlay" style="display: none;">
+    <div class="modal-container">
+        <div class="modal-content-wrapper">
+            <div class="modal-header-custom">
+                <h5 class="modal-title-custom">
+                    <i class="fas fa-edit"></i>
+                    Edit Assignment
+                </h5>
+                <button type="button" class="modal-close-btn" onclick="closeEditModal()">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body-custom">
+                <div id="editModalContent">
+                    <!-- Content will be loaded here -->
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Edit Assignment Modal Functions
+function openEditModal(assignmentId) {
+    const modal = document.getElementById('editAssignmentModal');
+    const modalContent = document.getElementById('editModalContent');
+    
+    // Show loading state
+    modalContent.innerHTML = `
+        <div class="modal-loading">
+            <div class="modal-loading-spinner"></div>
+            <p>Loading assignment details...</p>
+        </div>
+    `;
+    
+    // Show modal with animation
+    modal.style.display = 'flex';
+    setTimeout(() => {
+        modal.classList.add('show');
+    }, 10);
+    
+    // Load assignment data
+    fetch(`/assignments/${assignmentId}/edit`, {
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest',
+            'Accept': 'text/html'
+        }
+    })
+        .then(response => response.text())
+        .then(html => {
+            modalContent.innerHTML = html;
+            initializeEditForm(assignmentId);
+        })
+        .catch(error => {
+            console.error('Error loading assignment:', error);
+            modalContent.innerHTML = `
+                <div class="modal-alert modal-alert-error">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    Error loading assignment details. Please try again.
+                </div>
+            `;
+        });
+}
+
+function closeEditModal() {
+    const modal = document.getElementById('editAssignmentModal');
+    modal.classList.remove('show');
+    setTimeout(() => {
+        modal.style.display = 'none';
+    }, 300);
+}
+
+// Close modal when clicking outside or pressing Escape
+document.addEventListener('DOMContentLoaded', function() {
+    const modal = document.getElementById('editAssignmentModal');
+    if (modal) {
+        modal.addEventListener('click', function(e) {
+            if (e.target === modal) {
+                closeEditModal();
+            }
+        });
+        
+        // Close modal with Escape key
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape' && modal.classList.contains('show')) {
+                closeEditModal();
+            }
+        });
+    }
+});
+
+function initializeEditForm(assignmentId) {
+    const form = document.getElementById('editAssignmentForm');
+    if (!form) return;
+    
+    form.addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        const formData = new FormData(this);
+        
+        // Show loading state
+        const submitBtn = this.querySelector('button[type="submit"]');
+        const originalText = submitBtn.innerHTML;
+        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...';
+        submitBtn.disabled = true;
+        
+        fetch(`/assignments/${assignmentId}`, {
+            method: 'PUT',
+            headers: {
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(Object.fromEntries(formData))
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                showModalAlert('Assignment updated successfully!', 'success');
+                setTimeout(() => {
+                    closeEditModal();
+                    location.reload();
+                }, 1500);
+            } else {
+                showModalAlert('Error updating assignment: ' + (data.message || 'Unknown error'), 'error');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            showModalAlert('An error occurred while updating the assignment.', 'error');
+        })
+        .finally(() => {
+            submitBtn.innerHTML = originalText;
+            submitBtn.disabled = false;
+        });
+    });
+    
+    // Auto-focus first input for better UX
+    const firstInput = document.querySelector('#editAssignmentForm input, #editAssignmentForm select');
+    if (firstInput) {
+        setTimeout(() => firstInput.focus(), 100);
+    }
+}
+
+function showModalAlert(message, type) {
+    const modalBody = document.querySelector('#editAssignmentModal .modal-body-custom');
+    const alertDiv = document.createElement('div');
+    alertDiv.className = `modal-alert modal-alert-${type === 'success' ? 'success' : 'error'}`;
+    alertDiv.innerHTML = `
+        <i class="fas fa-${type === 'success' ? 'check-circle' : 'exclamation-triangle'}"></i>
+        ${message}
+    `;
+    
+    // Insert at the top of modal body
+    modalBody.insertBefore(alertDiv, modalBody.firstChild);
+    
+    // Auto-remove after 5 seconds
+    setTimeout(() => {
+        if (alertDiv.parentNode) {
+            alertDiv.remove();
+        }
+    }, 5000);
+}
+</script>
 
 </body>
 </html>

@@ -44,7 +44,7 @@ class LearnViewController extends Controller
 
             return Cache::remember($cacheKey, 1800, function () use ($userId, $mode, $courseFilter) {
                 // Get all mistakes for the user (including mastered ones)
-                $mistakes = Mistake::select('mistakes.*', 'questions.question_text', 'questions.correct_answer', 'questions.wrong_answers', 'questions.explanation', 'questions.difficulty', 'topics.name as topic_name', 'courses.name as course_name')
+                $mistakes = Mistake::select('mistakes.*', 'questions.question', 'questions.correct_answer', 'questions.explanation', 'topics.name as topic_name', 'courses.name as course_name')
                     ->join('questions', 'mistakes.question_id', '=', 'questions.id')
                     ->join('topics', 'questions.topic_id', '=', 'topics.id')
                     ->join('courses', 'topics.course_id', '=', 'courses.id')
@@ -85,7 +85,7 @@ class LearnViewController extends Controller
             ]);
 
             $mistakes = Cache::remember($cacheKey, 300, function () use ($userId, $courseFilter) {
-                return Mistake::select('mistakes.*', 'questions.question_text', 'questions.correct_answer', 'questions.wrong_answers', 'questions.explanation', 'questions.difficulty', 'topics.name as topic_name', 'courses.name as course_name')
+                return Mistake::select('mistakes.*', 'questions.question', 'questions.correct_answer', 'questions.explanation', 'topics.name as topic_name', 'courses.name as course_name')
                     ->join('questions', 'mistakes.question_id', '=', 'questions.id')
                     ->join('topics', 'questions.topic_id', '=', 'topics.id')
                     ->join('courses', 'topics.course_id', '=', 'courses.id')

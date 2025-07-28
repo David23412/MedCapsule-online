@@ -1018,34 +1018,38 @@
 
         .milestone-mark {
             position: absolute;
-            width: 18px;
-            height: 18px;
+            width: 22px;
+            height: 22px;
             background: white;
-            border: 2px solid #d1d5db;
+            border: 3px solid #3b82f6;
             border-radius: 50%;
             display: flex;
             align-items: center;
             justify-content: center;
             transform: translateX(-50%) scale(0.9);
             transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 0 2px 8px rgba(59, 130, 246, 0.25);
         }
 
         .milestone-mark:hover {
-            transform: translateX(-50%) scale(1.1);
+            transform: translateX(-50%) scale(1.15);
+            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.35);
         }
 
         .milestone-mark i {
-            font-size: 0.65rem;
-            color: #d1d5db;
+            font-size: 0.75rem;
+            color: #3b82f6;
             transition: all 0.3s ease;
-            opacity: 0;
-            transform: scale(0);
+            opacity: 1;
+            transform: scale(1);
+            font-weight: 600;
         }
 
         .milestone-mark.active {
             background: #10b981;
             border-color: #059669;
             transform: translateX(-50%) scale(1);
+            box-shadow: 0 4px 12px rgba(16, 185, 129, 0.35);
         }
 
         .milestone-mark.active i {
@@ -1323,87 +1327,10 @@
             }
         }
         
-        .notification-dropdown {
-            position: absolute;
-            top: 155%;
-            right: -90px;
-            width: 380px;
-            background-color: white;
-            border-radius: 12px;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
-            z-index: 1000;
-            overflow: hidden;
-            display: flex;
-            flex-direction: column;
-            max-height: 420px;
-            transform-origin: top right;
+        /* All notification dropdown styles removed - using component styles for consistency */
         }
 
-        .notification-header {
-            border-bottom: 1px solid rgba(33, 150, 243, 0.1);
-            padding: 1rem;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            background-color: #f8f9fa;
-            border-radius: 12px 12px 0 0;
-        }
-        
-        .notification-header h6 {
-            margin: 0;
-            font-weight: 600;
-            color: #343a40;
-            font-size: 1rem;
-        }
-
-        .mark-all-read {
-            background: none;
-            border: none;
-            color: #007bff;
-            font-size: 0.8rem;
-            cursor: pointer;
-            padding: 0.3rem 0.6rem;
-            border-radius: 4px;
-            transition: all 0.2s ease;
-            display: flex;
-            align-items: center;
-        }
-
-        .mark-all-read:hover {
-            background-color: #e6f2ff;
-            transform: translateY(-1px);
-        }
-
-        .notification-list {
-            overflow-y: auto;
-            flex: 1;
-            scrollbar-width: thin;
-            scrollbar-color: #e0e0e0 #f5f5f5;
-            max-height: 330px;
-            padding: 0.5rem 0;
-        }
-
-        .notification-list::-webkit-scrollbar {
-            width: 3px;
-        }
-
-        .notification-list::-webkit-scrollbar-track {
-            background: #f5f5f5;
-        }
-
-        .notification-list::-webkit-scrollbar-thumb {
-            background: #e0e0e0;
-            border-radius: 10px;
-        }
-
-        .notification-item {
-            padding: 0.75rem 1rem;
-            border-bottom: 1px solid #f1f3f5;
-            position: relative;
-            transition: all 0.3s ease;
-            cursor: pointer;
-            opacity: 0;
-            animation: appear-in 0.5s forwards;
+        /* notification-item styles removed - using component styles */
             animation-delay: var(--appear-delay, 0s);
             background-color: #ffffff;
             border-radius: 8px;
@@ -1607,12 +1534,120 @@
             margin-right: 0.5rem;
         }
         
-        /* Bundle Modal Styles */
+        /* Modal Styles - Fixed for Edge compatibility */
+        .modal-backdrop {
+            background: rgba(0, 0, 0, 0.5) !important;
+            backdrop-filter: none !important;
+            position: fixed !important;
+            top: 0 !important;
+            left: 0 !important;
+            width: 100% !important;
+            height: 100% !important;
+            z-index: 1040 !important;
+            transform: none !important;
+            will-change: auto !important;
+            transition: none !important;
+        }
+
+        .modal-backdrop.show {
+            opacity: 1 !important;
+        }
+
+        .modal-backdrop.fade {
+            opacity: 0 !important;
+            transition: none !important;
+        }
+
+        .modal-backdrop.fade.show {
+            opacity: 1 !important;
+            transition: none !important;
+        }
+
+        /* Edge-specific modal backdrop override */
+        @supports (-ms-ime-align: auto) {
+            .modal-backdrop,
+            .modal-backdrop.show,
+            .modal-backdrop.fade.show {
+                background: rgba(0, 0, 0, 0.5) !important;
+                opacity: 1 !important;
+                position: fixed !important;
+                top: 0 !important;
+                left: 0 !important;
+                right: 0 !important;
+                bottom: 0 !important;
+                width: 100% !important;
+                height: 100% !important;
+                z-index: 1040 !important;
+                backdrop-filter: none !important;
+                filter: none !important;
+                transform: none !important;
+                transition: none !important;
+            }
+        }
+
+        .modal-content {
+            z-index: 1041 !important;
+            position: relative;
+        }
+
+        /* Bundle Modal Styles - Fixed for Edge compatibility */
+        .bundle-modal .modal-backdrop {
+            background: rgba(0, 0, 0, 0.5) !important;
+            backdrop-filter: none !important;
+            position: fixed !important;
+            top: 0 !important;
+            left: 0 !important;
+            width: 100% !important;
+            height: 100% !important;
+            z-index: 1040 !important;
+            transform: none !important;
+            will-change: auto !important;
+            transition: none !important;
+        }
+
+        .bundle-modal .modal-backdrop.show {
+            opacity: 1 !important;
+        }
+
+        .bundle-modal .modal-backdrop.fade {
+            opacity: 0 !important;
+            transition: none !important;
+        }
+
+        .bundle-modal .modal-backdrop.fade.show {
+            opacity: 1 !important;
+            transition: none !important;
+        }
+
+        /* Edge-specific modal backdrop override */
+        @supports (-ms-ime-align: auto) {
+            .bundle-modal .modal-backdrop,
+            .bundle-modal .modal-backdrop.show,
+            .bundle-modal .modal-backdrop.fade.show {
+                background: rgba(0, 0, 0, 0.5) !important;
+                opacity: 1 !important;
+                position: fixed !important;
+                top: 0 !important;
+                left: 0 !important;
+                right: 0 !important;
+                bottom: 0 !important;
+                width: 100% !important;
+                height: 100% !important;
+                z-index: 1040 !important;
+                backdrop-filter: none !important;
+                filter: none !important;
+                transform: none !important;
+                transition: none !important;
+            }
+        }
+
         .bundle-modal .modal-content {
             border-radius: 12px;
             border: none;
             box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
             overflow: hidden;
+            z-index: 1041 !important;
+            position: relative;
         }
         
         .bundle-modal .modal-header {
@@ -1749,6 +1784,9 @@
     </style>
 </head>
 <body>
+    <!-- SAFE PRELOADER - WON'T BREAK ANYTHING -->
+    @include('components.lightning-preloader')
+
     <nav class="navbar navbar-expand-lg navbar-light">
         <div class="container">
             <a class="navbar-brand" href="/">MedCapsule</a>
@@ -2516,6 +2554,30 @@
             }
         });
 
+        // Add polling mechanism to update progress bar when correct answers change
+        function pollUserProgress() {
+            fetch('/profile/progress', {
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+                },
+                credentials: 'same-origin'
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.correct_answers_count !== undefined && data.correct_answers_count !== correctAnswers) {
+                    updateProgress(data.correct_answers_count);
+                    document.getElementById('correctCount').textContent = data.correct_answers_count;
+                }
+            })
+            .catch(error => console.log('Progress polling error:', error));
+        }
+
+        // Poll every 5 seconds for progress updates
+        setInterval(pollUserProgress, 5000);
+
         // Initialize goal modal (if exists)
         try {
             const goalModal = new bootstrap.Modal(document.getElementById('goalModal'));
@@ -3029,6 +3091,6 @@
 </html>
 <!-- No
 tification System JavaScript -->
-<script src="{{ asset('js/notification-system.js') }}"></script>
+    <script src="/js/notification-system.js"></script>
 </body>
 </html>

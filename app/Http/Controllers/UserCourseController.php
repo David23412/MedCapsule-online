@@ -10,7 +10,19 @@ class UserCourseController extends Controller
 {
     public function index()
     {
-        return view('admin.user-course');
+        // Get user statistics
+        $userStats = [
+            'total_users' => User::count(),
+            'active_users' => User::where('last_active_at', '>=', now()->subDays(7))->count(),
+            'admin_users' => User::where('role', 'admin')->count(),
+            'total_enrollments' => \DB::table('course_user')->count()
+        ];
+
+        // Get users and courses for the form
+        $users = User::orderBy('name')->get();
+        $courses = Course::orderBy('name')->get();
+
+        return view('admin.manage-access', compact('userStats', 'users', 'courses'));
     }
 
     public function enroll(Request $request)
@@ -32,7 +44,7 @@ class UserCourseController extends Controller
     public function toggleAdmin(Request $request)
     {
         $user = User::findOrFail($request->user_id);
-        $user->is_admin = !$user->is_admin;
+        $user->role = $user->role === 'admin' ? 'student' : 'admin';
         $user->save();
         
         return response()->json(['success' => true]);

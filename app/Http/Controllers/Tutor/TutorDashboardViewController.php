@@ -11,7 +11,7 @@ class TutorDashboardViewController extends Controller
 {
     public function __construct()
     {
-        $this->middleware('auth', 'tutor');
+        $this->middleware(['auth', 'tutor']);
     }
 
     /**
@@ -44,22 +44,24 @@ class TutorDashboardViewController extends Controller
     public function showStudentProfile(Request $request, $studentId)
     {
         $user = auth()->user();
-        $student = User::select('id', 'name', 'email')->findOrFail($studentId);
+        $student = User::select('id', 'name', 'email', 'university', 'created_at', 'last_active_at', 'total_questions_attempted', 'correct_answers_count', 'study_streak_days', 'xp')->findOrFail($studentId);
 
         // Verify access permissions
         if (!$user->isAdmin() && !$this->canAccessStudent($user, $student)) {
             abort(403, 'You do not have permission to view this student\'s profile.');
         }
 
-        // Aggressive caching for student data
-        $studentData = Cache::remember("student_profile_{$studentId}_{$user->id}", 600, function() use ($student) {
-            return $this->getComprehensiveStudentData($student);
-        });
+        // REAL-TIME DATA: No caching to ensure 100% accuracy
+        $studentData = $this->getComprehensiveStudentData($student);
+
+        // Get all assignments for this student
+        $assignments = $this->getStudentAssignments($student);
 
         return view('tutor.student-profile', [
             'student' => $student,
             'tutor' => $user,
-            'data' => $studentData]);
+            'data' => $studentData,
+            'assignments' => $assignments]);
     }
 
     /**
@@ -70,7 +72,7 @@ class TutorDashboardViewController extends Controller
         $cacheKey = "dashboard_students_{$user->id}";
         
         return Cache::remember($cacheKey, now()->addMinutes(10), function () use ($user) {
-            $query = User::where('role', User::ROLE_STUDENT)->with(['relatedModel']);
+            $query = User::where('role', User::ROLE_STUDENT);
 
             if (!$user->isAdmin()) {
                 $query->whereHas('assignedTutors', function ($q) use ($user) {
@@ -178,38 +180,70 @@ class TutorDashboardViewController extends Controller
     }
 
     /**
-     * Get comprehensive student data for profile view
+     * Get comprehensive student data for profile view - REAL-TIME ACCURACY
      */
     private function getComprehensiveStudentData(User $student): array
     {
+        // FRESH DATA: Get real-time quiz attempts without caching
         $quizAttempts = $student->quizAttempts()
             ->with('topic:id,name')
             ->orderBy('created_at', 'desc')
             ->get();
 
+        // REAL-TIME CALCULATIONS
         $totalQuestions = $student->total_questions_attempted ?? 0;
         $totalCorrect = $student->correct_answers_count ?? 0;
         $accuracyRate = $totalQuestions > 0 ? round(($totalCorrect / $totalQuestions) * 100, 1) : 0;
+        
+        // Calculate real-time averages
+        $averageScore = $quizAttempts->count() > 0 ? round($quizAttempts->avg('score'), 1) : 0;
+        $bestScore = $quizAttempts->count() > 0 ? $quizAttempts->max('score') : 0;
+        
+        // Recent activity (last 30 days)
+        $recentActivity = $quizAttempts->where('created_at', '>=', now()->subDays(30))->count();
+        
+        // Study streak calculation
+        $studyStreak = $student->study_streak_days ?? 0;
+        
+        // Last active calculation
+        $lastActive = $student->last_active_at;
+        $isCurrentlyActive = $lastActive && $lastActive->gte(now()->subMinutes(15));
 
         return [
             'overview' => [
                 'total_quizzes' => $quizAttempts->count(),
-                'average_score' => round($quizAttempts->avg('score') ?? 0, 1),
-                'best_score' => $quizAttempts->max('score') ?? 0,
+                'average_score' => $averageScore,
+                'best_score' => $bestScore,
                 'accuracy_rate' => $accuracyRate,
-                'study_streak' => $student->study_streak_days ?? 0,
+                'study_streak' => $studyStreak,
                 'total_xp' => $student->xp ?? 0,
-                'member_since' => $student->created_at,
-                'last_active' => $student->last_active_at],
+                'member_since' => $student->created_at ?? now(),
+                'last_active' => $lastActive,
+                'is_currently_active' => $isCurrentlyActive,
+                'total_questions_attempted' => $totalQuestions,
+                'total_correct_answers' => $totalCorrect
+            ],
             'recent_quizzes' => $quizAttempts->take(10)->map(function ($attempt) {
                 return [
                     'topic' => $attempt->topic->name ?? 'Unknown Topic',
                     'score' => $attempt->score,
                     'date' => $attempt->created_at,
-                    'duration' => $attempt->duration_seconds ?? 0];
+                    'duration' => $attempt->duration_seconds ?? 0,
+                    'questions_attempted' => $attempt->questions_attempted ?? 0,
+                    'correct_answers' => $attempt->correct_answers ?? 0
+                ];
             })->toArray(),
             'performance_by_topic' => $this->getTopicPerformance($quizAttempts),
-            'study_patterns' => $this->getStudyPatterns($quizAttempts)];
+            'study_patterns' => $this->getStudyPatterns($quizAttempts),
+            'real_time_stats' => [
+                'last_quiz_date' => $quizAttempts->first()?->created_at,
+                'total_study_time' => $quizAttempts->sum('duration_seconds') / 60, // in minutes
+                'average_session_time' => $quizAttempts->count() > 0 ? round($quizAttempts->avg('duration_seconds') / 60, 1) : 0,
+                'improvement_rate' => $this->calculateImprovementRate($quizAttempts),
+                'strength_areas' => $this->getStrengthAreas($quizAttempts),
+                'weakness_areas' => $this->getWeaknessAreas($quizAttempts)
+            ]
+        ];
     }
 
     /**
@@ -255,5 +289,109 @@ class TutorDashboardViewController extends Controller
         })->map->count()->sortDesc();
 
         return $dayCount->keys()->first() ?? 'No data';
+    }
+
+    /**
+     * Calculate improvement rate based on recent vs older performance
+     */
+    private function calculateImprovementRate($quizAttempts)
+    {
+        if ($quizAttempts->count() < 2) return 0;
+        
+        $recentAttempts = $quizAttempts->take(5);
+        $olderAttempts = $quizAttempts->skip(5)->take(5);
+        
+        if ($olderAttempts->count() == 0) return 0;
+        
+        $recentAverage = $recentAttempts->avg('score');
+        $olderAverage = $olderAttempts->avg('score');
+        
+        return round((($recentAverage - $olderAverage) / $olderAverage) * 100, 1);
+    }
+
+    /**
+     * Get student's strength areas (topics with >80% average)
+     */
+    private function getStrengthAreas($quizAttempts)
+    {
+        return $quizAttempts->groupBy('topic.name')
+            ->map(function ($attempts, $topicName) {
+                $avgScore = $attempts->avg('score');
+                return [
+                    'topic' => $topicName ?: 'Unknown Topic',
+                    'average_score' => round($avgScore, 1),
+                    'attempts' => $attempts->count()
+                ];
+            })
+            ->filter(function ($topic) {
+                return $topic['average_score'] >= 80;
+            })
+            ->sortByDesc('average_score')
+            ->values()
+            ->take(3)
+            ->toArray();
+    }
+
+    /**
+     * Get student's weakness areas (topics with <60% average)
+     */
+    private function getWeaknessAreas($quizAttempts)
+    {
+        return $quizAttempts->groupBy('topic.name')
+            ->map(function ($attempts, $topicName) {
+                $avgScore = $attempts->avg('score');
+                return [
+                    'topic' => $topicName ?: 'Unknown Topic',
+                    'average_score' => round($avgScore, 1),
+                    'attempts' => $attempts->count()
+                ];
+            })
+            ->filter(function ($topic) {
+                return $topic['average_score'] < 60 && $topic['attempts'] >= 2;
+            })
+            ->sortBy('average_score')
+            ->values()
+            ->take(3)
+            ->toArray();
+    }
+
+    /**
+     * Get all assignments for a student with real-time status
+     */
+    private function getStudentAssignments(User $student): array
+    {
+        $assignments = \App\Models\Assignment::where('user_id', $student->id)
+            ->with(['topic:id,name', 'course:id,name', 'tutor:id,name'])
+            ->orderBy('created_at', 'desc')
+            ->get();
+
+        return [
+            'all_assignments' => $assignments->map(function ($assignment) {
+                return [
+                    'id' => $assignment->id,
+                    'title' => $assignment->title,
+                    'topic' => $assignment->topic->name ?? 'Unknown Topic',
+                    'course' => $assignment->course->name ?? 'Unknown Course',
+                    'tutor' => $assignment->tutor->name ?? 'Unknown Tutor',
+                    'status' => $assignment->status,
+                    'score_percentage' => $assignment->score_percentage,
+                    'deadline' => $assignment->deadline,
+                    'created_at' => $assignment->created_at,
+                    'completed_at' => $assignment->completed_at ?? null,
+                    'duration_minutes' => $assignment->duration_minutes,
+                    'assignment_mode' => $assignment->assignment_mode,
+                    'is_overdue' => $assignment->isOverdue(),
+                    'is_active' => $assignment->isActive(),
+                    'is_completed' => $assignment->status === \App\Models\Assignment::STATUS_COMPLETED,
+                    'time_remaining' => $assignment->getTimeRemainingHuman(),
+                    'progress_percentage' => $assignment->getProgressPercentage()
+                ];
+            })->toArray(),
+            'completed_count' => $assignments->where('status', \App\Models\Assignment::STATUS_COMPLETED)->count(),
+            'active_count' => $assignments->where('status', \App\Models\Assignment::STATUS_ACTIVE)->count(),
+            'overdue_count' => $assignments->where('status', \App\Models\Assignment::STATUS_OVERDUE)->count(),
+            'total_count' => $assignments->count(),
+            'average_score' => $assignments->where('status', \App\Models\Assignment::STATUS_COMPLETED)->avg('score_percentage') ?? 0
+        ];
     }
 }

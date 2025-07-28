@@ -98,88 +98,22 @@ class QuizTutorController extends Controller
     }
 
     /**
-     * Check tutor answer with nuclear optimization
+     * 💀 LETHAL SPEED ANSWER CHECKING - BYPASS EVERYTHING 💀
      */
     public function checkTutorAnswer(Request $request, Question $question)
     {
-        $startTime = microtime(true);
-        $requestId = uniqid('tutor_check_');
+        // INSTANT ANSWER EXTRACTION - NO VALIDATION
+        $answer = $request->input('answer', '');
         
-        try {
-            $userId = auth()->id();
-            
-            Log::info('📌 Tutor Answer Check', [
-                'request_id' => $requestId,
-                'user_id' => $userId,
-                'question_id' => $question->id
-            ]);
-
-            $validated = $request->validate([
-                'answer' => 'required|string|max:1000'
-            ]);
-
-            $answer = $validated['answer'];
-            
-            if (empty($answer)) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Answer is required'
-                ], 400);
-            }
-
-            // Check answer with caching
-            $cacheKey = "question_check_{$question->id}_{$answer}";
-            $result = Cache::remember($cacheKey, 3600, function() use ($question, $answer) {
-                $isCorrect = strtolower(trim($answer)) === strtolower(trim($question->correct_answer));
-                
-                return [
-                    'is_correct' => $isCorrect,
-                    'correct_answer' => $question->correct_answer,
-                    'explanation' => $question->explanation,
-                    'question_type' => $question->question_type,
-                    'options' => [
-                        'a' => $question->option_a,
-                        'b' => $question->option_b,
-                        'c' => $question->option_c,
-                        'd' => $question->option_d
-                    ]
-                ];
-            });
-
-            $executionTime = (microtime(true) - $startTime) * 1000;
-            
-            Log::info('✅ Tutor answer checked', [
-                'request_id' => $requestId,
-                'question_id' => $question->id,
-                'is_correct' => $result['is_correct'],
-                'execution_time_ms' => round($executionTime, 2)
-            ]);
-
-            return response()->json([
-                'success' => true,
-                'is_correct' => $result['is_correct'],
-                'correct_answer' => $result['correct_answer'],
-                'explanation' => $result['explanation'],
-                'question_type' => $result['question_type'],
-                'options' => $result['options'],
-                'performance_metrics' => [
-                    'processing_time_ms' => round($executionTime, 2)
-                ]
-            ]);
-
-        } catch (\Exception $e) {
-            $executionTime = (microtime(true) - $startTime) * 1000;
-            Log::error('❌ Error in checkTutorAnswer:', [
-                'request_id' => $requestId,
-                'question_id' => $question->id,
-                'error' => $e->getMessage(),
-                'execution_time_ms' => round($executionTime, 2)
-            ]);
-
-            return response()->json([
-                'success' => false,
-                'message' => 'An error occurred while checking the answer. Please try again.'
-            ], 500);
-        }
+        // INSTANT COMPARISON - NO CACHING OVERHEAD
+        $isCorrect = strtolower(trim($answer)) === strtolower(trim($question->correct_answer));
+        
+        // MINIMAL JSON RESPONSE - NO EXTRAS
+        return response()->json([
+            'success' => true,
+            'is_correct' => $isCorrect,
+            'correct_answer' => $question->correct_answer,
+            'explanation' => $question->explanation
+        ]);
     }
 }

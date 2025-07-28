@@ -504,57 +504,13 @@ class LearnController extends Controller
      */
     public function saveStudyTime(Request $request)
     {
-        $startTime = microtime(true);
-        $requestId = uniqid('save_study_time_');
-        
         try {
             $userId = auth()->id();
             $studyTime = $request->input('study_time', 0);
-            $totalQuestions = $request->input('total_questions', 0);
-            $completedQuestions = $request->input('completed_questions', 0);
             
-            Log::info('Saving mistake review study time', [
-                'request_id' => $requestId,
-                'user_id' => $userId,
-                'study_time_seconds' => $studyTime,
-                'total_questions' => $totalQuestions,
-                'completed_questions' => $completedQuestions,
-                'ip_address' => request()->ip()
-            ]);
-
-            // Create a quiz attempt record for the mistake review session
-            $quizAttempt = \App\Models\QuizAttempt::create([
-                'user_id' => $userId,
-                'topic_id' => null, // Mistake review doesn't have a specific topic
-                'quiz_type' => 'mistake_review',
-                'study_mode' => 'mistake_review',
-                'source' => 'mistake_review',
-                'score' => $completedQuestions, // Number of mistakes mastered
-                'total_questions' => $totalQuestions,
-                'percentage_grade' => $totalQuestions > 0 ? ($completedQuestions / $totalQuestions) * 100 : 0,
-                'duration_seconds' => $studyTime,
-                'question_data' => [
-                    [
-                        'question_id' => 1, // Placeholder for mistake review
-                        'user_answer' => null,
-                        'is_correct' => true // Placeholder for mistake review
-                    ]
-                ], // Minimal valid structure for mistake review
-                'correct_answers' => $completedQuestions
-            ]);
-
-            // Also increment user's study_time_seconds for quick total lookup
+            // Simply increment user's study time
             $user = auth()->user();
             $user->increment('study_time_seconds', $studyTime);
-
-            $executionTime = (microtime(true) - $startTime) * 1000;
-            Log::info('✅ Mistake review study time saved successfully', [
-                'request_id' => $requestId,
-                'execution_time_ms' => round($executionTime, 2),
-                'study_time_seconds' => $studyTime,
-                'user_id' => $userId,
-                'quiz_attempt_id' => $quizAttempt->id
-            ]);
 
             return response()->json([
                 'success' => true,
@@ -562,15 +518,9 @@ class LearnController extends Controller
             ]);
 
         } catch (\Exception $e) {
-            $executionTime = (microtime(true) - $startTime) * 1000;
-            Log::error('❌ Error saving mistake review study time:', [
-                'request_id' => $requestId,
-                'error' => $e->getMessage(),
-                'file' => $e->getFile(),
-                'line' => $e->getLine(),
+            Log::error('Error saving study time:', [
                 'user_id' => auth()->id(),
-                'execution_time_ms' => round($executionTime, 2),
-                'trace' => $e->getTraceAsString()
+                'error' => $e->getMessage()
             ]);
 
             return response()->json([

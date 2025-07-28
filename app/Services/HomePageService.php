@@ -93,6 +93,7 @@ class HomePageService
                 $join->on('courses.id', '=', 'course_user.course_id')
                      ->where('course_user.enrollment_status', '=', 'active');
             })
+            ->where('courses.type', 'medical') // Only show medical courses, exclude custom courses
             ->groupBy([
                 'courses.id',
                 'courses.name',

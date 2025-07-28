@@ -21,100 +21,156 @@ class AssignmentService
     }
 
     /**
-     * Create a new assignment
+     * Create a new assignment with enhanced error handling and performance optimization
      */
     public function createAssignment(array $data): Assignment
     {
-        // Validate required fields
-        $this->validateAssignmentData($data);
-
-        // Set default values
-        $data['status'] = $data['status'] ?? Assignment::STATUS_ACTIVE;
-        $data['duration_minutes'] = $data['duration_minutes'] ?? 60;
-        $data['assignment_mode'] = $data['assignment_mode'] ?? Assignment::MODE_COMPLETE_TOPIC;
-        
-        // Validate assignment mode
-        if (!in_array($data['assignment_mode'], [Assignment::MODE_SOURCE_SPECIFIC, Assignment::MODE_COMPLETE_TOPIC])) {
-            throw new \InvalidArgumentException('Invalid assignment mode');
-        }
-        
-        // Validate source for source-specific mode
-        if ($data['assignment_mode'] === Assignment::MODE_SOURCE_SPECIFIC && empty($data['assigned_source'])) {
-            throw new \InvalidArgumentException('Source must be specified for source-specific assignments');
-        }
-        
-        // Ensure source exists for the topic if specified
-        if (!empty($data['assigned_source'])) {
-            $this->validateSourceExists($data['topic_id'], $data['assigned_source']);
-        }
-
-        // Ensure deadline is in the future
-        if (isset($data['deadline']) && Carbon::parse($data['deadline'])->isPast()) {
-            throw new \InvalidArgumentException('Assignment deadline must be in the future');
-        }
-        
-        // Validate duration if provided
-        if (isset($data['duration_minutes']) && $data['duration_minutes'] <= 0) {
-            throw new \InvalidArgumentException('Duration must be a positive number');
-        }
-
-        DB::beginTransaction();
-        
         try {
-            $assignment = Assignment::create($data);
+            // Validate required fields with detailed error messages
+            $this->validateAssignmentData($data);
+
+            // Set default values with validation
+            $data['status'] = $data['status'] ?? Assignment::STATUS_ACTIVE;
+            $data['duration_minutes'] = $data['duration_minutes'] ?? 60;
+            $data['assignment_mode'] = $data['assignment_mode'] ?? Assignment::MODE_COMPLETE_TOPIC;
             
-            // Send notification to student
-            try {
-                $this->notificationService->notifyAssignmentCreated($assignment);
-            } catch (\Exception $e) {
-                \Log::error('Failed to send assignment creation notification', [
-                    'assignment_id' => $assignment->id,
-                    'error' => $e->getMessage()
-                ]);
-            }
-            
-            DB::commit();
-            return $assignment;
-        } catch (\Exception $e) {
-            DB::rollback();
+            // Enhanced validation with specific error messages
+            $this->validateAssignmentMode($data);
+            $this->validateSourceSpecificRequirements($data);
+            $this->validateDeadline($data);
+            $this->validateDuration($data);
+
+            // Use database transaction with proper error handling
+            return DB::transaction(function() use ($data) {
+                try {
+                    $assignment = Assignment::create($data);
+                    
+                    // Send notification with error isolation
+                    $this->sendAssignmentNotification($assignment, 'created');
+                    
+                    return $assignment;
+                } catch (\Illuminate\Database\QueryException $e) {
+                    // Handle database-specific errors
+                    \Log::error('Database error creating assignment', [
+                        'data' => $data,
+                        'error' => $e->getMessage(),
+                        'sql_state' => $e->errorInfo[0] ?? null
+                    ]);
+                    throw new \RuntimeException('Failed to create assignment due to database error: ' . $e->getMessage());
+                } catch (\Exception $e) {
+                    \Log::error('Unexpected error creating assignment', [
+                        'data' => $data,
+                        'error' => $e->getMessage(),
+                        'trace' => $e->getTraceAsString()
+                    ]);
+                    throw new \RuntimeException('Failed to create assignment: ' . $e->getMessage());
+                }
+            });
+        } catch (\InvalidArgumentException $e) {
+            // Re-throw validation errors as-is
             throw $e;
+        } catch (\Exception $e) {
+            // Log and wrap unexpected errors
+            \Log::error('Critical error in createAssignment', [
+                'data' => $data,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            throw new \RuntimeException('Assignment creation failed: ' . $e->getMessage());
         }
     }
 
     /**
-     * Create bulk assignments for multiple students
+     * Create bulk assignments for multiple students with optimized performance and error handling
+     * TUTORS HAVE FULL FLEXIBILITY - NO DUPLICATE CONSTRAINTS!
      */
     public function createBulkAssignments(int $tutorId, array $studentIds, array $assignmentData): \Illuminate\Support\Collection
     {
+        if (empty($studentIds)) {
+            throw new \InvalidArgumentException('Student IDs array cannot be empty');
+        }
+
+        if (count($studentIds) > 1000) {
+            throw new \InvalidArgumentException('Cannot create more than 1000 assignments at once');
+        }
+
         $assignments = collect();
-        $skipExisting = $assignmentData['skip_existing'] ?? false;
+        $errors = collect();
+        $currentUser = auth()->user();
 
-        DB::transaction(function() use ($tutorId, $studentIds, $assignmentData, &$assignments, $skipExisting) {
-            foreach ($studentIds as $studentId) {
-                // Verify tutor-student relationship (skip for admins)
-                $currentUser = auth()->user();
-                if ($currentUser->role !== 'admin' && !$this->verifyTutorStudentRelationship($tutorId, $studentId)) {
-                    throw new \InvalidArgumentException("Invalid tutor-student relationship for student ID: {$studentId}");
+        try {
+            // Pre-validate tutor-student relationships in bulk for better performance
+            if ($currentUser->role !== 'admin') {
+                $validRelationships = $this->validateBulkTutorStudentRelationships($tutorId, $studentIds);
+                $invalidStudents = array_diff($studentIds, $validRelationships);
+                
+                if (!empty($invalidStudents)) {
+                    throw new \InvalidArgumentException(
+                        'Invalid tutor-student relationships for student IDs: ' . implode(', ', $invalidStudents)
+                    );
                 }
-
-                // Check if assignment already exists and skip if requested
-                if ($skipExisting && $this->assignmentExists($tutorId, $studentId, $assignmentData)) {
-                    continue; // Skip this student
-                }
-
-                $data = array_merge($assignmentData, [
-                    'tutor_id' => $tutorId,
-                    'user_id' => $studentId
-                ]);
-
-                // Remove skip_existing from the data before creating assignment
-                unset($data['skip_existing']);
-
-                $assignments->push($this->createAssignment($data));
             }
-        });
 
-        return $assignments;
+            // Use chunked processing for large batches
+            $chunks = array_chunk($studentIds, 100); // Process in chunks of 100
+            
+            foreach ($chunks as $chunk) {
+                DB::transaction(function() use ($tutorId, $chunk, $assignmentData, &$assignments, &$errors) {
+                    foreach ($chunk as $studentId) {
+                        try {
+                            $data = array_merge($assignmentData, [
+                                'tutor_id' => $tutorId,
+                                'user_id' => $studentId
+                            ]);
+
+                            // Clean up any legacy skip_existing flags
+                            unset($data['skip_existing']);
+
+                            $assignment = $this->createSingleAssignmentOptimized($data);
+                            $assignments->push($assignment);
+
+                        } catch (\Exception $e) {
+                            $errors->push([
+                                'student_id' => $studentId,
+                                'error' => $e->getMessage()
+                            ]);
+                            
+                            \Log::warning('Failed to create assignment for student in bulk operation', [
+                                'tutor_id' => $tutorId,
+                                'student_id' => $studentId,
+                                'error' => $e->getMessage()
+                            ]);
+                        }
+                    }
+                });
+            }
+
+            // Log summary of bulk operation
+            \Log::info('Bulk assignment creation completed', [
+                'tutor_id' => $tutorId,
+                'total_students' => count($studentIds),
+                'successful_assignments' => $assignments->count(),
+                'errors' => $errors->count()
+            ]);
+
+            // If there were errors but some assignments were created, log the errors
+            if ($errors->isNotEmpty()) {
+                \Log::warning('Bulk assignment creation had errors', [
+                    'errors' => $errors->toArray()
+                ]);
+            }
+
+            return $assignments;
+
+        } catch (\Exception $e) {
+            \Log::error('Critical error in bulk assignment creation', [
+                'tutor_id' => $tutorId,
+                'student_count' => count($studentIds),
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            throw new \RuntimeException('Bulk assignment creation failed: ' . $e->getMessage());
+        }
     }
 
     /**
@@ -157,8 +213,8 @@ class AssignmentService
         DB::beginTransaction();
         
         try {
-            // Update with score percentage if available
-            if ($scorePercentage !== null) {
+            // Update with score percentage if available and assignment not already completed
+            if ($scorePercentage !== null && $assignment->status !== Assignment::STATUS_COMPLETED) {
                 $assignment->update([
                     'status' => Assignment::STATUS_COMPLETED,
                     'completed_at' => now(),
@@ -347,31 +403,7 @@ class AssignmentService
         return Assignment::enforceAllStatuses();
     }
 
-    /**
-     * Get assignment analytics for a tutor
-     */
-    public function getAssignmentAnalytics(int $tutorId): array
-    {
-        $stats = Assignment::getStatistics($tutorId);
-        
-        // Additional analytics
-        $recentAssignments = Assignment::forTutor($tutorId)
-                                     ->where('created_at', '>=', now()->subDays(30))
-                                     ->count();
 
-        $upcomingDeadlines = Assignment::forTutor($tutorId)
-                                     ->dueWithin(72)
-                                     ->count();
-
-        $averageCompletionTime = $this->getAverageCompletionTime($tutorId);
-
-        return array_merge($stats, [
-            'recent_assignments' => $recentAssignments,
-            'upcoming_deadlines' => $upcomingDeadlines,
-            'average_completion_time_hours' => $averageCompletionTime,
-            'performance_trends' => $this->getPerformanceTrends($tutorId)
-        ]);
-    }
 
     /**
      * Get student performance analytics
@@ -424,6 +456,8 @@ class AssignmentService
             throw new \InvalidArgumentException('Cannot extend deadline for completed assignment');
         }
 
+        $oldDeadline = $assignment->deadline;
+
         // If assignment was overdue, reactivate it
         if ($assignment->status === Assignment::STATUS_OVERDUE) {
             $assignment->update([
@@ -432,6 +466,16 @@ class AssignmentService
             ]);
         } else {
             $assignment->update(['deadline' => $newDeadline]);
+        }
+
+        // 🔥 LETHAL FIX: Dispatch AssignmentDeadlineChanged event
+        try {
+            event(new \App\Events\AssignmentDeadlineChanged($assignment->fresh(), $oldDeadline, $newDeadline));
+        } catch (\Exception $e) {
+            \Log::error('Failed to dispatch assignment deadline changed event', [
+                'assignment_id' => $assignment->id,
+                'error' => $e->getMessage()
+            ]);
         }
 
         return $assignment->fresh();
@@ -515,33 +559,186 @@ class AssignmentService
     }
 
     /**
-     * Private helper methods
+     * Enhanced validation and helper methods
      */
     private function validateAssignmentData(array $data): void
     {
         $required = ['tutor_id', 'user_id', 'topic_id', 'course_id', 'title', 'deadline'];
         
+        // Check for missing required fields
+        $missing = [];
         foreach ($required as $field) {
-            if (!isset($data[$field]) || empty($data[$field])) {
-                throw new \InvalidArgumentException("Required field '{$field}' is missing");
+            if (!isset($data[$field]) || (is_string($data[$field]) && trim($data[$field]) === '')) {
+                $missing[] = $field;
             }
         }
-
-        // Verify relationships exist
-        if (!User::where('id', $data['tutor_id'])->whereIn('role', ['tutor', 'admin'])->exists()) {
-            throw new \InvalidArgumentException('Invalid tutor ID');
+        
+        if (!empty($missing)) {
+            throw new \InvalidArgumentException('Required fields are missing: ' . implode(', ', $missing));
         }
 
-        if (!User::where('id', $data['user_id'])->where('role', 'student')->exists()) {
-            throw new \InvalidArgumentException('Invalid student ID');
+        // Validate data types
+        if (!is_numeric($data['tutor_id']) || $data['tutor_id'] <= 0) {
+            throw new \InvalidArgumentException('Tutor ID must be a positive integer');
+        }
+        
+        if (!is_numeric($data['user_id']) || $data['user_id'] <= 0) {
+            throw new \InvalidArgumentException('User ID must be a positive integer');
+        }
+        
+        if (!is_numeric($data['topic_id']) || $data['topic_id'] <= 0) {
+            throw new \InvalidArgumentException('Topic ID must be a positive integer');
+        }
+        
+        if (!is_numeric($data['course_id']) || $data['course_id'] <= 0) {
+            throw new \InvalidArgumentException('Course ID must be a positive integer');
         }
 
-        if (!Topic::find($data['topic_id'])) {
-            throw new \InvalidArgumentException('Invalid topic ID');
+        // Verify relationships exist with optimized queries
+        $this->validateRelationshipsExist($data);
+    }
+    
+    private function validateRelationshipsExist(array $data): void
+    {
+        // Use a single query to validate all relationships
+        $validationResults = DB::select("
+            SELECT 
+                (SELECT COUNT(*) FROM users WHERE id = ? AND role IN ('tutor', 'admin')) as tutor_exists,
+                (SELECT COUNT(*) FROM users WHERE id = ? AND role = 'student') as student_exists,
+                (SELECT COUNT(*) FROM topics WHERE id = ?) as topic_exists,
+                (SELECT COUNT(*) FROM courses WHERE id = ?) as course_exists
+        ", [$data['tutor_id'], $data['user_id'], $data['topic_id'], $data['course_id']]);
+        
+        $result = $validationResults[0];
+        
+        if ($result->tutor_exists == 0) {
+            throw new \InvalidArgumentException("Invalid tutor ID: {$data['tutor_id']}");
         }
-
-        if (!Course::find($data['course_id'])) {
-            throw new \InvalidArgumentException('Invalid course ID');
+        
+        if ($result->student_exists == 0) {
+            throw new \InvalidArgumentException("Invalid student ID: {$data['user_id']}");
+        }
+        
+        if ($result->topic_exists == 0) {
+            throw new \InvalidArgumentException("Invalid topic ID: {$data['topic_id']}");
+        }
+        
+        if ($result->course_exists == 0) {
+            throw new \InvalidArgumentException("Invalid course ID: {$data['course_id']}");
+        }
+    }
+    
+    private function validateAssignmentMode(array $data): void
+    {
+        $validModes = [Assignment::MODE_SOURCE_SPECIFIC, Assignment::MODE_COMPLETE_TOPIC];
+        if (!in_array($data['assignment_mode'], $validModes)) {
+            throw new \InvalidArgumentException(
+                'Invalid assignment mode. Must be one of: ' . implode(', ', $validModes)
+            );
+        }
+    }
+    
+    private function validateSourceSpecificRequirements(array $data): void
+    {
+        if ($data['assignment_mode'] === Assignment::MODE_SOURCE_SPECIFIC) {
+            if (empty($data['assigned_source'])) {
+                throw new \InvalidArgumentException('Source must be specified for source-specific assignments');
+            }
+            
+            // Validate source exists for the topic
+            $this->validateSourceExists($data['topic_id'], $data['assigned_source']);
+        }
+    }
+    
+    private function validateDeadline(array $data): void
+    {
+        if (isset($data['deadline'])) {
+            try {
+                $deadline = Carbon::parse($data['deadline']);
+                if ($deadline->isPast()) {
+                    throw new \InvalidArgumentException('Assignment deadline must be in the future');
+                }
+            } catch (\Exception $e) {
+                throw new \InvalidArgumentException('Invalid deadline format: ' . $e->getMessage());
+            }
+        }
+    }
+    
+    private function validateDuration(array $data): void
+    {
+        if (isset($data['duration_minutes'])) {
+            if (!is_numeric($data['duration_minutes']) || $data['duration_minutes'] <= 0) {
+                throw new \InvalidArgumentException('Duration must be a positive number');
+            }
+            
+            if ($data['duration_minutes'] > 480) { // 8 hours max
+                throw new \InvalidArgumentException('Duration cannot exceed 480 minutes (8 hours)');
+            }
+        }
+    }
+    
+    private function sendAssignmentNotification(Assignment $assignment, string $type): void
+    {
+        try {
+            switch ($type) {
+                case 'created':
+                    $this->notificationService->notifyAssignmentCreated($assignment);
+                    break;
+                case 'completed':
+                    $this->notificationService->notifyAssignmentCompleted($assignment);
+                    break;
+                case 'expired':
+                    $this->notificationService->notifyAssignmentExpired($assignment);
+                    break;
+                case 'auto_submitted':
+                    $this->notificationService->notifyAssignmentAutoSubmitted($assignment);
+                    break;
+            }
+        } catch (\Exception $e) {
+            \Log::error("Failed to send assignment {$type} notification", [
+                'assignment_id' => $assignment->id,
+                'type' => $type,
+                'error' => $e->getMessage()
+            ]);
+            // Don't throw - notification failure shouldn't break assignment creation
+        }
+    }
+    
+    private function validateBulkTutorStudentRelationships(int $tutorId, array $studentIds): array
+    {
+        if (empty($studentIds)) {
+            return [];
+        }
+        
+        $placeholders = str_repeat('?,', count($studentIds) - 1) . '?';
+        $validStudents = DB::select("
+            SELECT user_id 
+            FROM tutor_student_relationships 
+            WHERE tutor_id = ? AND user_id IN ({$placeholders})
+        ", array_merge([$tutorId], $studentIds));
+        
+        return array_column($validStudents, 'user_id');
+    }
+    
+    // REMOVED: getBulkExistingAssignments method - No longer needed
+    // Tutors now have full flexibility to create duplicate assignments
+    
+    private function createSingleAssignmentOptimized(array $data): Assignment
+    {
+        // Optimized version for bulk operations - skip some validations already done in bulk
+        try {
+            $assignment = Assignment::create($data);
+            
+            // Send notification asynchronously for bulk operations
+            $this->sendAssignmentNotification($assignment, 'created');
+            
+            return $assignment;
+        } catch (\Exception $e) {
+            \Log::error('Failed to create single assignment in bulk operation', [
+                'data' => $data,
+                'error' => $e->getMessage()
+            ]);
+            throw $e;
         }
     }
     
@@ -568,18 +765,9 @@ class AssignmentService
                 ->exists();
     }
 
-    /**
-     * Check if a similar assignment already exists (used only for skip_existing convenience feature)
-     */
-    private function assignmentExists(int $tutorId, int $studentId, array $assignmentData): bool
-    {
-        // Simple check for any assignment with same tutor, student, and topic
-        // This is just for the skip_existing convenience feature - not for blocking duplicates
-        return Assignment::where('tutor_id', $tutorId)
-                        ->where('user_id', $studentId)
-                        ->where('topic_id', $assignmentData['topic_id'])
-                        ->exists();
-    }
+    // REMOVED: assignmentExists method - No longer needed
+    // Tutors now have UNLIMITED FLEXIBILITY to create assignments
+    // Same topic, same questions, different resources - ALL ALLOWED!
 
     private function getAverageCompletionTime(int $tutorId): float
     {

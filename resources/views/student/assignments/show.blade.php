@@ -191,14 +191,15 @@
                         <div class="alert alert-success">
                             <i class="fas fa-check-circle me-2"></i>
                             <strong>Assignment Completed!</strong>
-                            @if($assignment->score)
-                                <br>Your score: {{ $assignment->score }}%
+                            @if($assignment->score_percentage)
+                                <br>Your score: {{ $assignment->score_percentage }}%
                             @endif
                         </div>
-                        <a href="{{ route('quiz.start', ['course' => $assignment->course_id, 'topic' => $assignment->topic_id, 'assignment_id' => $assignment->id]) }}" 
-                           class="btn btn-outline-primary">
-                            <i class="fas fa-redo me-2"></i>Practice Again
-                        </a>
+                        <div class="alert alert-info">
+                            <i class="fas fa-lock me-2"></i>
+                            <strong>Assignment Locked</strong>
+                            <br>This assignment has been completed and cannot be retaken.
+                        </div>
                     </div>
                 @elseif($assignment->status === 'overdue')
                     <div class="text-center mb-4">

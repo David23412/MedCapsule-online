@@ -86,6 +86,14 @@ class User extends Authenticatable
     }
 
     /**
+     * Get the user's activity logs.
+     */
+    public function activityLogs()
+    {
+        return $this->hasMany(UserActivityLog::class);
+    }
+
+    /**
      * Get the user's quiz attempts.
      */
     public function quizAttempts()

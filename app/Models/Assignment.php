@@ -196,7 +196,7 @@ class Assignment extends Model
 
     public function hasTimeLimitExpired(): bool
     {
-        if (!$this->duration_minutes || !$this->created_at) {
+        if (!$this->duration_minutes || $this->duration_minutes == 0 || !$this->created_at) {
             return false;
         }
         
@@ -260,10 +260,13 @@ class Assignment extends Model
             return false;
         }
 
-        $this->update([
-            'status' => self::STATUS_COMPLETED,
-            'score_percentage' => $score
-        ]);
+        // Only update score if assignment is not already completed
+        $updateData = ['status' => self::STATUS_COMPLETED];
+        if ($this->status !== self::STATUS_COMPLETED && $score !== null) {
+            $updateData['score_percentage'] = $score;
+        }
+
+        $this->update($updateData);
 
         return true;
     }
@@ -354,7 +357,7 @@ class Assignment extends Model
      */
     public function getTimeLimitRemaining(): ?int
     {
-        if (!$this->duration_minutes || $this->status === self::STATUS_COMPLETED || $this->isExpired()) {
+        if (!$this->duration_minutes || $this->duration_minutes == 0 || $this->status === self::STATUS_COMPLETED || $this->isExpired()) {
             return null;
         }
 
@@ -367,13 +370,40 @@ class Assignment extends Model
     }
 
     /**
+     * Get elapsed time for assignments with no time limit (count up timer)
+     */
+    public function getElapsedTime(): ?int
+    {
+        if (!$this->duration_minutes || $this->duration_minutes != 0 || $this->status === self::STATUS_COMPLETED) {
+            return null;
+        }
+
+        return now()->diffInSeconds($this->created_at);
+    }
+
+    /**
      * Check if timer should be shown
      */
     public function shouldShowTimer(): bool
     {
         return $this->status === self::STATUS_ACTIVE && 
-               $this->duration_minutes !== null && 
-               $this->getTimeLimitRemaining() !== null;
+               $this->duration_minutes !== null;
+    }
+
+    /**
+     * Check if assignment has a time limit (for countdown timer)
+     */
+    public function hasTimeLimit(): bool
+    {
+        return $this->duration_minutes > 0;
+    }
+
+    /**
+     * Check if assignment has no time limit (for count up timer)
+     */
+    public function hasNoTimeLimit(): bool
+    {
+        return $this->duration_minutes == 0;
     }
 
     /**

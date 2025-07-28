@@ -3,9 +3,16 @@
 return [
     'paths' => ['api/*', 'sanctum/csrf-cookie'],
     'allowed_methods' => ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-    'allowed_origins' => [env('APP_URL', 'http://localhost:8000')],
-    'allowed_origins_patterns' => [],
-    'allowed_headers' => ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept'],
+    'allowed_origins' => [
+        env('APP_URL', 'http://localhost:8000'),
+        'https://8b4695eeacde.ngrok-free.app',
+        'https://*.ngrok-free.app'
+    ],
+    'allowed_origins_patterns' => [
+        '/^https:\/\/.*\.ngrok-free\.app$/',
+        '/^https:\/\/.*\.ngrok\.io$/'
+    ],
+    'allowed_headers' => ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'X-CSRF-TOKEN'],
     'exposed_headers' => [],
     'max_age' => 0,
     'supports_credentials' => true,

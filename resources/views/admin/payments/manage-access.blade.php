@@ -2,6 +2,8 @@
 
 @section('content')
 <meta name="csrf-token" content="{{ csrf_token() }}">
+<meta name="user-id" content="{{ auth()->id() }}">
+<meta name="user-role" content="{{ auth()->user()->role ?? '' }}">
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 
@@ -59,40 +61,113 @@
                 }
                 console.log('CSRF token found');
                 
+                // Check if user is authenticated
+                if (!document.querySelector('meta[name="user-id"]')) {
+                    console.error('User not authenticated');
+                    alert('You must be logged in to verify payments. Please log in and try again.');
+                    // Redirect to login page
+                    window.location.href = '/login';
+                    return;
+                }
+
+                // Check if user is admin
+                const userRole = document.querySelector('meta[name="user-role"]')?.getAttribute('content');
+                if (userRole !== 'admin') {
+                    console.error('User is not admin');
+                    alert('You must be an admin to verify payments. Please contact an administrator.');
+                    return;
+                }
+
                 // Send verification request
                 console.log('Sending verification request to:', `/admin/payments/${paymentId}/verify`);
-                fetch(`/admin/payments/${paymentId}/verify`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': csrfToken.getAttribute('content'),
-                        'Accept': 'application/json'
-                    },
-                    body: JSON.stringify({ admin_notes: adminNotes })
-                })
-                .then(response => {
-                    console.log('Response received:', response);
-                    return response.json();
-                })
-                .then(data => {
-                    console.log('Data received:', data);
-                    if (data.success) {
-                        // Hide modal
-                        modal.hide();
+                console.log('Request payload:', { admin_notes: adminNotes });
+                console.log('CSRF token:', csrfToken.getAttribute('content'));
+                console.log('User role:', userRole);
+                
+                // Add retry mechanism
+                const makeRequest = (retryCount = 0) => {
+                    const maxRetries = 3;
+                    
+                    fetch(`/admin/payments/${paymentId}/verify`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': csrfToken.getAttribute('content'),
+                            'Accept': 'application/json',
+                            'X-Requested-With': 'XMLHttpRequest'
+                        },
+                        body: JSON.stringify({ admin_notes: adminNotes }),
+                        credentials: 'same-origin'
+                    })
+                    .then(response => {
+                        console.log('Response received:', response);
+                        console.log('Response status:', response.status);
                         
-                        // Show success message
-                        alert('Payment verified successfully!');
+                        if (!response.ok) {
+                            console.error('Response not ok:', response.status, response.statusText);
+                            
+                            if (response.status === 404) {
+                                throw new Error('Route not found. Please check if you are logged in as admin.');
+                            } else if (response.status === 419) {
+                                throw new Error('CSRF token expired. Please refresh the page and try again.');
+                            } else if (response.status === 403) {
+                                throw new Error('Access denied. You must be an admin to verify payments.');
+                            } else if (response.status === 401) {
+                                throw new Error('Not authenticated. Please log in and try again.');
+                            } else {
+                                throw new Error(`Server error: ${response.status} ${response.statusText}`);
+                            }
+                        }
                         
-                        // Reload page to show updated status
-                        window.location.reload();
-                    } else {
-                        alert(data.message || 'Failed to verify payment');
-                    }
-                })
-                .catch(error => {
-                    console.error('Error:', error);
-                    alert('An error occurred while verifying the payment');
-                });
+                        return response.json();
+                    })
+                    .then(data => {
+                        console.log('Response data:', data);
+                        
+                        if (data.success) {
+                            // Show success message
+                            showNotification('Payment verified successfully!', 'success');
+                            
+                            // Update the UI
+                            const row = document.querySelector(`[data-payment-id="${paymentId}"]`);
+                            if (row) {
+                                const statusCell = row.querySelector('.payment-status');
+                                if (statusCell) {
+                                    statusCell.textContent = 'Completed';
+                                    statusCell.className = 'payment-status text-success';
+                                }
+                                
+                                // Disable the verify button
+                                const verifyBtn = row.querySelector('.verify-payment-btn');
+                                if (verifyBtn) {
+                                    verifyBtn.disabled = true;
+                                    verifyBtn.textContent = 'Verified';
+                                    verifyBtn.className = 'btn btn-success btn-sm verify-payment-btn';
+                                }
+                            }
+                            
+                            // Close modal
+                            const modal = bootstrap.Modal.getInstance(document.getElementById('verifyPaymentModal'));
+                            if (modal) {
+                                modal.hide();
+                            }
+                        } else {
+                            throw new Error(data.message || 'Payment verification failed');
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error accepting payment:', error);
+                        
+                        if (retryCount < maxRetries && error.message.includes('network')) {
+                            console.log(`Retrying request (${retryCount + 1}/${maxRetries})...`);
+                            setTimeout(() => makeRequest(retryCount + 1), 1000 * (retryCount + 1));
+                        } else {
+                            showNotification(`Error accepting payment: ${error.message}`, 'error');
+                        }
+                    });
+                };
+                
+                makeRequest();
             };
         } catch (error) {
             console.error('Error creating/showing modal:', error);
@@ -149,18 +224,18 @@
             </thead>
             <tbody>
                 @foreach($payments as $payment)
-                <tr>
+                <tr data-payment-id="{{ $payment->id }}">
                     <td>{{ $payment->id }}</td>
                     <td>{{ $payment->user->name }}<br><small>{{ $payment->user->email }}</small></td>
                     <td>{{ $payment->course->name }}</td>
                     <td>{{ number_format($payment->amount, 2) }} EGP</td>
                     <td><span class="badge bg-secondary">{{ $payment->payment_method }}</span></td>
-                    <td><span class="badge bg-{{ $payment->status == 'verified' ? 'success' : 'warning' }}">{{ $payment->status }}</span></td>
+                    <td class="payment-status">{{ $payment->status }}</td>
                     <td>{{ $payment->reference_number }}</td>
                     <td>{{ $payment->created_at->format('Y-m-d H:i:s') }}</td>
                     <td>
                         @if($payment->status == 'pending_verification')
-                        <button onclick="acceptPayment({{ $payment->id }})" class="btn btn-sm btn-success">
+                        <button onclick="acceptPayment({{ $payment->id }})" class="btn btn-sm btn-success verify-payment-btn">
                             <i class="fas fa-check"></i> Accept
                         </button>
                         <button onclick="rejectPayment({{ $payment->id }})" class="btn btn-sm btn-danger">

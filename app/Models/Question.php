@@ -21,31 +21,34 @@ class Question extends Model
 
     protected $fillable = [
         'topic_id',
-        'question',
+        'question', // Actual database field name
         'explanation',
-        'image_url',
         'question_type',
-        'option_a',
+        'option_a', // Actual database field names
         'option_b',
-        'option_c',
+        'option_c', 
         'option_d',
         'correct_answer',
+        'image_url',
+        'source',
         'alternative_answers',
+        'similarity_threshold',
         'total_attempts',
         'correct_attempts',
-        'last_attempted_at',
-        'similarity_threshold',
-        'source'
+        'last_attempted_at'
     ];
 
     protected $casts = [
         'topic_id' => 'integer',
-        'last_attempted_at' => 'datetime',
+        'alternative_answers' => 'array',
         'total_attempts' => 'integer',
         'correct_attempts' => 'integer',
-        'alternative_answers' => 'array',
-        'similarity_threshold' => 'float'
+        'similarity_threshold' => 'float',
+        'last_attempted_at' => 'datetime'
     ];
+
+    // Remove the problematic accessors that were trying to map to a different schema
+    // The database already has the correct field names, so we don't need accessors
 
     // Define the relationship: A Question belongs to a Topic
     public function topic()

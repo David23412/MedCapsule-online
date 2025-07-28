@@ -37,6 +37,13 @@ class Payment extends Model
     {
         parent::boot();
 
+        // Generate reference number before creating
+        static::creating(function ($payment) {
+            if (empty($payment->reference_number)) {
+                $payment->reference_number = 'MC' . strtoupper(substr(md5(uniqid()), 0, 4)) . time() . strtoupper(substr(md5(uniqid()), 0, 8));
+            }
+        });
+
         // PHASE 2: Dispatch PaymentCompleted event when payment is completed
         static::updated(function ($payment) {
             if ($payment->wasChanged('status') && $payment->status === 'completed') {

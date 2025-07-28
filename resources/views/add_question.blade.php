@@ -73,6 +73,9 @@
     </style>
 </head>
 <body class="bg-light">
+    <!-- LIGHTNING-FAST FOUC ELIMINATOR -->
+    @include('components.lightning-preloader')
+
     <nav class="navbar navbar-expand-lg navbar-light mb-4">
         <div class="container">
             <a class="navbar-brand" href="/">MedCapsule</a>

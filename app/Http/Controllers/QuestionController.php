@@ -128,8 +128,11 @@ class QuestionController extends Controller
         $question = Question::findOrFail($id);
         $question->update([
             'topic_id' => $request->topic_id,
-            'question_text' => $request->question_text,
-            'options' => json_encode($request->options),
+            'question' => $request->question_text,
+            'option_a' => $request->option_a ?? '',
+            'option_b' => $request->option_b ?? '',
+            'option_c' => $request->option_c ?? '',
+            'option_d' => $request->option_d ?? '',
             'correct_answer' => $request->correct_answer]);
 
         return redirect()->back()->with('success', 'Question updated successfully!');

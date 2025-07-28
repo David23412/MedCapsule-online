@@ -75,11 +75,12 @@ use App\Models\QuizAttempt;
         // Extract cached data
         extract($profileData);
 
-        // Get user's rank
+        // Get user's rank (only among students)
         $userRank = null;
         if ($user->xp > 0) {
-            $userRank = Cache::remember("user_rank_{$user->id}_{$user->xp}", 300, function() use ($user) { 
+            $userRank = Cache::remember("user_rank_students_{$user->id}_{$user->xp}", 300, function() use ($user) { 
                 return User::whereRaw('total_questions_attempted > 0')
+                    ->where('role', 'student')
                     ->where('xp', '>', $user->xp)
                     ->count() + 1; 
             });
@@ -140,9 +141,9 @@ use App\Models\QuizAttempt;
         ', [$user->id, $user->id, $user->id, $user->id])
         ->get();
         
-        // Calculate XP and get leaderboard
-        // Get leaderboard using stored XP values
-        $leaderboard = Cache::remember('leaderboard_cache', 300, function() { 
+        // Calculate XP and get leaderboard (only students)
+        // Get leaderboard using stored XP values - STUDENTS ONLY
+        $leaderboard = Cache::remember('leaderboard_students_cache', 300, function() { 
             return DB::table('users')
                 ->select(
                     'users.id',
@@ -152,6 +153,7 @@ use App\Models\QuizAttempt;
                     'users.xp'
                 )
                 ->whereRaw('users.total_questions_attempted > 0')
+                ->where('users.role', 'student')
                 ->orderBy('xp', 'desc')
                 ->limit(10)
                 ->get()

@@ -56,6 +56,11 @@ class AssignmentCrudController extends Controller
         try {
             $assignment = $this->assignmentService->createAssignment($request->validated());
             
+            // 🔔 CRITICAL NOTIFICATION INTEGRATION - Assignment Created
+            if ($assignment && $assignment->student) {
+                \App\Services\NotificationTriggerService::onAssignmentCreated($assignment->student, $assignment);
+            }
+            
             return redirect()->route('assignments.index')
                 ->with('success', 'Assignment created successfully.');
         } catch (\Exception $e) {

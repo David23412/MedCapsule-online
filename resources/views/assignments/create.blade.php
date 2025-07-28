@@ -214,6 +214,101 @@
             overflow: hidden;
         }
         
+        /* Student Search Styles */
+        .student-search-container {
+            background: white;
+            padding: 1rem 1.25rem;
+            border-bottom: 1px solid #e2e8f0;
+        }
+        
+        .search-input-wrapper {
+            position: relative;
+            display: flex;
+            align-items: center;
+            background: white;
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            transition: all 0.2s ease;
+        }
+        
+        .search-input-wrapper:focus-within {
+            border-color: #4299e1;
+            box-shadow: 0 0 0 3px rgba(66, 153, 225, 0.1);
+        }
+        
+        .search-icon {
+            color: #718096;
+            margin-left: 0.75rem;
+            font-size: 0.875rem;
+        }
+        
+        .student-search-input {
+            flex: 1;
+            border: none;
+            padding: 0.75rem 0.5rem;
+            font-size: 0.9rem;
+            background: transparent;
+            outline: none;
+        }
+        
+        .student-search-input::placeholder {
+            color: #a0aec0;
+        }
+        
+        .clear-search-btn {
+            background: transparent;
+            border: none;
+            color: #718096;
+            padding: 0.5rem;
+            margin-right: 0.5rem;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.15s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .clear-search-btn:hover {
+            background: #f7fafc;
+            color: #4a5568;
+        }
+        
+        .search-stats {
+            margin-top: 0.5rem;
+            font-size: 0.8rem;
+            color: #718096;
+            font-weight: 500;
+        }
+        
+        .student-item.hidden {
+            display: none;
+        }
+        
+        .student-item.highlighted {
+            background: #ebf8ff;
+            border-color: #4299e1;
+            box-shadow: 0 2px 8px rgba(66, 153, 225, 0.2);
+        }
+        
+        .student-item.highlighted .student-name {
+            color: #2b6cb0;
+        }
+        
+        .no-search-results {
+            padding: 2rem;
+            text-align: center;
+        }
+        
+        .no-search-results .empty-state {
+            color: #a0aec0;
+        }
+        
+        .no-search-results .empty-state small {
+            color: #cbd5e1;
+            font-size: 0.8rem;
+        }
+        
         .selector-header {
             background: white;
             padding: 1rem 1.25rem;
@@ -302,12 +397,56 @@
             cursor: pointer;
             transition: all 0.2s ease;
             user-select: none;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .student-item::after {
+            content: 'Click to select';
+            position: absolute;
+            right: 0.75rem;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 0.7rem;
+            color: #a0aec0;
+            opacity: 0;
+            transition: opacity 0.2s ease;
+            pointer-events: none;
+        }
+        
+        .student-item:hover::after {
+            opacity: 1;
+        }
+        
+        .student-item.selected::after {
+            content: 'Selected';
+            color: #4299e1;
+            font-weight: 600;
+            opacity: 1;
+        }
+        
+        .student-item::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(135deg, rgba(66, 153, 225, 0.05) 0%, rgba(66, 153, 225, 0.02) 100%);
+            opacity: 0;
+            transition: opacity 0.2s ease;
+            pointer-events: none;
         }
         
         .student-item:hover {
             border-color: #bee3f8;
             background: #f7fafc;
             transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+        
+        .student-item:hover::before {
+            opacity: 1;
         }
         
         .student-item.selected {
@@ -316,16 +455,34 @@
             box-shadow: 0 2px 8px rgba(66, 153, 225, 0.15);
         }
         
+        .student-item.selected::before {
+            opacity: 1;
+        }
+        
+        .student-item:active {
+            transform: translateY(0);
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+        
         .student-checkbox {
-            width: 18px;
-            height: 18px;
+            width: 20px;
+            height: 20px;
             margin-right: 0.875rem;
             accent-color: #4299e1;
             cursor: pointer;
+            flex-shrink: 0;
+            position: relative;
+            z-index: 2;
+        }
+        
+        .student-checkbox:checked {
+            transform: scale(1.1);
+            transition: transform 0.15s ease;
         }
         
         .student-info {
             flex: 1;
+            min-width: 0; /* Prevents flex item from overflowing */
         }
         
         .student-name {
@@ -333,11 +490,17 @@
             color: #2d3748;
             font-size: 0.9rem;
             margin-bottom: 0.125rem;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
         }
         
         .student-username {
             color: #718096;
             font-size: 0.8rem;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
         }
         
         .selection-summary {
@@ -434,6 +597,8 @@
             100% { transform: rotate(360deg); }
         }
         
+
+        
         .alert {
             border-radius: 8px;
             padding: 1rem 1.25rem;
@@ -480,11 +645,83 @@
             .student-list {
                 max-height: 240px;
             }
+            
+            .student-search-container {
+                padding: 0.75rem 1rem;
+            }
+            
+            .search-input-wrapper {
+                flex-direction: row;
+            }
+            
+            .student-search-input {
+                font-size: 0.875rem;
+            }
+            
+            .student-item {
+                padding: 1rem;
+                margin-bottom: 0.75rem;
+                min-height: 60px;
+            }
+            
+            .student-checkbox {
+                width: 22px;
+                height: 22px;
+                margin-right: 1rem;
+            }
+            
+            .student-name {
+                font-size: 1rem;
+            }
+            
+            .student-username {
+                font-size: 0.875rem;
+            }
+            
+            .student-item::after {
+                display: none; /* Hide on mobile for cleaner look */
+            }
         }
         
         .field-required {
             color: #e53e3e;
             font-weight: 600;
+        }
+
+        /* LETHAL PRELOADER STYLES - PREVENTS FOUC */
+        .page-preloader {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: #f8fafc;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
+            transition: opacity 0.5s ease, visibility 0.5s ease;
+        }
+
+        .page-preloader.hidden {
+            opacity: 0;
+            visibility: hidden;
+        }
+
+        .preloader-content {
+            text-align: center;
+        }
+
+        .preloader-text {
+            margin-top: 1rem;
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #007bff;
+        }
+
+        .spinner-border {
+            width: 3rem;
+            height: 3rem;
         }
         
         .success-feedback {
@@ -534,8 +771,18 @@
     </style>
 </head>
 <body>
+    <!-- Preloader to prevent FOUC -->
+    <div class="page-preloader" id="pagePreloader">
+        <div class="preloader-content">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+            <div class="preloader-text">MedCapsule</div>
+        </div>
+    </div>
+
     <!-- Navigation Bar -->
-    <nav class="navbar">
+    <nav class="navbar" style="opacity: 0; transition: opacity 0.3s ease;">
         <div class="container">
             <a class="navbar-brand" href="/">MedCapsule</a>
             <div class="nav-links">
@@ -717,7 +964,7 @@
                         <div class="selector-header">
                             <div class="selector-info">
                                 <h4 class="selector-title">Students</h4>
-                                <span class="student-count">{{ count($students) }} available</span>
+                                <span class="student-count">{{ $students ? count($students) : 0 }} available</span>
                             </div>
                             <div class="selector-controls">
                                 <button type="button" class="control-btn" onclick="selectAll()">
@@ -729,17 +976,44 @@
                             </div>
                         </div>
                         
-                        <div class="student-list">
+                        <!-- Student Search Bar -->
+                        <div class="student-search-container">
+                            <div class="search-input-wrapper">
+                                <i class="fas fa-search search-icon"></i>
+                                <input type="text" 
+                                       class="student-search-input" 
+                                       id="studentSearch" 
+                                       placeholder="Search students by name or username..."
+                                       autocomplete="off">
+                                <button type="button" class="clear-search-btn" id="clearSearch" style="display: none;">
+                                    <i class="fas fa-times"></i>
+                                </button>
+                            </div>
+                            <div class="search-stats">
+                                <span id="searchResultsCount">{{ $students ? count($students) : 0 }}</span> students found
+                            </div>
+                        </div>
+                        
+                        <div class="student-list" id="studentList">
                             @foreach($students as $student)
-                                <div class="student-item" onclick="toggleStudent({{ $student->id }})">
+                                <div class="student-item" data-student-id="{{ $student->id }}" data-student-name="{{ strtolower($student->name) }}" data-student-username="{{ strtolower($student->username ?? '') }}" onclick="toggleStudent({{ $student->id }})">
                                     <input type="checkbox" class="student-checkbox student-checkbox-input" 
-                                           name="student_ids[]" value="{{ $student->id }}" id="student_{{ $student->id }}">
+                                           name="student_ids[]" value="{{ $student->id }}" id="student_{{ $student->id }}" onclick="event.stopPropagation()">
                                     <div class="student-info">
                                         <div class="student-name">{{ $student->name }}</div>
-                                        <div class="student-username">{{ $student->username }}</div>
+                                        <div class="student-username">{{ $student->username ?? $student->email }}</div>
                                     </div>
                                 </div>
                             @endforeach
+                        </div>
+                        
+                        <!-- No results message -->
+                        <div class="no-search-results" id="noSearchResults" style="display: none;">
+                            <div class="empty-state">
+                                <i class="fas fa-search fa-2x mb-2"></i>
+                                <p>No students found matching your search</p>
+                                <small>Try a different search term or clear the search</small>
+                            </div>
                         </div>
                     </div>
 
@@ -762,13 +1036,57 @@
                     <i class="fas fa-arrow-left me-2"></i>Cancel
                 </a>
                 <button type="submit" class="btn-create" id="createBtn">
-                    <i class="fas fa-rocket me-2"></i>Create Assignments
+                    <i class="fas fa-rocket me-2" id="createBtnIcon"></i>
+                    <span id="createBtnText">Create Assignments</span>
                 </button>
             </div>
         </form>
         </div>
-    </div>    <s
-cript src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    </div>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // LETHAL PRELOADER HANDLER - ELIMINATES FOUC
+        document.addEventListener('DOMContentLoaded', function() {
+            const preloader = document.getElementById('pagePreloader');
+            const navbar = document.querySelector('.navbar');
+            
+            // Hide preloader and show navbar after everything is loaded
+            setTimeout(() => {
+                preloader.classList.add('hidden');
+                navbar.style.opacity = '1';
+            }, 300);
+        });
+
+        // LETHAL PAGE TRANSITION HANDLER
+        document.addEventListener('beforeunload', function() {
+            const preloader = document.getElementById('pagePreloader');
+            if (preloader) {
+                preloader.classList.remove('hidden');
+            }
+        });
+
+        // LETHAL BUTTON RESET ON PAGE VISIBILITY CHANGE
+        document.addEventListener('visibilitychange', function() {
+            if (!document.hidden) {
+                const createBtn = document.getElementById('createBtn');
+                const createBtnIcon = document.getElementById('createBtnIcon');
+                const createBtnText = document.getElementById('createBtnText');
+                
+                if (createBtn && createBtn.disabled) {
+                    // Reset button if page becomes visible and button is still disabled
+                    setTimeout(() => {
+                        if (createBtn.disabled) {
+                            createBtn.disabled = false;
+                            createBtn.style.opacity = '1';
+                            createBtn.style.transform = 'scale(1)';
+                            createBtnIcon.className = 'fas fa-rocket me-2';
+                            createBtnText.textContent = 'Create Assignments';
+                        }
+                    }, 1000);
+                }
+            }
+        });
+    </script>
     <script>
         // SUPER FAST STUDENT SELECTION
         function toggleStudent(studentId) {
@@ -829,7 +1147,8 @@ cript src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle
 
         // SUPER FAST BULK SELECTION
         function selectAll() {
-            document.querySelectorAll('.student-checkbox-input').forEach(checkbox => {
+            // Only select visible students (not hidden by search)
+            document.querySelectorAll('.student-item:not(.hidden) .student-checkbox-input').forEach(checkbox => {
                 checkbox.checked = true;
                 updateStudentVisual(checkbox.closest('.student-item'), true);
             });
@@ -837,12 +1156,60 @@ cript src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle
         }
 
         function selectNone() {
-            document.querySelectorAll('.student-checkbox-input').forEach(checkbox => {
+            // Only deselect visible students (not hidden by search)
+            document.querySelectorAll('.student-item:not(.hidden) .student-checkbox-input').forEach(checkbox => {
                 checkbox.checked = false;
                 updateStudentVisual(checkbox.closest('.student-item'), false);
             });
             updateSelectionSummary();
         }
+
+        // LETHAL FORM SUBMISSION HANDLER - PREVENTS BUTTON STUCK STATE
+        document.getElementById('assignmentForm').addEventListener('submit', function(e) {
+            const createBtn = document.getElementById('createBtn');
+            const createBtnIcon = document.getElementById('createBtnIcon');
+            const createBtnText = document.getElementById('createBtnText');
+            
+            // Prevent double submission
+            if (createBtn.disabled) {
+                e.preventDefault();
+                return false;
+            }
+
+            // Validate form before submission
+            const selectedStudents = document.querySelectorAll('.student-checkbox-input:checked');
+            if (selectedStudents.length === 0) {
+                e.preventDefault();
+                alert('Please select at least one student for the assignment.');
+                return false;
+            }
+            
+            // Update button state immediately
+            createBtn.disabled = true;
+            createBtn.style.opacity = '0.7';
+            createBtnIcon.className = 'fas fa-spinner fa-spin me-2';
+            createBtnText.textContent = 'Creating...';
+            
+            // Add visual feedback
+            createBtn.style.transform = 'scale(0.98)';
+            
+            // Set timeout to reset button if something goes wrong
+            const resetTimeout = setTimeout(() => {
+                if (createBtn.disabled) {
+                    createBtn.disabled = false;
+                    createBtn.style.opacity = '1';
+                    createBtn.style.transform = 'scale(1)';
+                    createBtnIcon.className = 'fas fa-rocket me-2';
+                    createBtnText.textContent = 'Create Assignments';
+                    console.warn('Form submission timeout - button reset');
+                }
+            }, 15000); // Reset after 15 seconds if no response
+
+            // Store timeout ID for potential cleanup
+            createBtn.dataset.resetTimeout = resetTimeout;
+        });
+
+
 
         // DURATION BUTTON & DROPDOWN SYNC
         const durationSelect = document.getElementById('duration_minutes');
@@ -945,7 +1312,10 @@ cript src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle
             if (topicId && allSources[topicId]) {
                 sourceSelect.innerHTML = '<option value="">Choose source...</option>';
                 allSources[topicId].forEach(source => {
-                    sourceSelect.innerHTML += `<option value="${source}">Source ${source}</option>`;
+                    // Handle both string and object sources
+                    const sourceValue = typeof source === 'object' ? source.source : source;
+                    const sourceName = sourceValue || 'Unknown Source';
+                    sourceSelect.innerHTML += `<option value="${sourceName}">${sourceName}</option>`;
                 });
                 sourceSelect.disabled = false;
             } else {
@@ -963,17 +1333,33 @@ cript src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle
             const mode = document.getElementById('assignment_mode').value;
             const sourceSelect = document.getElementById('assigned_source');
             const sourceRequired = document.getElementById('source-required');
+            const topicId = document.getElementById('topic_id').value;
             
             if (mode === 'source_specific') {
                 sourceSelect.required = true;
                 sourceRequired.style.display = 'inline';
-                if (sourceSelect.disabled && document.getElementById('topic_id').value) {
+                
+                // Load sources if topic is selected
+                if (topicId && allSources[topicId]) {
+                    sourceSelect.innerHTML = '<option value="">Choose source...</option>';
+                    allSources[topicId].forEach(source => {
+                        // Handle both string and object sources
+                        const sourceValue = typeof source === 'object' ? source.source : source;
+                        const sourceName = sourceValue || 'Unknown Source';
+                        sourceSelect.innerHTML += `<option value="${sourceName}">${sourceName}</option>`;
+                    });
                     sourceSelect.disabled = false;
+                } else {
+                    sourceSelect.disabled = true;
+                    sourceSelect.innerHTML = '<option value="">Select topic first...</option>';
                 }
             } else {
+                // Complete Topic mode - disable source selection
                 sourceSelect.required = false;
                 sourceRequired.style.display = 'none';
                 sourceSelect.value = '';
+                sourceSelect.disabled = true;
+                sourceSelect.innerHTML = '<option value="">Not needed for complete topic</option>';
             }
         }
 
@@ -1020,6 +1406,90 @@ cript src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle
             createBtn.disabled = true;
         });
 
+        // STUDENT SEARCH FUNCTIONALITY
+        const studentSearchInput = document.getElementById('studentSearch');
+        const clearSearchBtn = document.getElementById('clearSearch');
+        const searchResultsCount = document.getElementById('searchResultsCount');
+        const studentItems = document.querySelectorAll('.student-item');
+        
+        // Search functionality with debouncing for better performance
+        let searchTimeout;
+        studentSearchInput.addEventListener('input', function() {
+            clearTimeout(searchTimeout);
+            
+            searchTimeout = setTimeout(() => {
+                const searchTerm = this.value.toLowerCase().trim();
+                let visibleCount = 0;
+                const noSearchResults = document.getElementById('noSearchResults');
+                
+                studentItems.forEach(item => {
+                    const studentName = item.dataset.studentName || '';
+                    const studentUsername = item.dataset.studentUsername || '';
+                    
+                    const matchesName = studentName.includes(searchTerm);
+                    const matchesUsername = studentUsername.includes(searchTerm);
+                    
+                    if (searchTerm === '' || matchesName || matchesUsername) {
+                        item.classList.remove('hidden');
+                        visibleCount++;
+                        
+                        // Highlight matching text if search term is not empty
+                        if (searchTerm !== '') {
+                            item.classList.add('highlighted');
+                        } else {
+                            item.classList.remove('highlighted');
+                        }
+                    } else {
+                        item.classList.add('hidden');
+                        item.classList.remove('highlighted');
+                    }
+                });
+                
+                // Update results count
+                searchResultsCount.textContent = visibleCount;
+                
+                // Show/hide clear button
+                if (searchTerm !== '') {
+                    clearSearchBtn.style.display = 'flex';
+                } else {
+                    clearSearchBtn.style.display = 'none';
+                }
+                
+                // Show/hide no results message
+                if (searchTerm !== '' && visibleCount === 0) {
+                    noSearchResults.style.display = 'block';
+                } else {
+                    noSearchResults.style.display = 'none';
+                }
+            }, 150); // 150ms debounce for better performance
+        });
+        
+        // Clear search functionality
+        clearSearchBtn.addEventListener('click', function() {
+            studentSearchInput.value = '';
+            studentSearchInput.focus();
+            
+            // Show all students
+            studentItems.forEach(item => {
+                item.classList.remove('hidden', 'highlighted');
+            });
+            
+            // Update count and hide clear button
+            searchResultsCount.textContent = studentItems.length;
+            this.style.display = 'none';
+            
+            // Hide no results message
+            document.getElementById('noSearchResults').style.display = 'none';
+        });
+        
+        // Keyboard shortcuts for search
+        studentSearchInput.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                this.value = '';
+                this.dispatchEvent(new Event('input'));
+            }
+        });
+        
         // INITIALIZE EVERYTHING INSTANTLY
         document.addEventListener('DOMContentLoaded', function() {
             updateSelectionSummary();
@@ -1027,6 +1497,14 @@ cript src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle
             
             // Auto-focus first field for speed
             document.getElementById('course_id').focus();
+            
+            // Add keyboard shortcut to focus search (Ctrl/Cmd + K)
+            document.addEventListener('keydown', function(e) {
+                if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+                    e.preventDefault();
+                    studentSearchInput.focus();
+                }
+            });
         });
     </script>
 </body>

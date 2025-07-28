@@ -14,7 +14,16 @@ class VerifyCsrfToken extends Middleware
     protected $except = [
         'quiz/*/*/grade',
         'quiz/grade-random',
-        'payments/*/submit-proof'
+        'quiz/*',
+        'payments/*/submit-proof',
+        'topic-locking/*',
+        'topic-locking/*/*',
+        'topic-locking/*/*/*',
+        'admin/payments/*/verify',
+        'admin/payments/*/reject',
+        'admin/payments/bulk-verify',
+        'test/payment-verify/*',
+        'test-payment-verify/*'
     ];
 
     /**

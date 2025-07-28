@@ -19,33 +19,46 @@ class UserStatsService
      */
     public function updateAfterQuizAttempt(User $user, int $questionsAttempted, int $correctAnswers, int $durationSeconds): void
     {
-        // Atomic increments for performance and safety
-        $user->increment('total_questions_attempted', $questionsAttempted);
-        $user->increment('correct_answers_count', $correctAnswers);
+        try {
+            // Atomic increments for performance and safety
+            $user->increment('total_questions_attempted', $questionsAttempted);
+            $user->increment('correct_answers_count', $correctAnswers);
 
-        // Handle study streak and last study date
-        $today = Carbon::today();
-        $lastStudyDate = $user->last_study_date ? Carbon::parse($user->last_study_date) : null;
+            // Handle study streak and last study date
+            $today = Carbon::today();
+            $lastStudyDate = $user->last_study_date ? Carbon::parse($user->last_study_date) : null;
 
-        if (!$lastStudyDate || !$lastStudyDate->isSameDay($today)) {
-            // If last study was yesterday, increment streak; otherwise, reset to 1
-            if ($lastStudyDate && $lastStudyDate->diffInDays($today) === 1) {
-                $user->study_streak_days = ($user->study_streak_days ?? 0) + 1;
-            } else {
-                $user->study_streak_days = 1;
+            if (!$lastStudyDate || !$lastStudyDate->isSameDay($today)) {
+                // If last study was yesterday, increment streak; otherwise, reset to 1
+                if ($lastStudyDate && $lastStudyDate->diffInDays($today) === 1) {
+                    $user->study_streak_days = ($user->study_streak_days ?? 0) + 1;
+                } else {
+                    $user->study_streak_days = 1;
+                }
+                $user->last_study_date = $today;
+                $user->save();
             }
-            $user->last_study_date = $today;
-            $user->save();
-        }
 
-        // Optional: Log for debugging
-        // Log::info('User stats updated', [
-        //     'user_id' => $user->id,
-        //     'questionsAttempted' => $questionsAttempted,
-        //     'correctAnswers' => $correctAnswers,
-        //     'durationSeconds' => $durationSeconds,
-        //     'study_streak_days' => $user->study_streak_days,
-        //     'last_study_date' => $user->last_study_date,
-        // ]);
+            Log::info('User stats updated successfully', [
+                'user_id' => $user->id,
+                'questionsAttempted' => $questionsAttempted,
+                'correctAnswers' => $correctAnswers,
+                'durationSeconds' => $durationSeconds,
+                'study_streak_days' => $user->study_streak_days,
+                'last_study_date' => $user->last_study_date,
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Failed to update user stats after quiz attempt', [
+                'user_id' => $user->id,
+                'questionsAttempted' => $questionsAttempted,
+                'correctAnswers' => $correctAnswers,
+                'durationSeconds' => $durationSeconds,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            
+            // Re-throw the exception to trigger transaction rollback
+            throw $e;
+        }
     }
 } 

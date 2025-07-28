@@ -991,6 +991,9 @@
     </style>
 </head>
 <body>
+    <!-- SAFE PRELOADER - WON'T BREAK ANYTHING -->
+    @include('components.lightning-preloader')
+
     <!-- Navigation Bar -->
     <nav class="navbar">
         <div class="container">

@@ -91,17 +91,38 @@ class StudentAssignmentViewController extends Controller
      */
     public function start(Assignment $assignment): RedirectResponse
     {
-        Log::info('Method start called', ['user_id' => auth()->id(), 'timestamp' => now()]);
+        Log::info('Method start called', [
+            'user_id' => auth()->id(), 
+            'assignment_id' => $assignment->id,
+            'assignment_status' => $assignment->status,
+            'can_be_completed' => $assignment->canBeCompleted(),
+            'is_locked' => $assignment->isLocked(),
+            'topic_locked' => $assignment->topic->is_locked ?? false,
+            'timestamp' => now()
+        ]);
+        
         $this->authorize('view', $assignment);
 
         if (!$assignment->canBeCompleted()) {
+            Log::warning('Assignment cannot be completed', [
+                'assignment_id' => $assignment->id,
+                'status' => $assignment->status,
+                'is_locked' => $assignment->isLocked()
+            ]);
             return redirect()->back()->withErrors(['error' => 'This assignment cannot be started at this time.']);
         }
 
-        return redirect()->route('quiz.start', [
+        $quizUrl = route('quiz.start', [
             'course' => $assignment->course_id,
             'topic' => $assignment->topic_id,
             'assignment_id' => $assignment->id
         ]);
+        
+        Log::info('Redirecting to quiz', [
+            'assignment_id' => $assignment->id,
+            'quiz_url' => $quizUrl
+        ]);
+
+        return redirect($quizUrl);
     }
 }

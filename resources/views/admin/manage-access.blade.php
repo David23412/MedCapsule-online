@@ -952,7 +952,7 @@
                             results: data.map(function(user) {
                                 return {
                                     id: user.id,
-                                    text: user.email + ' (' + user.name + ')' + (user.is_admin ? ' - ADMIN' : '')
+                                    text: user.email + ' (' + user.name + ')' + (user.role === 'admin' ? ' - ADMIN' : '')
                                 };
                             })
                         };
@@ -974,7 +974,7 @@
                 // Update button text based on admin status
                 $.get('{{ secure_url("/manage-access/search-users") }}?query=' + e.params.data.text, function(users) {
                     if (users.length > 0) {
-                        isAdmin = users[0].is_admin;
+                        isAdmin = users[0].role === 'admin';
                         updateToggleButton();
                     }
                 });
@@ -998,7 +998,7 @@
                 $.get('{{ secure_url("/manage-access/search-users") }}?query=' + userText, function(users) {
                     if (users.length > 0) {
                         const user = users[0];
-                        selectedAdminIsAdmin = user.is_admin;
+                        selectedAdminIsAdmin = user.role === 'admin';
                         updateAdminInterface(user);
                     }
                 });
@@ -1030,14 +1030,14 @@
                 $('#selectedUserName').text(user.name);
                 $('#selectedUserEmail').text(user.email);
                 
-                if (user.is_admin) {
+                if (user.role === 'admin') {
                     $('#selectedUserStatus').text('ADMIN').removeClass('bg-secondary').addClass('bg-danger');
                 } else {
                     $('#selectedUserStatus').text('USER').removeClass('bg-danger').addClass('bg-secondary');
                 }
                 
                 // Show/hide appropriate buttons
-                if (user.is_admin) {
+                if (user.role === 'admin') {
                     $('#promoteAdminBtn').hide();
                     $('#revokeAdminBtn').show();
                 } else {
@@ -1440,7 +1440,7 @@
                     
                     payments.data.forEach(payment => {
                         const row = document.createElement('tr');
-                        row.className = payment.status === 'pending' ? 'table-warning' : '';
+                        row.className = (payment.status === 'pending' || payment.status === 'pending_verification') ? 'table-warning' : '';
                         row.innerHTML = `
                             <td>${payment.id}</td>
                             <td>
@@ -1498,7 +1498,7 @@
                                     <span class="badge bg-success d-flex align-items-center gap-2 p-2">
                                         <i class="fas fa-check-circle"></i> Verified
                                     </span>
-                                ` : payment.status === 'pending' ? `
+                                ` : (payment.status === 'pending' || payment.status === 'pending_verification') ? `
                                     <div class="d-flex gap-2">
                                         <button class="btn btn-sm btn-success grant-access-btn" 
                                                 data-payment-id="${payment.id}"
@@ -1861,7 +1861,7 @@
                 btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
             });
 
-            fetch('{{ secure_url("/admin/payments") }}/' + paymentId + '/reject', {
+            fetch('/admin/payments/' + paymentId + '/reject', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -1899,7 +1899,13 @@
             })
             .catch(error => {
                 console.error('Error rejecting payment:', error);
-                alert('An error occurred while rejecting the payment.');
+                
+                let errorMessage = 'An error occurred while rejecting the payment.';
+                if (error.name === 'TypeError' && error.message.includes('Failed to fetch')) {
+                    errorMessage = 'Network error: Please check your connection and try again. If using ngrok, the tunnel may have changed.';
+                }
+                
+                alert(errorMessage);
                 
                 // Reset buttons on error
                 buttons.forEach(btn => {
@@ -1967,7 +1973,7 @@
 
                 const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
 
-                fetch('{{ secure_url("/admin/payments") }}/' + paymentId + '/verify', {
+                fetch('/admin/payments/' + paymentId + '/verify', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -2009,7 +2015,13 @@
                 })
                 .catch(error => {
                     console.error('Error accepting payment:', error);
-                    alert('An error occurred while accepting the payment.');
+                    
+                    let errorMessage = 'An error occurred while accepting the payment.';
+                    if (error.name === 'TypeError' && error.message.includes('Failed to fetch')) {
+                        errorMessage = 'Network error: Please check your connection and try again. If using ngrok, the tunnel may have changed.';
+                    }
+                    
+                    alert(errorMessage);
                     
                     // Reset button on error
                     btn.disabled = false;
@@ -2033,6 +2045,7 @@
                         completed++;
                         break;
                     case 'pending':
+                    case 'pending_verification':
                         pending++;
                         break;
                     case 'rejected':

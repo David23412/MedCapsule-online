@@ -27,7 +27,7 @@ class PaymentStatusController extends Controller
     {
         $user = Auth::user();
         
-        if ($user->is_admin) {
+        if ($user->role === 'admin') {
             return redirect()->route('admin.payments.history');
         }
 

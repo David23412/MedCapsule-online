@@ -14,26 +14,91 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 
     
-    <!-- TUTOR MODE AUDIO SYSTEM -->
-    <audio id="correctChimeSound" preload="auto" volume="0.7">
-        <source src="/sounds/correct-chime.mp3" type="audio/mpeg">
-    </audio>
-    <audio id="wrongAnswerSound" preload="auto" volume="0.7">
-        <source src="/sounds/quiz-wrong.mp3" type="audio/mpeg">
-    </audio>
-    <audio id="quizPerfectSound" preload="auto" volume="0.7">
-        <source src="/sounds/quiz-perfect.mp3" type="audio/mpeg">
-    </audio>
-    <audio id="quizPartialSound" preload="auto" volume="0.7">
-        <source src="/sounds/quiz-partial.mp3" type="audio/mpeg">
-    </audio>
+
+    <!-- 💀 LETHAL AUDIO POOL SYSTEM - 5 READY ELEMENTS PER SOUND 💀 -->
+    <div id="audio-pool" style="display: none;">
+        <!-- CORRECT SOUND POOL -->
+        <audio class="audio-pool-correct" preload="auto" volume="0.7">
+            <source src="/sounds/Single-correct.mp3" type="audio/mpeg">
+        </audio>
+        <audio class="audio-pool-correct" preload="auto" volume="0.7">
+            <source src="/sounds/Single-correct.mp3" type="audio/mpeg">
+        </audio>
+        <audio class="audio-pool-correct" preload="auto" volume="0.7">
+            <source src="/sounds/Single-correct.mp3" type="audio/mpeg">
+        </audio>
+        <audio class="audio-pool-correct" preload="auto" volume="0.7">
+            <source src="/sounds/Single-correct.mp3" type="audio/mpeg">
+        </audio>
+        <audio class="audio-pool-correct" preload="auto" volume="0.7">
+            <source src="/sounds/Single-correct.mp3" type="audio/mpeg">
+        </audio>
+        
+        <!-- WRONG SOUND POOL -->
+        <audio class="audio-pool-wrong" preload="auto" volume="0.7">
+            <source src="/sounds/quiz-wrong.mp3" type="audio/mpeg">
+        </audio>
+        <audio class="audio-pool-wrong" preload="auto" volume="0.7">
+            <source src="/sounds/quiz-wrong.mp3" type="audio/mpeg">
+        </audio>
+        <audio class="audio-pool-wrong" preload="auto" volume="0.7">
+            <source src="/sounds/quiz-wrong.mp3" type="audio/mpeg">
+        </audio>
+        <audio class="audio-pool-wrong" preload="auto" volume="0.7">
+            <source src="/sounds/quiz-wrong.mp3" type="audio/mpeg">
+        </audio>
+        <audio class="audio-pool-wrong" preload="auto" volume="0.7">
+            <source src="/sounds/quiz-wrong.mp3" type="audio/mpeg">
+        </audio>
+        
+        <!-- PERFECT SOUND POOL -->
+        <audio class="audio-pool-perfect" preload="auto" volume="0.7">
+            <source src="/sounds/quiz-perfect.mp3" type="audio/mpeg">
+        </audio>
+        <audio class="audio-pool-perfect" preload="auto" volume="0.7">
+            <source src="/sounds/quiz-perfect.mp3" type="audio/mpeg">
+        </audio>
+        <audio class="audio-pool-perfect" preload="auto" volume="0.7">
+            <source src="/sounds/quiz-perfect.mp3" type="audio/mpeg">
+        </audio>
+        <audio class="audio-pool-perfect" preload="auto" volume="0.7">
+            <source src="/sounds/quiz-perfect.mp3" type="audio/mpeg">
+        </audio>
+        <audio class="audio-pool-perfect" preload="auto" volume="0.7">
+            <source src="/sounds/quiz-perfect.mp3" type="audio/mpeg">
+        </audio>
+        
+        <!-- PARTIAL SOUND POOL -->
+        <audio class="audio-pool-partial" preload="auto" volume="0.7">
+            <source src="/sounds/quiz-partial.mp3" type="audio/mpeg">
+        </audio>
+        <audio class="audio-pool-partial" preload="auto" volume="0.7">
+            <source src="/sounds/quiz-partial.mp3" type="audio/mpeg">
+        </audio>
+        <audio class="audio-pool-partial" preload="auto" volume="0.7">
+            <source src="/sounds/quiz-partial.mp3" type="audio/mpeg">
+        </audio>
+        <audio class="audio-pool-partial" preload="auto" volume="0.7">
+            <source src="/sounds/quiz-partial.mp3" type="audio/mpeg">
+        </audio>
+        <audio class="audio-pool-partial" preload="auto" volume="0.7">
+            <source src="/sounds/quiz-partial.mp3" type="audio/mpeg">
+        </audio>
+        
+
+    </div>
+
     <!-- Favicon -->
     <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 50'%3E%3Crect fill='%23007bff' x='10' y='15' width='80' height='20' rx='10' ry='10' /%3E%3Crect x='50' y='15' width='40' height='20' fill='%23ff0000' rx='0 10 10 0' ry='10'/%3E%3Cline x1='50' y1='15' x2='50' y2='35' stroke='white' stroke-width='1.5' stroke-dasharray='2,1'/%3E%3C/svg%3E">
     <link rel="shortcut icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 50'%3E%3Crect fill='%23007bff' x='10' y='15' width='80' height='20' rx='10' ry='10' /%3E%3Crect x='50' y='15' width='40' height='20' fill='%23ff0000' rx='0 10 10 0' ry='10'/%3E%3Cline x1='50' y1='15' x2='50' y2='35' stroke='white' stroke-width='1.5' stroke-dasharray='2,1'/%3E%3C/svg%3E">
     <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 50'%3E%3Crect fill='%23007bff' x='10' y='15' width='80' height='20' rx='10' ry='10' /%3E%3Crect x='50' y='15' width='40' height='20' fill='%23ff0000' rx='0 10 10 0' ry='10'/%3E%3Cline x1='50' y1='15' x2='50' y2='35' stroke='white' stroke-width='1.5' stroke-dasharray='2,1'/%3E%3C/svg%3E">
 
-    <!-- LETHAL ERROR SUPPRESSION SYSTEM -->
-    <script src="{{ asset('js/lethal-error-suppression.js') }}"></script>
+    <!-- ERROR SUPPRESSION DISABLED FOR DEBUGGING -->
+    <!-- <script src="{{ asset('js/lethal-error-suppression.js') }}"></script> -->
+    
+    <!-- 💀 NUCLEAR SPEED OPTIMIZATIONS 💀 -->
+    <link rel="preconnect" href="{{ url('/') }}">
+    <link rel="dns-prefetch" href="{{ url('/') }}">
 
     <style>
         body {
@@ -662,6 +727,9 @@
     </style>
 </head>
 <body>
+    <!-- LIGHTNING-FAST FOUC ELIMINATOR -->
+    @include('components.lightning-preloader')
+
     <!-- Navigation Bar -->
     <nav class="navbar">
         <div class="container">
@@ -763,17 +831,6 @@
         </div>
     </div>
 
-    <!-- Add audio elements -->
-    <audio id="quizPerfectSound" preload="auto">
-        <source src="{{ asset('sounds/quiz-perfect.mp3') }}" type="audio/mpeg">
-    </audio>
-    <audio id="quizPartialSound" preload="auto">
-        <source src="{{ asset('sounds/quiz-partial.mp3') }}" type="audio/mpeg">
-    </audio>
-    <audio id="quizWrongSound" preload="auto">
-        <source src="{{ asset('sounds/quiz-wrong.mp3') }}" type="audio/mpeg">
-    </audio>
-
     <!-- Quiz Results Popup - EXACT COPY FROM SOLVE_QUIZ -->
     <div class="popup-overlay" id="popup-overlay">
         <div class="popup" id="popup">
@@ -789,10 +846,10 @@
                     <i class="fas fa-redo"></i>
                     Retry Quiz
                 </button>
-                <a href="{{ route('topics.forCourse', $course->id) }}" class="popup-btn view-progress-btn" id="view-progress-btn">
-                    <i class="fas fa-chart-line"></i>
-                    Back to Topics
-                </a>
+                <button class="popup-btn continue-btn" id="continue-btn" onclick="window.location.href='/courses'">
+                    <i class="fas fa-arrow-right"></i>
+                    Continue Learning
+                </button>
             </div>
         </div>
     </div>
@@ -801,6 +858,16 @@
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js?v={{ time() }}"></script>
     
     <script>
+        // 💀 LETHAL AUDIO POOL SYSTEM - 0MS INSTANT PLAYBACK 💀
+        let audioPool = {
+            correct: [],
+            wrong: [],
+            perfect: [],
+            partial: []
+        };
+        let poolReplenishmentTimer = null;
+        let poolReplenishmentInterval = null;
+        
         // LIGHTNING FAST FUNCTION DEFINITIONS 🚀
         function selectOption(element) {
             try {
@@ -819,14 +886,237 @@
             }
         }
 
-        // OPTIMIZED EVENT DELEGATION FOR BETTER PERFORMANCE
+        // 💀 LETHAL AUDIO POOL INITIALIZATION 💀
         document.addEventListener('DOMContentLoaded', function() {
+            console.log('🔥 LETHAL AUDIO POOL: Initializing bulletproof sound system...');
+            
+            // Initialize audio pools
+            initializeAudioPools();
+            
+            // Start pool replenishment
+            startPoolReplenishment();
+            
+            // Event delegation for option selection
             document.addEventListener('click', function(e) {
                 if (e.target.closest('.option-card')) {
                     selectOption(e.target.closest('.option-card'));
                 }
             });
+            
+            console.log('✅ LETHAL AUDIO POOL: System ready for 0ms instant playback');
         });
+        
+        // 💀 AUDIO POOL INITIALIZATION 💀
+        function initializeAudioPools() {
+            // Load existing audio elements into pools
+            const correctElements = document.querySelectorAll('.audio-pool-correct');
+            const wrongElements = document.querySelectorAll('.audio-pool-wrong');
+            const perfectElements = document.querySelectorAll('.audio-pool-perfect');
+            const partialElements = document.querySelectorAll('.audio-pool-partial');
+            
+            correctElements.forEach(audio => {
+                audioPool.correct.push(audio);
+                setupAudioElement(audio);
+            });
+            
+            wrongElements.forEach(audio => {
+                audioPool.wrong.push(audio);
+                setupAudioElement(audio);
+            });
+            
+            perfectElements.forEach(audio => {
+                audioPool.perfect.push(audio);
+                setupAudioElement(audio);
+            });
+            
+            partialElements.forEach(audio => {
+                audioPool.partial.push(audio);
+                setupAudioElement(audio);
+            });
+            
+            console.log(`🔥 LETHAL AUDIO POOL: Initialized - Correct: ${audioPool.correct.length}, Wrong: ${audioPool.wrong.length}, Perfect: ${audioPool.perfect.length}, Partial: ${audioPool.partial.length}`);
+        }
+        
+        // 💀 AUDIO ELEMENT SETUP 💀
+        function setupAudioElement(audio) {
+            audio.volume = 0.7;
+            audio.preload = 'auto';
+            
+            // Add event listeners for pool management
+            audio.addEventListener('ended', function() {
+                // Wait a bit longer before returning to pool to ensure full playback
+                setTimeout(() => {
+                    returnToPool(audio);
+                }, 200);
+            });
+            
+            audio.addEventListener('error', function() {
+                console.log('ℹ️ Audio element error, returning to pool');
+                returnToPool(audio);
+            });
+        }
+        
+        // 💀 POOL REPLENISHMENT SYSTEM 💀
+        function startPoolReplenishment() {
+            // Check pool levels every 5 seconds
+            poolReplenishmentInterval = setInterval(() => {
+                replenishPools();
+            }, 5000);
+            
+            // Initial replenishment check
+            setTimeout(() => {
+                replenishPools();
+            }, 1000);
+        }
+        
+        // 💀 POOL REPLENISHMENT 💀
+        function replenishPools() {
+            const minPoolSize = 3;
+            
+            // Replenish correct pool
+            if (audioPool.correct.length < minPoolSize) {
+                const needed = minPoolSize - audioPool.correct.length;
+                for (let i = 0; i < needed; i++) {
+                    createAudioElement('correct');
+                }
+                console.log(`🔥 LETHAL AUDIO POOL: Replenished correct pool with ${needed} elements`);
+            }
+            
+            // Replenish wrong pool
+            if (audioPool.wrong.length < minPoolSize) {
+                const needed = minPoolSize - audioPool.wrong.length;
+                for (let i = 0; i < needed; i++) {
+                    createAudioElement('wrong');
+                }
+                console.log(`🔥 LETHAL AUDIO POOL: Replenished wrong pool with ${needed} elements`);
+            }
+            
+            // Replenish perfect pool
+            if (audioPool.perfect.length < minPoolSize) {
+                const needed = minPoolSize - audioPool.perfect.length;
+                for (let i = 0; i < needed; i++) {
+                    createAudioElement('perfect');
+                }
+                console.log(`🔥 LETHAL AUDIO POOL: Replenished perfect pool with ${needed} elements`);
+            }
+            
+            // Replenish partial pool
+            if (audioPool.partial.length < minPoolSize) {
+                const needed = minPoolSize - audioPool.partial.length;
+                for (let i = 0; i < needed; i++) {
+                    createAudioElement('partial');
+                }
+                console.log(`🔥 LETHAL AUDIO POOL: Replenished partial pool with ${needed} elements`);
+            }
+            
+            // Replenish perfect pool
+            if (audioPool.perfect.length < minPoolSize) {
+                const needed = minPoolSize - audioPool.perfect.length;
+                for (let i = 0; i < needed; i++) {
+                    createAudioElement('perfect');
+                }
+                console.log(`🔥 LETHAL AUDIO POOL: Replenished perfect pool with ${needed} elements`);
+            }
+            
+            // Replenish partial pool
+            if (audioPool.partial.length < minPoolSize) {
+                const needed = minPoolSize - audioPool.partial.length;
+                for (let i = 0; i < needed; i++) {
+                    createAudioElement('partial');
+                }
+                console.log(`🔥 LETHAL AUDIO POOL: Replenished partial pool with ${needed} elements`);
+            }
+            
+
+        }
+        
+        // 💀 CREATE FRESH AUDIO ELEMENT 💀
+        function createAudioElement(type) {
+            const audio = new Audio();
+            let sourceUrl = '';
+            
+            switch(type) {
+                case 'correct':
+                    sourceUrl = '/sounds/Single-correct.mp3';
+                    break;
+                case 'wrong':
+                    sourceUrl = '/sounds/quiz-wrong.mp3';
+                    break;
+                case 'perfect':
+                    sourceUrl = '/sounds/quiz-perfect.mp3';
+                    break;
+                case 'partial':
+                    sourceUrl = '/sounds/quiz-partial.mp3';
+                    break;
+            }
+            
+            audio.src = sourceUrl;
+            audio.volume = 0.7;
+            audio.preload = 'auto';
+            
+            // Add to pool
+            audioPool[type].push(audio);
+            
+            // Setup event listeners
+            audio.addEventListener('ended', function() {
+                // Wait a bit longer before returning to pool to ensure full playback
+                setTimeout(() => {
+                    returnToPool(audio, type);
+                }, 200);
+            });
+            
+            audio.addEventListener('error', function() {
+                console.log(`ℹ️ Fresh audio element error for ${type}, removing from pool`);
+                removeFromPool(audio, type);
+            });
+            
+            console.log(`🔥 LETHAL AUDIO POOL: Created fresh ${type} audio element`);
+        }
+        
+        // 💀 RETURN AUDIO TO POOL 💀
+        function returnToPool(audio, type = null) {
+            if (!type) {
+                // Determine type from class or source
+                if (audio.classList.contains('audio-pool-correct') || audio.src.includes('Single-correct')) {
+                    type = 'correct';
+                } else if (audio.classList.contains('audio-pool-wrong') || audio.src.includes('quiz-wrong')) {
+                    type = 'wrong';
+                } else if (audio.classList.contains('audio-pool-perfect') || audio.src.includes('quiz-perfect')) {
+                    type = 'perfect';
+                } else if (audio.classList.contains('audio-pool-partial') || audio.src.includes('quiz-partial')) {
+                    type = 'partial';
+                }
+            }
+            
+            if (type && audioPool[type]) {
+                // Reset audio completely
+                audio.currentTime = 0;
+                audio.pause();
+                
+                // Ensure audio is fully stopped
+                try {
+                    audio.stop && audio.stop();
+                } catch (e) {
+                    // Ignore errors if stop method doesn't exist
+                }
+                
+                // Add back to pool if not already there
+                if (!audioPool[type].includes(audio)) {
+                    audioPool[type].push(audio);
+                    console.log(`🔥 LETHAL AUDIO POOL: Returned ${type} audio to pool (${audioPool[type].length} available)`);
+                }
+            }
+        }
+        
+        // 💀 REMOVE FROM POOL 💀
+        function removeFromPool(audio, type) {
+            if (audioPool[type]) {
+                const index = audioPool[type].indexOf(audio);
+                if (index > -1) {
+                    audioPool[type].splice(index, 1);
+                }
+            }
+        }
 
         // [FIX] REMOVE INFINITE RELOAD LOOP
         // if (window.performance && window.performance.navigation.type === window.performance.navigation.TYPE_RELOAD) {
@@ -874,16 +1164,109 @@
 
 
 
-        // Function to check answer
-        // LIGHTNING FAST OPTIMIZED ANSWER CHECKING 🚀
+        // 💀 LETHAL CLIENT-SIDE ANSWER CHECKING 💀
+        let answerCache = {};
+        let questionData = {};
+        
+        // PRELOAD ALL QUESTION DATA ON PAGE LOAD
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('🔥 PRELOADING QUESTION DATA FOR INSTANT CHECKING...');
+            
+            // Extract question data from DOM
+            @foreach($questions as $index => $question)
+                @php $qObj = is_array($question) ? $question['question'] : $question; @endphp
+                questionData[{{ $qObj->id ?? 0 }}] = {
+                    correct_answer: '{{ $qObj->correct_answer ?? '' }}',
+                    explanation: `{!! addslashes($qObj->explanation ?? '') !!}`,
+                    question_type: '{{ $qObj->question_type ?? 'multiple_choice' }}'
+                };
+            @endforeach
+            
+            console.log('✅ Question data preloaded for', Object.keys(questionData).length, 'questions');
+            
+            // PERFORMANCE MONITORING
+            window.performanceStats = {
+                instantChecks: 0,
+                cacheHits: 0,
+                networkRequests: 0,
+                totalTime: 0
+            };
+            
+            window.getPerformanceStats = function() {
+                console.log('📊 PERFORMANCE STATS:', window.performanceStats);
+                const avgTime = window.performanceStats.totalTime / (window.performanceStats.instantChecks + window.performanceStats.cacheHits + window.performanceStats.networkRequests);
+                console.log(`📊 AVERAGE RESPONSE TIME: ${Math.round(avgTime)}ms`);
+                return window.performanceStats;
+            };
+        });
+        
+        // EXTRACTED ANSWER PROCESSING FUNCTION FOR SPEED
+        function processAnswerResult(questionNumber, questionId, data, checkBtn) {
+            // 💀 BULLETPROOF DUPLICATE PREVENTION - NO MULTIPLE PROCESSING 💀
+            const resultKey = `result_processed_${questionNumber}`;
+            if (processAnswerResult[resultKey]) {
+                console.log(`🔇 BULLETPROOF: Result already processed for Q${questionNumber}, skipping duplicate`);
+                return;
+            }
+            processAnswerResult[resultKey] = true;
+            
+            updateQuestionUI(questionNumber, {
+                correct: data.is_correct,
+                explanation: data.explanation,
+                correctAnswer: data.correct_answer
+            });
+
+            // FINAL RESULTS CHECK
+            if (totalAnswers === totalQuestions) {
+                const percentage = (correctAnswers / totalAnswers) * 100;
+                
+                // 💀 NUCLEAR INSTANT GRADING SOUND - BEFORE ANYTHING ELSE 💀
+                const audio = new Audio();
+                if (percentage === 100) {
+                    audio.src = '/sounds/quiz-perfect.mp3';
+                } else if (percentage >= 70) {
+                    audio.src = '/sounds/quiz-partial.mp3';
+                } else {
+                    audio.src = '/sounds/quiz-wrong.mp3';
+                }
+                audio.volume = 0.7;
+                audio.play().catch(() => {});
+                
+                // Save quiz attempt to database
+                saveTutorQuizAttempt(correctAnswers, totalAnswers, percentage);
+                
+                showQuizResults({
+                    correct: correctAnswers,
+                    total: totalAnswers,
+                    percentage: percentage
+                });
+            }
+        }
+        
         window.checkAnswer = function checkAnswer(questionNumber, questionId) {
             const startTime = performance.now();
+            console.log(`🚀 CHECKING ANSWER: Question ${questionNumber}, ID ${questionId}`);
+            
+            // 💀 BULLETPROOF DUPLICATE PREVENTION - NO MULTIPLE PROCESSING 💀
+            const processingKey = `processing_${questionNumber}`;
+            if (checkAnswer[processingKey]) {
+                console.log(`🔇 BULLETPROOF: Question ${questionNumber} already being processed, skipping duplicate`);
+                return;
+            }
+            checkAnswer[processingKey] = true;
+            
+            // INSTANT DOM ACCESS
             const questionCard = document.getElementById(`question-${questionNumber}`);
+            if (!questionCard) {
+                console.error(`❌ Question card not found: question-${questionNumber}`);
+                return;
+            }
+            
             const writtenAnswer = questionCard.querySelector('.written-answer');
             const selectedOption = questionCard.querySelector('.option-card.selected');
             const checkBtn = questionCard.querySelector('.check-answer');
             
-            // INSTANT VALIDATION
+            // INSTANT ANSWER EXTRACTION
             let answer = '';
             if (writtenAnswer) {
                 answer = writtenAnswer.value.trim();
@@ -892,87 +1275,132 @@
             }
 
             if (!answer) {
-                // PROFESSIONAL FEEDBACK - NO ANIMATION
+                console.warn('⚠️ No answer selected');
                 return;
             }
 
-            // INSTANT UI FEEDBACK - NO LOADING ANIMATION
+            console.log(`📝 Answer selected: "${answer}"`);
+            
+            // 💀 INSTANT CLIENT-SIDE CHECKING - NO NETWORK DELAY 💀
+            if (questionData[questionId]) {
+                console.log(`⚡ INSTANT CLIENT-SIDE CHECK for Q${questionId}`);
+                
+                const qData = questionData[questionId];
+                const isCorrect = answer.toLowerCase().trim() === qData.correct_answer.toLowerCase().trim();
+                
+                const instantData = {
+                    success: true,
+                    is_correct: isCorrect,
+                    correct_answer: qData.correct_answer,
+                    explanation: qData.explanation
+                };
+                
+                console.log(`✅ INSTANT RESULT: ${isCorrect ? 'CORRECT' : 'WRONG'} (0ms)`);
+                
+                // TRACK PERFORMANCE
+                window.performanceStats.instantChecks++;
+                window.performanceStats.totalTime += (performance.now() - startTime);
+                
+                // INSTANT PROCESSING
+                userAnswers[questionId] = answer;
+                totalAnswers++;
+                if (isCorrect) correctAnswers++;
+                
+                // INSTANT UI UPDATE
+                processAnswerResult(questionNumber, questionId, instantData, checkBtn);
+                // Clear processing flag
+                delete checkAnswer[processingKey];
+                return;
+            }
+            
+            // FALLBACK: CHECK CACHE
+            const cacheKey = `${questionId}_${answer}`;
+            if (answerCache[cacheKey]) {
+                console.log(`⚡ CACHE HIT! Instant response for Q${questionId}`);
+                const cachedData = answerCache[cacheKey];
+                
+                // TRACK PERFORMANCE
+                window.performanceStats.cacheHits++;
+                window.performanceStats.totalTime += (performance.now() - startTime);
+                
+                // INSTANT PROCESSING FROM CACHE
+                userAnswers[questionId] = answer;
+                totalAnswers++;
+                if (cachedData.is_correct) correctAnswers++;
+                
+                // INSTANT UI UPDATE FROM CACHE
+                processAnswerResult(questionNumber, questionId, cachedData, checkBtn);
+                // Clear processing flag
+                delete checkAnswer[processingKey];
+                return;
+            }
+
+            // LAST RESORT: NETWORK REQUEST
+            console.warn(`⚠️ FALLBACK TO NETWORK for Q${questionId}`);
+            
+            // INSTANT UI FEEDBACK
             if (checkBtn) {
                 checkBtn.disabled = true;
-                checkBtn.innerHTML = 'Checking...';
+                checkBtn.textContent = 'Checking...';
                 checkBtn.style.background = '#6c757d';
             }
 
-            // LETHAL OPTIMIZED FETCH - BULLETPROOF ERROR HANDLING
+            // 💀 F16 RAPTOR SPEED FETCH 💀
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 2000); // 2 second timeout
+            
+            // CACHE CSRF TOKEN FOR SPEED
+            const csrfToken = document.querySelector('meta[name="csrf-token"]').content;
+
             fetch(`/quiz/tutor/check/${questionId}`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
-                    'Accept': 'application/json'
+                    'X-CSRF-TOKEN': csrfToken,
+                    'Accept': 'application/json',
+                    'Cache-Control': 'no-cache',
+                    'Connection': 'keep-alive'
                 },
-                body: JSON.stringify({ answer, question_number: questionNumber })
+                body: JSON.stringify({ answer }),
+                signal: controller.signal,
+                keepalive: true
             })
             .then(response => {
-                console.log(`🔥 TUTOR DEBUG: Answer check response status: ${response.status}`);
+                clearTimeout(timeoutId);
+                const responseTime = performance.now() - startTime;
+                console.log(`⚡ Server response in ${Math.round(responseTime)}ms (Status: ${response.status})`);
                 
-                // LETHAL FIX: Handle all response types gracefully
                 if (!response.ok) {
-                    console.warn(`⚠️ Answer check request returned ${response.status}: ${response.statusText}`);
-                    return {
-                        success: false,
-                        is_correct: false,
-                        error: `Server returned ${response.status}`,
-                        correct_answer: 'Unknown',
-                        explanation: 'Unable to check answer due to server error'
-                    };
+                    throw new Error(`Server error: ${response.status} ${response.statusText}`);
                 }
                 
-                return response.json().catch(jsonError => {
-                    console.warn('⚠️ Failed to parse answer check JSON response');
-                    return {
-                        success: false,
-                        is_correct: false,
-                        error: 'Invalid response format',
-                        correct_answer: 'Unknown',
-                        explanation: 'Unable to parse server response'
-                    };
-                });
+                return response.json();
             })
             .then(data => {
-                const endTime = performance.now();
-                console.log(`⚡ Answer checked in ${Math.round(endTime - startTime)}ms`);
+                const totalTime = performance.now() - startTime;
+                console.log(`✅ Answer processed in ${Math.round(totalTime)}ms`);
+                console.log('📊 Server performance:', data.performance_metrics);
                 
-                if (!data.success) throw new Error(data.error || 'Check failed');
+                if (!data.success) {
+                    throw new Error(data.message || 'Answer check failed');
+                }
 
-                // CRITICAL FIX: Store the user's answer for later submission
+                // CACHE THE RESULT FOR FUTURE INSTANT ACCESS
+                answerCache[cacheKey] = data;
+                console.log(`💾 Cached result for Q${questionId}_${answer}`);
+
+                // INSTANT ANSWER STORAGE
                 userAnswers[questionId] = answer;
-                console.log(`🔥 TUTOR DEBUG: Stored answer for question ${questionId}:`, answer);
+                console.log(`💾 Stored answer: Q${questionId} = "${answer}"`);
 
                 // INSTANT COUNTERS
                 totalAnswers++;
                 if (data.is_correct) correctAnswers++;
 
-                // INSTANT UI UPDATE
-                updateQuestionUI(questionNumber, {
-                    correct: data.is_correct,
-                    explanation: data.explanation,
-                    correctAnswer: data.correct_answer
-                });
-
-                // FINAL RESULTS
-                if (totalAnswers === totalQuestions) {
-                    const percentage = (correctAnswers / totalAnswers) * 100;
-                    
-                    // Save quiz attempt to database
-                    saveTutorQuizAttempt(correctAnswers, totalAnswers, percentage);
-                    
-                    showQuizResults({
-                        correct: correctAnswers,
-                        total: totalAnswers,
-                        percentage: percentage
-                    });
-                }
+                // PROCESS RESULT
+                processAnswerResult(questionNumber, questionId, data, checkBtn);
+                // Clear processing flag
+                delete checkAnswer[processingKey];
             })
             .catch(error => {
                 // LETHAL FIX: Silent error handling - don't spam console or alert user
@@ -1004,6 +1432,19 @@
                 // Continue with quiz if all questions are answered
                 if (totalAnswers === totalQuestions) {
                     const percentage = (correctAnswers / totalAnswers) * 100;
+                    
+                    // 💀 NUCLEAR INSTANT GRADING SOUND - BEFORE ANYTHING ELSE 💀
+                    const audio = new Audio();
+                    if (percentage === 100) {
+                        audio.src = '/sounds/quiz-perfect.mp3';
+                    } else if (percentage >= 70) {
+                        audio.src = '/sounds/quiz-partial.mp3';
+                    } else {
+                        audio.src = '/sounds/quiz-wrong.mp3';
+                    }
+                    audio.volume = 0.7;
+                    audio.play().catch(() => {});
+                    
                     saveTutorQuizAttempt(correctAnswers, totalAnswers, percentage);
                     showQuizResults({
                         correct: correctAnswers,
@@ -1011,6 +1452,9 @@
                         percentage: percentage
                     });
                 }
+                
+                // Clear processing flag
+                delete checkAnswer[processingKey];
             });
         }
 
@@ -1030,6 +1474,19 @@
             } else {
                 // No more questions, show final results
                 const percentage = (correctAnswers / totalAnswers) * 100;
+                
+                // 💀 NUCLEAR INSTANT GRADING SOUND - BEFORE ANYTHING ELSE 💀
+                const audio = new Audio();
+                if (percentage === 100) {
+                    audio.src = '/sounds/quiz-perfect.mp3';
+                } else if (percentage >= 70) {
+                    audio.src = '/sounds/quiz-partial.mp3';
+                } else {
+                    audio.src = '/sounds/quiz-wrong.mp3';
+                }
+                audio.volume = 0.7;
+                audio.play().catch(() => {});
+                
                 showQuizResults({
                     correct: correctAnswers,
                     total: totalAnswers,
@@ -1044,6 +1501,10 @@
             const feedbackDiv = questionCard.querySelector('.answer-feedback');
             const optionsContainer = questionCard.querySelector('.options-container');
             
+            // 💀 BULLETPROOF SOUND PREVENTION - NO DOUBLE PLAYBACK 💀
+            const soundKey = `sound_played_${questionNumber}`;
+            const hasPlayedSound = questionCard.dataset[soundKey];
+            
             // Show feedback
             feedbackDiv.style.display = 'block';
             const alertDiv = feedbackDiv.querySelector('.alert');
@@ -1052,9 +1513,16 @@
             // Update feedback text
             feedbackDiv.querySelector('.result-text').textContent = data.correct ? 'Correct! 🎉' : 'Incorrect';
             
-            // PLAY INDIVIDUAL QUESTION SOUND (but not on last question to avoid double sound)
-            if (totalAnswers < totalQuestions) {
-                playIndividualQuestionSound(data.correct);
+            // 💀 LETHAL AUDIO POOL - INSTANT SOUND FEEDBACK (ONCE ONLY) 💀
+            if (totalAnswers < totalQuestions && !hasPlayedSound) {
+                console.log(`🔥 LETHAL AUDIO POOL: Playing instant sound for Q${questionNumber} (${data.correct ? 'correct' : 'wrong'}) - FIRST TIME ONLY`);
+                playInstantSound(data.correct);
+                // Mark this question as having played sound
+                questionCard.dataset[soundKey] = 'true';
+            } else if (hasPlayedSound) {
+                console.log(`🔇 LETHAL AUDIO POOL: Sound already played for Q${questionNumber}, skipping duplicate`);
+            } else {
+                console.log(`🔇 LETHAL AUDIO POOL: Skipping sound for final question Q${questionNumber} to avoid overlap`);
             }
             
             // Show explanation and correct answer if incorrect
@@ -1100,6 +1568,14 @@
 
         // Function to show quiz results
         function showQuizResults(results) {
+            console.log('🚀 SHOW QUIZ RESULTS CALLED - STARTING INSTANT SOUND');
+            const soundStart = performance.now();
+            
+            // 💀 NUCLEAR INSTANT GRADING SOUND - PLAYS IMMEDIATELY 💀
+            playFinalGradingSound(results.correct, results.total);
+            
+            console.log(`✅ SOUND TRIGGERED in ${(performance.now() - soundStart).toFixed(2)}ms`);
+            
             const popupOverlay = document.getElementById('popup-overlay');
             const popup = document.getElementById('popup');
             const gradeIcon = document.getElementById('grade-icon');
@@ -1109,7 +1585,7 @@
 
             // Show score as X/Y, not percentage
             popupScore.textContent = `${results.correct}/${results.total}`;
-
+            
             // Set appropriate icon and message based on score
             const percentage = (results.correct / results.total) * 100;
             if (percentage === 100) {
@@ -1127,19 +1603,16 @@
                         zIndex: 10000
                     });
                 }
-                playFinalGradingSound(results.correct, results.total);
             } else if (percentage >= 70) {
                 gradeIcon.innerHTML = '<i class="fas fa-star"></i>';
                 gradeIcon.className = 'grade-icon good';
                 popupTitle.textContent = 'Well Done!';
                 popupMessage.textContent = 'Good progress! Keep up the great work!';
-                playFinalGradingSound(results.correct, results.total);
             } else {
                 gradeIcon.innerHTML = '<i class="fas fa-book"></i>';
                 gradeIcon.className = 'grade-icon needs-improvement';
                 popupTitle.textContent = 'Keep Learning!';
                 popupMessage.textContent = 'Don\'t give up! Practice makes perfect!';
-                playFinalGradingSound(results.correct, results.total);
             }
 
             // Show popup with animation
@@ -1149,49 +1622,131 @@
 
 
 
-        // Function to play quiz completion sound
+        // 💀 LETHAL AUDIO POOL - INSTANT SOUND PLAYBACK 💀
+        function playInstantSound(isCorrect) {
+            const startTime = performance.now();
+            const soundType = isCorrect ? 'correct' : 'wrong';
+            
+            // 💀 BULLETPROOF DUPLICATE PREVENTION 💀
+            if (playInstantSound.isPlaying) {
+                console.log(`🔇 LETHAL AUDIO POOL: Sound already playing, skipping duplicate ${soundType} sound`);
+                return;
+            }
+            
+            console.log(`🔥 LETHAL AUDIO POOL: Attempting 0ms playback for ${soundType} sound`);
+            
+            // 💀 SHIFT FROM POOL - GET READY AUDIO ELEMENT 💀
+            let audio = null;
+            if (audioPool[soundType] && audioPool[soundType].length > 0) {
+                audio = audioPool[soundType].shift(); // Remove from pool
+                console.log(`🔥 LETHAL AUDIO POOL: Got ${soundType} audio from pool (${audioPool[soundType].length} remaining)`);
+            } else {
+                // 💀 FALLBACK: CREATE FRESH AUDIO 💀
+                console.log(`🔥 LETHAL AUDIO POOL: Pool empty, creating fresh ${soundType} audio`);
+                createAudioElement(soundType);
+                audio = audioPool[soundType].shift();
+            }
+            
+            if (!audio) {
+                console.log(`ℹ️ LETHAL AUDIO POOL: No audio available for ${soundType}, continuing silently`);
+                return;
+            }
+            
+            // 💀 INSTANT PLAYBACK WITH ERROR HANDLING 💀
+            try {
+                audio.currentTime = 0;
+                audio.volume = 0.7;
+                
+                // Add a one-time ended listener to ensure proper cleanup
+                const endedHandler = () => {
+                    audio.removeEventListener('ended', endedHandler);
+                    // Reset playing flag when sound ends
+                    playInstantSound.isPlaying = false;
+                    setTimeout(() => {
+                        returnToPool(audio, soundType);
+                    }, 100); // Small delay to ensure full playback
+                };
+                audio.addEventListener('ended', endedHandler);
+                
+                // 💀 SET PLAYING FLAG TO PREVENT DUPLICATES 💀
+                playInstantSound.isPlaying = true;
+                
+                const playPromise = audio.play();
+                if (playPromise !== undefined) {
+                    playPromise.then(() => {
+                        const playbackTime = performance.now() - startTime;
+                        console.log(`✅ LETHAL AUDIO POOL: ${soundType} sound started in ${playbackTime.toFixed(2)}ms - letting it play fully`);
+                        
+                    }).catch(error => {
+                        console.error(`❌ LETHAL AUDIO POOL: ${soundType} playback failed`, error);
+                        audio.removeEventListener('ended', endedHandler);
+                        // Return to pool even on error
+                        returnToPool(audio, soundType);
+                        // Reset playing flag on error
+                        playInstantSound.isPlaying = false;
+                    });
+                }
+            } catch (error) {
+                console.error(`❌ LETHAL AUDIO POOL: ${soundType} audio error`, error);
+                // Return to pool even on error
+                returnToPool(audio, soundType);
+                // Reset playing flag on error
+                playInstantSound.isPlaying = false;
+            }
+        }
+        
+        // 💀 NUCLEAR INSTANT GRADING SOUND - ZERO DELAY 💀
+        function playFinalGradingSound(score, total) {
+            const funcStart = performance.now();
+            console.log('🔥 PLAY FINAL GRADING SOUND CALLED');
+            
+            const percentage = (score / total) * 100;
+            
+            // 💀 NUCLEAR SPEED - DIRECT AUDIO CREATION 💀
+            const audio = new Audio();
+            
+            if (percentage === 100) {
+                audio.src = '/sounds/quiz-perfect.mp3';
+            } else if (percentage >= 70) {
+                audio.src = '/sounds/quiz-partial.mp3';
+            } else {
+                audio.src = '/sounds/quiz-wrong.mp3';
+            }
+            
+            audio.volume = 0.7;
+            
+            const playStart = performance.now();
+            audio.play().then(() => {
+                console.log(`✅ AUDIO PLAYED in ${(performance.now() - playStart).toFixed(2)}ms`);
+            }).catch((error) => {
+                console.log(`❌ AUDIO FAILED in ${(performance.now() - playStart).toFixed(2)}ms:`, error);
+            });
+            
+            console.log(`🔥 FUNCTION COMPLETED in ${(performance.now() - funcStart).toFixed(2)}ms`);
+        }
+        
+        // 💀 LETHAL AUDIO POOL DEBUG FUNCTIONS 💀
+        window.debugAudioPool = function() {
+            console.log('🔥 LETHAL AUDIO POOL DEBUG:');
+            console.log('Correct pool size:', audioPool.correct.length);
+            console.log('Wrong pool size:', audioPool.wrong.length);
+            console.log('Perfect pool size:', audioPool.perfect.length);
+            console.log('Partial pool size:', audioPool.partial.length);
+            console.log('Total pool elements:', audioPool.correct.length + audioPool.wrong.length + audioPool.perfect.length + audioPool.partial.length);
+        };
+        
+        window.testAudioPool = function() {
+            console.log('🔥 LETHAL AUDIO POOL: Testing instant playback...');
+            setTimeout(() => playInstantSound(true), 100);   // Test correct
+            setTimeout(() => playInstantSound(false), 500);  // Test wrong
+            setTimeout(() => playInstantSound(true), 1000);  // Test correct again
+        };
 
     </script>
 
-    <!-- TUTOR MODE AUDIO SYSTEM -->
-    <audio id="singleCorrectSound" preload="auto" volume="0.7">
-        <source src="/sounds/Single-correct.mp3" type="audio/mpeg">
-    </audio>
-    <audio id="singleWrongSound" preload="auto" volume="0.7">
-        <source src="/sounds/quiz-partial.mp3" type="audio/mpeg">
-    </audio>
-    <!-- Final grading sounds (same as quiz mode) -->
-    <audio id="quizPerfectSound" preload="auto" volume="0.7">
-        <source src="/sounds/quiz-perfect.mp3" type="audio/mpeg">
-    </audio>
-    <audio id="quizPartialSound" preload="auto" volume="0.7">
-        <source src="/sounds/quiz-partial.mp3" type="audio/mpeg">
-    </audio>
-    <audio id="quizWrongSound" preload="auto" volume="0.7">
-        <source src="/sounds/quiz-wrong.mp3" type="audio/mpeg">
-    </audio>
-
     <script>
-        // TUTOR MODE AUDIO FUNCTIONS
-        function playIndividualQuestionSound(isCorrect) {
-            const audioElement = isCorrect ? 
-                document.getElementById('singleCorrectSound') : 
-                document.getElementById('singleWrongSound');
-            
-            if (audioElement) {
-                try {
-                    audioElement.volume = 0.7;
-                    audioElement.currentTime = 0;
-                    audioElement.play().then(() => {
-                        console.log(`✅ Individual question sound played: ${isCorrect ? 'correct' : 'wrong'}`);
-                    }).catch(error => {
-                        console.log(`❌ Individual question sound failed:`, error);
-                    });
-                } catch (error) {
-                    console.log(`❌ Audio element error:`, error);
-                }
-            }
-        }
+        // 💀 NUCLEAR AUDIO PRELOADING SYSTEM 💀
+
 
         // SAVE TUTOR QUIZ ATTEMPT TO DATABASE
         function saveTutorQuizAttempt(correctAnswers, totalQuestions, percentage) {
@@ -1314,31 +1869,69 @@
                         
                         // LETHAL FIX: Always handle the response, even if not successful
                         if (progressData && progressData.success && progressData.progress) {
-                            // Dispatch a custom event with the updated source progress data
-                            const event = new CustomEvent('sourceProgressUpdated', {
-                                detail: {
+                            // Store progress data in localStorage for cross-page communication
+                            const progressDataForStorage = {
                                     topicId: {{ $topic->id }},
                                     assignmentId: null, // Tutor mode - no assignment context
                                     progress: progressData.progress,
                                     availableSources: progressData.availableSources || [],
-                                    allSourcesMastered: progressData.progress ? Object.values(progressData.progress).every(p => p.percentage >= 90) : false
-                                }
+                                allSourcesMastered: progressData.progress ? Object.values(progressData.progress).every(p => p.percentage >= 90) : false,
+                                timestamp: Date.now()
+                            };
+                            
+                            // Store in localStorage for cross-page communication
+                            localStorage.setItem('quizProgressUpdate', JSON.stringify(progressDataForStorage));
+                            
+                            // Dispatch a custom event with the updated source progress data
+                            const event = new CustomEvent('sourceProgressUpdated', {
+                                detail: progressDataForStorage
                             });
                             document.dispatchEvent(event);
-                            console.log('✅ Source progress update event dispatched for tutor mode');
+                            
+                            // 🔥 SERVER-SIDE STORAGE - For cross-tab communication
+                            fetch('{{ route("progress.store-update") }}', {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+                                },
+                                body: JSON.stringify({
+                                    topicId: {{ $topic->id }},
+                                    assignmentId: null,
+                                    progress: progressData.progress,
+                                    availableSources: progressData.availableSources || [],
+                                    allSourcesMastered: progressData.progress ? Object.values(progressData.progress).every(p => p.percentage >= 90) : false,
+                                    userId: {{ auth()->id() }}
+                                })
+                            }).then(response => response.json())
+                            .then(result => {
+                                console.log('🔥 Server progress update stored (tutor mode):', result);
+                            })
+                            .catch(error => {
+                                console.error('Failed to store progress update on server (tutor mode):', error);
+                            });
+                            
+                            console.log('✅ Source progress update event dispatched for tutor mode with real-time sync (localStorage + server)');
                         } else {
                             // LETHAL FIX: Don't error, just log and continue
                             console.log('ℹ️ Source progress not available or unsuccessful, continuing without update');
                             
-                            // Dispatch event with empty data to prevent UI issues
-                            const event = new CustomEvent('sourceProgressUpdated', {
-                                detail: {
+                                                    // Store empty progress data in localStorage for cross-page communication
+                        const emptyProgressData = {
                                     topicId: {{ $topic->id }},
                                     assignmentId: null,
                                     progress: {},
                                     availableSources: [],
-                                    allSourcesMastered: false
-                                }
+                            allSourcesMastered: false,
+                            timestamp: Date.now()
+                        };
+                        
+                        // Store in localStorage for cross-page communication
+                        localStorage.setItem('quizProgressUpdate', JSON.stringify(emptyProgressData));
+                        
+                        // Dispatch event with empty data to prevent UI issues
+                        const event = new CustomEvent('sourceProgressUpdated', {
+                            detail: emptyProgressData
                             });
                             document.dispatchEvent(event);
                         }
@@ -1347,15 +1940,22 @@
                         // LETHAL FIX: Silent error handling - log but don't spam console
                         console.log('ℹ️ Source progress fetch encountered an issue, continuing normally');
                         
-                        // Dispatch event with empty data to prevent UI issues
-                        const event = new CustomEvent('sourceProgressUpdated', {
-                            detail: {
+                        // Store empty progress data in localStorage for cross-page communication
+                        const emptyProgressData = {
                                 topicId: {{ $topic->id }},
                                 assignmentId: null,
                                 progress: {},
                                 availableSources: [],
-                                allSourcesMastered: false
-                            }
+                            allSourcesMastered: false,
+                            timestamp: Date.now()
+                        };
+                        
+                        // Store in localStorage for cross-page communication
+                        localStorage.setItem('quizProgressUpdate', JSON.stringify(emptyProgressData));
+                        
+                        // Dispatch event with empty data to prevent UI issues
+                        const event = new CustomEvent('sourceProgressUpdated', {
+                            detail: emptyProgressData
                         });
                         document.dispatchEvent(event);
                     });
@@ -1369,38 +1969,7 @@
             });
         }
 
-        // FINAL GRADING SOUND (same as quiz mode)
-        function playFinalGradingSound(score, total) {
-            const percentage = (score / total) * 100;
-            
-            let audioElement;
-            let soundId;
-            
-            if (percentage === 100) {
-                audioElement = document.getElementById('quizPerfectSound');
-                soundId = 'perfect';
-            } else if (percentage >= 70) {
-                audioElement = document.getElementById('quizPartialSound');
-                soundId = 'partial';
-            } else {
-                audioElement = document.getElementById('quizWrongSound');
-                soundId = 'wrong';
-            }
-            
-            if (audioElement) {
-                try {
-                    audioElement.volume = 0.7;
-                    audioElement.currentTime = 0;
-                    audioElement.play().then(() => {
-                        console.log(`✅ Final grading sound played: ${soundId}`);
-                    }).catch(error => {
-                        console.log(`❌ Final grading sound failed:`, error);
-                    });
-                } catch (error) {
-                    console.log(`❌ Audio element error:`, error);
-                }
-            }
-        }
+
 
         // Handle source progress updates from tutor quiz completion
         document.addEventListener('sourceProgressUpdated', function(e) {

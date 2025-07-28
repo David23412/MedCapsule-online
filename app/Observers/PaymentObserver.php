@@ -161,10 +161,13 @@ class PaymentObserver
             return;
         }
         
-        // Only validate fields that exist in the payment_data
-        $presentRules = array_intersect_key($this->paymentDataSchema, $payment->payment_data);
+        // Ensure payment_data is an array
+        $paymentData = is_array($payment->payment_data) ? $payment->payment_data : (json_decode($payment->payment_data, true) ?: []);
         
-        $validator = Validator::make($payment->payment_data, $presentRules);
+        // Only validate fields that exist in the payment_data
+        $presentRules = array_intersect_key($this->paymentDataSchema, $paymentData);
+        
+        $validator = Validator::make($paymentData, $presentRules);
         
         if ($validator->fails()) {
             $errorMessage = 'Payment data validation failed: ' . $validator->errors()->first();
@@ -183,6 +186,11 @@ class PaymentObserver
      */
     protected function validateReferenceNumber(Payment $payment)
     {
+        // Skip validation if reference number is null or empty
+        if (empty($payment->reference_number)) {
+            return;
+        }
+        
         // Reference numbers should follow the format: MC[4 chars][timestamp][8 chars]
         $pattern = '/^MC[A-Z0-9]{4}\d{10}[A-Z0-9]{8}$/';
         
@@ -282,6 +290,17 @@ class PaymentObserver
     protected function sanitizePaymentData(Payment $payment)
     {
         $data = $payment->payment_data;
+        
+        // Ensure data is an array before processing
+        if (!is_array($data)) {
+            if (is_string($data)) {
+                // Try to decode JSON string
+                $decoded = json_decode($data, true);
+                $data = is_array($decoded) ? $decoded : [];
+            } else {
+                $data = [];
+            }
+        }
         
         // Sanitize string fields
         foreach ($data as $key => $value) {

@@ -10,26 +10,77 @@ use Illuminate\Support\Collection;
 class UniversalNotificationService
 {
     /**
-     * Notification icon mapping for different types
+     * BEAUTIFUL NOTIFICATION ICON MAPPING - RESTORED FROM ORIGINAL DESIGN
      */
     const NOTIFICATION_ICONS = [
+        // 🎓 ACADEMIC & LEARNING
         'course_welcome' => 'fas fa-graduation-cap',
         'quiz_completed' => 'fas fa-check-circle',
-        'achievement' => 'fas fa-trophy',
-        'streak_milestone' => 'fas fa-fire',
+        'topic_mastery' => 'fas fa-graduation-cap',
+        'level_up' => 'fas fa-level-up-alt',
         'assignment_due' => 'fas fa-clock',
         'grade_released' => 'fas fa-star',
-        'system_update' => 'fas fa-bell',
+        
+        // 🏆 ACHIEVEMENTS & MILESTONES
+        'achievement' => 'fas fa-trophy',
+        'streak_milestone' => 'fas fa-fire',
+        'study_streak' => 'fas fa-fire',
+        'correct_answers_milestone' => 'fas fa-trophy',
+        'quiz_mastered' => 'fas fa-graduation-cap',
+        
+        // ⚡ ENERGY & PROGRESS (LIGHTNING YELLOW ONE!)
+        'level_up' => 'fas fa-bolt',
+        'energy_boost' => 'fas fa-bolt',
+        'power_up' => 'fas fa-bolt',
+        'momentum' => 'fas fa-bolt',
+        
+        // 🔥 STREAKS & MOTIVATION
+        'streak_reset' => 'fas fa-fire',
+        'streak_milestone' => 'fas fa-fire',
+        'study_streak' => 'fas fa-fire',
+        'burning_streak' => 'fas fa-fire',
+        
+        // ⚠️ WARNINGS & REVIEWS
+        'review_mistakes' => 'fas fa-exclamation-triangle',
+        'weak_topic_identified' => 'fas fa-exclamation-circle',
+        'skipped_questions_detected' => 'fas fa-forward',
+        'topic_needs_review' => 'fas fa-exclamation-triangle',
+        'review_reminder' => 'fas fa-clock',
+        
+        // 💳 PAYMENT & ACCESS
         'payment_success' => 'fas fa-credit-card',
         'payment_failed' => 'fas fa-exclamation-triangle',
         'course_access_granted' => 'fas fa-unlock',
         'course_access_denied' => 'fas fa-lock',
-        'reminder' => 'fas fa-reminder',
+        
+        // 🔔 SYSTEM & GENERAL
+        'system_update' => 'fas fa-bell',
         'announcement' => 'fas fa-bullhorn',
-        'error' => 'fas fa-exclamation-circle',
+        'reminder' => 'fas fa-bell',
+        'info' => 'fas fa-info-circle',
         'success' => 'fas fa-check',
         'warning' => 'fas fa-exclamation-triangle',
-        'info' => 'fas fa-info-circle'
+        'error' => 'fas fa-exclamation-circle',
+        'test' => 'fas fa-bell',
+        
+        // 🎯 SPECIAL ACHIEVEMENTS
+        'perfect_score' => 'fas fa-star',
+        'first_attempt' => 'fas fa-medal',
+        'speed_demon' => 'fas fa-tachometer-alt',
+        'consistency_king' => 'fas fa-crown',
+        'knowledge_master' => 'fas fa-brain',
+        
+        // 📚 SUBJECT SPECIFIC
+        'anatomy_mastered' => 'fas fa-heartbeat',
+        'cardiology_completed' => 'fas fa-heart',
+        'pharmacology_quiz' => 'fas fa-pills',
+        'physiology_quiz' => 'fas fa-dna',
+        
+        // 🎨 CUSTOM TYPES
+        'milestone_reached' => 'fas fa-flag-checkered',
+        'goal_achieved' => 'fas fa-target',
+        'breakthrough' => 'fas fa-lightbulb',
+        'inspiration' => 'fas fa-lightbulb'
     ];
 
     /**
@@ -41,16 +92,36 @@ class UniversalNotificationService
     const PRIORITY_LOW = 'low';
 
     /**
-     * Create a new notification
+     * Create a new notification for a user
      */
     public static function create(
-        User $user,
-        string $type,
-        string $title,
-        string $message,
-        array $data = [],
+        User $user, 
+        string $type, 
+        string $title, 
+        string $message, 
+        array $data = [], 
         string $priority = self::PRIORITY_NORMAL
     ): array {
+        // DUPLICATE PREVENTION: Check for similar notifications in the last 5 minutes
+        $cacheKey = "user_notifications_{$user->id}";
+        $existingNotifications = Cache::get($cacheKey, []);
+        
+        $fiveMinutesAgo = now()->subMinutes(5);
+        foreach ($existingNotifications as $existing) {
+            $existingTime = \Carbon\Carbon::parse($existing['created_at']);
+            if ($existingTime->greaterThan($fiveMinutesAgo) && 
+                $existing['type'] === $type && 
+                $existing['title'] === $title) {
+                // Duplicate found within 5 minutes - return existing notification
+                Log::info("Duplicate notification prevented", [
+                    'user_id' => $user->id,
+                    'type' => $type,
+                    'title' => $title
+                ]);
+                return $existing;
+            }
+        }
+
         $notification = [
             'id' => uniqid('notif_', true),
             'type' => $type,
@@ -64,21 +135,26 @@ class UniversalNotificationService
             'expires_at' => now()->addDays(30)->toISOString()
         ];
 
-        // AUTO-CLEANUP BEFORE ADDING NEW NOTIFICATION
-        self::performAggressiveCleanup($user);
+        // DISABLED: AUTO-CLEANUP BEFORE ADDING NEW NOTIFICATION
+        // self::performAggressiveCleanup($user);
         
         // Store notification in cache
-        $cacheKey = "user_notifications_{$user->id}";
-        $notifications = Cache::get($cacheKey, []);
+        $notifications = $existingNotifications;
         array_unshift($notifications, $notification);
         
-        // HARD LIMIT: Keep only last 5 notifications - PREVENT SYSTEM OVERLOAD
-        $notifications = array_slice($notifications, 0, 5);
+        // NO LIMIT: Keep all notifications - NO AUTO-DELETE
+        // $notifications = array_slice($notifications, 0, 20);
         
         Cache::put($cacheKey, $notifications, 86400 * 30); // 30 days
 
         // Update unread count
         self::updateUnreadCount($user);
+
+        Log::info("New notification created", [
+            'user_id' => $user->id,
+            'type' => $type,
+            'title' => $title
+        ]);
 
         return $notification;
     }
@@ -92,36 +168,36 @@ class UniversalNotificationService
     }
 
     /**
-     * Get all notifications for a user - HARD LIMITED TO 5 WITH AUTO-CLEANUP
+     * Get all notifications for a user - DISABLED AUTO-CLEANUP
      */
-    public static function getNotifications(User $user, int $limit = 5): Collection
+    public static function getNotifications(User $user, int $limit = 100): Collection
     {
-        // AGGRESSIVE AUTO-CLEANUP ON EVERY ACCESS - KEEPS SYSTEM FAST
-        self::performAggressiveCleanup($user);
+        // DISABLED: AGGRESSIVE AUTO-CLEANUP ON EVERY ACCESS
+        // self::performAggressiveCleanup($user);
         
         $cacheKey = "user_notifications_{$user->id}";
         $notifications = Cache::get($cacheKey, []);
         
         // Filter out expired notifications (should be minimal after cleanup)
         $notifications = array_filter($notifications, function($notification) {
-            return now()->lt($notification['expires_at']);
+            return now()->lt(\Carbon\Carbon::parse($notification['expires_at']));
         });
         
-        // FORCE LIMIT TO 5 MAXIMUM - NEVER MORE
-        return collect($notifications)->take(5);
+        // NO LIMIT: Return all notifications
+        return collect($notifications)->take($limit);
     }
 
     /**
-     * Get unread notifications count - HARD LIMITED TO 5 WITH AUTO-CLEANUP
+     * Get unread notifications count - DISABLED AUTO-CLEANUP
      */
     public static function getUnreadCount(User $user): int
     {
-        // AGGRESSIVE AUTO-CLEANUP ON EVERY ACCESS - KEEPS SYSTEM FAST
-        self::performAggressiveCleanup($user);
+        // DISABLED: AGGRESSIVE AUTO-CLEANUP ON EVERY ACCESS
+        // self::performAggressiveCleanup($user);
         
         $count = Cache::get("user_unread_count_{$user->id}", 0);
-        // FORCE LIMIT TO 5 MAXIMUM - NEVER SHOW MORE
-        return min($count, 5);
+        // NO LIMIT: Show actual unread count
+        return $count;
     }
 
     /**
@@ -158,275 +234,13 @@ class UniversalNotificationService
         }
         
         Cache::put($cacheKey, $notifications, 86400 * 30);
-        Cache::put("user_unread_count_{$user->id}", 0, 86400);
+        Cache::put("user_unread_count_{$user->id}", 0, 86400 * 30);
         
         return true;
     }
 
     /**
-     * Update unread count for user - HARD LIMITED TO 5
-     */
-    private static function updateUnreadCount(User $user): void
-    {
-        $notifications = self::getNotifications($user, 5);
-        $unreadCount = $notifications->where('read', false)->count();
-        
-        // FORCE LIMIT TO 5 MAXIMUM
-        $unreadCount = min($unreadCount, 5);
-        
-        Cache::put("user_unread_count_{$user->id}", $unreadCount, 86400);
-    }
-
-    /**
-     * Create course welcome notification
-     */
-    public static function createCourseWelcomeNotification(User $user, string $courseName): array
-    {
-        return self::create(
-            $user,
-            'course_welcome',
-            'Welcome to ' . $courseName,
-            'You have been successfully enrolled. Start learning now!',
-            ['course_name' => $courseName],
-            self::PRIORITY_HIGH
-        );
-    }
-
-    /**
-     * Create quiz completion notification
-     */
-    public static function createQuizCompletionNotification(
-        User $user,
-        string $topicName,
-        int $score,
-        int $total,
-        float $percentage
-    ): array {
-        $message = "You scored {$score}/{$total} ({$percentage}%) on {$topicName}";
-        $priority = $percentage >= 90 ? self::PRIORITY_HIGH : self::PRIORITY_NORMAL;
-        
-        return self::create(
-            $user,
-            'quiz_completed',
-            'Quiz Completed!',
-            $message,
-            [
-                'topic_name' => $topicName,
-                'score' => $score,
-                'total' => $total,
-                'percentage' => $percentage
-            ],
-            $priority
-        );
-    }
-
-    /**
-     * Create achievement notification
-     */
-    public static function createAchievementNotification(
-        User $user,
-        string $achievementName,
-        string $description
-    ): array {
-        return self::create(
-            $user,
-            'achievement',
-            'Achievement Unlocked!',
-            $achievementName . ': ' . $description,
-            ['achievement' => $achievementName],
-            self::PRIORITY_HIGH
-        );
-    }
-
-    /**
-     * Create streak milestone notification
-     */
-    public static function createStreakMilestoneNotification(User $user, int $streakDays): array
-    {
-        return self::create(
-            $user,
-            'streak_milestone',
-            'Streak Milestone!',
-            "Congratulations! You've maintained a {$streakDays}-day study streak!",
-            ['streak_days' => $streakDays],
-            self::PRIORITY_HIGH
-        );
-    }
-
-    /**
-     * Create payment success notification
-     */
-    public static function createPaymentSuccessNotification(
-        User $user,
-        string $courseName,
-        float $amount,
-        string $currency
-    ): array {
-        return self::create(
-            $user,
-            'payment_success',
-            'Payment Successful',
-            "Payment of {$amount} {$currency} for {$courseName} was successful. You now have access!",
-            [
-                'course_name' => $courseName,
-                'amount' => $amount,
-                'currency' => $currency
-            ],
-            self::PRIORITY_HIGH
-        );
-    }
-
-    /**
-     * Create system announcement
-     */
-    public static function createSystemAnnouncement(
-        User $user,
-        string $title,
-        string $message,
-        string $priority = self::PRIORITY_NORMAL
-    ): array {
-        return self::create(
-            $user,
-            'announcement',
-            $title,
-            $message,
-            [],
-            $priority
-        );
-    }
-
-    /**
-     * Broadcast notification to multiple users
-     */
-    public static function broadcast(
-        Collection $users,
-        string $type,
-        string $title,
-        string $message,
-        array $data = [],
-        string $priority = self::PRIORITY_NORMAL
-    ): int {
-        $count = 0;
-        
-        foreach ($users as $user) {
-            self::create($user, $type, $title, $message, $data, $priority);
-            $count++;
-        }
-        
-        return $count;
-    }
-
-    /**
-     * Clean up expired notifications and enforce 5 notification limit
-     * AUTO-DELETION SYSTEM FOR MAXIMUM EFFICIENCY
-     */
-    public static function cleanupExpiredNotifications(User $user): int
-    {
-        $cacheKey = "user_notifications_{$user->id}";
-        $notifications = Cache::get($cacheKey, []);
-        
-        $validNotifications = array_filter($notifications, function($notification) {
-            return now()->lt($notification['expires_at']);
-        });
-        
-        // FORCE LIMIT TO 5 NOTIFICATIONS MAXIMUM - AUTO DELETE EXCESS
-        $validNotifications = array_slice($validNotifications, 0, 5);
-        
-        $removedCount = count($notifications) - count($validNotifications);
-        
-        if ($removedCount > 0) {
-            Cache::put($cacheKey, array_values($validNotifications), 86400 * 30);
-            self::updateUnreadCount($user);
-            
-            // Log cleanup for monitoring
-            \Log::info("Auto-deleted {$removedCount} notifications for user {$user->id} to maintain 5-notification limit");
-        }
-        
-        return $removedCount;
-    }
-    
-    /**
-     * Force cleanup to ensure 5 notification limit - AUTO CALLED ON EVERY ACCESS
-     * CRITICAL PERFORMANCE OPTIMIZATION
-     */
-    public static function enforceLimit(User $user): void
-    {
-        $cacheKey = "user_notifications_{$user->id}";
-        $notifications = Cache::get($cacheKey, []);
-        
-        if (count($notifications) > 5) {
-            // Keep only the 5 most recent notifications - DELETE THE REST
-            $deletedCount = count($notifications) - 5;
-            $notifications = array_slice($notifications, 0, 5);
-            Cache::put($cacheKey, $notifications, 86400 * 30);
-            self::updateUnreadCount($user);
-            
-            // Log auto-deletion for monitoring
-            \Log::info("PERFORMANCE: Auto-deleted {$deletedCount} excess notifications for user {$user->id}");
-        }
-    }
-    
-    /**
-     * AGGRESSIVE AUTO-CLEANUP - Called on every notification access
-     * Ensures database stays lean and fast
-     */
-    public static function performAggressiveCleanup(User $user): void
-    {
-        // 1. Clean expired notifications
-        self::cleanupExpiredNotifications($user);
-        
-        // 2. Enforce hard limit of 5
-        self::enforceLimit($user);
-        
-        // 3. Remove old read notifications beyond 3 days to save space
-        $cacheKey = "user_notifications_{$user->id}";
-        $notifications = Cache::get($cacheKey, []);
-        
-        $cleanedNotifications = array_filter($notifications, function($notification) {
-            // Keep unread notifications always
-            if (!$notification['read']) {
-                return true;
-            }
-            
-            // Remove read notifications older than 3 days
-            $createdAt = \Carbon\Carbon::parse($notification['created_at']);
-            return $createdAt->gt(now()->subDays(3));
-        });
-        
-        // Still enforce 5 notification limit after cleanup
-        $cleanedNotifications = array_slice($cleanedNotifications, 0, 5);
-        
-        if (count($cleanedNotifications) !== count($notifications)) {
-            Cache::put($cacheKey, array_values($cleanedNotifications), 86400 * 30);
-            self::updateUnreadCount($user);
-            
-            $removedCount = count($notifications) - count($cleanedNotifications);
-            \Log::info("AGGRESSIVE CLEANUP: Removed {$removedCount} old read notifications for user {$user->id}");
-        }
-    }
-
-    /**
-     * AGGRESSIVE DELETE - Remove all viewed notifications immediately
-     * Called when user opens notification dropdown (after 1 minute)
-     */
-    public static function aggressiveDeleteViewed(User $user): int
-    {
-        $cacheKey = "user_notifications_{$user->id}";
-        $notifications = Cache::get($cacheKey, []);
-        
-        $initialCount = count($notifications);
-        
-        // DELETE ALL NOTIFICATIONS - AGGRESSIVE DATABASE OPTIMIZATION
-        Cache::forget($cacheKey);
-        Cache::forget("user_unread_count_{$user->id}");
-        
-        Log::info("AGGRESSIVE DELETE: Removed ALL {$initialCount} notifications for user {$user->id} for database optimization");
-        
-        return $initialCount;
-    }
-    
-    /**
-     * Delete specific notification immediately
+     * Delete a specific notification
      */
     public static function deleteNotification(User $user, string $notificationId): bool
     {
@@ -440,47 +254,179 @@ class UniversalNotificationService
         Cache::put($cacheKey, array_values($notifications), 86400 * 30);
         self::updateUnreadCount($user);
         
-        Log::info("AGGRESSIVE DELETE: Removed notification {$notificationId} for user {$user->id}");
-        
         return true;
     }
-    
+
     /**
-     * ULTRA AGGRESSIVE - Delete all notifications older than X minutes after being read
+     * Update unread count for a user
      */
-    public static function ultraAggressiveCleanup(User $user, int $minutesAfterRead = 1): int
+    private static function updateUnreadCount(User $user): void
     {
         $cacheKey = "user_notifications_{$user->id}";
         $notifications = Cache::get($cacheKey, []);
         
-        $cutoffTime = now()->subMinutes($minutesAfterRead);
-        $initialCount = count($notifications);
-        
-        // Keep only unread notifications OR very recent read notifications
-        $filteredNotifications = array_filter($notifications, function($notification) use ($cutoffTime) {
-            // Always keep unread notifications
+        $unreadCount = 0;
+        foreach ($notifications as $notification) {
             if (!$notification['read']) {
-                return true;
+                $unreadCount++;
             }
-            
-            // For read notifications, only keep if read very recently
-            $createdAt = \Carbon\Carbon::parse($notification['created_at']);
-            return $createdAt->gt($cutoffTime);
-        });
-        
-        // Still enforce 5 notification limit
-        $filteredNotifications = array_slice($filteredNotifications, 0, 5);
-        
-        $deletedCount = $initialCount - count($filteredNotifications);
-        
-        if ($deletedCount > 0) {
-            Cache::put($cacheKey, array_values($filteredNotifications), 86400 * 30);
-            self::updateUnreadCount($user);
-            
-            Log::info("ULTRA AGGRESSIVE: Deleted {$deletedCount} old read notifications for user {$user->id}");
         }
         
-        return $deletedCount;
+        Cache::put("user_unread_count_{$user->id}", $unreadCount, 86400 * 30);
+    }
+
+    /**
+     * Clean up expired notifications - DISABLED AGGRESSIVE CLEANUP
+     */
+    public static function cleanupExpiredNotifications(User $user): int
+    {
+        $cacheKey = "user_notifications_{$user->id}";
+        $notifications = Cache::get($cacheKey, []);
+        
+        $validNotifications = array_filter($notifications, function($notification) {
+            return now()->lt($notification['expires_at']);
+        });
+        
+        // DISABLED: FORCE LIMIT TO 5 NOTIFICATIONS MAXIMUM - AUTO DELETE EXCESS
+        // $validNotifications = array_slice($validNotifications, 0, 5);
+        
+        $removedCount = count($notifications) - count($validNotifications);
+        
+        if ($removedCount > 0) {
+            Cache::put($cacheKey, array_values($validNotifications), 86400 * 30);
+            self::updateUnreadCount($user);
+            
+            // Log cleanup for monitoring
+            \Log::info("Cleaned up {$removedCount} expired notifications for user {$user->id}");
+        }
+        
+        return $removedCount;
+    }
+    
+    /**
+     * Force cleanup to ensure notification limit - DISABLED AUTO-CALLED ON EVERY ACCESS
+     * DISABLED PERFORMANCE OPTIMIZATION
+     */
+    public static function enforceLimit(User $user): void
+    {
+        // DISABLED: Auto-enforcement of limits
+        // $cacheKey = "user_notifications_{$user->id}";
+        // $notifications = Cache::get($cacheKey, []);
+        
+        // if (count($notifications) > 5) {
+        //     // Keep only the 5 most recent notifications - DELETE THE REST
+        //     $deletedCount = count($notifications) - 5;
+        //     $notifications = array_slice($notifications, 0, 5);
+        //     Cache::put($cacheKey, $notifications, 86400 * 30);
+        //     self::updateUnreadCount($user);
+        //     
+        //     // Log auto-deletion for monitoring
+        //     \Log::info("PERFORMANCE: Auto-deleted {$deletedCount} excess notifications for user {$user->id}");
+        // }
+    }
+    
+    /**
+     * AGGRESSIVE AUTO-CLEANUP - DISABLED: Called on every notification access
+     * DISABLED: Ensures database stays lean and fast
+     */
+    public static function performAggressiveCleanup(User $user): void
+    {
+        // DISABLED: All aggressive cleanup functionality
+        // // 1. Clean expired notifications
+        // self::cleanupExpiredNotifications($user);
+        
+        // // 2. Enforce hard limit of 5
+        // self::enforceLimit($user);
+        
+        // // 3. Remove old read notifications beyond 3 days to save space
+        // $cacheKey = "user_notifications_{$user->id}";
+        // $notifications = Cache::get($cacheKey, []);
+        
+        // $cleanedNotifications = array_filter($notifications, function($notification) {
+        //     // Keep unread notifications always
+        //     if (!$notification['read']) {
+        //         return true;
+        //     }
+        //     
+        //     // Remove read notifications older than 3 days
+        //     $createdAt = \Carbon\Carbon::parse($notification['created_at']);
+        //     return $createdAt->gt(now()->subDays(3));
+        // });
+        
+        // // Still enforce 5 notification limit after cleanup
+        // $cleanedNotifications = array_slice($cleanedNotifications, 0, 5);
+        
+        // if (count($cleanedNotifications) !== count($notifications)) {
+        //     Cache::put($cacheKey, array_values($cleanedNotifications), 86400 * 30);
+        //     self::updateUnreadCount($user);
+        //     
+        //     $removedCount = count($notifications) - count($cleanedNotifications);
+        //     \Log::info("AGGRESSIVE CLEANUP: Removed {$removedCount} old read notifications for user {$user->id}");
+        // }
+    }
+
+    /**
+     * AGGRESSIVE DELETE - DISABLED: Remove all viewed notifications immediately
+     * DISABLED: Called when user opens notification dropdown (after 1 minute)
+     */
+    public static function aggressiveDeleteViewed(User $user): int
+    {
+        // DISABLED: Aggressive deletion
+        // $cacheKey = "user_notifications_{$user->id}";
+        // $notifications = Cache::get($cacheKey, []);
+        
+        // $initialCount = count($notifications);
+        
+        // // DELETE ALL NOTIFICATIONS - AGGRESSIVE DATABASE OPTIMIZATION
+        // Cache::forget($cacheKey);
+        // Cache::forget("user_unread_count_{$user->id}");
+        
+        // Log::info("AGGRESSIVE DELETE: Removed ALL {$initialCount} notifications for user {$user->id} for database optimization");
+        
+        // return $initialCount;
+        
+        return 0; // No notifications deleted
+    }
+    
+    /**
+     * ULTRA AGGRESSIVE - DISABLED: Delete all notifications older than X minutes after being read
+     */
+    public static function ultraAggressiveCleanup(User $user, int $minutesAfterRead = 1): int
+    {
+        // DISABLED: Ultra aggressive cleanup
+        // $cacheKey = "user_notifications_{$user->id}";
+        // $notifications = Cache::get($cacheKey, []);
+        
+        // $cutoffTime = now()->subMinutes($minutesAfterRead);
+        // $initialCount = count($notifications);
+        
+        // // Keep only unread notifications OR very recent read notifications
+        // $filteredNotifications = array_filter($notifications, function($notification) use ($cutoffTime) {
+        //     // Always keep unread notifications
+        //     if (!$notification['read']) {
+        //         return true;
+        //     }
+        //     
+        //     // For read notifications, only keep if read very recently
+        //     $createdAt = \Carbon\Carbon::parse($notification['created_at']);
+        //     return $createdAt->gt($cutoffTime);
+        // });
+        
+        // // Still enforce 5 notification limit
+        // $filteredNotifications = array_slice($filteredNotifications, 0, 5);
+        
+        // $deletedCount = $initialCount - count($filteredNotifications);
+        
+        // if ($deletedCount > 0) {
+        //     Cache::put($cacheKey, array_values($filteredNotifications), 86400 * 30);
+        //     self::updateUnreadCount($user);
+        //     
+        //     Log::info("ULTRA AGGRESSIVE: Deleted {$deletedCount} old read notifications for user {$user->id}");
+        // }
+        
+        // return $deletedCount;
+        
+        return 0; // No notifications deleted
     }
     
     /**

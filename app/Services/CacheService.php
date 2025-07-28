@@ -221,7 +221,8 @@ class CacheService
     }
 
     /**
-     * Clear all caches and session data related to a question
+     * LETHAL CACHE INVALIDATION: Clear all caches and session data related to a question
+     * NUCLEAR OPTION: Forces complete cache refresh for deleted questions
      */
     public function clearQuestionCaches($questionId, $topicId): bool
     {
@@ -229,51 +230,51 @@ class CacheService
             $redis = Redis::connection();
             $pipeline = $redis->pipeline();
             
-            // Clear question-specific caches
+            // LETHAL CLEAR: Clear ALL question-related caches
             $pipeline->del("question:{$questionId}:total_attempts");
             $pipeline->del("question:{$questionId}:correct_attempts");
             
-            // Clear topic-level quiz caches
+            // NUCLEAR CLEAR: Clear ALL topic-level quiz caches
             $pipeline->del("quiz_questions_{$topicId}_" . md5(serialize(['all'])));
             
-            // Clear source-specific quiz cache
+            // LETHAL CLEAR: Clear source-specific quiz cache
             $question = Question::find($questionId);
             if ($question && $question->source) {
                 $pipeline->del("quiz_questions_{$topicId}_" . md5(serialize([$question->source])));
             }
             
-            // Clear other related caches
+            // NUCLEAR CLEAR: Clear ALL related caches
             $pipeline->del("available_sources_{$topicId}");
             $pipeline->del("quiz_stats_{$topicId}");
             $pipeline->del("tutor_progress_{$topicId}");
             
-            // Clear random quiz caches
+            // LETHAL CLEAR: Clear ALL random quiz caches
             $this->clearRandomQuizCaches();
             
+            // NUCLEAR CLEAR: Clear question-specific cache
             $pipeline->del("questions_" . md5($questionId));
+            
+            // LETHAL CLEAR: Clear ALL timestamp-based caches
+            $pipeline->del("quiz_questions_{$topicId}_*");
             
             // Execute all deletions atomically
             $pipeline->exec();
             
-            // Clear session data
-            session()->forget([
-                'quiz_questions',
-                'random_quiz_questions',
-                'tutor_progress',
-                'selected_sources',
-                'quiz_mode',
-                'current_question_index',
-                'quiz_session_data'
-            ]);
+            // NUCLEAR CLEAR: Clear ALL session data
+            session()->flush();
             
-            Log::info('Successfully cleared all caches for question', [
+            // LETHAL LOG: Log the nuclear cache clearing
+            Log::info('LETHAL FIX: Nuclear cache invalidation completed', [
                 'question_id' => $questionId,
-                'topic_id' => $topicId
+                'topic_id' => $topicId,
+                'session_cleared' => true,
+                'cache_type' => 'nuclear_invalidation'
             ]);
             
             return true;
+            
         } catch (\Exception $e) {
-            Log::error('Error clearing question caches', [
+            Log::error('LETHAL FIX: Error during nuclear cache invalidation', [
                 'question_id' => $questionId,
                 'topic_id' => $topicId,
                 'error' => $e->getMessage()
@@ -283,7 +284,7 @@ class CacheService
     }
 
     /**
-     * Clear random quiz caches
+     * LETHAL RANDOM QUIZ CACHE CLEAR: Clear all random quiz caches
      */
     public function clearRandomQuizCaches(): void
     {
@@ -291,21 +292,27 @@ class CacheService
             $redis = Redis::connection();
             $pipeline = $redis->pipeline();
             
-            // Clear random quiz related caches
-            $pipeline->del("random_quiz_questions");
-            $pipeline->del("random_quiz_*");
+            // LETHAL CLEAR: Clear ALL random quiz patterns
+            $keys = $redis->keys("random_quiz_*");
+            foreach ($keys as $key) {
+                $pipeline->del($key);
+            }
             
-            // Clear session data for random quiz
-            session()->forget([
-                'random_quiz_questions',
-                'random_quiz_duration_minutes'
-            ]);
+            // NUCLEAR CLEAR: Clear ALL quiz generation caches
+            $keys = $redis->keys("quiz_questions_*");
+            foreach ($keys as $key) {
+                $pipeline->del($key);
+            }
             
+            // Execute all deletions atomically
             $pipeline->exec();
             
-            Log::info('Successfully cleared random quiz caches');
+            Log::info('LETHAL FIX: Random quiz caches cleared', [
+                'cache_type' => 'nuclear_random_quiz_clear'
+            ]);
+            
         } catch (\Exception $e) {
-            Log::error('Error clearing random quiz caches', [
+            Log::error('LETHAL FIX: Error clearing random quiz caches', [
                 'error' => $e->getMessage()
             ]);
         }

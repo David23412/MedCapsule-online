@@ -66,6 +66,9 @@
     </style>
 </head>
 <body class="bg-light">
+    <!-- LIGHTNING-FAST FOUC ELIMINATOR -->
+    @include('components.lightning-preloader')
+
     <!-- Admin Navigation -->
     <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
         <div class="container">

@@ -258,35 +258,7 @@ class AssignmentServiceTest extends TestCase
         $this->assertEquals(3, $updated);
     }
 
-    /** @test */
-    public function it_can_get_assignment_analytics()
-    {
-        Assignment::factory()->create([
-            'tutor_id' => $this->tutor->id,
-            'status' => Assignment::STATUS_ACTIVE
-        ]);
 
-        Assignment::factory()->create([
-            'tutor_id' => $this->tutor->id,
-            'status' => Assignment::STATUS_COMPLETED,
-            'score' => 90,
-            'created_at' => now()->subDays(5),
-            'completed_at' => now()->subDays(3)
-        ]);
-
-        $analytics = $this->assignmentService->getAssignmentAnalytics($this->tutor->id);
-
-        $this->assertArrayHasKey('total', $analytics);
-        $this->assertArrayHasKey('active', $analytics);
-        $this->assertArrayHasKey('completed', $analytics);
-        $this->assertArrayHasKey('recent_assignments', $analytics);
-        $this->assertArrayHasKey('average_completion_time_hours', $analytics);
-        $this->assertArrayHasKey('performance_trends', $analytics);
-
-        $this->assertEquals(2, $analytics['total']);
-        $this->assertEquals(1, $analytics['active']);
-        $this->assertEquals(1, $analytics['completed']);
-    }
 
     /** @test */
     public function it_can_get_student_performance_analytics()

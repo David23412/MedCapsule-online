@@ -1,32 +1,34 @@
 @php
-    use App\Services\NavigationService;
-    $navigationRoutes = NavigationService::getNavigationRoutes();
-    $userBadge = NavigationService::getUserRoleBadge();
+    $user = Auth::user();
 @endphp
 
 <li class="nav-item dropdown">
     <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-bs-toggle="dropdown">
-        {{ Auth::user()->name }}
-        @if($userBadge)
-            <span class="badge {{ $userBadge['class'] }} ms-1">{{ $userBadge['text'] }}</span>
+        {{ $user->name }}
+        @if($user->isAdmin())
+            <span class="badge bg-danger ms-1">Admin</span>
+        @elseif($user->isTutor())
+            <span class="badge bg-success ms-1">Tutor</span>
+        @else
+            <span class="badge bg-primary ms-1">Student</span>
         @endif
     </a>
     <ul class="dropdown-menu dropdown-menu-end">
         <!-- Study Streak Indicator with Enhanced Navigation -->
         <li class="d-flex justify-content-center">
-            <div class="streak-indicator dropdown" data-streak="{{ Auth::user()->study_streak_days ?? 0 }}">
+            <div class="streak-indicator dropdown" data-streak="{{ $user->study_streak_days ?? 0 }}">
                 <div class="streak-circle" data-bs-toggle="dropdown" aria-expanded="false" role="button">
                     <svg viewBox="0 0 100 100">
                         <circle class="streak-bg" cx="50" cy="50" r="40"></circle>
                         <circle class="streak-progress" cx="50" cy="50" r="40"></circle>
                     </svg>
                     <div class="streak-content">
-                        <div class="streak-value" data-value="{{ Auth::user()->study_streak_days ?? 0 }}">
-                            {{ Auth::user()->study_streak_days ?? 0 }}
+                        <div class="streak-value" data-value="{{ $user->study_streak_days ?? 0 }}">
+                            {{ $user->study_streak_days ?? 0 }}
                         </div>
                         <div class="streak-label">Streak</div>
                     </div>
-                    @if((Auth::user()->study_streak_days ?? 0) > 0)
+                    @if(($user->study_streak_days ?? 0) > 0)
                         <div class="streak-fire">
                             <i class="fas fa-fire"></i>
                         </div>
@@ -57,7 +59,7 @@
                     </li>
                     
                     <!-- Student-specific Actions -->
-                    @if(Auth::user()->role === 'student')
+                    @if($user->role === 'student')
                         <li><hr class="dropdown-divider"></li>
                         <li class="dropdown-header">
                             <i class="fas fa-graduation-cap me-2 text-primary"></i>Student Tools
@@ -75,7 +77,7 @@
                     @endif
                     
                     <!-- Tutor-specific Actions -->
-                    @if(Auth::user()->isTutor() || Auth::user()->isAdmin())
+                    @if($user->isTutor() || $user->isAdmin())
                         <li><hr class="dropdown-divider"></li>
                         <li class="dropdown-header">
                             <i class="fas fa-chalkboard-teacher me-2 text-success"></i>Tutor Tools
@@ -90,10 +92,15 @@
                                 <i class="fas fa-plus-circle me-2"></i>Create Assignment
                             </a>
                         </li>
+                        <li>
+                            <a class="dropdown-item" href="{{ route('topic-locking.index') }}">
+                                <i class="fas fa-lock me-2"></i>Topic Management
+                            </a>
+                        </li>
                     @endif
                     
                     <!-- Admin-specific Actions -->
-                    @if(Auth::user()->isAdmin())
+                    @if($user->isAdmin())
                         <li><hr class="dropdown-divider"></li>
                         <li class="dropdown-header">
                             <i class="fas fa-crown me-2 text-warning"></i>Admin Tools
@@ -108,6 +115,16 @@
                                 <i class="fas fa-credit-card me-2"></i>Payment Management
                             </a>
                         </li>
+                        <li>
+                            <a class="dropdown-item" href="{{ route('admin.delete.courses') }}">
+                                <i class="fas fa-book-open me-2"></i>Manage Courses
+                            </a>
+                        </li>
+                        <li>
+                            <a class="dropdown-item" href="{{ route('admin.delete.questions') }}">
+                                <i class="fas fa-question-circle me-2"></i>Manage Questions
+                            </a>
+                        </li>
                     @endif
                     
                     <!-- Streak Stats -->
@@ -115,15 +132,15 @@
                     <li class="streak-stats">
                         <div class="d-flex justify-content-between align-items-center px-3 py-2">
                             <div class="text-center">
-                                <div class="fw-bold text-primary">{{ Auth::user()->study_streak_days ?? 0 }}</div>
+                                <div class="fw-bold text-primary">{{ $user->study_streak_days ?? 0 }}</div>
                                 <small class="text-muted">Current</small>
                             </div>
                             <div class="text-center">
-                                <div class="fw-bold text-success">{{ Auth::user()->max_study_streak ?? 0 }}</div>
+                                <div class="fw-bold text-success">{{ $user->max_study_streak ?? 0 }}</div>
                                 <small class="text-muted">Best</small>
                             </div>
                             <div class="text-center">
-                                <div class="fw-bold text-info">{{ Auth::user()->total_study_days ?? 0 }}</div>
+                                <div class="fw-bold text-info">{{ $user->total_study_days ?? 0 }}</div>
                                 <small class="text-muted">Total</small>
                             </div>
                         </div>
@@ -134,65 +151,34 @@
         <li><hr class="dropdown-divider"></li>
 
         <!-- Core Navigation Items -->
-        @if(isset($navigationRoutes['core']))
-            @foreach($navigationRoutes['core'] as $item)
-                @if(NavigationService::hasAccess($item['roles']))
-                    <li>
-                        <a class="dropdown-item" href="{{ NavigationService::getRouteUrl($item['route'], $item['params'] ?? []) }}">
-                            <i class="{{ $item['icon'] }} me-2"></i>{{ $item['label'] }}
-                        </a>
-                    </li>
-                @endif
-            @endforeach
-        @endif
-
-        <!-- Admin Section -->
-        @if(isset($navigationRoutes['admin']) && NavigationService::hasAccess(['admin']))
-            <li><hr class="dropdown-divider"></li>
-            <li class="dropdown-header">
-                <i class="{{ $navigationRoutes['admin']['header']['icon'] }} me-2 {{ $navigationRoutes['admin']['header']['class'] }}"></i>{{ $navigationRoutes['admin']['header']['label'] }}
-            </li>
-            @foreach($navigationRoutes['admin']['items'] as $item)
-                @if(NavigationService::hasAccess($item['roles']))
-                    <li>
-                        <a class="dropdown-item" href="{{ NavigationService::getRouteUrl($item['route'], $item['params'] ?? []) }}">
-                            <i class="{{ $item['icon'] }} me-2"></i>{{ $item['label'] }}
-                        </a>
-                    </li>
-                @endif
-            @endforeach
-        @endif
-
-        <!-- Tutor Section -->
-        @if(isset($navigationRoutes['tutor']) && (Auth::user()->isAdmin() || Auth::user()->isTutor()))
-            <li><hr class="dropdown-divider"></li>
-            <li class="dropdown-header">
-                <i class="{{ $navigationRoutes['tutor']['header']['icon'] }} me-2 {{ $navigationRoutes['tutor']['header']['class'] }}"></i>{{ $navigationRoutes['tutor']['header']['label'] }}
-            </li>
-            @foreach($navigationRoutes['tutor']['items'] as $item)
-                @if(NavigationService::hasAccess($item['roles']))
-                    <li>
-                        <a class="dropdown-item" href="{{ NavigationService::getRouteUrl($item['route'], $item['params'] ?? []) }}">
-                            <i class="{{ $item['icon'] }} me-2"></i>{{ $item['label'] }}
-                        </a>
-                    </li>
-                @endif
-            @endforeach
-        @endif
+        <li>
+            <a class="dropdown-item" href="{{ route('courses.index') }}">
+                <i class="fas fa-book me-2"></i>Courses
+            </a>
+        </li>
+        <li>
+            <a class="dropdown-item" href="{{ route('quiz.random') }}">
+                <i class="fas fa-random me-2"></i>Random Quiz
+            </a>
+        </li>
+        <li>
+            <a class="dropdown-item" href="{{ route('review.index') }}">
+                <i class="fas fa-exclamation-triangle me-2"></i>Review Mistakes
+            </a>
+        </li>
 
         <!-- Profile and Logout -->
         <li><hr class="dropdown-divider"></li>
-        @if(isset($navigationRoutes['profile']))
-            @foreach($navigationRoutes['profile'] as $item)
-                @if(NavigationService::hasAccess($item['roles']))
-                    <li>
-                        <a class="dropdown-item" href="{{ NavigationService::getRouteUrl($item['route'], $item['params'] ?? []) }}">
-                            <i class="{{ $item['icon'] }} me-2"></i>{{ $item['label'] }}
-                        </a>
-                    </li>
-                @endif
-            @endforeach
-        @endif
+        <li>
+            <a class="dropdown-item" href="{{ route('profile') }}">
+                <i class="fas fa-user me-2"></i>Profile
+            </a>
+        </li>
+        <li>
+            <a class="dropdown-item" href="{{ route('notifications.index') }}">
+                <i class="fas fa-bell me-2"></i>Notifications
+            </a>
+        </li>
         <li>
             <form method="POST" action="{{ secure_url(route('logout', [], false)) }}" class="dropdown-item p-0">
                 @csrf

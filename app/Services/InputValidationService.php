@@ -285,8 +285,8 @@ class InputValidationService
             }
         }
 
-        // Check for repeated identical submissions
-        if (isset($context['user_id'])) {
+        // Check for repeated identical submissions (but allow quiz retries)
+        if (isset($context['user_id']) && !in_array($context['action'], ['quiz_grade', 'random_quiz_grade'])) {
             $submissionHash = md5(serialize($data));
             $cacheKey = "submission_hash_{$context['user_id']}_" . $submissionHash;
             

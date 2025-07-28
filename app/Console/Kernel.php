@@ -127,5 +127,8 @@ class Kernel extends ConsoleKernel
         Commands\TestNotificationSystem::class,
         Commands\LockOverdueAssignments::class,
         Commands\ExpireTimeLimitedAssignments::class,
+        Commands\BladeStressTestCommand::class,
+        Commands\ModelStressTestEngine::class,
+        Commands\ModelStressMonitor::class,
     ];
 } 

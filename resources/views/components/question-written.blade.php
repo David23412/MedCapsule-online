@@ -77,13 +77,13 @@
 
     /* Card style for correct answer */
     .correct-answer-card {
-        background-color: rgba(227, 252, 239, 0.3) !important;
-        border: 1px solid rgba(0, 168, 84, 0.5) !important;
+        background-color: #e3fcef !important;
+        border: 1px solid #00a854 !important;
         border-radius: 8px;
         padding: 10px;
         margin-top: 10px;
-        color: rgba(0, 168, 84, 0.7) !important;
-        font-weight: bold;
+        color: #00a854 !important;
+        font-weight: 500;
     }
 
     .answer-character-count {

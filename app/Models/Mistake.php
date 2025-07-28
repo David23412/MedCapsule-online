@@ -150,10 +150,57 @@ class Mistake extends Model
     }
 
     /**
-     * Clear caches for progress tracking.
+     * 💀 LETHAL CACHE CLEARING - CLEAR ALL MISTAKE CACHES 💀
      */
     protected function clearCaches()
     {
-        Cache::forget("mistake_{$this->user_id}_{$this->question_id}_progress");
+        try {
+            // Clear specific mistake cache
+            Cache::forget("mistake_{$this->user_id}_{$this->question_id}_progress");
+            
+            // Clear all mistake-related caches for this user
+            $cacheKeys = [
+                "mistake_courses_{$this->user_id}",
+                "mistakes_user_{$this->user_id}",
+                "mistakes_count_{$this->user_id}"
+            ];
+            
+            // Clear course-specific caches
+            $courses = \App\Models\Course::all();
+            foreach ($courses as $course) {
+                $cacheKeys[] = \App\Services\QuizCacheService::generateCacheKey('mistakes_full', [
+                    'user_id' => $this->user_id, 
+                    'course_filter' => $course->id
+                ]);
+            }
+            
+            // Clear general mistake caches
+            $cacheKeys[] = \App\Services\QuizCacheService::generateCacheKey('mistakes_full', [
+                'user_id' => $this->user_id, 
+                'course_filter' => 'all'
+            ]);
+            $cacheKeys[] = \App\Services\QuizCacheService::generateCacheKey('mistakes_full', [
+                'user_id' => $this->user_id, 
+                'course_filter' => 'skipped'
+            ]);
+            
+            // Clear all cache keys
+            foreach ($cacheKeys as $key) {
+                Cache::forget($key);
+            }
+            
+            Log::info("💀 MISTAKE CACHES CLEARED", [
+                'user_id' => $this->user_id,
+                'question_id' => $this->question_id,
+                'cache_keys_cleared' => count($cacheKeys)
+            ]);
+            
+        } catch (\Exception $e) {
+            Log::error("❌ Error clearing mistake caches", [
+                'user_id' => $this->user_id,
+                'question_id' => $this->question_id,
+                'error' => $e->getMessage()
+            ]);
+        }
     }
 }

@@ -352,9 +352,9 @@
                                             <i class="fas fa-check me-1"></i>
                                             Completed {{ $assignment->completed_at->diffForHumans() }}
                                         </div>
-                                        @if($assignment->score)
+                                        @if($assignment->score_percentage)
                                             <div class="text-success">
-                                                <i class="fas fa-star me-1"></i>Score: {{ $assignment->score }}%
+                                                <i class="fas fa-star me-1"></i>Score: {{ $assignment->score_percentage }}%
                                             </div>
                                         @endif
                                     </div>

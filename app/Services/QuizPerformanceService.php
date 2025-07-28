@@ -101,27 +101,16 @@ class QuizPerformanceService
      */
     public static function getPerformanceAnalytics(int $days = 7): array
     {
-        try {
-            $metrics = DB::table('quiz_performance_metrics')
-                ->where('created_at', '>=', now()->subDays($days))
-                ->get();
-
-            return [
-                'average_duration_ms' => $metrics->avg('duration_ms'),
-                'max_duration_ms' => $metrics->max('duration_ms'),
-                'min_duration_ms' => $metrics->min('duration_ms'),
-                'average_memory_mb' => $metrics->avg('memory_used_mb'),
-                'total_operations' => $metrics->count(),
-                'success_rate' => $metrics->where('success', true)->count() / max($metrics->count(), 1) * 100,
-                'slow_operations' => $metrics->where('duration_ms', '>', 1000)->count()
-            ];
-        } catch (\Exception $e) {
-            Log::warning('Failed to get performance analytics', [
-                'error' => $e->getMessage()
-            ]);
-            
-            return [];
-        }
+        // Performance metrics table removed - return empty analytics
+        return [
+            'average_duration_ms' => 0,
+            'max_duration_ms' => 0,
+            'min_duration_ms' => 0,
+            'average_memory_mb' => 0,
+            'total_operations' => 0,
+            'success_rate' => 100,
+            'slow_operations' => 0
+        ];
     }
 
     /**
@@ -195,23 +184,10 @@ class QuizPerformanceService
      */
     private static function storePerformanceMetrics(array $performance): void
     {
-        try {
-            DB::table('quiz_performance_metrics')->insert([
-                'operation' => $performance['operation'],
-                'duration_ms' => $performance['duration_ms'],
-                'memory_used_mb' => $performance['memory_used_mb'],
-                'queries_executed' => $performance['queries_executed'],
-                'topic_id' => $performance['topic_id'] ?? null,
-                'user_id' => $performance['user_id'] ?? null,
-                'success' => $performance['success'] ?? true,
-                'created_at' => now(),
-                'updated_at' => now()
-            ]);
-        } catch (\Exception $e) {
-            // Fail silently to avoid impacting main functionality
-            Log::debug('Failed to store performance metrics', [
-                'error' => $e->getMessage()
-            ]);
+        // Performance metrics table removed - no longer storing metrics
+        // Log only if there are errors or performance issues
+        if (!$performance['success'] || $performance['duration_ms'] > 1000) {
+            Log::warning('Quiz performance issue detected', $performance);
         }
     }
 

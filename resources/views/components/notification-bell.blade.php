@@ -39,18 +39,19 @@
 </div>
 
 <style>
-/* === ULTRA-MODERN NOTIFICATION SYSTEM === */
+/* === BEAUTIFUL PREMIUM NOTIFICATION SYSTEM === */
 
 .clean-notification-system {
     position: relative;
     display: inline-block;
+    margin: 0 0.5rem;
 }
 
-/* === CLEAN NOTIFICATION BELL (NO BOX) === */
+/* === CLEAN BLUE NOTIFICATION BELL === */
 .clean-notification-bell {
     /* Size */
-    width: 44px;
-    height: 44px;
+    width: 40px;
+    height: 40px;
     
     /* Layout */
     display: flex;
@@ -58,9 +59,10 @@
     justify-content: center;
     position: relative;
     
-    /* Clean design - no box */
+    /* Appearance - Original blue design */
     background: transparent;
     border: none;
+    border-radius: 50%;
     cursor: pointer;
     
     /* Remove default styles */
@@ -74,20 +76,19 @@
 }
 
 .clean-notification-bell i {
-    font-size: 18px;
-    color: #667eea;
+    font-size: 20px;
+    color: #3b82f6;
     transition: all 300ms cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-/* Hover State with clean micro-interaction */
+/* Hover State with micro-interaction */
 .clean-notification-bell:hover {
-    background: transparent;
-    transform: translateY(-1px);
+    background: rgba(59, 130, 246, 0.1);
+    transform: scale(1.05);
 }
 
 .clean-notification-bell:hover i {
-    color: #5a67d8;
-    transform: scale(1.1);
+    color: #2563eb;
 }
 
 /* Active State with button press feedback */
@@ -111,39 +112,39 @@
     outline-offset: 2px;
 }
 
-/* === MODERN NOTIFICATION BADGE === */
+/* === CLEAN NOTIFICATION BADGE === */
 .clean-notification-badge {
     /* Position */
     position: absolute;
-    top: -8px;
-    right: -8px;
+    top: -6px;
+    right: -6px;
     z-index: 10;
     
     /* Size */
-    min-width: 20px;
-    height: 20px;
+    min-width: 18px;
+    height: 18px;
     
     /* Layout */
     display: flex;
     align-items: center;
     justify-content: center;
     
-    /* Modern gradient appearance */
-    background: linear-gradient(135deg, #ef4444, #dc2626);
+    /* Appearance */
+    background: #ef4444;
     color: white;
-    border-radius: 10px;
-    border: 2px solid rgba(255, 255, 255, 0.9);
+    border-radius: 50%;
+    border: 2px solid white;
     
     /* Typography */
     font-size: 11px;
-    font-weight: 700;
+    font-weight: 600;
     line-height: 1;
     
-    /* Enhanced shadow */
-    box-shadow: 0 4px 15px rgba(239, 68, 68, 0.4);
+    /* Shadow */
+    box-shadow: 0 2px 4px rgba(239, 68, 68, 0.3);
     
     /* Padding for text */
-    padding: 0 3px;
+    padding: 0 2px;
     
     /* Smooth animations */
     transition: all 300ms cubic-bezier(0.4, 0, 0.2, 1);
@@ -162,26 +163,25 @@
     animation: badgeCountChange 300ms cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-/* === ULTRA-MODERN NOTIFICATION DROPDOWN === */
+/* === CLEAN NOTIFICATION DROPDOWN === */
 .clean-notification-dropdown {
     /* Position */
     position: absolute;
-    top: calc(100% + 12px);
-    right: -200px; /* Proper positioning to prevent cutoff */
+    top: calc(100% + 8px);
+    right: -190px;
     z-index: 1050;
     
     /* Size - Wider and more spacious */
-    width: 450px;
-    max-height: 520px;
+    width: 420px;
+    max-height: 480px;
     
-    /* Modern glass morphism appearance */
-    background: rgba(255, 255, 255, 0.98);
-    backdrop-filter: blur(20px) saturate(180%);
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    border-radius: 20px;
+    /* Appearance */
+    background: white;
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
     
-    /* Enhanced shadow */
-    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15), 0 8px 25px rgba(0, 0, 0, 0.1);
+    /* Shadow */
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
     
     /* Layout */
     display: none;
@@ -248,6 +248,254 @@
     }
 }
 
+/* === BEAUTIFUL NOTIFICATION ITEMS === */
+
+.notification-header {
+    padding: 16px 24px 12px;
+    background: white;
+    border-bottom: 1px solid #e5e7eb;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.notification-title {
+    font-size: 16px;
+    font-weight: 600;
+    color: #3b82f6;
+    margin: 0;
+}
+
+.notification-count {
+    font-size: 12px;
+    font-weight: 500;
+    color: #6b7280;
+    background: #f3f4f6;
+    padding: 2px 8px;
+    border-radius: 12px;
+}
+
+.notification-list {
+    max-height: 400px;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+.notification-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 16px 20px;
+    background: white;
+    border-bottom: 1px solid #e5e7eb;
+    transition: all 0.2s ease;
+    position: relative;
+}
+
+.notification-item:hover {
+    background: #f9fafb;
+}
+
+.notification-item:last-child {
+    border-bottom: 1px solid #e5e7eb;
+}
+
+/* Clean divider between notifications */
+.notification-item + .notification-item {
+    border-top: 1px solid #f3f4f6;
+}
+
+.notification-icon {
+    width: 36px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    border-radius: 50%;
+    position: relative;
+}
+
+.notification-icon i {
+    font-size: 16px;
+}
+
+/* CUSTOM COURSE FAVI ICON ENHANCEMENTS */
+.notification-icon i.fa-tint {
+    font-weight: 900 !important;
+    text-shadow: 0 0 2px rgba(0, 0, 0, 0.3);
+    filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.2));
+    animation: bloodDrop 3s ease-in-out infinite;
+}
+
+@keyframes bloodDrop {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.05); }
+}
+
+/* MEDCAPSULE ENROLLMENT - HALF BLUE HALF RED CAPSULE! */
+.notification-icon i.fa-capsules {
+    background: linear-gradient(90deg, #3b82f6 50%, #ef4444 50%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    font-weight: 900 !important;
+    animation: capsulePulse 2s ease-in-out infinite;
+}
+
+@keyframes capsulePulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.1); }
+}
+
+.notification-icon i.fa-flask {
+    animation: chemicalBubble 2s ease-in-out infinite;
+}
+
+.notification-icon i.fa-heartbeat {
+    animation: heartPulse 1.5s ease-in-out infinite;
+}
+
+.notification-icon i.fa-microscope {
+    transform: scale(1.1);
+}
+
+.notification-icon i.fa-bacteria {
+    animation: bacteriaWiggle 3s ease-in-out infinite;
+}
+
+.notification-icon i.fa-bug {
+    animation: bugCrawl 2s ease-in-out infinite;
+}
+
+/* CUSTOM COURSE ICON ANIMATIONS */
+@keyframes chemicalBubble {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.05); }
+}
+
+@keyframes heartPulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.1); }
+}
+
+@keyframes bacteriaWiggle {
+    0%, 100% { transform: rotate(0deg); }
+    25% { transform: rotate(2deg); }
+    75% { transform: rotate(-2deg); }
+}
+
+@keyframes bugCrawl {
+    0%, 100% { transform: translateX(0); }
+    50% { transform: translateX(2px); }
+}
+
+.notification-content {
+    flex: 1;
+    min-width: 0;
+}
+
+.notification-header-row {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 8px;
+    margin-bottom: 4px;
+}
+
+.notification-item-title {
+    font-size: 14px;
+    font-weight: 600;
+    color: #1f2937;
+    margin: 0;
+    line-height: 1.4;
+    flex: 1;
+}
+
+.notification-time {
+    font-size: 12px;
+    color: #6b7280;
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
+.notification-message {
+    font-size: 13px;
+    color: #4b5563;
+    line-height: 1.4;
+    margin: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+}
+
+.unread-indicator {
+    position: absolute;
+    left: 8px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 6px;
+    height: 6px;
+    background: #3b82f6;
+    border-radius: 50%;
+}
+
+.notification-item.read {
+    opacity: 0.8;
+}
+
+.notification-item.urgent {
+    border-left: 3px solid #ef4444;
+}
+
+.notification-item.high {
+    border-left: 3px solid #f59e0b;
+}
+
+.empty-notification {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 40px 20px;
+    text-align: center;
+}
+
+.empty-icon {
+    width: 48px;
+    height: 48px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #f3f4f6;
+    border-radius: 50%;
+    margin-bottom: 16px;
+}
+
+.empty-icon i {
+    font-size: 20px;
+    color: #9ca3af;
+}
+
+.empty-title {
+    font-size: 16px;
+    font-weight: 600;
+    color: #374151;
+    margin: 0 0 8px 0;
+}
+
+.empty-message {
+    font-size: 14px;
+    color: #6b7280;
+    margin: 0;
+}
+
+
+
+
+
 /* Badge disappear animation */
 @keyframes badgeDisappear {
     from {
@@ -290,24 +538,6 @@
     100% { background-position: calc(200px + 100%) 0; }
 }
 
-@keyframes spin {
-    from { transform: rotate(0deg); }
-    to { transform: rotate(360deg); }
-}
-
-/* Screen reader only class */
-.sr-only {
-    position: absolute !important;
-    width: 1px !important;
-    height: 1px !important;
-    padding: 0 !important;
-    margin: -1px !important;
-    overflow: hidden !important;
-    clip: rect(0, 0, 0, 0) !important;
-    white-space: nowrap !important;
-    border: 0 !important;
-}
-
 /* Success feedback animation */
 @keyframes successPulse {
     0% { transform: scale(1); opacity: 1; }
@@ -326,92 +556,42 @@
 
 /* === LOADING, ERROR, AND OFFLINE STATES === */
 
-/* Advanced Loading State */
+/* Loading State */
 .notification-loading-state {
-    background: white;
-    border-radius: 12px;
-    overflow: hidden;
-    position: relative;
+    padding: 16px 20px;
 }
 
-.loading-header-content {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 12px;
-    padding: 16px 24px 12px;
-    border-bottom: 1px solid #f3f4f6;
+.loading-skeleton {
+    animation: pulse 1.5s ease-in-out infinite;
 }
 
-.skeleton-header {
-    height: 16px;
-    border-radius: 4px;
-    width: 120px;
+.skeleton-header,
+.skeleton-icon,
+.skeleton-title,
+.skeleton-message {
     background: linear-gradient(90deg, #e5e7eb 25%, #f3f4f6 50%, #e5e7eb 75%);
     background-size: 200px 100%;
     animation: shimmer 1.5s infinite;
 }
 
-.loading-spinner {
-    width: 16px;
-    height: 16px;
-    border: 2px solid #f3f4f6;
-    border-top-color: #3b82f6;
-    border-radius: 50%;
-    animation: spin 1s linear infinite;
-}
-
-.loading-skeleton {
-    padding: 8px 0;
-}
-
-.loading-status {
-    padding: 16px 20px;
-    text-align: center;
-    border-top: 1px solid #f8fafc;
-    background: #fafbfc;
-}
-
-.loading-text {
-    font-size: 13px;
-    color: #64748b;
-    font-weight: 500;
-    display: block;
-    margin-bottom: 8px;
-}
-
-.cache-info {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 6px;
-    font-size: 12px;
-    color: #94a3b8;
-}
-
-.cache-info i {
-    font-size: 11px;
+.skeleton-header {
+    height: 20px;
+    border-radius: 4px;
+    margin-bottom: 16px;
+    width: 60%;
 }
 
 .skeleton-items {
     display: flex;
     flex-direction: column;
-    gap: 0;
+    gap: 12px;
 }
 
 .skeleton-item {
     display: flex;
     align-items: flex-start;
     gap: 12px;
-    padding: 12px 20px;
-    border-bottom: 1px solid #f3f4f6;
     animation: notificationSlideIn 400ms cubic-bezier(0.4, 0, 0.2, 1);
-    opacity: 0;
-    animation-fill-mode: forwards;
-}
-
-.skeleton-item:nth-child(1) {
-    animation-delay: 0ms;
 }
 
 .skeleton-item:nth-child(2) {
@@ -422,18 +602,11 @@
     animation-delay: 200ms;
 }
 
-.skeleton-item:last-child {
-    border-bottom: none;
-}
-
 .skeleton-icon {
     width: 36px;
     height: 36px;
     border-radius: 50%;
     flex-shrink: 0;
-    background: linear-gradient(90deg, #e5e7eb 25%, #f3f4f6 50%, #e5e7eb 75%);
-    background-size: 200px 100%;
-    animation: shimmer 1.5s infinite;
 }
 
 .skeleton-content {
@@ -447,278 +620,133 @@
     height: 16px;
     border-radius: 4px;
     width: 70%;
-    background: linear-gradient(90deg, #e5e7eb 25%, #f3f4f6 50%, #e5e7eb 75%);
-    background-size: 200px 100%;
-    animation: shimmer 1.5s infinite;
 }
 
 .skeleton-message {
     height: 14px;
     border-radius: 4px;
     width: 90%;
-    background: linear-gradient(90deg, #e5e7eb 25%, #f3f4f6 50%, #e5e7eb 75%);
-    background-size: 200px 100%;
-    animation: shimmer 1.5s infinite;
+}
+
+@keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
 }
 
 /* Error State */
 .notification-error-state {
-    background: white;
-    border-radius: 12px;
-    overflow: hidden;
+    padding: 32px 24px;
+    text-align: center;
 }
 
 .error-content {
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 16px;
-    padding: 32px 24px;
-    text-align: center;
-}
-
-.error-icon-container {
-    width: 64px;
-    height: 64px;
-    border-radius: 50%;
-    background: rgba(239, 68, 68, 0.1);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    margin-bottom: 8px;
+    gap: 12px;
 }
 
 .error-icon {
-    font-size: 28px;
+    font-size: 32px;
     color: #ef4444;
+    margin-bottom: 8px;
 }
 
 .error-title {
-    font-size: 18px;
+    font-size: 16px;
     font-weight: 600;
-    color: #0f172a;
+    color: #374151;
     margin: 0;
-    line-height: 1.4;
 }
 
 .error-message {
-    font-size: 15px;
-    color: #64748b;
+    font-size: 14px;
+    color: #6b7280;
     margin: 0;
-    line-height: 1.5;
-    max-width: 280px;
+    line-height: 1.4;
 }
 
 .error-retry-btn {
     background: #3b82f6;
     color: white;
     border: none;
-    border-radius: 8px;
-    padding: 12px 20px;
+    border-radius: 6px;
+    padding: 8px 16px;
     font-size: 14px;
     font-weight: 500;
     cursor: pointer;
     display: flex;
     align-items: center;
-    gap: 8px;
-    transition: all 200ms cubic-bezier(0.4, 0, 0.2, 1);
+    gap: 6px;
+    transition: all 200ms ease;
     margin-top: 8px;
-    min-height: 44px;
 }
 
 .error-retry-btn:hover {
     background: #2563eb;
     transform: translateY(-1px);
-    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
 }
 
 .error-retry-btn:active {
     transform: translateY(0);
-    box-shadow: 0 2px 4px rgba(59, 130, 246, 0.3);
-}
-
-.error-retry-btn:focus {
-    outline: 2px solid #3b82f6;
-    outline-offset: 2px;
 }
 
 /* Offline State */
 .notification-offline-state {
-    background: white;
-    border-radius: 12px;
-    overflow: hidden;
+    padding: 32px 24px;
+    text-align: center;
 }
 
 .offline-content {
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 16px;
-    padding: 32px 24px;
-    text-align: center;
-}
-
-.offline-icon-container {
-    width: 64px;
-    height: 64px;
-    border-radius: 50%;
-    background: rgba(245, 158, 11, 0.1);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    margin-bottom: 8px;
+    gap: 12px;
 }
 
 .offline-icon {
-    font-size: 28px;
+    font-size: 32px;
     color: #f59e0b;
+    margin-bottom: 8px;
 }
 
 .offline-title {
-    font-size: 18px;
+    font-size: 16px;
     font-weight: 600;
-    color: #0f172a;
+    color: #374151;
     margin: 0;
-    line-height: 1.4;
 }
 
 .offline-message {
-    font-size: 15px;
-    color: #64748b;
+    font-size: 14px;
+    color: #6b7280;
     margin: 0;
-    line-height: 1.5;
-    max-width: 280px;
+    line-height: 1.4;
 }
 
 .offline-retry-btn {
     background: #f59e0b;
     color: white;
     border: none;
-    border-radius: 8px;
-    padding: 12px 20px;
+    border-radius: 6px;
+    padding: 8px 16px;
     font-size: 14px;
     font-weight: 500;
     cursor: pointer;
     display: flex;
     align-items: center;
-    gap: 8px;
-    transition: all 200ms cubic-bezier(0.4, 0, 0.2, 1);
+    gap: 6px;
+    transition: all 200ms ease;
     margin-top: 8px;
-    min-height: 44px;
 }
 
 .offline-retry-btn:hover {
     background: #d97706;
     transform: translateY(-1px);
-    box-shadow: 0 4px 12px rgba(245, 158, 11, 0.3);
 }
 
 .offline-retry-btn:active {
     transform: translateY(0);
-    box-shadow: 0 2px 4px rgba(245, 158, 11, 0.3);
-}
-
-.offline-retry-btn:focus {
-    outline: 2px solid #f59e0b;
-    outline-offset: 2px;
-}
-
-.offline-cached-notice {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    font-size: 13px;
-    color: #94a3b8;
-    background: #f8fafc;
-    padding: 8px 12px;
-    border-radius: 6px;
-    margin-top: 8px;
-}
-
-.offline-cached-notice i {
-    font-size: 12px;
-}
-
-/* Cached Notifications State */
-.cached-warning {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    padding: 12px 20px;
-    background: rgba(245, 158, 11, 0.1);
-    border-bottom: 1px solid rgba(245, 158, 11, 0.2);
-    font-size: 13px;
-    color: #92400e;
-}
-
-.cached-warning i {
-    font-size: 12px;
-    color: #f59e0b;
-    flex-shrink: 0;
-}
-
-.cached-warning span {
-    flex: 1;
-    line-height: 1.4;
-}
-
-.cached-retry-btn {
-    background: #f59e0b;
-    color: white;
-    border: none;
-    border-radius: 4px;
-    padding: 4px 8px;
-    font-size: 11px;
-    font-weight: 500;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    gap: 4px;
-    transition: all 200ms cubic-bezier(0.4, 0, 0.2, 1);
-    flex-shrink: 0;
-}
-
-.cached-retry-btn:hover {
-    background: #d97706;
-    transform: translateY(-1px);
-}
-
-.cached-retry-btn:active {
-    transform: translateY(0);
-}
-
-.cached-retry-btn:focus {
-    outline: 2px solid #f59e0b;
-    outline-offset: 1px;
-}
-
-.cached-notification {
-    position: relative;
-    opacity: 0.9;
-}
-
-.cached-notification::after {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: repeating-linear-gradient(
-        45deg,
-        transparent,
-        transparent 10px,
-        rgba(245, 158, 11, 0.03) 10px,
-        rgba(245, 158, 11, 0.03) 20px
-    );
-    pointer-events: none;
-}
-
-.cached-notification .notification-time::after {
-    content: ' (cached)';
-    font-size: 10px;
-    color: #f59e0b;
-    font-weight: 500;
 }
 
 /* === ACCESSIBILITY === */
@@ -863,15 +891,15 @@ document.addEventListener('DOMContentLoaded', function() {
         // Load fresh notifications
         loadNotifications();
         
-        // AUTOMATICALLY MARK ALL AS READ WHEN OPENED - NO CLICKING NEEDED
-        markAllNotificationsAsRead();
+        // DISABLED: Don't automatically mark as read - let user see notifications
+        // markAllNotificationsAsRead();
         
-        // AGGRESSIVE AUTO-DELETE: Schedule deletion in 1 minute after viewing
-        setTimeout(() => {
-            aggressiveAutoDelete();
-        }, 60000); // 60 seconds = 1 minute
+        // DISABLED: Don't auto-delete - let notifications stay visible
+        // setTimeout(() => {
+        //     aggressiveAutoDelete();
+        // }, 60000); // 60 seconds = 1 minute
         
-        console.log('🔔 Clean dropdown opened - ALL NOTIFICATIONS AUTO-READ - AUTO-DELETE scheduled in 60 seconds');
+        console.log('🔔 Clean dropdown opened - notifications visible (no auto-delete)');
     }
     
     function closeDropdown() {
@@ -892,228 +920,75 @@ document.addEventListener('DOMContentLoaded', function() {
     function loadNotifications() {
         console.log('📡 Loading notifications...');
         
-        // Start performance tracking
-        startPerformanceTracking();
-        
-        // Check network status first
-        if (!navigator.onLine) {
-            console.log('📡 Device is offline - showing offline state');
-            endPerformanceTracking(false);
-            showOfflineState();
-            announceToScreenReader('You are offline. Showing cached notifications if available.');
-            return;
-        }
-        
-        // Show loading state with accessibility announcement
+        // Show loading state
         showLoadingState();
-        announceToScreenReader('Loading notifications...');
-        
-        // Create AbortController for timeout handling
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => {
-            controller.abort();
-        }, 8000); // 8 second timeout for better UX
-        
-        // Add request headers for better caching and performance
-        const headers = {
-            'Accept': 'application/json',
-            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || '',
-            'Cache-Control': 'no-cache',
-            'X-Requested-With': 'XMLHttpRequest'
-        };
-        
-        // Add performance timing header if available
-        if (performanceMetrics.loadStartTime) {
-            headers['X-Client-Timestamp'] = performanceMetrics.loadStartTime.toString();
-        }
         
         fetch('/notifications', {
             method: 'GET',
-            headers: headers,
-            signal: controller.signal,
-            credentials: 'same-origin'
+            headers: {
+                'Accept': 'application/json',
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || ''
+            }
         })
         .then(response => {
-            clearTimeout(timeoutId);
-            
-            // Log response timing
-            const responseTime = performance.now() - performanceMetrics.loadStartTime;
-            console.log(`📊 Server response time: ${responseTime.toFixed(2)}ms`);
-            
             if (!response.ok) {
-                // Enhanced error information
-                const errorInfo = {
-                    status: response.status,
-                    statusText: response.statusText,
-                    url: response.url,
-                    headers: Object.fromEntries(response.headers.entries())
-                };
-                throw new Error(`HTTP ${response.status}: ${response.statusText}`, { cause: errorInfo });
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
             }
-            
             return response.json();
         })
         .then(data => {
-            const loadTime = endPerformanceTracking(true);
-            
             if (data.success) {
-                console.log('✅ Notifications loaded:', data.notifications.length, `in ${loadTime.toFixed(2)}ms`);
-                
-                // Cache notifications for offline use
-                cacheNotifications(data.notifications);
-                
-                // Update badge with smooth animation
+                console.log('✅ Notifications loaded:', data.notifications.length);
                 updateBadge(data.unread_count);
-                
-                // Hide loading state
                 hideLoadingState();
-                
-                // Reload the dropdown content with fresh data
-                reloadDropdownContent();
-                
-                // Reset retry count on success
-                retryCount = 0;
-                
-                // Announce success to screen readers
-                const notificationCount = data.notifications.length;
-                const unreadCount = data.unread_count;
-                announceToScreenReader(
-                    `Notifications loaded. ${notificationCount} total notifications, ${unreadCount} unread.`
-                );
-                
+                // 🎨 CRITICAL FIX: Actually render the beautiful notifications!
+                renderNotifications(data.notifications, data.unread_count);
             } else {
-                throw new Error(data.message || 'Server returned unsuccessful response');
+                throw new Error(data.message || 'Failed to load notifications');
             }
         })
         .catch(error => {
-            clearTimeout(timeoutId);
-            endPerformanceTracking(false);
-            
             console.error('❌ Failed to load notifications:', error);
-            
-            // Enhanced error handling with specific recovery strategies
-            if (error.name === 'AbortError') {
-                console.log('⏱️ Request timed out');
-                performanceMetrics.retryAttempts++;
-                
-                if (retryCount < maxRetries) {
-                    console.log('🔄 Auto-retrying due to timeout');
-                    announceToScreenReader('Request timed out. Retrying...');
-                    autoRetryLoadNotifications();
-                } else {
-                    announceToScreenReader('Request timed out. Showing cached notifications.', 'assertive');
-                    showCachedNotificationsOrError('Request timed out. Please try again.');
-                }
-                
-            } else if (error.message.includes('NetworkError') || error.message.includes('Failed to fetch')) {
-                console.log('🌐 Network error detected');
-                performanceMetrics.networkErrors++;
-                
-                if (navigator.onLine && retryCount < maxRetries) {
-                    console.log('🔄 Auto-retrying due to network error');
-                    announceToScreenReader('Network error. Retrying...');
-                    autoRetryLoadNotifications();
-                } else {
-                    announceToScreenReader('Network connection issue. Showing cached notifications.', 'assertive');
-                    showCachedNotificationsOrError('Network connection issue. Showing cached notifications.');
-                }
-                
-            } else if (error.message.includes('HTTP 500') || error.message.includes('HTTP 502') || error.message.includes('HTTP 503')) {
-                console.log('🔧 Server error detected');
-                performanceMetrics.retryAttempts++;
-                
-                if (retryCount < maxRetries) {
-                    console.log('🔄 Auto-retrying due to server error');
-                    announceToScreenReader('Server temporarily unavailable. Retrying...');
-                    autoRetryLoadNotifications();
-                } else {
-                    announceToScreenReader('Server error. Please try again later.', 'assertive');
-                    showErrorState(error.message);
-                }
-                
-            } else if (error.message.includes('HTTP 403')) {
-                console.log('🔒 Authentication error detected');
-                announceToScreenReader('Authentication required. Please refresh the page.', 'assertive');
-                showErrorState('Session expired. Please refresh the page to continue.');
-                
-            } else if (error.message.includes('HTTP 404')) {
-                console.log('🔍 Endpoint not found');
-                announceToScreenReader('Notification service not available.', 'assertive');
-                showErrorState('Notification service temporarily unavailable. Please contact support if this persists.');
-                
-            } else {
-                // For other errors, show error state immediately
-                console.log('❓ Unknown error type:', error.message);
-                announceToScreenReader('An error occurred loading notifications.', 'assertive');
-                showErrorState(error.message);
-            }
+            showErrorState(error.message);
         });
     }
     
-    // ADVANCED LOADING STATE MANAGEMENT
+    // LOADING STATE MANAGEMENT
     function showLoadingState() {
         const dropdown = document.getElementById('notificationDropdown');
-        if (!dropdown) return;
-        
-        // Get cache info for better loading experience
-        const cacheInfo = getCacheInfo();
-        const loadingMessage = cacheInfo.exists ? 
-            `Refreshing notifications... (${cacheInfo.count} cached)` : 
-            'Loading notifications...';
-        
-        dropdown.innerHTML = `
-            <div class="notification-loading-state" role="status" aria-label="${loadingMessage}">
-                <div class="notification-header">
-                    <div class="loading-header-content">
-                        <div class="skeleton-header" aria-hidden="true"></div>
-                        <div class="loading-spinner" aria-hidden="true"></div>
-                    </div>
-                </div>
-                <div class="notification-list">
-                    <div class="loading-skeleton" aria-hidden="true">
+        if (dropdown) {
+            dropdown.innerHTML = `
+                <div class="notification-loading-state">
+                    <div class="loading-skeleton">
+                        <div class="skeleton-header"></div>
                         <div class="skeleton-items">
-                            ${generateSkeletonItems(3)}
-                        </div>
-                    </div>
-                    <div class="loading-status">
-                        <span class="loading-text">${loadingMessage}</span>
-                        ${cacheInfo.exists ? `
-                            <div class="cache-info">
-                                <i class="fas fa-clock"></i>
-                                <span>Last updated ${cacheInfo.ageMinutes}m ago</span>
+                            <div class="skeleton-item">
+                                <div class="skeleton-icon"></div>
+                                <div class="skeleton-content">
+                                    <div class="skeleton-title"></div>
+                                    <div class="skeleton-message"></div>
+                                </div>
                             </div>
-                        ` : ''}
-                    </div>
-                </div>
-            </div>
-        `;
-        
-        // Add loading timeout indicator
-        setTimeout(() => {
-            const loadingText = dropdown.querySelector('.loading-text');
-            if (loadingText && loadingText.textContent.includes('Loading')) {
-                loadingText.textContent = 'Still loading... This is taking longer than usual.';
-                announceToScreenReader('Loading is taking longer than expected. Please wait.');
-            }
-        }, 5000);
-        
-        console.log('⏳ Advanced loading state displayed with cache info:', cacheInfo);
-    }
-    
-    function generateSkeletonItems(count) {
-        let items = '';
-        for (let i = 0; i < count; i++) {
-            items += `
-                <div class="skeleton-item" style="animation-delay: ${i * 100}ms;">
-                    <div class="skeleton-icon"></div>
-                    <div class="skeleton-content">
-                        <div class="skeleton-title" style="width: ${60 + Math.random() * 30}%;"></div>
-                        <div class="skeleton-message" style="width: ${80 + Math.random() * 20}%;"></div>
+                            <div class="skeleton-item">
+                                <div class="skeleton-icon"></div>
+                                <div class="skeleton-content">
+                                    <div class="skeleton-title"></div>
+                                    <div class="skeleton-message"></div>
+                                </div>
+                            </div>
+                            <div class="skeleton-item">
+                                <div class="skeleton-icon"></div>
+                                <div class="skeleton-content">
+                                    <div class="skeleton-title"></div>
+                                    <div class="skeleton-message"></div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             `;
         }
-        return items;
+        console.log('⏳ Loading state displayed');
     }
     
     function hideLoadingState() {
@@ -1128,23 +1003,14 @@ document.addEventListener('DOMContentLoaded', function() {
             // Fade out current content
             dropdown.style.opacity = '0';
             dropdown.style.transform = 'translateY(-4px)';
-            dropdown.style.transition = 'all 200ms cubic-bezier(0.4, 0, 0.2, 1)';
             
             setTimeout(() => {
                 dropdown.innerHTML = `
                     <div class="notification-error-state" style="opacity: 0; transform: translateY(8px);">
-                        <div class="notification-header">
-                            <h6 class="notification-title" style="color: #ef4444;">
-                                <i class="fas fa-exclamation-triangle" style="margin-right: 8px;"></i>
-                                Error
-                            </h6>
-                        </div>
                         <div class="error-content">
-                            <div class="error-icon-container">
-                                <i class="fas fa-exclamation-triangle error-icon"></i>
-                            </div>
+                            <i class="fas fa-exclamation-triangle error-icon"></i>
                             <h4 class="error-title">Unable to Load Notifications</h4>
-                            <p class="error-message">${getErrorMessage(errorMessage)}</p>
+                            <p class="error-message">${errorMessage}</p>
                             <button class="error-retry-btn" onclick="retryLoadNotifications()">
                                 <i class="fas fa-redo-alt"></i>
                                 Try Again
@@ -1168,49 +1034,20 @@ document.addEventListener('DOMContentLoaded', function() {
         console.log('❌ Error state displayed:', errorMessage);
     }
     
-    // Helper function to provide user-friendly error messages
-    function getErrorMessage(errorMessage) {
-        if (errorMessage.includes('HTTP 500')) {
-            return 'Server is temporarily unavailable. Please try again in a moment.';
-        } else if (errorMessage.includes('HTTP 404')) {
-            return 'Notification service not found. Please contact support if this persists.';
-        } else if (errorMessage.includes('HTTP 403')) {
-            return 'You don\'t have permission to view notifications. Please refresh the page.';
-        } else if (errorMessage.includes('NetworkError') || errorMessage.includes('Failed to fetch')) {
-            return 'Network connection issue. Please check your internet connection.';
-        } else if (errorMessage.includes('timeout')) {
-            return 'Request timed out. Please try again.';
-        } else {
-            return 'Something went wrong loading your notifications. Please try again.';
-        }
-    }
-    
     // OFFLINE STATE MANAGEMENT
     function showOfflineState() {
         const dropdown = document.getElementById('notificationDropdown');
         if (dropdown) {
             dropdown.innerHTML = `
                 <div class="notification-offline-state">
-                    <div class="notification-header">
-                        <h6 class="notification-title" style="color: #f59e0b;">
-                            <i class="fas fa-wifi-slash" style="margin-right: 8px;"></i>
-                            Offline
-                        </h6>
-                    </div>
                     <div class="offline-content">
-                        <div class="offline-icon-container">
-                            <i class="fas fa-wifi-slash offline-icon"></i>
-                        </div>
+                        <i class="fas fa-wifi-slash offline-icon"></i>
                         <h4 class="offline-title">You're Offline</h4>
                         <p class="offline-message">Check your internet connection and try again</p>
                         <button class="offline-retry-btn" onclick="retryLoadNotifications()">
                             <i class="fas fa-sync-alt"></i>
-                            Retry Connection
+                            Retry
                         </button>
-                        <div class="offline-cached-notice">
-                            <i class="fas fa-info-circle"></i>
-                            <span>Showing cached notifications when available</span>
-                        </div>
                     </div>
                 </div>
             `;
@@ -1218,258 +1055,18 @@ document.addEventListener('DOMContentLoaded', function() {
         console.log('📡 Offline state displayed');
     }
     
-    // ADVANCED CACHING FUNCTIONALITY
-    function cacheNotifications(notifications) {
-        try {
-            // Validate notifications data before caching
-            if (!Array.isArray(notifications)) {
-                console.warn('⚠️ Invalid notifications data for caching');
-                return;
-            }
-            
-            // Sanitize and optimize notifications for caching
-            const sanitizedNotifications = notifications.map(notification => ({
-                id: notification.id,
-                type: notification.type || 'info',
-                title: notification.title || 'Notification',
-                message: notification.message || '',
-                created_at: notification.created_at,
-                read: notification.read || false,
-                priority: notification.priority || 'normal'
-            }));
-            
-            const cacheData = {
-                notifications: sanitizedNotifications,
-                timestamp: Date.now(),
-                version: '2.0',
-                userAgent: navigator.userAgent.substring(0, 100), // For debugging
-                url: window.location.href,
-                count: sanitizedNotifications.length
-            };
-            
-            // Check storage quota before caching
-            const dataSize = JSON.stringify(cacheData).length;
-            if (dataSize > 1024 * 1024) { // 1MB limit
-                console.warn('⚠️ Cache data too large, truncating notifications');
-                cacheData.notifications = sanitizedNotifications.slice(0, 10);
-            }
-            
-            localStorage.setItem('cached_notifications', JSON.stringify(cacheData));
-            console.log(`💾 Notifications cached successfully (${sanitizedNotifications.length} items, ${(dataSize/1024).toFixed(1)}KB)`);
-            
-        } catch (error) {
-            console.warn('⚠️ Failed to cache notifications:', error);
-            
-            // Try to clear old cache if storage is full
-            if (error.name === 'QuotaExceededError') {
-                try {
-                    localStorage.removeItem('cached_notifications');
-                    console.log('🧹 Cleared old cache due to storage quota');
-                } catch (clearError) {
-                    console.error('❌ Failed to clear cache:', clearError);
-                }
-            }
-        }
-    }
-    
-    function getCachedNotifications() {
-        try {
-            const cached = localStorage.getItem('cached_notifications');
-            if (!cached) {
-                return null;
-            }
-            
-            const cacheData = JSON.parse(cached);
-            
-            // Validate cache structure
-            if (!cacheData.notifications || !cacheData.timestamp || !cacheData.version) {
-                console.warn('⚠️ Invalid cache structure, clearing cache');
-                localStorage.removeItem('cached_notifications');
-                return null;
-            }
-            
-            // Check cache age
-            const age = Date.now() - cacheData.timestamp;
-            const maxAge = 24 * 60 * 60 * 1000; // 24 hours
-            
-            if (age > maxAge) {
-                console.log('🕒 Cache expired, clearing old data');
-                localStorage.removeItem('cached_notifications');
-                return null;
-            }
-            
-            // Validate notifications array
-            if (!Array.isArray(cacheData.notifications)) {
-                console.warn('⚠️ Invalid cached notifications format');
-                return null;
-            }
-            
-            // Log cache hit
-            performanceMetrics.cacheHits++;
-            const ageMinutes = Math.round(age / 60000);
-            console.log(`💾 Using cached notifications (${cacheData.notifications.length} items, age: ${ageMinutes} minutes)`);
-            
-            return cacheData.notifications;
-            
-        } catch (error) {
-            console.warn('⚠️ Failed to retrieve cached notifications:', error);
-            
-            // Clear corrupted cache
-            try {
-                localStorage.removeItem('cached_notifications');
-                console.log('🧹 Cleared corrupted cache');
-            } catch (clearError) {
-                console.error('❌ Failed to clear corrupted cache:', clearError);
-            }
-            
-            return null;
-        }
-    }
-    
-    function getCacheInfo() {
-        try {
-            const cached = localStorage.getItem('cached_notifications');
-            if (cached) {
-                const cacheData = JSON.parse(cached);
-                const age = Date.now() - cacheData.timestamp;
-                const sizeKB = (cached.length / 1024).toFixed(1);
-                
-                return {
-                    exists: true,
-                    count: cacheData.notifications?.length || 0,
-                    ageMinutes: Math.round(age / 60000),
-                    sizeKB: sizeKB,
-                    version: cacheData.version
-                };
-            }
-        } catch (error) {
-            console.warn('⚠️ Failed to get cache info:', error);
-        }
-        
-        return { exists: false };
-    }
-    
-    function showCachedNotificationsOrError(errorMessage) {
-        const cachedNotifications = getCachedNotifications();
-        
-        if (cachedNotifications && cachedNotifications.length > 0) {
-            console.log('💾 Showing cached notifications as fallback');
-            showCachedNotificationsState(cachedNotifications, errorMessage);
-        } else {
-            console.log('❌ No cached notifications available - showing error state');
-            showErrorState(errorMessage);
-        }
-    }
-    
-    function showCachedNotificationsState(notifications, warningMessage) {
-        const dropdown = document.getElementById('notificationDropdown');
-        if (dropdown) {
-            let notificationItems = '';
-            
-            notifications.slice(0, 5).forEach(notification => {
-                const icon = getNotificationIcon(notification.type);
-                const iconColor = getNotificationIconColor(notification.type);
-                const timeAgo = getTimeAgo(notification.created_at);
-                
-                notificationItems += `
-                    <div class="notification-item cached-notification">
-                        <div class="notification-icon">
-                            <i class="${icon}" style="color: ${iconColor};"></i>
-                        </div>
-                        <div class="notification-content">
-                            <div class="notification-title-row">
-                                <span class="notification-item-title">${notification.title}</span>
-                                <span class="notification-time">${timeAgo}</span>
-                            </div>
-                            <p class="notification-message">${notification.message}</p>
-                        </div>
-                    </div>
-                `;
-            });
-            
-            if (notificationItems === '') {
-                notificationItems = `
-                    <div class="empty-notification">
-                        <i class="fas fa-bell-slash"></i>
-                        <p>All caught up</p>
-                        <small>No cached notifications</small>
-                    </div>
-                `;
-            }
-            
-            dropdown.innerHTML = `
-                <div class="notification-header">
-                    <h6 class="notification-title" style="color: #f59e0b;">
-                        <i class="fas fa-archive" style="margin-right: 8px;"></i>
-                        Cached Notifications
-                    </h6>
-                </div>
-                <div class="cached-warning">
-                    <i class="fas fa-info-circle"></i>
-                    <span>${warningMessage}</span>
-                    <button class="cached-retry-btn" onclick="retryLoadNotifications()">
-                        <i class="fas fa-sync-alt"></i>
-                        Retry
-                    </button>
-                </div>
-                <div class="notification-list">
-                    ${notificationItems}
-                </div>
-            `;
-        }
-    }
-    
-    function reloadDropdownContent() {
-        // Trigger a reload of the dropdown component content
-        const dropdown = document.getElementById('notificationDropdown');
-        if (dropdown && isDropdownOpen()) {
-            // Use a small delay to ensure smooth transition
-            setTimeout(() => {
-                fetch('/notifications/dropdown-content', {
-                    method: 'GET',
-                    headers: {
-                        'Accept': 'text/html',
-                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || ''
-                    }
-                })
-                .then(response => response.text())
-                .then(html => {
-                    dropdown.innerHTML = html;
-                })
-                .catch(error => {
-                    console.warn('⚠️ Failed to reload dropdown content:', error);
-                    // Keep existing content on failure
-                });
-            }, 100);
-        }
-    }
-    
     // RETRY FUNCTIONALITY
     function retryLoadNotifications() {
-        console.log('🔄 Manual retry triggered - resetting retry count');
-        retryCount = 0; // Reset retry count for manual retries
+        console.log('🔄 Retrying notification load...');
         loadNotifications();
     }
     
-    function autoRetryLoadNotifications() {
-        console.log('🔄 Auto retry triggered');
-        retryWithBackoff();
-    }
-    
     // NETWORK STATUS MONITORING
-    let retryCount = 0;
-    const maxRetries = 3;
-    
     function initializeNetworkMonitoring() {
         window.addEventListener('online', function() {
             console.log('🌐 Back online - reloading notifications');
-            retryCount = 0; // Reset retry count when back online
-            
             if (isDropdownOpen()) {
-                // Add a small delay to ensure connection is stable
-                setTimeout(() => {
-                    loadNotifications();
-                }, 500);
+                loadNotifications();
             }
         });
         
@@ -1479,47 +1076,13 @@ document.addEventListener('DOMContentLoaded', function() {
                 showOfflineState();
             }
         });
-        
-        // Monitor connection quality
-        if ('connection' in navigator) {
-            navigator.connection.addEventListener('change', function() {
-                const connection = navigator.connection;
-                console.log('🌐 Connection changed:', {
-                    effectiveType: connection.effectiveType,
-                    downlink: connection.downlink,
-                    rtt: connection.rtt
-                });
-                
-                // If connection is very slow, show appropriate messaging
-                if (connection.effectiveType === 'slow-2g' || connection.effectiveType === '2g') {
-                    console.log('🐌 Slow connection detected');
-                }
-            });
-        }
-    }
-    
-    function retryWithBackoff() {
-        if (retryCount >= maxRetries) {
-            console.log('❌ Max retries reached - showing error state');
-            showErrorState('Unable to connect after multiple attempts. Please check your connection and try again.');
-            return;
-        }
-        
-        const delay = Math.pow(2, retryCount) * 1000; // Exponential backoff: 1s, 2s, 4s
-        retryCount++;
-        
-        console.log(`🔄 Retry attempt ${retryCount}/${maxRetries} in ${delay}ms`);
-        
-        setTimeout(() => {
-            loadNotifications();
-        }, delay);
     }
     
     function updateBadge(unreadCount) {
         const badge = document.getElementById('notificationBadge');
         
-        // FORCE LIMIT TO 5 NOTIFICATIONS MAX - NEVER SHOW MORE
-        const displayCount = Math.min(unreadCount, 5);
+        // FIXED: Show actual unread count, don't force to 0
+        const displayCount = Math.min(unreadCount, 99); // Increased limit to 99 - VIEW NOT LIMITED TO ONLY 20!
         
         if (displayCount > 0) {
             if (badge) {
@@ -1567,313 +1130,313 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         }
         
-        console.log(`🔢 FORCED LIMIT: Badge shows ${displayCount} (system had ${unreadCount})`);
-    }
-    
-    // AGGRESSIVE AUTO-DELETE FUNCTION - DATABASE OPTIMIZATION
-    function aggressiveAutoDelete() {
-        fetch('/notifications/aggressive-cleanup', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || ''
-            }
-        })
-        .then(response => {
-            if (!response.ok) {
-                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-            }
-            return response.json();
-        })
-        .then(data => {
-            if (data.success) {
-                updateBadge(0);
-                console.log('🗑️ AGGRESSIVE AUTO-DELETE: All viewed notifications deleted for database optimization');
-                console.log(`📊 PERFORMANCE: Deleted ${data.deleted_count} notifications`);
-            } else {
-                throw new Error(data.message || 'Aggressive cleanup failed');
-            }
-        })
-        .catch(error => {
-            console.error('❌ Failed to perform aggressive auto-delete:', error);
-            // Graceful degradation - continue without showing error to user
-        });
-    }
-    
-    // CLEAN AUTO-READ FUNCTION - NO CLICKING NEEDED
-    window.markAllNotificationsAsRead = function() {
-        fetch('/notifications/mark-all-read', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || ''
-            }
-        })
-        .then(response => {
-            if (!response.ok) {
-                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-            }
-            return response.json();
-        })
-        .then(data => {
-            if (data.success) {
-                // Update UI immediately - all notifications are now read
-                updateBadge(0);
-                console.log('✅ ALL NOTIFICATIONS AUTO-READ - NO CLICKING REQUIRED');
-            } else {
-                throw new Error(data.message || 'Failed to mark notifications as read');
-            }
-        })
-        .catch(error => {
-            console.error('❌ Failed to auto-read notifications:', error);
-            // Show error state if dropdown is open
-            if (isDropdownOpen()) {
-                showErrorState('Failed to mark notifications as read. Please try again.');
-            }
-        });
-    };
-    
-    // Delete specific notification for database optimization
-    function deleteSpecificNotification(notificationId) {
-        fetch('/notifications/delete', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || ''
-            },
-            body: JSON.stringify({ notification_id: notificationId })
-        })
-        .then(response => {
-            if (!response.ok) {
-                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-            }
-            return response.json();
-        })
-        .then(data => {
-            if (data.success) {
-                console.log(`🗑️ AGGRESSIVE DELETE: Notification ${notificationId} deleted for database optimization`);
-            } else {
-                throw new Error(data.message || 'Failed to delete notification');
-            }
-        })
-        .catch(error => {
-            console.error('❌ Failed to delete notification:', error);
-            // Graceful degradation - continue without showing error
-        });
-    }
-    
-    // PERFORMANCE MONITORING
-    const performanceMetrics = {
-        loadStartTime: null,
-        loadEndTime: null,
-        retryAttempts: 0,
-        cacheHits: 0,
-        networkErrors: 0
-    };
-    
-    function startPerformanceTracking() {
-        performanceMetrics.loadStartTime = performance.now();
-    }
-    
-    function endPerformanceTracking(success = true) {
-        performanceMetrics.loadEndTime = performance.now();
-        const loadTime = performanceMetrics.loadEndTime - performanceMetrics.loadStartTime;
-        
-        console.log(`📊 Notification load performance: ${loadTime.toFixed(2)}ms (${success ? 'success' : 'failed'})`);
-        
-        // Log performance metrics for monitoring
-        if (loadTime > 3000) {
-            console.warn('⚠️ Slow notification load detected:', loadTime + 'ms');
-        }
-        
-        return loadTime;
-    }
-    
-    // ACCESSIBILITY ENHANCEMENTS
-    function announceToScreenReader(message, priority = 'polite') {
-        const announcement = document.createElement('div');
-        announcement.setAttribute('aria-live', priority);
-        announcement.setAttribute('aria-atomic', 'true');
-        announcement.className = 'sr-only';
-        announcement.style.cssText = 'position: absolute; left: -10000px; width: 1px; height: 1px; overflow: hidden;';
-        
-        document.body.appendChild(announcement);
-        announcement.textContent = message;
-        
-        setTimeout(() => {
-            document.body.removeChild(announcement);
-        }, 1000);
-    }
-    
-    // ADVANCED ERROR RECOVERY
-    function handleCriticalError(error, context) {
-        console.error('🚨 Critical notification system error:', error, 'Context:', context);
-        
-        // Log error for monitoring
-        performanceMetrics.networkErrors++;
-        
-        // Attempt graceful recovery
-        try {
-            // Clear any corrupted state
-            localStorage.removeItem('cached_notifications');
-            
-            // Reset retry counter
-            retryCount = 0;
-            
-            // Show user-friendly error
-            showErrorState('System temporarily unavailable. We\'re working to fix this.');
-            
-            // Announce to screen readers
-            announceToScreenReader('Notification system encountered an error. Please try again.', 'assertive');
-            
-        } catch (recoveryError) {
-            console.error('🚨 Failed to recover from critical error:', recoveryError);
-            
-            // Last resort: reload page after delay
-            setTimeout(() => {
-                if (confirm('The notification system encountered a critical error. Would you like to reload the page?')) {
-                    window.location.reload();
-                }
-            }, 2000);
-        }
+        console.log(`🔢 FIXED BADGE: Badge shows ${displayCount} (system had ${unreadCount})`);
     }
     
     // GLOBAL ERROR HANDLERS
     window.addEventListener('unhandledrejection', function(event) {
-        handleCriticalError(event.reason, 'unhandled_promise_rejection');
+        console.error('🚨 Unhandled promise rejection in notification system:', event.reason);
+        // Prevent the error from showing in console for users
         event.preventDefault();
     });
     
-    window.addEventListener('error', function(event) {
-        if (event.filename && event.filename.includes('notification')) {
-            handleCriticalError(event.error, 'javascript_error');
+    // 🎨 BEAUTIFUL NOTIFICATION RENDERING FUNCTION
+    function renderNotifications(notifications, unreadCount) {
+        const dropdown = document.getElementById('notificationDropdown');
+        if (!dropdown) return;
+        
+        console.log('🎨 Rendering', notifications.length, 'notifications with beautiful design');
+        
+        // 🎨 COMPLETE NOTIFICATION ICON SYSTEM - ALL 47 TYPES FROM INVENTORY
+        function getNotificationIcon(type) {
+            const iconMap = {
+                // 🎓 ACADEMIC & LEARNING (6 icons)
+                'course_welcome': 'fas fa-graduation-cap',
+                'quiz_completed': 'fas fa-check-circle',
+                'topic_mastery': 'fas fa-graduation-cap',
+                'level_up': 'fas fa-bolt', // LIGHTNING YELLOW ONE!
+                'assignment_due': 'fas fa-clock',
+                'assignment_created': 'fas fa-plus', // NEW ASSIGNMENT DROPPED!
+                
+                // 🏆 PROGRESS & MILESTONES (5 icons) - Real system features
+                'topic_completed': 'fas fa-check-circle',
+                'streak_milestone': 'fas fa-fire',
+                'study_streak': 'fas fa-fire',
+                'correct_answers_milestone': 'fas fa-trophy',
+                'quiz_mastered': 'fas fa-graduation-cap',
+                
+                // ⚡ ENERGY & PROGRESS (4 icons) - LIGHTNING YELLOW!
+                'energy_boost': 'fas fa-bolt',
+                'power_up': 'fas fa-bolt',
+                'momentum': 'fas fa-bolt',
+                
+                // 🔥 STREAKS & MOTIVATION (2 icons)
+                'streak_reset': 'fas fa-fire',
+                'burning_streak': 'fas fa-fire',
+                
+                // ⚠️ WARNINGS & REVIEWS (5 icons)
+                'review_mistakes': 'fas fa-exclamation-triangle',
+                'weak_topic_identified': 'fas fa-exclamation-circle',
+                'skipped_questions_detected': 'fas fa-forward',
+                'topic_needs_review': 'fas fa-exclamation-triangle',
+                'review_reminder': 'fas fa-clock',
+                
+                // 💳 PAYMENT & ACCESS (4 icons)
+                'payment_success': 'fas fa-credit-card',
+                'payment_failed': 'fas fa-exclamation-triangle',
+                'course_access_granted': 'fas fa-unlock',
+                'course_access_denied': 'fas fa-lock',
+                
+                // 🔔 SYSTEM & GENERAL (8 icons)
+                'system_update': 'fas fa-bell',
+                'announcement': 'fas fa-bullhorn',
+                'reminder': 'fas fa-bell',
+                'info': 'fas fa-info-circle',
+                'success': 'fas fa-check',
+                'warning': 'fas fa-exclamation-triangle',
+                'error': 'fas fa-exclamation-circle',
+                'test': 'fas fa-bell',
+                
+                // 🎯 SPECIAL FEATURES (3 icons) - REALISTIC TRIGGERS ONLY!
+                'perfect_score': 'fas fa-star', // PURPLE STAR!
+                'first_attempt': 'fas fa-medal', // BLUE/PURPLE LOOKS BETTER!
+                'speed_demon': 'fas fa-tachometer-alt', // Triggered when quiz completed < 30 seconds
+                'consistency_king': 'fas fa-crown', // Triggered after 7+ day study streak
+                
+                // 📚 SUBJECT SPECIFIC - CUSTOM FAVI ICONS FOR ALL MEDICAL COURSES!
+                'anatomy_enrolled': 'fas fa-tint', // BLOOD DROP ICON - PERFECT FOR ANATOMY!
+                'anatomy_completed': 'fas fa-tint',
+                'anatomy_halfway': 'fas fa-tint',
+                
+                'biochemistry_enrolled': 'fas fa-flask', // CHEMISTRY FLASK!
+                'biochemistry_completed': 'fas fa-flask',
+                'biochemistry_halfway': 'fas fa-flask',
+                
+                'physiology_enrolled': 'fas fa-heartbeat', // HEARTBEAT FOR BODY FUNCTIONS!
+                'physiology_completed': 'fas fa-heartbeat',
+                'physiology_halfway': 'fas fa-heartbeat',
+                
+                'histology_enrolled': 'fas fa-microscope', // MICROSCOPE FOR TISSUE STUDY!
+                'histology_completed': 'fas fa-microscope',
+                'histology_halfway': 'fas fa-microscope',
+                
+                'microbiology_enrolled': 'fas fa-bacteria', // BACTERIA ICON!
+                'microbiology_completed': 'fas fa-bacteria',
+                'microbiology_halfway': 'fas fa-bacteria',
+                
+                'parasitology_enrolled': 'fas fa-bug', // BUG ICON FOR PARASITES!
+                'parasitology_completed': 'fas fa-bug',
+                'parasitology_halfway': 'fas fa-bug',
+                
+                'ethics_enrolled': 'fas fa-balance-scale', // SCALES OF JUSTICE!
+                'ethics_completed': 'fas fa-balance-scale',
+                'ethics_halfway': 'fas fa-balance-scale',
+                
+                'psychology_enrolled': 'fas fa-brain', // BRAIN FOR PSYCHOLOGY!
+                'psychology_completed': 'fas fa-brain',
+                'psychology_halfway': 'fas fa-brain',
+                
+                'patient_care_enrolled': 'fas fa-user-md', // DOCTOR ICON!
+                'patient_care_completed': 'fas fa-user-md',
+                'patient_care_halfway': 'fas fa-user-md',
+                
+                'pharma_enrolled': 'fas fa-pills', // PILLS FOR PHARMACY!
+                'pharma_completed': 'fas fa-pills',
+                'pharma_halfway': 'fas fa-pills',
+                
+                // 💊 MEDCAPSULE ENROLLMENT - HALF BLUE HALF RED CAPSULE!
+                'medcapsule_enrolled': 'fas fa-capsules', // COOL CAPSULE ICON!
+                
+                // Legacy support
+                'cardiology_completed': 'fas fa-heart',
+                'pharmacology_quiz': 'fas fa-pills',
+                
+                // 🎨 CUSTOM TYPES (1 icon) - REMOVED NON-EXISTENT FEATURES
+                'milestone_reached': 'fas fa-flag-checkered'
+            };
+            return iconMap[type] || 'fas fa-bell';
         }
-    });
-    
-    // HELPER FUNCTIONS
-    function getNotificationIcon(type) {
-        const icons = {
-            'course_welcome': 'fas fa-graduation-cap',
-            'quiz_completed': 'fas fa-check-circle',
-            'achievement': 'fas fa-trophy',
-            'streak_milestone': 'fas fa-fire',
-            'assignment_due': 'fas fa-clock',
-            'grade_released': 'fas fa-star',
-            'system_update': 'fas fa-bell',
-            'payment_success': 'fas fa-credit-card',
-            'payment_failed': 'fas fa-exclamation-triangle',
-            'course_access_granted': 'fas fa-unlock',
-            'course_access_denied': 'fas fa-lock',
-            'reminder': 'fas fa-bell',
-            'announcement': 'fas fa-bullhorn',
-            'error': 'fas fa-exclamation-circle',
-            'success': 'fas fa-check',
-            'warning': 'fas fa-exclamation-triangle',
-            'info': 'fas fa-info-circle'
-        };
-        return icons[type] || 'fas fa-bell';
+        
+        // BEAUTIFUL SEMANTIC COLORS FOR NOTIFICATION TYPES
+        function getNotificationIconColor(type) {
+            const colors = {
+                // 🎓 ACADEMIC & LEARNING
+                'course_welcome': '#10b981',    // emerald-500
+                'quiz_completed': '#3b82f6',    // blue-500
+                'topic_mastery': '#10b981',     // emerald-500
+                'level_up': '#fbbf24',          // amber-400 (LIGHTNING YELLOW!)
+                'assignment_due': '#ef4444',     // red-500
+                'assignment_created': '#10b981', // emerald-500 for new assignments
+                
+                // 🏆 PROGRESS & MILESTONES - REAL FEATURES ONLY
+                'topic_completed': '#10b981',   // emerald-500
+                'streak_milestone': '#f97316',  // orange-500
+                'study_streak': '#f97316',      // orange-500
+                'correct_answers_milestone': '#f59e0b', // amber-500
+                'quiz_mastered': '#10b981',     // emerald-500
+                
+                // ⚡ ENERGY & PROGRESS (LIGHTNING YELLOW ONE!)
+                'energy_boost': '#fbbf24',      // amber-400
+                'power_up': '#fbbf24',          // amber-400
+                'momentum': '#fbbf24',          // amber-400
+                
+                // 🔥 STREAKS & MOTIVATION
+                'streak_reset': '#f97316',      // orange-500
+                'burning_streak': '#f97316',    // orange-500
+                
+                // ⚠️ WARNINGS & REVIEWS
+                'review_mistakes': '#ef4444',   // red-500
+                'weak_topic_identified': '#ef4444', // red-500
+                'skipped_questions_detected': '#f59e0b', // amber-500
+                'topic_needs_review': '#ef4444', // red-500
+                'review_reminder': '#06b6d4',   // cyan-500
+                
+                // 💳 PAYMENT & ACCESS
+                'payment_success': '#10b981',   // emerald-500
+                'payment_failed': '#ef4444',    // red-500
+                'course_access_granted': '#10b981', // emerald-500
+                'course_access_denied': '#ef4444',  // red-500
+                
+                // 🔔 SYSTEM & GENERAL
+                'system_update': '#6b7280',     // gray-500
+                'announcement': '#3b82f6',      // blue-500
+                'reminder': '#06b6d4',          // cyan-500
+                'info': '#06b6d4',              // cyan-500
+                'success': '#10b981',           // emerald-500
+                'warning': '#f59e0b',           // amber-500
+                'error': '#ef4444',             // red-500
+                'test': '#3b82f6',              // blue-500
+                
+                // 🎯 SPECIAL FEATURES - REALISTIC TRIGGERS!
+                'perfect_score': '#8b5cf6',     // PURPLE STAR!
+                'first_attempt': '#3b82f6',     // BLUE LOOKS BETTER!
+                'speed_demon': '#fbbf24',       // amber-400 (quiz < 30 seconds)
+                'consistency_king': '#f59e0b',  // amber-500 (7+ day streak)
+                
+                // 📚 SUBJECT SPECIFIC - CUSTOM COURSE FAVI ICONS WITH EYE-GRABBING COLORS!
+                'anatomy_enrolled': '#dc2626',     // BLOOD RED FOR ANATOMY!
+                'anatomy_completed': '#dc2626',
+                'anatomy_halfway': '#dc2626',
+                
+                'biochemistry_enrolled': '#10b981', // EMERALD GREEN FOR CHEMISTRY!
+                'biochemistry_completed': '#10b981',
+                'biochemistry_halfway': '#10b981',
+                
+                'physiology_enrolled': '#ef4444',  // RED FOR HEARTBEAT!
+                'physiology_completed': '#ef4444',
+                'physiology_halfway': '#ef4444',
+                
+                'histology_enrolled': '#8b5cf6',   // PURPLE FOR MICROSCOPE!
+                'histology_completed': '#8b5cf6',
+                'histology_halfway': '#8b5cf6',
+                
+                'microbiology_enrolled': '#f59e0b', // AMBER FOR BACTERIA!
+                'microbiology_completed': '#f59e0b',
+                'microbiology_halfway': '#f59e0b',
+                
+                'parasitology_enrolled': '#84cc16', // LIME GREEN FOR BUGS!
+                'parasitology_completed': '#84cc16',
+                'parasitology_halfway': '#84cc16',
+                
+                'ethics_enrolled': '#6366f1',      // INDIGO FOR JUSTICE SCALES!
+                'ethics_completed': '#6366f1',
+                'ethics_halfway': '#6366f1',
+                
+                'psychology_enrolled': '#ec4899',  // PINK FOR BRAIN/PSYCHOLOGY!
+                'psychology_completed': '#ec4899',
+                'psychology_halfway': '#ec4899',
+                
+                'patient_care_enrolled': '#06b6d4', // CYAN FOR DOCTOR!
+                'patient_care_completed': '#06b6d4',
+                'patient_care_halfway': '#06b6d4',
+                
+                'pharma_enrolled': '#3b82f6',      // BLUE FOR PILLS!
+                'pharma_completed': '#3b82f6',
+                'pharma_halfway': '#3b82f6',
+                
+                // 💊 MEDCAPSULE ENROLLMENT - SPECIAL GRADIENT COLOR!
+                'medcapsule_enrolled': '#3b82f6',  // BLUE (will add red gradient in CSS)
+                
+                // Legacy support
+                'cardiology_completed': '#ef4444', // red-500 for heart
+                'pharmacology_quiz': '#06b6d4',    // cyan-500 for pills
+                
+                // 🎨 CUSTOM TYPES - ONLY REAL FEATURES
+                'milestone_reached': '#10b981'  // emerald-500
+            };
+            return colors[type] || '#6b7280';
+        }
+        
+        let notificationHTML = `
+            <div class="notification-header">
+                <h6 class="notification-title">Notifications</h6>
+                <span class="notification-count">${unreadCount}</span>
+            </div>
+            <div class="notification-list">
+        `;
+        
+        if (notifications.length === 0) {
+            notificationHTML += `
+                <div class="empty-notification">
+                    <div class="empty-icon">
+                        <i class="fas fa-bell-slash"></i>
+                    </div>
+                    <h4 class="empty-title">All caught up!</h4>
+                    <p class="empty-message">No new notifications</p>
+                </div>
+            `;
+        } else {
+            notifications.forEach(notification => {
+                const timeAgo = getTimeAgo(notification.created_at);
+                const priorityClass = notification.priority === 'urgent' ? 'urgent' : 
+                                    notification.priority === 'high' ? 'high' : 'normal';
+                const readClass = notification.read ? 'read' : 'unread';
+                const iconColor = getNotificationIconColor(notification.type);
+                
+                notificationHTML += `
+                    <div class="notification-item ${priorityClass} ${readClass}" data-id="${notification.id}">
+                        <div class="notification-icon" style="background-color: ${iconColor}20; border: 1px solid ${iconColor}30;">
+                            <i class="${getNotificationIcon(notification.type)}" style="color: ${iconColor};"></i>
+                        </div>
+                        <div class="notification-content">
+                            <div class="notification-header-row">
+                                <h6 class="notification-item-title">${notification.title}</h6>
+                                <small class="notification-time">${timeAgo}</small>
+                            </div>
+                            <p class="notification-message">${notification.message}</p>
+                        </div>
+                        ${!notification.read ? '<div class="unread-indicator"></div>' : ''}
+                    </div>
+                `;
+            });
+        }
+        
+        notificationHTML += `
+            </div>
+        `;
+        
+        dropdown.innerHTML = notificationHTML;
+        console.log('✅ Beautiful notifications rendered successfully');
     }
     
-    function getNotificationIconColor(type) {
-        const colors = {
-            'course_welcome': '#10b981',
-            'quiz_completed': '#3b82f6',
-            'achievement': '#f59e0b',
-            'streak_milestone': '#f97316',
-            'assignment_due': '#ef4444',
-            'grade_released': '#8b5cf6',
-            'system_update': '#6b7280',
-            'payment_success': '#10b981',
-            'payment_failed': '#ef4444',
-            'course_access_granted': '#10b981',
-            'course_access_denied': '#ef4444',
-            'reminder': '#06b6d4',
-            'announcement': '#3b82f6',
-            'error': '#ef4444',
-            'success': '#10b981',
-            'warning': '#f59e0b',
-            'info': '#06b6d4'
-        };
-        return colors[type] || '#6b7280';
-    }
-    
+    // Helper function to format time ago
     function getTimeAgo(dateString) {
-        try {
-            const date = new Date(dateString);
-            const now = new Date();
-            const diffInSeconds = Math.floor((now - date) / 1000);
-            
-            if (diffInSeconds < 60) return 'just now';
-            if (diffInSeconds < 3600) return Math.floor(diffInSeconds / 60) + 'm ago';
-            if (diffInSeconds < 86400) return Math.floor(diffInSeconds / 3600) + 'h ago';
-            if (diffInSeconds < 2592000) return Math.floor(diffInSeconds / 86400) + 'd ago';
-            return Math.floor(diffInSeconds / 2592000) + 'mo ago';
-        } catch (error) {
-            return 'recently';
-        }
+        const date = new Date(dateString);
+        const now = new Date();
+        const diffInSeconds = Math.floor((now - date) / 1000);
+        
+        if (diffInSeconds < 60) return 'Just now';
+        if (diffInSeconds < 3600) return Math.floor(diffInSeconds / 60) + 'm ago';
+        if (diffInSeconds < 86400) return Math.floor(diffInSeconds / 3600) + 'h ago';
+        if (diffInSeconds < 604800) return Math.floor(diffInSeconds / 86400) + 'd ago';
+        return date.toLocaleDateString();
     }
     
-    // PERFORMANCE OPTIMIZATION - DEBOUNCED LOADING
-    let loadingDebounceTimer = null;
-    
-    function debouncedLoadNotifications() {
-        if (loadingDebounceTimer) {
-            clearTimeout(loadingDebounceTimer);
-        }
-        
-        loadingDebounceTimer = setTimeout(() => {
-            loadNotifications();
-        }, 100);
-    }
-    
-    // HEALTH CHECK SYSTEM
-    function performHealthCheck() {
-        const healthMetrics = {
-            cacheHealth: getCacheInfo(),
-            performanceMetrics: performanceMetrics,
-            networkStatus: navigator.onLine,
-            lastLoadTime: performanceMetrics.loadEndTime - performanceMetrics.loadStartTime,
-            memoryUsage: performance.memory ? {
-                used: Math.round(performance.memory.usedJSHeapSize / 1024 / 1024),
-                total: Math.round(performance.memory.totalJSHeapSize / 1024 / 1024),
-                limit: Math.round(performance.memory.jsHeapSizeLimit / 1024 / 1024)
-            } : null
-        };
-        
-        console.log('🏥 Notification System Health Check:', healthMetrics);
-        
-        // Auto-cleanup if memory usage is high
-        if (healthMetrics.memoryUsage && healthMetrics.memoryUsage.used > 50) {
-            console.log('🧹 High memory usage detected, performing cleanup');
-            
-            // Clear old cache entries
-            try {
-                const keys = Object.keys(localStorage);
-                keys.forEach(key => {
-                    if (key.startsWith('cached_') && key !== 'cached_notifications') {
-                        localStorage.removeItem(key);
-                    }
-                });
-            } catch (error) {
-                console.warn('⚠️ Failed to perform memory cleanup:', error);
-            }
-        }
-        
-        return healthMetrics;
-    }
-    
-    // PERIODIC HEALTH CHECKS
-    setInterval(performHealthCheck, 5 * 60 * 1000); // Every 5 minutes
-    
+
+
     // MAKE FUNCTIONS GLOBALLY AVAILABLE
+    window.renderNotifications = renderNotifications;
     window.retryLoadNotifications = retryLoadNotifications;
-    window.performHealthCheck = performHealthCheck;
-    window.getCacheInfo = getCacheInfo;
-    
-    // INITIALIZATION COMPLETE
-    console.log('🚀 Golden Standard Notification System Initialized');
-    console.log('📊 Features: Advanced caching, performance monitoring, accessibility, error recovery');
-    console.log('🎯 Performance target: <100ms render, <3s load, 99.9% uptime');
 });
 </script>
 @endif
