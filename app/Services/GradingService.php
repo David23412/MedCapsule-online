@@ -72,9 +72,9 @@ class GradingService
 
             // Create quiz attempts - handle random mode differently
             if ($mode === 'random') {
-                $this->createRandomQuizAttempt($user, $gradingResult, $duration, $mode, $topic, $isAssignment);
+                $this->createRandomQuizAttempt($user, $gradingResult, $duration, $mode, $topic, $isAssignment, $assignmentId);
             } else {
-                $this->createQuizAttempts($user, $gradingResult['sourceData'], $duration, $mode, $topic, $isAssignment);
+                $this->createQuizAttempts($user, $gradingResult['sourceData'], $duration, $mode, $topic, $isAssignment, $assignmentId);
             }
 
             // Update user statistics
@@ -228,6 +228,20 @@ class GradingService
         $sourceData = [];
         $mistakes = [];
 
+        // 🚨 BATCH OPERATIONS - PRELOAD ALL DATA IN ONE GO
+        $questionIds = $questions->pluck('id');
+        $courseIds = $questions->pluck('topic.course_id')->unique();
+        
+        // Batch fetch all mistakes for all questions in one query
+        $existingMistakes = \App\Models\Mistake::where('user_id', $user->id)
+                                         ->whereIn('question_id', $questionIds)
+                                         ->get()
+                                         ->keyBy('question_id');
+        
+        // Prepare batch inserts/updates
+        $mistakesToInsert = [];
+        $mistakesToUpdate = [];
+
         foreach ($questions as $question) {
             $submittedAnswer = $answers[$question->id] ?? null;
             $originalSubmittedAnswer = $submittedAnswer; // Keep track of original answer
@@ -273,6 +287,80 @@ class GradingService
                 'user_answer' => $submittedAnswer,
                 'is_correct' => $isCorrect
             ];
+            
+            // 🚨 BATCH OPERATIONS - PREPARE DATA FOR BATCH INSERTS/UPDATES
+            $existingMistake = $existingMistakes->get($question->id);
+            
+            // Prepare data for batch operations (only for mistakes, not correct answers)
+            if (!$isCorrect) {
+                if (!$existingMistake) {
+                    $mistakesToInsert[] = [
+                        'user_id' => $user->id,
+                        'question_id' => $question->id,
+                        'submitted_answer' => $submittedAnswer,
+                        'question_text' => $question->question,
+                        'correct_answer' => $question->correct_answer,
+                        'image_path' => $question->image_url,
+                        'last_attempt_date' => now(),
+                        'created_at' => now(),
+                        'updated_at' => now()
+                    ];
+                } else {
+                    $mistakesToUpdate[] = [
+                        'id' => $existingMistake->id,
+                        'submitted_answer' => $submittedAnswer,
+                        'last_attempt_date' => now(),
+                        'updated_at' => now()
+                    ];
+                }
+            }
+        }
+
+        // 🚨 EXECUTE BATCH OPERATIONS - SINGLE TRANSACTION
+        DB::transaction(function () use ($mistakesToInsert, $mistakesToUpdate) {
+            // Use updateOrCreate for mistakes to handle unique constraints
+            foreach ($mistakesToInsert as $mistakeData) {
+                \App\Models\Mistake::updateOrCreate(
+                    [
+                        'user_id' => $mistakeData['user_id'],
+                        'question_id' => $mistakeData['question_id']
+                    ],
+                    [
+                        'submitted_answer' => $mistakeData['submitted_answer'],
+                        'question_text' => $mistakeData['question_text'],
+                        'correct_answer' => $mistakeData['correct_answer'],
+                        'image_path' => $mistakeData['image_path'],
+                        'last_attempt_date' => $mistakeData['last_attempt_date']
+                    ]
+                );
+            }
+            
+            if (!empty($mistakesToUpdate)) {
+                foreach ($mistakesToUpdate as $update) {
+                    \App\Models\Mistake::where('id', $update['id'])->update($update);
+                }
+            }
+        });
+        
+        // 🚨 ASYNC CACHE INVALIDATION - OUTSIDE TRANSACTION (NON-BLOCKING)
+        $cacheKeysToInvalidate = [
+            "user_stats_{$user->id}",
+            "course_progress_{$topic->course_id}",
+            "topic_progress_{$topic->id}"
+        ];
+        
+        // Invalidate cache AFTER transaction (NON-BLOCKING)
+        if (!empty($cacheKeysToInvalidate)) {
+            dispatch(function () use ($cacheKeysToInvalidate) {
+                foreach ($cacheKeysToInvalidate as $key) {
+                    Cache::forget($key);
+                }
+                
+                Log::info('Async cache invalidation completed', [
+                    'keys' => $cacheKeysToInvalidate,
+                    'count' => count($cacheKeysToInvalidate)
+                ]);
+            })->afterResponse();
         }
 
         $percentageGrade = $totalQuestions > 0 ? min(100, ($score / $totalQuestions) * 100) : 0;
@@ -315,15 +403,8 @@ class GradingService
      */
     private function processTutorAnswers(User $user, $questions, array $answers, Topic $topic): array
     {
-        $correctAnswersBySource = json_decode(request()->input('correct_answers_by_source', '{}'), true);
-        
-        Log::info('🔥 TUTOR MODE: Processing tutor answers', [
-            'user_id' => $user->id,
-            'topic_id' => $topic->id,
-            'correct_answers_by_source' => $correctAnswersBySource,
-            'total_questions' => $questions->count()
-        ]);
-
+        // 🚨 SINGLE EVALUATION - NO DOUBLE EVALUATION
+        $evaluations = [];
         $score = 0;
         $totalQuestions = $questions->count();
         $sourceData = [];
@@ -334,41 +415,53 @@ class GradingService
             return $question->source ?: 'General';
         });
 
+        // 🚨 SINGLE EVALUATION LOOP - EVALUATE ONCE, USE MANY TIMES
+        foreach ($questions as $question) {
+            $submittedAnswer = $answers[$question->id] ?? null;
+            $originalSubmittedAnswer = $submittedAnswer;
+            
+            // Handle unanswered questions
+            if ($submittedAnswer === null || $submittedAnswer === '') {
+                $submittedAnswer = 'unanswered';
+                $isCorrect = false;
+            } else {
+                $isCorrect = $this->evaluateAnswer($question, $submittedAnswer);
+            }
+            
+            // Store evaluation for reuse
+            $evaluations[$question->id] = [
+                'is_correct' => $isCorrect,
+                'submitted_answer' => $submittedAnswer,
+                'original_answer' => $originalSubmittedAnswer
+            ];
+        }
+
+        // 🚨 USE CACHED EVALUATIONS FOR SOURCE PROCESSING
         foreach ($questionsBySource as $source => $sourceQuestions) {
             $sourceCorrect = 0;
             $sourceTotal = $sourceQuestions->count();
             
             // Initialize source data
             $sourceData[$source] = [
-                'score' => 0, // Will be calculated below
+                'score' => 0,
                 'total' => $sourceTotal,
                 'question_data' => []
             ];
 
-            // Actually evaluate each answer instead of trusting frontend data
             foreach ($sourceQuestions as $question) {
-                $submittedAnswer = $answers[$question->id] ?? null;
-                $originalSubmittedAnswer = $submittedAnswer; // Keep track of original answer
-                $isCorrect = false;
-                
-                // Handle unanswered questions
-                if ($submittedAnswer === null || $submittedAnswer === '') {
-                    $submittedAnswer = 'unanswered';
-                    $isCorrect = false;
-                } else {
-                    $isCorrect = $this->evaluateAnswer($question, $submittedAnswer);
-                }
+                $evaluation = $evaluations[$question->id]; // Use cached evaluation
+                $isCorrect = $evaluation['is_correct'];
+                $submittedAnswer = $evaluation['submitted_answer'];
+                $originalSubmittedAnswer = $evaluation['original_answer'];
                 
                 if ($isCorrect) {
                     $sourceCorrect++;
                 } else {
-                    // LETHAL FIX: Record the actual wrong answer, not 'unanswered' for incorrect answers
+                    // Record mistakes using cached evaluation
                     if ($originalSubmittedAnswer !== null && $originalSubmittedAnswer !== '') {
-                        // User gave a wrong answer - record the actual wrong answer
                         $this->recordMistake($user, $question, $originalSubmittedAnswer);
                         $mistakes[] = $question->id;
                     } else {
-                        // Question was truly unanswered (time ran out) - record as unanswered
                         $this->recordMistake($user, $question, 'unanswered');
                         $mistakes[] = $question->id;
                     }
@@ -453,7 +546,6 @@ class GradingService
         // CRITICAL FIX: Only return true if assignment_id is explicitly provided
         // Don't assume it's an assignment just because assignments exist for the topic
         return $assignmentId !== null && \App\Models\Assignment::where('id', $assignmentId)
-            ->where('user_id', $user->id)
             ->where('topic_id', $topic->id)
             ->where('course_id', $course->id)
             ->whereIn('status', [\App\Models\Assignment::STATUS_ACTIVE, \App\Models\Assignment::STATUS_OVERDUE])
@@ -489,8 +581,10 @@ class GradingService
      * @param int $duration
      * @param string $mode
      * @param Topic $topic
+     * @param bool $isAssignment
+     * @param int|null $assignmentId
      */
-    private function createQuizAttempts(User $user, array $sourceData, int $duration, string $mode, Topic $topic, bool $isAssignment = false): void
+    private function createQuizAttempts(User $user, array $sourceData, int $duration, string $mode, Topic $topic, bool $isAssignment = false, ?int $assignmentId = null): void
     {
         $numSources = count($sourceData);
         $durationPerSource = $numSources > 0 ? (int) round($duration / $numSources) : $duration;
@@ -505,6 +599,7 @@ class GradingService
             QuizAttempt::create([
                 'user_id' => $user->id,
                 'topic_id' => $topic->id,
+                'assignment_id' => $assignmentId,
                 'quiz_type' => $quizType,
                 'study_mode' => $mode,
                 'source' => $source,
@@ -527,8 +622,9 @@ class GradingService
      * @param string $mode
      * @param Topic $topic
      * @param bool $isAssignment
+     * @param int|null $assignmentId
      */
-    private function createRandomQuizAttempt(User $user, array $gradingResult, int $duration, string $mode, Topic $topic, bool $isAssignment = false): void
+    private function createRandomQuizAttempt(User $user, array $gradingResult, int $duration, string $mode, Topic $topic, bool $isAssignment = false, ?int $assignmentId = null): void
     {
         // Determine quiz type based on assignment status
         $quizType = $isAssignment ? 'assignment' : 'normal';
@@ -542,6 +638,7 @@ class GradingService
         QuizAttempt::create([
             'user_id' => $user->id,
             'topic_id' => $topic->id,
+            'assignment_id' => $assignmentId,
             'quiz_type' => $quizType,
             'study_mode' => $mode,
             'source' => null, // Random quizzes have no specific source
@@ -876,6 +973,7 @@ class GradingService
             $attempt = QuizAttempt::create([
                 'user_id' => $user->id,
                 'topic_id' => $topic->id,
+                'assignment_id' => null, // Tutor mode doesn't use assignments
                 'quiz_type' => 'normal',
                 'study_mode' => 'tutor',
                 'source' => $source,

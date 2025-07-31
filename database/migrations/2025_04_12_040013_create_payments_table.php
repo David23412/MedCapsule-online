@@ -23,10 +23,9 @@ return new class extends Migration
             $table->timestamp('paid_at')->nullable();
             $table->timestamps();
 
-            // Indexes for better performance
+            // 🚀 LEAN INDEXES: Only essential ones (detailed indexes in nuclear_performance_indexing)
             $table->index('user_id');
             $table->index('course_id');
-            $table->index(['user_id', 'course_id']);
             $table->index('reference_number');
             $table->index('status');
         });

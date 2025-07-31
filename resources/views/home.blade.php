@@ -6,16 +6,70 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>MedCapsule</title>
 
-    <!-- LIGHTNING-FAST FOUC PREVENTION -->
+    <!-- NUCLEAR CRITICAL CSS - LIGHTNING FAST FOUC PREVENTION -->
     <style>
-        /* CRITICAL CSS - PREVENTS FOUC */
+        /* CRITICAL CSS - Above fold only - RUTHLESS OPTIMIZATION */
         html, body {
             margin: 0;
             padding: 0;
             background: #f8fafc;
             font-family: 'Poppins', -apple-system, BlinkMacSystemFont, sans-serif;
             overflow-x: hidden;
-            opacity: 1 !important; /* EMERGENCY FIX - ALWAYS VISIBLE */
+            opacity: 1 !important;
+        }
+        
+        /* CRITICAL: Navbar - Above fold */
+        .navbar {
+            background-color: white;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            padding: 1rem 0;
+        }
+        
+        .navbar-brand {
+            display: flex;
+            align-items: center;
+            font-weight: 700;
+            font-size: 2rem;
+            background: linear-gradient(90deg, #2A6DFF, #7B3FE4, #E63946);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            text-decoration: none;
+        }
+        
+        /* CRITICAL: Hero section - Above fold */
+        .hero-section {
+            position: relative;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            padding: 2rem;
+        }
+        
+        .hero-section h1 {
+            font-size: 3.5rem;
+            font-weight: 700;
+            color: #2196f3;
+            margin-bottom: 1rem;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.1);
+        }
+        
+        .btn-primary {
+            padding: 15px 40px;
+            font-size: 1.5rem;
+            border-radius: 50px;
+            background: #2196f3;
+            border: none;
+            color: white;
+            text-decoration: none;
+            display: inline-block;
+            transition: background 0.3s ease;
+        }
+        
+        .btn-primary:hover {
+            background: #1976d2;
         }
     </style>
 
@@ -24,6 +78,12 @@
     <link rel="shortcut icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 50'%3E%3Crect fill='%23007bff' x='10' y='15' width='80' height='20' rx='10' ry='10' /%3E%3Crect x='50' y='15' width='40' height='20' fill='%23ff0000' rx='0 10 10 0' ry='10'/%3E%3Cline x1='50' y1='15' x2='50' y2='35' stroke='white' stroke-width='1.5' stroke-dasharray='2,1'/%3E%3C/svg%3E">
     <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 50'%3E%3Crect fill='%23007bff' x='10' y='15' width='80' height='20' rx='10' ry='10' /%3E%3Crect x='50' y='15' width='40' height='20' fill='%23ff0000' rx='0 10 10 0' ry='10'/%3E%3Cline x1='50' y1='15' x2='50' y2='35' stroke='white' stroke-width='1.5' stroke-dasharray='2,1'/%3E%3C/svg%3E">
     
+    <!-- RUTHLESS: Resource hints for faster loading -->
+    <link rel="dns-prefetch" href="//fonts.googleapis.com">
+    <link rel="dns-prefetch" href="//cdn.jsdelivr.net">
+    <link rel="dns-prefetch" href="//cdnjs.cloudflare.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+
     <!-- Bootstrap CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
 
@@ -551,6 +611,9 @@
             background: linear-gradient(45deg, rgba(33, 150, 243, 0.15), rgba(33, 150, 243, 0.05));
             border-radius: 50%;
             filter: blur(3px);
+            /* RUTHLESS GPU OPTIMIZATION */
+            will-change: transform, opacity;
+            transform: translate3d(0, 0, 0);
             animation: float-element 20s infinite ease-in-out;
         }
 
@@ -634,23 +697,23 @@
 
         @keyframes float-element {
             0% {
-                transform: translate(0, 0) rotate(0deg) scale(1);
+                transform: translate3d(0, 0, 0) rotate(0deg) scale(1);
                 opacity: 0.3;
             }
             25% {
-                transform: translate(200px, 200px) rotate(90deg) scale(1.3);
+                transform: translate3d(200px, 200px, 0) rotate(90deg) scale(1.3);
                 opacity: 0.6;
             }
             50% {
-                transform: translate(0, 400px) rotate(180deg) scale(1);
+                transform: translate3d(0, 400px, 0) rotate(180deg) scale(1);
                 opacity: 0.3;
             }
             75% {
-                transform: translate(-200px, 200px) rotate(270deg) scale(0.7);
+                transform: translate3d(-200px, 200px, 0) rotate(270deg) scale(0.7);
                 opacity: 0.6;
             }
             100% {
-                transform: translate(0, 0) rotate(360deg) scale(1);
+                transform: translate3d(0, 0, 0) rotate(360deg) scale(1);
                 opacity: 0.3;
             }
         }
@@ -982,12 +1045,15 @@
             border-radius: 12px;
             padding: 1.2rem;
             box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+            /* RUTHLESS GPU OPTIMIZATION */
+            will-change: transform;
+            transform: translate3d(0, 0, 0);
             transition: transform 0.3s ease, box-shadow 0.3s ease;
             height: 100%;
         }
 
         .course-card:hover {
-            transform: translateY(-5px);
+            transform: translate3d(0, -5px, 0);
             box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
         }
 
@@ -2220,7 +2286,7 @@
                                     </li>
                                     <li>
                                         <a class="dropdown-item" href="{{ route('topic-locking.index') }}">
-                                            <i class="fas fa-lock me-2"></i>Topic Management
+                                            Topic Management
                                         </a>
                                     </li>
                                     <li>
@@ -2272,7 +2338,7 @@
                                 <li>
                                     <form method="POST" action="{{ secure_url(route('logout', [], false)) }}" class="dropdown-item p-0">
                                         @csrf
-                                        <button type="submit" class="dropdown-item w-100 text-danger">
+                                        <button type="submit" class="dropdown-item w-100">
                                             <i class="fas fa-sign-out-alt me-2"></i>Logout
                                         </button>
                                     </form>
@@ -2484,35 +2550,51 @@
 
     <script>
         // Add this to your existing JavaScript
-        document.addEventListener('DOMContentLoaded', function() {
-            // Update progress circle
-            const progressCircle = document.querySelector('.progress-fill');
-            const progressValue = document.querySelector('.progress-value');
-            
-            if (progressCircle && progressValue) {
-                const progress = 85; // This should come from your backend
-                
-                const circumference = 2 * Math.PI * 26; // 2πr
-                const offset = circumference - (progress / 100) * circumference;
-                
-                progressCircle.style.strokeDasharray = `${circumference} ${circumference}`;
-                progressCircle.style.strokeDashoffset = offset;
-                progressValue.textContent = `${progress}%`;
-            }
+        // RUTHLESS PERFORMANCE: Debounce utility
+        function debounce(func, wait) {
+            let timeout;
+            return function executedFunction(...args) {
+                const later = () => {
+                    clearTimeout(timeout);
+                    func(...args);
+                };
+                clearTimeout(timeout);
+                timeout = setTimeout(later, wait);
+            };
+        }
 
-            // Animate streak fire based on streak value
-            const streakValue = 12; // This should come from your backend
-            const streakFire = document.querySelector('.streak-fire');
-            
-            if (streakFire) {
-                if (streakValue > 0) {
-                    streakFire.style.display = 'inline-block';
-                    // Adjust animation speed based on streak
-                    streakFire.style.animationDuration = `${2 - (streakValue * 0.1)}s`;
-                } else {
-                    streakFire.style.display = 'none';
+        document.addEventListener('DOMContentLoaded', function() {
+            // RUTHLESS: Batch DOM operations for performance
+            requestAnimationFrame(() => {
+                // Update progress circle
+                const progressCircle = document.querySelector('.progress-fill');
+                const progressValue = document.querySelector('.progress-value');
+                
+                if (progressCircle && progressValue) {
+                    const progress = 85; // This should come from your backend
+                    
+                    const circumference = 2 * Math.PI * 26; // 2πr
+                    const offset = circumference - (progress / 100) * circumference;
+                    
+                    progressCircle.style.strokeDasharray = `${circumference} ${circumference}`;
+                    progressCircle.style.strokeDashoffset = offset;
+                    progressValue.textContent = `${progress}%`;
                 }
-            }
+
+                // Animate streak fire based on streak value
+                const streakValue = 12; // This should come from your backend
+                const streakFire = document.querySelector('.streak-fire');
+                
+                if (streakFire) {
+                    if (streakValue > 0) {
+                        streakFire.style.display = 'inline-block';
+                        // Adjust animation speed based on streak
+                        streakFire.style.animationDuration = `${2 - (streakValue * 0.1)}s`;
+                    } else {
+                        streakFire.style.display = 'none';
+                    }
+                }
+            });
         });
 
         document.addEventListener('DOMContentLoaded', function() {
@@ -2540,25 +2622,36 @@
             });
         });
 
+        // RUTHLESS: Intersection Observer for counter animations
+        const counterObserver = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    const counter = entry.target;
+                    const target = parseInt(counter.innerText);
+                    let count = 0;
+                    const duration = 2000;
+                    const increment = target / (duration / 16);
+
+                    const updateCount = () => {
+                        count += increment;
+                        if (count < target) {
+                            counter.innerText = Math.ceil(count);
+                            requestAnimationFrame(updateCount);
+                        } else {
+                            counter.innerText = target;
+                        }
+                    };
+
+                    updateCount();
+                    counterObserver.unobserve(counter);
+                }
+            });
+        }, { threshold: 0.1 });
+
         document.addEventListener('DOMContentLoaded', function() {
-            const counters = document.querySelectorAll('.counter');
-            counters.forEach(counter => {
-                const target = parseInt(counter.innerText);
-                let count = 0;
-                const duration = 2000; // 2 seconds
-                const increment = target / (duration / 16); // 60fps
-
-                const updateCount = () => {
-                    count += increment;
-                    if (count < target) {
-                        counter.innerText = Math.ceil(count);
-                        requestAnimationFrame(updateCount);
-                    } else {
-                        counter.innerText = target;
-                    }
-                };
-
-                updateCount();
+            // RUTHLESS: Only animate counters when visible
+            document.querySelectorAll('.counter').forEach(counter => {
+                counterObserver.observe(counter);
             });
         });
 
@@ -2610,35 +2703,59 @@
                 
                 // NUCLEAR SPEED: WebSocket for instant notification delivery
                 initializeWebSocket() {
-                    // Connect to WebSocket for real-time notifications
-                    this.websocket = new WebSocket(`ws://${window.location.host}/notifications/stream`);
-                    
-                    this.websocket.onopen = () => {
-                        console.log('🔥 NUCLEAR SPEED: WebSocket connected for instant notifications');
-                    };
-                    
-                    this.websocket.onmessage = (event) => {
-                        const data = JSON.parse(event.data);
+                    try {
+                        // SECURITY FIX: Auto-detect correct protocol
+                        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+                        const wsUrl = `${protocol}//${window.location.host}/notifications/stream`;
                         
-                        // INSTANT UPDATE - No polling delay
-                        if (data.type === 'notification') {
-                            this.unreadCount = data.unread_count;
-                            this.notifications = data.notifications || [];
-                            this.updateBadge();
+                        // Connect to WebSocket for real-time notifications
+                        this.websocket = new WebSocket(wsUrl);
+                        
+                        this.websocket.onopen = () => {
+                            console.log('🔥 NUCLEAR SPEED: WebSocket connected for instant notifications');
+                        };
+                        
+                        this.websocket.onmessage = (event) => {
+                            const data = JSON.parse(event.data);
                             
-                            // Play sound instantly if new notification
-                            if (data.unread_count > this.prevUnreadCount) {
-                                this.playNotificationSound();
+                            // INSTANT UPDATE - No polling delay
+                            if (data.type === 'notification') {
+                                this.unreadCount = data.unread_count;
+                                this.notifications = data.notifications || [];
+                                this.updateBadge();
+                                
+                                // Play sound instantly if new notification
+                                if (data.unread_count > this.prevUnreadCount) {
+                                    this.playNotificationSound();
+                                }
+                                this.prevUnreadCount = data.unread_count;
                             }
-                            this.prevUnreadCount = data.unread_count;
-                        }
-                    };
-                    
-                    this.websocket.onerror = (error) => {
-                        console.error('WebSocket error:', error);
-                        // Fallback to immediate fetch (still faster than polling)
+                        };
+                        
+                        this.websocket.onerror = (error) => {
+                            console.warn('⚠️ WebSocket failed, using polling fallback');
+                            // Graceful degradation - no visual impact
+                            this.initializePollingFallback();
+                        };
+                        
+                        this.websocket.onclose = (event) => {
+                            console.log('🔌 WebSocket connection closed, attempting reconnect...');
+                            // Auto-reconnect after 5 seconds
+                            setTimeout(() => this.initializeWebSocket(), 5000);
+                        };
+                        
+                    } catch (error) {
+                        console.error('❌ WebSocket initialization failed:', error);
+                        this.initializePollingFallback();
+                    }
+                },
+                
+                // Polling fallback maintains same functionality
+                initializePollingFallback() {
+                    console.log('📡 Using polling fallback for notifications');
+                    setInterval(() => {
                         this.fetchNotifications();
-                    };
+                    }, 30000); // Poll every 30 seconds
                 },
                 
                 // ELIMINATE POLLING - Remove all setTimeout and setInterval

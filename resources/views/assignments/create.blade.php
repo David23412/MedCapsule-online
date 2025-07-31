@@ -91,7 +91,7 @@
         }
         
         .main-content {
-            margin-top: 80px;
+            margin-top: 60px;
             padding: 1rem;
         }
         
@@ -530,7 +530,7 @@
         }
         
         .btn-create {
-            background: #4299e1;
+            background: #007bff;
             border: none;
             color: white;
             padding: 0.875rem 2rem;
@@ -538,23 +538,27 @@
             font-weight: 600;
             font-size: 0.9rem;
             cursor: pointer;
-            transition: all 0.2s ease;
+            transition: all 0.15s ease;
             display: flex;
             align-items: center;
             gap: 0.5rem;
         }
         
-        .btn-create:hover {
-            background: #3182ce;
+        .btn-create:hover:not(:disabled) {
+            background: #0056b3;
             transform: translateY(-1px);
-            box-shadow: 0 4px 12px rgba(66, 153, 225, 0.3);
+            box-shadow: 0 4px 12px rgba(0, 123, 255, 0.3);
         }
         
         .btn-create:disabled {
-            background: #a0aec0;
-            cursor: not-allowed;
-            transform: none;
-            box-shadow: none;
+            background: #007bff;
+            cursor: wait;
+            transform: scale(0.98);
+            opacity: 0.8;
+        }
+        
+        .btn-create:active:not(:disabled) {
+            transform: scale(0.98);
         }
         
         .btn-cancel {
@@ -1073,19 +1077,39 @@
                 const createBtnText = document.getElementById('createBtnText');
                 
                 if (createBtn && createBtn.disabled) {
-                    // Reset button if page becomes visible and button is still disabled
-                    setTimeout(() => {
-                        if (createBtn.disabled) {
-                            createBtn.disabled = false;
-                            createBtn.style.opacity = '1';
-                            createBtn.style.transform = 'scale(1)';
-                            createBtnIcon.className = 'fas fa-rocket me-2';
-                            createBtnText.textContent = 'Create Assignments';
-                        }
-                    }, 1000);
+                    // Reset button immediately when page becomes visible
+                    createBtn.disabled = false;
+                    createBtn.style.opacity = '1';
+                    createBtn.style.transform = 'scale(1)';
+                    createBtnIcon.className = 'fas fa-rocket me-2';
+                    createBtnText.textContent = 'Create Assignments';
                 }
             }
         });
+
+        // AGGRESSIVE BUTTON RESET - ENSURES BUTTON IS ALWAYS CLICKABLE
+        setInterval(function() {
+            const createBtn = document.getElementById('createBtn');
+            const createBtnIcon = document.getElementById('createBtnIcon');
+            const createBtnText = document.getElementById('createBtnText');
+            
+            // If button has been disabled for more than 2 seconds, reset it
+            if (createBtn && createBtn.disabled) {
+                const disabledTime = createBtn.dataset.disabledTime;
+                if (!disabledTime) {
+                    createBtn.dataset.disabledTime = Date.now();
+                } else if (Date.now() - parseInt(disabledTime) > 2000) {
+                    createBtn.disabled = false;
+                    createBtn.style.opacity = '1';
+                    createBtn.style.transform = 'scale(1)';
+                    createBtnIcon.className = 'fas fa-rocket me-2';
+                    createBtnText.textContent = 'Create Assignments';
+                    delete createBtn.dataset.disabledTime;
+                }
+            } else if (createBtn && !createBtn.disabled) {
+                delete createBtn.dataset.disabledTime;
+            }
+        }, 500); // Check every 500ms
     </script>
     <script>
         // SUPER FAST STUDENT SELECTION
@@ -1184,26 +1208,26 @@
                 return false;
             }
             
-            // Update button state immediately
+            // Update button state with shorter animation
             createBtn.disabled = true;
-            createBtn.style.opacity = '0.7';
+            createBtn.dataset.disabledTime = Date.now(); // Track when disabled
+            createBtn.style.opacity = '0.8';
             createBtnIcon.className = 'fas fa-spinner fa-spin me-2';
             createBtnText.textContent = 'Creating...';
             
-            // Add visual feedback
+            // Shorter visual feedback
             createBtn.style.transform = 'scale(0.98)';
             
-            // Set timeout to reset button if something goes wrong
+            // Much shorter timeout to reset button - 2 seconds max
             const resetTimeout = setTimeout(() => {
-                if (createBtn.disabled) {
-                    createBtn.disabled = false;
-                    createBtn.style.opacity = '1';
-                    createBtn.style.transform = 'scale(1)';
-                    createBtnIcon.className = 'fas fa-rocket me-2';
-                    createBtnText.textContent = 'Create Assignments';
-                    console.warn('Form submission timeout - button reset');
-                }
-            }, 15000); // Reset after 15 seconds if no response
+                createBtn.disabled = false;
+                createBtn.style.opacity = '1';
+                createBtn.style.transform = 'scale(1)';
+                createBtnIcon.className = 'fas fa-rocket me-2';
+                createBtnText.textContent = 'Create Assignments';
+                delete createBtn.dataset.disabledTime;
+                console.warn('Form submission timeout - button reset');
+            }, 2000); // Reset after 2 seconds instead of 15
 
             // Store timeout ID for potential cleanup
             createBtn.dataset.resetTimeout = resetTimeout;
@@ -1490,6 +1514,22 @@
             }
         });
         
+        // BUTTON CLICK HANDLER - ENSURES ALWAYS CLICKABLE
+        document.getElementById('createBtn').addEventListener('click', function(e) {
+            // If button is disabled but shouldn't be, re-enable it
+            if (this.disabled) {
+                const disabledTime = this.dataset.disabledTime;
+                if (!disabledTime || Date.now() - parseInt(disabledTime) > 1000) {
+                    this.disabled = false;
+                    this.style.opacity = '1';
+                    this.style.transform = 'scale(1)';
+                    document.getElementById('createBtnIcon').className = 'fas fa-rocket me-2';
+                    document.getElementById('createBtnText').textContent = 'Create Assignments';
+                    delete this.dataset.disabledTime;
+                }
+            }
+        });
+
         // INITIALIZE EVERYTHING INSTANTLY
         document.addEventListener('DOMContentLoaded', function() {
             updateSelectionSummary();

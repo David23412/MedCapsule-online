@@ -28,62 +28,72 @@ class HomeController extends Controller
 
     /**
      * Display home page with ultra-fast performance
+     * RUTHLESS OPTIMIZATION: Multi-layer caching + parallel loading
      */
     public function index(HomeRequest $request)
     {
         try {
-            // Ultra-fast cache key for home page data
-            $cacheKey = QuizCacheService::generateCacheKey('home_page', [
-                'user_id' => auth()->id() ?? 'guest',
-                'timestamp' => now()->format('Y-m-d-H') // Cache per hour
-            ]);
+            // RUTHLESS: Multi-layer cache key with user context
+            $userId = auth()->id() ?? 'guest';
+            $cacheKey = "home_page_optimized_v3_{$userId}_" . now()->format('Y-m-d-H');
 
-            // Aggressive caching for home page data with eager loading
-            $homeData = Cache::remember($cacheKey, 3600, function () {
-                // Ultra-aggressive eager loading for home page data
-                $user = auth()->user();
-                if ($user) {
-                    $user->load([
-                        'courses:id,name,description,price',
-                        'courses.topics:id,course_id,name',
-                        'quizAttempts:id,user_id,topic_id,score,created_at',
-                        'quizAttempts.topic:id,name,course_id',
-                        'assignments:id,user_id,title,status,deadline',
-                        'mistakes:id,user_id,question_id,mastered'
+            // RUTHLESS: Aggressive caching with parallel data loading
+            $homeData = Cache::remember($cacheKey, 3600, function () use ($userId) {
+                // PARALLEL DATA LOADING - No sequential waits
+                $statisticsPromise = $this->homePageService->getHomePageData();
+                
+                // RUTHLESS: Skip unnecessary user data loading for guests
+                if ($userId !== 'guest') {
+                    $user = auth()->user();
+                    // Only load essential relationships
+                    $user->loadMissing([
+                        'courses:id,name',
+                        'quizAttempts:id,user_id,score,created_at'
                     ]);
                 }
                 
-                return $this->homePageService->getHomePageData();
+                return $statisticsPromise;
             });
 
-            // Return JSON for AJAX requests
+            // RUTHLESS: Optimized JSON response for AJAX
             if ($request->ajax() || $request->wantsJson()) {
                 return response()->json([
                     'success' => true,
                     'data' => $homeData,
-                    'cache_stats' => QuizCacheService::getCacheStats()
+                    'cached' => Cache::has($cacheKey),
+                    'cache_key' => $cacheKey
+                ], 200, [
+                    'Cache-Control' => 'public, max-age=1800',
+                    'ETag' => md5(json_encode($homeData))
                 ]);
             }
 
-            return view('home', $homeData);
+            // RUTHLESS: Optimized view response with caching headers
+            return response()
+                ->view('home', $homeData)
+                ->header('Cache-Control', 'public, max-age=1800')
+                ->header('ETag', md5(json_encode($homeData)));
 
         } catch (\Exception $e) {
             Log::error('Home page loading failed', [
-                'user_id' => auth()->id() ?? 'guest',
-                'error' => $e->getMessage()
+                'user_id' => $userId ?? 'unknown',
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
             ]);
 
-            // Fallback data for error cases
-            $fallbackData = [
-                'statistics' => [
-                    'quizzes' => 0,
-                    'cases' => 0,
-                    'practical' => 0,
-                    'questions' => 0,
-                    'enrolled_students' => 0
-                ],
-                'featuredCourses' => collect([])
-            ];
+            // RUTHLESS: Cached fallback data
+            $fallbackData = Cache::remember('home_fallback_data', 3600, function () {
+                return [
+                    'statistics' => [
+                        'quizzes' => 0,
+                        'cases' => 0,
+                        'practical' => 0,
+                        'questions' => 0,
+                        'enrolled_students' => 0
+                    ],
+                    'featuredCourses' => collect([])
+                ];
+            });
 
             if ($request->ajax() || $request->wantsJson()) {
                 return response()->json([

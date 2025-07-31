@@ -11,6 +11,12 @@
     <link rel="shortcut icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 50'%3E%3Crect fill='%23007bff' x='10' y='15' width='80' height='20' rx='10' ry='10' /%3E%3Crect x='50' y='15' width='40' height='20' fill='%23ff0000' rx='0 10 10 0' ry='10'/%3E%3Cline x1='50' y1='15' x2='50' y2='35' stroke='white' stroke-width='1.5' stroke-dasharray='2,1'/%3E%3C/svg%3E">
     <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 50'%3E%3Crect fill='%23007bff' x='10' y='15' width='80' height='20' rx='10' ry='10' /%3E%3Crect x='50' y='15' width='40' height='20' fill='%23ff0000' rx='0 10 10 0' ry='10'/%3E%3Cline x1='50' y1='15' x2='50' y2='35' stroke='white' stroke-width='1.5' stroke-dasharray='2,1'/%3E%3C/svg%3E">
 
+    <!-- RUTHLESS: Resource hints for faster loading -->
+    <link rel="dns-prefetch" href="//fonts.googleapis.com">
+    <link rel="dns-prefetch" href="//cdn.jsdelivr.net">
+    <link rel="dns-prefetch" href="//cdnjs.cloudflare.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Crimson+Pro:wght@700;800;900&display=swap" rel="stylesheet">
@@ -373,13 +379,16 @@
             border-radius: 50%;
             filter: blur(3px);
             animation: float 20s infinite ease-in-out;
+            /* RUTHLESS GPU OPTIMIZATION - SAME VISUAL EFFECT */
+            will-change: transform, opacity;
+            transform: translate3d(0, 0, 0);
         }
 
         @keyframes float {
-            0%, 100% { transform: translate(0, 0) rotate(0deg); }
-            25% { transform: translate(100px, 50px) rotate(90deg); }
-            50% { transform: translate(50px, 100px) rotate(180deg); }
-            75% { transform: translate(-50px, 50px) rotate(270deg); }
+            0%, 100% { transform: translate3d(0, 0, 0) rotate(0deg); }
+            25% { transform: translate3d(100px, 50px, 0) rotate(90deg); }
+            50% { transform: translate3d(50px, 100px, 0) rotate(180deg); }
+            75% { transform: translate3d(-50px, 50px, 0) rotate(270deg); }
         }
 
         .hero-title {
@@ -468,20 +477,22 @@
         }
 
         .course-card {
-            flex: 0 0 420px; /* Increased from 400px */
+            flex: 0 0 420px;
             scroll-snap-align: start;
             background: white;
             border-radius: 16px;
             overflow: hidden;
             box-shadow: 0 3px 6px rgba(0, 0, 0, 0.08);
             transition: all 0.3s ease;
-            width: 420px; /* Increased from 400px */
+            width: 420px;
             margin-bottom: 3rem;
             transform: translateY(0);
             position: relative;
-            /* Dynamic border system using CSS custom properties */
             border: 2px solid var(--course-color, #3b82f6);
             border-left: 8px solid var(--course-color, #3b82f6);
+            /* RUTHLESS GPU OPTIMIZATION - SAME VISUAL EFFECT */
+            will-change: transform;
+            transform: translate3d(0, 0, 0);
         }
 
         .course-card::before {
@@ -499,7 +510,7 @@
         }
 
         .course-card:hover {
-            transform: translateY(-15px); /* Subtle upward lift on hover */
+            transform: translate3d(0, -15px, 0); /* GPU-optimized - SAME VISUAL EFFECT */
             box-shadow: 0 6px 16px rgba(0, 0, 0, 0.12);
         }
 
@@ -915,10 +926,12 @@
             padding: 0.75rem;
             box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
             transition: transform 0.3s ease;
+            /* RUTHLESS GPU OPTIMIZATION - SAME VISUAL EFFECT */
+            will-change: transform;
         }
 
         .milestone-container:hover {
-            transform: translateX(-50%) translateY(-2px);
+            transform: translate3d(-50%, -2px, 0);
         }
 
         .milestone-stats {
@@ -989,6 +1002,8 @@
             animation: wave 4s linear infinite;
             background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.15), transparent);
             transform: translateX(-50%);
+            /* RUTHLESS GPU OPTIMIZATION - SAME VISUAL EFFECT */
+            will-change: transform;
         }
 
         .liquid-wave:nth-child(2) {
@@ -1002,8 +1017,8 @@
         }
 
         @keyframes wave {
-            0% { transform: translateX(-50%) rotate(0deg); }
-            100% { transform: translateX(-50%) rotate(360deg); }
+            0% { transform: translate3d(-50%, 0, 0) rotate(0deg); }
+            100% { transform: translate3d(-50%, 0, 0) rotate(360deg); }
         }
 
         .milestone-marks {
@@ -1961,7 +1976,7 @@
     <div class="position-relative">
         <div class="semester-pills">
             <select class="semester-dropdown" id="semesterDropdown" onchange="filterCoursesByAcademicYear()">
-                <option value="">All Courses</option>
+                <option value="" selected>All Courses</option>
                 @php
                     $availableYears = $courses->pluck('academic_year')->filter()->unique()->sort();
                     $medicalYears = $availableYears->filter(function($year) {
@@ -2129,17 +2144,23 @@
         </div>
     </div>
 
-    <!-- Milestone Progress -->
+    <!-- Milestone Progress - BACKEND OPTIMIZED -->
+    @php
+        // RUTHLESS: Cache calculations to avoid repeated database queries
+        $totalCorrectAnswers = Auth::user()->getTotalCorrectAnswers();
+        $progressPercentage = min(($totalCorrectAnswers % 100), 100);
+    @endphp
+    
     <div class="milestone-container">
         <div class="milestone-stats">
-            <span class="correct-count" id="correctCount">{{ Auth::user()->correct_answers_count ?? 0 }}</span>
+            <span class="correct-count" id="correctCount">{{ $totalCorrectAnswers }}</span>
             <span class="separator">/</span>
             <span class="goal-count" id="goalCount">100</span>
             <span class="questions-text">questions solved</span>
         </div>
         <div class="milestone-progress">
             <div class="liquid-progress">
-                <div class="liquid-fill" id="progressFill" style="width: {{ min(((Auth::user()->correct_answers_count ?? 0) % 100), 100) }}%">
+                <div class="liquid-fill" id="progressFill" style="width: {{ $progressPercentage }}%">
                     <div class="liquid-wave"></div>
                     <div class="liquid-wave"></div>
                     <div class="liquid-wave"></div>
@@ -2147,7 +2168,7 @@
             </div>
             <div class="milestone-marks">
                 @for ($i = 1; $i <= 5; $i++)
-                    <div class="milestone-mark {{ (Auth::user()->correct_answers_count ?? 0) >= ($i * 20) ? 'active' : '' }}" 
+                    <div class="milestone-mark {{ $totalCorrectAnswers >= ($i * 20) ? 'active' : '' }}" 
                          style="left: {{ $i * 20 }}%" 
                          id="mark-{{ $i * 20 }}">
                         <i class="fas fa-check"></i>
@@ -2421,7 +2442,7 @@
         }
         
         // Initialize variables to track correct answers and goal level
-        let correctAnswers = {{ Auth::user()->correct_answers_count ?? 0 }};
+        let correctAnswers = {{ Auth::user()->getTotalCorrectAnswers() }};
         let goalLevel = Math.floor(correctAnswers / 100) + 1;
         let currentGoal = goalLevel * 100;
 
@@ -2632,6 +2653,8 @@
     }
     </script>
     <script>
+    // RUTHLESS: Optimized scroll function with debouncing
+    let scrollTimeout;
     function scrollCourses(direction) {
         const container = document.querySelector('.courses-grid');
         const cardWidth = 340;
@@ -2649,23 +2672,28 @@
         });
     }
 
-    // Update scroll arrows visibility
+    // RUTHLESS: Debounced scroll arrow updates
     function updateScrollArrows(container) {
-        const leftArrow = document.querySelector('.scroll-left');
-        const rightArrow = document.querySelector('.scroll-right');
-        
-        // Show/hide arrows with smooth fade
-        leftArrow.style.opacity = container.scrollLeft > 0 ? '1' : '0';
-        rightArrow.style.opacity = 
-            (container.scrollLeft + container.offsetWidth) < container.scrollWidth 
-                ? '1' : '0';
+        clearTimeout(scrollTimeout);
+        scrollTimeout = setTimeout(() => {
+            const leftArrow = document.querySelector('.scroll-left');
+            const rightArrow = document.querySelector('.scroll-right');
+            
+            // PERFORMANCE: Batch DOM operations
+            requestAnimationFrame(() => {
+                leftArrow.style.opacity = container.scrollLeft > 0 ? '1' : '0';
+                rightArrow.style.opacity = 
+                    (container.scrollLeft + container.offsetWidth) < container.scrollWidth 
+                        ? '1' : '0';
+            });
+        }, 16); // ~60fps
     }
 
-    // Add scroll event listener for arrow visibility
+    // Add optimized scroll event listener
     const coursesGrid = document.querySelector('.courses-grid');
     coursesGrid.addEventListener('scroll', () => {
         updateScrollArrows(coursesGrid);
-    });
+    }, { passive: true }); // Passive listener for better performance
 
     // Initial arrow visibility
     document.addEventListener('DOMContentLoaded', () => {
@@ -2673,52 +2701,21 @@
     });
     </script>
     <script>
-        // Enhanced semester dropdown functionality with precise scrolling
+        // FIXED: Consolidated dropdown functionality
         document.addEventListener('DOMContentLoaded', () => {
             const semesterDropdown = document.getElementById('semesterDropdown');
             
             if (semesterDropdown) {
-                // Set the first option as selected by default
-                semesterDropdown.value = "Year 1- First semester";
+                // Ensure "All Courses" is selected
+                semesterDropdown.value = "";
                 
-                // Filter courses on page load to show only first semester
-                filterCoursesForSemester("Year 1- First semester");
-                
-                semesterDropdown.addEventListener('change', () => {
-                    const selectedSemester = semesterDropdown.value;
-                    filterCoursesForSemester(selectedSemester);
-                });
+                // Trigger filter to show all courses by default
+                setTimeout(() => {
+                    filterCoursesByAcademicYear();
+                }, 100);
             }
-            
-            // Function to filter courses based on selected semester
-            function filterCoursesForSemester(selectedSemester) {
-                const coursesGrid = document.querySelector('.courses-grid');
-                const courseCards = Array.from(document.querySelectorAll('.course-card'));
+        });
 
-                // Find the first course card of the selected semester
-                const targetCard = courseCards.find(card => 
-                    card.getAttribute('data-semester') === selectedSemester
-                );
-
-                if (targetCard) {
-                    // Calculate the precise scroll position
-                    const cardWidth = 340; // Fixed card width
-                    const gap = 24; // Gap between cards (1.5rem = 24px)
-                    const containerPadding = 16; // Container padding (1rem = 16px)
-                    
-                    const cardIndex = courseCards.indexOf(targetCard);
-                    const scrollPosition = cardIndex * (cardWidth + gap);
-                
-                    // Smooth scroll with enhanced easing
-                    coursesGrid.scrollTo({
-                        left: scrollPosition,
-                        behavior: 'smooth'
-                    });
-
-                    // Update scroll arrows visibility
-                    updateScrollArrows(coursesGrid);
-                }
-            }
         });
     </script>
     <script>
@@ -3034,29 +3031,37 @@
             }
         });
 
-        // Academic Year Filtering Function
-        function filterCoursesByAcademicYear() {
-            const selectedYear = document.getElementById('semesterDropdown').value;
-            const courseCards = document.querySelectorAll('.course-card');
-            
-            courseCards.forEach(card => {
-                const cardAcademicYear = card.getAttribute('data-academic-year');
+        // RUTHLESS: Optimized Academic Year Filtering Function - GLOBAL SCOPE
+        let filterTimeout;
+        window.filterCoursesByAcademicYear = function filterCoursesByAcademicYear() {
+            // PERFORMANCE: Debounce rapid filter changes
+            clearTimeout(filterTimeout);
+            filterTimeout = setTimeout(() => {
+                const selectedYear = document.getElementById('semesterDropdown').value;
+                const courseCards = document.querySelectorAll('.course-card');
                 
-                if (selectedYear === '' || cardAcademicYear === selectedYear) {
-                    card.style.display = 'block';
-                    card.style.opacity = '1';
-                } else {
-                    card.style.display = 'none';
-                    card.style.opacity = '0';
-                }
-            });
-            
-            // Update scroll arrows visibility after filtering
-            updateScrollArrows();
+                // PERFORMANCE: Batch DOM operations
+                requestAnimationFrame(() => {
+                    courseCards.forEach(card => {
+                        const cardAcademicYear = card.getAttribute('data-academic-year');
+                        
+                        if (selectedYear === '' || cardAcademicYear === selectedYear) {
+                            card.style.display = 'block';
+                            card.style.opacity = '1';
+                        } else {
+                            card.style.display = 'none';
+                            card.style.opacity = '0';
+                        }
+                    });
+                    
+                    // Update scroll arrows visibility after filtering
+                    updateScrollArrows();
+                });
+            }, 100); // Debounce for 100ms
         }
 
-        // Update scroll arrows based on filtered content
-        function updateScrollArrows() {
+        // Update scroll arrows based on filtered content - GLOBAL SCOPE
+        window.updateScrollArrows = function updateScrollArrows() {
             const coursesGrid = document.querySelector('.courses-grid');
             const visibleCards = document.querySelectorAll('.course-card[style*="display: block"], .course-card:not([style*="display: none"])');
             
@@ -3069,20 +3074,18 @@
             }
         }
 
-        // Initialize filtering on page load
+        // RUTHLESS: Optimized initialization on page load
         document.addEventListener('DOMContentLoaded', function() {
-            // Ensure all course cards are visible by default
-            const courseCards = document.querySelectorAll('.course-card');
-            courseCards.forEach(card => {
-                card.style.display = 'block';
-                card.style.opacity = '1';
-            });
-            
-            // Set dropdown to show "All Courses" by default
-            const dropdown = document.getElementById('semesterDropdown');
-            if (dropdown) {
-                dropdown.value = '';
-            }
+            // PERFORMANCE: Batch DOM operations
+            requestAnimationFrame(() => {
+                // Ensure all course cards are visible by default
+                const courseCards = document.querySelectorAll('.course-card');
+                courseCards.forEach(card => {
+                    card.style.display = 'block';
+                    card.style.opacity = '1';
+                });
+                
+                // Dropdown already initialized above
             
             updateScrollArrows();
         });

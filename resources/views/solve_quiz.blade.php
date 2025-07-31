@@ -965,7 +965,19 @@
                         <div class="progress-text" id="progress-text">0 of {{ $questions->count() }} questions answered</div>
                         <div class="timer" id="timer">
                             @if(isset($assignment) && $assignment && $assignment->duration_minutes !== null && $assignment->duration_minutes > 0)
-                                <span class="countdown-timer" data-duration="{{ $assignment->duration_minutes }}">{{ gmdate('i:s', $assignment->duration_minutes * 60) }}</span>
+                                <span class="countdown-timer" data-duration="{{ $assignment->duration_minutes }}">
+                                    @php
+                                        $totalSeconds = $assignment->duration_minutes * 60;
+                                        if ($totalSeconds >= 3600) {
+                                            $hours = floor($totalSeconds / 3600);
+                                            $minutes = floor(($totalSeconds % 3600) / 60);
+                                            $seconds = $totalSeconds % 60;
+                                            echo sprintf('%d:%02d:%02d', $hours, $minutes, $seconds);
+                                        } else {
+                                            echo gmdate('i:s', $totalSeconds);
+                                        }
+                                    @endphp
+                                </span>
                             @elseif(isset($assignment) && $assignment && $assignment->duration_minutes == 0)
                                 <span class="countup-timer">00:00</span>
                             @else
@@ -1210,7 +1222,18 @@
                             const newCountdownSpan = document.createElement('span');
                             newCountdownSpan.className = 'countdown-timer';
                             newCountdownSpan.setAttribute('data-duration', '{{ $assignment->duration_minutes }}');
-                            newCountdownSpan.textContent = '{{ gmdate("i:s", $assignment->duration_minutes * 60) }}';
+                            @php
+                                $totalSeconds = $assignment->duration_minutes * 60;
+                                if ($totalSeconds >= 3600) {
+                                    $hours = floor($totalSeconds / 3600);
+                                    $minutes = floor(($totalSeconds % 3600) / 60);
+                                    $seconds = $totalSeconds % 60;
+                                    $initialTime = sprintf('%d:%02d:%02d', $hours, $minutes, $seconds);
+                                } else {
+                                    $initialTime = gmdate('i:s', $totalSeconds);
+                                }
+                            @endphp
+                            newCountdownSpan.textContent = '{{ $initialTime }}';
                             timerElement.appendChild(newCountdownSpan);
                             
                             // Update references
@@ -1280,11 +1303,19 @@
                         const elapsedSeconds = Math.floor((currentTime - startTime) / 1000);
                         const remainingSeconds = Math.max(0, totalSeconds - elapsedSeconds);
                         
-                        const minutes = Math.floor(remainingSeconds / 60);
-                        const seconds = remainingSeconds % 60;
-                        
-                        countdownSpan.textContent = 
-                            `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+                        // Professional timer format: show hours when 60+ minutes
+                        if (remainingSeconds >= 3600) { // 60+ minutes
+                            const hours = Math.floor(remainingSeconds / 3600);
+                            const minutes = Math.floor((remainingSeconds % 3600) / 60);
+                            const seconds = remainingSeconds % 60;
+                            countdownSpan.textContent = 
+                                `${hours}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+                        } else {
+                            const minutes = Math.floor(remainingSeconds / 60);
+                            const seconds = remainingSeconds % 60;
+                            countdownSpan.textContent = 
+                                `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+                        }
                         
                         // Change color based on time remaining
                         if (remainingSeconds <= 60) { // Last minute - red

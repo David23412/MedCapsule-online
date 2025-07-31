@@ -1,14 +1,13 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <!-- Fix for notification system errors -->
+    <!-- 🚀 OPTIMIZED: Minimal critical functions only -->
     <script>
-        // Define missing functions to prevent errors
-        window.startPerformanceTracking = window.startPerformanceTracking || function() { return { startTime: Date.now() }; };
-        window.endPerformanceTracking = window.endPerformanceTracking || function() { return 0; };
-        window.loadNotifications = window.loadNotifications || function() {};
-        window.initializeNotificationSystem = window.initializeNotificationSystem || function() {};
-        window.performanceMetrics = window.performanceMetrics || { loadStartTime: Date.now(), retryAttempts: 0, networkErrors: 0 };
+        window.startPerformanceTracking=window.startPerformanceTracking||function(){return{startTime:Date.now()}};
+        window.endPerformanceTracking=window.endPerformanceTracking||function(){return 0};
+        window.loadNotifications=window.loadNotifications||function(){};
+        window.initializeNotificationSystem=window.initializeNotificationSystem||function(){};
+        window.performanceMetrics=window.performanceMetrics||{loadStartTime:Date.now(),retryAttempts:0,networkErrors:0};
     </script>
     
     <meta charset="UTF-8">
@@ -24,523 +23,113 @@
     <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 50'%3E%3Crect fill='%23007bff' x='10' y='15' width='80' height='20' rx='10' ry='10' /%3E%3Crect x='50' y='15' width='40' height='20' fill='%23ff0000' rx='0 10 10 0' ry='10'/%3E%3Cline x1='50' y1='15' x2='50' y2='35' stroke='white' stroke-width='1.5' stroke-dasharray='2,1'/%3E%3C/svg%3E">
     <link rel="shortcut icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 50'%3E%3Crect fill='%23007bff' x='10' y='15' width='80' height='20' rx='10' ry='10' /%3E%3Crect x='50' y='15' width='40' height='20' fill='%23ff0000' rx='0 10 10 0' ry='10'/%3E%3Cline x1='50' y1='15' x2='50' y2='35' stroke='white' stroke-width='1.5' stroke-dasharray='2,1'/%3E%3C/svg%3E">
     <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 50'%3E%3Crect fill='%23007bff' x='10' y='15' width='80' height='20' rx='10' ry='10' /%3E%3Crect x='50' y='15' width='40' height='20' fill='%23ff0000' rx='0 10 10 0' ry='10'/%3E%3Cline x1='50' y1='15' x2='50' y2='35' stroke='white' stroke-width='1.5' stroke-dasharray='2,1'/%3E%3C/svg%3E">
-    <!-- No source map versions of CSS -->
+    <!-- 🚀 OPTIMIZED: Preload critical resources -->
+    <link rel="preload" href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" as="style" onload="this.onload=null;this.rel='stylesheet'">
+    <noscript><link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet"></noscript>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" crossorigin="anonymous">
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet" crossorigin="anonymous">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" crossorigin="anonymous">
     
-    <!-- Topic-specific CSS files -->
-    <link rel="stylesheet" href="{{ asset('css/topic-cards.css') }}">
-    <link rel="stylesheet" href="{{ asset('css/assignment-cards.css') }}">
-    
-    <!-- LETHAL ERROR SUPPRESSION SYSTEM -->
-    <script src="{{ asset('js/lethal-error-suppression.js') }}"></script>
 
+    
+    <!-- 🚀 CRITICAL CSS: Instant page render -->
     <style>
-        /* Exact carbon copy of the original pills design */
-        .case-filters {display: flex;gap: 0.75rem;justify-content: center;flex-wrap: wrap;margin-bottom: 2rem;}
-        .case-filter {padding: 0.4rem 1.2rem;border-radius: 50px;font-size: 0.85rem;font-weight: 500;cursor: pointer;transition: all 0.2s ease;border: 1px solid #e9ecef;background: white;color: #6c757d;display: flex;align-items: center;gap: 0.5rem;box-shadow: 0 2px 4px rgba(0,0,0,0.05);}
-        .case-filter:hover {transform: translateY(-1px);box-shadow: 0 3px 6px rgba(0,0,0,0.08);border-color: #dee2e6;}
-        .case-filter.active {background: #0d6efd;color: white;border-color: #0d6efd;}
-        /* Add subtle color indications for each category */
-        .case-filter[data-filter="cases"] i, /* Cases */
-        .case-filter[data-filter="cases"] span:not(.count),
-        .case-filter[data-filter="cases"] .count {color: #ff8f00;} /* Orange for Cases */
-        .case-filter[data-filter="cases"].active {background-color: #0d6efd;border-color: #0d6efd;color: white;}
+        body{font-family:'Poppins',sans-serif;background-color:#f8f9fa;zoom:.72;margin:0;padding:0;line-height:1.6;-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale}
+        .navbar{background:rgba(255,255,255,.95);padding:1rem 2rem;box-shadow:0 2px 4px rgba(0,0,0,.1);position:fixed;top:0;left:0;right:0;z-index:1000;backdrop-filter:blur(10px)}
+        .navbar-brand{color:#007bff;font-weight:700;font-size:1.5rem;text-decoration:none;display:flex;align-items:center;transition:transform .3s ease}
+        .course-header{background:linear-gradient(135deg,#0072ff,#00c6ff);color:white;padding:4rem 3rem 4rem;padding-top:6rem;text-align:center;margin-bottom:2rem;position:relative;overflow:hidden;min-height:280px;display:flex;align-items:center;justify-content:center}
+        .topics-container{max-width:1100px;margin:0 auto;padding:2rem}
+        .topic-card{background:white;border-radius:16px;padding:2rem 2.5rem;margin-bottom:1.25rem;box-shadow:0 1px 3px rgba(0,0,0,.08);transition:all .3s ease;animation:slideIn .5s ease-out forwards;opacity:0;transform:translateY(20px);position:relative;overflow:hidden;border:1px solid rgba(0,0,0,.04)}
+        @keyframes slideIn{to{opacity:1;transform:translateY(0)}}
+        .case-filters{display:flex;gap:.75rem;justify-content:center;flex-wrap:wrap;margin-bottom:2rem}
+        .case-filter{padding:.4rem 1.2rem;border-radius:50px;font-size:.85rem;font-weight:500;cursor:pointer;transition:all .2s ease;border:1px solid #e9ecef;background:white;color:#6c757d;display:flex;align-items:center;gap:.5rem;box-shadow:0 2px 4px rgba(0,0,0,.05)}
+        .case-filter:hover{transform:translateY(-1px);box-shadow:0 3px 6px rgba(0,0,0,.08);border-color:#dee2e6}
+        .case-filter.active{background:#0d6efd;color:white;border-color:#0d6efd}
+        .case-filter[data-filter="cases"] i,.case-filter[data-filter="cases"] span:not(.count),.case-filter[data-filter="cases"] .count{color:#ff8f00}
+        .case-filter[data-filter="practical"] i,.case-filter[data-filter="practical"] span:not(.count),.case-filter[data-filter="practical"] .count{color:#7b1fa2}
+        .case-filter[data-filter="quiz"] i,.case-filter[data-filter="quiz"] span:not(.count),.case-filter[data-filter="quiz"] .count{color:#2e7d32}
+        .case-filter[data-filter="awaly"],.case-filter[data-filter="homework"]{color:#ff8f00}
+        .case-filter[data-filter="agamlo"],.case-filter[data-filter="lab"]{color:#7b1fa2}
+        .case-filter[data-filter="easy"],.case-filter[data-filter="reading"]{color:#2e7d32}
+        .case-filter.active i,.case-filter.active span{color:white!important}
+        .case-filter .count{background:rgba(0,0,0,.05);padding:.15rem .5rem;border-radius:50px;font-size:.75rem;min-width:1.2rem;text-align:center}
+        .case-filter.active .count{background:rgba(255,255,255,.2);color:white!important}
+        .random-link,.mistakes-link{text-decoration:none;font-weight:500;display:flex;align-items:center;gap:.5rem;padding:.4rem 1.2rem;border-radius:50px;transition:all .3s ease}
+        .random-link{color:#fd7e14;background:#fff8e1;border:1px solid #ffd54f;order:98!important}
+        .mistakes-link{color:#dc3545;background:#ffebee;border:1px solid #ef9a9a;order:99!important}
+        .random-link:hover{background:#ffe082;color:#f57c00;transform:translateY(-1px)}
+        .mistakes-link:hover{background:#ffcdd2;color:#c62828;transform:translateY(-1px)}
+        .assignment-circle{position:relative;width:40px;height:40px;background:#fff5f5!important;border:1px solid #fed7d7!important;border-radius:50%;display:flex;align-items:center;justify-content:center;transition:all .3s ease;animation:assignmentPulse 3s infinite}
+        .assignment-circle i{color:#c53030!important;font-size:1rem}
+        .assignment-circle.active{background:#c53030!important;border-color:#c53030!important}
+        .assignment-circle.active i{color:white!important}
+        .assignment-glow-count{position:absolute;top:-8px;right:-8px;background:rgba(197,48,48,.1)!important;color:#c53030!important;font-size:.7rem;font-weight:700;min-width:20px;height:20px;border-radius:50%;display:flex;align-items:center;justify-content:center}
+        @keyframes assignmentPulse{0%,100%{box-shadow:0 2px 4px rgba(0,0,0,.05),0 0 0 0 rgba(197,48,48,.3)}50%{box-shadow:0 2px 4px rgba(0,0,0,.05),0 0 0 4px rgba(197,48,48,.1)}}
         
-        .case-filter[data-filter="practical"] i, /* Practical */
-        .case-filter[data-filter="practical"] span:not(.count),
-        .case-filter[data-filter="practical"] .count {color: #7b1fa2;} /* Purple for Practical */
-        .case-filter[data-filter="practical"].active {background-color: #0d6efd;border-color: #0d6efd;color: white;}
-        
-        .case-filter[data-filter="quiz"] i, /* Quiz */
-        .case-filter[data-filter="quiz"] span:not(.count),
-        .case-filter[data-filter="quiz"] .count {color: #2e7d32;} /* Green for Quiz */
-        .case-filter[data-filter="quiz"].active {background-color: #0d6efd;border-color: #0d6efd;color: white;}
-        
-        /* Custom course category colors - use same rotation as medical courses */
-        .case-filter[data-filter]:not([data-filter="cases"]):not([data-filter="practical"]):not([data-filter="quiz"]):not([data-filter="assignments"]):not([data-filter="all"]) {
-            color: #ff8f00; /* Orange - same as Cases (default for unknown custom categories) */
+        /* SIMPLE RED LOCK - ONLY COLOR CHANGE AND SLIGHTLY BIGGER SIZE */
+        .assignment-locked-icon i { 
+            color: #dc3545 !important; 
+            font-size: 1.3rem !important;
         }
-        .case-filter[data-filter]:not([data-filter="cases"]):not([data-filter="practical"]):not([data-filter="quiz"]):not([data-filter="assignments"]):not([data-filter="all"]) .count {
-            color: #ff8f00; /* Orange - same as Cases (default for unknown custom categories) */
-        }
-        .case-filter[data-filter]:not([data-filter="cases"]):not([data-filter="practical"]):not([data-filter="quiz"]):not([data-filter="assignments"]):not([data-filter="all"]).active {
-            background-color: #0d6efd;border-color: #0d6efd;color: white;
-        }
-        
-        /* CARBON COPY: Custom categories use exact same colors as medical courses in rotation */
-        .case-filter[data-filter="awaly"] {color: #ff8f00;} /* Orange - same as Cases */
-        .case-filter[data-filter="awaly"] .count {color: #ff8f00;} /* Orange - same as Cases */
-        .case-filter[data-filter="agamlo"] {color: #7b1fa2;} /* Purple - same as Practical */
-        .case-filter[data-filter="agamlo"] .count {color: #7b1fa2;} /* Purple - same as Practical */
-        .case-filter[data-filter="easy"] {color: #2e7d32;} /* Green - same as Quiz */
-        .case-filter[data-filter="easy"] .count {color: #2e7d32;} /* Green - same as Quiz */
-        
-        /* CSS PROTECTION - Force custom pills to be visible */
-        .case-filter[data-filter="awaly"],
-        .case-filter[data-filter="agamlo"], 
-        .case-filter[data-filter="easy"] {
-            display: flex !important;
-            visibility: visible !important;
-            opacity: 1 !important;
-        }
-        /* Additional custom categories - rotating through the same 3 colors as medical courses */
-        .case-filter[data-filter="homework"] {color: #ff8f00;} /* Orange - same as Cases */
-        .case-filter[data-filter="homework"] .count {color: #ff8f00;} /* Orange - same as Cases */
-        .case-filter[data-filter="lab"] {color: #7b1fa2;} /* Purple - same as Practical */
-        .case-filter[data-filter="lab"] .count {color: #7b1fa2;} /* Purple - same as Practical */
-        .case-filter[data-filter="reading"] {color: #2e7d32;} /* Green - same as Quiz */
-        .case-filter[data-filter="reading"] .count {color: #2e7d32;} /* Green - same as Quiz */
-        
-        /* Ensure any other custom categories follow the same pattern */
-        .case-filter[data-filter]:nth-child(2):not([data-filter="cases"]):not([data-filter="practical"]):not([data-filter="quiz"]):not([data-filter="assignments"]):not([data-filter="all"]) {color: #ff8f00;} /* Orange */
-        .case-filter[data-filter]:nth-child(2):not([data-filter="cases"]):not([data-filter="practical"]):not([data-filter="quiz"]):not([data-filter="assignments"]):not([data-filter="all"]) .count {color: #ff8f00;} /* Orange */
-        
-        .case-filter[data-filter]:nth-child(3):not([data-filter="cases"]):not([data-filter="practical"]):not([data-filter="quiz"]):not([data-filter="assignments"]):not([data-filter="all"]) {color: #7b1fa2;} /* Purple */
-        .case-filter[data-filter]:nth-child(3):not([data-filter="cases"]):not([data-filter="practical"]):not([data-filter="quiz"]):not([data-filter="assignments"]):not([data-filter="all"]) .count {color: #7b1fa2;} /* Purple */
-        
-        .case-filter[data-filter]:nth-child(4):not([data-filter="cases"]):not([data-filter="practical"]):not([data-filter="quiz"]):not([data-filter="assignments"]):not([data-filter="all"]) {color: #2e7d32;} /* Green */
-        .case-filter[data-filter]:nth-child(4):not([data-filter="cases"]):not([data-filter="practical"]):not([data-filter="quiz"]):not([data-filter="assignments"]):not([data-filter="all"]) .count {color: #2e7d32;} /* Green */
-        
-        /* Ensure all custom categories have the same active state as medical courses */
-        .case-filter[data-filter="awaly"].active,
-        .case-filter[data-filter="agamlo"].active,
-        .case-filter[data-filter="easy"].active,
-        .case-filter[data-filter="homework"].active,
-        .case-filter[data-filter="lab"].active,
-        .case-filter[data-filter="reading"].active,
-        .case-filter[data-filter]:not([data-filter="cases"]):not([data-filter="practical"]):not([data-filter="quiz"]):not([data-filter="assignments"]):not([data-filter="all"]).active {
-            background-color: #0d6efd !important;
-            border-color: #0d6efd !important;
-            color: white !important;
-        }
-        
-        .case-filter i {font-size: 0.8rem;}
-        .case-filter.active i,.case-filter.active span {color: white !important;}
-        .case-filter .count {background: rgba(0,0,0,0.05);padding: 0.15rem 0.5rem;border-radius: 50px;font-size: 0.75rem;min-width: 1.2rem;text-align: center;}
-        .case-filter.active .count {background: rgba(255,255,255,0.2);color: white !important;}
-        
-        /* Fixed position pills - Random and Review Mistakes */
-        .random-link {
-            color: #fd7e14;
-            text-decoration: none;
+
+        /* REGULAR TOPIC LOCK STYLING - WHITE BUTTON WITH WHITE OUTLINE */
+        .topic-locked-btn {
+            background: white !important;
+            color: #dc3545 !important;
+            padding: 0.8rem 1.5rem;
+            border-radius: 8px;
             font-weight: 500;
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-            padding: 0.4rem 1.2rem;
-            border-radius: 50px;
-            background: #fff8e1;
-            border: 1px solid #ffd54f;
-            transition: all 0.3s ease;
-            order: 98 !important; /* Always keep at the end */
-        }
-        
-        .random-link:hover {
-            background: #ffe082;
-            color: #f57c00;
-            transform: translateY(-1px);
-            box-shadow: 0 2px 4px rgba(255, 152, 0, 0.1);
-        }
-        
-        .mistakes-link {
-            color: #dc3545;
             text-decoration: none;
-            font-weight: 500;
-            display: flex;
+            display: inline-flex;
             align-items: center;
+            justify-content: center;
             gap: 0.5rem;
-            padding: 0.4rem 1.2rem;
-            border-radius: 50px;
-            background: #ffebee;
-            border: 1px solid #ef9a9a;
             transition: all 0.3s ease;
-            order: 99 !important; /* Always keep at the very end */
+            border: 2px solid white !important;
+            cursor: not-allowed;
+            pointer-events: none;
+            margin-top: 1rem;
+            min-width: 140px;
+            min-height: 48px;
         }
-        
-        .mistakes-link:hover {
-            background: #ffcdd2;
-            color: #c62828;
-            transform: translateY(-1px);
-            box-shadow: 0 2px 4px rgba(198, 40, 40, 0.1);
+
+        .topic-locked-btn i {
+            color: #dc3545 !important;
+            font-size: 1.2rem !important;
         }
-        
-        /* Assignment filter styling */
-        .assignment-filter {background: #fff5f5 !important;border-color: #fed7d7 !important;color: #c53030 !important;animation: assignmentPulse 3s infinite;}
-        .assignment-filter:hover {background: #fed7d7 !important;border-color: #fc8181 !important;color: #9b2c2c !important;}
-        .assignment-filter.active {background: #c53030 !important;border-color: #c53030 !important;color: white !important;}
-        .assignment-filter .assignment-count {background: rgba(197, 48, 48, 0.1) !important;color: #c53030 !important;}
-        .assignment-filter.active .assignment-count {background: rgba(255, 255, 255, 0.2) !important;color: white !important;}
-        @keyframes assignmentPulse {
-            0%, 100% {box-shadow: 0 2px 4px rgba(0,0,0,0.05), 0 0 0 0 rgba(197, 48, 48, 0.3);}
-            50% {box-shadow: 0 2px 4px rgba(0,0,0,0.05), 0 0 0 4px rgba(197, 48, 48, 0.1);}
-        }
-        
-        /* Assignment Icon Circle - Exact same styling as assignment pill */
-        .assignment-icon-circle {
-            display: flex;
-            align-items: center;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            order: 100 !important;
-        }
-        
-        .assignment-circle {
-            position: relative;
-            width: 40px;
-            height: 40px;
-            background: #fff5f5 !important;
-            border: 1px solid #fed7d7 !important;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.05), 0 0 0 0 rgba(197, 48, 48, 0.3);
-            transition: all 0.3s ease;
-            animation: assignmentPulse 3s infinite;
-        }
-        
-        .assignment-circle:hover {
-            background: #fed7d7 !important;
-            border-color: #fc8181 !important;
-            transform: translateY(-1px);
-            box-shadow: 0 3px 6px rgba(0,0,0,0.08);
-        }
-        
-        .assignment-circle.active {
-            background: #c53030 !important;
-            border-color: #c53030 !important;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.05), 0 0 0 4px rgba(197, 48, 48, 0.1);
-        }
-        
-        .assignment-circle i {
-            color: #c53030 !important;
-            font-size: 1rem;
-            z-index: 1;
-        }
-        
-        .assignment-circle.active i {
-            color: white !important;
-        }
-        
-        .assignment-glow-count {
-            position: absolute;
-            top: -8px;
-            right: -8px;
-            background: rgba(197, 48, 48, 0.1) !important;
-            color: #c53030 !important;
-            font-size: 0.7rem;
-            font-weight: 700;
-            min-width: 20px;
-            height: 20px;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: 0.15rem 0.5rem;
-            text-align: center;
-        }
-        
-        .assignment-circle.active .assignment-glow-count {
-            background: rgba(255, 255, 255, 0.9) !important;
-            color: #c53030 !important;
-        }
-        
-        /* Assignment Icon Circle - Exact same styling as assignment pill */
-        .assignment-icon-circle {
-            display: flex;
-            align-items: center;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            order: 100 !important;
-        }
-        
-        .assignment-circle {
-            position: relative;
-            width: 40px;
-            height: 40px;
-            background: #fff5f5 !important;
-            border: 1px solid #fed7d7 !important;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.05), 0 0 0 0 rgba(197, 48, 48, 0.3);
-            transition: all 0.3s ease;
-            animation: assignmentPulse 3s infinite;
-        }
-        
-        .assignment-circle:hover {
-            background: #fed7d7 !important;
-            border-color: #fc8181 !important;
-            transform: translateY(-1px);
-            box-shadow: 0 3px 6px rgba(0,0,0,0.08);
-        }
-        
-        .assignment-circle.active {
-            background: #c53030 !important;
-            border-color: #c53030 !important;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.05), 0 0 0 4px rgba(197, 48, 48, 0.1);
-        }
-        
-        .assignment-circle i {
-            color: #c53030 !important;
-            font-size: 1rem;
-            z-index: 1;
-        }
-        
-        .assignment-circle.active i {
-            color: white !important;
-        }
-        
-        .assignment-glow-count {
-            position: absolute;
-            top: -8px;
-            right: -8px;
-            background: rgba(197, 48, 48, 0.1) !important;
-            color: #c53030 !important;
-            font-size: 0.7rem;
-            font-weight: 700;
-            min-width: 20px;
-            height: 20px;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: 0.15rem 0.5rem;
-            text-align: center;
-        }
-        
-        .assignment-circle.active .assignment-glow-count {
-            background: rgba(255, 255, 255, 0.9) !important;
-            color: #c53030 !important;
+
+        .topic-locked-btn:hover {
+            background: white !important;
+            color: #dc3545 !important;
+            transform: none !important;
         }
     </style>
     <style>
-        body {
-            font-family: 'Poppins', sans-serif;
-            background-color: #f8f9fa;
-            zoom: 0.72; /* Precise zoom level for optimal viewing */
-            margin: 0;
-            padding: 0;
-            line-height: 1.6;
-            -webkit-font-smoothing: antialiased;
-            -moz-osx-font-smoothing: grayscale;
-        }
+        body{font-family:'Poppins',sans-serif;background-color:#f8f9fa;zoom:.72;margin:0;padding:0;line-height:1.6;-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale}
+        .modal-backdrop{background:rgba(0,0,0,.5)!important;position:fixed!important;top:0!important;left:0!important;width:100%!important;height:100%!important;z-index:1040!important;opacity:1!important}
 
-        /* Universal modal backdrop fix - force consistent rendering */
-        .modal-backdrop {
-            background: rgba(0, 0, 0, 0.5) !important;
-            backdrop-filter: none !important;
-            position: fixed !important;
-            top: 0 !important;
-            left: 0 !important;
-            width: 100% !important;
-            height: 100% !important;
-            z-index: 1040 !important;
-            transform: none !important;
-            will-change: auto !important;
-            transition: none !important;
-        }
+        .navbar{background:rgba(255,255,255,.95);padding:1rem 2rem;box-shadow:0 2px 4px rgba(0,0,0,.1);position:fixed;top:0;left:0;right:0;z-index:1000;backdrop-filter:blur(10px)}
+        .navbar-brand{color:#007bff;font-weight:700;font-size:1.5rem;text-decoration:none;display:flex;align-items:center;transition:transform .3s ease}
+        .navbar-brand:hover{color:#0056b3;transform:translateY(-1px)}
+        @keyframes float-particle{0%,100%{transform:translate(0,0) rotate(0deg)}25%{transform:translate(10px,-10px) rotate(5deg)}50%{transform:translate(0,-15px) rotate(0deg)}75%{transform:translate(-10px,-10px) rotate(-5deg)}}
+        @keyframes shimmer{0%{background-position:-1000px 0}100%{background-position:1000px 0}}
+        .course-header{background:linear-gradient(135deg,#0072ff,#00c6ff);color:white;padding:4rem 3rem 4rem;padding-top:6rem;text-align:center;margin-bottom:2rem;position:relative;overflow:hidden;min-height:280px;display:flex;align-items:center;justify-content:center}
+        .course-header::before{content:'';position:absolute;top:0;left:0;right:0;bottom:0;background:linear-gradient(90deg,transparent,rgba(255,255,255,.1),transparent);background-size:1000px 100%;animation:shimmer 8s linear infinite}
+        .particle{position:absolute;width:3px;height:3px;background:rgba(255,255,255,.3);border-radius:50%;pointer-events:none;filter:blur(.5px)}
+        .particle:nth-child(1){top:15%;left:10%;animation:float-particle 6s infinite}
+        .particle:nth-child(2){top:25%;right:15%;animation:float-particle 7s infinite .5s}
+        .particle:nth-child(3){top:35%;left:25%;animation:float-particle 8s infinite 1s}
+        .particle:nth-child(4){top:20%;right:25%;animation:float-particle 7.5s infinite 1.5s}
+        .particle:nth-child(5){top:30%;left:35%;animation:float-particle 6.5s infinite 2s}
+        .particle:nth-child(6){top:40%;right:35%;animation:float-particle 7.2s infinite 2.5s}
+        .particle:nth-child(7){top:25%;left:45%;animation:float-particle 6.8s infinite 3s}
+        .particle:nth-child(8){top:35%;right:45%;animation:float-particle 7.8s infinite 3.5s}
 
-        .modal-backdrop.show {
-            opacity: 1 !important;
-        }
-
-        .modal-backdrop.fade {
-            opacity: 0 !important;
-            transition: none !important;
-        }
-
-        .modal-backdrop.fade.show {
-            opacity: 1 !important;
-            transition: none !important;
-        }
-
-        /* Edge-specific modal backdrop override */
-        @supports (-ms-ime-align: auto) {
-            .modal-backdrop,
-            .modal-backdrop.show,
-            .modal-backdrop.fade.show {
-                background: rgba(0, 0, 0, 0.5) !important;
-                opacity: 1 !important;
-                position: fixed !important;
-                top: 0 !important;
-                left: 0 !important;
-                right: 0 !important;
-                bottom: 0 !important;
-                width: 100% !important;
-                height: 100% !important;
-                z-index: 1040 !important;
-                backdrop-filter: none !important;
-                filter: none !important;
-                transform: none !important;
-                transition: none !important;
-            }
-        }
-
-        .navbar {
-            background-color: white;
-            padding: 1rem 2rem;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            z-index: 1000;
-            backdrop-filter: blur(10px);
-            background-color: rgba(255, 255, 255, 0.95);
-        }
-
-        .navbar-brand {
-            color: #007bff;
-            font-weight: 700;
-            font-size: 1.5rem;
-            text-decoration: none;
-            display: flex;
-            align-items: center;
-            transition: transform 0.3s ease;
-        }
-
-        .navbar-brand:hover {
-            color: #0056b3;
-            transform: translateY(-1px);
-        }
-
-        @keyframes float-particle {
-            0%, 100% { transform: translate(0, 0) rotate(0deg); }
-            25% { transform: translate(10px, -10px) rotate(5deg); }
-            50% { transform: translate(0, -15px) rotate(0deg); }
-            75% { transform: translate(-10px, -10px) rotate(-5deg); }
-        }
-
-        @keyframes glow {
-            0%, 100% { text-shadow: 0 0 20px rgba(255,255,255,0.3); }
-            50% { text-shadow: 0 0 30px rgba(255,255,255,0.5); }
-        }
-
-        @keyframes shimmer {
-            0% { background-position: -1000px 0; }
-            100% { background-position: 1000px 0; }
-        }
-
-        .course-header {
-            background: linear-gradient(135deg, #0072ff, #00c6ff);
-            color: white;
-            padding: 4rem 3rem;
-            padding-top: 6rem;
-            text-align: center;
-            margin-bottom: 2rem;
-            position: relative;
-            overflow: hidden;
-            min-height: 280px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-
-        .course-header::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.1), transparent);
-            background-size: 1000px 100%;
-            animation: shimmer 8s linear infinite;
-        }
-
-        /* Import categorization styles */
-        @import url('/css/categorization.css');
-
-        .particle {
-            position: absolute;
-            width: 3px;
-            height: 3px;
-            background: rgba(255,255,255,0.3);
-            border-radius: 50%;
-            pointer-events: none;
-            filter: blur(0.5px);
-        }
-
-        .particle:nth-child(1) { top: 15%; left: 10%; animation: float-particle 6s infinite; }
-        .particle:nth-child(2) { top: 25%; right: 15%; animation: float-particle 7s infinite 0.5s; }
-        .particle:nth-child(3) { top: 35%; left: 25%; animation: float-particle 8s infinite 1s; }
-        .particle:nth-child(4) { top: 20%; right: 25%; animation: float-particle 7.5s infinite 1.5s; }
-        .particle:nth-child(5) { top: 30%; left: 35%; animation: float-particle 6.5s infinite 2s; }
-        .particle:nth-child(6) { top: 40%; right: 35%; animation: float-particle 7.2s infinite 2.5s; }
-        .particle:nth-child(7) { top: 25%; left: 45%; animation: float-particle 6.8s infinite 3s; }
-        .particle:nth-child(8) { top: 35%; right: 45%; animation: float-particle 7.8s infinite 3.5s; }
-
-        .topics-container {
-            max-width: 1100px;
-            margin: 0 auto;
-            padding: 2rem;
-        }
-
-        .topic-card {
-            background: white;
-            border-radius: 16px;
-            padding: 2rem 2.5rem;
-            margin-bottom: 1.25rem;
-            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
-            transition: all 0.3s ease;
-            animation: slideIn 0.5s ease-out forwards;
-            opacity: 0;
-            transform: translateY(20px);
-            position: relative;
-            overflow: hidden;
-            width: 100%;
-            max-width: none;
-            border: 1px solid rgba(0, 0, 0, 0.04);
-        }
-        
-        /* ASSIGNMENT CARD VISIBILITY RULES - HIDE ALL BY DEFAULT */
-        .topic-card[data-has-assignment="true"] {
-            display: none !important;
-        }
-        
-        /* SHOW ASSIGNMENT CARDS WHEN ASSIGNMENTS FILTER IS ACTIVE */
-        .assignments-filter-active .topic-card[data-has-assignment="true"] {
-            display: block !important;
-        }
-        
-        /* FIX TOPIC-LOCKED OPACITY FOR ASSIGNMENT CARDS */
-        .assignments-filter-active .topic-card.topic-locked[data-has-assignment="true"] {
-            opacity: 1 !important;
-        }
-        
-        /* ENSURE ALL CHILD ELEMENTS OF LOCKED ASSIGNMENT CARDS ARE VISIBLE */
-        .assignments-filter-active .topic-card.topic-locked[data-has-assignment="true"] * {
-            opacity: 1 !important;
-            visibility: visible !important;
-        }
-        
-        /* OVERRIDE ANY LOCKED STYLING THAT MIGHT HIDE CONTENT */
-        .assignments-filter-active .topic-card.topic-locked[data-has-assignment="true"] .assignment-status-bar,
-        .assignments-filter-active .topic-card.topic-locked[data-has-assignment="true"] .topic-info,
-        .assignments-filter-active .topic-card.topic-locked[data-has-assignment="true"] .topic-name,
-        .assignments-filter-active .topic-card.topic-locked[data-has-assignment="true"] .progress-container,
-        .assignments-filter-active .topic-card.topic-locked[data-has-assignment="true"] .topic-actions {
-            opacity: 1 !important;
-            visibility: visible !important;
-        }
-        
-        /* SHOW ASSIGNMENT CARDS WHEN ASSIGNMENTS FILTER IS ACTIVE */
-        .assignments-filter-active .topic-card[data-has-assignment="true"] {
-            display: block !important;
-            opacity: 1 !important;
-            transform: translateY(0) !important;
-        }
-        
-        /* OVERRIDE LOCKED STYLING FOR ASSIGNMENT CARDS WHEN ASSIGNMENTS FILTER IS ACTIVE */
-        .assignments-filter-active .topic-card.topic-locked[data-has-assignment="true"] {
-            display: block !important;
-            opacity: 1 !important;
-            transform: translateY(0) scale(1) !important;
-        }
+        .topics-container{max-width:1100px;margin:0 auto;padding:2rem}
+        .topic-card{background:white;border-radius:16px;padding:2rem 2.5rem;margin-bottom:1.25rem;box-shadow:0 1px 3px rgba(0,0,0,.08);transition:all .3s ease;animation:slideIn .5s ease-out forwards;opacity:0;transform:translateY(20px);position:relative;overflow:hidden;border:1px solid rgba(0,0,0,.04)}
+        .topic-card[data-has-assignment="true"]{display:none!important}
+        .assignments-filter-active .topic-card[data-has-assignment="true"]{display:block!important;opacity:1!important;transform:translateY(0)!important}
+        .assignments-filter-active .topic-card.topic-locked[data-has-assignment="true"]{display:block!important;opacity:1!important;transform:translateY(0) scale(1)!important}
+        .assignments-filter-active .topic-card.topic-locked[data-has-assignment="true"] *{opacity:1!important;visibility:visible!important}
         
         /* Safari-specific sleek adjustments */
         @media screen and (-webkit-min-device-pixel-ratio:0) {
@@ -2628,37 +2217,50 @@
 
     <!-- Topics List -->
     <div class="topics-container">
-        {{-- Assignment Cards Section --}}
+        {{-- 🚀 LETHAL ASSIGNMENT OPTIMIZATION: Pre-calculated data --}}
         @if(isset($assignments) && count($assignments) > 0)
-            @foreach($assignments as $assignment)
-                @php
+            @php
+                // 🚀 SURGICAL OPTIMIZATION: Pre-calculate ALL data ONCE
+                $assignmentData = $assignments->mapWithKeys(function($assignment) use ($topics) {
                     $topic = $topics->firstWhere('id', $assignment->topic_id);
-                    if (!$topic) continue;
+                    if (!$topic) return [];
                     
-                    // OPTIMIZED: Use pre-calculated progress from controller
-                    $assignmentProgress = $assignment->progress ?? 0;
+                    return [$assignment->id => [
+                        'topic' => $topic,
+                        'progress' => $assignment->user_progress['percentage'] ?? 0,
+                        'status' => $assignment->display_status ?? $assignment->getCurrentStatusAttribute(),
+                        'quizUrl' => secure_url(route('quiz.start', ['course' => $topic->course_id, 'topic' => $topic->id, 'assignment_id' => $assignment->id], false)),
+                        'isLocked' => in_array($assignment->status, ['locked', 'expired', 'completed']) || ($assignment->status === 'overdue'),
+                        'lockReason' => $assignment->getLockReason() ?? 'Assignment is locked'
+                    ]];
+                });
+            @endphp
+            
+            @foreach($assignments as $assignment)
+                @php 
+                    $data = $assignmentData[$assignment->id] ?? null;
+                    if (!$data) continue;
+                    
+                    // SIMPLE: Just check if user has attempted this assignment
+                    $isLocked = $assignment->isLockedForUser(auth()->id());
                 @endphp
                 
-                <div class="topic-card assignment-{{ $assignment->status }}" 
+                <div class="topic-card assignment-{{ $assignment->isCompletedByUser(auth()->id()) ? 'completed' : ($assignment->isLockedForUser(auth()->id()) || $data['status'] === 'overdue' ? 'overdue' : $data['status']) }}" 
                      data-case-type="assignment" 
-                     data-topic-id="{{ $topic->id }}"
+                     data-topic-id="{{ $data['topic']->id }}"
                      data-assignment-id="{{ $assignment->id }}"
                      data-has-assignment="true" 
                      data-assignment-deadline="{{ $assignment->deadline }}" 
-                     data-assignment-status="{{ $assignment->status }}">
+                     data-assignment-status="{{ $data['status'] }}">
                     
                     {{-- Assignment Status Bar --}}
-                    <div class="assignment-status-bar assignment-{{ $assignment->status }}">
+                    <div class="assignment-status-bar assignment-{{ $assignment->isCompletedByUser(auth()->id()) ? 'completed' : ($assignment->isLockedForUser(auth()->id()) || $data['status'] === 'overdue' ? 'overdue' : $data['status']) }}">
                         <div class="assignment-info-minimal">
-                            @if($assignment->status === 'active')
+                            @if($data['status'] === 'active' && !$assignment->isLockedForUser(auth()->id()))
                                 <span>Assignment Due:</span>
                                 <div class="assignment-countdown-minimal" data-deadline="{{ $assignment->deadline }}">
                                     <span class="countdown-display">{{ \Carbon\Carbon::parse($assignment->deadline)->diffForHumans() }}</span>
                                 </div>
-                            @elseif($assignment->status === 'overdue')
-                                {{-- Removed redundant overlay text --}}
-                            @elseif($assignment->status === 'completed')
-                                {{-- Removed redundant overlay text --}}
                             @endif
                         </div>
                     </div>
@@ -2669,66 +2271,38 @@
                                 <i class="fas fa-tasks"></i>
                                 {{ $assignment->title }}
                             </h3>
-                            
-                            {{-- Last attempt info removed for performance optimization --}}
                         </div>
                     </div>
 
                     <div class="progress-container">
                         <div class="progress">
-                            <div class="progress-bar" style="width: {{ $assignmentProgress }}%"></div>
+                            <div class="progress-bar" style="width: {{ $data['progress'] }}%"></div>
                         </div>
                         <div class="progress-label">
                             <span>Assignment Progress</span>
-                            <span>
-                                {{ number_format($assignmentProgress, 1) }}%
-                            </span>
+                            <span>{{ number_format($data['progress'], 1) }}%</span>
                         </div>
                     </div>
 
                     <div class="topic-actions">
                         <div class="stat-item">
-                            @if($assignment->status === 'completed')
-                                <i class="fas fa-check-circle text-success"></i>
-                                Assignment Complete
-                            @elseif($assignment->status === 'locked')
-                                <i class="fas fa-lock text-muted"></i>
-                                Assignment Locked
-                            @elseif($assignment->status === 'expired')
-                                <i class="fas fa-clock text-danger"></i>
-                                Assignment Expired
-                            @elseif($assignment->status === 'overdue')
-                                <i class="fas fa-exclamation-triangle text-danger"></i>
-                                Assignment Overdue
-                            @elseif($assignmentProgress > 0)
-                                <i class="fas fa-redo text-info"></i>
-                                Retake Assignment
+                            @if($assignment->isCompletedByUser(auth()->id()))
+                                <i class="fas fa-check-circle text-success"></i>Assignment Completed
+                            @elseif($assignment->isLockedForUser(auth()->id()) || $data['status'] === 'overdue')
+                                <i class="fas fa-times text-danger"></i>Assignment Overdue
                             @else
-                                <i class="fas fa-play text-primary"></i>
-                                Start Assignment
+                                <i class="fas fa-play text-primary"></i>Start Assignment
                             @endif
                         </div>
                         
-                        @php
-                            $quizUrl = secure_url(route('quiz.start', ['course' => $topic->course_id, 'topic' => $topic->id, 'assignment_id' => $assignment->id], false));
-                            // AGGRESSIVE LOCKING: Lock if completed, overdue, expired, or explicitly locked
-                            $isLocked = in_array($assignment->status, ['locked', 'expired', 'completed']) || 
-                                       ($assignment->status === 'overdue');
-                        @endphp
-                        
-                        @if($isLocked)
-                            <div class="assignment-locked-icon" title="{{ $assignment->getLockReason() ?? 'Assignment is locked' }}">
+                        @if($isLocked || $data['status'] === 'overdue')
+                            {{-- RED LOCK for locked/overdue assignments --}}
+                            <div class="assignment-locked-icon" title="Assignment not available">
                                 <i class="fas fa-lock"></i>
                             </div>
                         @else
-                            <a href="javascript:void(0)" class="start-quiz-btn assignment-start-btn" data-topic-id="{{ $topic->id }}" data-course-id="{{ $topic->course_id }}" data-quiz-url="{{ $quizUrl }}">
-                                @if($assignment->status === 'completed')
-                                    <span>Review Assignment</span>
-                                @elseif($assignmentProgress > 0)
-                                    <span>Retake Assignment</span>
-                                @else
-                                    <span>Start Assignment</span>
-                                @endif
+                            <a href="javascript:void(0)" class="start-quiz-btn assignment-start-btn" data-topic-id="{{ $data['topic']->id }}" data-course-id="{{ $data['topic']->course_id }}" data-quiz-url="{{ $data['quizUrl'] }}">
+                                <span>Start Assignment</span>
                                 <i class="fas fa-arrow-right"></i>
                             </a>
                         @endif
@@ -2742,8 +2316,10 @@
         @if($topics->count() > 0)
             @foreach($topics as $topic)
                 @php
-                    // For regular topics, there's no assignment so no locking
-                    $isLocked = false;
+                    // Check if topic is locked (you can customize this logic based on your requirements)
+                    $isLocked = isset($topic->is_locked) ? $topic->is_locked : false;
+                    // Alternative: Check if topic has a locked status
+                    // $isLocked = $topic->status === 'locked';
                 @endphp
                 
                 <div class="topic-card" 
@@ -2758,9 +2334,6 @@
                             <h3 class="topic-name">
                                 <i class="fas fa-book-open"></i>
                                 {{ $topic->name }}
-                                @if($isLocked)
-                                    <i class="fas fa-lock text-danger ms-2" title="Topic locked due to overdue assignment"></i>
-                                @endif
                             </h3>
                             
                             @if($topic->last_attempt_date)
@@ -2825,17 +2398,24 @@
                             @endif
                         </div>
                         
-                        @php
-                            $quizUrl = secure_url(route('quiz.start', ['course' => $topic->course_id, 'topic' => $topic->id], false));
-                        @endphp
-                        <a href="javascript:void(0)" class="start-quiz-btn" data-topic-id="{{ $topic->id }}" data-course-id="{{ $topic->course_id }}" data-quiz-url="{{ route('quiz.start', ['course' => $topic->course_id, 'topic' => $topic->id]) }}">
-                            @if($percentageGrade !== null)
-                                <span>Retake Quiz</span>
-                            @else
-                                <span>Start Quiz</span>
-                            @endif
-                            <i class="fas fa-arrow-right"></i>
-                        </a>
+                        @if($isLocked)
+                            {{-- Show white button with red lock for locked topics --}}
+                            <div class="topic-locked-btn" title="Topic is locked">
+                                <i class="fas fa-lock"></i>
+                            </div>
+                        @else
+                            @php
+                                $quizUrl = secure_url(route('quiz.start', ['course' => $topic->course_id, 'topic' => $topic->id], false));
+                            @endphp
+                            <a href="javascript:void(0)" class="start-quiz-btn" data-topic-id="{{ $topic->id }}" data-course-id="{{ $topic->course_id }}" data-quiz-url="{{ route('quiz.start', ['course' => $topic->course_id, 'topic' => $topic->id]) }}">
+                                @if($percentageGrade !== null)
+                                    <span>Retake Quiz</span>
+                                @else
+                                    <span>Start Quiz</span>
+                                @endif
+                                <i class="fas fa-arrow-right"></i>
+                            </a>
+                        @endif
                     </div>
                     <div class="case-type-badge {{ $topic->case_type }}">{{ $topic->case_type }}</div>
                 </div>
@@ -2854,30 +2434,52 @@
     <script src="https://cdn.jsdelivr.net/npm/alpinejs@2.8.2/dist/alpine.min.js" defer crossorigin="anonymous"></script>
     
     <!-- Topic-specific JavaScript files -->
-    <script src="{{ asset('js/topics-page.js') }}"></script>
+    <!-- Removed asset URL -->
     
 
     <script>
         document.addEventListener('DOMContentLoaded', function() {
-            // Case filter functionality
+            // Initialize external TopicFilters if available
+            if (typeof TopicFilters !== 'undefined') {
+                TopicFilters.init();
+            }
+            
+            // 🚀 CACHED DOM ELEMENTS - DECLARE ONCE AT TOP
+            const topicsContainer = document.querySelector('.topics-container');
             const caseFilters = document.querySelectorAll('.case-filter');
             const topicCards = document.querySelectorAll('.topic-card');
+            const sourceModal = document.getElementById('sourceSelectionModal');
+            const sourcesContainer = document.querySelector('.sources-container');
+            const quizButtons = document.querySelectorAll('.start-quiz-btn');
+            const sourceTopicId = document.getElementById('source_topic_id');
+            const sourceCourseId = document.getElementById('source_course_id');
+            const csrfToken = document.querySelector('meta[name="csrf-token"]');
+            const sourceSelectionForm = document.getElementById('sourceSelectionForm');
+            const randomQuizForm = document.getElementById('randomQuizForm');
+            const randomQuizModal = document.getElementById('randomQuizModal');
+            const assignmentIconCircle = document.querySelector('.assignment-icon-circle');
+            const assignmentCircle = document.querySelector('.assignment-circle');
+            const questionLimit = document.getElementById('questionLimit');
+            const timeLimit = document.getElementById('timeLimit');
+            const courseCheckboxes = document.querySelectorAll('#randomQuizModal input[name="selected_courses[]"]');
+            const modals = document.querySelectorAll('.modal');
             
-            // Assignment icon click handler
-            const assignmentIcon = document.querySelector('.assignment-icon-circle');
-            if (assignmentIcon) {
-                assignmentIcon.addEventListener('click', function() {
+            // 🚨 CRITICAL FIX: Assignment icon click handler with null safety
+            if (assignmentIconCircle && assignmentCircle) {
+                assignmentIconCircle.addEventListener('click', function() {
                     // Remove active class from all filters
                     caseFilters.forEach(f => f.classList.remove('active'));
                     
                     // Add active class to assignment circle
-                    this.querySelector('.assignment-circle').classList.add('active');
+                    const circleElement = this.querySelector('.assignment-circle');
+                    if (circleElement) {
+                        circleElement.classList.add('active');
+                    }
                     
                     // Get the topics container
-                    const topicsContainer = document.querySelector('.topics-container');
-                    topicsContainer.classList.add('assignments-filter-active');
-                    
-                    console.log('Added assignments-filter-active class');
+                    if (topicsContainer) {
+                        topicsContainer.classList.add('assignments-filter-active');
+                    }
                     
                     // Filter topic cards to show only assignments
                     topicCards.forEach(card => {
@@ -2901,7 +2503,6 @@
                     caseFilters.forEach(f => f.classList.remove('active'));
                     
                     // Remove active class from assignment icon
-                    const assignmentCircle = document.querySelector('.assignment-circle');
                     if (assignmentCircle) {
                         assignmentCircle.classList.remove('active');
                     }
@@ -2911,9 +2512,6 @@
                     
                     // Get the filter type
                     const filterType = this.dataset.filter || this.textContent.trim().toLowerCase();
-                    
-                    // Get the topics container
-                    const topicsContainer = document.querySelector('.topics-container');
                     
                     // Add/remove assignments filter class
                     if (filterType === 'assignments') {
@@ -2951,91 +2549,118 @@
                 });
             });
 
-            // Assignment countdown functionality
-            function updateCountdowns() {
-                const countdowns = document.querySelectorAll('.assignment-countdown-minimal');
-                
-                countdowns.forEach(countdown => {
-                    const deadline = new Date(countdown.dataset.deadline);
-                    const now = new Date();
-                    const timeLeft = deadline - now;
-                    
-                    if (timeLeft <= 0) {
-                        // Assignment is overdue - lock the topic
-                        const topicCard = countdown.closest('.topic-card');
-                        if (topicCard) {
-                            topicCard.classList.add('topic-locked');
-                            
-                            // Update the banner to show overdue status
-                            const banner = topicCard.querySelector('.assignment-status-banner');
-                            if (banner) {
-                                banner.className = 'assignment-status-banner assignment-overdue';
-                                banner.innerHTML = `
-                                    <div class="assignment-info overdue">
-                                        <i class="fas fa-exclamation-triangle"></i>
-                                        <span class="assignment-label">ASSIGNMENT OVERDUE</span>
-                                        <span class="overdue-text">Topic Locked</span>
-                                    </div>
-                                `;
-                            }
-                            
-                            // Disable the start quiz button
-                            const startBtn = topicCard.querySelector('.start-quiz-btn');
-                            if (startBtn) {
-                                startBtn.style.pointerEvents = 'none';
-                                startBtn.style.background = '#f1f3f4';
-                                startBtn.style.color = '#9ca3af';
-                                startBtn.style.border = '2px solid #e5e7eb';
-                                startBtn.style.opacity = '0.6';
-                                startBtn.style.display = 'flex';
-                                startBtn.style.alignItems = 'center';
-                                startBtn.style.justifyContent = 'center';
-                                startBtn.innerHTML = '<i class="fas fa-lock lock-icon" style="color: #9ca3af; font-size: 1.2em; margin: 0;"></i>';
-                            }
-                        }
-                        return;
-                    }
-                    
-                    // Calculate time components
-                    const days = Math.floor(timeLeft / (1000 * 60 * 60 * 24));
-                    const hours = Math.floor((timeLeft % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-                    const minutes = Math.floor((timeLeft % (1000 * 60 * 60)) / (1000 * 60));
-                    const seconds = Math.floor((timeLeft % (1000 * 60)) / 1000);
-                    
-                    // Format countdown display
-                    let countdownText = '';
-                    if (days > 0) {
-                        countdownText = `${days}d ${hours}h ${minutes}m`;
-                    } else if (hours > 0) {
-                        countdownText = `${hours}h ${minutes}m ${seconds}s`;
-                    } else if (minutes > 0) {
-                        countdownText = `${minutes}m ${seconds}s`;
+            // 🚀 LETHAL COUNTDOWN OPTIMIZATION: Intersection Observer + Smart Intervals
+            const countdownObserver = new IntersectionObserver((entries) => {
+                entries.forEach(entry => {
+                    const countdown = entry.target;
+                    if (entry.isIntersecting) {
+                        startCountdown(countdown);
                     } else {
-                        countdownText = `${seconds}s`;
-                        // Add urgent styling when less than 1 minute
-                        countdown.classList.add('countdown-urgent');
-                    }
-                    
-                    // Update the countdown display
-                    const display = countdown.querySelector('.countdown-display');
-                    if (display) {
-                        display.textContent = countdownText;
-                    }
-                    
-                    // Add warning styling when less than 1 hour
-                    if (timeLeft < 3600000) { // 1 hour in milliseconds
-                        countdown.classList.add('countdown-urgent');
-                        const banner = countdown.closest('.assignment-status-banner');
-                        if (banner) {
-                            banner.style.animation = 'urgentBanner 1s infinite';
-                        }
+                        pauseCountdown(countdown);
                     }
                 });
+            }, { threshold: 0.1 });
+
+            const activeCountdowns = new Map();
+            
+            function startCountdown(countdown) {
+                if (activeCountdowns.has(countdown)) return;
+                
+                const updateInterval = setInterval(() => {
+                    updateSingleCountdown(countdown);
+                }, getUpdateFrequency(countdown));
+                
+                activeCountdowns.set(countdown, updateInterval);
+                updateSingleCountdown(countdown); // Initial update
             }
             
-            // Start countdown updates
-            updateCountdowns();
-            setInterval(updateCountdowns, 1000); // Update every second
+            function pauseCountdown(countdown) {
+                const interval = activeCountdowns.get(countdown);
+                if (interval) {
+                    clearInterval(interval);
+                    activeCountdowns.delete(countdown);
+                }
+            }
+            
+            function getUpdateFrequency(countdown) {
+                const deadline = new Date(countdown.dataset.deadline);
+                const timeLeft = deadline - new Date();
+                
+                if (timeLeft > 3600000) return 60000; // >1 hour: update every minute
+                if (timeLeft > 300000) return 10000;  // >5 min: update every 10 seconds
+                return 1000; // <5 min: update every second
+            }
+            
+            function updateSingleCountdown(countdown) {
+                const deadline = new Date(countdown.dataset.deadline);
+                const now = new Date();
+                const timeLeft = deadline - now;
+                
+                if (timeLeft <= 0) {
+                    handleOverdueAssignment(countdown);
+                    pauseCountdown(countdown);
+                    return;
+                }
+                
+                const days = Math.floor(timeLeft / 86400000);
+                const hours = Math.floor((timeLeft % 86400000) / 3600000);
+                const minutes = Math.floor((timeLeft % 3600000) / 60000);
+                const seconds = Math.floor((timeLeft % 60000) / 1000);
+                
+                let countdownText = '';
+                if (days > 0) {
+                    countdownText = `${days}d ${hours}h ${minutes}m`;
+                } else if (hours > 0) {
+                    countdownText = `${hours}h ${minutes}m ${seconds}s`;
+                } else if (minutes > 0) {
+                    countdownText = `${minutes}m ${seconds}s`;
+                } else {
+                    countdownText = `${seconds}s`;
+                    countdown.classList.add('countdown-urgent');
+                }
+                
+                const display = countdown.querySelector('.countdown-display');
+                if (display) display.textContent = countdownText;
+                
+                if (timeLeft < 3600000) {
+                    countdown.classList.add('countdown-urgent');
+                    const banner = countdown.closest('.assignment-status-banner');
+                    if (banner) banner.style.animation = 'urgentBanner 1s infinite';
+                }
+            }
+            
+            function handleOverdueAssignment(countdown) {
+                const topicCard = countdown.closest('.topic-card');
+                if (!topicCard) return;
+                
+                topicCard.classList.add('topic-locked');
+                
+                const banner = topicCard.querySelector('.assignment-status-banner');
+                if (banner) {
+                    banner.className = 'assignment-status-banner assignment-overdue';
+                    banner.innerHTML = `<div class="assignment-info overdue"><i class="fas fa-exclamation-triangle"></i><span class="assignment-label">ASSIGNMENT OVERDUE</span><span class="overdue-text">Topic Locked</span></div>`;
+                }
+                
+                const startBtn = topicCard.querySelector('.start-quiz-btn');
+                if (startBtn) {
+                    Object.assign(startBtn.style, {
+                        pointerEvents: 'none',
+                        background: '#f1f3f4',
+                        color: '#9ca3af',
+                        border: '2px solid #e5e7eb',
+                        opacity: '0.6',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center'
+                    });
+                    startBtn.innerHTML = '<i class="fas fa-lock lock-icon" style="color: #9ca3af; font-size: 1.2em; margin: 0;"></i>';
+                }
+            }
+            
+            // Initialize countdown observers
+            document.querySelectorAll('.assignment-countdown-minimal').forEach(countdown => {
+                countdownObserver.observe(countdown);
+            });
 
             // Handle source progress updates from quiz completion
             document.addEventListener('sourceProgressUpdated', function(e) {
@@ -3055,11 +2680,11 @@
                 if (assignmentId) {
                     // This is an assignment completion - find the specific assignment card
                     targetCard = document.querySelector(`[data-assignment-id="${assignmentId}"]`);
-                    console.log(`Assignment ${assignmentId} completed - updating assignment card only`);
+
                 } else {
                     // This is regular quiz completion - find the regular topic card (not assignment cards)
                     targetCard = document.querySelector(`[data-topic-id="${topicId}"][data-has-assignment="false"]`);
-                    console.log(`Regular quiz for topic ${topicId} completed - updating regular topic card only`);
+
                 }
                 
                 if (targetCard) {
@@ -3070,40 +2695,37 @@
                             '<i class="fas fa-star"></i> Mastered' : 
                             '<i class="fas fa-check"></i> Good';
                     }
-                } else {
-                    console.warn(`No target card found for topicId: ${topicId}, assignmentId: ${assignmentId}`);
+                    
+                    // Update assignment progress bar if this is an assignment completion
+                    if (assignmentId) {
+                        console.log('🎯 Assignment completion detected, updating progress for assignment:', assignmentId);
+                        updateAssignmentProgress(assignmentId, targetCard);
+                    }
                 }
             });
 
-            // Source selection modal
+            // 🚀 OPTIMIZED: Lazy modal initialization
             let sourceSelectionModal;
-            try {
-                const modalElement = document.getElementById('sourceSelectionModal');
-                console.log('Modal element found:', modalElement !== null);
-                if (modalElement) {
-                    sourceSelectionModal = new bootstrap.Modal(modalElement);
-                    console.log('✅ Modal initialized successfully');
-                } else {
-                    console.error('❌ Modal element not found');
+            function getModal() {
+                if (!sourceSelectionModal && sourceModal) {
+                    sourceSelectionModal = new bootstrap.Modal(sourceModal);
                 }
-            } catch (error) {
-                console.error('❌ Modal initialization failed:', error);
+                return sourceSelectionModal;
             }
             
             // Handle mode change
             document.querySelectorAll('input[name="quiz_mode"]').forEach(radio => {
                 radio.addEventListener('change', async function() {
-                    const topicId = document.getElementById('source_topic_id').value;
+                    const topicId = sourceTopicId.value;
                     if (!topicId) return;
                     
-                    const sourcesContainer = document.querySelector('.sources-container');
                     sourcesContainer.innerHTML = '<div class="text-center"><div class="spinner-border text-primary" role="status"></div></div>';
 
                     try {
                         const response = await fetch(`/topics/${topicId}/source-progress?mode=${this.value}`, {
                             method: 'GET',
                             headers: {
-                                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                                'X-CSRF-TOKEN': csrfToken.content,
                                 'Accept': 'application/json',
                                 'Content-Type': 'application/json'
                             },
@@ -3117,15 +2739,67 @@
                         const data = await response.json();
                         updateSourcesContainer(data);
                     } catch (error) {
-                        console.error('Error fetching source progress:', error);
                         sourcesContainer.innerHTML = '<div class="alert alert-danger">Error loading sources. Please try again.</div>';
                     }
                 });
             });
 
+            // Helper function to update assignment progress bar
+            async function updateAssignmentProgress(assignmentId, targetCard) {
+                console.log('🔄 Updating assignment progress for:', assignmentId);
+                
+                try {
+                    // Fetch the latest assignment progress from the server
+                    const response = await fetch(`/api/assignments/${assignmentId}/progress`, {
+                        method: 'GET',
+                        headers: {
+                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                            'Accept': 'application/json',
+                            'Content-Type': 'application/json'
+                        },
+                        credentials: 'same-origin'
+                    });
+                    
+                    console.log('📡 API Response status:', response.status);
+                    
+                    if (response.ok) {
+                        const data = await response.json();
+                        console.log('📊 Progress data received:', data);
+                        
+                        // Update the progress bar
+                        const progressBar = targetCard.querySelector('.progress .progress-bar');
+                        const progressLabel = targetCard.querySelector('.progress-label span:last-child');
+                        
+                        console.log('🎯 Found elements:', {
+                            progressBar: !!progressBar,
+                            progressLabel: !!progressLabel,
+                            targetCard: !!targetCard
+                        });
+                        
+                        if (progressBar && data.progress !== undefined) {
+                            progressBar.style.width = `${data.progress}%`;
+                            console.log('📊 Updated progress bar width to:', `${data.progress}%`);
+                        }
+                        
+                        if (progressLabel && data.progress !== undefined) {
+                            progressLabel.textContent = `${data.progress.toFixed(1)}%`;
+                            console.log('📊 Updated progress label to:', `${data.progress.toFixed(1)}%`);
+                        }
+                        
+                        console.log('✅ Assignment progress updated:', {
+                            assignmentId: assignmentId,
+                            progress: data.progress
+                        });
+                    } else {
+                        console.error('❌ API response not ok:', response.status, response.statusText);
+                    }
+                } catch (error) {
+                    console.error('❌ Failed to update assignment progress:', error);
+                }
+            }
+
             // Helper function to update sources container
             function updateSourcesContainer(data) {
-                const sourcesContainer = document.querySelector('.sources-container');
                         sourcesContainer.innerHTML = '';
                         
                         if (!data.availableSources || data.availableSources.length === 0) {
@@ -3206,126 +2880,91 @@
 
 
             // ROBUST: Handle quiz button clicks with multiple prevention methods
-            console.log('Setting up quiz button handlers...');
-            const quizButtons = document.querySelectorAll('.start-quiz-btn');
-            console.log(`Found ${quizButtons.length} quiz buttons`);
+
             
-            quizButtons.forEach((button, index) => {
-                // Setting up button
+            // 🚀 OPTIMIZED: Single delegated event listener for quiz buttons
+            document.addEventListener('click', function(e) {
+                if (!e.target.matches('.start-quiz-btn')) return;
                 
-                // Get the quiz URL from data attribute
+                e.preventDefault();
+                e.stopPropagation();
+                e.stopImmediatePropagation();
+                
+                // Prevent any form submission
+                if (e.target.form) {
+                    e.target.form.onsubmit = function() { return false; };
+                }
+                
+                const button = e.target;
+                const topicId = button.dataset.topicId;
+                const courseId = button.dataset.courseId;
                 const originalHref = button.dataset.quizUrl;
-                button.style.cursor = 'pointer';
                 
-                button.addEventListener('click', function(e) {
-                    console.log('🔥 QUIZ BUTTON CLICKED - Event listener triggered');
+                // Check if assignments filter is currently active
+                const isAssignmentsFilterActive = topicsContainer && topicsContainer.classList.contains('assignments-filter-active');
+                
+                if (isAssignmentsFilterActive) {
+                    // Assignments filter is active - redirect directly without showing source modal
+                    window.location.href = originalHref;
+                    return false;
+                }
+                
+                if (!topicId || !courseId) {
+                    return false;
+                }
+                
+                const modal = getModal();
+                if (!modal) {
+                    window.location.href = originalHref;
+                    return false;
+                }
+                
+                try {
+                    // Set form values
+                    sourceTopicId.value = topicId;
+                    sourceCourseId.value = courseId;
+                    sourceSelectionForm.action = originalHref;
                     
-                    // Multiple ways to prevent default
-                    e.preventDefault();
-                    e.stopPropagation();
-                    e.stopImmediatePropagation();
+                    // Show modal immediately
+                    sourceSelectionModal.show();
                     
-                    // Prevent any form submission
-                    if (e.target.form) {
-                        e.target.form.onsubmit = function() { return false; };
+                    // Load sources in background
+                    if (sourcesContainer) {
+                        sourcesContainer.innerHTML = '<div class="text-center py-3"><div class="spinner-border text-primary" role="status"></div><p class="mt-2">Loading sources...</p></div>';
                     }
                     
-                    // All prevention methods applied
+                    const selectedMode = document.querySelector('input[name="quiz_mode"]:checked')?.value || 'quiz';
                     
-                    const topicId = this.dataset.topicId;
-                    const courseId = this.dataset.courseId;
-                    
-                    // Check if assignments filter is currently active
-                    const topicsContainer = document.querySelector('.topics-container');
-                    const isAssignmentsFilterActive = topicsContainer && topicsContainer.classList.contains('assignments-filter-active');
-                    
-                    console.log('🔥 QUIZ BUTTON: Assignments filter check:', {
-                        topicsContainer: !!topicsContainer,
-                        isAssignmentsFilterActive: isAssignmentsFilterActive
+                    fetch(`/topics/${topicId}/source-progress?mode=${selectedMode}`, {
+                        method: 'GET',
+                        headers: {
+                            'X-CSRF-TOKEN': csrfToken.content,
+                            'Accept': 'application/json'
+                        }
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        // Sources loaded
+                        if (typeof updateSourcesContainer === 'function') {
+                            updateSourcesContainer(data);
+                        }
+                    })
+                    .catch(error => {
+                        if (sourcesContainer) {
+                            sourcesContainer.innerHTML = '<div class="alert alert-warning">Could not load source details. You can still start the quiz.</div>';
+                        }
                     });
                     
-                    if (isAssignmentsFilterActive) {
-                        // Assignments filter is active - redirect directly without showing source modal
-                        console.log(`🔥 QUIZ BUTTON: Assignments filter active - Bypassing source modal for topic ${topicId}`);
-                        window.location.href = originalHref;
-                        return false;
-                    }
-                    
-                    // Regular topic practice - show source selection modal
-                    console.log(`🔥 QUIZ BUTTON: Regular topic practice for topic ${topicId}: Showing source selection modal`);
-                    console.log('🔥 QUIZ BUTTON: Modal object:', sourceSelectionModal);
-                    console.log('🔥 QUIZ BUTTON: Modal element exists:', document.getElementById('sourceSelectionModal') !== null);
-                    
-                    // Debug info removed for production
-                    
-                    if (!topicId || !courseId) {
-                        console.error('❌ Missing topic or course ID');
-                        return false;
-                    }
-                    
-                    if (!sourceSelectionModal) {
-                        console.error('❌ Modal not initialized, redirecting directly');
-                        window.location.href = originalHref;
-                        return false;
-                    }
-                    
-                    try {
-                        // Set form values
-                        document.getElementById('source_topic_id').value = topicId;
-                        document.getElementById('source_course_id').value = courseId;
-                        document.getElementById('sourceSelectionForm').action = originalHref;
-                        
-                        // Form values set
-                        
-                        // Show modal immediately
-                        console.log('🔥 QUIZ BUTTON: About to show modal...');
-                        sourceSelectionModal.show();
-                        console.log('🔥 QUIZ BUTTON: Modal show() called successfully');
-                        
-                        // Load sources in background
-                        const sourcesContainer = document.querySelector('.sources-container');
-                        if (sourcesContainer) {
-                            sourcesContainer.innerHTML = '<div class="text-center py-3"><div class="spinner-border text-primary" role="status"></div><p class="mt-2">Loading sources...</p></div>';
-                        }
-                        
-                        const selectedMode = document.querySelector('input[name="quiz_mode"]:checked')?.value || 'quiz';
-                        
-                        fetch(`/topics/${topicId}/source-progress?mode=${selectedMode}`, {
-                            method: 'GET',
-                            headers: {
-                                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
-                                'Accept': 'application/json'
-                            }
-                        })
-                        .then(response => response.json())
-                        .then(data => {
-                            // Sources loaded
-                            if (typeof updateSourcesContainer === 'function') {
-                                updateSourcesContainer(data);
-                            }
-                        })
-                        .catch(error => {
-                            console.error('❌ Error loading sources:', error);
-                            if (sourcesContainer) {
-                                sourcesContainer.innerHTML = '<div class="alert alert-warning">Could not load source details. You can still start the quiz.</div>';
-                            }
-                        });
-                        
-                    } catch (error) {
-                        console.error('❌ Handler error:', error);
-                        // Fallback to direct navigation
-                        window.location.href = originalHref;
-                    }
-                    
-                    return false;
-                });
+                } catch (error) {
+                    // Fallback to direct navigation
+                    window.location.href = originalHref;
+                }
                 
-                // Also prevent any other click events
-                button.onclick = function() { return false; };
+                return false;
             });
 
             // Form submission
-            document.getElementById('sourceSelectionForm').addEventListener('submit', function(e) {
+            sourceSelectionForm.addEventListener('submit', function(e) {
                 e.preventDefault();
                 
                 const checkedSources = this.querySelectorAll('input[name="sources[]"]:checked');
@@ -3349,7 +2988,6 @@
             });
 
             // Random Quiz Modal Validation
-            const randomQuizForm = document.getElementById('randomQuizForm');
             if (randomQuizForm) {
                 randomQuizForm.addEventListener('submit', function(e) {
                     // Check if at least one course is selected
@@ -3362,7 +3000,6 @@
                     }
                     
                     // Check if question count is selected
-                    const questionLimit = document.getElementById('questionLimit');
                     if (!questionLimit.value) {
                         e.preventDefault();
                         alert('Please select the number of questions for your quiz.');
@@ -3371,7 +3008,6 @@
                     }
                     
                     // Check if time limit is selected
-                    const timeLimit = document.getElementById('timeLimit');
                     if (!timeLimit.value) {
                         e.preventDefault();
                         alert('Please select a time limit for your quiz.');
@@ -3391,7 +3027,6 @@
             }
 
             // Random Quiz Modal - Course Selection Handling (STABLE VERSION)
-            const courseCheckboxes = document.querySelectorAll('#randomQuizModal input[name="selected_courses[]"]');
             let isSubmitting = false; // Prevent button state changes during submission
             
             courseCheckboxes.forEach(checkbox => {
@@ -3421,7 +3056,6 @@
             }
             
             // Reset button state when modal is opened
-            const randomQuizModal = document.getElementById('randomQuizModal');
             if (randomQuizModal) {
                 randomQuizModal.addEventListener('shown.bs.modal', function() {
                     isSubmitting = false; // Reset submission state
@@ -3473,7 +3107,6 @@
             });
 
             // Additional fix for modal show event
-            const modals = document.querySelectorAll('.modal');
             modals.forEach(modal => {
                 modal.addEventListener('show.bs.modal', function() {
                     setTimeout(() => {
@@ -3492,70 +3125,26 @@
     </script>
     
     <!-- Topic Filters JavaScript -->
-    <script src="{{ asset('js/topic-filters.js') }}"></script>
+    <!-- Removed asset URL -->
+    <!-- Duplicate DOMContentLoaded removed - functionality already handled in main script -->
+    <!-- External JavaScript file removed - all functionality consolidated inline -->
+    
+    <!-- 🚀 PERFORMANCE: Minimal inline JavaScript for critical functionality -->
     <script>
-        // Initialize topic filters when DOM is ready
+        // Critical path JavaScript only
         document.addEventListener('DOMContentLoaded', function() {
-            console.log('DOM loaded, initializing filters...');
-            
-            // Initialize external TopicFilters if available
-            if (typeof TopicFilters !== 'undefined') {
-                TopicFilters.init();
+            // Initialize performance tracking
+            if (window.performance && window.performance.mark) {
+                window.performance.mark('topics-page-start');
             }
             
-            // Inline assignment circle handler as backup
-            const assignmentIconCircle = document.querySelector('.assignment-icon-circle');
-            const assignmentCircle = document.querySelector('.assignment-circle');
-            const caseFilters = document.querySelectorAll('.case-filter');
-            const topicCards = document.querySelectorAll('.topic-card');
+            // Apply saved filter state from URL or sessionStorage
+            const urlParams = new URLSearchParams(window.location.search);
+            const savedFilter = urlParams.get('filter') || sessionStorage.getItem('topicsFilter') || 'all';
             
-            console.log('Found assignment circle:', !!assignmentIconCircle);
-            console.log('Found topic cards:', topicCards.length);
-            
-            if (assignmentIconCircle && assignmentCircle) {
-                assignmentIconCircle.addEventListener('click', function(e) {
-                    e.preventDefault();
-                    console.log('Assignment circle clicked!');
-                    
-                    // Remove active class from all filters
-                    caseFilters.forEach(f => f.classList.remove('active'));
-                    
-                    // Add active class to the assignment circle
-                    assignmentCircle.classList.add('active');
-                    
-                    // Get the topics container
-                    const topicsContainer = document.querySelector('.topics-container');
-                    topicsContainer.classList.add('assignments-filter-active');
-                    
-                    console.log('Added assignments-filter-active class');
-                    
-                    // Filter topic cards to show only assignments
-                    let assignmentCardsShown = 0;
-                    topicCards.forEach(card => {
-                        const hasAssignment = card.dataset.hasAssignment === 'true';
-                        if (hasAssignment) {
-                            card.style.display = 'block';
-                            assignmentCardsShown++;
-                        } else {
-                            card.style.display = 'none';
-                        }
-                    });
-                    
-                    console.log('Assignment cards shown:', assignmentCardsShown);
-                });
+            if (savedFilter !== 'all') {
+                document.body.classList.add(`${savedFilter}-filter-active`);
             }
-            
-            // Handle other filter clicks to remove assignment circle active state
-            caseFilters.forEach(filter => {
-                filter.addEventListener('click', function() {
-                    if (assignmentCircle) {
-                        assignmentCircle.classList.remove('active');
-                    }
-                    
-                    const topicsContainer = document.querySelector('.topics-container');
-                    topicsContainer.classList.remove('assignments-filter-active');
-                });
-            });
         });
     </script>
 </body>

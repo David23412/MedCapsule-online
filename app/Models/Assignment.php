@@ -13,8 +13,7 @@ class Assignment extends Model
     use HasFactory;
 
     protected $fillable = [
-        'tutor_id',
-        'user_id',
+        // 🔥 RUTHLESS REMOVAL: No tutor_id - auth()->user() handles this!
         'topic_id',
         'course_id',
         'title',
@@ -22,60 +21,51 @@ class Assignment extends Model
         'duration_minutes',
         'assignment_mode',
         'assigned_source',
-        'status',
-        'score_percentage'
+        'status'
     ];
 
     protected $casts = [
         'deadline' => 'datetime',
-        'duration_minutes' => 'decimal:2',
-        'score_percentage' => 'decimal:2'
+        'duration_minutes' => 'decimal:2'
+        // 🔥 RUTHLESS REMOVAL: No more score_percentage cast!
     ];
 
     /**
-     * REAL-TIME INSTANT STATUS ENFORCER - Updates status IMMEDIATELY when accessed
-     * NO DELAYS, NO SCHEDULING, INSTANT UPDATES!
+     * 🚀 PERFORMANCE OPTIMIZED: Get computed status without database writes
+     * This replaces the problematic getStatusAttribute that was writing to DB on every read
      */
-    public function getStatusAttribute($value)
+    public function getCurrentStatusAttribute(): string
     {
-        // INSTANT ENFORCEMENT: Never allow active assignments past their deadline
-        if ($value === self::STATUS_ACTIVE && $this->deadline < now()) {
-            // INSTANT DATABASE UPDATE - NO DELAYS!
-            $this->updateQuietly(['status' => self::STATUS_OVERDUE]);
-            
-            // Broadcast real-time update if needed
-            $this->broadcastStatusChange(self::STATUS_ACTIVE, self::STATUS_OVERDUE);
-            
-            return self::STATUS_OVERDUE;
-        }
-        
-        // INSTANT REACTIVATION: If deadline was extended and not completed/locked
-        if ($value === self::STATUS_OVERDUE && 
-            $this->deadline > now() && 
-            !in_array($this->getOriginal('status'), [self::STATUS_COMPLETED, self::STATUS_LOCKED])) {
-            
-            // INSTANT DATABASE UPDATE - NO DELAYS!
-            $this->updateQuietly(['status' => self::STATUS_ACTIVE]);
-            
-            // Broadcast real-time update if needed
-            $this->broadcastStatusChange(self::STATUS_OVERDUE, self::STATUS_ACTIVE);
-            
-            return self::STATUS_ACTIVE;
-        }
-        
-        // INSTANT COMPLETION PROTECTION: Never allow completed assignments to change
-        if ($value === self::STATUS_COMPLETED) {
+        // Check completion first (highest priority)
+        if ($this->status === self::STATUS_COMPLETED) {
             return self::STATUS_COMPLETED;
         }
         
-        // INSTANT TIME LIMIT EXPIRATION
-        if ($value === self::STATUS_ACTIVE && $this->hasTimeLimitExpired()) {
-            $this->updateQuietly(['status' => self::STATUS_EXPIRED]);
-            $this->broadcastStatusChange(self::STATUS_ACTIVE, self::STATUS_EXPIRED);
+        // Check if explicitly locked
+        if ($this->status === self::STATUS_LOCKED) {
+            return self::STATUS_LOCKED;
+        }
+        
+        // Check time limit expiration
+        if ($this->hasTimeLimitExpired()) {
             return self::STATUS_EXPIRED;
         }
         
-        return $value;
+        // Check deadline expiration
+        if ($this->deadline < now()) {
+            return self::STATUS_OVERDUE;
+        }
+        
+        // Default to active
+        return self::STATUS_ACTIVE;
+    }
+
+    /**
+     * 🚀 PERFORMANCE CRITICAL: Get real-time status for display (NO DATABASE WRITES)
+     */
+    public function getDisplayStatusAttribute(): string
+    {
+        return $this->getCurrentStatusAttribute();
     }
 
     // Status constants
@@ -92,20 +82,9 @@ class Assignment extends Model
     /**
      * Relationships
      */
-    public function tutor(): BelongsTo
-    {
-        return $this->belongsTo(User::class, 'tutor_id');
-    }
+    // 🔥 RUTHLESS REMOVAL: No tutor relationship - auth()->user() handles this!
 
-    public function user(): BelongsTo
-    {
-        return $this->belongsTo(User::class, 'user_id');
-    }
-
-    public function student(): BelongsTo
-    {
-        return $this->belongsTo(User::class, 'user_id');
-    }
+    // 🔥 RUTHLESS REMOVAL: No more user/student relationships - assignments are templates!
 
     public function topic(): BelongsTo
     {
@@ -117,19 +96,15 @@ class Assignment extends Model
         return $this->belongsTo(Course::class);
     }
 
-    public function attempts(): HasMany
+    public function allAttempts(): HasMany
     {
-        return $this->hasMany(QuizAttempt::class, 'topic_id', 'topic_id')
-            ->where('user_id', $this->user_id)
-            ->where('quiz_type', 'assignment');
+        return $this->hasMany(QuizAttempt::class, 'assignment_id');
     }
 
-    public function completedAttempts(): HasMany
+    public function attemptsForUser($userId): HasMany
     {
-        return $this->hasMany(QuizAttempt::class, 'topic_id', 'topic_id')
-            ->where('user_id', $this->user_id)
-            ->where('quiz_type', 'assignment')
-            ->orderBy('created_at', 'desc');
+        return $this->hasMany(QuizAttempt::class, 'assignment_id')
+                   ->where('user_id', $userId);
     }
 
     /**
@@ -152,10 +127,7 @@ class Assignment extends Model
         return $query->where('tutor_id', $tutorId);
     }
 
-    public function scopeForStudent($query, $studentId)
-    {
-        return $query->where('user_id', $studentId);
-    }
+    // 🔥 RUTHLESS REMOVAL: No more user-specific scopes - assignments are templates!
 
     public function scopeForCourse($query, $courseId)
     {
@@ -423,36 +395,40 @@ class Assignment extends Model
     }
 
     /**
-     * BULLETPROOF: Auto-update overdue assignments with comprehensive logging
+     * 🚀 PERFORMANCE OPTIMIZED: Bulk update overdue assignments
      */
     public static function updateOverdueAssignments(): int
     {
-        $assignments = self::where('status', self::STATUS_ACTIVE)
-                          ->where('deadline', '<', now())
-                          ->get();
-        
-        $updatedCount = 0;
-        
-        foreach ($assignments as $assignment) {
-            $oldStatus = $assignment->status;
-            $assignment->update(['status' => self::STATUS_OVERDUE]);
-            
-            // Log each correction for audit trail
-            \Log::info("Assignment auto-updated to overdue", [
-                'assignment_id' => $assignment->id,
-                'title' => $assignment->title,
-                'deadline' => $assignment->deadline,
-                'old_status' => $oldStatus,
-                'new_status' => self::STATUS_OVERDUE,
-                'overdue_by_minutes' => now()->diffInMinutes($assignment->deadline),
-                'updated_at' => now()
-            ]);
-            
-            $updatedCount++;
-        }
-        
-        return $updatedCount;
+        return self::where('status', self::STATUS_ACTIVE)
+                  ->where('deadline', '<', now())
+                  ->update(['status' => self::STATUS_OVERDUE]);
     }
+
+    /**
+     * 🚀 PERFORMANCE OPTIMIZED: Bulk update expired assignments
+     */
+    public static function updateExpiredAssignments(): int
+    {
+        // Get assignments that should be expired due to time limits
+        $expiredIds = self::where('status', self::STATUS_ACTIVE)
+                         ->whereNotNull('duration_minutes')
+                         ->where('duration_minutes', '>', 0)
+                         ->get()
+                         ->filter(function ($assignment) {
+                             return $assignment->hasTimeLimitExpired();
+                         })
+                         ->pluck('id');
+
+        if ($expiredIds->isEmpty()) {
+            return 0;
+        }
+
+        return self::whereIn('id', $expiredIds)
+                  ->update(['status' => self::STATUS_EXPIRED]);
+    }
+
+    // 🔥 RUTHLESS REMOVAL: No more auto-completion - assignments are templates!
+    // Progress is tracked dynamically in quiz_attempts table
     
     /**
      * BULLETPROOF: Get real-time status regardless of database value
@@ -697,7 +673,6 @@ class Assignment extends Model
             try {
                 broadcast(new \App\Events\AssignmentStatusChanged([
                     'assignment_id' => $this->id,
-                    'user_id' => $this->user_id,
                     'tutor_id' => $this->tutor_id,
                     'old_status' => $oldStatus,
                     'new_status' => $newStatus,
@@ -713,6 +688,56 @@ class Assignment extends Model
                 ]);
             }
         }
+    }
+
+    /**
+     * 🚀 GENIUS: Get user progress dynamically from quiz attempts
+     */
+    public function getUserProgress($userId): array
+    {
+        $attempts = $this->attemptsForUser($userId)->get();
+        
+        if ($attempts->isEmpty()) {
+            return [
+                'completed' => false,
+                'score' => 0,
+                'percentage' => 0,
+                'attempts_count' => 0,
+                'best_score' => 0,
+                'latest_attempt' => null
+            ];
+        }
+
+        $bestAttempt = $attempts->sortByDesc('percentage_grade')->first();
+        $latestAttempt = $attempts->sortByDesc('created_at')->first();
+
+        return [
+            'completed' => $bestAttempt->percentage_grade >= 50,
+            'score' => $bestAttempt->score,
+            'percentage' => $bestAttempt->percentage_grade,
+            'attempts_count' => $attempts->count(),
+            'best_score' => $bestAttempt->percentage_grade,
+            'latest_attempt' => $latestAttempt->created_at
+        ];
+    }
+
+    /**
+     * 🚀 GENIUS: Check if user has completed this assignment
+     */
+    public function isCompletedByUser($userId): bool
+    {
+        return $this->attemptsForUser($userId)
+                   ->where('percentage_grade', '>=', 50)
+                   ->exists();
+    }
+
+    /**
+     * 🚀 GENIUS: Get user's best score for this assignment
+     */
+    public function getUserBestScore($userId): float
+    {
+        return $this->attemptsForUser($userId)
+                   ->max('percentage_grade') ?? 0;
     }
 
     /**
@@ -785,5 +810,103 @@ class Assignment extends Model
             'average_score' => $averageScore,
             'completion_rate' => $total > 0 ? ($completed / $total) * 100 : 0
         ];
+    }
+
+    /**
+     * 🔥 CRITICAL: Check if user has attempted this assignment (one shot rule)
+     */
+    public function hasUserAttempted($userId): bool
+    {
+        return $this->attemptsForUser($userId)->exists();
+    }
+
+    /**
+     * 🔥 CRITICAL: Check if assignment is locked for user (completed or attempted)
+     */
+    public function isLockedForUser($userId): bool
+    {
+        // Assignment is locked if user has already attempted it (one shot rule)
+        return $this->hasUserAttempted($userId);
+    }
+
+    /**
+     * 🔥 CRITICAL: Get user-specific assignment status
+     */
+    public function getStatusForUser($userId): string
+    {
+        // Check if user has attempted
+        if ($this->hasUserAttempted($userId)) {
+            // Check if completed (score >= 50%)
+            if ($this->isCompletedByUser($userId)) {
+                return 'completed_locked';
+            } else {
+                return 'attempted_locked';
+            }
+        }
+        
+        // Check global assignment status
+        $globalStatus = $this->getCurrentStatusAttribute();
+        
+        if ($globalStatus === self::STATUS_OVERDUE) {
+            return 'overdue_locked';
+        }
+        
+        if ($globalStatus === self::STATUS_EXPIRED) {
+            return 'expired_locked';
+        }
+        
+        if ($globalStatus === self::STATUS_LOCKED) {
+            return 'admin_locked';
+        }
+        
+        return 'available';
+    }
+
+    /**
+     * 🔥 CRITICAL: Check if user can start this assignment
+     */
+    public function canUserStart($userId): bool
+    {
+        $status = $this->getStatusForUser($userId);
+        return $status === 'available';
+    }
+
+    /**
+     * 🔥 CRITICAL: Get lock reason for user
+     */
+    public function getLockReasonForUser($userId): ?string
+    {
+        $status = $this->getStatusForUser($userId);
+        
+        switch ($status) {
+            case 'completed_locked':
+                return 'Assignment completed - No retakes allowed';
+            case 'attempted_locked':
+                return 'Assignment attempted - No retakes allowed';
+            case 'overdue_locked':
+                return 'Assignment is overdue';
+            case 'expired_locked':
+                return 'Assignment time limit expired';
+            case 'admin_locked':
+                return 'Assignment locked by instructor';
+            default:
+                return null;
+        }
+    }
+
+    /**
+     * 🔥 CRITICAL: Get user progress with lock status
+     */
+    public function getUserProgressWithStatus($userId): array
+    {
+        $progress = $this->getUserProgress($userId);
+        $status = $this->getStatusForUser($userId);
+        
+        return array_merge($progress, [
+            'status' => $status,
+            'is_locked' => $status !== 'available',
+            'lock_reason' => $this->getLockReasonForUser($userId),
+            'can_start' => $this->canUserStart($userId)
+        ]);
     }
 }

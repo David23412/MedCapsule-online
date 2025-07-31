@@ -270,6 +270,58 @@ class WrittenAnswerEvaluationService
         array $alternativeAnswers = [], 
         float $similarityThreshold = self::DEFAULT_SIMILARITY_THRESHOLD
     ): array {
+        $startTime = microtime(true);
+        
+        // 🚨 EARLY TERMINATION CHECKS - ADD THESE FIRST
+        $submittedAnswer = trim($submittedAnswer);
+        $correctAnswer = trim($correctAnswer);
+        
+        // Check 1: Empty answer = immediate fail
+        if (empty($submittedAnswer)) {
+            return [
+                'is_correct' => false,
+                'similarity_score' => 0.0,
+                'feedback' => 'No answer provided',
+                'processing_time' => microtime(true) - $startTime
+            ];
+        }
+        
+        // Check 2: Exact match = immediate success (fastest path)
+        if (strtolower($submittedAnswer) === strtolower($correctAnswer)) {
+            return [
+                'is_correct' => true,
+                'similarity_score' => 1.0,
+                'feedback' => 'Perfect match!',
+                'processing_time' => microtime(true) - $startTime
+            ];
+        }
+        
+        // Check 3: Length comparison (quick heuristic)
+        $lengthDiff = abs(strlen($submittedAnswer) - strlen($correctAnswer));
+        if ($lengthDiff > strlen($correctAnswer) * 0.5) {
+            return [
+                'is_correct' => false,
+                'similarity_score' => 0.1,
+                'feedback' => 'Answer length significantly different',
+                'processing_time' => microtime(true) - $startTime
+            ];
+        }
+        
+        // Check 4: Basic keyword overlap (fast check)
+        $submittedWords = array_filter(explode(' ', strtolower($submittedAnswer)));
+        $correctWords = array_filter(explode(' ', strtolower($correctAnswer)));
+        $commonWords = array_intersect($submittedWords, $correctWords);
+        
+        if (count($commonWords) === 0) {
+            return [
+                'is_correct' => false,
+                'similarity_score' => 0.0,
+                'feedback' => 'No matching keywords found',
+                'processing_time' => microtime(true) - $startTime
+            ];
+        }
+        
+        // Only proceed with expensive evaluation if early checks pass
         // DEBUG: Log initial inputs
         Log::debug('WrittenAnswerEvaluationService::evaluateAnswer - START', [
             'submitted_answer' => $submittedAnswer,
@@ -292,7 +344,7 @@ class WrittenAnswerEvaluationService
         
         $cacheKey = "evaluate:{$submittedAnswer}:{$correctAnswer}:" . implode('|', $alternativeAnswers) . ":{$similarityThreshold}";
         
-        return $this->getCachedOrCompute($cacheKey, function() use ($submittedAnswer, $correctAnswer, $alternativeAnswers, $similarityThreshold) {
+        return $this->getCachedOrCompute($cacheKey, function() use ($submittedAnswer, $correctAnswer, $alternativeAnswers, $similarityThreshold, $startTime) {
             // Normalize inputs
             $submittedAnswer = trim($submittedAnswer);
             $correctAnswer = trim($correctAnswer);

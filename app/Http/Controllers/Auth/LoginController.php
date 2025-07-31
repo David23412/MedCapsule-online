@@ -54,8 +54,7 @@ use Illuminate\Support\Facades\Cache;
             // Auto-enroll in all free courses with eager loading
             $user = Auth::user()->load([
                 'courses:id,name,price',
-                'quizAttempts:id,user_id,score,created_at',
-                'assignments:id,user_id,status,deadline'
+                'quizAttempts:id,user_id,score,created_at'
             ]);
             
             try {

@@ -5,11 +5,18 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>MedCapsule</title>
+    <!-- RUTHLESS: Resource hints for faster loading -->
+    <link rel="dns-prefetch" href="//fonts.googleapis.com">
+    <link rel="dns-prefetch" href="//cdn.jsdelivr.net">
+    <link rel="dns-prefetch" href="//cdnjs.cloudflare.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
+    <!-- RUTHLESS: Async loading for better performance -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js" defer></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.bundle.min.js" defer></script>
     <!-- Favicon -->
     <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 50'%3E%3Crect fill='%23007bff' x='10' y='15' width='80' height='20' rx='10' ry='10' /%3E%3Crect x='50' y='15' width='40' height='20' fill='%23ff0000' rx='0 10 10 0' ry='10'/%3E%3Cline x1='50' y1='15' x2='50' y2='35' stroke='white' stroke-width='1.5' stroke-dasharray='2,1'/%3E%3C/svg%3E">
     <link rel="shortcut icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 50'%3E%3Crect fill='%23007bff' x='10' y='15' width='80' height='20' rx='10' ry='10' /%3E%3Crect x='50' y='15' width='40' height='20' fill='%23ff0000' rx='0 10 10 0' ry='10'/%3E%3Cline x1='50' y1='15' x2='50' y2='35' stroke='white' stroke-width='1.5' stroke-dasharray='2,1'/%3E%3C/svg%3E">
@@ -219,13 +226,13 @@
 
         /* Christmas Lights Effect */
         @keyframes lightTwinkle {
-            0%, 100% { opacity: 1; transform: scale(1); filter: brightness(1); }
-            50% { opacity: 0.7; transform: scale(0.8); filter: brightness(0.8); }
+            0%, 100% { opacity: 1; transform: translate3d(0, 0, 0) scale(1); filter: brightness(1); }
+            50% { opacity: 0.7; transform: translate3d(0, 0, 0) scale(0.8); filter: brightness(0.8); }
         }
 
         @keyframes wireSwing {
-            0%, 100% { transform: translateY(0); }
-            50% { transform: translateY(2px); }
+            0%, 100% { transform: translate3d(0, 0, 0); }
+            50% { transform: translate3d(0, 2px, 0); }
         }
 
         .garland {
@@ -248,6 +255,9 @@
             margin: 0 15px;
             animation: lightTwinkle 1.5s ease-in-out infinite;
             box-shadow: 0 0 10px currentColor;
+            /* RUTHLESS GPU OPTIMIZATION - SAME VISUAL EFFECT */
+            will-change: transform, opacity, filter;
+            transform: translate3d(0, 0, 0);
         }
 
         .light:nth-child(5n+1) { color: #ff4136; animation-delay: 0s; }    /* Red */
@@ -336,10 +346,13 @@
             margin-bottom: 20px;
             box-shadow: 0 4px 6px rgba(0,0,0,0.1);
             transition: all 0.3s ease;
+            /* RUTHLESS GPU OPTIMIZATION - SAME VISUAL EFFECT */
+            will-change: transform;
+            transform: translate3d(0, 0, 0);
         }
 
         .stats-card:hover {
-            transform: translateY(-5px);
+            transform: translate3d(0, -5px, 0);
             box-shadow: 0 6px 12px rgba(0,0,0,0.15);
         }
 
@@ -678,6 +691,9 @@
             border: 1px solid rgba(74, 20, 140, 0.1);
             position: relative;
             overflow: hidden;
+            /* RUTHLESS GPU OPTIMIZATION - SAME VISUAL EFFECT */
+            will-change: transform;
+            transform: translate3d(0, 0, 0);
         }
 
         .progress {
@@ -1602,18 +1618,29 @@
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
-        // Store chart instance globally
-        let performanceChart;
-        let distributionChart;
+        // RUTHLESS: Optimized chart initialization with deferred loading
+        document.addEventListener('DOMContentLoaded', function() {
+            // Check if Chart.js is loaded
+            if (typeof Chart === 'undefined') {
+                setTimeout(initializeCharts, 100);
+                return;
+            }
+            initializeCharts();
+        });
 
-        // Performance Chart
-        const performanceCtx = document.getElementById('performanceChart').getContext('2d');
-        const gradient = performanceCtx.createLinearGradient(0, 0, 0, 300);
-        gradient.addColorStop(0, 'rgba(0, 123, 255, 0.4)');
-        gradient.addColorStop(1, 'rgba(0, 123, 255, 0.0)');
+        function initializeCharts() {
+            // Store chart instance globally
+            let performanceChart;
+            let distributionChart;
 
-        // Get the chart data
-        const chartData = @json($chartData);
+            // Performance Chart
+            const performanceCtx = document.getElementById('performanceChart').getContext('2d');
+            const gradient = performanceCtx.createLinearGradient(0, 0, 0, 300);
+            gradient.addColorStop(0, 'rgba(0, 123, 255, 0.4)');
+            gradient.addColorStop(1, 'rgba(0, 123, 255, 0.0)');
+
+            // Get the chart data
+            const chartData = @json($chartData);
 
         // Initialize performance chart
         performanceChart = new Chart(performanceCtx, {
@@ -2048,6 +2075,8 @@
             }
         }));
         @endif
+        
+        } // Close initializeCharts function
     </script>
 </body>
 </html>

@@ -430,6 +430,99 @@ class QuizAttempt extends Model
         }
     }
 
+    /**
+     * Get assignment-specific topic progress for a user with error handling
+     */
+    public static function getAssignmentTopicProgress($userId, $topicId, $assignmentId = null, $studyMode = 'assignment')
+    {
+        try {
+            $query = self::where('user_id', $userId)
+                ->where('topic_id', $topicId)
+                ->where('study_mode', $studyMode);
+            
+            // CRITICAL FIX: Filter by assignment_id if provided
+            if ($assignmentId) {
+                $query->where('assignment_id', $assignmentId);
+            }
+            
+            $attempts = $query->get();
+
+            if ($attempts->isEmpty()) {
+                return [
+                    'overall' => [
+                        'score' => 0,
+                        'total' => 0,
+                        'percentage' => 0
+                    ],
+                    'sources' => []
+                ];
+            }
+
+            // Get the actual number of questions available in each source
+            $sourceQuestionCounts = \App\Models\Question::where('topic_id', $topicId)
+                ->whereNotNull('source')
+                ->selectRaw('source, COUNT(*) as count')
+                ->groupBy('source')
+                ->pluck('count', 'source')
+                ->toArray();
+
+            $totalScore = $attempts->sum('score');
+            $totalQuestions = $attempts->sum('total_questions');
+            $overallPercentage = $totalQuestions > 0 ? ($totalScore / $totalQuestions) * 100 : 0;
+
+            // Group by source and calculate correct answers per source
+            $sourceProgress = [];
+            foreach ($attempts as $attempt) {
+                $source = $attempt->source ?: 'General';
+                if (!isset($sourceProgress[$source])) {
+                    $sourceProgress[$source] = [
+                        'score' => 0,
+                        'total' => 0,
+                        'percentage' => 0
+                    ];
+                }
+                $sourceProgress[$source]['score'] += $attempt->score;
+                $sourceProgress[$source]['total'] += $attempt->total_questions;
+            }
+
+            // Calculate percentages for each source based on available questions
+            foreach ($sourceProgress as $source => $data) {
+                $availableQuestions = $sourceQuestionCounts[$source] ?? 0;
+                $completedQuestions = min($data['score'], $availableQuestions); // Cap at available questions
+                
+                $sourceProgress[$source]['percentage'] = $availableQuestions > 0 
+                    ? ($completedQuestions / $availableQuestions) * 100 
+                    : 0;
+            }
+
+            return [
+                'overall' => [
+                    'score' => $totalScore,
+                    'total' => $totalQuestions,
+                    'percentage' => $overallPercentage
+                ],
+                'sources' => $sourceProgress
+            ];
+        } catch (\Exception $e) {
+            \Log::error('Error getting assignment topic progress', [
+                'user_id' => $userId,
+                'topic_id' => $topicId,
+                'assignment_id' => $assignmentId,
+                'study_mode' => $studyMode,
+                'error' => $e->getMessage()
+            ]);
+            
+            return [
+                'overall' => [
+                    'score' => 0,
+                    'total' => 0,
+                    'percentage' => 0
+                ],
+                'sources' => []
+            ];
+        }
+    }
+
     // Format duration as human-readable string
     public function getDurationAttribute(): string
     {

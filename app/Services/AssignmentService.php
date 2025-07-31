@@ -43,7 +43,13 @@ class AssignmentService
             // Use database transaction with proper error handling
             return DB::transaction(function() use ($data) {
                 try {
-                    $assignment = Assignment::create($data);
+                    // Filter data to only include valid assignment columns
+                    $validData = array_intersect_key($data, array_flip([
+                        'topic_id', 'course_id', 'title', 'deadline', 
+                        'duration_minutes', 'assignment_mode', 'assigned_source', 'status'
+                    ]));
+                    
+                    $assignment = Assignment::create($validData);
                     
                     // Send notification with error isolation
                     $this->sendAssignmentNotification($assignment, 'created');

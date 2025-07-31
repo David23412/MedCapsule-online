@@ -116,18 +116,17 @@
             opacity: 1;
         }
 
+        /* 🚀 OPTIMIZED: Reduced animation complexity for performance */
         .mistake-card {
             background: white;
             border-radius: 24px;
             padding: 3rem;
             margin-bottom: 3rem;
-            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.06),
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.06),
                       0 0 0 1px rgba(0, 0, 0, 0.03);
-            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            transition: box-shadow 0.2s ease, transform 0.2s ease; /* Simplified transition */
             position: relative;
             overflow: hidden;
-            backdrop-filter: blur(10px);
-            -webkit-backdrop-filter: blur(10px);
         }
 
         .mistake-card::before {
@@ -139,12 +138,12 @@
             height: 5px;
             background: linear-gradient(135deg, #2563eb, #1d4ed8);
             opacity: 0;
-            transition: all 0.4s ease;
+            transition: opacity 0.2s ease; /* Faster transition */
         }
 
         .mistake-card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.08),
+            transform: translateY(-2px); /* Reduced movement for performance */
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.08),
                       0 0 0 1px rgba(0, 0, 0, 0.02);
         }
 
@@ -152,18 +151,9 @@
             opacity: 1;
         }
 
+        /* 🚀 PERFORMANCE: Removed complex gradient overlay */
         .mistake-card::after {
-            content: '';
-            position: absolute;
-            top: 5px;
-            left: 0;
-            right: 0;
-            height: 100px;
-            background: linear-gradient(180deg, 
-                rgba(255,255,255,0.8) 0%, 
-                rgba(255,255,255,0) 100%);
-            opacity: 0.5;
-            pointer-events: none;
+            display: none; /* Removed for performance */
         }
 
         .remove-question {
@@ -416,11 +406,13 @@
             margin-right: auto;
         }
 
+        /* 🚀 OPTIMIZED: Removed CPU-intensive confetti animations */
         .confetti {
             position: absolute;
             width: 10px;
             height: 10px;
             opacity: 0;
+            display: none; /* Disable confetti completely for performance */
         }
 
         .profile-circle {
@@ -434,7 +426,7 @@
             color: white;
             font-weight: 600;
             text-decoration: none;
-            transition: all 0.3s ease;
+            transition: all 0.2s ease; /* Reduced transition time */
             box-shadow: 0 2px 8px rgba(0, 123, 255, 0.2);
             background-size: cover;
             background-position: center;
@@ -446,25 +438,19 @@
         }
 
         .profile-circle:hover {
-            transform: scale(1.1);
+            transform: scale(1.05); /* Reduced scale for performance */
             box-shadow: 0 4px 12px rgba(0, 123, 255, 0.3);
             color: white;
         }
 
-        .confetti-1 { background: #3b82f6; top: 20%; left: 20%; animation: confetti 3s ease-out infinite; }
-        .confetti-2 { background: #60a5fa; top: 25%; right: 25%; animation: confetti 2.5s ease-out infinite 0.2s; }
-        .confetti-3 { background: #93c5fd; top: 35%; left: 35%; animation: confetti 3.5s ease-out infinite 0.4s; }
-        .confetti-4 { background: #2563eb; top: 40%; right: 40%; animation: confetti 3s ease-out infinite 0.6s; }
-        .confetti-5 { background: #1d4ed8; top: 45%; left: 45%; animation: confetti 2.8s ease-out infinite 0.8s; }
+        /* 🚀 PERFORMANCE: Removed all confetti animations */
+        .confetti-1, .confetti-2, .confetti-3, .confetti-4, .confetti-5 {
+            display: none;
+        }
 
         @keyframes float {
             0%, 100% { transform: translateY(0); }
-            50% { transform: translateY(-10px); }
-        }
-
-        @keyframes confetti {
-            0% { transform: translateY(0) rotate(0); opacity: 1; }
-            100% { transform: translateY(100px) rotate(360deg); opacity: 0; }
+            50% { transform: translateY(-8px); } /* Reduced movement for performance */
         }
 
         .empty-state .btn-primary {
@@ -524,6 +510,7 @@
             border-left: 4px solid #ff4d4d;
         }
 
+        /* 🚀 OPTIMIZED: Simplified explanation toggle animations */
         .explanation-toggle {
             display: inline-flex;
             align-items: center;
@@ -532,22 +519,20 @@
             padding: 0;
             cursor: pointer;
             color: #0ea5e9;
-            transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+            transition: color 0.15s ease; /* Simplified transition */
         }
 
         .explanation-toggle i {
             font-size: 1.1rem;
-            transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            transition: transform 0.15s ease; /* Faster transition */
         }
 
         .explanation-toggle:hover {
-            transform: scale(1.1);
             color: #2563eb;
         }
 
         .explanation-toggle.active {
             color: #2563eb;
-            transform: scale(1.1);
         }
 
         .explanation-toggle.active i {
@@ -563,33 +548,17 @@
             border-left: 3px solid #0ea5e9;
             padding: 1rem;
             margin-top: 0.75rem;
-            transform-origin: top;
-            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-            will-change: transform, opacity, height;
             overflow: hidden;
+            transition: opacity 0.15s ease; /* Simplified transition */
         }
 
         .explanation-content.collapse:not(.show) {
-            display: block;
-            opacity: 0;
-            transform: translateY(-12px);
-            height: 0 !important;
-            padding-top: 0;
-            padding-bottom: 0;
-            margin: 0;
-        }
-
-        .explanation-content.collapsing {
-            height: 0;
-        }
-
-        .explanation-content.collapsing.show {
-            height: var(--explanation-height);
+            display: none; /* Simple show/hide instead of complex animations */
         }
 
         .explanation-content.show {
+            display: block;
             opacity: 1;
-            transform: translateY(0);
         }
 
         @media (max-width: 768px) {
@@ -759,9 +728,9 @@
             animation: spin 1s linear infinite;
         }
 
-        /* Style for dropdown options */
+        /* 🚀 OPTIMIZED: Simplified dropdown styles */
         .filter-section select option {
-            padding: 10px;
+            padding: 8px;
             font-size: 1rem;
             background-color: white;
             color: #334155;
@@ -879,7 +848,7 @@
             transform: rotate(180deg);
         }
 
-        /* Flashcard Styles */
+        /* 🎯 RESTORED: Original 3D Flashcard Flipping Effect */
         .mistake-card.flashcard-mode .normal-mode-content {
             display: none;
         }
@@ -1049,32 +1018,14 @@
                             <span>Filter by Course:</span>
                         </label>
                         <div class="position-relative flex-grow-1">
-                            @php
-                                // Get total mistakes count (unfiltered)
-                                $totalMistakesCount = App\Models\Mistake::where('user_id', auth()->id())->count();
-                                
-                                // Get course counts regardless of current filter
-                                $allCourseCounts = DB::table('mistakes')
-                                    ->join('questions', 'mistakes.question_id', '=', 'questions.id')
-                                    ->join('topics', 'questions.topic_id', '=', 'topics.id')
-                                    ->join('courses', 'topics.course_id', '=', 'courses.id')
-                                    ->where('mistakes.user_id', auth()->id())
-                                    ->select('courses.id', 'courses.name', DB::raw('count(*) as count'))
-                                    ->groupBy('courses.id', 'courses.name')
-                                    ->get()
-                                    ->keyBy('id');
-                                
-                                // Get skipped count
-                                $skippedCount = App\Models\Mistake::where('user_id', auth()->id())->where('skipped', true)->count();
-                            @endphp
                             <select id="courseFilter" name="course" class="form-select">
-                                <option value="">All Courses ({{ $totalMistakesCount }})</option>
+                                <option value="">All Courses ({{ $totalMistakesCount ?? 0 }})</option>
                                 <option value="skipped" {{ ($selectedCourse ?? '') == 'skipped' ? 'selected' : '' }}>
-                                    Skipped Questions ({{ $skippedCount }})
+                                    Skipped Questions ({{ $skippedCount ?? 0 }})
                                 </option>
                                 @foreach($availableCourses->sortBy('name') as $course)
                                     <option value="{{ $course->id }}" {{ $selectedCourse == $course->id ? 'selected' : '' }}>
-                                        {{ $course->name }} ({{ $allCourseCounts[$course->id]->count ?? 0 }})
+                                        {{ $course->name }} ({{ $course->mistake_count ?? 0 }})
                                     </option>
                                 @endforeach
                             </select>
@@ -1381,169 +1332,29 @@
                 return;
             }
             sessionStorage.setItem('reviewPageLoaded', 'true');
+            // 🚀 OPTIMIZED: Simplified explanation toggle - no complex animations
             const toggles = document.querySelectorAll('.explanation-toggle');
             
             toggles.forEach(toggle => {
                 const content = document.querySelector(toggle.getAttribute('data-bs-target'));
                 
                 if (content) {
-                    // Store the content height as a CSS variable
-                    const updateHeight = () => {
-                        const height = content.scrollHeight;
-                        content.style.setProperty('--explanation-height', height + 'px');
-                    };
-
-                    // Update height on window resize
-                    window.addEventListener('resize', updateHeight);
-                    
-                    // Initial height calculation
-                    updateHeight();
-
-                    content.addEventListener('transitionend', (e) => {
-                        if (e.propertyName === 'height') {
-                            if (!content.classList.contains('show')) {
-                                content.style.height = '';
-                            }
-                        }
-                    });
-
                     toggle.addEventListener('click', () => {
-                        requestAnimationFrame(() => {
-                            toggle.classList.toggle('active');
-                            
-                            if (content.classList.contains('show')) {
-                                // Closing
-                                const height = content.scrollHeight;
-                                content.style.height = height + 'px';
-                                content.offsetHeight; // Force reflow
-                                content.style.height = '0px';
-                            } else {
-                                // Opening
-                                content.style.height = content.scrollHeight + 'px';
-                            }
-                        });
+                        toggle.classList.toggle('active');
+                        content.classList.toggle('show');
                     });
                 }
             });
 
-            // IMMORTAL FILTER SYSTEM - CANNOT BE DISABLED
-            console.log('🔥 IMMORTAL FILTER SYSTEM INITIALIZING');
-            
-            let filterBound = false;
-            let bindAttempts = 0;
-            
-            // Function to handle filter changes
-            function handleFilterChange(selectedValue) {
-                console.log('🎯 FILTER CHANGE HANDLED:', selectedValue);
-                
-                const baseUrl = '{{ route("review.index") }}';
-                const finalUrl = selectedValue ? `${baseUrl}?course=${encodeURIComponent(selectedValue)}` : baseUrl;
-                
-                console.log('🚀 NAVIGATING TO:', finalUrl);
-                window.location.href = finalUrl;
-            }
-            
-            // IMMORTAL BINDING - CONSTANTLY RE-BINDS
-            function immortalBind() {
-                bindAttempts++;
-                console.log(`🔄 IMMORTAL BIND ATTEMPT #${bindAttempts}`);
-                
-                const courseFilter = document.getElementById('courseFilter');
-                if (!courseFilter) {
-                    console.log('❌ FILTER NOT FOUND');
-                    return false;
-                }
-                
-                // Check if already bound
-                if (courseFilter.dataset.immortalBound === 'true') {
-                    console.log('✅ ALREADY BOUND');
-                    return true;
-                }
-                
-                console.log('🔗 BINDING IMMORTAL EVENTS');
-                
-                // Mark as bound
-                courseFilter.dataset.immortalBound = 'true';
-                
-                // Multiple binding methods for maximum reliability
-                courseFilter.onchange = function(e) {
-                    console.log('🔄 ONCHANGE TRIGGERED:', this.value);
-                    handleFilterChange(this.value);
-                };
-                
+            // 🚀 ULTRA-OPTIMIZED FILTER SYSTEM - Lightweight & Fast
+            const courseFilter = document.getElementById('courseFilter');
+            if (courseFilter) {
                 courseFilter.addEventListener('change', function(e) {
-                    console.log('📡 CHANGE LISTENER:', this.value);
-                    handleFilterChange(this.value);
+                    const baseUrl = '{{ route("review.index") }}';
+                    const finalUrl = this.value ? `${baseUrl}?course=${encodeURIComponent(this.value)}` : baseUrl;
+                    window.location.href = finalUrl;
                 });
-                
-                courseFilter.addEventListener('input', function(e) {
-                    console.log('📝 INPUT LISTENER:', this.value);
-                    handleFilterChange(this.value);
-                });
-                
-                console.log('✅ IMMORTAL BINDING COMPLETE');
-                return true;
             }
-            
-            // MUTATION OBSERVER - WATCHES FOR DOM CHANGES
-            const immortalObserver = new MutationObserver(function(mutations) {
-                mutations.forEach(function(mutation) {
-                    if (mutation.type === 'childList' || mutation.type === 'attributes') {
-                        const filter = document.getElementById('courseFilter');
-                        if (filter && filter.dataset.immortalBound !== 'true') {
-                            console.log('🔄 DOM CHANGED - RE-BINDING FILTER');
-                            immortalBind();
-                        }
-                    }
-                });
-            });
-            
-            // Start observing the entire document
-            immortalObserver.observe(document, {
-                childList: true,
-                subtree: true,
-                attributes: true,
-                attributeFilter: ['data-immortal-bound']
-            });
-            
-            // AGGRESSIVE RE-BINDING - Every 500ms
-            setInterval(function() {
-                const filter = document.getElementById('courseFilter');
-                if (filter) {
-                    // Check if events are still working
-                    if (!filter.onchange || filter.dataset.immortalBound !== 'true') {
-                        console.log('🔧 PERIODIC RE-BINDING - EVENTS LOST');
-                        filter.dataset.immortalBound = 'false';
-                        immortalBind();
-                    }
-                }
-            }, 500);
-            
-            // DOCUMENT-LEVEL DELEGATION - ULTIMATE BACKUP
-            document.addEventListener('change', function(e) {
-                if (e.target && e.target.id === 'courseFilter') {
-                    console.log('🌐 DOCUMENT DELEGATION TRIGGERED:', e.target.value);
-                    handleFilterChange(e.target.value);
-                }
-            }, true);
-            
-            // CLICK DELEGATION - CATCH OPTION CLICKS
-            document.addEventListener('click', function(e) {
-                if (e.target && e.target.tagName === 'OPTION' && e.target.closest('#courseFilter')) {
-                    console.log('🖱️ OPTION CLICKED:', e.target.value);
-                    setTimeout(() => {
-                        const select = e.target.closest('select');
-                        if (select) {
-                            handleFilterChange(select.value);
-                        }
-                    }, 50);
-                }
-            }, true);
-            
-            // Initialize immortal system
-            immortalBind();
-            
-            console.log('⚡ IMMORTAL FILTER SYSTEM ACTIVE - CANNOT BE DISABLED');
 
             // Add error handling for flashcard mode toggle
             if (flashcardModeToggle) {

@@ -291,12 +291,101 @@ class GradingServiceTest extends TestCase
     }
 
     #[\PHPUnit\Framework\Attributes\Test]
+    public function test_batch_database_operations()
+    {
+        // Mock dependencies
+        $this->userStatsService->shouldReceive('updateAfterQuizAttempt')
+            ->once()
+            ->with(Mockery::any(), Mockery::any(), Mockery::any(), Mockery::any());
+        
+        $this->cacheService->shouldReceive('clearUserTopicProgressCache')
+            ->once()
+            ->with(Mockery::any(), Mockery::any());
+        
+        $this->cacheService->shouldReceive('clearUserMistakesCache')
+            ->once()
+            ->with(Mockery::any(), Mockery::any());
+            
+        $this->cacheService->shouldReceive('clearTopicProgressCaches')
+            ->once()
+            ->with(Mockery::any(), Mockery::any(), Mockery::any());
+            
+        $this->cacheService->shouldReceive('invalidateUserCaches')
+            ->once()
+            ->with(Mockery::any(), Mockery::any());
+        
+        $this->notificationService->shouldNotReceive('createLevelUpNotification');
+        
+        $service = new GradingService(
+            $this->cacheService,
+            $this->userStatsService,
+            $this->notificationService,
+            $this->writtenAnswerEvaluationService
+        );
+        
+        $questions = Question::factory()->count(10)->create([
+            'correct_answer' => 'A', // Set all correct answers to 'A'
+            'question_type' => 'multiple_choice' // Ensure all are multiple choice
+        ]);
+        $user = User::factory()->create();
+        $course = Course::factory()->create();
+        $topic = Topic::factory()->create(['course_id' => $course->id]);
+        
+        $answers = [];
+        foreach ($questions as $index => $question) {
+            // Make some answers incorrect to test mistake recording
+            $answers[$question->id] = $index % 2 == 0 ? 'A' : 'B'; // Alternate correct/incorrect
+        }
+        
+        $startTime = microtime(true);
+        $result = $service->gradeQuiz($user, $answers, 60, 'quiz', $topic, $course);
+        $endTime = microtime(true);
+        
+        // Should be much faster with batch operations
+        $this->assertLessThan(0.1, $endTime - $startTime); // Should complete in under 100ms
+        
+        // Verify batch operations worked (mistakes are only recorded for incorrect answers)
+        $this->assertEquals(5, \App\Models\Mistake::where('user_id', $user->id)->count()); // Half of answers are incorrect
+    }
+
+    #[\PHPUnit\Framework\Attributes\Test]
+    public function test_tutor_mode_single_evaluation()
+    {
+        $service = new GradingService(
+            $this->cacheService,
+            $this->userStatsService,
+            $this->notificationService,
+            $this->writtenAnswerEvaluationService
+        );
+        
+        $questions = Question::factory()->count(3)->create();
+        $user = User::factory()->create();
+        $course = Course::factory()->create();
+        $topic = Topic::factory()->create(['course_id' => $course->id]);
+        
+        $answers = [];
+        foreach ($questions as $question) {
+            $answers[$question->id] = 'A';
+        }
+        
+        $startTime = microtime(true);
+        $result = $service->gradeQuiz($user, $answers, 60, 'tutor', $topic, $course);
+        $endTime = microtime(true);
+        
+        // Should be faster with single evaluation
+        $this->assertLessThan(0.2, $endTime - $startTime); // Should complete in under 200ms
+        
+        // Verify single evaluation worked
+        $this->assertArrayHasKey('sourceData', $result);
+        $this->assertCount(1, $result['sourceData']); // Should have one source
+    }
+
+    #[\PHPUnit\Framework\Attributes\Test]
     public function it_handles_written_answer_evaluation_failure()
     {
         $user = User::factory()->create();
         $course = Course::factory()->create();
         $topic = Topic::factory()->create(['course_id' => $course->id]);
-        
         $question = Question::factory()->create([
             'topic_id' => $topic->id,
             'question' => 'What is the capital of France?',

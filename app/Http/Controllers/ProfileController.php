@@ -33,8 +33,16 @@ use App\Models\QuizAttempt;
     public function getProgress()
     {
         $user = Auth::user();
+        
+        // Optionally sync the count to ensure accuracy (can be disabled for performance)
+        // $user->syncCorrectAnswersCount();
+        
         return response()->json([
-            'correct_answers_count' => $user->correct_answers_count ?? 0
+            'correct_answers_count' => $user->getTotalCorrectAnswers(),
+            'total_questions_attempted' => $user->total_questions_attempted ?? 0,
+            'accuracy_rate' => $user->total_questions_attempted > 0 
+                ? round(($user->getTotalCorrectAnswers() / $user->total_questions_attempted) * 100, 1) 
+                : 0
         ]);
     }
 
@@ -42,32 +50,29 @@ use App\Models\QuizAttempt;
     {
         $user = Auth::user();
         
-        // Ultra-aggressive caching for profile data
-        $cacheKey = QuizCacheService::generateCacheKey('user_profile', [
-            'user_id' => $user->id,
-            'timestamp' => now()->format('Y-m-d-H')
-        ]);
+        // RUTHLESS OPTIMIZATION: Extended caching with better key strategy
+        $cacheKey = "user_profile_optimized_{$user->id}_" . now()->format('Y-m-d');
         
-        $profileData = Cache::remember($cacheKey, 3600, function () use ($user) {
+        $profileData = Cache::remember($cacheKey, 7200, function () use ($user) {
             // Calculate accuracy from user's total attempts and correct answers
             $totalQuestions = $user->total_questions_attempted ?? 0;
-            $totalCorrect = $user->correct_answers_count ?? 0;
+            $totalCorrect = $user->getTotalCorrectAnswers();
             $accuracyRate = $totalQuestions > 0 ? round(($totalCorrect / $totalQuestions) * 100, 1) : 0;
 
             // Get the study streak value directly from the user model
             $studyStreak = $user->study_streak_days ?? 0;
 
-            // COMPLEXITY REDUCTION: Extract study time calculation
+            // OPTIMIZED: Single query for study time calculation
             $studyTimeBreakdown = $this->calculateStudyTimeBreakdown($user);
 
-        // Format study times without redundant labels
-        $formattedStudyTimes = [
-            'total' => $this->formatStudyTime($studyTimeBreakdown['total']),
-            'quiz' => $this->formatStudyTime($studyTimeBreakdown['quiz']),
-            'tutor' => $this->formatStudyTime($studyTimeBreakdown['tutor']),
-            'random_quiz' => $this->formatStudyTime($studyTimeBreakdown['random_quiz']),
-            'mistake_review' => $this->formatStudyTime($studyTimeBreakdown['mistake_review'])
-        ];
+            // Format study times without redundant labels
+            $formattedStudyTimes = [
+                'total' => $this->formatStudyTime($studyTimeBreakdown['total']),
+                'quiz' => $this->formatStudyTime($studyTimeBreakdown['quiz']),
+                'tutor' => $this->formatStudyTime($studyTimeBreakdown['tutor']),
+                'random_quiz' => $this->formatStudyTime($studyTimeBreakdown['random_quiz']),
+                'mistake_review' => $this->formatStudyTime($studyTimeBreakdown['mistake_review'])
+            ];
 
             return compact('accuracyRate', 'totalQuestions', 'studyStreak', 'formattedStudyTimes');
         });
@@ -75,36 +80,38 @@ use App\Models\QuizAttempt;
         // Extract cached data
         extract($profileData);
 
-        // Get user's rank (only among students)
+        // RUTHLESS OPTIMIZATION: Cached user rank with longer duration
         $userRank = null;
         if ($user->xp > 0) {
-            $userRank = Cache::remember("user_rank_students_{$user->id}_{$user->xp}", 300, function() use ($user) { 
-                return User::whereRaw('total_questions_attempted > 0')
+            $userRank = Cache::remember("user_rank_optimized_{$user->id}", 1800, function() use ($user) { 
+                return DB::table('users')
+                    ->where('total_questions_attempted', '>', 0)
                     ->where('role', 'student')
                     ->where('xp', '>', $user->xp)
                     ->count() + 1; 
             });
         }
 
-        // Get performance data for the chart (from quiz_attempts)
-        $performanceData = Cache::remember("performance_data_{$user->id}", 300, function() use ($user) { 
-            return QuizAttempt::select('created_at as date', 'percentage_grade', 'quiz_type', 'topic_id')
-            ->where('user_id', $user->id)
-            ->where('quiz_type', '!=', 'mistake_review')  // Exclude mistake review sessions
-            ->orderBy('created_at', 'desc')
-            ->take(7)
-            ->select(
-                'created_at as date',
-                DB::raw('COALESCE(percentage_grade, 0) as accuracy'),
-                DB::raw('CASE 
-                    WHEN quiz_type = "random" THEN "Random Quiz"
-                    WHEN topic_id IS NULL THEN "Unknown Topic"
-                    ELSE (SELECT name FROM topics WHERE id = quiz_attempts.topic_id)
-                END as topic')
-            )
-            ->get()
-            ->sortBy('date')
-            ->values();
+        // RUTHLESS OPTIMIZATION: Single optimized query with JOIN
+        $performanceData = Cache::remember("performance_data_optimized_{$user->id}", 1800, function() use ($user) { 
+            return DB::table('quiz_attempts')
+                ->leftJoin('topics', 'quiz_attempts.topic_id', '=', 'topics.id')
+                ->where('quiz_attempts.user_id', $user->id)
+                ->where('quiz_attempts.quiz_type', '!=', 'mistake_review')
+                ->select(
+                    'quiz_attempts.created_at as date',
+                    DB::raw('COALESCE(quiz_attempts.percentage_grade, 0) as accuracy'),
+                    DB::raw('CASE 
+                        WHEN quiz_attempts.quiz_type = "random" THEN "Random Quiz"
+                        WHEN quiz_attempts.topic_id IS NULL THEN "Unknown Topic"
+                        ELSE COALESCE(topics.name, "Unknown Topic")
+                    END as topic')
+                )
+                ->orderBy('quiz_attempts.created_at', 'desc')
+                ->limit(7)
+                ->get()
+                ->sortBy('date')
+                ->values();
         });
 
         // Format data for the chart
@@ -117,42 +124,55 @@ use App\Models\QuizAttempt;
             ];
         });
 
-        // Get weak topics (using Eloquent)
-        $weakTopics = Topic::with(['course', 'userProgress' => function($query) use ($user) {
-            $query->where('user_id', $user->id);
-        }])
-        ->whereHas('userProgress', function($query) use ($user) {
-            $query->where('user_id', $user->id)
-                  ->whereNotNull('percentage_grade')
-                  ->where('percentage_grade', '<', 100);
-        })
-        ->orderByRaw('
-            CASE 
-                WHEN (SELECT percentage_grade FROM user_topic_progress 
-                      WHERE user_id = ? AND topic_id = topics.id) <= 25 THEN 1
-                WHEN (SELECT percentage_grade FROM user_topic_progress 
-                      WHERE user_id = ? AND topic_id = topics.id) <= 49 THEN 2
-                WHEN (SELECT percentage_grade FROM user_topic_progress 
-                      WHERE user_id = ? AND topic_id = topics.id) <= 74 THEN 3
-                ELSE 4
-            END,
-            (SELECT percentage_grade FROM user_topic_progress 
-             WHERE user_id = ? AND topic_id = topics.id) ASC
-        ', [$user->id, $user->id, $user->id, $user->id])
-        ->get();
+        // RUTHLESS OPTIMIZATION: Single JOIN query eliminating subqueries
+        $weakTopicsData = DB::table('topics')
+            ->join('user_topic_progress', 'topics.id', '=', 'user_topic_progress.topic_id')
+            ->join('courses', 'topics.course_id', '=', 'courses.id')
+            ->where('user_topic_progress.user_id', $user->id)
+            ->whereNotNull('user_topic_progress.percentage_grade')
+            ->where('user_topic_progress.percentage_grade', '<', 100)
+            ->select(
+                'topics.id',
+                'topics.name',
+                'topics.course_id',
+                'courses.name as course_name',
+                'user_topic_progress.percentage_grade',
+                DB::raw('
+                    CASE 
+                        WHEN user_topic_progress.percentage_grade <= 25 THEN 1
+                        WHEN user_topic_progress.percentage_grade <= 49 THEN 2
+                        WHEN user_topic_progress.percentage_grade <= 74 THEN 3
+                        ELSE 4
+                    END as priority
+                ')
+            )
+            ->orderBy('priority')
+            ->orderBy('user_topic_progress.percentage_grade')
+            ->get();
+
+        // Convert to collection with same structure as original
+        $weakTopics = $weakTopicsData->map(function($topic) {
+            return (object) [
+                'id' => $topic->id,
+                'name' => $topic->name,
+                'course_id' => $topic->course_id,
+                'course' => (object) ['name' => $topic->course_name],
+                'userProgress' => collect([(object) ['percentage_grade' => $topic->percentage_grade]])
+            ];
+        });
         
-        // Calculate XP and get leaderboard (only students)
-        // Get leaderboard using stored XP values - STUDENTS ONLY
-        $leaderboard = Cache::remember('leaderboard_students_cache', 300, function() { 
+        // RUTHLESS OPTIMIZATION: Extended leaderboard caching
+        $leaderboard = Cache::remember('leaderboard_students_optimized', 1800, function() { 
             return DB::table('users')
                 ->select(
                     'users.id',
                     'users.name',
                     'users.total_questions_attempted',
                     'users.correct_answers_count',
-                    'users.xp'
+                    'users.xp',
+                    DB::raw('FLOOR(COALESCE(users.xp, 0) / 1000) + 1 as level')
                 )
-                ->whereRaw('users.total_questions_attempted > 0')
+                ->where('users.total_questions_attempted', '>', 0)
                 ->where('users.role', 'student')
                 ->orderBy('xp', 'desc')
                 ->limit(10)
@@ -162,7 +182,7 @@ use App\Models\QuizAttempt;
                         'id' => $user->id,
                         'name' => $user->name,
                         'xp' => $user->xp ?? 0,
-                        'level' => floor(($user->xp ?? 0) / 1000) + 1, // Every 1000 XP is a new level
+                        'level' => $user->level,
                         'correct_answers' => $user->correct_answers_count
                     ];
                 });
@@ -201,29 +221,28 @@ use App\Models\QuizAttempt;
     }
 
     /**
-     * COMPLEXITY REDUCTION: Calculate study time breakdown
+     * RUTHLESS OPTIMIZATION: Single query for study time breakdown
      */
     private function calculateStudyTimeBreakdown($user): array
     {
-        $studyTimeBreakdown = [
-            'quiz' => QuizAttempt::where('user_id', $user->id)
-                ->where('quiz_type', 'normal')
-                ->where('study_mode', 'quiz')
-                ->where('topic_id', '!=', null)
-                ->sum('duration_seconds'),
-            'tutor' => QuizAttempt::where('user_id', $user->id)
-                ->where('study_mode', 'tutor')
-                ->sum('duration_seconds'),
-            'random_quiz' => QuizAttempt::where('user_id', $user->id)
-                ->where('quiz_type', 'random')
-                ->sum('duration_seconds'),
-            'mistake_review' => QuizAttempt::where('user_id', $user->id)
-                ->where('quiz_type', 'mistake_review')
-                ->sum('duration_seconds')
+        // PERFORMANCE: Single query with conditional aggregation (4 queries → 1 query)
+        $result = QuizAttempt::where('user_id', $user->id)
+            ->selectRaw('
+                SUM(CASE WHEN quiz_type = "normal" AND study_mode = "quiz" AND topic_id IS NOT NULL THEN duration_seconds ELSE 0 END) as quiz,
+                SUM(CASE WHEN study_mode = "tutor" THEN duration_seconds ELSE 0 END) as tutor,
+                SUM(CASE WHEN quiz_type = "random" THEN duration_seconds ELSE 0 END) as random_quiz,
+                SUM(CASE WHEN quiz_type = "mistake_review" THEN duration_seconds ELSE 0 END) as mistake_review,
+                SUM(duration_seconds) as total
+            ')
+            ->first();
+            
+        return [
+            'quiz' => $result->quiz ?? 0,
+            'tutor' => $result->tutor ?? 0,
+            'random_quiz' => $result->random_quiz ?? 0,
+            'mistake_review' => $result->mistake_review ?? 0,
+            'total' => $result->total ?? 0
         ];
-
-        $studyTimeBreakdown['total'] = array_sum($studyTimeBreakdown);
-        return $studyTimeBreakdown;
     }
 
     /**

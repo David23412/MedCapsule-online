@@ -110,11 +110,11 @@ class User extends Authenticatable
     }
 
     /**
-     * Get the user's assignments (as a student).
+     * Get the user's assignment progress through quiz attempts.
      */
-    public function assignments()
+    public function assignmentProgress()
     {
-        return $this->hasMany(Assignment::class, 'user_id');
+        return $this->quizAttempts()->whereNotNull('assignment_id');
     }
 
     /**
@@ -477,5 +477,62 @@ class User extends Authenticatable
                 ]);
             }
         }
+    }
+
+    /**
+     * Calculate total correct answers from all quiz types (Khan Academy style)
+     * This ensures the milestone bar counts ALL correct answers from:
+     * - Regular quizzes
+     * - Assignment quizzes  
+     * - Tutor mode quizzes
+     * - Random quizzes
+     * 
+     * @return int Total correct answers across all quiz types
+     */
+    public function getTotalCorrectAnswers(): int
+    {
+        // Use the cached correct_answers_count field which is updated by UserStatsService
+        // This field is incremented for ALL quiz types in the GradingService
+        return $this->correct_answers_count ?? 0;
+    }
+
+    /**
+     * Get real-time correct answers count from database (for verification)
+     * This method queries the quiz_attempts table directly to ensure accuracy
+     * 
+     * @return int Real-time correct answers count
+     */
+    public function getCorrectAnswersFromDatabase(): int
+    {
+        return $this->quizAttempts()
+            ->selectRaw('SUM(correct_answers) as total_correct')
+            ->value('total_correct') ?? 0;
+    }
+
+    /**
+     * Verify and sync correct answers count if needed
+     * This ensures the cached count matches the database reality
+     * 
+     * @return bool True if sync was needed, false if already accurate
+     */
+    public function syncCorrectAnswersCount(): bool
+    {
+        $cachedCount = $this->correct_answers_count ?? 0;
+        $actualCount = $this->getCorrectAnswersFromDatabase();
+        
+        if ($cachedCount !== $actualCount) {
+            $this->update(['correct_answers_count' => $actualCount]);
+            
+            \Log::info('Synced correct answers count', [
+                'user_id' => $this->id,
+                'cached_count' => $cachedCount,
+                'actual_count' => $actualCount,
+                'difference' => $actualCount - $cachedCount
+            ]);
+            
+            return true;
+        }
+        
+        return false;
     }
 }

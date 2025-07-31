@@ -15,11 +15,11 @@ use Carbon\Carbon;
 class TopicLockingService
 {
     /**
-     * Lock a topic
+     * Lock a topic - SIMPLIFIED VERSION
      *
      * @param Topic $topic The topic to lock
      * @param User $tutor The tutor locking the topic
-     * @param string|null $reason The reason for locking (optional)
+     * @param string|null $reason The reason for locking (optional) - IGNORED
      * @return bool Whether the lock was successful
      * @throws \InvalidArgumentException If the user doesn't have permission
      */
@@ -36,13 +36,9 @@ class TopicLockingService
         try {
             DB::beginTransaction();
             
-            // Lock the topic
+            // Lock the topic - ONLY UPDATE is_locked
             $topic->update([
-                'is_locked' => true,
-                'locked_by_tutor_id' => $tutor->id,
-                'lock_reason' => $reason,
-                'locked_at' => now(),
-                'unlocked_at' => null
+                'is_locked' => true
             ]);
             
             // Invalidate cache
@@ -51,8 +47,7 @@ class TopicLockingService
             // Log the action
             Log::info('Topic locked', [
                 'topic_id' => $topic->id,
-                'tutor_id' => $tutor->id,
-                'reason' => $reason
+                'tutor_id' => $tutor->id
             ]);
             
             DB::commit();
@@ -69,7 +64,7 @@ class TopicLockingService
     }
     
     /**
-     * Unlock a topic
+     * Unlock a topic - SIMPLIFIED VERSION
      *
      * @param Topic $topic The topic to unlock
      * @param User $tutor The tutor unlocking the topic
@@ -89,12 +84,9 @@ class TopicLockingService
         try {
             DB::beginTransaction();
             
-            // Unlock the topic
+            // Unlock the topic - ONLY UPDATE is_locked
             $topic->update([
-                'is_locked' => false,
-                'locked_by_tutor_id' => null,
-                'lock_reason' => null,
-                'unlocked_at' => now()
+                'is_locked' => false
             ]);
             
             // Invalidate cache
@@ -264,7 +256,7 @@ class TopicLockingService
     }
     
     /**
-     * Get lock information for a topic
+     * Get lock information for a topic - SIMPLIFIED VERSION
      *
      * @param Topic $topic The topic to get lock information for
      * @return array|null Lock information or null if not locked
@@ -277,11 +269,7 @@ class TopicLockingService
         
         return [
             'is_locked' => true,
-            'locked_by_tutor_id' => $topic->locked_by_tutor_id,
-            'locked_by_tutor_name' => $topic->lockedByTutor ? $topic->lockedByTutor->name : 'Unknown',
-            'lock_reason' => $topic->lock_reason,
-            'locked_at' => $topic->locked_at ? $topic->locked_at->format('Y-m-d H:i:s') : null,
-            'locked_duration' => $topic->locked_at ? $topic->locked_at->diffForHumans() : null
+            'locked_at' => now()->format('Y-m-d H:i:s')
         ];
     }
     

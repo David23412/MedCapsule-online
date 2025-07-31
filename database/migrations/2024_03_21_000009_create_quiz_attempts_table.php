@@ -12,6 +12,7 @@ return new class extends Migration
             $table->id();
             $table->foreignId('user_id')->constrained()->onDelete('cascade');
             $table->foreignId('topic_id')->nullable()->constrained()->onDelete('cascade');
+            $table->foreignId('assignment_id')->nullable()->constrained()->onDelete('cascade'); // 🔥 CONSOLIDATED
             $table->string('quiz_type')->default('normal'); // normal, random, etc.
             $table->string('study_mode')->nullable(); // quiz or tutor, now nullable
             $table->string('source')->nullable(); // Which source this attempt is for (Assuit, Cairo, etc.)
@@ -26,13 +27,9 @@ return new class extends Migration
             $table->json('question_data')->nullable(); // Detailed attempt data if needed for review
             $table->integer('correct_answers')->nullable(); // Count of correct answers (same as score)
             
-            // Add indexes for efficient querying
-            $table->index(['user_id', 'topic_id']);
-            $table->index(['source', 'study_mode']);
-            $table->index('created_at'); // For getting latest attempts efficiently
-            $table->index(['user_id', 'topic_id', 'study_mode'], 'idx_user_topic_mode');
-            $table->index(['user_id', 'source'], 'idx_user_source');
-            $table->index(['user_id', 'percentage_grade'], 'idx_user_performance');
+            // 🚀 LEAN INDEXES: Only essential ones (detailed indexes in nuclear_performance_indexing)
+            $table->index(['user_id', 'topic_id']); // Basic user-topic queries
+            $table->index('created_at'); // Chronological ordering
             
             $table->timestamps();
         });

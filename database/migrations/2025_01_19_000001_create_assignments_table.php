@@ -20,8 +20,7 @@ return new class extends Migration
         
         Schema::create('assignments', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('tutor_id')->constrained('users')->onDelete('cascade');
-            $table->foreignId('user_id')->constrained('users')->onDelete('cascade');
+            // 🔥 RUTHLESS REMOVAL: No tutor_id needed - auth()->user() knows who's creating!
             $table->foreignId('topic_id')->constrained()->onDelete('cascade');
             $table->foreignId('course_id')->constrained()->onDelete('cascade');
             $table->string('title');
@@ -29,18 +28,12 @@ return new class extends Migration
             $table->decimal('duration_minutes', 8, 2)->default(60.00);
             $table->string('assignment_mode')->default('complete_topic');
             $table->string('assigned_source')->nullable();
-            $table->enum('status', ['active', 'completed', 'overdue', 'locked', 'expired'])->default('active');
-            $table->decimal('score_percentage', 5, 2)->nullable();
+            $table->enum('status', ['active', 'overdue', 'locked', 'expired'])->default('active');
             $table->timestamps();
             
-            // Indexes for performance
-            $table->index(['tutor_id', 'user_id'], 'idx_tutor_user');
-            $table->index(['user_id', 'status'], 'idx_user_status');
-            $table->index('deadline', 'idx_deadline');
-            $table->index(['course_id', 'status'], 'idx_course_status');
-            
-            // REMOVED: Unique constraint to allow maximum flexibility for tutors
-            // Tutors can now create as many assignments as they want for the same student/topic combination
+            // 🚀 LEAN INDEXES: Only essential ones (detailed indexes in nuclear_performance_indexing)
+            $table->index('deadline');
+            $table->index('course_id');
         });
 
         // Create a trigger that automatically updates assignment status (MySQL only)

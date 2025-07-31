@@ -1385,9 +1385,9 @@
                         <div class="title-section">
                             <h3 class="assignment-title">{{ $assignment->title }}</h3>
                             <div class="assignment-meta">
-                                <span class="student-name">{{ $assignment->student->name }}</span>
-                                <span class="meta-separator">•</span>
                                 <span class="course-name">{{ $assignment->course->name }}</span>
+                                <span class="meta-separator">•</span>
+                                <span class="topic-name">{{ $assignment->topic->name }}</span>
                             </div>
                         </div>
                         <span class="status-indicator status-{{ $assignment->status }}"></span>

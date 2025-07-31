@@ -114,6 +114,35 @@ class WrittenAnswerEvaluationServiceTest extends TestCase
     }
     
     /** @test */
+    public function test_early_termination_empty_answer()
+    {
+        $result = $this->evaluationService->evaluateAnswer('', 'correct answer');
+        
+        $this->assertFalse($result['is_correct']);
+        $this->assertEquals(0.0, $result['similarity_score']);
+        $this->assertLessThan(0.001, $result['processing_time']); // Should be very fast
+    }
+
+    /** @test */
+    public function test_early_termination_exact_match()
+    {
+        $result = $this->evaluationService->evaluateAnswer('correct answer', 'correct answer');
+        
+        $this->assertTrue($result['is_correct']);
+        $this->assertEquals(1.0, $result['similarity_score']);
+        $this->assertLessThan(0.001, $result['processing_time']); // Should be very fast
+    }
+
+    /** @test */
+    public function test_early_termination_length_check()
+    {
+        $result = $this->evaluationService->evaluateAnswer('very short', 'this is a much longer correct answer that should fail the length check');
+        
+        $this->assertFalse($result['is_correct']);
+        $this->assertLessThan(0.001, $result['processing_time']); // Should be very fast
+    }
+    
+    /** @test */
     public function it_can_evaluate_medical_domain_specific_answers()
     {
         // Test simple medical concepts with lower threshold

@@ -91,42 +91,30 @@ class TopicController extends Controller
             }])
             ->get();
 
-        // Load assignments for the current user for this course
+        // 🚀 GENIUS: Load assignments with new architecture
         $assignments = [];
-        if ($user->role === 'student') {
-            // OPTIMIZED: Bulk update overdue assignment statuses first
-            \App\Models\Assignment::where('user_id', $user->id)
-                ->where('course_id', $course->id)
-                ->where('status', 'active')
-                ->where('deadline', '<', now())
-                ->update(['status' => 'overdue']);
+        if ($user->role === 'student' || $user->role === 'admin') {
+            // Cache key for assignments
+            $assignmentCacheKey = "assignments_{$course->id}_" . now()->format('Y-m-d-H');
             
-            // Load assignments with optimized relationships
-            $assignments = \App\Models\Assignment::where('user_id', $user->id)
-                ->where('course_id', $course->id)
-                ->with(['topic'])
-                ->get();
-            
-            // OPTIMIZED: Pre-calculate assignment progress to avoid N+1 queries in view
-            $topicIds = $assignments->pluck('topic_id');
-            
-            // Bulk load latest assignment attempts
-            $latestAttempts = \App\Models\QuizAttempt::whereIn('topic_id', $topicIds)
-                ->where('user_id', $user->id)
-                ->where('quiz_type', 'assignment')
-                ->select('topic_id', 'percentage_grade', 'created_at')
-                ->orderBy('created_at', 'desc')
-                ->get()
-                ->groupBy('topic_id')
-                ->map(function ($attempts) {
-                    return $attempts->first(); // Get latest attempt per topic
-                });
-            
-            // Attach progress data to assignments
-            foreach ($assignments as $assignment) {
-                $latestAttempt = $latestAttempts->get($assignment->topic_id);
-                $assignment->progress = $latestAttempt ? $latestAttempt->percentage_grade : 0;
-            }
+            $assignments = \Cache::remember($assignmentCacheKey, 300, function () use ($course, $user) {
+                // Bulk update overdue assignments first
+                \App\Models\Assignment::updateOverdueAssignments();
+                \App\Models\Assignment::updateExpiredAssignments();
+                
+                // 🔥 GENIUS: Load all assignments for course (no user filtering)
+                $assignments = \App\Models\Assignment::where('course_id', $course->id)
+                    ->with(['topic:id,name,course_id'])
+                    ->get();
+                
+                // 🚀 GENIUS: Attach dynamic progress for current user
+                foreach ($assignments as $assignment) {
+                    $assignment->user_progress = $assignment->getUserProgress($user->id);
+                    $assignment->display_status = $assignment->getCurrentStatusAttribute();
+                }
+                
+                return $assignments;
+            });
         }
 
         return view('topics_for_course', [
