@@ -11,6 +11,7 @@ use App\Services\Quiz\QuizValidationService;
 use App\Services\ResilientCacheService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Cache;
 
 class QuizExecutionController extends Controller
 {

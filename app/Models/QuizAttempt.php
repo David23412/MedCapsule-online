@@ -298,6 +298,7 @@ class QuizAttempt extends Model
             $attempts = self::where('user_id', $userId)
                 ->where('topic_id', $topicId)
                 ->where('study_mode', $studyMode)
+                ->orderBy('created_at', 'desc')
                 ->get();
 
             if ($attempts->isEmpty()) {
@@ -319,34 +320,31 @@ class QuizAttempt extends Model
                 ->pluck('count', 'source')
                 ->toArray();
 
-            $totalScore = $attempts->sum('score');
-            $totalQuestions = $attempts->sum('total_questions');
-            $overallPercentage = $totalQuestions > 0 ? ($totalScore / $totalQuestions) * 100 : 0;
-
-            // Group by source and calculate correct answers per source
+            // Group by source and get LATEST attempt per source (not accumulated)
             $sourceProgress = [];
             foreach ($attempts as $attempt) {
                 $source = $attempt->source ?: 'General';
+                
+                // Only keep the latest attempt per source (first one due to desc order)
                 if (!isset($sourceProgress[$source])) {
                     $sourceProgress[$source] = [
-                        'score' => 0,
-                        'total' => 0,
-                        'percentage' => 0
+                        'score' => $attempt->score,
+                        'total' => $attempt->total_questions,
+                        'percentage' => $attempt->total_questions > 0 
+                            ? ($attempt->score / $attempt->total_questions) * 100 
+                            : 0
                     ];
                 }
-                $sourceProgress[$source]['score'] += $attempt->score;
-                $sourceProgress[$source]['total'] += $attempt->total_questions;
             }
 
-            // Calculate percentages for each source based on available questions
-            foreach ($sourceProgress as $source => $data) {
-                $availableQuestions = $sourceQuestionCounts[$source] ?? 0;
-                $completedQuestions = min($data['score'], $availableQuestions); // Cap at available questions
-                
-                $sourceProgress[$source]['percentage'] = $availableQuestions > 0 
-                    ? ($completedQuestions / $availableQuestions) * 100 
-                    : 0;
+            // Calculate overall progress from LATEST attempts per source (not accumulated)
+            $totalScore = 0;
+            $totalQuestions = 0;
+            foreach ($sourceProgress as $data) {
+                $totalScore += $data['score'];
+                $totalQuestions += $data['total'];
             }
+            $overallPercentage = $totalQuestions > 0 ? ($totalScore / $totalQuestions) * 100 : 0;
 
             return [
                 'overall' => [

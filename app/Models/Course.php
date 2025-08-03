@@ -58,8 +58,15 @@ class Course extends Model
     public function users()
     {
         return $this->belongsToMany(User::class, 'course_user')
-                    ->withPivot('enrollment_status', 'enrolled_at')
+                    ->withPivot('is_enrolled', 'enrolled_at')
                     ->withTimestamps();
+    }
+
+    public function enrolledUsers()
+    {
+        return $this->belongsToMany(User::class, 'payments', 'course_id', 'user_id')
+                    ->where('payments.status', 'completed')
+                    ->distinct();
     }
 
     public function payments()
@@ -81,7 +88,7 @@ class Course extends Model
     {
         return Cache::remember("course_{$this->id}_enrolled_students" . ($limit ? "_limit_{$limit}" : ""), self::CACHE_TTL, function () use ($limit) {
             $query = $this->users()
-                         ->where('enrollment_status', 'active')
+                         ->where('is_enrolled', true)
                          ->whereNotNull('email');
             
             if ($limit) {
@@ -97,7 +104,7 @@ class Course extends Model
     {
         return Cache::remember("course_{$this->id}_enrolled_count", self::CACHE_TTL, function () {
             return $this->users()
-                       ->where('enrollment_status', 'active')
+                       ->where('is_enrolled', true)
                        ->whereNotNull('email')
                        ->count();
         });
@@ -156,7 +163,7 @@ class Course extends Model
         return Cache::remember("course_{$this->id}_user_{$userId}_enrolled", self::CACHE_TTL, function () use ($userId) {
             return $this->users()
                        ->where('user_id', $userId)
-                       ->where('enrollment_status', 'active')
+                       ->where('is_enrolled', true)
                        ->exists();
         });
     }

@@ -14,7 +14,7 @@
                             <i class="fas fa-arrow-left me-1"></i> Back to Payments
                         </a>
                         
-                        @if($payment->status === 'pending_verification')
+                        @if($payment->status === 'pending')
                         <button class="btn btn-sm btn-success ms-2" id="verify-payment-btn">
                             <i class="fas fa-check me-1"></i> Verify Payment
                         </button>
@@ -48,8 +48,7 @@
                                             <td>
                                                 @if($payment->status === 'completed')
                                                 <span class="badge bg-success">Completed</span>
-                                                @elseif($payment->status === 'pending_verification')
-                                                <span class="badge bg-warning">Pending Verification</span>
+
                                                 @elseif($payment->status === 'pending')
                                                 <span class="badge bg-info">Pending Payment</span>
                                                 @elseif($payment->status === 'rejected')

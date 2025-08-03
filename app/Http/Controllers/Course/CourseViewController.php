@@ -76,7 +76,7 @@ class CourseViewController extends Controller
         if ($user) {
             $isEnrolled = $user->courses()
                 ->where('course_id', $course->id)
-                ->where('enrollment_status', 'active')
+                ->where('is_enrolled', true)
                 ->exists();
         }
 
@@ -118,19 +118,20 @@ class CourseViewController extends Controller
                 ->whereColumn('course_id', 'courses.id')
                 ->where('name', 'LIKE', '%cases%'),
             DB::raw('(
-                SELECT COUNT(*)
-                FROM course_user
-                WHERE course_user.course_id = courses.id
-                AND course_user.enrollment_status = "active"
+                SELECT COUNT(DISTINCT payments.user_id)
+                FROM payments
+                WHERE payments.course_id = courses.id
+                AND payments.status = "completed"
             ) as enrolled_users_count')
         ];
 
         if ($isLoggedIn) {
             $subqueries[] = DB::raw("(
-                SELECT enrollment_status = 'active'
-                FROM course_user
-                WHERE course_user.course_id = courses.id
-                AND course_user.user_id = {$userId}
+                SELECT COUNT(*) > 0
+                FROM payments
+                WHERE payments.course_id = courses.id
+                AND payments.user_id = {$userId}
+                AND payments.status = 'completed'
             ) as is_enrolled");
             
             $subqueries[] = DB::raw("(
@@ -143,9 +144,11 @@ class CourseViewController extends Controller
         }
 
         return Course::select('courses.*', ...$subqueries)
-            ->with(['users' => function($query) {
+            ->with(['enrolledUsers' => function($query) {
                 $query->select('users.id', 'users.name', 'users.email', 'users.profile_picture_url')
-                    ->where('course_user.enrollment_status', 'active')
+                    ->join('payments', 'users.id', '=', 'payments.user_id')
+                    ->where('payments.status', 'completed')
+                    ->distinct()
                     ->take(4);
             }]);
     }

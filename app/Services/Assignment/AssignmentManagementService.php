@@ -86,14 +86,14 @@ class AssignmentManagementService
     }
 
     /**
-     * Create assignments in bulk
+     * 🚀 GENIUS: Create assignments with efficient pivot table integration
      */
     public function createBulkAssignments(array $validated, int $tutorId): int
     {
-        $assignments = [];
         $now = now();
         
-        $assignments[] = [
+        // Create the assignment (single record) - NO user_id needed
+        $assignmentId = DB::table('assignments')->insertGetId([
             'topic_id' => $validated['topic_id'],
             'course_id' => $validated['course_id'],
             'title' => $validated['title'] ?? null,
@@ -104,32 +104,25 @@ class AssignmentManagementService
             'status' => Assignment::STATUS_ACTIVE,
             'created_at' => $now,
             'updated_at' => $now,
-        ];
+        ]);
 
-        foreach ($assignments as $assignmentData) {
-            DB::insert('
-                INSERT INTO assignments (
-                    topic_id, course_id, title, deadline, 
-                    duration_minutes, assignment_mode, assigned_source, status, 
-                    created_at, updated_at
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            ', [
-                $assignmentData['topic_id'],
-                $assignmentData['course_id'],
-                $assignmentData['title'],
-                $assignmentData['deadline'],
-                $assignmentData['duration_minutes'],
-                $assignmentData['assignment_mode'],
-                $assignmentData['assigned_source'],
-                $assignmentData['status'],
-                $assignmentData['created_at'],
-                $assignmentData['updated_at']
-            ]);
+        // 🚀 GENIUS: Assign to selected students via pivot table
+        $studentAssignments = [];
+        foreach ($validated['student_ids'] as $studentId) {
+            $studentAssignments[] = [
+                'assignment_id' => $assignmentId,
+                'user_id' => $studentId,
+                'created_at' => $now,
+                'updated_at' => $now,
+            ];
         }
+        
+        // Bulk insert student assignments
+        DB::table('assignment_users')->insert($studentAssignments);
         
         $this->clearAssignmentCaches($tutorId);
         
-        return count($assignments);
+        return 1; // One assignment created
     }
 
     /**
@@ -330,6 +323,49 @@ class AssignmentManagementService
             'overdue_updated' => $overdueCount,
             'expired_updated' => $expiredCount
         ];
+    }
+
+    /**
+     * 🚀 GENIUS: Update assigned users for an assignment
+     */
+    public function updateAssignedUsers(Assignment $assignment, array $userIds): array
+    {
+        try {
+            // Remove existing assignments
+            DB::table('assignment_users')
+                ->where('assignment_id', $assignment->id)
+                ->delete();
+            
+            // Add new assignments
+            $now = now();
+            $studentAssignments = [];
+            foreach ($userIds as $userId) {
+                $studentAssignments[] = [
+                    'assignment_id' => $assignment->id,
+                    'user_id' => $userId,
+                    'created_at' => $now,
+                    'updated_at' => $now,
+                ];
+            }
+            
+            if (!empty($studentAssignments)) {
+                DB::table('assignment_users')->insert($studentAssignments);
+            }
+            
+            $this->clearAssignmentCaches(auth()->id());
+            
+            return [
+                'success' => true,
+                'message' => 'Assignment users updated successfully!',
+                'assigned_count' => count($userIds)
+            ];
+            
+        } catch (\Exception $e) {
+            return [
+                'success' => false,
+                'message' => 'Failed to update assignment users: ' . $e->getMessage()
+            ];
+        }
     }
 
     /**

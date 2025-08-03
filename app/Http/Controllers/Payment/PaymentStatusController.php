@@ -85,7 +85,7 @@ class PaymentStatusController extends Controller
 
         try {
             // Auto-verify logic for certain payment methods
-            if ($payment->status === 'proof_submitted' && $payment->payment_method === 'mobile_money') {
+            if ($payment->status === 'pending' && $payment->payment_method === 'mobile_money') {
                 $paymentData = json_decode($payment->payment_data, true);
                 
                 // Simple auto-verification for mobile money (can be enhanced)

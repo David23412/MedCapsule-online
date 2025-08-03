@@ -54,10 +54,10 @@ class HomePageService
                     COALESCE(COUNT(DISTINCT CASE WHEN t.case_type = 'cases' THEN t.id END), 0) as cases,
                     COALESCE(COUNT(DISTINCT CASE WHEN t.case_type = 'practical' THEN t.id END), 0) as practical,
                     COALESCE(COUNT(DISTINCT q.id), 0) as questions,
-                    COALESCE(COUNT(DISTINCT CASE WHEN cu.enrollment_status = 'active' THEN cu.user_id END), 0) as enrolled_students
+                    COALESCE(COUNT(DISTINCT CASE WHEN cu.is_enrolled = 1 THEN cu.user_id END), 0) as enrolled_students
                 FROM topics t
                 LEFT JOIN questions q ON t.id = q.topic_id
-                LEFT JOIN course_user cu ON t.course_id = cu.course_id AND cu.enrollment_status = 'active'
+                LEFT JOIN course_user cu ON t.course_id = cu.course_id AND cu.is_enrolled = 1
                 WHERE t.id IS NOT NULL
             ");
 
@@ -92,7 +92,7 @@ class HomePageService
                     COALESCE(COUNT(DISTINCT CASE WHEN topics.case_type = "cases" THEN topics.id END), 0) as case_count,
                     COALESCE(COUNT(DISTINCT CASE WHEN topics.case_type = "practical" THEN topics.id END), 0) as practical_count,
                     COALESCE(COUNT(DISTINCT questions.id), 0) as question_count,
-                    COALESCE(COUNT(DISTINCT CASE WHEN course_user.enrollment_status = "active" THEN course_user.user_id END), 0) as enrolled_count
+                    COALESCE(COUNT(DISTINCT CASE WHEN course_user.is_enrolled = 1 THEN course_user.user_id END), 0) as enrolled_count
                 ')
                 ->leftJoin('topics', function($join) {
                     $join->on('courses.id', '=', 'topics.course_id');
@@ -102,7 +102,7 @@ class HomePageService
                 })
                 ->leftJoin('course_user', function($join) {
                     $join->on('courses.id', '=', 'course_user.course_id')
-                         ->where('course_user.enrollment_status', '=', 'active');
+                         ->where('course_user.is_enrolled', '=', 1);
                 })
                 ->where('courses.type', 'medical')
                 ->groupBy([

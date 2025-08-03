@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Support\Facades\DB;
 
 class User extends Authenticatable
 {
@@ -60,12 +61,24 @@ class User extends Authenticatable
 
     /**
      * Define the relationship with courses (many-to-many).
+     * Only returns enrolled courses (is_enrolled = true).
      */
     public function courses()
     {
         return $this->belongsToMany(Course::class, 'course_user')
-                    ->withPivot('enrollment_status')
-                    ->where('enrollment_status', 'active')
+                    ->withPivot('is_enrolled', 'enrolled_at')
+                    ->where('is_enrolled', true)
+                    ->withTimestamps();
+    }
+
+    /**
+     * Define the relationship with all course enrollments regardless of enrollment status.
+     * Useful for admin interfaces.
+     */
+    public function allCourseEnrollments()
+    {
+        return $this->belongsToMany(Course::class, 'course_user')
+                    ->withPivot('is_enrolled', 'enrolled_at')
                     ->withTimestamps();
     }
 
@@ -118,6 +131,15 @@ class User extends Authenticatable
     }
 
     /**
+     * 🚀 GENIUS: Get assignments assigned to this user via pivot table
+     */
+    public function assignments()
+    {
+        return $this->belongsToMany(Assignment::class, 'assignment_users', 'user_id', 'assignment_id')
+                   ->withTimestamps();
+    }
+
+    /**
      * Get the user's topic progress.
      */
     public function userTopicProgress()
@@ -138,9 +160,33 @@ class User extends Authenticatable
      */
     public function hasAccessToCourse($courseId)
     {
-        return $this->role === self::ROLE_ADMIN || $this->courses()
+        // Admins always have access
+        if ($this->role === self::ROLE_ADMIN) {
+            return true;
+        }
+        
+        // Check if user is enrolled (simplified logic)
+        return DB::table('course_user')
+            ->where('user_id', $this->id)
             ->where('course_id', $courseId)
-            ->where('enrollment_status', 'active')
+            ->where('is_enrolled', true)
+            ->exists();
+    }
+
+    /**
+     * Check if user is enrolled in a course (regardless of status).
+     */
+    public function isEnrolledInCourse($courseId)
+    {
+        // Admins are considered enrolled in all courses
+        if ($this->role === self::ROLE_ADMIN) {
+            return true;
+        }
+        
+        // Check if user has ANY enrollment (active or inactive)
+        return DB::table('course_user')
+            ->where('user_id', $this->id)
+            ->where('course_id', $courseId)
             ->exists();
     }
 
@@ -151,7 +197,7 @@ class User extends Authenticatable
     {
         // Use syncWithoutDetaching to ensure proper pivot data and avoid duplicates
         $this->courses()->syncWithoutDetaching([$courseId => [
-            'enrollment_status' => 'active',
+            'is_enrolled' => true,
             'enrolled_at' => now()
         ]]);
     }
@@ -178,7 +224,7 @@ class User extends Authenticatable
             $this->courses()->syncWithoutDetaching(
                 $freeCourseIds->mapWithKeys(function($courseId) {
                     return [$courseId => [
-                        'enrollment_status' => 'active',
+                        'is_enrolled' => true,
                         'enrolled_at' => now()
                     ]];
                 })->toArray()

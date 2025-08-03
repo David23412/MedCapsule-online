@@ -4,504 +4,840 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token() }}">
-    <title>MedCapsule</title>
+    <title>Manage Access - MedCapsule</title>
     
     <!-- Bootstrap CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <!-- Font Awesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-    <!-- Google Fonts -->
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <!-- Select2 CSS -->
     <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
     
     <style>
-        body {
-            font-family: 'Poppins', sans-serif;
-            background-color: #f8f9fa;
-            padding-top: 2rem;
+        :root {
+            --primary-color: #0d6efd;
+            --success-color: #198754;
+            --warning-color: #ffc107;
+            --danger-color: #dc3545;
+            --info-color: #0dcaf0;
+            --light-color: #f8f9fa;
+            --dark-color: #333333;
+            --header-color: #2c3e50;
+            --icon-color: #0d6efd;
+            --border-color: #e9ecef;
+            --text-muted: #6c757d;
+            --shadow-sm: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+            --shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+            --border-radius: 8px;
+            --border-radius-sm: 6px;
         }
-
-        .navbar {
+        
+        /* Notification System */
+        .notification-container {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 9999;
+            pointer-events: none;
+        }
+        
+        .notification {
             background: white;
-            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-            margin-bottom: 2rem;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            padding: 16px 20px;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            min-width: 300px;
+            transform: translateX(100%);
+            opacity: 0;
+            transition: all 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+            pointer-events: auto;
+        }
+        
+        .notification.show {
+            transform: translateX(0);
+            opacity: 1;
+        }
+        
+        .notification.success {
+            border-left: 4px solid #28a745;
+            background: linear-gradient(135deg, #f8fff9 0%, #e8f5e8 100%);
+        }
+        
+        .notification.error {
+            border-left: 4px solid #dc3545;
+            background: linear-gradient(135deg, #fff8f8 0%, #ffe8e8 100%);
+        }
+        
+        .notification-icon {
+            font-size: 24px;
+            flex-shrink: 0;
+        }
+        
+        .notification.success .notification-icon {
+            color: #28a745;
+        }
+        
+        .notification.error .notification-icon {
+            color: #dc3545;
+        }
+        
+        .notification-content {
+            flex-grow: 1;
+        }
+        
+        .notification-title {
+            font-weight: 600;
+            font-size: 14px;
+            margin-bottom: 2px;
+        }
+        
+        .notification-message {
+            font-size: 13px;
+            color: #666;
+        }
+        
+        .notification-close {
+            background: none;
+            border: none;
+            color: #999;
+            cursor: pointer;
+            padding: 4px;
+            border-radius: 4px;
+            transition: color 0.2s;
+        }
+        
+        .notification-close:hover {
+            color: #666;
         }
 
-        .proof-thumbnail {
-            position: relative;
-            display: inline-block;
+        * {
+            box-sizing: border-box;
         }
-        
-        .proof-thumbnail img {
-            transition: all 0.2s ease;
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background-color: #ffffff;
+            line-height: 1.6;
+            font-size: 14px;
         }
-        
-        .proof-thumbnail img:hover {
-            transform: scale(3);
-            box-shadow: 0 3px 10px rgba(0,0,0,0.2);
-            position: relative;
-            z-index: 10;
-        }
-        
-        .proof-thumbnail::after {
-            content: "";
-            position: absolute;
+
+        .main-header {
+            background: white;
+            border-bottom: 1px solid var(--border-color);
+            padding: 1rem 0;
+            margin-bottom: 2rem;
+            position: sticky;
             top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0,0,0,0.1);
-            border-radius: 3px;
-            opacity: 0;
-            transition: opacity 0.2s ease;
+            z-index: 1020;
+            box-shadow: var(--shadow-sm);
         }
-        
-        .proof-thumbnail:hover::after {
-            opacity: 1;
+
+        .page-title {
+            font-size: 1.75rem;
+            font-weight: 700;
+            margin-bottom: 0.25rem;
+            color: var(--header-color);
+        }
+
+        .page-subtitle {
+            color: #666666;
+            font-size: 1rem;
+            margin-bottom: 0;
+            font-weight: 500;
         }
 
         .card {
-            border: none;
-            border-radius: 15px;
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
-            margin-bottom: 2rem;
+            border: 1px solid var(--border-color);
+            border-radius: var(--border-radius);
+            box-shadow: var(--shadow-sm);
+            margin-bottom: 1.5rem;
+            background: white;
+            transition: box-shadow 0.15s ease-in-out;
+        }
+
+        .card:hover {
+            box-shadow: var(--shadow);
         }
 
         .card-header {
-            background: #2196f3;
-            color: white;
-            border-radius: 15px 15px 0 0 !important;
-            padding: 1rem 1.5rem;
+            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+            border-bottom: 2px solid var(--border-color);
+            padding: 1.25rem 1.5rem;
+            font-weight: 700;
+            font-size: 1.1rem;
+            color: var(--header-color);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .card-header i {
+            color: var(--icon-color);
+            font-size: 1.2rem;
+            margin-right: 0.75rem;
+        }
+
+        .card-header .badge {
+            font-size: 0.7rem;
+            padding: 0.25em 0.5em;
+        }
+
+        .form-control, .form-select {
+            border: 1px solid #ced4da;
+            border-radius: var(--border-radius-sm);
+            padding: 0.6rem 0.75rem;
+            font-size: 0.9rem;
+            transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+        }
+
+        .form-control:focus, .form-select:focus {
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.15);
+        }
+
+        .form-label {
             font-weight: 600;
+            color: var(--header-color);
+            margin-bottom: 0.75rem;
+            font-size: 1rem;
         }
 
-        .form-control {
-            border-radius: 8px;
-            border: 1px solid #e0e0e0;
-            padding: 0.75rem 1rem;
+        .form-label i {
+            color: var(--icon-color);
+            margin-right: 0.5rem;
         }
 
-        .form-control:focus {
-            box-shadow: 0 0 0 3px rgba(33, 150, 243, 0.2);
-            border-color: #2196f3;
+        .btn {
+            border-radius: var(--border-radius-sm);
+            font-size: 1rem;
+            font-weight: 600;
+            padding: 0.75rem 1.5rem;
+            transition: all 0.15s ease-in-out;
+            border: none;
+            cursor: pointer;
+            text-transform: none;
+            letter-spacing: 0.3px;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
         }
 
         .btn-primary {
-            background: #2196f3;
-            border: none;
-            border-radius: 8px;
-            padding: 0.75rem 1.5rem;
-            font-weight: 500;
+            background: linear-gradient(135deg, #0d6efd 0%, #0056b3 100%);
+            color: white;
+            border: 2px solid #0d6efd;
         }
 
         .btn-primary:hover {
-            background: #1976d2;
-            transform: translateY(-1px);
+            background: linear-gradient(135deg, #0056b3 0%, #004085 100%);
+            color: white;
+        }
+
+        .btn-success {
+            background: linear-gradient(135deg, #198754 0%, #146c43 100%);
+            color: white;
+            border: 2px solid #198754;
+        }
+
+        .btn-success:hover {
+            background: linear-gradient(135deg, #146c43 0%, #0f5132 100%);
+            color: white;
+        }
+
+        .btn-warning {
+            background: linear-gradient(135deg, #ffc107 0%, #ffb300 100%);
+            color: #000;
+            border: 2px solid #ffc107;
+            font-weight: 700;
+        }
+
+        .btn-warning:hover {
+            background: linear-gradient(135deg, #ffb300 0%, #ff8f00 100%);
+            color: #000;
+        }
+
+        .btn-danger {
+            background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
+            color: white;
+            border: 2px solid #dc3545;
+        }
+
+        .btn-danger:hover {
+            background: linear-gradient(135deg, #c82333 0%, #a71e2a 100%);
+            color: white;
+        }
+
+        .btn-outline-secondary {
+            border: 2px solid #6c757d;
+            color: #495057;
+            background: white;
+            font-weight: 600;
+        }
+
+        .btn-outline-secondary:hover {
+            background: #6c757d;
+            border-color: #6c757d;
+            color: white;
+        }
+
+        .btn i {
+            font-size: 1.1rem;
+            margin-right: 0.5rem;
         }
 
         .table {
-            margin: 0;
+            font-size: 0.85rem;
+            margin-bottom: 0;
         }
 
         .table th {
-            font-weight: 600;
-            color: #2196f3;
-            border-bottom-width: 1px;
+            font-weight: 700;
+            color: var(--header-color);
+            border-bottom: 3px solid var(--primary-color);
+            padding: 1rem 0.75rem;
+            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+            white-space: nowrap;
+            font-size: 0.95rem;
         }
 
         .table td {
+            padding: 1rem 0.75rem;
             vertical-align: middle;
+            border-bottom: 1px solid #e9ecef;
+            color: #495057;
+            font-weight: 500;
+        }
+
+        .table tbody tr:hover {
+            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+            transform: translateY(-1px);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        .table .fw-medium {
+            color: #2c3e50;
+            font-weight: 600;
         }
 
         .badge {
+            font-size: 0.8rem;
+            font-weight: 600;
             padding: 0.5em 1em;
-            font-weight: 500;
-            margin: 0.2rem;
-            display: inline-block;
-            min-width: 80px;
-            text-align: center;
+            border-radius: 15px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            border: 2px solid transparent;
         }
 
-        .badge.renewal {
-            background-color: #17a2b8 !important;
-            margin-left: 0.5rem;
+        .badge.bg-primary {
+            background: linear-gradient(135deg, #0d6efd 0%, #0056b3 100%) !important;
+            color: white !important;
+            border-color: #0d6efd;
         }
 
-        .alert {
-            border-radius: 10px;
-            border: none;
+        .badge.bg-success {
+            background: linear-gradient(135deg, #198754 0%, #146c43 100%) !important;
+            color: white !important;
+            border-color: #198754;
         }
 
-        .enrollment-history {
-            max-height: 400px;
-            overflow-y: auto;
+        .badge.bg-warning {
+            background: linear-gradient(135deg, #ffc107 0%, #ffb300 100%) !important;
+            color: #000 !important;
+            border-color: #ffc107;
+            font-weight: 700;
         }
 
-        .stats-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 1rem;
+        .badge.bg-danger {
+            background: linear-gradient(135deg, #dc3545 0%, #c82333 100%) !important;
+            color: white !important;
+            border-color: #dc3545;
+        }
+
+        .badge.bg-info {
+            background: linear-gradient(135deg, #0dcaf0 0%, #0aa2c0 100%) !important;
+            color: #000 !important;
+            border-color: #0dcaf0;
+            font-weight: 700;
+        }
+
+        .badge.bg-secondary {
+            background: linear-gradient(135deg, #6c757d 0%, #5a6268 100%) !important;
+            color: white !important;
+            border-color: #6c757d;
+        }
+
+        .stats-row {
             margin-bottom: 2rem;
         }
 
         .stat-card {
             background: white;
-            border-radius: 15px;
+            border: 1px solid var(--border-color);
+            border-radius: var(--border-radius);
             padding: 1.5rem;
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
-            transition: transform 0.3s ease;
+            text-align: center;
+            transition: all 0.2s ease;
+            height: 100%;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .stat-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 5px;
+            background: linear-gradient(90deg, var(--primary-color), var(--info-color));
+            border-radius: 8px 8px 0 0;
+        }
+
+        .stat-card {
+            border: 2px solid #e9ecef;
         }
 
         .stat-card:hover {
-            transform: translateY(-5px);
+            transform: translateY(-2px);
+            box-shadow: var(--shadow);
         }
 
-        .stat-icon {
-            font-size: 2rem;
-            margin-bottom: 1rem;
-            color: #2196f3;
-        }
-
-        .stat-value {
-            font-size: 1.8rem;
-            font-weight: 600;
-            color: #2196f3;
+        .stat-number {
+            font-size: 2.5rem;
+            font-weight: 800;
             margin-bottom: 0.5rem;
+            line-height: 1;
         }
+
+        .stat-number.text-primary { color: #0d6efd !important; }
+        .stat-number.text-success { color: #198754 !important; }
+        .stat-number.text-warning { color: #f57c00 !important; }
+        .stat-number.text-info { color: #0dcaf0 !important; }
 
         .stat-label {
-            color: #666;
+            color: var(--header-color);
             font-size: 0.9rem;
-            font-weight: 500;
-        }
-
-        .warning-stat {
-            color: #ff9800;
-        }
-
-        .success-stat {
-            color: #4caf50;
-        }
-
-        .info-stat {
-            color: #2196f3;
-        }
-
-        .latest-users-table td {
-            padding: 1rem;
-        }
-
-        .course-stats-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-            gap: 1rem;
-            margin-top: 1rem;
-        }
-
-        .course-stat-card {
-            background: white;
-            border-radius: 12px;
-            padding: 1rem;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-        }
-
-        .course-name {
             font-weight: 600;
-            color: #2196f3;
-            margin-bottom: 0.5rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
         }
 
-        .course-enrolled {
-            font-size: 0.9rem;
-            color: #666;
+        .stat-change {
+            font-size: 0.75rem;
+            margin-top: 0.25rem;
         }
 
-        .status-badge {
-            padding: 0.25rem 0.75rem;
-            border-radius: 15px;
-            font-size: 0.8rem;
-            font-weight: 500;
+        .stat-change.positive {
+            color: var(--success-color);
         }
 
-        .status-new {
-            background: #e3f2fd;
-            color: #2196f3;
-        }
-
-        .status-active {
-            background: #e8f5e9;
-            color: #4caf50;
-        }
-
-        .status-inactive {
-            background: #ffebee;
-            color: #f44336;
+        .stat-change.negative {
+            color: var(--danger-color);
         }
 
         .select2-container .select2-selection--single {
-            height: 45px;
-            border-radius: 8px;
-            border: 1px solid #e0e0e0;
+            height: 42px;
+            border: 1px solid #ced4da;
+            border-radius: var(--border-radius-sm);
         }
 
         .select2-container--default .select2-selection--single .select2-selection__rendered {
-            line-height: 45px;
-            padding-left: 15px;
+            line-height: 40px;
+            padding-left: 12px;
+            font-size: 0.9rem;
         }
 
         .select2-container--default .select2-selection--single .select2-selection__arrow {
-            height: 45px;
-        }
-
-        .select2-container--default .select2-results__option--highlighted[aria-selected] {
-            background-color: #2196f3;
+            height: 40px;
         }
 
         .select2-dropdown {
-            border-color: #e0e0e0;
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+            border-radius: var(--border-radius-sm);
+            box-shadow: var(--shadow);
         }
 
-        .select2-search__field {
-            border-radius: 4px !important;
-            padding: 5px 10px !important;
+        .nav-tabs {
+            border-bottom: 2px solid var(--border-color);
+            margin-bottom: 2rem;
         }
 
-        .course-stat-card {
-            border-left: 4px solid transparent;
-            transition: transform 0.2s ease;
-        }
-
-        .course-stat-card:hover {
-            transform: translateX(5px);
-        }
-
-        .select2-container .select2-selection--single {
-            height: 50px;
-        }
-
-        .select2-container--default .select2-selection--single .select2-selection__rendered {
-            line-height: 50px;
-            padding-left: 20px;
-        }
-
-        .select2-container--default .select2-selection--single .select2-selection__arrow {
-            height: 48px;
-        }
-
-        .select2-results__option {
-            padding: 10px 20px;
-            border-bottom: 1px solid #eee;
-        }
-
-        .select2-results__option:last-child {
-            border-bottom: none;
-        }
-
-        .select2-container--default .select2-results__option--highlighted[aria-selected] {
-            background-color: #f8f9fa;
-            color: #333;
-        }
-
-        .select2-container--default .select2-results__option[aria-selected=true] {
-            background-color: #e3f2fd;
-        }
-
-        .badge.anatomy {
-            background-color: #ff4444 !important;
-            color: white;
-        }
-
-        .badge.histology {
-            background-color: #ff66b2 !important;
-            color: white;
-        }
-
-        .badge.physiology {
-            background-color: #ffeb3b !important;
-            color: black;
-        }
-
-        .badge.biochemistry {
-            background-color: #9c27b0 !important;
-            color: white;
-        }
-
-        /* Add these styles for the user dropdown */
-        .user-option {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 8px 0;
-        }
-
-        .user-email {
-            font-weight: 500;
-        }
-
-        .courses-count {
-            font-size: 0.85rem;
-            color: #666;
-            background: #f0f0f0;
-            padding: 2px 8px;
-            border-radius: 12px;
-        }
-
-        .select2-container--default .select2-results__option {
-            padding: 8px 15px;
-        }
-
-        .text-decoration-line-through {
-            text-decoration: line-through !important;
-            opacity: 0.7;
-        }
-
-        /* Highlight pending verification rows */
-        .table tr.pending-verification {
-            background-color: rgba(255, 193, 7, 0.1) !important;
-        }
-        
-        .table tr.pending-verification:hover {
-            background-color: rgba(255, 193, 7, 0.2) !important;
-        }
-
-        /* Add these styles to your existing styles section */
-        .fw-500 {
-            font-weight: 500 !important;
-        }
-
-        .rounded-4 {
-            border-radius: 12px !important;
-        }
-
-        .table > :not(caption) > * > * {
-            padding: 1rem;
-        }
-
-        .table tbody tr:hover {
-            background-color: #f8f9fa;
-            transition: background-color 0.2s ease;
-        }
-
-        .badge {
-            padding: 0.5em 1em;
-            font-weight: 500;
-            letter-spacing: 0.3px;
-        }
-
-        .btn {
-            font-weight: 500;
-            letter-spacing: 0.3px;
-        }
-
-        .form-control:focus, .form-select:focus {
-            border-color: #2196f3;
-            box-shadow: 0 0 0 0.2rem rgba(33, 150, 243, 0.15);
-        }
-
-        #payment-search {
-            border-top-right-radius: 0;
-            border-bottom-right-radius: 0;
-        }
-
-        #payment-search-btn {
-            border-top-left-radius: 0;
-            border-bottom-left-radius: 0;
-        }
-
-        .pagination .page-link {
-            padding: 0.5rem 0.75rem;
-            color: #2196f3;
-            background-color: #fff;
-            border: 1px solid #dee2e6;
-        }
-
-        .pagination .page-item.active .page-link {
-            background-color: #2196f3;
-            border-color: #2196f3;
-            color: white;
-        }
-
-        .pagination .page-link:hover {
-            background-color: #e9ecef;
-            border-color: #dee2e6;
-            color: #0d6efd;
-        }
-
-        .pagination .page-item.disabled .page-link {
-            color: #6c757d;
-            pointer-events: none;
-            background-color: #fff;
-            border-color: #dee2e6;
-        }
-
-        /* Payment history table styling */
-        .payment-history-section {
-            background-color: #fff;
-            border-radius: 15px;
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
-        }
-
-        .payment-history-section .card-header {
-            background-color: #fff;
-            border-bottom: 1px solid #eee;
-            padding: 1.5rem;
-        }
-
-        .payment-stats-card {
-            background: white;
-            border-radius: 12px;
-            padding: 1.25rem;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
-            border: 1px solid #eee;
-            height: 100%;
-        }
-
-        .payment-stats-card .icon {
-            font-size: 1.5rem;
-            margin-right: 1rem;
-        }
-
-        .payment-stats-card .stat-value {
-            font-size: 1.5rem;
+        .nav-tabs .nav-link {
+            border: none;
+            color: #495057;
             font-weight: 600;
-            margin-bottom: 0.25rem;
+            font-size: 1.1rem;
+            padding: 1.25rem 2rem;
+            transition: all 0.15s ease;
+            position: relative;
+            background: #f8f9fa;
+            margin-right: 0.5rem;
+            border-radius: 8px 8px 0 0;
         }
 
-        .payment-stats-card .stat-label {
+        .nav-tabs .nav-link:hover {
+            color: var(--primary-color);
+            background: #e3f2fd;
+            transform: translateY(-2px);
+        }
+
+        .nav-tabs .nav-link.active {
+            color: white;
+            background: var(--primary-color);
+            border-bottom: none;
+            box-shadow: 0 4px 8px rgba(13, 110, 253, 0.3);
+        }
+
+        .nav-tabs .nav-link i {
+            font-size: 1.2rem;
+            margin-right: 0.75rem;
+        }
+
+        .table-responsive {
+            border-radius: var(--border-radius);
+            overflow: hidden;
+            box-shadow: var(--shadow-sm);
+        }
+
+        .alert {
+            border-radius: var(--border-radius-sm);
+            font-size: 0.9rem;
+            border: none;
+            box-shadow: var(--shadow-sm);
+        }
+
+        .user-info-card {
+            background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%);
+            border: 2px solid #2196f3;
+            border-radius: var(--border-radius);
+            padding: 1.5rem;
+            margin-top: 1rem;
+            box-shadow: 0 4px 12px rgba(33, 150, 243, 0.2);
+        }
+
+        .user-info-card strong {
+            color: #1565c0;
+            font-weight: 700;
+        }
+
+        .user-info-card .text-muted {
+            color: #424242 !important;
+            font-weight: 500;
+        }
+
+        .quick-actions {
+            display: flex;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+        }
+
+        .info-tooltip {
+            position: relative;
+            cursor: help;
+        }
+
+        .info-tooltip:hover::after {
+            content: attr(data-tooltip);
+            position: absolute;
+            bottom: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            background: var(--dark-color);
+            color: white;
+            padding: 0.5rem;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            white-space: nowrap;
+            z-index: 1000;
+        }
+
+        .loading-spinner {
+            display: inline-block;
+            width: 1rem;
+            height: 1rem;
+            border: 2px solid #f3f3f3;
+            border-top: 2px solid var(--primary-color);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 3rem 1rem;
+            color: #495057;
+            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+            border-radius: var(--border-radius);
+            border: 2px dashed #ced4da;
+        }
+
+        .empty-state i {
+            font-size: 4rem;
+            margin-bottom: 1rem;
+            color: #6c757d;
+        }
+
+        .empty-state div {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: #495057;
+        }
+
+        .empty-state .small {
+            color: #6c757d;
+            font-weight: 500;
+        }
+
+        /* Responsive Design */
+        @media (max-width: 768px) {
+            .main-header {
+                padding: 0.75rem 0;
+            }
+            
+            .page-title {
+                font-size: 1.25rem;
+            }
+            
+            .stat-card {
+                padding: 1rem;
+            }
+            
+            .stat-number {
+                font-size: 1.5rem;
+            }
+            
+            .nav-tabs .nav-link {
+                padding: 0.75rem 1rem;
+                font-size: 0.85rem;
+            }
+            
+            .table {
+                font-size: 0.8rem;
+            }
+            
+            .table th,
+            .table td {
+                padding: 0.5rem;
+            }
+            
+            .btn {
+                padding: 0.5rem 0.75rem;
+                font-size: 0.8rem;
+            }
+            
+            .card-header {
+                padding: 0.75rem 1rem;
+                font-size: 0.9rem;
+            }
+            
+            .quick-actions {
+                flex-direction: column;
+            }
+            
+            .quick-actions .btn {
+                width: 100%;
+            }
+        }
+
+        @media (max-width: 576px) {
+            .container {
+                padding-left: 0.75rem;
+                padding-right: 0.75rem;
+            }
+            
+            .stats-row .col-md-3 {
+                margin-bottom: 1rem;
+            }
+            
+            .table-responsive {
+                font-size: 0.75rem;
+            }
+            
+            .nav-tabs .nav-link {
+                padding: 0.5rem 0.75rem;
+            }
+        }
+
+        /* Dark mode support */
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --light-color: #1a1a1a;
+                --dark-color: #ffffff;
+                --border-color: #333333;
+                --text-muted: #aaaaaa;
+            }
+        }
+
+        .form-text {
+            color: #495057 !important;
+            font-weight: 500;
+            font-size: 0.9rem;
+            margin-top: 0.5rem;
+        }
+
+        .form-text i {
+            color: var(--icon-color);
+            margin-right: 0.5rem;
+        }
+
+        .form-check-label {
+            color: #495057;
+            font-weight: 500;
+            font-size: 0.95rem;
+        }
+
+        .text-danger {
+            color: #dc3545 !important;
+            font-weight: 700;
+        }
+
+        .text-muted {
+            color: #6c757d !important;
+            font-weight: 500;
+        }
+
+        .small {
+            font-size: 0.9rem !important;
+            font-weight: 500;
+        }
+
+        /* Enhanced visibility for all text elements */
+        h1, h2, h3, h4, h5, h6 {
+            color: var(--header-color) !important;
+            font-weight: 700;
+        }
+
+        p, div, span {
+            color: #495057;
+        }
+
+        /* Header Button Styles - Minimal and Clean */
+        .header-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.5rem 1rem;
+            text-decoration: none;
             color: #6c757d;
             font-size: 0.875rem;
+            font-weight: 500;
+            border-radius: 6px;
+            transition: all 0.2s ease;
+            border: 1px solid transparent;
+            background: transparent;
         }
 
-        /* Search and filter styling */
-        .search-input {
-            border-radius: 8px 0 0 8px !important;
-            border: 1px solid #e0e0e0;
+        .header-btn:hover {
+            color: #495057;
+            background: #f8f9fa;
+            border-color: #e9ecef;
+            text-decoration: none;
         }
 
-        .search-btn {
-            border-radius: 0 8px 8px 0 !important;
-            border: 1px solid #e0e0e0;
+        .header-btn i {
+            font-size: 0.875rem;
+            opacity: 0.8;
+        }
+
+        .header-btn span {
+            font-weight: 500;
+        }
+
+        /* Minimal System Health Badge */
+        .system-health-badge {
+            background: transparent !important;
+            color: #28a745 !important;
+            border: 1px solid #28a745;
+            font-size: 0.75rem !important;
+            padding: 0.25rem 0.5rem !important;
+            font-weight: 500 !important;
+            border-radius: 4px;
+        }
+
+        .system-health-badge i {
+            font-size: 0.75rem;
+            margin-right: 0.25rem;
+        }
+
+        /* Action buttons styling */
+        .btn-sm {
+            padding: 0.375rem 0.75rem;
+            font-size: 0.875rem;
+            border-radius: 4px;
+        }
+
+        .btn-group .btn {
+            margin-right: 0.25rem;
+        }
+
+        .btn-group .btn:last-child {
+            margin-right: 0;
+        }
+
+        /* GOLDEN STANDARD GRANT ACCESS BUTTON */
+        #grantAccessBtn {
+            font-weight: 600;
+            transition: all 0.2s ease;
+        }
+        
+        #grantAccessBtn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+        
+        #grantAccessBtn:not(:disabled):hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(25, 135, 84, 0.3);
+        }
+
+        /* Print styles */
+        @media print {
+            .main-header .btn,
+            .nav-tabs,
+            .quick-actions {
+                display: none !important;
+            }
+            
+            .card {
+                box-shadow: none;
+                border: 1px solid #000;
+            }
+            
+            .table {
+                font-size: 0.8rem;
+            }
         }
     </style>
 </head>
 <body>
-    <div class="container">
-        <nav class="navbar navbar-expand-lg navbar-light">
-            <div class="container-fluid">
-                <a class="navbar-brand" href="/">MedCapsule</a>
-                <div class="d-flex">
-                    <a href="{{ route('admin.delete.index') }}" class="btn btn-outline-danger me-2">
-                        <i class="fas fa-trash-alt"></i> Delete Management
-                    </a>
-                    <a href="{{ route('courses.index') }}" class="btn btn-outline-primary me-2">
-                        <i class="fas fa-arrow-left"></i> Back to Courses
+    <div class="main-header">
+        <div class="container">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h2 class="page-title mb-1">User Management</h2>
+                    <p class="page-subtitle mb-0">Grant access • Manage admins • Track payments</p>
+                </div>
+                <div class="d-flex gap-3">
+                    <a href="{{ route('courses.index') }}" class="header-btn back-btn">
+                        <i class="fas fa-arrow-left"></i>
+                        <span>Back to Courses</span>
                     </a>
                 </div>
             </div>
-        </nav>
+        </div>
+    </div>
 
+    <div class="container">
         @if(session('success'))
             <div class="alert alert-success alert-dismissible fade show" role="alert">
                 {{ session('success') }}
@@ -516,253 +852,383 @@
             </div>
         @endif
 
-        <!-- Tab Navigation -->
-        <ul class="nav nav-tabs mb-4" id="myTab" role="tablist">
+        <!-- Enhanced Stats Dashboard -->
+        <div class="row stats-row g-3">
+            <div class="col-lg-3 col-md-6">
+                <div class="stat-card">
+                    <div class="stat-number text-primary">{{ $userStats['total_users'] ?? 0 }}</div>
+                    <div class="stat-label">Total Users</div>
+                    <div class="stat-change">
+                        <i class="fas fa-users"></i> Total registered users
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-3 col-md-6">
+                <div class="stat-card">
+                    <div class="stat-number text-success">{{ $userStats['active_users'] ?? 0 }}</div>
+                    <div class="stat-label">Active Users</div>
+                    <div class="stat-change positive">
+                        <i class="fas fa-arrow-up"></i> {{ $userStats['total_users'] > 0 ? round(($userStats['active_users'] / $userStats['total_users']) * 100) : 0 }}% active
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-3 col-md-6">
+                <div class="stat-card">
+                    <div class="stat-number text-warning">{{ $userStats['admin_users'] ?? 0 }}</div>
+                    <div class="stat-label">Administrators</div>
+                    <div class="stat-change">
+                        <i class="fas fa-shield-alt"></i> {{ $userStats['total_users'] > 0 ? round(($userStats['admin_users'] / $userStats['total_users']) * 100, 1) : 0 }}% of users
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-3 col-md-6">
+                <div class="stat-card">
+                    <div class="stat-number text-info">{{ $userStats['total_enrollments'] ?? 0 }}</div>
+                    <div class="stat-label">Total Enrollments</div>
+                    <div class="stat-change positive">
+                        <i class="fas fa-graduation-cap"></i> {{ $userStats['total_users'] > 0 ? round($userStats['total_enrollments'] / $userStats['total_users'], 1) : 0 }} avg per user
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- System Health Indicators -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header">
+                        <i class="fas fa-heartbeat me-2" style="color: #28a745; font-size: 1.3rem;"></i>
+                        <span style="color: #2c3e50; font-weight: 700; font-size: 1.1rem;">System Health</span>
+                        <span class="system-health-badge">
+                            <i class="fas fa-check-circle"></i>All Systems Operational
+                        </span>
+                    </div>
+                    <div class="card-body py-2">
+                        <div class="row text-center">
+                            <div class="col-md-3 col-6">
+                                <div class="d-flex align-items-center justify-content-center">
+                                    <i class="fas fa-database text-success me-2"></i>
+                                    <span class="small">Database: <strong>{{ DB::connection()->getPdo() ? 'Online' : 'Offline' }}</strong></span>
+                                </div>
+                            </div>
+                            <div class="col-md-3 col-6">
+                                <div class="d-flex align-items-center justify-content-center">
+                                    <i class="fas fa-server text-success me-2"></i>
+                                    <span class="small">Server: <strong>{{ function_exists('sys_getloadavg') ? 'Healthy' : 'Unknown' }}</strong></span>
+                                </div>
+                            </div>
+                            <div class="col-md-3 col-6">
+                                <div class="d-flex align-items-center justify-content-center">
+                                    <i class="fas fa-users text-info me-2"></i>
+                                    <span class="small">Active Users: <strong>{{ $userStats['active_users'] ?? 0 }}</strong></span>
+                                </div>
+                            </div>
+                            <div class="col-md-3 col-6">
+                                <div class="d-flex align-items-center justify-content-center">
+                                    <i class="fas fa-memory text-info me-2"></i>
+                                    <span class="small">Memory: <strong>{{ round(memory_get_usage(true) / 1024 / 1024, 1) }}MB</strong></span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Navigation Tabs -->
+        <ul class="nav nav-tabs" id="manageTabs" role="tablist">
             <li class="nav-item" role="presentation">
-                <button class="nav-link active" id="user-management-tab" data-bs-toggle="tab" data-bs-target="#user-management" type="button" role="tab" aria-controls="user-management" aria-selected="true">
-                    <i class="fas fa-users me-2"></i> User Management
+                <button class="nav-link active" id="access-tab" data-bs-toggle="tab" data-bs-target="#access" type="button" role="tab">
+                    <i class="fas fa-users me-2"></i>User Access
                 </button>
             </li>
             <li class="nav-item" role="presentation">
-                <button class="nav-link" id="payment-history-tab" data-bs-toggle="tab" data-bs-target="#payment-history" type="button" role="tab" aria-controls="payment-history" aria-selected="false">
-                    <i class="fas fa-money-bill-wave me-2"></i> Payment History
+                <button class="nav-link" id="payment-tab" data-bs-toggle="tab" data-bs-target="#payment-history" type="button" role="tab">
+                    <i class="fas fa-credit-card me-2"></i>Payment History
                 </button>
             </li>
         </ul>
 
         <!-- Tab Content -->
-        <div class="tab-content" id="myTabContent">
-            <!-- User Management Tab -->
-            <div class="tab-pane fade show active" id="user-management" role="tabpanel" aria-labelledby="user-management-tab">
-                <!-- Key Statistics -->
-                <div class="stats-grid">
-                    <div class="stat-card">
-                        <i class="fas fa-users stat-icon info-stat"></i>
-                        <div class="stat-value">{{ $userStats['total_users'] }}</div>
-                        <div class="stat-label">Total Users</div>
-                    </div>
-                    <div class="stat-card">
-                        <i class="fas fa-user-plus stat-icon success-stat"></i>
-                        <div class="stat-value">{{ $userStats['active_users'] }}</div>
-                        <div class="stat-label">Active Users (7d)</div>
-                    </div>
-                    <div class="stat-card">
-                        <i class="fas fa-calendar-week stat-icon info-stat"></i>
-                        <div class="stat-value">{{ $userStats['admin_users'] }}</div>
-                        <div class="stat-label">Admin Users</div>
-                    </div>
-                    <div class="stat-card">
-                        <i class="fas fa-user-clock stat-icon warning-stat"></i>
-                        <div class="stat-value">{{ $userStats['total_enrollments'] }}</div>
-                        <div class="stat-label">Total Enrollments</div>
-                    </div>
-                </div>
-
-                <div class="row">
-                    <!-- Enrollment Form -->
-                    <div class="col-md-6">
+        <div class="tab-content" id="manageTabContent">
+            <!-- User Access Tab -->
+            <div class="tab-pane fade show active" id="access" role="tabpanel">
+                <div class="row g-4">
+                    <!-- Enhanced Grant Access Form -->
+                    <div class="col-lg-6">
                         <div class="card">
                             <div class="card-header">
-                                <i class="fas fa-user-plus me-2"></i> Enroll User in Course
+                                <div>
+                                    <i class="fas fa-search me-2"></i>Search Users & Courses
+                                </div>
+                                <span class="badge bg-info" data-tooltip="Search and view user and course information">
+                                    <i class="fas fa-info-circle"></i>
+                                </span>
                             </div>
                             <div class="card-body">
-                                <form id="enrollmentForm">
-                                    @csrf
-                                    <div class="mb-3">
-                                        <label for="user_id" class="form-label">Select User</label>
-                                        <select class="form-control user-select" id="user_id" name="user_id" required>
-                                            <option value="">Select or search for a user...</option>
+                                <div class="mb-3">
+                                    <label class="form-label">
+                                        <i class="fas fa-user me-1"></i>Search Users
+                                    </label>
+                                    <select class="form-control user-select" id="user_id" name="user_id">
+                                        <option value="">Type to search for user...</option>
+                                        @if(isset($users) && $users->count() > 0)
                                             @foreach($users as $user)
-                                                <option value="{{ $user->id }}" data-courses="{{ $user->courses()->count() }}">
+                                                <option value="{{ $user->id }}" data-email="{{ $user->email }}" data-role="{{ $user->role }}">
                                                     {{ $user->name }} ({{ $user->email }})
                                                 </option>
                                             @endforeach
-                                        </select>
+                                        @else
+                                            <option value="" disabled>NO USERS FOUND</option>
+                                        @endif
+                                    </select>
+                                    <div class="form-text">
+                                        <i class="fas fa-lightbulb me-1"></i>
+                                        Start typing name or email to find users quickly
                                     </div>
-                                    <div class="mb-3">
-                                        <label for="course_id" class="form-label">Select Course</label>
-                                        <select class="form-select course-select" id="course_id" name="course_id" required>
-                                            <option value="">Choose a course...</option>
+                                </div>
+                                
+                                <div class="mb-3">
+                                    <label class="form-label">
+                                        <i class="fas fa-graduation-cap me-1"></i>Search Courses
+                                    </label>
+                                    <select class="form-select" id="course_id" name="course_id">
+                                        <option value="">Choose course...</option>
+                                        @if(isset($courses) && $courses->count() > 0)
                                             @foreach($courses as $course)
-                                                <option value="{{ $course->id }}" data-color="{{ $course->color }}">{{ $course->name }}</option>
+                                                <option value="{{ $course->id }}" data-price="{{ $course->price }}">
+                                                    {{ $course->name }} @if($course->price > 0)({{ $course->price }} EGP)@else(Free)@endif
+                                                </option>
                                             @endforeach
-                                        </select>
-                                    </div>
-                                    <div class="d-flex gap-2">
-                                        <button type="submit" class="btn btn-primary" id="enrollButton" data-action="enroll">
-                                            <i class="fas fa-plus-circle me-2"></i>Grant Access
-                                        </button>
-                                        <button type="button" class="btn btn-danger" id="revokeButton" data-action="unenroll">
-                                            <i class="fas fa-minus-circle me-2"></i>Revoke Access
-                                        </button>
-                                        <button type="button" class="btn btn-warning ms-auto" id="toggleAdminBtn" disabled>
-                                            <i class="fas fa-user-shield me-2"></i>Promote to Admin
-                                        </button>
-                                    </div>
-
-                                    <!-- User's Current Access -->
-                                    <div class="mt-4" id="userAccessSection" style="display: none;">
-                                        <h6 class="mb-3">Current Access</h6>
-                                        <div id="userAccessList" class="d-flex flex-wrap gap-2">
-                                        </div>
-                                    </div>
-                                </form>
-                            </div>
-                        </div>
-
-                        <!-- Admin Management -->
-                        <div class="card mt-4">
-                            <div class="card-header bg-warning text-dark">
-                                <i class="fas fa-user-shield me-2"></i> Admin Privileges Management
-                            </div>
-                            <div class="card-body">
-                                <div class="row">
-                                    <div class="col-md-6">
-                                        <label class="form-label">Select User to Manage Admin Status</label>
-                                        <select class="form-select admin-user-select" id="admin_user_id">
-                                            <option value="">Search for a user...</option>
-                                        </select>
-                                    </div>
-                                    <div class="col-md-6">
-                                        <div class="d-flex gap-2" id="adminActionButtons" style="display: none;">
-                                            <button type="button" class="btn btn-success flex-fill" id="promoteAdminBtn">
-                                                <i class="fas fa-user-shield me-2"></i>Promote to Admin
-                                            </button>
-                                            <button type="button" class="btn btn-danger flex-fill" id="revokeAdminBtn">
-                                                <i class="fas fa-user-times me-2"></i>Remove Admin
-                                            </button>
-                                        </div>
-                                        <div id="noUserSelected" class="text-muted text-center py-3">
-                                            <i class="fas fa-user-slash fa-2x mb-2"></i>
-                                            <div>Select a user to manage admin privileges</div>
-                                        </div>
+                                        @endif
+                                    </select>
+                                    <div class="form-text">
+                                        <i class="fas fa-lightbulb me-1"></i>
+                                        Select a course to grant or revoke access
                                     </div>
                                 </div>
-                                
+
+                                <div class="quick-actions">
+                                    <button type="button" class="btn btn-success" id="grantAccessBtn">
+                                        <i class="fas fa-user-plus me-2"></i>Grant Access
+                                    </button>
+                                    <button type="button" class="btn btn-danger" id="revokeAccessBtn">
+                                        <i class="fas fa-user-times me-2"></i>Revoke Access
+                                    </button>
+                                </div>
+
                                 <!-- User Info Display -->
-                                <div id="selectedUserInfo" class="mt-3" style="display: none;">
-                                    <div class="card bg-light">
-                                        <div class="card-body p-3">
-                                            <div class="row">
-                                                <div class="col-md-6">
-                                                    <strong>User:</strong> <span id="selectedUserName"></span><br>
-                                                    <strong>Email:</strong> <span id="selectedUserEmail"></span>
-                                                </div>
-                                                <div class="col-md-6">
-                                                    <strong>Current Status:</strong> 
-                                                    <span id="selectedUserStatus" class="badge"></span><br>
-                                                    <strong>Registered:</strong> <span id="selectedUserRegistered"></span>
-                                                </div>
-                                            </div>
+                                <div class="mt-3" id="userInfoSection" style="display: none;">
+                                    <div class="d-flex align-items-center p-2 bg-light rounded">
+                                        <div class="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center me-3" style="width: 40px; height: 40px; font-size: 16px; font-weight: 600;">
+                                            <span id="userInitial">U</span>
                                         </div>
+                                        <div class="flex-grow-1">
+                                            <div class="fw-bold" id="selectedUserName"></div>
+                                            <div class="small text-muted" id="selectedUserEmail"></div>
+                                        </div>
+                                        <span class="badge" id="selectedUserRole"></span>
                                     </div>
-                                </div>
-                                
-                                <div class="mt-3">
-                                    <small class="text-muted">
-                                        <i class="fas fa-info-circle me-1"></i>
-                                        This allows you to promote regular users to admin or revoke admin privileges from existing admins.
-                                    </small>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Latest Users -->
-                        <div class="card mt-4">
-                            <div class="card-header">
-                                <i class="fas fa-user-clock me-2"></i> Latest Registered Users
-                            </div>
-                            <div class="card-body">
-                                <div class="table-responsive">
-                                    <table class="table latest-users-table">
-                                        <thead>
-                                            <tr>
-                                                <th>Email</th>
-                                                <th>Registered</th>
-                                                <th>Courses</th>
-                                                <th>Status</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            @foreach($latestUsers ?? [] as $user)
-                                                <tr>
-                                                    <td>{{ $user['email'] }}</td>
-                                                    <td>{{ Carbon\Carbon::parse($user['registered_at'])->diffForHumans() }}</td>
-                                                    <td>{{ $user['courses_count'] }}</td>
-                                                    <td>
-                                                        @if($user['courses_count'] == 0)
-                                                            <span class="status-badge status-new">New</span>
-                                                        @else
-                                                            <span class="status-badge status-active">Active</span>
-                                                        @endif
-                                                    </td>
-                                                </tr>
-                                            @endforeach
-                                        </tbody>
-                                    </table>
                                 </div>
                             </div>
                         </div>
                     </div>
 
-                    <div class="col-md-6">
-                        <!-- Course Statistics -->
+                    <!-- Enhanced Admin Management -->
+                    <div class="col-lg-6">
                         <div class="card">
                             <div class="card-header">
-                                <i class="fas fa-chart-bar me-2"></i> Course Enrollment Statistics
+                                <div>
+                                    <i class="fas fa-user-shield me-2"></i>Admin Management
+                                </div>
+                                <span class="badge bg-warning text-dark" data-tooltip="Manage administrator privileges">
+                                    <i class="fas fa-crown"></i> {{ $userStats['admin_users'] }}
+                                </span>
                             </div>
                             <div class="card-body">
-                                <div class="course-stats-grid">
-                                    @foreach($courseStats ?? [] as $stat)
-                                        <div class="course-stat-card" style="border-left-color: {{ $courses->where('name', $stat->name)->first()->color }}">
-                                            <div class="course-name" style="color: {{ $courses->where('name', $stat->name)->first()->color }}">
-                                                {{ $stat->name }}
-                                            </div>
-                                            <div class="course-enrolled">
-                                                <i class="fas fa-users me-2"></i>
-                                                {{ $stat->enrolled_count }} enrolled
-                                            </div>
+                                <div class="mb-3">
+                                    <label class="form-label">
+                                        <i class="fas fa-search me-1"></i>Find User to Manage
+                                    </label>
+                                    <select class="form-select admin-user-select" id="admin_user_id">
+                                        <option value="">Type to search for user...</option>
+                                        @if(isset($users) && $users->count() > 0)
+                                            @foreach($users as $user)
+                                                <option value="{{ $user->id }}" data-email="{{ $user->email }}" data-role="{{ $user->role }}" data-name="{{ $user->name }}">
+                                                    {{ $user->name }} ({{ $user->email }}) {{ $user->role === 'admin' ? '- ADMIN' : '' }}
+                                                </option>
+                                            @endforeach
+                                        @endif
+                                    </select>
+                                    <div class="form-text">
+                                        <i class="fas fa-shield-alt me-1"></i>
+                                        Search by name or email to manage admin privileges
+                                    </div>
+                                </div>
+                                
+                                <!-- Always Visible Admin Actions -->
+                                <div id="adminActions">
+                                    <div class="mb-3" id="selectedUserInfo" style="display: none;">
+                                        <div class="d-flex justify-content-between align-items-center mb-2">
+                                            <strong id="selectedAdminUserName">User Name</strong>
+                                            <span id="selectedAdminUserStatus" class="badge bg-secondary">STATUS</span>
                                         </div>
-                                    @endforeach
+                                        <div class="small text-muted" id="selectedAdminUserEmail">user@example.com</div>
+                                    </div>
+                                    
+                                    <div class="row g-2">
+                                        <div class="col-6">
+                                            <button type="button" class="btn btn-success w-100" id="promoteToAdminBtn">
+                                                <i class="fas fa-user-shield me-2"></i>Promote to Admin
+                                            </button>
+                                        </div>
+                                        <div class="col-6">
+                                            <button type="button" class="btn btn-danger w-100" id="removeAdminBtn">
+                                                <i class="fas fa-user-times me-2"></i>Revoke Admin
+                                            </button>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="mt-2 small text-muted text-center" id="adminActionHint">
+                                        Select a user above to manage their admin privileges
+                                    </div>
                                 </div>
                             </div>
                         </div>
+                    </div>
+                </div>
 
-                        <!-- Recent Enrollments with compact design -->
-                        <div class="card mt-4">
-                            <div class="card-header d-flex justify-content-between align-items-center">
-                                <span><i class="fas fa-history me-2"></i>Course Access History</span>
+                <!-- Enhanced Recent Activity -->
+                <div class="row mt-4">
+                    <div class="col-lg-8">
+                        <div class="card">
+                            <div class="card-header">
+                                <div>
+                                    <i class="fas fa-history me-2"></i>Recent Enrollments
+                                </div>
+                                <div class="d-flex gap-2">
+                                    <select class="form-select form-select-sm" id="enrollmentFilter" style="width: auto;">
+                                        <option value="all">All Status</option>
+                                        <option value="enrolled">Active Only</option>
+                                        <option value="revoked">Revoked Only</option>
+                                    </select>
+                                    <button class="btn btn-outline-secondary btn-sm" id="refreshEnrollments" data-tooltip="Refresh enrollment data">
+                                        <i class="fas fa-sync-alt"></i>
+                                    </button>
+                                </div>
                             </div>
                             <div class="card-body p-0">
                                 <div class="table-responsive">
-                                    <table class="table table-sm mb-0">
+                                    <table class="table table-hover mb-0" id="enrollmentsTable">
                                         <thead>
                                             <tr>
                                                 <th>User</th>
                                                 <th>Course</th>
-                                                <th>Access Date</th>
+                                                <th>Date</th>
+                                                <th>Status</th>
                                             </tr>
                                         </thead>
-                                        <tbody id="accessHistoryTable">
-                                            @foreach($enrolledUsers ?? [] as $enrollment)
-                                                <tr>
-                                                    <td class="small">{{ $enrollment->email }}</td>
+                                        <tbody>
+                                            @forelse($enrolledUsers ?? [] as $enrollment)
+                                                <tr data-status="{{ $enrollment->is_enrolled ? 'enrolled' : 'revoked' }}">
                                                     <td>
-                                                        @if($enrollment->enrollment_status === 'revoked')
-                                                            <span class="badge bg-secondary text-decoration-line-through">
-                                                                {{ $enrollment->course_name }}
+                                                        <div class="d-flex align-items-center">
+                                                            <div class="me-2">
+                                                                <div class="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center" style="width: 32px; height: 32px; font-size: 0.8rem;">
+                                                                    {{ strtoupper(substr($enrollment->email, 0, 1)) }}
+                                                                </div>
+                                                            </div>
+                                                            <div>
+                                                                <div class="fw-medium">{{ $enrollment->name ?? 'Unknown' }}</div>
+                                                                <small class="text-muted">{{ $enrollment->email }}</small>
+                                                            </div>
+                                                        </div>
+                                                    </td>
+                                                    <td>
+                                                        <span class="badge bg-primary">{{ $enrollment->course_name }}</span>
+                                                    </td>
+                                                    <td>
+                                                        <div>{{ \Carbon\Carbon::parse($enrollment->created_at)->format('M d, Y') }}</div>
+                                                        <small class="text-muted">{{ \Carbon\Carbon::parse($enrollment->created_at)->diffForHumans() }}</small>
+                                                    </td>
+                                                    <td>
+                                                        @if(!$enrollment->is_enrolled)
+                                                            <span class="badge bg-danger">
+                                                                <i class="fas fa-times me-1"></i>Revoked
                                                             </span>
                                                         @else
-                                                            <span class="badge" style="background-color: {{ $courses->where('name', $enrollment->course_name)->first()->color }}">
-                                                                {{ $enrollment->course_name }}
+                                                            <span class="badge bg-success">
+                                                                <i class="fas fa-check me-1"></i>Enrolled
                                                             </span>
                                                         @endif
                                                     </td>
-                                                    <td class="small">{{ Carbon\Carbon::parse($enrollment->created_at)->format('M d, Y') }}</td>
+
                                                 </tr>
-                                            @endforeach
+                                            @empty
+                                                <tr>
+                                                    <td colspan="4" class="text-center py-4 text-muted">
+                                                        <i class="fas fa-inbox fa-2x mb-2"></i>
+                                                        <div>No enrollments found</div>
+                                                        <small>Start by granting course access to users</small>
+                                                    </td>
+                                                </tr>
+                                            @endforelse
                                         </tbody>
                                     </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Quick Stats Sidebar -->
+                    <div class="col-lg-4">
+                        <div class="card">
+                            <div class="card-header">
+                                <i class="fas fa-chart-pie me-2"></i>Course Distribution
+                            </div>
+                            <div class="card-body">
+                                @foreach($courses ?? [] as $course)
+                                    @php
+                                        $enrolledCount = isset($enrolledUsers) ? $enrolledUsers->where('course_id', $course->id)->where('is_enrolled', true)->count() : 0;
+                                        $percentage = $userStats['total_users'] > 0 ? round(($enrolledCount / $userStats['total_users']) * 100) : 0;
+                                    @endphp
+                                    <div class="d-flex justify-content-between align-items-center mb-2">
+                                        <div>
+                                            <span class="badge bg-primary me-2">{{ $course->name }}</span>
+                                        </div>
+                                        <div class="text-end">
+                                            <div class="fw-bold">{{ $enrolledCount }}</div>
+                                            <small class="text-muted">enrolled</small>
+                                        </div>
+                                    </div>
+                                    <div class="progress mb-3" style="height: 4px;">
+                                        <div class="progress-bar" style="width: {{ $percentage }}%"></div>
+                                    </div>
+                                @endforeach
+                            </div>
+                        </div>
+                        
+                        <!-- Recent Activity Summary -->
+                        <div class="card">
+                            <div class="card-header">
+                                <i class="fas fa-activity me-2"></i>Activity Summary
+                            </div>
+                            <div class="card-body">
+                                <div class="d-flex justify-content-between align-items-center mb-2">
+                                    <span class="small">Total Enrollments</span>
+                                    <span class="badge bg-success">{{ $userStats['total_enrollments'] ?? 0 }}</span>
+                                </div>
+                                <div class="d-flex justify-content-between align-items-center mb-2">
+                                    <span class="small">Active Users</span>
+                                    <span class="badge bg-info">{{ $userStats['active_users'] ?? 0 }}</span>
+                                </div>
+                                <div class="d-flex justify-content-between align-items-center mb-2">
+                                    <span class="small">Admin Users</span>
+                                    <span class="badge bg-warning">{{ $userStats['admin_users'] ?? 0 }}</span>
+                                </div>
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <span class="small">Total Courses</span>
+                                    <span class="badge bg-secondary">{{ count($courses ?? []) }}</span>
                                 </div>
                             </div>
                         </div>
@@ -771,104 +1237,74 @@
             </div>
 
             <!-- Payment History Tab -->
-            <div class="tab-pane fade" id="payment-history" role="tabpanel" aria-labelledby="payment-history-tab">
-                <!-- Stats Cards -->
+            <div class="tab-pane fade" id="payment-history" role="tabpanel">       
+         <!-- Payment Stats -->
                 <div class="row g-3 mb-4">
                     <div class="col-md-3">
-                        <div class="card shadow-sm">
-                            <div class="card-body p-3">
-                                <div class="d-flex align-items-center">
-                                    <i class="fas fa-money-bill-wave text-primary me-3"></i>
-                                    <div>
-                                        <div class="h5 mb-0 text-primary" id="total-revenue">0.00 EGP</div>
-                                        <div class="text-muted small">Total Revenue</div>
-                                    </div>
-                                </div>
-                            </div>
+                        <div class="stat-card">
+                            <div class="stat-number text-primary" id="total-revenue">0.00 EGP</div>
+                            <div class="stat-label">Total Revenue</div>
                         </div>
                     </div>
                     <div class="col-md-3">
-                        <div class="card shadow-sm">
-                            <div class="card-body p-3">
-                                <div class="d-flex align-items-center">
-                                    <i class="fas fa-check-circle text-success me-3"></i>
-                                    <div>
-                                        <div class="h5 mb-0 text-success" id="completed-count">0</div>
-                                        <div class="text-muted small">Completed</div>
-                                    </div>
-                                </div>
-                            </div>
+                        <div class="stat-card">
+                            <div class="stat-number text-success" id="completed-count">0</div>
+                            <div class="stat-label">Completed</div>
                         </div>
                     </div>
                     <div class="col-md-3">
-                        <div class="card shadow-sm">
-                            <div class="card-body p-3">
-                                <div class="d-flex align-items-center">
-                                    <i class="fas fa-clock text-warning me-3"></i>
-                                    <div>
-                                        <div class="h5 mb-0 text-warning" id="pending-count">0</div>
-                                        <div class="text-muted small">Pending</div>
-                                    </div>
-                                </div>
-                            </div>
+                        <div class="stat-card">
+                            <div class="stat-number text-warning" id="pending-count">0</div>
+                            <div class="stat-label">Pending</div>
                         </div>
                     </div>
                     <div class="col-md-3">
-                        <div class="card shadow-sm">
-                            <div class="card-body p-3">
-                                <div class="d-flex align-items-center">
-                                    <i class="fas fa-times-circle text-danger me-3"></i>
-                                    <div>
-                                        <div class="h5 mb-0 text-danger" id="rejected-count">0</div>
-                                        <div class="text-muted small">Rejected</div>
-                                    </div>
-                                </div>
-                            </div>
+                        <div class="stat-card">
+                            <div class="stat-number text-danger" id="rejected-count">0</div>
+                            <div class="stat-label">Rejected</div>
                         </div>
                     </div>
                 </div>
 
-                <!-- Payment History Table Card -->
+                <!-- Payment History Table -->
                 <div class="card">
-                    <div class="card-header bg-white py-3">
-                        <div class="d-flex justify-content-between align-items-center">
-                            <h5 class="mb-0 text-dark">Payment History</h5>
-                            <div class="d-flex align-items-center">
-                                <div class="input-group">
-                                    <input type="text" class="form-control" id="payment-search" placeholder="Search payments...">
-                                    <button class="btn btn-primary" type="button" id="payment-search-btn">
-                                        <i class="fas fa-search"></i>
-                                    </button>
-                                </div>
-                            </div>
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <span><i class="fas fa-credit-card me-2"></i>Payment History</span>
+                        <div class="input-group" style="width: 300px;">
+                            <input type="text" class="form-control" id="payment-search" placeholder="Search payments...">
+                            <button class="btn btn-outline-secondary" type="button" id="payment-search-btn">
+                                <i class="fas fa-search"></i>
+                            </button>
                         </div>
                     </div>
-                    <div class="table-responsive">
-                        <table class="table table-hover align-middle mb-0">
-                            <thead class="bg-light">
-                                <tr>
-                                    <th class="text-muted small fw-500">ID</th>
-                                    <th class="text-muted small fw-500">User</th>
-                                    <th class="text-muted small fw-500">Course</th>
-                                    <th class="text-muted small fw-500">Amount</th>
-                                    <th class="text-muted small fw-500">Method</th>
-                                    <th class="text-muted small fw-500">Status</th>
-                                    <th class="text-muted small fw-500">Reference</th>
-                                    <th class="text-muted small fw-500">Date</th>
-                                    <th class="text-muted small fw-500">Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody id="payments-table-body">
-                                <!-- Payments will be loaded here -->
-                            </tbody>
-                        </table>
+                    <div class="card-body p-0">
+                        <div class="table-responsive">
+                            <table class="table table-hover mb-0">
+                                <thead>
+                                    <tr>
+                                        <th>ID</th>
+                                        <th>User</th>
+                                        <th>Course</th>
+                                        <th>Amount</th>
+                                        <th>Method</th>
+                                        <th>Status</th>
+                                        <th>Reference</th>
+                                        <th>Date</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="payments-table-body">
+                                    <!-- Payments will be loaded here -->
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
-                    <div class="card-footer bg-white py-3">
+                    <div class="card-footer bg-white">
                         <div class="d-flex justify-content-between align-items-center">
-                            <div class="text-muted small" id="total-records">
-                                Showing <span id="showing-records" class="fw-500">0</span> of <span id="total-records-count" class="fw-500">0</span> payments
+                            <div class="text-muted small">
+                                Showing <span id="showing-records">0</span> of <span id="total-records-count">0</span> payments
                             </div>
-                            <nav id="payment-pagination" class="mb-0" aria-label="Payment history pagination">
+                            <nav id="payment-pagination" aria-label="Payment pagination">
                                 <!-- Pagination will be added here -->
                             </nav>
                         </div>
@@ -877,6 +1313,9 @@
             </div>
         </div>
     </div>
+
+    <!-- Notification Container -->
+    <div class="notification-container" id="notificationContainer"></div>
 
     <!-- jQuery -->
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
@@ -887,1219 +1326,788 @@
 
     <script>
         $(document).ready(function() {
-            // Check for URL parameters to activate the right tab
-            const urlParams = new URLSearchParams(window.location.search);
-            const tabParam = urlParams.get('tab');
+            console.log('🚀 MANAGE ACCESS PAGE LOADED');
             
-            if (tabParam === 'payment-history') {
-                // Activate payment history tab
-                $('#payment-history-tab').tab('show');
+            // Notification system
+            function showNotification(type, title, message, duration = 3000) {
+                const container = $('#notificationContainer');
+                const notification = $(`
+                    <div class="notification ${type}">
+                        <div class="notification-icon">
+                            ${type === 'success' ? '<i class="fas fa-check-circle"></i>' : '<i class="fas fa-times-circle"></i>'}
+                        </div>
+                        <div class="notification-content">
+                            <div class="notification-title">${title}</div>
+                            <div class="notification-message">${message}</div>
+                        </div>
+                        <button class="notification-close" onclick="$(this).parent().remove()">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                `);
+                
+                container.append(notification);
+                
+                // Trigger animation
+                setTimeout(() => {
+                    notification.addClass('show');
+                }, 100);
+                
+                // Auto remove
+                setTimeout(() => {
+                    notification.removeClass('show');
+                    setTimeout(() => {
+                        notification.remove();
+                    }, 300);
+                }, duration);
             }
             
-            // Enhanced Select2 initialization for user selection
+            // Initialize Select2 for user search
             $('.user-select').select2({
-                placeholder: 'Select or search for a user...',
-                allowClear: true,
-                width: '100%',
-                templateResult: formatUser,
-                templateSelection: formatUserSelection
-            });
-
-            // Enhanced Select2 initialization for course selection
-            $('.course-select').select2({
-                placeholder: 'Choose a course...',
+                placeholder: 'Type to search for user...',
                 allowClear: true,
                 width: '100%'
             });
-
-            // Format user options in dropdown
-            function formatUser(user) {
-                if (!user.id) return user.text;
-                
-                var $container = $(
-                    '<div class="user-option">' +
-                        '<div class="user-email">' + user.text + '</div>' +
-                        '<span class="courses-count">' + 
-                            $(user.element).data('courses') + ' courses' +
-                        '</span>' +
-                    '</div>'
-                );
-                
-                return $container;
-            }
-
-            // Format selected user
-            function formatUserSelection(user) {
-                if (!user.id) return user.text;
-                return user.text;
-            }
-
-            // Initialize admin user select
-            $('.admin-user-select').select2({
-                placeholder: 'Search for a user...',
-                allowClear: true,
-                ajax: {
-                    url: '{{ secure_url("/manage-access/search-users") }}',
-                    dataType: 'json',
-                    delay: 250,
-                    data: function(params) {
-                        return {
-                            query: params.term
-                        };
-                    },
-                    processResults: function(data) {
-                        return {
-                            results: data.map(function(user) {
-                                return {
-                                    id: user.id,
-                                    text: user.email + ' (' + user.name + ')' + (user.role === 'admin' ? ' - ADMIN' : '')
-                                };
-                            })
-                        };
-                    },
-                    cache: true
-                }
-            });
-
-            // Handle admin toggle button
-            let selectedUserId = null;
-            let isAdmin = false;
-            let selectedAdminUserId = null;
-            let selectedAdminIsAdmin = false;
-
-            $('.user-select').on('select2:select', function(e) {
-                selectedUserId = e.params.data.id;
-                $('#toggleAdminBtn').prop('disabled', false);
-                
-                // Update button text based on admin status
-                $.get('{{ secure_url("/manage-access/search-users") }}?query=' + e.params.data.text, function(users) {
-                    if (users.length > 0) {
-                        isAdmin = users[0].role === 'admin';
-                        updateToggleButton();
-                    }
-                });
-            });
-
-            $('.user-select').on('select2:unselect', function() {
-                selectedUserId = null;
-                $('#toggleAdminBtn').prop('disabled', true);
-            });
-
-            // Handle admin user select
-            $('.admin-user-select').on('select2:select', function(e) {
-                selectedAdminUserId = e.params.data.id;
-                const userText = e.params.data.text;
-                
-                // Show action buttons and hide placeholder
-                $('#adminActionButtons').show();
-                $('#noUserSelected').hide();
-                
-                // Get user details and update interface
-                $.get('{{ secure_url("/manage-access/search-users") }}?query=' + userText, function(users) {
-                    if (users.length > 0) {
-                        const user = users[0];
-                        selectedAdminIsAdmin = user.role === 'admin';
-                        updateAdminInterface(user);
-                    }
-                });
-            });
-
-            $('.admin-user-select').on('select2:unselect', function() {
-                selectedAdminUserId = null;
-                selectedAdminIsAdmin = false;
-                
-                // Hide action buttons and show placeholder
-                $('#adminActionButtons').hide();
-                $('#noUserSelected').show();
-                $('#selectedUserInfo').hide();
-            });
-
-            function updateToggleButton() {
-                const btn = $('#toggleAdminBtn');
-                if (isAdmin) {
-                    btn.html('<i class="fas fa-user-times me-2"></i>Remove Admin');
-                    btn.removeClass('btn-danger').addClass('btn-warning');
-                } else {
-                    btn.html('<i class="fas fa-user-shield me-2"></i>Promote to Admin');
-                    btn.removeClass('btn-warning').addClass('btn-danger');
-                }
-            }
-
-            function updateAdminInterface(user) {
-                // Update user info display
-                $('#selectedUserName').text(user.name);
-                $('#selectedUserEmail').text(user.email);
-                
-                if (user.role === 'admin') {
-                    $('#selectedUserStatus').text('ADMIN').removeClass('bg-secondary').addClass('bg-danger');
-                } else {
-                    $('#selectedUserStatus').text('USER').removeClass('bg-danger').addClass('bg-secondary');
-                }
-                
-                // Show/hide appropriate buttons
-                if (user.role === 'admin') {
-                    $('#promoteAdminBtn').hide();
-                    $('#revokeAdminBtn').show();
-                } else {
-                    $('#promoteAdminBtn').show();
-                    $('#revokeAdminBtn').hide();
-                }
-                
-                // Show user info
-                $('#selectedUserInfo').show();
-            }
-
-            $('#toggleAdminBtn').click(function() {
-                if (!selectedUserId) return;
-
-                $.ajax({
-                    url: '{{ secure_url("/manage-access/toggle-admin") }}',
-                    method: 'POST',
-                    data: {
-                        user_id: selectedUserId,
-                        _token: '{{ csrf_token() }}'
-                    },
-                    success: function(response) {
-                        if (response.success) {
-                            isAdmin = !isAdmin;
-                            updateToggleButton();
-                            
-                            // Show success message
-                            const alert = $('<div class="alert alert-success alert-dismissible fade show" role="alert">' +
-                                response.message +
-                                '<button type="button" class="btn-close" data-bs-dismiss="alert"></button>' +
-                                '</div>');
-                            $('.container').prepend(alert);
-                        }
-                    },
-                    error: function(xhr) {
-                        // Show error message
-                        const message = xhr.responseJSON?.message || 'An error occurred while updating admin status';
-                        const alert = $('<div class="alert alert-danger alert-dismissible fade show" role="alert">' +
-                            message +
-                            '<button type="button" class="btn-close" data-bs-dismiss="alert"></button>' +
-                            '</div>');
-                        $('.container').prepend(alert);
-                    }
-                });
-            });
-
-            $('#promoteAdminBtn').click(function() {
-                if (!selectedAdminUserId) return;
-
-                if (!confirm('Are you sure you want to promote this user to admin?')) {
-                    return;
-                }
-
-                $.ajax({
-                    url: '{{ secure_url("/manage-access/toggle-admin") }}',
-                    method: 'POST',
-                    data: {
-                        user_id: selectedAdminUserId,
-                        _token: '{{ csrf_token() }}'
-                    },
-                    success: function(response) {
-                        if (response.success) {
-                            // Update the interface to show admin status
-                            selectedAdminIsAdmin = true;
-                            $('#selectedUserStatus').text('ADMIN').removeClass('bg-secondary').addClass('bg-danger');
-                            $('#promoteAdminBtn').hide();
-                            $('#revokeAdminBtn').show();
-                            
-                            // Show success message
-                            const alert = $('<div class="alert alert-success alert-dismissible fade show" role="alert">' +
-                                response.message +
-                                '<button type="button" class="btn-close" data-bs-dismiss="alert"></button>' +
-                                '</div>');
-                            $('.container').prepend(alert);
-                        }
-                    },
-                    error: function(xhr) {
-                        // Show error message
-                        const message = xhr.responseJSON?.message || 'An error occurred while promoting user to admin';
-                        const alert = $('<div class="alert alert-danger alert-dismissible fade show" role="alert">' +
-                            message +
-                            '<button type="button" class="btn-close" data-bs-dismiss="alert"></button>' +
-                            '</div>');
-                        $('.container').prepend(alert);
-                    }
-                });
-            });
-
-            $('#revokeAdminBtn').click(function() {
-                if (!selectedAdminUserId) return;
-
-                if (!confirm('Are you sure you want to remove admin privileges from this user?')) {
-                    return;
-                }
-
-                $.ajax({
-                    url: '{{ secure_url("/manage-access/toggle-admin") }}',
-                    method: 'POST',
-                    data: {
-                        user_id: selectedAdminUserId,
-                        _token: '{{ csrf_token() }}'
-                    },
-                    success: function(response) {
-                        if (response.success) {
-                            // Update the interface to show user status
-                            selectedAdminIsAdmin = false;
-                            $('#selectedUserStatus').text('USER').removeClass('bg-danger').addClass('bg-secondary');
-                            $('#revokeAdminBtn').hide();
-                            $('#promoteAdminBtn').show();
-                            
-                            // Show success message
-                            const alert = $('<div class="alert alert-success alert-dismissible fade show" role="alert">' +
-                                response.message +
-                                '<button type="button" class="btn-close" data-bs-dismiss="alert"></button>' +
-                                '</div>');
-                            $('.container').prepend(alert);
-                        }
-                    },
-                    error: function(xhr) {
-                        // Show error message
-                        const message = xhr.responseJSON?.message || 'An error occurred while removing admin privileges';
-                        const alert = $('<div class="alert alert-danger alert-dismissible fade show" role="alert">' +
-                            message +
-                            '<button type="button" class="btn-close" data-bs-dismiss="alert"></button>' +
-                            '</div>');
-                        $('.container').prepend(alert);
-                    }
-                });
-            });
-
-            function updateUserAccess(userId) {
-                if (!userId) {
-                    $('#userAccessSection').hide();
-                    return;
-                }
-
-                $.get('{{ secure_url("/manage-access/search-users") }}?query=' + userId, function(users) {
-                    if (users.length > 0) {
-                        const user = users[0];
-                        const accessList = $('#userAccessList');
-                        accessList.empty();
-
-                        if (user.enrolled_courses && user.enrolled_courses.length > 0) {
-                            user.enrolled_courses.forEach(courseId => {
-                                const course = $(`#course_id option[value="${courseId}"]`);
-                                const courseName = course.text();
-                                const courseColor = course.data('color');
-                                
-                                accessList.append(
-                                    `<span class="badge" style="background-color: ${courseColor}">
-                                        ${courseName}
-                                        <button type="button" class="btn-close btn-close-white ms-2" 
-                                            style="font-size: 0.5rem;" 
-                                            onclick="revokeAccess('${userId}', '${courseId}')">
-                                        </button>
-                                    </span>`
-                                );
-                            });
-                            $('#userAccessSection').show();
-                        } else {
-                            accessList.html('<span class="text-muted">No course access</span>');
-                            $('#userAccessSection').show();
-                        }
-                    }
-                });
-            }
-
-            $('.user-select').on('select2:select', function(e) {
-                updateUserAccess(e.params.data.id);
-            });
-
-            $('#revokeButton').click(function() {
-                const userId = $('#user_id').val();
-                const courseId = $('#course_id').val();
-                const courseName = $('#course_id option:selected').text();
-                
-                if (!userId || !courseId) return;
-
-                $.ajax({
-                    url: '{{ secure_url("/manage-access/enroll") }}',
-                    method: 'POST',
-                    data: {
-                        user_id: userId,
-                        course_id: courseId,
-                        action: 'unenroll',
-                        _token: '{{ csrf_token() }}'
-                    },
-                    success: function(response) {
-                        if (response.success) {
-                            const alert = $('<div class="alert alert-success alert-dismissible fade show" role="alert">' +
-                                response.message +
-                                '<button type="button" class="btn-close" data-bs-dismiss="alert"></button>' +
-                                '</div>');
-                            $('.container').prepend(alert);
-
-                            // Find and update existing row if it exists
-                            const existingRow = $(`#accessHistoryTable tr:contains('${response.user.email}'):contains('${courseName}')`);
-                            if (existingRow.length) {
-                                existingRow.find('.badge').removeClass('bg-success')
-                                    .addClass('bg-secondary text-decoration-line-through');
-                            } else {
-                                // Add new row for revoked access
-                                const newRow = $('<tr></tr>');
-                                newRow.append($('<td class="small"></td>').text(response.user.email));
-                                newRow.append($('<td></td>').html(
-                                    `<span class="badge bg-secondary text-decoration-line-through">${courseName}</span>`
-                                ));
-                                newRow.append($('<td class="small"></td>').text(response.user.enrolled_at));
-                                $('#accessHistoryTable').prepend(newRow);
-                            }
-
-                            updateUserAccess(userId);
-                            updateCourseStats();
-                        }
-                    },
-                    error: function(xhr) {
-                        const message = xhr.responseJSON?.message || 'An error occurred while revoking access';
-                        const alert = $('<div class="alert alert-danger alert-dismissible fade show" role="alert">' +
-                            message +
-                            '<button type="button" class="btn-close" data-bs-dismiss="alert"></button>' +
-                            '</div>');
-                        $('.container').prepend(alert);
-                    }
-                });
-            });
-
-            window.revokeAccess = function(userId, courseId) {
-                $.ajax({
-                    url: '{{ secure_url("/manage-access/enroll") }}',
-                    method: 'POST',
-                    data: {
-                        user_id: userId,
-                        course_id: courseId,
-                        action: 'unenroll',
-                        _token: '{{ csrf_token() }}'
-                    },
-                    success: function(response) {
-                        if (response.success) {
-                            updateUserAccess(userId);
-                            updateCourseStats();
-                        }
-                    }
-                });
-            };
-
-            // Handle enrollment form submission
-            $('#enrollmentForm').on('submit', function(e) {
+            
+            // GRANT ACCESS BUTTON HANDLER
+            $('#grantAccessBtn').on('click', function(e) {
+                console.log('🚀 GRANT ACCESS BUTTON CLICKED!');
                 e.preventDefault();
                 
                 const userId = $('#user_id').val();
                 const courseId = $('#course_id').val();
+                
+                console.log('Values:', {userId, courseId});
                 
                 if (!userId || !courseId) {
+                    console.error('Please select both a user and a course first!');
                     return;
                 }
-
+                
+                // Disable button during request
+                $(this).prop('disabled', true).html('<i class="fas fa-spinner fa-spin me-2"></i>Processing...');
+                
                 $.ajax({
-                    url: '{{ secure_url("/manage-access/enroll") }}',
+                    url: '/manage-access/enroll',
                     method: 'POST',
                     data: {
                         user_id: userId,
                         course_id: courseId,
-                        action: 'enroll',
+                        _token: '{{ csrf_token() }}'
+                    },
+                    success: function(response) {
+                        console.log('✅ SUCCESS:', response);
+                        
+                        // Show success notification
+                        showNotification('success', 'Access Granted!', 'User has been successfully enrolled in the course.');
+                        
+                        // Reset button
+                        const btn = $('#grantAccessBtn');
+                        btn.prop('disabled', false).html('<i class="fas fa-user-plus me-2"></i>Grant Access');
+                        
+                        // Refresh enrollment data smoothly
+                        refreshEnrollmentData();
+                    },
+                    error: function(xhr) {
+                        console.error('❌ ERROR:', xhr.responseText);
+                        
+                        // Show error notification
+                        showNotification('error', 'Access Failed!', 'Failed to grant access. Please try again.');
+                        
+                        // Reset button
+                        const btn = $('#grantAccessBtn');
+                        btn.prop('disabled', false).html('<i class="fas fa-user-plus me-2"></i>Grant Access');
+                    }
+                });
+            });
+            
+            // REVOKE ACCESS BUTTON HANDLER
+            $('#revokeAccessBtn').on('click', function(e) {
+                console.log('🚀 REVOKE ACCESS BUTTON CLICKED!');
+                e.preventDefault();
+                
+                const userId = $('#user_id').val();
+                const courseId = $('#course_id').val();
+                
+                console.log('Values:', {userId, courseId});
+                
+                if (!userId || !courseId) {
+                    console.error('Please select both a user and a course first!');
+                    return;
+                }
+                
+                // Instant revocation - no confirmation needed
+                
+                // Disable button during request
+                $(this).prop('disabled', true).html('<i class="fas fa-spinner fa-spin me-2"></i>Processing...');
+                
+                $.ajax({
+                    url: '/manage-access/revoke',
+                    method: 'POST',
+                    data: {
+                        user_id: userId,
+                        course_id: courseId,
+                        _token: '{{ csrf_token() }}'
+                    },
+                    success: function(response) {
+                        console.log('✅ SUCCESS:', response);
+                        
+                        // Show success notification
+                        showNotification('error', 'Access Revoked!', 'User access has been successfully revoked.');
+                        
+                        // Reset button
+                        const btn = $('#revokeAccessBtn');
+                        btn.prop('disabled', false).html('<i class="fas fa-user-times me-2"></i>Revoke Access');
+                        
+                        // Refresh enrollment data smoothly
+                        refreshEnrollmentData();
+                    },
+                    error: function(xhr) {
+                        console.error('❌ ERROR:', xhr.responseText);
+                        
+                        // Show error notification
+                        showNotification('error', 'Revoke Failed!', 'Failed to revoke access. Please try again.');
+                        
+                        // Reset button
+                        const btn = $('#revokeAccessBtn');
+                        btn.prop('disabled', false).html('<i class="fas fa-user-times me-2"></i>Revoke Access');
+                    }
+                });
+            });
+            
+
+            
+            // User selection handler
+            $('#user_id').on('change', function() {
+                const userId = $(this).val();
+                const userOption = $(this).find('option:selected');
+                
+                if (userId) {
+                    const userName = userOption.text();
+                    const userEmail = userOption.data('email');
+                    const userRole = userOption.data('role');
+                    
+                    // Set user initial (first letter of name)
+                    const userInitial = userName.charAt(0).toUpperCase();
+                    $('#userInitial').text(userInitial);
+                    
+                    $('#selectedUserName').text(userName);
+                    $('#selectedUserEmail').text(userEmail);
+                    $('#selectedUserRole').removeClass().addClass('badge').addClass(userRole === 'admin' ? 'bg-danger' : 'bg-secondary').text(userRole.toUpperCase());
+                    $('#userInfoSection').show();
+                    
+                    // Update course dropdown with enrollment status
+                    updateCourseDropdown(userId);
+                } else {
+                    $('#userInfoSection').hide();
+                    // Reset course dropdown
+                    resetCourseDropdown();
+                }
+            });
+            
+            // Function to update course dropdown with enrollment status
+            function updateCourseDropdown(userId) {
+                $.ajax({
+                    url: '/manage-access/user-enrollments',
+                    method: 'GET',
+                    data: { user_id: userId },
+                    success: function(response) {
+                        if (response.success) {
+                            const courseSelect = $('#course_id');
+                            courseSelect.empty();
+                            courseSelect.append('<option value="">Choose course...</option>');
+                            
+                            response.courses.forEach(function(course) {
+                                const isEnrolled = course.is_enrolled;
+                                const statusBadge = isEnrolled ? 
+                                    '<span class="badge bg-success">✓ Enrolled</span>' : 
+                                    '<span class="badge bg-secondary">✗ Not Enrolled</span>';
+                                
+                                const priceText = course.price > 0 ? `(${course.price} EGP)` : '(Free)';
+                                
+                                courseSelect.append(`
+                                    <option value="${course.id}" data-enrolled="${isEnrolled}" data-price="${course.price}">
+                                        ${course.name} ${priceText} - ${statusBadge}
+                                    </option>
+                                `);
+                            });
+                        }
+                    },
+                    error: function(xhr) {
+                        console.error('Failed to load user enrollments:', xhr.responseText);
+                        resetCourseDropdown();
+                    }
+                });
+            }
+            
+            // Function to reset course dropdown
+            function resetCourseDropdown() {
+                const courseSelect = $('#course_id');
+                courseSelect.empty();
+                courseSelect.append('<option value="">Choose course...</option>');
+                
+                // Add original courses
+                @if(isset($courses) && $courses->count() > 0)
+                    @foreach($courses as $course)
+                        courseSelect.append(`
+                            <option value="{{ $course->id }}" data-price="{{ $course->price }}">
+                                {{ $course->name }} @if($course->price > 0)({{ $course->price }} EGP)@else(Free)@endif
+                            </option>
+                        `);
+                    @endforeach
+                @endif
+            }
+            
+            console.log('✅ All event handlers attached successfully');
+            
+            // Initialize Admin User Select2
+            $('.admin-user-select').select2({
+                placeholder: 'Type to search for user...',
+                allowClear: true,
+                width: '100%'
+            });
+            
+            // Admin Management Variables
+            let selectedAdminUserId = null;
+            let selectedAdminIsAdmin = false;
+            
+            // Admin user selection handler
+            $('#admin_user_id').on('change', function() {
+                const userId = $(this).val();
+                const userOption = $(this).find('option:selected');
+                
+                if (userId) {
+                    const userName = userOption.data('name');
+                    const userEmail = userOption.data('email');
+                    const userRole = userOption.data('role');
+                    
+                    selectedAdminUserId = userId;
+                    selectedAdminIsAdmin = userRole === 'admin';
+                    
+                    // Update UI
+                    $('#selectedAdminUserName').text(userName);
+                    $('#selectedAdminUserEmail').text(userEmail);
+                    $('#selectedAdminUserStatus').removeClass().addClass('badge').addClass(userRole === 'admin' ? 'bg-danger' : 'bg-secondary').text(userRole.toUpperCase());
+                    $('#selectedUserInfo').show();
+                    
+                    // Update buttons
+                    if (selectedAdminIsAdmin) {
+                        $('#promoteToAdminBtn').prop('disabled', true).html('<i class="fas fa-check me-2"></i>Already Admin');
+                        $('#removeAdminBtn').prop('disabled', false).html('<i class="fas fa-user-times me-2"></i>Revoke Admin');
+                        $('#adminActionHint').text('This user is currently an administrator');
+                    } else {
+                        $('#promoteToAdminBtn').prop('disabled', false).html('<i class="fas fa-user-shield me-2"></i>Promote to Admin');
+                        $('#removeAdminBtn').prop('disabled', true).html('<i class="fas fa-user-times me-2"></i>Not Admin');
+                        $('#adminActionHint').text('This user is not an administrator');
+                    }
+                } else {
+                    $('#selectedUserInfo').hide();
+                    $('#promoteToAdminBtn').prop('disabled', true).html('<i class="fas fa-user-shield me-2"></i>Promote to Admin');
+                    $('#removeAdminBtn').prop('disabled', true).html('<i class="fas fa-user-times me-2"></i>Revoke Admin');
+                    $('#adminActionHint').text('Select a user above to manage their admin privileges');
+                    selectedAdminUserId = null;
+                    selectedAdminIsAdmin = false;
+                }
+            });
+            
+            // Promote to Admin button handler
+            $('#promoteToAdminBtn').on('click', function(e) {
+                e.preventDefault();
+                
+                if (!selectedAdminUserId || selectedAdminIsAdmin) {
+                    alert('Please select a non-admin user to promote');
+                    return;
+                }
+                
+                if (!confirm('Are you sure you want to promote this user to administrator?')) {
+                    return;
+                }
+                
+                const originalText = $(this).html();
+                $(this).html('<i class="fas fa-spinner fa-spin me-2"></i>Promoting...').prop('disabled', true);
+                
+                $.ajax({
+                    url: '/manage-access/toggle-admin',
+                    method: 'POST',
+                    data: {
+                        user_id: selectedAdminUserId,
+                        action: 'promote',
                         _token: '{{ csrf_token() }}'
                     },
                     success: function(response) {
                         if (response.success) {
-                            // Show success message
-                            const alert = $('<div class="alert alert-success alert-dismissible fade show" role="alert">' +
-                                response.message +
-                                '<button type="button" class="btn-close" data-bs-dismiss="alert"></button>' +
-                                '</div>');
-                            $('.container').prepend(alert);
-
-                            // Add new access to history
-                            const newRow = $('<tr></tr>');
-                            newRow.append($('<td class="small"></td>').text(response.user.email));
-                            newRow.append($('<td></td>').html(
-                                `<span class="badge" style="background-color: ${$('#course_id option:selected').data('color')}">${response.user.course_name}</span>`
-                            ));
-                            newRow.append($('<td class="small"></td>').text(response.user.enrolled_at));
-
-                            $('#accessHistoryTable').prepend(newRow);
-                            updateUserAccess(userId);
-                            updateCourseStats();
+                            alert('User promoted to administrator successfully!');
+                            location.reload();
+                        } else {
+                            alert('Error: ' + (response.message || 'Failed to promote user'));
                         }
                     },
                     error: function(xhr) {
-                        const message = xhr.responseJSON?.message || 'An error occurred while updating enrollment';
-                        const alert = $('<div class="alert alert-danger alert-dismissible fade show" role="alert">' +
-                            message +
-                            '<button type="button" class="btn-close" data-bs-dismiss="alert"></button>' +
-                            '</div>');
-                        $('.container').prepend(alert);
+                        console.error('Error promoting user:', xhr.responseText);
+                        alert('Error: ' + (xhr.responseJSON?.message || 'Failed to promote user'));
+                    },
+                    complete: function() {
+                        $('#promoteToAdminBtn').html(originalText).prop('disabled', false);
                     }
                 });
             });
-
-            function updateCourseStats() {
-                // Refresh the course statistics section
-                $.get(window.location.href, function(data) {
-                    const newStats = $(data).find('.course-stats-grid').html();
-                    $('.course-stats-grid').html(newStats);
+            
+            // Remove Admin button handler
+            $('#removeAdminBtn').on('click', function(e) {
+                e.preventDefault();
+                
+                if (!selectedAdminUserId || !selectedAdminIsAdmin) {
+                    alert('Please select an admin user to revoke privileges');
+                    return;
+                }
+                
+                if (!confirm('Are you sure you want to revoke administrator privileges from this user?')) {
+                    return;
+                }
+                
+                const originalText = $(this).html();
+                $(this).html('<i class="fas fa-spinner fa-spin me-2"></i>Revoking...').prop('disabled', true);
+                
+                $.ajax({
+                    url: '/manage-access/toggle-admin',
+                    method: 'POST',
+                    data: {
+                        user_id: selectedAdminUserId,
+                        action: 'revoke',
+                        _token: '{{ csrf_token() }}'
+                    },
+                    success: function(response) {
+                        if (response.success) {
+                            alert('Administrator privileges revoked successfully!');
+                            location.reload();
+                        } else {
+                            alert('Error: ' + (response.message || 'Failed to revoke admin privileges'));
+                        }
+                    },
+                    error: function(xhr) {
+                        console.error('Error revoking admin:', xhr.responseText);
+                        alert('Error: ' + (xhr.responseJSON?.message || 'Failed to revoke admin privileges'));
+                    },
+                    complete: function() {
+                        $('#removeAdminBtn').html(originalText).prop('disabled', false);
+                    }
+                });
+            });
+            
+            // Enrollment filter handler
+            $('#enrollmentFilter').change(function() {
+                const filter = $(this).val();
+                const rows = $('#enrollmentsTable tbody tr');
+                
+                rows.each(function() {
+                    const row = $(this);
+                    const status = row.data('status');
+                    
+                    if (filter === 'all' || status === filter) {
+                        row.show();
+                    } else {
+                        row.hide();
+                    }
+                });
+            });
+            
+            // Refresh enrollments handler
+            $('#refreshEnrollments').click(function() {
+                const btn = $(this);
+                btn.find('i').addClass('fa-spin');
+                
+                refreshEnrollmentData();
+                
+                setTimeout(() => {
+                    btn.find('i').removeClass('fa-spin');
+                }, 1000);
+            });
+            
+            // Function to refresh enrollment data smoothly
+            function refreshEnrollmentData() {
+                $.ajax({
+                    url: '/manage-access/enrollments',
+                    method: 'GET',
+                    success: function(response) {
+                        if (response.success && response.enrollments) {
+                            updateEnrollmentTable(response.enrollments);
+                        }
+                    },
+                    error: function(xhr) {
+                        console.error('Failed to refresh enrollment data:', xhr.responseText);
+                    }
                 });
             }
-
-            // Load payment history when the tab is activated
-            let paymentHistoryLoaded = false;
-            document.getElementById('payment-history-tab').addEventListener('shown.bs.tab', function (e) {
-                if (!paymentHistoryLoaded) {
-                    loadPaymentHistory();
-                    paymentHistoryLoaded = true;
-                }
-            });
             
-            // Also trigger load if tab is active on page load due to URL parameter
-            if (urlParams.get('tab') === 'payment-history') {
-                loadPaymentHistory();
-                paymentHistoryLoaded = true;
+            // Function to update enrollment table
+            function updateEnrollmentTable(enrollments) {
+                const tbody = $('#enrollmentsTable tbody');
+                tbody.empty();
+                
+                if (enrollments.length === 0) {
+                    tbody.append(`
+                        <tr>
+                            <td colspan="4" class="text-center py-4 text-muted">
+                                <i class="fas fa-inbox fa-2x mb-2"></i>
+                                <div>No enrollments found</div>
+                                <small>Start by granting course access to users</small>
+                            </td>
+                        </tr>
+                    `);
+                } else {
+                    enrollments.forEach(function(enrollment) {
+                        const statusBadge = enrollment.is_enrolled ? 
+                            '<span class="badge bg-success"><i class="fas fa-check me-1"></i>Enrolled</span>' :
+                            '<span class="badge bg-danger"><i class="fas fa-times me-1"></i>Revoked</span>';
+                        
+                        const date = new Date(enrollment.created_at).toLocaleDateString();
+                        const timeAgo = new Date(enrollment.created_at).toLocaleDateString();
+                        
+                        tbody.append(`
+                            <tr data-status="${enrollment.is_enrolled ? 'enrolled' : 'revoked'}">
+                                <td>
+                                    <div class="d-flex align-items-center">
+                                        <div class="me-2">
+                                            <div class="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center" style="width: 32px; height: 32px; font-size: 0.8rem;">
+                                                ${enrollment.name ? enrollment.name.charAt(0).toUpperCase() : 'U'}
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <div class="fw-medium">${enrollment.name || 'Unknown'}</div>
+                                            <small class="text-muted">${enrollment.email}</small>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td>
+                                    <span class="badge bg-primary">${enrollment.course_name}</span>
+                                </td>
+                                <td>
+                                    <div>${date}</div>
+                                    <small class="text-muted">${timeAgo}</small>
+                                </td>
+                                <td>${statusBadge}</td>
+                            </tr>
+                        `);
+                    });
+                }
             }
-
-            // Search payments
-            document.getElementById('payment-search-btn').addEventListener('click', function() {
-                loadPaymentHistory(1); // Search from page 1 with current search term
+            
+            // Payment History Tab Handler
+            $('#payment-tab').on('click', function() {
+                console.log('Payment tab clicked, loading payments...');
+                loadPayments();
             });
             
-            // Search on Enter key
-            document.getElementById('payment-search').addEventListener('keyup', function(event) {
-                if (event.key === 'Enter') {
-                    loadPaymentHistory(1);
+            // Auto-load payments when page loads (for admin users)
+            @if(Auth::user()->role === 'admin')
+            console.log('Admin user detected, auto-loading payments...');
+            loadPayments();
+            @endif
+            
+            // Payment search handler
+            $('#payment-search-btn').on('click', function() {
+                const search = $('#payment-search').val();
+                loadPayments(1, search);
+            });
+            
+            // Enter key search
+            $('#payment-search').on('keypress', function(e) {
+                if (e.which === 13) {
+                    const search = $(this).val();
+                    loadPayments(1, search);
                 }
             });
-            
-            // Load payment history when tab is activated
-            document.getElementById('payment-history-tab').addEventListener('shown.bs.tab', function() {
-                if (!document.querySelector('#payments-table-body tr')) {
-                    loadPaymentHistory();
-                }
-            });
 
-            // Add event listeners to view buttons
-            document.querySelectorAll('.view-payment').forEach(button => {
-                button.addEventListener('click', function() {
-                    const paymentId = this.getAttribute('data-payment-id');
-                    viewPaymentDetails(paymentId);
-                });
-            });
-            
-            // Add event listeners to accept buttons
-            document.querySelectorAll('.accept-payment-btn').forEach(button => {
-                button.addEventListener('click', function() {
-                    const paymentId = this.getAttribute('data-payment-id');
-                    acceptPayment(paymentId);
-                });
-            });
         });
-    </script>
-
-    <!-- Add JavaScript for loading payment history -->
-    <script>
-        function loadPaymentHistory(page = 1, filters = {}) {
-            const searchQuery = document.getElementById('payment-search').value.trim();
-            let url = '{{ secure_url("/admin/payment-history") }}?page=' + page;
+        
+        // Load payments function
+        function loadPayments(page = 1, search = '') {
+            console.log('Loading payments...', {page, search});
             
-            if (searchQuery) {
-                url += `&search=${encodeURIComponent(searchQuery)}`;
-            }
+            // Show loading state
+            const tbody = $('#payments-table-body');
+            tbody.html(`
+                <tr>
+                    <td colspan="9" class="text-center py-4">
+                        <i class="fas fa-spinner fa-spin fa-2x mb-2"></i>
+                        <div>Loading payments...</div>
+                    </td>
+                </tr>
+            `);
             
-            // Add filters to URL
-            Object.entries(filters).forEach(([key, value]) => {
-                if (value) {
-                    url += `&${key}=${encodeURIComponent(value)}`;
+            $.ajax({
+                url: '/manage-access/payments',
+                method: 'GET',
+                data: {
+                    page: page,
+                    search: search
+                },
+                success: function(response) {
+                                            console.log('Payments loaded:', response);
+                        console.log('Response type:', typeof response);
+                        console.log('Success:', response.success);
+                        console.log('Stats:', response.stats);
+                        console.log('Payments count:', response.payments ? response.payments.length : 'undefined');
+                        
+                        if (response.success) {
+                        console.log('Response stats:', response.stats);
+                        
+                        // Update statistics with proper type checking
+                        const totalRevenue = parseFloat(response.stats.total_revenue || 0);
+                        const completedCount = parseInt(response.stats.completed_count || 0);
+                        const pendingCount = parseInt(response.stats.pending_count || 0);
+                        const rejectedCount = parseInt(response.stats.rejected_count || 0);
+                        
+                        $('#total-revenue').text(totalRevenue.toFixed(2) + ' EGP');
+                        $('#completed-count').text(completedCount);
+                        $('#pending-count').text(pendingCount);
+                        $('#rejected-count').text(rejectedCount);
+                        
+                        // Update payments table
+                        const tbody = $('#payments-table-body');
+                        tbody.empty();
+                        
+                        if (response.payments.length === 0) {
+                            tbody.append(`
+                                <tr>
+                                    <td colspan="9" class="text-center py-4 text-muted">
+                                        <i class="fas fa-credit-card fa-3x mb-3 d-block"></i>
+                                        <div>No payments found</div>
+                                        <small>Payments will appear here once users make purchases</small>
+                                    </td>
+                                </tr>
+                            `);
+                        } else {
+                            response.payments.forEach(function(payment) {
+                                const statusBadge = getStatusBadge(payment.status);
+                                const actions = getPaymentActions(payment);
+                                const date = new Date(payment.created_at).toLocaleDateString();
+                                
+                                tbody.append(`
+                                    <tr data-payment-id="${payment.id}">
+                                        <td>#${payment.id}</td>
+                                        <td>
+                                            <div class="fw-medium">${payment.user_name}</div>
+                                            <small class="text-muted">${payment.user_email}</small>
+                                        </td>
+                                        <td><span class="badge bg-primary">${payment.course_name}</span></td>
+                                        <td class="fw-bold">${payment.amount} EGP</td>
+                                        <td><span class="badge bg-info">${payment.payment_method}</span></td>
+                                        <td>${statusBadge}</td>
+                                        <td><code class="small">${payment.reference_number || 'N/A'}</code></td>
+                                        <td>${date}</td>
+                                        <td>${actions}</td>
+                                    </tr>
+                                `);
+                            });
+                        }
+                        
+                        // Update pagination info
+                        $('#showing-records').text(response.payments.length);
+                        $('#total-records-count').text(response.pagination.total);
+                        
+                        // Generate pagination (simple version)
+                        const pagination = $('#payment-pagination');
+                        pagination.empty();
+                        
+                        if (response.pagination.last_page > 1) {
+                            let paginationHtml = '<ul class="pagination pagination-sm mb-0">';
+                            
+                            // Previous button
+                            if (response.pagination.current_page > 1) {
+                                paginationHtml += `<li class="page-item"><a class="page-link" href="#" onclick="loadPayments(${response.pagination.current_page - 1}, '${search}')">Previous</a></li>`;
+                            }
+                            
+                            // Page numbers (simplified)
+                            for (let i = 1; i <= Math.min(response.pagination.last_page, 5); i++) {
+                                const active = i === response.pagination.current_page ? 'active' : '';
+                                paginationHtml += `<li class="page-item ${active}"><a class="page-link" href="#" onclick="loadPayments(${i}, '${search}')">${i}</a></li>`;
+                            }
+                            
+                            // Next button
+                            if (response.pagination.current_page < response.pagination.last_page) {
+                                paginationHtml += `<li class="page-item"><a class="page-link" href="#" onclick="loadPayments(${response.pagination.current_page + 1}, '${search}')">Next</a></li>`;
+                            }
+                            
+                            paginationHtml += '</ul>';
+                            pagination.html(paginationHtml);
+                        }
+                    }
+                },
+                error: function(xhr) {
+                    console.error('Error loading payments:', xhr.responseText);
+                    console.error('Status:', xhr.status);
+                    console.error('Response:', xhr.responseJSON);
+                    
+                    let errorMessage = 'Please try again later';
+                    if (xhr.responseJSON && xhr.responseJSON.message) {
+                        errorMessage = xhr.responseJSON.message;
+                    } else if (xhr.status === 404) {
+                        errorMessage = 'Payment endpoint not found. Please check the route.';
+                    } else if (xhr.status === 500) {
+                        errorMessage = 'Server error occurred while loading payments.';
+                    }
+                    
+                    $('#payments-table-body').html(`
+                        <tr>
+                            <td colspan="9" class="text-center py-4 text-danger">
+                                <i class="fas fa-exclamation-triangle fa-2x mb-2 d-block"></i>
+                                <div>Error loading payments</div>
+                                <small>${errorMessage}</small>
+                                <br><small class="text-muted">Status: ${xhr.status}</small>
+                            </td>
+                        </tr>
+                    `);
                 }
             });
-            
-            fetch(url)
-                .then(response => {
-                    if (!response.ok) {
-                        return response.json().then(err => Promise.reject(err));
-                    }
-                    return response.json();
-                })
-                .then(data => {
-                    if (!data.success) {
-                        console.error('Error loading payment data:', data.message);
-                        return;
-                    }
-                    
-                    const tableBody = document.getElementById('payments-table-body');
-                    tableBody.innerHTML = '';
-                    
-                    const payments = data.payments;
-                    
-                    if (!payments || !payments.data || payments.data.length === 0) {
-                        tableBody.innerHTML = '<tr><td colspan="9" class="text-center py-4"><div class="text-muted"><i class="fas fa-search me-2"></i>No payments found</div></td></tr>';
-                        return;
-                    }
-                    
-                    updatePaymentStats(payments);
-                    
-                    payments.data.forEach(payment => {
-                        const row = document.createElement('tr');
-                        row.className = (payment.status === 'pending' || payment.status === 'pending_verification') ? 'table-warning' : '';
-                        row.innerHTML = `
-                            <td>${payment.id}</td>
-                            <td>
-                                <div class="d-flex align-items-center">
-                                    <div>
-                                        <div class="fw-bold">${payment.user_name}</div>
-                                        <div class="small text-muted">${payment.user_email}</div>
-                                    </div>
-                                </div>
-                            </td>
-                            <td>
-                                <span class="badge bg-primary">${payment.course_name}</span>
-                                ${payment.payment_data?.is_renewal ? 
-                                    `<span class="badge bg-info ms-1" title="This is a renewal payment">
-                                        <i class="fas fa-sync-alt"></i> Renewal
-                                    </span>` : ''}
-                            </td>
-                            <td class="fw-bold">
-                                ${parseFloat(payment.amount).toFixed(2)} ${payment.currency || 'EGP'}
-                            </td>
-                            <td>
-                                <span class="badge ${getBadgeClass(payment.payment_method)}">
-                                    ${formatPaymentMethod(payment.payment_method)}
-                                </span>
-                            </td>
-                            <td>
-                                <span class="badge ${getStatusBadgeClass(payment.status)}">
-                                    ${payment.status.charAt(0).toUpperCase() + payment.status.slice(1)}
-                                </span>
-                                ${payment.expired_at ? 
-                                    `<span class="badge bg-secondary ms-1" title="Subscription expired on ${formatDate(payment.expired_at)}">
-                                        <i class="fas fa-clock"></i> Expired
-                                    </span>` : ''}
-                            </td>
-                            <td>
-                                <div class="d-flex align-items-center">
-                                    <code class="me-2">${payment.reference_number}</code>
-                                    ${payment.payment_data?.transaction_id ? 
-                                        `<span class="badge bg-info" title="Transaction ID: ${payment.payment_data.transaction_id}">
-                                            <i class="fas fa-receipt"></i>
-                                        </span>` : ''}
-                                </div>
-                            </td>
-                            <td>
-                                <div>
-                                    ${formatDate(payment.created_at)}
-                                </div>
-                                ${payment.paid_at ? 
-                                    `<small class="text-success">
-                                        <i class="fas fa-check-circle"></i> Paid: ${formatDate(payment.paid_at)}
-                                    </small>` : ''}
-                            </td>
-                            <td>
-                                ${payment.status === 'completed' ? `
-                                    <span class="badge bg-success d-flex align-items-center gap-2 p-2">
-                                        <i class="fas fa-check-circle"></i> Verified
-                                    </span>
-                                ` : (payment.status === 'pending' || payment.status === 'pending_verification') ? `
-                                    <div class="d-flex gap-2">
-                                        <button class="btn btn-sm btn-success grant-access-btn" 
-                                                data-payment-id="${payment.id}"
-                                                ${hasActivePayment(payments.data, payment) ? 'title="Warning: User has an active subscription" data-bs-toggle="tooltip"' : ''}>
-                                            <i class="fas fa-check me-1"></i> Accept
-                                        </button>
-                                        <button class="btn btn-sm btn-danger" onclick="rejectPayment(${payment.id})">
-                                            <i class="fas fa-times me-1"></i> Reject
-                                        </button>
-                                    </div>
-                                ` : payment.status === 'rejected' ? `
-                                    <span class="badge bg-danger d-flex align-items-center gap-2 p-2">
-                                        <i class="fas fa-times-circle"></i> Rejected
-                                    </span>
-                                ` : `
-                                    <span class="badge bg-secondary d-flex align-items-center gap-2 p-2">
-                                        <i class="fas fa-ban"></i> ${payment.status}
-                                    </span>
-                                `}
-                            </td>
-                        `;
-                        tableBody.appendChild(row);
-                    });
-                    
-                    updatePagination(payments);
-                })
-                .catch(error => {
-                    console.error('Error loading payment history:', error);
-                    const tableBody = document.getElementById('payments-table-body');
-                    tableBody.innerHTML = '<tr><td colspan="9" class="text-center py-4"><div class="text-danger"><i class="fas fa-exclamation-circle me-2"></i>Error loading payments</div></td></tr>';
-                });
         }
         
-        function updatePagination(payments) {
-            const paginationContainer = document.getElementById('payment-pagination');
-            if (!paginationContainer) return;
-            
-            paginationContainer.innerHTML = '';
-            
-            if (!payments || !payments.last_page || payments.last_page <= 1) return;
-            
-            const ul = document.createElement('ul');
-            ul.className = 'pagination';
-            
-            // Previous button
-            const prevLi = document.createElement('li');
-            const currentPage = payments.current_page || 1;
-            prevLi.className = `page-item ${currentPage === 1 ? 'disabled' : ''}`;
-            const prevLink = document.createElement('a');
-            prevLink.className = 'page-link';
-            prevLink.href = '#';
-            prevLink.innerHTML = '&laquo;';
-            prevLink.addEventListener('click', (e) => {
-                e.preventDefault();
-                if (currentPage > 1) {
-                    loadPaymentHistory(currentPage - 1);
-                }
-            });
-            prevLi.appendChild(prevLink);
-            ul.appendChild(prevLi);
-            
-            // Page links
-            const lastPage = payments.last_page || 1;
-            for (let i = 1; i <= lastPage; i++) {
-                const li = document.createElement('li');
-                li.className = `page-item ${currentPage === i ? 'active' : ''}`;
-                const link = document.createElement('a');
-                link.className = 'page-link';
-                link.href = '#';
-                link.textContent = i;
-                link.addEventListener('click', (e) => {
-                    e.preventDefault();
-                    loadPaymentHistory(i);
-                });
-                li.appendChild(link);
-                ul.appendChild(li);
-            }
-            
-            // Next button
-            const nextLi = document.createElement('li');
-            nextLi.className = `page-item ${currentPage === lastPage ? 'disabled' : ''}`;
-            const nextLink = document.createElement('a');
-            nextLink.className = 'page-link';
-            nextLink.href = '#';
-            nextLink.innerHTML = '&raquo;';
-            nextLink.addEventListener('click', (e) => {
-                e.preventDefault();
-                if (currentPage < lastPage) {
-                    loadPaymentHistory(currentPage + 1);
-                }
-            });
-            nextLi.appendChild(nextLink);
-            ul.appendChild(nextLi);
-            
-            paginationContainer.appendChild(ul);
-        }
-        
-        function formatDate(dateString) {
-            const date = new Date(dateString);
-            return date.toLocaleString('en-US', {
-                year: 'numeric',
-                month: '2-digit',
-                day: '2-digit',
-                hour: '2-digit',
-                minute: '2-digit',
-                hour12: true
-            });
-        }
-        
-        function getBadgeClass(method) {
-            switch (method) {
-                case 'manual':
-                case 'manual_payment':
-                    return 'bg-secondary';
-                case 'fawry':
-                    return 'bg-primary';
-                case 'vodafone_cash':
-                    return 'bg-danger';
-                case 'instapay':
-                    return 'bg-info';
-                default:
-                    return 'bg-secondary';
-            }
-        }
-        
-        function formatPaymentMethod(method) {
-            switch (method) {
-                case 'manual':
-                case 'manual_payment':
-                    return 'Manual Payment';
-                case 'fawry':
-                    return 'Fawry';
-                case 'vodafone_cash':
-                    return 'Vodafone Cash';
-                case 'instapay':
-                    return 'InstaPay';
-                default:
-                    return method;
-            }
-        }
-        
-        function getStatusBadgeClass(status) {
-            switch (status) {
+        function getStatusBadge(status) {
+            switch(status) {
                 case 'completed':
-                    return 'bg-success';
+                    return '<span class="badge payment-status bg-success">Completed</span>';
                 case 'pending':
-                    return 'bg-warning text-dark';
-                case 'pending_verification':
-                    return 'bg-info';
+                    return '<span class="badge payment-status bg-warning">Pending</span>';
                 case 'rejected':
-                    return 'bg-danger';
-                case 'expired':
-                    return 'bg-secondary';
+                    return '<span class="badge payment-status bg-danger">Rejected</span>';
                 default:
-                    return 'bg-secondary';
+                    return '<span class="badge payment-status bg-secondary">' + status + '</span>';
             }
         }
         
-        function viewPaymentDetails(paymentId) {
-            fetch(`/admin/payment-details/${paymentId}`)
-                .then(response => response.json())
-                .then(data => {
-                    if (!data.success) {
-                        alert(data.message);
-                        return;
-                    }
-                    
-                    // Create modal
-                    const modal = document.createElement('div');
-                    modal.className = 'modal fade';
-                    modal.id = 'paymentDetailsModal';
-                    modal.setAttribute('tabindex', '-1');
-                    modal.setAttribute('aria-labelledby', 'paymentDetailsModalLabel');
-                    modal.setAttribute('aria-hidden', 'true');
-                    
-                    const details = data.payment;
-                    const paymentData = details.payment_data ? JSON.stringify(details.payment_data, null, 2) : 'No details available';
-                    
-                    // Check if this is a manual payment with transaction ID
-                    const hasTransactionData = details.payment_data && 
-                                              (details.payment_data.transaction_id || 
-                                               details.payment_method === 'manual_payment');
-                    
-                    // Check if there's a payment proof screenshot
-                    const hasProofImage = details.payment_data && details.payment_data.proof_path;
-                    
-                    // Determine if admin verification buttons should be shown
-                    const showVerifyButtons = details.status === 'pending' && 
-                                             (hasTransactionData || details.payment_method === 'manual_payment');
-                    
-                    modal.innerHTML = `
-                        <div class="modal-dialog modal-dialog-centered modal-lg">
-                            <div class="modal-content">
-                                <div class="modal-header">
-                                    <h5 class="modal-title" id="paymentDetailsModalLabel">Payment Details #${details.id}</h5>
-                                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                                </div>
-                                <div class="modal-body">
-                                    <div class="row">
-                                        <div class="col-md-6">
-                                            <h6>Basic Information</h6>
-                                            <table class="table table-borderless">
-                                                <tr>
-                                                    <th>User:</th>
-                                                    <td>${details.user_name}</td>
-                                                </tr>
-                                                <tr>
-                                                    <th>Course:</th>
-                                                    <td>${details.course_name}</td>
-                                                </tr>
-                                                <tr>
-                                                    <th>Amount:</th>
-                                                    <td>${details.amount} ${details.currency}</td>
-                                                </tr>
-                                                <tr>
-                                                    <th>Method:</th>
-                                                    <td>${formatPaymentMethod(details.payment_method)}</td>
-                                                </tr>
-                                                <tr>
-                                                    <th>Status:</th>
-                                                    <td><span class="badge ${getStatusBadgeClass(details.status)}">${details.status}</span></td>
-                                                </tr>
-                                                <tr>
-                                                    <th>Reference:</th>
-                                                    <td>${details.reference_number}</td>
-                                                </tr>
-                                                <tr>
-                                                    <th>Created:</th>
-                                                    <td>${formatDate(details.created_at)}</td>
-                                                </tr>
-                                                <tr>
-                                                    <th>Paid At:</th>
-                                                    <td>${details.paid_at ? formatDate(details.paid_at) : 'Not paid yet'}</td>
-                                                </tr>
-                                                ${hasTransactionData ? `
-                                                <tr>
-                                                    <th>Transaction ID:</th>
-                                                    <td class="text-primary fw-bold">${details.payment_data.transaction_id}</td>
-                                                </tr>
-                                                <tr>
-                                                    <th>Payment Date:</th>
-                                                    <td>${details.payment_data.payment_date ? details.payment_data.payment_date : 'N/A'}</td>
-                                                </tr>` : ''}
-                                            </table>
-                                        </div>
-                                        <div class="col-md-6">
-                                            ${hasProofImage ? `
-                                            <h6>Payment Proof</h6>
-                                            <div class="payment-proof-image mb-3">
-                                                <img src="/storage/${details.payment_data.proof_path}" class="img-fluid rounded border" 
-                                                     alt="Payment Proof" style="max-height: 200px;" 
-                                                     onclick="window.open('/storage/${details.payment_data.proof_path}', '_blank')">
-                                            </div>` : ''}
-                                            <h6>Payment Data</h6>
-                                            <pre class="bg-light p-3 rounded" style="max-height: 200px; overflow-y: auto;"><code>${paymentData}</code></pre>
-                                        </div>
-                                    </div>
-                                    
-                                    ${showVerifyButtons ? `
-                                    <div class="mt-3">
-                                        <div class="card border-warning">
-                                            <div class="card-header bg-warning bg-opacity-25">
-                                                <h6 class="mb-0"><i class="fas fa-exclamation-triangle me-2"></i>Verification Required</h6>
-                                            </div>
-                                            <div class="card-body">
-                                                <div class="mb-3">
-                                                    <label for="admin-notes" class="form-label">Admin Notes</label>
-                                                    <textarea class="form-control" id="admin-notes" rows="2"></textarea>
-                                                </div>
-                                                <div class="d-flex justify-content-end gap-2">
-                                                    <button type="button" class="btn btn-danger" 
-                                                            onclick="rejectPayment(${details.id})">
-                                                        <i class="fas fa-times me-2"></i>Reject Payment
-                                                    </button>
-                                                    <button type="button" class="btn btn-success" 
-                                                            onclick="verifyPayment(${details.id})">
-                                                        <i class="fas fa-check me-2"></i>Accept Payment
-                                                    </button>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>` : ''}
-                                </div>
-                                <div class="modal-footer">
-                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                                </div>
-                            </div>
-                        </div>
-                    `;
-                    
-                    document.body.appendChild(modal);
-                    
-                    // Initialize and show the modal
-                    const modalInstance = new bootstrap.Modal(document.getElementById('paymentDetailsModal'));
-                    modalInstance.show();
-                    
-                    // Clean up when the modal is closed
-                    document.getElementById('paymentDetailsModal').addEventListener('hidden.bs.modal', function () {
-                        document.body.removeChild(modal);
-                    });
-                })
-                .catch(error => {
-                    console.error('Error fetching payment details:', error);
-                    alert('An error occurred while loading payment details.');
-                });
-        }
-        
-        // Function to approve a payment
-        function approvePayment(paymentId) {
-            const adminNotes = document.getElementById('admin-notes').value;
-            const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
-            
-            if (!confirm('Are you sure you want to approve this payment? This will grant the user access to the course.')) {
-                return;
+        function getPaymentActions(payment) {
+            if (payment.status === 'pending') {
+                return `
+                    <div class="btn-group btn-group-sm">
+                        <button class="btn btn-success btn-sm" onclick="acceptPayment(${payment.id})" title="Accept Payment">
+                            <i class="fas fa-check"></i>
+                        </button>
+                        <button class="btn btn-danger btn-sm" onclick="rejectPayment(${payment.id})" title="Reject Payment">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                `;
+            } else {
+                return '<span class="text-muted small">No actions</span>';
             }
+        }
+
+        // Payment Management Functions
+        function acceptPayment(paymentId) {
+            console.log('Accept payment called for ID:', paymentId);
             
-            fetch(`/admin/payments/${paymentId}/verify`, {
+            // Instant acceptance - no confirmation needed
+            
+            // Send verification request
+            fetch(`/admin/payments/verify/${paymentId}`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'X-CSRF-TOKEN': csrfToken,
-                    'Accept': 'application/json'
+                    'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                    'Accept': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest'
                 },
-                body: JSON.stringify({
-                    admin_notes: adminNotes
-                })
+                body: JSON.stringify({ admin_notes: 'Payment accepted' }),
+                credentials: 'same-origin'
             })
-            .then(response => response.json())
+            .then(response => {
+                if (!response.ok) {
+                    if (response.status === 404) {
+                        throw new Error('Route not found. Please check if you are logged in as admin.');
+                    } else if (response.status === 419) {
+                        throw new Error('CSRF token expired. Please refresh the page and try again.');
+                    } else if (response.status === 403) {
+                        throw new Error('Access denied. You must be an admin to verify payments.');
+                    } else if (response.status === 401) {
+                        throw new Error('Not authenticated. Please log in and try again.');
+                    } else {
+                        throw new Error(`Server error: ${response.status} ${response.statusText}`);
+                    }
+                }
+                return response.json();
+            })
             .then(data => {
                 if (data.success) {
-                    // Close the modal
-                    bootstrap.Modal.getInstance(document.getElementById('paymentDetailsModal')).hide();
+                    // Simple feedback without alert
+                    console.log('Payment accepted successfully!');
                     
-                    // Show success message
-                    alert('Payment approved successfully!');
+                    // Update the UI
+                    const row = document.querySelector(`[data-payment-id="${paymentId}"]`);
+                    if (row) {
+                        const statusCell = row.querySelector('.payment-status');
+                        if (statusCell) {
+                            statusCell.textContent = 'Completed';
+                            statusCell.className = 'badge payment-status bg-success';
+                        }
+                        
+                        // Update actions cell
+                        const actionsCell = row.querySelector('td:last-child');
+                        if (actionsCell) {
+                            actionsCell.innerHTML = '<span class="text-muted small">Completed</span>';
+                        }
+                    }
                     
-                    // Reload payment history
-                    loadPaymentHistory();
+                    // Refresh payment data
+                    loadPayments();
                 } else {
-                    alert(data.message || 'Failed to approve payment.');
+                    throw new Error(data.message || 'Payment verification failed');
                 }
             })
             .catch(error => {
-                console.error('Error approving payment:', error);
-                alert('An error occurred while approving the payment.');
+                console.error('Error accepting payment:', error);
             });
         }
-        
-        // Function to reject a payment
+
         function rejectPayment(paymentId) {
-            const reason = prompt('Please provide a reason for rejecting this payment:');
-            if (!reason) return;
-
-            const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
-
-            // Show loading state
-            const buttons = document.querySelectorAll(`button[data-payment-id="${paymentId}"]`);
-            buttons.forEach(btn => {
-                btn.disabled = true;
-                btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
-            });
-
-            fetch('/admin/payments/' + paymentId + '/reject', {
+            console.log('Reject payment called for ID:', paymentId);
+            
+            // Instant rejection - no reason needed
+            
+            fetch(`/admin/payments/${paymentId}/reject`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'X-CSRF-TOKEN': csrfToken,
+                    'X-CSRF-TOKEN': '{{ csrf_token() }}',
                     'Accept': 'application/json'
                 },
                 body: JSON.stringify({
-                    reason: reason,
-                    admin_notes: 'Rejected via payment history'
+                    reason: 'Payment rejected'
                 })
             })
             .then(response => response.json())
             .then(data => {
                 if (data.success) {
-                    // Show success message with better styling
-                    const successAlert = document.createElement('div');
-                    successAlert.className = 'alert alert-success alert-dismissible fade show position-fixed top-0 start-50 translate-middle-x mt-3';
-                    successAlert.style.zIndex = '9999';
-                    successAlert.innerHTML = `
-                        <i class="fas fa-check-circle me-2"></i> Payment rejected successfully
-                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-                    `;
-                    document.body.appendChild(successAlert);
+                    // Simple feedback without alert
+                    console.log('Payment rejected successfully');
                     
-                    // Remove alert after 3 seconds
-                    setTimeout(() => {
-                        successAlert.remove();
-                    }, 3000);
+                    // Update the UI
+                    const row = document.querySelector(`[data-payment-id="${paymentId}"]`);
+                    if (row) {
+                        const statusCell = row.querySelector('.payment-status');
+                        if (statusCell) {
+                            statusCell.textContent = 'Rejected';
+                            statusCell.className = 'badge payment-status bg-danger';
+                        }
+                        
+                        // Update actions cell
+                        const actionsCell = row.querySelector('td:last-child');
+                        if (actionsCell) {
+                            actionsCell.innerHTML = '<span class="text-muted small">Rejected</span>';
+                        }
+                    }
                     
-                    // Refresh the payment history
-                    loadPaymentHistory();
+                    // Refresh payment data
+                    loadPayments();
                 } else {
-                    alert(data.message || 'Failed to reject payment.');
+                    console.error('Failed to reject payment:', data.message);
                 }
             })
             .catch(error => {
                 console.error('Error rejecting payment:', error);
-                
-                let errorMessage = 'An error occurred while rejecting the payment.';
-                if (error.name === 'TypeError' && error.message.includes('Failed to fetch')) {
-                    errorMessage = 'Network error: Please check your connection and try again. If using ngrok, the tunnel may have changed.';
-                }
-                
-                alert(errorMessage);
-                
-                // Reset buttons on error
-                buttons.forEach(btn => {
-                    btn.disabled = false;
-                    btn.innerHTML = '<i class="fas fa-times me-1"></i> Reject';
-                });
             });
         }
-        
-        // Function to quickly verify a payment from the table
-        function verifyPayment(paymentId) {
-            if (!confirm('Are you sure you want to accept this payment? This will grant the user access to the course.')) {
-                return;
-            }
-            
-            const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
-            
-            fetch('{{ secure_url("/admin/payments") }}/' + paymentId + '/verify', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRF-TOKEN': csrfToken,
-                    'Accept': 'application/json'
-                },
-                body: JSON.stringify({
-                    admin_notes: 'Verified via quick action'
-                })
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    // Show success message
-                    alert('Payment verified successfully. The user now has access to the course.');
-                    
-                    // Reload payment history
-                    loadPaymentHistory();
-                } else {
-                    alert(data.message || 'Failed to verify payment.');
-                }
-            })
-            .catch(error => {
-                console.error('Error verifying payment:', error);
-                alert('An error occurred while verifying the payment.');
-            });
-        }
-
-        // Update the grant access functionality
-        document.addEventListener('click', function(e) {
-            if (e.target.closest('.grant-access-btn')) {
-                const btn = e.target.closest('.grant-access-btn');
-                const paymentId = btn.getAttribute('data-payment-id');
-                
-                if (!paymentId) {
-                    alert('Missing payment information');
-                    return;
-                }
-
-                if (!confirm('Are you sure you want to accept this payment?')) {
-                    return;
-                }
-
-                // Show loading state
-                btn.disabled = true;
-                btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
-
-                const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
-
-                fetch('/admin/payments/' + paymentId + '/verify', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': csrfToken,
-                        'Accept': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        admin_notes: 'Accepted via payment history'
-                    })
-                })
-                .then(response => {
-                    if (!response.ok) {
-                        return response.json().then(err => Promise.reject(err));
-                    }
-                    return response.json();
-                })
-                .then(data => {
-                    if (data.success) {
-                        // Show success message with better styling
-                        const successAlert = document.createElement('div');
-                        successAlert.className = 'alert alert-success alert-dismissible fade show position-fixed top-0 start-50 translate-middle-x mt-3';
-                        successAlert.style.zIndex = '9999';
-                        successAlert.innerHTML = `
-                            <i class="fas fa-check-circle me-2"></i> Payment accepted successfully
-                            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-                        `;
-                        document.body.appendChild(successAlert);
-                        
-                        // Remove alert after 3 seconds
-                        setTimeout(() => {
-                            successAlert.remove();
-                        }, 3000);
-                        
-                        // Refresh the payment history
-                        loadPaymentHistory();
-                    } else {
-                        alert(data.message || 'Failed to accept payment.');
-                    }
-                })
-                .catch(error => {
-                    console.error('Error accepting payment:', error);
-                    
-                    let errorMessage = 'An error occurred while accepting the payment.';
-                    if (error.name === 'TypeError' && error.message.includes('Failed to fetch')) {
-                        errorMessage = 'Network error: Please check your connection and try again. If using ngrok, the tunnel may have changed.';
-                    }
-                    
-                    alert(errorMessage);
-                    
-                    // Reset button on error
-                    btn.disabled = false;
-                    btn.innerHTML = '<i class="fas fa-check me-1"></i> Accept';
-                });
-            }
-        });
-
-        function updatePaymentStats(payments) {
-            let totalRevenue = 0;
-            let completed = 0;
-            let pending = 0;
-            let rejected = 0;
-
-            payments.data.forEach(payment => {
-                const amount = parseFloat(payment.amount) || 0;
-                totalRevenue += payment.status === 'completed' ? amount : 0;
-                
-                switch(payment.status) {
-                    case 'completed':
-                        completed++;
-                        break;
-                    case 'pending':
-                    case 'pending_verification':
-                        pending++;
-                        break;
-                    case 'rejected':
-                        rejected++;
-                        break;
-                }
-            });
-
-            document.getElementById('total-revenue').textContent = totalRevenue.toFixed(2) + ' EGP';
-            document.getElementById('completed-count').textContent = completed;
-            document.getElementById('pending-count').textContent = pending;
-            document.getElementById('rejected-count').textContent = rejected;
-            
-            // Update records count
-            document.getElementById('showing-records').textContent = payments.data.length;
-            document.getElementById('total-records-count').textContent = payments.total;
-        }
-
-        function applyFilters() {
-            const filters = {
-                status: document.getElementById('status-filter').value,
-                method: document.getElementById('method-filter').value,
-                dateFrom: document.getElementById('date-from').value,
-                dateTo: document.getElementById('date-to').value
-            };
-            loadPaymentHistory(1, filters);
-        }
-
-        function resetFilters() {
-            document.getElementById('status-filter').value = '';
-            document.getElementById('method-filter').value = '';
-            document.getElementById('date-from').value = '';
-            document.getElementById('date-to').value = '';
-            loadPaymentHistory(1);
-        }
-
-        // Add this helper function to check for active payments
-        function hasActivePayment(payments, currentPayment) {
-            return payments.some(p => 
-                p.user_id === currentPayment.user_id && 
-                p.course_id === currentPayment.course_id && 
-                p.status === 'completed' && 
-                !p.expired_at &&
-                p.id !== currentPayment.id
-            );
-        }
-
-        // Initialize tooltips
-        document.addEventListener('DOMContentLoaded', function() {
-            var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
-            var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
-                return new bootstrap.Tooltip(tooltipTriggerEl);
-            });
-        });
     </script>
+
+
 </body>
-</html> 
+</html>

@@ -71,7 +71,7 @@ class TopicController extends Controller
             // Check if user has a pending payment
             $pendingPayment = Payment::where('user_id', $user->id)
                 ->where('course_id', $course->id)
-                ->whereIn('status', ['pending', 'pending_verification'])
+                ->where('status', 'pending')
                 ->first();
                 
             if ($pendingPayment) {
@@ -91,30 +91,25 @@ class TopicController extends Controller
             }])
             ->get();
 
-        // 🚀 GENIUS: Load assignments with new architecture
+        // 🚀 GENIUS: Load assignments using efficient pivot table filtering
         $assignments = [];
-        if ($user->role === 'student' || $user->role === 'admin') {
-            // Cache key for assignments
-            $assignmentCacheKey = "assignments_{$course->id}_" . now()->format('Y-m-d-H');
-            
-            $assignments = \Cache::remember($assignmentCacheKey, 300, function () use ($course, $user) {
-                // Bulk update overdue assignments first
-                \App\Models\Assignment::updateOverdueAssignments();
-                \App\Models\Assignment::updateExpiredAssignments();
+        if ($user->role === 'student') {
+            // Students only see assignments specifically assigned to them via pivot table
+            $assignments = \App\Models\Assignment::where('course_id', $course->id)
+                ->whereHas('assignedUsers', function($query) use ($user) {
+                    $query->where('user_id', $user->id);
+                })
+                ->with(['topic:id,name,course_id'])
+                ->get();
                 
-                // 🔥 GENIUS: Load all assignments for course (no user filtering)
-                $assignments = \App\Models\Assignment::where('course_id', $course->id)
-                    ->with(['topic:id,name,course_id'])
-                    ->get();
-                
-                // 🚀 GENIUS: Attach dynamic progress for current user
-                foreach ($assignments as $assignment) {
-                    $assignment->user_progress = $assignment->getUserProgress($user->id);
-                    $assignment->display_status = $assignment->getCurrentStatusAttribute();
-                }
-                
-                return $assignments;
-            });
+            // Attach dynamic progress for current user
+            foreach ($assignments as $assignment) {
+                $assignment->user_progress = $assignment->getUserProgress($user->id);
+                $assignment->display_status = $assignment->getCurrentStatusAttribute();
+            }
+        } elseif ($user->role === 'admin') {
+            // Admins don't see assignments in the student view - they manage them separately
+            $assignments = collect();
         }
 
         return view('topics_for_course', [

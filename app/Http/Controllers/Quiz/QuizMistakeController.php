@@ -72,7 +72,12 @@ class QuizMistakeController extends Controller
                     ->where('mistakes.user_id', $userId);
 
                 if ($courseFilter === 'skipped') {
-                    $query->where('mistakes.skipped', true);
+                    $query->where(function($q) {
+                        $q->where('mistakes.skipped', true)
+                          ->orWhere('mistakes.submitted_answer', 'unanswered')
+                          ->orWhere('mistakes.submitted_answer', '')
+                          ->orWhereNull('mistakes.submitted_answer');
+                    });
                 } elseif ($courseFilter) {
                     $query->where('courses.id', $courseFilter);
                 }
@@ -80,12 +85,15 @@ class QuizMistakeController extends Controller
                 return $query->orderByDesc('mistakes.last_attempt_date')->get();
             });
 
-            // 🚀 BATCH PROCESSING: Transform raw data efficiently
+            // 🚀 BATCH PROCESSING: Transform raw data efficiently with proper submitted answer handling
             $mistakes = $mistakesData->map(function($mistake) {
+                // Normalize submitted answer for proper display
+                $submittedAnswer = $this->normalizeSubmittedAnswer($mistake->submitted_answer, $mistake->skipped);
+                
                 return (object) [
                     'id' => $mistake->id,
                     'question_id' => $mistake->question_id,
-                    'submitted_answer' => $mistake->submitted_answer,
+                    'submitted_answer' => $submittedAnswer,
                     'last_attempt_date' => \Carbon\Carbon::parse($mistake->last_attempt_date),
                     'correct_streak' => $mistake->correct_streak,
                     'skipped' => (bool) $mistake->skipped,
@@ -127,7 +135,15 @@ class QuizMistakeController extends Controller
 
                 // Get total and skipped counts in single queries
                 $totalCount = DB::table('mistakes')->where('user_id', $userId)->count();
-                $skippedCount = DB::table('mistakes')->where('user_id', $userId)->where('skipped', true)->count();
+                $skippedCount = DB::table('mistakes')
+                    ->where('user_id', $userId)
+                    ->where(function($query) {
+                        $query->where('skipped', true)
+                              ->orWhere('submitted_answer', 'unanswered')
+                              ->orWhere('submitted_answer', '')
+                              ->orWhereNull('submitted_answer');
+                    })
+                    ->count();
 
                 // Get recent course efficiently
                 $recentCourse = DB::table('quiz_attempts')
@@ -207,5 +223,23 @@ class QuizMistakeController extends Controller
                 'error' => 'An error occurred while loading your mistakes. Please try again.'
             ]);
         }
+    }
+
+    /**
+     * 🎯 NORMALIZE SUBMITTED ANSWER FOR PROPER DISPLAY
+     * Ensures consistent handling of unanswered questions and submitted answers
+     */
+    private function normalizeSubmittedAnswer($submittedAnswer, $isSkipped)
+    {
+        // Handle unanswered/skipped questions
+        if ($isSkipped || 
+            $submittedAnswer === 'unanswered' || 
+            $submittedAnswer === '' || 
+            $submittedAnswer === null) {
+            return 'unanswered';
+        }
+
+        // Return the actual submitted answer for display
+        return $submittedAnswer;
     }
 }

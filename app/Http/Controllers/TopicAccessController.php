@@ -23,7 +23,7 @@ use Illuminate\Http\Response;
     public function __construct()
     {
         parent::__construct();
-        Log::info('Controller initialized', ['user_id' => auth()->id()]);
+        // Controller initialized log ANNIHILATED
         $this->middleware(['auth']);
     }
 

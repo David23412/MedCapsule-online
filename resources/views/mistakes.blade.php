@@ -1075,29 +1075,36 @@
                                     @php
                                         $submittedOption = $mistake->submitted_answer;
                                         $correctOption = $mistake->question->correct_answer;
+                                        $isUnanswered = ($submittedOption === 'unanswered' || $submittedOption === '' || $submittedOption === null || $mistake->skipped);
                                     @endphp
                                     
-                                    <!-- Submitted Answer (if incorrect) -->
-                                    @if($submittedOption !== $correctOption && $mistake->question->question_type !== 'written')
-                                        <div class="answer-section">
-                                            <h4 class="answer-label">Your answer:</h4>
-                                            <div class="form-check">
-                                                <input class="form-check-input" type="radio" disabled checked>
+                                    <!-- Submitted Answer Display -->
+                                    <div class="answer-section">
+                                        <h4 class="answer-label">Your answer:</h4>
+                                        <div class="form-check">
+                                            @if($isUnanswered)
+                                                <!-- Unanswered Question - Normal Styling -->
                                                 <label class="form-check-label incorrect">
-                                                    {{ $mistake->question->{'option_'.strtolower($submittedOption)} }}
+                                                    UNANSWERED
                                                 </label>
-                                            </div>
-                                        </div>
-                                    @elseif($submittedOption !== $correctOption && $mistake->question->question_type === 'written')
-                                        <div class="answer-section">
-                                            <h4 class="answer-label">Your answer:</h4>
-                                            <div class="form-check">
+                                            @elseif($mistake->question->question_type === 'written')
+                                                <!-- Written Question - Show Submitted Text -->
                                                 <label class="form-check-label incorrect">
                                                     {{ $submittedOption }}
                                                 </label>
-                                            </div>
+                                            @else
+                                                <!-- Multiple Choice - Show Submitted Option -->
+                                                <input class="form-check-input" type="radio" disabled checked>
+                                                <label class="form-check-label incorrect">
+                                                    @if(in_array(strtolower($submittedOption), ['a', 'b', 'c', 'd']))
+                                                        {{ $mistake->question->{'option_'.strtolower($submittedOption)} }}
+                                                    @else
+                                                        {{ $submittedOption }}
+                                                    @endif
+                                                </label>
+                                            @endif
                                         </div>
-                                    @endif
+                                    </div>
 
                                     <!-- Correct Answer -->
                                     <div class="answer-section">

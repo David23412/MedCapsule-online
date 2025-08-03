@@ -208,7 +208,11 @@ document.addEventListener('DOMContentLoaded', function() {
     // NUCLEAR SPEED: WebSocket for instant user count updates
     // Performance gain: 95% faster updates, 90% less server load
     function initializeWebSocket() {
-        websocket = new WebSocket(`ws://${window.location.host}/live-users/stream`);
+        // Auto-detect correct protocol (ws:// for HTTP, wss:// for HTTPS)
+        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+        const wsUrl = `${protocol}//${window.location.host}/live-users/stream`;
+        
+        websocket = new WebSocket(wsUrl);
         
         websocket.onopen = () => {
             console.log('🔥 NUCLEAR SPEED: Live users WebSocket connected');
@@ -224,9 +228,24 @@ document.addEventListener('DOMContentLoaded', function() {
         };
         
         websocket.onerror = (error) => {
-            console.error('Live users WebSocket error:', error);
-            // Fallback to immediate fetch (still faster than polling)
+            console.warn('⚠️ Live users WebSocket failed, using fallback');
+            // Graceful degradation - fetch immediately and set up minimal polling
             fetchLiveUserCount();
+            
+            // Set up minimal polling as fallback (every 30 seconds)
+            if (!window.liveUserFallbackInterval) {
+                window.liveUserFallbackInterval = setInterval(fetchLiveUserCount, 30000);
+            }
+        };
+        
+        websocket.onclose = (event) => {
+            console.log('🔌 Live users WebSocket closed, attempting reconnect...');
+            // Auto-reconnect after 5 seconds
+            setTimeout(() => {
+                if (!websocket || websocket.readyState === WebSocket.CLOSED) {
+                    initializeWebSocket();
+                }
+            }, 5000);
         };
     }
 

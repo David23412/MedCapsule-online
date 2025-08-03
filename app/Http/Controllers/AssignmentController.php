@@ -41,6 +41,8 @@ class AssignmentController extends Controller
             'assignment_mode' => 'required|in:complete_topic,source_specific',
             'assigned_source' => 'nullable|string',
             'title' => 'required|string|max:255',
+            'student_ids' => 'required|array|min:1',
+            'student_ids.*' => 'exists:users,id',
         ]);
 
         $count = $this->assignmentService->createBulkAssignments($validated, auth()->id());

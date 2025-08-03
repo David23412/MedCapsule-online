@@ -94,11 +94,17 @@ return new class extends Migration
 
         // 🎯 COURSE_USER: Enrollment queries
         Schema::table('course_user', function (Blueprint $table) {
-            // CRITICAL: User courses
-            $table->index(['user_id', 'created_at'], 'idx_user_enrollments');
+            // CRITICAL: User courses with enrollment status
+            $table->index(['user_id', 'is_enrolled', 'created_at'], 'idx_user_enrollments');
             
-            // CRITICAL: Course students
-            $table->index(['course_id', 'created_at'], 'idx_course_students');
+            // CRITICAL: Course students with enrollment status
+            $table->index(['course_id', 'is_enrolled', 'created_at'], 'idx_course_students');
+            
+            // CRITICAL: Access control queries
+            $table->index(['user_id', 'course_id', 'is_enrolled'], 'idx_user_course_access');
+            
+            // CRITICAL: Admin enrollment management
+            $table->index(['is_enrolled', 'created_at'], 'idx_enrollment_status_date');
         });
     }
 
@@ -150,6 +156,8 @@ return new class extends Migration
         Schema::table('course_user', function (Blueprint $table) {
             $table->dropIndex('idx_user_enrollments');
             $table->dropIndex('idx_course_students');
+            $table->dropIndex('idx_user_course_access');
+            $table->dropIndex('idx_enrollment_status_date');
         });
     }
 };

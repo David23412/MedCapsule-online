@@ -61,8 +61,8 @@ class VerifyFreeCourseEnrollment extends Command
                 if (!$enrollment) {
                     $this->error("  ✗ NOT enrolled in {$course->name}");
                     $allCorrect = false;
-                } elseif ($enrollment->enrollment_status !== 'active') {
-                    $this->error("  ✗ Enrolled but status is '{$enrollment->enrollment_status}' for {$course->name}");
+                } elseif (!$enrollment->is_enrolled) {
+                    $this->error("  ✗ Enrolled but status is 'inactive' for {$course->name}");
                     $allCorrect = false;
                 } else {
                     $this->line("  ✓ Enrolled in {$course->name} (active)");

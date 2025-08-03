@@ -42,7 +42,7 @@ class CourseActionController extends Controller
         // Check if user is already enrolled
         $existingEnrollment = $user->courses()
             ->where('course_id', $courseId)
-            ->where('enrollment_status', 'active')
+            ->where('is_enrolled', true)
             ->exists();
 
         if ($existingEnrollment) {
@@ -66,7 +66,7 @@ class CourseActionController extends Controller
 
         // Enroll the user
         $user->courses()->attach($courseId, [
-            'enrollment_status' => 'active',
+            'is_enrolled' => true,
             'enrolled_at' => now()
         ]);
 

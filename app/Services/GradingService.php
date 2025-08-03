@@ -512,6 +512,13 @@ class GradingService
     private function evaluateWrittenAnswer(Question $question, string $submittedAnswer): bool
     {
         try {
+            Log::info('🔥 WRITTEN ANSWER EVALUATION DEBUG', [
+                'question_id' => $question->id,
+                'submitted_answer' => $submittedAnswer,
+                'correct_answer' => $question->correct_answer,
+                'question_text' => substr($question->question, 0, 100)
+            ]);
+            
             $evaluation = $this->writtenAnswerEvaluationService->evaluateAnswer(
                 $submittedAnswer,
                 $question->correct_answer,
@@ -519,16 +526,30 @@ class GradingService
                 0.7 // similarityThreshold parameter
             );
 
+            Log::info('🔥 WRITTEN ANSWER EVALUATION RESULT', [
+                'question_id' => $question->id,
+                'evaluation_result' => $evaluation,
+                'is_correct' => $evaluation['is_correct'] ?? false
+            ]);
+
             // Use the correct key from WrittenAnswerEvaluationService response
-            return $evaluation['isCorrect'] ?? false;
+            return $evaluation['is_correct'] ?? false;
         } catch (\Exception $e) {
             Log::error('Written answer evaluation failed', [
                 'question_id' => $question->id,
+                'submitted_answer' => $submittedAnswer,
+                'correct_answer' => $question->correct_answer,
                 'error' => $e->getMessage()
             ]);
             
             // Fallback to exact match if evaluation fails
-            return strtolower(trim($submittedAnswer)) === strtolower(trim($question->correct_answer));
+            $fallbackResult = strtolower(trim($submittedAnswer)) === strtolower(trim($question->correct_answer));
+            Log::info('🔥 FALLBACK EVALUATION RESULT', [
+                'question_id' => $question->id,
+                'fallback_result' => $fallbackResult
+            ]);
+            
+            return $fallbackResult;
         }
     }
 

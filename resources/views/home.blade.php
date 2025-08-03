@@ -587,9 +587,9 @@
             color: #f44336;
         }
 
-        /* Interactive Background Styles */
+        /* SUBTLE BACKGROUND ANIMATION - HERO SECTION ONLY */
         .interactive-bg {
-            position: fixed;
+            position: absolute;
             top: 0;
             left: 0;
             width: 100%;
@@ -604,17 +604,16 @@
             width: 100%;
             height: 100%;
             pointer-events: none;
+            z-index: -1;
         }
 
         .floating-element {
             position: absolute;
-            background: linear-gradient(45deg, rgba(33, 150, 243, 0.15), rgba(33, 150, 243, 0.05));
+            background: linear-gradient(45deg, rgba(33, 150, 243, 0.2), rgba(33, 150, 243, 0.08));
             border-radius: 50%;
             filter: blur(3px);
-            /* RUTHLESS GPU OPTIMIZATION */
-            will-change: transform, opacity;
-            transform: translate3d(0, 0, 0);
             animation: float-element 20s infinite ease-in-out;
+            opacity: 0.4;
         }
 
         .floating-element::before {
@@ -627,8 +626,8 @@
             height: 100%;
             background: inherit;
             border-radius: 50%;
-            filter: blur(4px);
-            opacity: 0.5;
+            filter: blur(3px);
+            opacity: 0.7;
         }
 
         .floating-element:nth-child(1) {
@@ -697,24 +696,24 @@
 
         @keyframes float-element {
             0% {
-                transform: translate3d(0, 0, 0) rotate(0deg) scale(1);
-                opacity: 0.3;
+                transform: translate(0, 0) rotate(0deg) scale(1);
+                opacity: 0.2;
             }
             25% {
-                transform: translate3d(200px, 200px, 0) rotate(90deg) scale(1.3);
-                opacity: 0.6;
+                transform: translate(150px, 150px) rotate(90deg) scale(1.2);
+                opacity: 0.4;
             }
             50% {
-                transform: translate3d(0, 400px, 0) rotate(180deg) scale(1);
-                opacity: 0.3;
+                transform: translate(0, 300px) rotate(180deg) scale(1);
+                opacity: 0.2;
             }
             75% {
-                transform: translate3d(-200px, 200px, 0) rotate(270deg) scale(0.7);
-                opacity: 0.6;
+                transform: translate(-150px, 150px) rotate(270deg) scale(0.8);
+                opacity: 0.4;
             }
             100% {
-                transform: translate3d(0, 0, 0) rotate(360deg) scale(1);
-                opacity: 0.3;
+                transform: translate(0, 0) rotate(360deg) scale(1);
+                opacity: 0.2;
             }
         }
 
@@ -731,6 +730,7 @@
             height: 2px;
             transform-origin: left center;
             animation: line-animation 12s infinite ease-in-out;
+            z-index: -1;
         }
 
         .line:nth-child(1) {
@@ -785,9 +785,10 @@
 
         .pulse-circle {
             position: absolute;
-            border: 2px solid rgba(33, 150, 243, 0.15);
+            border: 2px solid rgba(33, 150, 243, 0.1);
             border-radius: 50%;
-            animation: pulse-circle 6s infinite ease-out;
+            animation: pulse-circle 8s infinite ease-out;
+            z-index: -1;
         }
 
         .pulse-circle:nth-child(1) {
@@ -826,7 +827,7 @@
         }
 
         .gradient-overlay {
-            position: fixed;
+            position: absolute;
             top: 0;
             left: 0;
             width: 100%;
@@ -837,7 +838,7 @@
         }
 
         .noise-texture {
-            position: fixed;
+            position: absolute;
             top: 0;
             left: 0;
             width: 100%;
@@ -2354,7 +2355,7 @@
                         <li class="nav-item">
                             <a href="{{ route('profile') }}" class="nav-link">
                                 <div class="profile-circle {{ !Auth::user()->profile_picture_url ? 'no-image' : '' }}" 
-                                     style="{{ Auth::user()->profile_picture_url ? 'background-image: url(' . secure_url(Auth::user()->profile_picture_url) . ');' : '' }}">
+                                     style="{{ Auth::user()->profile_picture_url ? 'background-image: url(' . asset(Auth::user()->profile_picture_url) . ');' : '' }}">
                                     @if(!Auth::user()->profile_picture_url)
                                         {{ substr(Auth::user()->name, 0, 1) }}
                                     @endif
@@ -2368,35 +2369,35 @@
     </nav>
 
     <main class="mt-4">
-        <!-- Interactive Background -->
-        <div class="interactive-bg">
-            <div class="floating-elements">
-                <div class="floating-element"></div>
-                <div class="floating-element"></div>
-                <div class="floating-element"></div>
-                <div class="floating-element"></div>
-                <div class="floating-element"></div>
-                <div class="floating-element"></div>
-                <div class="floating-element"></div>
-                <div class="floating-element"></div>
-            </div>
-            <div class="connecting-lines">
-                <div class="line"></div>
-                <div class="line"></div>
-                <div class="line"></div>
-                <div class="line"></div>
-            </div>
-            <div class="pulse-circles">
-                <div class="pulse-circle"></div>
-                <div class="pulse-circle"></div>
-                <div class="pulse-circle"></div>
-            </div>
-            <div class="gradient-overlay"></div>
-            <div class="noise-texture"></div>
-        </div>
-
         <!-- Hero Section -->
         <div class="hero-section">
+            <!-- Interactive Background INSIDE hero section -->
+            <div class="interactive-bg">
+                <div class="floating-elements">
+                    <div class="floating-element"></div>
+                    <div class="floating-element"></div>
+                    <div class="floating-element"></div>
+                    <div class="floating-element"></div>
+                    <div class="floating-element"></div>
+                    <div class="floating-element"></div>
+                    <div class="floating-element"></div>
+                    <div class="floating-element"></div>
+                </div>
+                <div class="connecting-lines">
+                    <div class="line"></div>
+                    <div class="line"></div>
+                    <div class="line"></div>
+                    <div class="line"></div>
+                </div>
+                <div class="pulse-circles">
+                    <div class="pulse-circle"></div>
+                    <div class="pulse-circle"></div>
+                    <div class="pulse-circle"></div>
+                </div>
+                <div class="gradient-overlay"></div>
+                <div class="noise-texture"></div>
+            </div>
+            
             <h1>Welcome to MedCapsule</h1>
             <p>Your ultimate study companion for medical topics.</p>
             @guest

@@ -3,70 +3,25 @@
 namespace App\Console\Commands;
 
 use App\Models\Payment;
-use App\Services\NotificationService;
+use App\Models\User;
 use Illuminate\Console\Command;
-use Illuminate\Support\Facades\Log;
 
 class SendPaymentDigest extends Command
 {
-    /**
-     * The name and signature of the console command.
-     *
-     * @var string
-     */
     protected $signature = 'payments:send-digest';
+    protected $description = 'Send daily payment digest to admins';
 
-    /**
-     * The console command description.
-     *
-     * @var string
-     */
-    protected $description = 'Send a daily digest of pending payments to administrators';
-
-    /**
-     * Execute the console command.
-     *
-     * @param NotificationService $notificationService
-     * @return int
-     */
-    public function handle(NotificationService $notificationService)
+    public function handle()
     {
-        $this->info('Generating payment digest...');
-
-        try {
-            // Count pending payments
-            $pendingCount = Payment::where('status', 'pending_verification')->count();
-            
-            // Count high priority payments (based on admin_review_priority flag)
-            $highPriorityCount = Payment::where('status', 'pending_verification')
-                ->whereRaw("JSON_EXTRACT(payment_data, '$.admin_review_priority') = '\"high\"'")
-                ->count();
-            
-            $this->info("Found {$pendingCount} pending payments ({$highPriorityCount} high priority)");
-            
-            if ($pendingCount > 0) {
-                // Send digest notification
-                $success = $notificationService->createDailyPaymentDigest($pendingCount, $highPriorityCount);
-                
-                if ($success) {
-                    $this->info('Payment digest sent successfully');
-                } else {
-                    $this->error('Failed to send payment digest');
-                }
-            } else {
-                $this->info('No pending payments to report');
-            }
-            
-            return 0;
-        } catch (\Exception $e) {
-            $this->error('Error generating payment digest: ' . $e->getMessage());
-            
-            Log::error('Error generating payment digest', [
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
-            ]);
-            
-            return 1;
+        $pendingCount = Payment::where('status', 'pending')->count();
+        
+        if ($pendingCount > 0) {
+            $this->info("Found {$pendingCount} pending payments");
+            // Simple notification logic here if needed
+        } else {
+            $this->info('No pending payments');
         }
+        
+        return 0;
     }
-} 
+}

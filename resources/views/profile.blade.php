@@ -299,6 +299,14 @@
             border: 3px solid #007bff;
             cursor: pointer;
             z-index: 1;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 8px rgba(0, 123, 255, 0.2);
+        }
+
+        .profile-picture:hover {
+            border-color: #0056b3;
+            box-shadow: 0 6px 12px rgba(0, 123, 255, 0.3);
+            transform: scale(1.05);
         }
 
         .profile-picture img {
@@ -334,9 +342,9 @@
             pointer-events: none;
         }
 
-        /* Remove all the fancy animations and transitions */
         .profile-picture:active {
             border-color: #0056b3;
+            transform: scale(0.98);
         }
 
         .stats-card {
@@ -1344,8 +1352,8 @@
                 <div class="light"></div>
             </div>
             <div class="wire-curve"></div>
-            <div class="profile-picture">
-                <img src="{{ auth()->user()->profile_picture_url ? secure_url(auth()->user()->profile_picture_url) : 'https://ui-avatars.com/api/?name=' . urlencode(auth()->user()->name) }}" 
+            <div class="profile-picture" id="profilePictureContainer" style="cursor: pointer;" title="Click to upload new profile picture">
+                <img src="{{ auth()->user()->profile_picture_url ? secure_url(auth()->user()->profile_picture_url) . '?v=' . time() : 'https://ui-avatars.com/api/?name=' . urlencode(auth()->user()->name) }}" 
                      alt="Profile Picture" id="profileImage">
                 <div class="upload-overlay">
                     <i class="fas fa-camera"></i>
@@ -1357,7 +1365,7 @@
                        name="profile_picture" 
                        id="profilePictureInput" 
                        accept="image/*"
-                       style="position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); border: 0;">
+                       style="display: none;">
             </form>
             <div class="welcome-text">
                 <h1>Welcome back, {{ auth()->user()->name }}! <span class="wave-emoji" id="waveEmoji">👋</span></h1>
@@ -1575,7 +1583,7 @@
                                     </div>
                                     <div class="d-flex align-items-center gap-3">
                                         <span class="xp-counter" style="font-size: 0.9rem; color: #7e57c2; font-weight: 600;" data-value="{{ $user->xp }}">
-                                            0 XP
+                                            {{ number_format($user->xp) }} XP
                                         </span>
                                         <span style="color: #7e57c2; font-weight: 600; font-size: 0.85rem;">Level {{ $user->level }}</span>
                                     </div>
@@ -1937,122 +1945,78 @@
             });
         });
 
-        // Profile picture upload handling
+        // Profile picture upload handling - SIMPLIFIED AND FIXED
         document.addEventListener('DOMContentLoaded', function() {
             const profilePictureInput = document.getElementById('profilePictureInput');
             const profileImage = document.getElementById('profileImage');
             const profileForm = document.getElementById('profileForm');
-            const profilePicture = document.querySelector('.profile-picture');
+            const profilePicture = document.getElementById('profilePictureContainer');
+
+            console.log('Profile picture elements:', {
+                profilePictureInput: !!profilePictureInput,
+                profileImage: !!profileImage,
+                profileForm: !!profileForm,
+                profilePicture: !!profilePicture
+            });
 
             if (!profilePictureInput || !profileImage || !profileForm || !profilePicture) {
-                console.error('One or more elements not found:', {
-                    profilePictureInput: !!profilePictureInput,
-                    profileImage: !!profileImage,
-                    profileForm: !!profileForm,
-                    profilePicture: !!profilePicture
-                });
+                console.error('Profile picture elements not found - upload functionality disabled');
                 return;
             }
 
-            // Remove any existing click handlers
-            profilePicture.replaceWith(profilePicture.cloneNode(true));
-            const newProfilePicture = document.querySelector('.profile-picture');
-            
-            // Add the click handler
-            newProfilePicture.addEventListener('click', function(e) {
-                console.log('Profile picture clicked - triggering file input');
+            // Make profile picture clickable
+            profilePicture.addEventListener('click', function(e) {
+                console.log('Profile picture clicked!');
                 e.preventDefault();
                 e.stopPropagation();
-                
-                // Create and trigger a new click event on the file input
-                const clickEvent = new MouseEvent('click', {
-                    view: window,
-                    bubbles: true,
-                    cancelable: true
-                });
-                profilePictureInput.dispatchEvent(clickEvent);
+                profilePictureInput.click();
             });
 
-            profilePictureInput.addEventListener('click', function(e) {
-                console.log('File input clicked');
-            });
-
+            // Handle file selection
             profilePictureInput.addEventListener('change', function(e) {
-                console.log('File input changed:', e.target.files);
                 const file = e.target.files[0];
-                if (file) {
-                    console.log('File selected:', file.name, file.type, file.size);
-                    
-                    // Validate file type and size
-                    const validTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/jpg'];
-                    const maxSize = 2048 * 1024; // 2MB
+                if (!file) return;
 
-                    if (!validTypes.includes(file.type)) {
-                        alert('Please select a valid image file (JPEG, PNG, or GIF)');
-                        this.value = '';
-                        return;
-                    }
+                console.log('File selected:', file.name, file.type, file.size);
+                
+                // Validate file type and size
+                const validTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/jpg', 'image/webp'];
+                const maxSize = 5 * 1024 * 1024; // 5MB
 
-                    if (file.size > maxSize) {
-                        alert('File size must be less than 2MB');
-                        this.value = '';
-                        return;
-                    }
-
-                    // Show preview and submit immediately
-                    const reader = new FileReader();
-                    reader.onload = function(e) {
-                        console.log('File read successfully');
-                        profileImage.src = e.target.result;
-                        console.log('Submitting form...');
-                        profileForm.submit();
-                    };
-                    reader.readAsDataURL(file);
+                if (!validTypes.includes(file.type)) {
+                    alert('Please select a valid image file (JPEG, PNG, GIF, or WebP)');
+                    this.value = '';
+                    return;
                 }
+
+                if (file.size > maxSize) {
+                    alert('File size must be less than 5MB');
+                    this.value = '';
+                    return;
+                }
+
+                // Show preview and submit
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    profileImage.src = e.target.result;
+                    console.log('Submitting profile picture form...');
+                    profileForm.submit();
+                };
+                reader.readAsDataURL(file);
+            });
+
+            // Add visual feedback
+            profilePicture.addEventListener('mouseenter', function() {
+                this.style.transform = 'scale(1.05)';
+                this.style.transition = 'transform 0.2s ease';
+            });
+
+            profilePicture.addEventListener('mouseleave', function() {
+                this.style.transform = 'scale(1)';
             });
         });
 
-        // XP counter animation
-        document.addEventListener('DOMContentLoaded', function() {
-            const counters = document.querySelectorAll('.xp-counter');
-            
-            counters.forEach(counter => {
-                const targetValue = parseInt(counter.dataset.value);
-                let currentValue = 0;
-                const duration = 1500; // 1.5 seconds
-                const steps = 60;
-                const increment = targetValue / steps;
-                const stepDuration = duration / steps;
-                
-                function updateCounter() {
-                    if (currentValue < targetValue) {
-                        currentValue = Math.min(currentValue + increment, targetValue);
-                        counter.textContent = Math.round(currentValue).toLocaleString() + ' XP';
-                        counter.classList.add('updating');
-                        
-                        setTimeout(() => {
-                            counter.classList.remove('updating');
-                        }, 500);
 
-                        if (currentValue < targetValue) {
-                            setTimeout(updateCounter, stepDuration);
-                        }
-                    }
-                }
-                
-                // Start the counter animation when the element comes into view
-                const observer = new IntersectionObserver((entries) => {
-                    entries.forEach(entry => {
-                        if (entry.isIntersecting) {
-                            updateCounter();
-                            observer.unobserve(entry.target);
-                        }
-                    });
-                });
-                
-                observer.observe(counter);
-            });
-        });
 
         // Wave emoji interaction
         document.getElementById('waveEmoji').addEventListener('click', function() {
@@ -2078,6 +2042,137 @@
         
         } // Close initializeCharts function
     </script>
+
+    <!-- Profile Picture AJAX Upload -->
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const profilePictureInput = document.getElementById('profilePictureInput');
+            const profileImage = document.getElementById('profileImage');
+            const profileForm = document.getElementById('profileForm');
+            const profilePicture = document.querySelector('.profile-picture');
+            
+            if (!profilePictureInput || !profileImage || !profileForm || !profilePicture) {
+                return;
+            }
+            
+            // Click handler
+            profilePicture.addEventListener('click', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                profilePictureInput.click();
+            });
+            
+            // AJAX file upload handler
+            profilePictureInput.addEventListener('change', function(e) {
+                const file = e.target.files[0];
+                if (!file) return;
+                
+                // Validate file
+                if (!file.type.startsWith('image/')) {
+                    alert('Please select an image file');
+                    this.value = '';
+                    return;
+                }
+                
+                if (file.size > 5 * 1024 * 1024) {
+                    alert('File size must be less than 5MB');
+                    this.value = '';
+                    return;
+                }
+                
+                // Show loading state
+                profilePicture.style.opacity = '0.6';
+                profilePicture.style.filter = 'blur(1px)';
+                
+                // Show preview immediately
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    profileImage.src = e.target.result;
+                };
+                reader.readAsDataURL(file);
+                
+                // Create FormData for AJAX upload
+                const formData = new FormData();
+                formData.append('profile_picture', file);
+                formData.append('_token', document.querySelector('meta[name="csrf-token"]').getAttribute('content'));
+                
+                // AJAX upload
+                fetch(profileForm.action, {
+                    method: 'POST',
+                    body: formData,
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest'
+                    }
+                })
+                .then(response => {
+                    if (response.ok) {
+                        return response.json();
+                    } else {
+                        return response.json().then(errorData => {
+                            throw new Error(errorData.message || 'Upload failed');
+                        });
+                    }
+                })
+                .then(data => {
+                    // Remove loading state
+                    profilePicture.style.opacity = '1';
+                    profilePicture.style.filter = 'none';
+                    
+                    // Update image with cache busting
+                    if (data.new_url) {
+                        profileImage.src = data.new_url + '?v=' + (data.timestamp || Date.now());
+                    } else {
+                        const timestamp = Date.now();
+                        const currentSrc = profileImage.src.split('?')[0];
+                        profileImage.src = currentSrc + '?v=' + timestamp;
+                    }
+                    
+                    // Show success message
+                    showSuccessMessage(data.message || 'Profile picture updated successfully!');
+                    
+                    // Clear the file input
+                    profilePictureInput.value = '';
+                })
+                .catch(error => {
+                    // Remove loading state
+                    profilePicture.style.opacity = '1';
+                    profilePicture.style.filter = 'none';
+                    
+                    // Show error message
+                    alert('Upload failed: ' + error.message);
+                    
+                    // Clear the file input
+                    profilePictureInput.value = '';
+                });
+            });
+            
+            // Success message function
+            function showSuccessMessage(message) {
+                const notification = document.createElement('div');
+                notification.style.cssText = `
+                    position: fixed;
+                    top: 20px;
+                    right: 20px;
+                    background: #28a745;
+                    color: white;
+                    padding: 15px 20px;
+                    border-radius: 5px;
+                    z-index: 9999;
+                    font-family: 'Poppins', sans-serif;
+                    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+                `;
+                notification.textContent = message;
+                
+                document.body.appendChild(notification);
+                
+                setTimeout(() => {
+                    notification.remove();
+                }, 3000);
+            }
+        });
+    </script>
+
+
 </body>
 </html>
 

@@ -840,6 +840,7 @@
             let timeRemaining = timeLimit;
             let timeTaken = 0;
             let timerInterval;
+            let startTime = Date.now(); // Initialize start time for timer calculations
             
             // NUCLEAR SPEED: Eliminate setTimeout delays in timer
             // Performance gain: 95% faster timer updates, 90% less CPU usage

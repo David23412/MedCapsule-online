@@ -70,6 +70,13 @@
             color: #dc3545 !important; 
             font-size: 1.3rem !important;
         }
+        
+        /* ZERO-TRANSITION BUTTON OPTIMIZATIONS */
+        .start-quiz-btn[data-processing="true"] {
+            pointer-events: none;
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
 
         /* REGULAR TOPIC LOCK STYLING - WHITE BUTTON WITH WHITE OUTLINE */
         .topic-locked-btn {
@@ -297,12 +304,17 @@
             border: none;
             color: white;
             font-weight: 600;
+            user-select: none;
+            -webkit-tap-highlight-color: transparent;
         }
 
         .assignment-start-btn:hover {
             background: linear-gradient(135deg, #ff9800 0%, #f57c00 100%);
             color: white;
-            transform: translateY(-1px);
+        }
+
+        .assignment-start-btn:active {
+            background: linear-gradient(135deg, #f57c00 0%, #e65100 100%);
         }
 
         .topic-info {
@@ -412,24 +424,20 @@
             display: inline-flex;
             align-items: center;
             gap: 0.5rem;
-            transition: all 0.3s ease;
             border: none;
             cursor: pointer;
             margin-top: 1rem;
+            user-select: none;
+            -webkit-tap-highlight-color: transparent;
         }
 
         .start-quiz-btn:hover {
             background: #0056b3;
-            transform: translateX(2px);
             color: white;
         }
 
-        .start-quiz-btn i {
-            transition: transform 0.3s ease;
-        }
-
-        .start-quiz-btn:hover i {
-            transform: translateX(3px);
+        .start-quiz-btn:active {
+            background: #004085;
         }
 
         .grade-badge {
@@ -1882,7 +1890,7 @@
                 </a>
                 
                 <a href="{{ route('profile') }}" class="profile-circle {{ !Auth::user()->profile_picture_url ? 'no-image' : '' }}" 
-                     style="{{ Auth::user()->profile_picture_url ? 'background-image: url(' . secure_url(Auth::user()->profile_picture_url) . ');' : '' }}">
+                     style="{{ Auth::user()->profile_picture_url ? 'background-image: url(' . asset(Auth::user()->profile_picture_url) . ');' : '' }}">
                     @if(!Auth::user()->profile_picture_url)
                         {{ substr(Auth::user()->name, 0, 1) }}
                     @endif
@@ -2882,85 +2890,89 @@
             // ROBUST: Handle quiz button clicks with multiple prevention methods
 
             
-            // 🚀 OPTIMIZED: Single delegated event listener for quiz buttons
+            // 🚀 ULTRA-FAST: Optimized quiz button handler - single click, instant response
             document.addEventListener('click', function(e) {
-                if (!e.target.matches('.start-quiz-btn')) return;
+                // Use closest() to handle clicks on child elements (icons, spans)
+                const button = e.target.closest('.start-quiz-btn');
+                if (!button) return;
                 
                 e.preventDefault();
-                e.stopPropagation();
                 e.stopImmediatePropagation();
                 
-                // Prevent any form submission
-                if (e.target.form) {
-                    e.target.form.onsubmit = function() { return false; };
-                }
+                // Prevent double-clicks
+                if (button.dataset.processing === 'true') return;
+                button.dataset.processing = 'true';
                 
-                const button = e.target;
                 const topicId = button.dataset.topicId;
                 const courseId = button.dataset.courseId;
                 const originalHref = button.dataset.quizUrl;
                 
-                // Check if assignments filter is currently active
-                const isAssignmentsFilterActive = topicsContainer && topicsContainer.classList.contains('assignments-filter-active');
+                // Instant visual feedback
+                const originalContent = button.innerHTML;
+                button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Loading...';
+                button.style.pointerEvents = 'none';
+                
+                // Check if assignments filter is active - direct redirect
+                const isAssignmentsFilterActive = topicsContainer?.classList.contains('assignments-filter-active');
                 
                 if (isAssignmentsFilterActive) {
-                    // Assignments filter is active - redirect directly without showing source modal
                     window.location.href = originalHref;
-                    return false;
+                    return;
                 }
                 
+                // For regular topics, check if modal is needed
                 if (!topicId || !courseId) {
-                    return false;
-                }
-                
-                const modal = getModal();
-                if (!modal) {
                     window.location.href = originalHref;
-                    return false;
+                    return;
                 }
                 
-                try {
+                // Quick source check - if only one source, skip modal
+                fetch(`/topics/${topicId}/source-progress?mode=quiz`, {
+                    method: 'GET',
+                    headers: {
+                        'X-CSRF-TOKEN': csrfToken.content,
+                        'Accept': 'application/json'
+                    }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    const availableSources = data.availableSources || [];
+                    
+                    // If only one source or no sources, redirect directly
+                    if (availableSources.length <= 1) {
+                        window.location.href = originalHref;
+                        return;
+                    }
+                    
+                    // Multiple sources - show modal
+                    const modal = getModal();
+                    if (!modal) {
+                        window.location.href = originalHref;
+                        return;
+                    }
+                    
+                    // Reset button
+                    button.innerHTML = originalContent;
+                    button.style.pointerEvents = '';
+                    button.dataset.processing = 'false';
+                    
                     // Set form values
                     sourceTopicId.value = topicId;
                     sourceCourseId.value = courseId;
                     sourceSelectionForm.action = originalHref;
                     
-                    // Show modal immediately
-                    sourceSelectionModal.show();
-                    
-                    // Load sources in background
-                    if (sourcesContainer) {
-                        sourcesContainer.innerHTML = '<div class="text-center py-3"><div class="spinner-border text-primary" role="status"></div><p class="mt-2">Loading sources...</p></div>';
+                    // Update sources immediately
+                    if (typeof updateSourcesContainer === 'function') {
+                        updateSourcesContainer(data);
                     }
                     
-                    const selectedMode = document.querySelector('input[name="quiz_mode"]:checked')?.value || 'quiz';
-                    
-                    fetch(`/topics/${topicId}/source-progress?mode=${selectedMode}`, {
-                        method: 'GET',
-                        headers: {
-                            'X-CSRF-TOKEN': csrfToken.content,
-                            'Accept': 'application/json'
-                        }
-                    })
-                    .then(response => response.json())
-                    .then(data => {
-                        // Sources loaded
-                        if (typeof updateSourcesContainer === 'function') {
-                            updateSourcesContainer(data);
-                        }
-                    })
-                    .catch(error => {
-                        if (sourcesContainer) {
-                            sourcesContainer.innerHTML = '<div class="alert alert-warning">Could not load source details. You can still start the quiz.</div>';
-                        }
-                    });
-                    
-                } catch (error) {
-                    // Fallback to direct navigation
+                    // Show modal
+                    sourceSelectionModal.show();
+                })
+                .catch(error => {
+                    // On error, redirect directly
                     window.location.href = originalHref;
-                }
-                
-                return false;
+                });
             });
 
             // Form submission

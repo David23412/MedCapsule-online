@@ -30,7 +30,7 @@ class RandomQuizTestSeeder extends Seeder
         foreach ($courses as $course) {
             // Ensure user is enrolled in the course
             if (!$user->courses()->where('course_id', $course->id)->exists()) {
-                $user->courses()->attach($course->id, ['enrollment_status' => 'active']);
+                $user->courses()->attach($course->id, ['is_enrolled' => true]);
             }
 
             // Create multiple test topics per course

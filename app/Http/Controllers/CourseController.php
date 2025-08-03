@@ -60,11 +60,14 @@ class CourseController extends Controller
         $isLoggedIn = auth()->check();
         $selectedYear = $request->get('academic_year');
 
-        // ULTRA-FAST CACHE: Reduced TTL to 30 seconds for instant updates
+        // INSTANT UPDATES: No cache for enrollment status - always fresh data
         $cacheVersion = Cache::get('courses_cache_version', 1);
         $cacheKey = "courses_metadata_" . ($userId ?? 'guest') . "_" . ($selectedYear ?? 'all') . "_v{$cacheVersion}";
         
-        $courses = Cache::remember($cacheKey, 30, function () use ($userId, $isLoggedIn, $selectedYear) {
+        // For logged-in users, skip cache to ensure instant enrollment updates
+        $cacheTTL = $isLoggedIn ? 0 : 30; // 0 seconds for logged-in users = no cache
+        
+        $courses = Cache::remember($cacheKey, $cacheTTL, function () use ($userId, $isLoggedIn, $selectedYear) {
             $subqueries = [
                 'topics_count' => Topic::selectRaw('COUNT(*)')
                     ->whereColumn('course_id', 'courses.id')
@@ -76,16 +79,18 @@ class CourseController extends Controller
                     SELECT COUNT(*)
                     FROM course_user
                     WHERE course_user.course_id = courses.id
-                    AND course_user.enrollment_status = "active"
+                    AND course_user.is_enrolled = 1
                 ) as enrolled_users_count')
             ];
 
             if ($isLoggedIn) {
+                // Check for enrollment in course_user table using boolean field
                 $subqueries[] = DB::raw("(
-                    SELECT enrollment_status = 'active'
+                    SELECT COUNT(*) > 0
                     FROM course_user
                     WHERE course_user.course_id = courses.id
                     AND course_user.user_id = {$userId}
+                    AND course_user.is_enrolled = 1
                 ) as is_enrolled");
                 
                 // Add pending payment check as subquery to avoid N+1
@@ -101,7 +106,7 @@ class CourseController extends Controller
             $query = Course::select(array_merge(['courses.*'], $subqueries))
                 ->with(['users' => function($query) {
                     $query->select('users.id', 'users.name', 'users.email', 'users.profile_picture_url')
-                        ->where('course_user.enrollment_status', 'active')
+                        ->where('course_user.is_enrolled', true)
                         ->take(4);
                 }]);
 
@@ -160,16 +165,17 @@ class CourseController extends Controller
                 SELECT COUNT(*)
                 FROM course_user
                 WHERE course_user.course_id = courses.id
-                AND course_user.enrollment_status = "active"
+                AND course_user.is_enrolled = 1
             ) as enrolled_users_count')
         ];
 
         if ($isLoggedIn) {
             $subqueries[] = DB::raw("(
-                SELECT enrollment_status = 'active'
+                SELECT COUNT(*) > 0
                 FROM course_user
                 WHERE course_user.course_id = courses.id
                 AND course_user.user_id = {$userId}
+                AND course_user.is_enrolled = 1
             ) as is_enrolled");
             
             $subqueries[] = DB::raw("(
@@ -184,7 +190,7 @@ class CourseController extends Controller
         return Course::select(array_merge(['courses.*'], $subqueries))
             ->with(['users' => function($query) {
                 $query->select('users.id', 'users.name', 'users.email', 'users.profile_picture_url')
-                    ->where('course_user.enrollment_status', 'active')
+                    ->where('course_user.is_enrolled', 1)
                     ->take(4);
             }]);
     }
@@ -215,7 +221,7 @@ class CourseController extends Controller
                     return DB::table('course_user')
                         ->where('course_id', $id)
                         ->where('user_id', $user->id)
-                        ->where('enrollment_status', 'active')
+                        ->where('is_enrolled', 1)
                         ->exists(); 
                 });
             }
@@ -239,7 +245,7 @@ class CourseController extends Controller
             return DB::table('course_user')
                 ->where('course_id', $courseId)
                 ->where('user_id', $user->id)
-                ->where('enrollment_status', 'active')
+                ->where('is_enrolled', 1)
                 ->exists(); 
         });
             
@@ -250,7 +256,7 @@ class CourseController extends Controller
         // Enroll user with proper pivot data
         $user->courses()->syncWithoutDetaching([
             $courseId => [
-                'enrollment_status' => 'active',
+                'is_enrolled' => true,
                 'enrolled_at' => now()
             ]
         ]);

@@ -1,0 +1,20 @@
+/* CSS Optimization Rules */
+
+/* Minimize CSS specificity */
+.btn { /* Use single class instead of nested selectors */ }
+
+/* Avoid !important - use specificity instead */
+.component .element { /* More specific selector */ }
+
+/* Group related styles */
+.card,
+.panel,
+.widget {
+    /* Shared styles */
+}
+
+/* Use CSS custom properties for consistency */
+:root {
+    --primary-color: #007bff;
+    --secondary-color: #6c757d;
+}

@@ -16,7 +16,7 @@ class CourseController extends Controller
     public function __construct()
     {
         parent::__construct();
-        Log::info('Controller initialized', ['user_id' => auth()->id()]);
+        // Controller initialized log ANNIHILATEDr_id' => auth()->id()]);
         $this->middleware(['auth']);
     }
 

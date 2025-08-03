@@ -88,7 +88,7 @@
                 const makeRequest = (retryCount = 0) => {
                     const maxRetries = 3;
                     
-                    fetch(`/admin/payments/${paymentId}/verify`, {
+                    fetch(`/admin/payments/verify/${paymentId}`, {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json',
@@ -234,7 +234,7 @@
                     <td>{{ $payment->reference_number }}</td>
                     <td>{{ $payment->created_at->format('Y-m-d H:i:s') }}</td>
                     <td>
-                        @if($payment->status == 'pending_verification')
+                        @if($payment->status == 'pending')
                         <button onclick="acceptPayment({{ $payment->id }})" class="btn btn-sm btn-success verify-payment-btn">
                             <i class="fas fa-check"></i> Accept
                         </button>

@@ -36,7 +36,7 @@ class PaymentOptionsController extends Controller
             // Check if user already has access
             $hasAccess = $user->courses()
                 ->where('course_id', $course->id)
-                ->where('enrollment_status', 'active')
+                ->where('is_enrolled', true)
                 ->exists();
 
             if ($hasAccess) {
@@ -83,7 +83,7 @@ class PaymentOptionsController extends Controller
         // Check for existing access
         $enrolledCourseIds = $user->courses()
             ->whereIn('course_id', $courseIds)
-            ->where('enrollment_status', 'active')
+            ->where('is_enrolled', true)
             ->pluck('course_id')
             ->toArray();
 

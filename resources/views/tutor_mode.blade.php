@@ -737,7 +737,7 @@
             <div class="nav-links">
                 <a href="javascript:history.back()" class="nav-link">← Back</a>
                 <a href="{{ route('profile') }}" class="profile-circle {{ !Auth::user()->profile_picture_url ? 'no-image' : '' }}" 
-                     style="{{ Auth::user()->profile_picture_url ? 'background-image: url(' . secure_url(Auth::user()->profile_picture_url) . ');' : '' }}">
+                     style="{{ Auth::user()->profile_picture_url ? 'background-image: url(' . asset(Auth::user()->profile_picture_url) . ');' : '' }}">
                     @if(!Auth::user()->profile_picture_url)
                         {{ substr(Auth::user()->name, 0, 1) }}
                     @endif
@@ -846,7 +846,7 @@
                     <i class="fas fa-redo"></i>
                     Retry Quiz
                 </button>
-                <button class="popup-btn continue-btn" id="continue-btn" onclick="window.location.href='/courses'">
+                <button class="popup-btn continue-btn" id="continue-btn" onclick="window.location.href='/topics/{{ $course->id }}'">
                     <i class="fas fa-arrow-right"></i>
                     Continue Learning
                 </button>
@@ -1220,21 +1220,10 @@
             if (totalAnswers === totalQuestions) {
                 const percentage = (correctAnswers / totalAnswers) * 100;
                 
-                // 💀 NUCLEAR INSTANT GRADING SOUND - BEFORE ANYTHING ELSE 💀
-                const audio = new Audio();
-                if (percentage === 100) {
-                    audio.src = '/sounds/quiz-perfect.mp3';
-                } else if (percentage >= 70) {
-                    audio.src = '/sounds/quiz-partial.mp3';
-                } else {
-                    audio.src = '/sounds/quiz-wrong.mp3';
-                }
-                audio.volume = 0.7;
-                audio.play().catch(() => {});
-                
                 // Save quiz attempt to database
                 saveTutorQuizAttempt(correctAnswers, totalAnswers, percentage);
                 
+                // Show results (sound will be played in showQuizResults)
                 showQuizResults({
                     correct: correctAnswers,
                     total: totalAnswers,
@@ -1433,18 +1422,7 @@
                 if (totalAnswers === totalQuestions) {
                     const percentage = (correctAnswers / totalAnswers) * 100;
                     
-                    // 💀 NUCLEAR INSTANT GRADING SOUND - BEFORE ANYTHING ELSE 💀
-                    const audio = new Audio();
-                    if (percentage === 100) {
-                        audio.src = '/sounds/quiz-perfect.mp3';
-                    } else if (percentage >= 70) {
-                        audio.src = '/sounds/quiz-partial.mp3';
-                    } else {
-                        audio.src = '/sounds/quiz-wrong.mp3';
-                    }
-                    audio.volume = 0.7;
-                    audio.play().catch(() => {});
-                    
+                    // Save attempt and show results (sound will be played in showQuizResults)
                     saveTutorQuizAttempt(correctAnswers, totalAnswers, percentage);
                     showQuizResults({
                         correct: correctAnswers,
@@ -1475,18 +1453,7 @@
                 // No more questions, show final results
                 const percentage = (correctAnswers / totalAnswers) * 100;
                 
-                // 💀 NUCLEAR INSTANT GRADING SOUND - BEFORE ANYTHING ELSE 💀
-                const audio = new Audio();
-                if (percentage === 100) {
-                    audio.src = '/sounds/quiz-perfect.mp3';
-                } else if (percentage >= 70) {
-                    audio.src = '/sounds/quiz-partial.mp3';
-                } else {
-                    audio.src = '/sounds/quiz-wrong.mp3';
-                }
-                audio.volume = 0.7;
-                audio.play().catch(() => {});
-                
+                // Show results without playing sound here (sound will be played in showQuizResults)
                 showQuizResults({
                     correct: correctAnswers,
                     total: totalAnswers,
@@ -1514,6 +1481,7 @@
             feedbackDiv.querySelector('.result-text').textContent = data.correct ? 'Correct! 🎉' : 'Incorrect';
             
             // 💀 LETHAL AUDIO POOL - INSTANT SOUND FEEDBACK (ONCE ONLY) 💀
+            // Skip individual question sounds for the last question to prevent overlap with final grading sound
             if (totalAnswers < totalQuestions && !hasPlayedSound) {
                 console.log(`🔥 LETHAL AUDIO POOL: Playing instant sound for Q${questionNumber} (${data.correct ? 'correct' : 'wrong'}) - FIRST TIME ONLY`);
                 playInstantSound(data.correct);
@@ -1522,7 +1490,7 @@
             } else if (hasPlayedSound) {
                 console.log(`🔇 LETHAL AUDIO POOL: Sound already played for Q${questionNumber}, skipping duplicate`);
             } else {
-                console.log(`🔇 LETHAL AUDIO POOL: Skipping sound for final question Q${questionNumber} to avoid overlap`);
+                console.log(`🔇 LETHAL AUDIO POOL: Skipping sound for final question Q${questionNumber} to prevent overlap with final grading sound`);
             }
             
             // Show explanation and correct answer if incorrect
@@ -1990,7 +1958,7 @@
                         if (sourceProgress) {
                             const percentage = Math.round(sourceProgress.percentage);
                             const status = percentage >= 90 ? '✅' : percentage >= 50 ? '🔄' : percentage > 0 ? '❌' : '⭕';
-                            progressText += `${source}: ${status} ${percentage}% (${sourceProgress.completed}/${sourceProgress.total_questions_available}) `;
+                            progressText += `${source}: ${status} ${percentage}% (${sourceProgress.completed}/${sourceProgress.total}) `;
                         }
                     });
                     

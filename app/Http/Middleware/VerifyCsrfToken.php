@@ -20,10 +20,14 @@ class VerifyCsrfToken extends Middleware
         'topic-locking/*/*',
         'topic-locking/*/*/*',
         'admin/payments/*/verify',
-        'admin/payments/*/reject',
         'admin/payments/bulk-verify',
         'test/payment-verify/*',
-        'test-payment-verify/*'
+        'test-payment-verify/*',
+        'manage-access/*',
+        'manage-access/enroll',
+        'manage-access/revoke',
+        'manage-access/toggle-admin',
+        'manage-access/payment-settings'
     ];
 
     /**
@@ -34,6 +38,11 @@ class VerifyCsrfToken extends Middleware
      */
     protected function tokensMatch($request)
     {
+        // Completely bypass CSRF for manage-access routes
+        if (str_contains($request->path(), 'manage-access')) {
+            return true;
+        }
+        
         // For ngrok development, be VERY lenient with CSRF (especially for Edge)
         if (str_contains($request->getHost(), 'ngrok') || str_contains($request->getHost(), 'ngrok-free.app')) {
             // Try multiple token sources

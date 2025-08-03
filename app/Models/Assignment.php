@@ -96,6 +96,15 @@ class Assignment extends Model
         return $this->belongsTo(Course::class);
     }
 
+    /**
+     * 🚀 GENIUS: Many-to-many relationship with users via pivot table
+     */
+    public function assignedUsers()
+    {
+        return $this->belongsToMany(User::class, 'assignment_users', 'assignment_id', 'user_id')
+                   ->withTimestamps();
+    }
+
     public function allAttempts(): HasMany
     {
         return $this->hasMany(QuizAttempt::class, 'assignment_id');
@@ -908,5 +917,21 @@ class Assignment extends Model
             'lock_reason' => $this->getLockReasonForUser($userId),
             'can_start' => $this->canUserStart($userId)
         ]);
+    }
+
+    /**
+     * 🚀 GENIUS: Check if assignment is assigned to specific user
+     */
+    public function isAssignedToUser($userId): bool
+    {
+        return $this->assignedUsers()->where('user_id', $userId)->exists();
+    }
+
+    /**
+     * 🚀 GENIUS: Get all users assigned to this assignment
+     */
+    public function getAssignedUserIds(): array
+    {
+        return $this->assignedUsers()->pluck('user_id')->toArray();
     }
 }

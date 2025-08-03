@@ -24,6 +24,13 @@
         <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 
     <style>
+        /* Success animation for payment completion */
+        @keyframes successPulse {
+            0% { transform: scale(1); background-color: inherit; }
+            50% { transform: scale(1.05); background-color: #d4edda; }
+            100% { transform: scale(1); background-color: inherit; }
+        }
+        
         body {
             font-family: 'Poppins', sans-serif;
             background-color: #f8f9fa;
@@ -2021,6 +2028,7 @@
                 <div class="course-card" 
                      style="--course-color: {{ $course->color }}; --course-title-color: {{ $course->title_color }}"
                      data-academic-year="{{ $course->academic_year }}"
+                     data-course-id="{{ $course->id }}"
                      data-semester="{{ $course->semester }}">
                     <div class="course-image" style="background-image: url('{{ $course->image_url }}')" onerror="this.style.backgroundImage = 'linear-gradient(135deg, #f5f7fa 0%, #e9ecef 100%)'">
                         <div class="info-icon">
@@ -2868,12 +2876,29 @@
                     if (key.startsWith('payment_pending_')) {
                         const courseId = key.replace('payment_pending_', '');
                         const button = document.querySelector(`#paymentBtn_${courseId}`);
+                        
                         if (button) {
-                            button.innerHTML = '<i class="fas fa-clock"></i><span style="color: #c2410c;">Payment Pending</span>';
-                            button.classList.remove('btn-primary', 'show-payment-modal');
-                            button.classList.add('btn-warning');
-                            button.disabled = true;
-                            button.style.cursor = 'default';
+                            // Check if the server-side state shows the user is already enrolled or has pending payment
+                            const isAlreadyPending = button.hasAttribute('disabled');
+                            const buttonText = button.textContent.trim();
+                            
+                            // If server says user is enrolled (button doesn't exist or shows "Access Course"), clear localStorage
+                            if (buttonText.includes('Access Course') || button.href) {
+                                localStorage.removeItem(key);
+                                return;
+                            }
+                            
+                            // If not already pending on server side, update button
+                            if (!isAlreadyPending) {
+                                button.innerHTML = '<i class="fas fa-clock"></i><span style="color: #c2410c;">Payment Pending</span>';
+                                button.classList.remove('btn-primary', 'show-payment-modal');
+                                button.classList.add('btn-warning');
+                                button.disabled = true;
+                                button.style.cursor = 'default';
+                            }
+                        } else {
+                            // Button doesn't exist (user might be enrolled), clear localStorage
+                            localStorage.removeItem(key);
                         }
                     }
                 });
@@ -2881,6 +2906,167 @@
 
             // Run the check when page loads
             updatePaymentButtonsForPendingPayments();
+            
+            // Start real-time payment status checking
+            startPaymentStatusPolling();
+
+            // Real-time payment status checking - ULTRA FAST UPDATES
+            function startPaymentStatusPolling() {
+                // Check every 2 seconds for payment completions
+                setInterval(() => {
+                    checkPaymentCompletions();
+                }, 2000);
+            }
+
+            // Check if any pending payments are now completed
+            function checkPaymentCompletions() {
+                const pendingPayments = [];
+                
+                // Find all courses with pending payments in localStorage
+                Object.keys(localStorage).forEach(key => {
+                    if (key.startsWith('payment_pending_')) {
+                        const courseId = key.replace('payment_pending_', '');
+                        pendingPayments.push(courseId);
+                    }
+                });
+
+                if (pendingPayments.length === 0) return;
+
+                // Check server for completion status
+                fetch('/api/check-payment-status', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || '',
+                        'Accept': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        course_ids: pendingPayments
+                    })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success && data.completed_courses) {
+                        data.completed_courses.forEach(courseId => {
+                            updateButtonToAccessCourse(courseId);
+                            localStorage.removeItem(`payment_pending_${courseId}`);
+                        });
+                    }
+                })
+                .catch(error => {
+                    console.error('Error checking payment status:', error);
+                });
+            }
+
+            // Update button to "Access Course" when payment is completed
+            function updateButtonToAccessCourse(courseId) {
+                const button = document.querySelector(`#paymentBtn_${courseId}`);
+                if (button) {
+                    // Convert button to link
+                    const newLink = document.createElement('a');
+                    newLink.href = `/topics/${courseId}`;
+                    newLink.className = 'action-btn enroll enrolled';
+                    newLink.innerHTML = '<i class="fas fa-play"></i> <span>Access Course</span>';
+                    
+                    // Replace button with link
+                    button.parentNode.replaceChild(newLink, button);
+                    
+                    // Add success animation
+                    newLink.style.animation = 'successPulse 0.8s ease-in-out';
+                    
+                    // Show success notification
+                    showPaymentCompletedNotification(courseId);
+                }
+            }
+
+            // Show payment completed notification
+            function showPaymentCompletedNotification(courseId) {
+                const notification = document.createElement('div');
+                notification.className = 'position-fixed top-0 end-0 p-3';
+                notification.style.zIndex = '9999';
+                notification.innerHTML = `
+                    <div class="toast show" role="alert">
+                        <div class="toast-header bg-success text-white">
+                            <i class="fas fa-check-circle me-2"></i>
+                            <strong class="me-auto">Payment Approved!</strong>
+                        </div>
+                        <div class="toast-body">
+                            Your payment has been approved. You can now access the course!
+                        </div>
+                    </div>
+                `;
+                document.body.appendChild(notification);
+                
+                // Auto remove after 5 seconds
+                setTimeout(() => notification.remove(), 5000);
+            }
+
+            // INSTANT ENROLLMENT UPDATE: Check for enrollment changes every 2 seconds
+            function checkEnrollmentStatus() {
+                @auth
+                const courseIds = Array.from(document.querySelectorAll('[data-course-id]')).map(el => el.dataset.courseId);
+                
+                if (courseIds.length > 0) {
+                    fetch('/api/check-enrollment-status', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+                        },
+                        body: JSON.stringify({ course_ids: courseIds })
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success && data.enrollment_changes) {
+                            data.enrollment_changes.forEach(change => {
+                                updateCourseEnrollmentStatus(change.course_id, change.is_enrolled);
+                            });
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error checking enrollment status:', error);
+                    });
+                }
+                @endauth
+            }
+
+            // Update course enrollment status instantly
+            function updateCourseEnrollmentStatus(courseId, isEnrolled) {
+                const courseCard = document.querySelector(`[data-course-id="${courseId}"]`);
+                if (!courseCard) return;
+
+                const actionButton = courseCard.querySelector('.action-btn');
+                if (!actionButton) return;
+
+                if (isEnrolled) {
+                    // Convert to "Start Learning" button
+                    if (actionButton.tagName === 'BUTTON') {
+                        const newLink = document.createElement('a');
+                        newLink.href = `/topics/${courseId}`;
+                        newLink.className = 'action-btn continue';
+                        newLink.innerHTML = '<i class="fas fa-play"></i> Start Learning';
+                        actionButton.parentNode.replaceChild(newLink, actionButton);
+                        
+                        // Add success animation
+                        newLink.style.animation = 'successPulse 0.8s ease-in-out';
+                    }
+                } else {
+                    // Convert to "Pay to Access" button
+                    if (actionButton.tagName === 'A') {
+                        const newButton = document.createElement('button');
+                        newButton.className = 'action-btn enroll';
+                        newButton.id = `paymentBtn_${courseId}`;
+                        newButton.onclick = () => showPaymentModal(courseId);
+                        newButton.innerHTML = '<i class="fas fa-unlock"></i> <span>Pay to Access</span>';
+                        actionButton.parentNode.replaceChild(newButton, actionButton);
+                    }
+                }
+            }
+
+            // Start checking enrollment status every 2 seconds for instant updates
+            @auth
+            setInterval(checkEnrollmentStatus, 2000);
+            @endauth
 
             // Initialize the bundle modal
             const bundleModal = new bootstrap.Modal(document.getElementById('bundleModal'));

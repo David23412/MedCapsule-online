@@ -59,8 +59,8 @@ class CourseAccessController extends Controller
             // Enroll user in course
             $accessRequest->user->courses()->syncWithoutDetaching([
                 $accessRequest->course_id => [
-                    'enrollment_status' => 'active',
-                    'enrollment_date' => now()
+                    'is_enrolled' => true,
+                    'enrolled_at' => now()
                 ]
             ]);
 

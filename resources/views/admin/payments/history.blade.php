@@ -73,7 +73,7 @@
                                     <select name="status" class="form-select form-select-sm">
                                         <option value="">All Statuses</option>
                                         <option value="pending" {{ request('status') == 'pending' ? 'selected' : '' }}>Pending</option>
-                                        <option value="pending_verification" {{ request('status') == 'pending_verification' ? 'selected' : '' }}>Pending Verification</option>
+
                                         <option value="completed" {{ request('status') == 'completed' ? 'selected' : '' }}>Completed</option>
                                         <option value="rejected" {{ request('status') == 'rejected' ? 'selected' : '' }}>Rejected</option>
                                         <option value="expired" {{ request('status') == 'expired' ? 'selected' : '' }}>Expired</option>
@@ -169,8 +169,7 @@
                                     <td>
                                         @if($payment->status === 'pending')
                                         <span class="badge bg-warning">Pending</span>
-                                        @elseif($payment->status === 'pending_verification')
-                                        <span class="badge bg-primary">Pending Verification</span>
+
                                         @elseif($payment->status === 'completed')
                                         <span class="badge bg-success">Completed</span>
                                         @elseif($payment->status === 'rejected')
@@ -189,7 +188,7 @@
                                                 <i class="fas fa-info-circle"></i>
                                             </a>
                                             
-                                            @if($payment->status === 'pending_verification')
+                                            @if($payment->status === 'pending')
                                             <button type="button" class="btn btn-sm btn-outline-success verify-btn" data-payment-id="{{ $payment->id }}">
                                                 <i class="fas fa-check"></i>
                                             </button>
@@ -340,7 +339,7 @@
             const paymentId = verifyPaymentIdInput.value;
             const adminNotes = document.getElementById('adminNotes').value;
             
-            fetch(`/admin/payments/${paymentId}/verify`, {
+            fetch(`/admin/payments/verify/${paymentId}`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',

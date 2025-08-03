@@ -3,7 +3,6 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
-use App\Http\Requests\ProfileUpdateRequest;
 use App\Services\QuizCacheService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Log;
@@ -25,7 +24,7 @@ use App\Models\QuizAttempt;
     public function __construct()
     {
         // Don't call parent::__construct() to avoid double auth middleware
-        Log::info('Controller initialized', ['user_id' => auth()->id()]);
+        // Controller initialized log ANNIHILATED
         $this->middleware(['auth']);
     }
 
@@ -156,7 +155,10 @@ use App\Models\QuizAttempt;
                 'id' => $topic->id,
                 'name' => $topic->name,
                 'course_id' => $topic->course_id,
-                'course' => (object) ['name' => $topic->course_name],
+                'course' => (object) [
+                    'id' => $topic->course_id,
+                    'name' => $topic->course_name
+                ],
                 'userProgress' => collect([(object) ['percentage_grade' => $topic->percentage_grade]])
             ];
         });
@@ -229,9 +231,9 @@ use App\Models\QuizAttempt;
         $result = QuizAttempt::where('user_id', $user->id)
             ->selectRaw('
                 SUM(CASE WHEN quiz_type = "normal" AND study_mode = "quiz" AND topic_id IS NOT NULL THEN duration_seconds ELSE 0 END) as quiz,
-                SUM(CASE WHEN study_mode = "tutor" THEN duration_seconds ELSE 0 END) as tutor,
-                SUM(CASE WHEN quiz_type = "random" THEN duration_seconds ELSE 0 END) as random_quiz,
-                SUM(CASE WHEN quiz_type = "mistake_review" THEN duration_seconds ELSE 0 END) as mistake_review,
+                SUM(CASE WHEN quiz_type = "normal" AND study_mode = "tutor" THEN duration_seconds ELSE 0 END) as tutor,
+                SUM(CASE WHEN quiz_type = "normal" AND study_mode = "random" THEN duration_seconds ELSE 0 END) as random_quiz,
+                SUM(CASE WHEN quiz_type = "mistake_review" OR study_mode = "mistake_review" THEN duration_seconds ELSE 0 END) as mistake_review,
                 SUM(duration_seconds) as total
             ')
             ->first();
@@ -279,83 +281,92 @@ use App\Models\QuizAttempt;
     /**
      * Handle profile picture upload
      */
-    public function updateProfilePicture(ProfileUpdateRequest $request)
+    public function updateProfilePicture(Request $request)
     {
         // TODO: Create FormRequest for validation
 
         try {
+            // Validate the profile picture upload
+            $request->validate([
+                'profile_picture' => 'required|file|mimes:jpg,jpeg,png,gif,webp|max:5120' // 5MB max
+            ]);
+            
             $user = auth()->user();
             
             if ($request->hasFile('profile_picture')) {
                 $file = $request->file('profile_picture');
                 
-                \Log::info('Starting profile picture upload', [
-                    'user_id' => $user->id,
-                    'original_name' => $file->getClientOriginalName(),
-                    'mime_type' => $file->getMimeType(),
-                    'size' => $file->getSize()
-                ]);
-
                 // Ensure file is valid
                 if (!$file->isValid()) {
                     throw new \Exception('Invalid file upload');
                 }
 
+                // Delete old profile picture if exists
+                if ($user->profile_picture_url) {
+                    $oldPath = str_replace('storage/', '', $user->profile_picture_url);
+                    $oldFilePath = storage_path('app/public/' . $oldPath);
+                    if (file_exists($oldFilePath)) {
+                        unlink($oldFilePath);
+                    }
+                }
+
                 // Create a unique filename
                 $filename = time() . '_' . preg_replace('/[^a-zA-Z0-9.]/', '_', $file->getClientOriginalName());
-                
-                \Log::info('Generated filename', ['filename' => $filename]);
 
                 // Store the file in the public disk
                 $path = $file->storeAs('profile_pictures', $filename, 'public');
-                
-                \Log::info('File stored', ['path' => $path]);
 
                 if (!$path) {
                     throw new \Exception('Failed to store file');
                 }
 
-                // Verify file exists in storage
-                $fullStoragePath = storage_path('app/public/' . $path);
-                if (!file_exists($fullStoragePath)) {
-                    throw new \Exception('File not found after upload: ' . $fullStoragePath);
-                }
-
                 // Update path to include storage prefix
                 $fullPath = 'storage/' . $path;
 
-                \Log::info('Updating user profile picture URL', [
-                    'user_id' => $user->id,
-                    'old_url' => $user->profile_picture_url,
-                    'new_url' => $fullPath
-                ]);
-
-                // Update user's profile_picture_url with the full path
+                // Update user's profile_picture_url
                 $user->profile_picture_url = $fullPath;
                 $user->save();
 
-                \Log::info('Profile picture updated successfully', [
-                    'user_id' => $user->id,
-                    'path' => $fullPath
-                ]);
-
-                return redirect()->back()->with('success', 'Profile picture updated successfully!');
+                // Check if it's an AJAX request
+                if (request()->ajax() || request()->wantsJson()) {
+                    return response()->json([
+                        'success' => true,
+                        'message' => 'Profile picture updated successfully!',
+                        'new_url' => $fullPath,
+                        'timestamp' => time()
+                    ]);
+                }
+                
+                return redirect()->back()
+                    ->with('success', 'Profile picture updated successfully!')
+                    ->with('cache_bust', time());
             }
 
             return redirect()->back()->with('error', 'No file uploaded.');
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            if (request()->ajax() || request()->wantsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Validation failed: ' . implode(', ', $e->validator->errors()->all()),
+                    'errors' => $e->errors()
+                ], 422);
+            }
+            
+            return redirect()->back()->withErrors($e->validator)->withInput();
+            
         } catch (\Exception $e) {
             \Log::error('Profile picture upload failed', [
                 'user_id' => auth()->id(),
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString(),
-                'request_has_file' => $request->hasFile('profile_picture'),
-                'file_data' => $request->hasFile('profile_picture') ? [
-                    'name' => $request->file('profile_picture')->getClientOriginalName(),
-                    'size' => $request->file('profile_picture')->getSize(),
-                    'mime' => $request->file('profile_picture')->getMimeType()
-                ] : null
+                'error' => $e->getMessage()
             ]);
 
+            if (request()->ajax() || request()->wantsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Failed to update profile picture: ' . $e->getMessage()
+                ], 500);
+            }
+            
             return redirect()->back()->with('error', 'Failed to update profile picture: ' . $e->getMessage());
         }
     }

@@ -67,8 +67,8 @@ class CourseEnrollmentController extends Controller
 
             // Enroll user
             $user->courses()->attach($course->id, [
-                'enrollment_status' => $validated['enrollment_status'] ?? 'active',
-                'enrollment_date' => $validated['enrollment_date'] ?? now(),
+                'is_enrolled' => true,
+                'enrolled_at' => $validated['enrollment_date'] ?? now(),
                 'created_at' => now(),
                 'updated_at' => now()
             ]);

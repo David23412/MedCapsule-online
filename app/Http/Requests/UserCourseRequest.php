@@ -17,7 +17,7 @@ class UserCourseRequest extends FormRequest
             'user_id' => 'required|integer|exists:users,id',
             'course_ids' => 'required|array|min:1',
             'course_ids.*' => 'integer|exists:courses,id',
-            'enrollment_status' => 'nullable|in:active,inactive,suspended',
+            'is_enrolled' => 'nullable|boolean',
             'enrollment_date' => 'nullable|date',
             'expiry_date' => 'nullable|date|after:enrollment_date',
             'notes' => 'nullable|string|max:500'

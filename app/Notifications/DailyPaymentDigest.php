@@ -57,7 +57,7 @@ class DailyPaymentDigest extends Notification
      */
     public function toMail($notifiable)
     {
-        $url = route('admin.payment-history', ['status' => 'pending_verification']);
+        $url = route('admin.payment-history', ['status' => 'pending']);
 
         return (new MailMessage)
             ->subject('Daily Payment Digest')
@@ -81,7 +81,7 @@ class DailyPaymentDigest extends Notification
             'pending_count' => $this->pendingCount,
             'high_priority_count' => $this->highPriorityCount,
             'date' => now()->toDateString(),
-            'url' => route('admin.payment-history', ['status' => 'pending_verification']),
+            'url' => route('admin.payment-history', ['status' => 'pending']),
         ];
     }
 } 

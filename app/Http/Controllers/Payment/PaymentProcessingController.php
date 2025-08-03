@@ -61,21 +61,24 @@ class PaymentProcessingController extends Controller
             }
 
             $validated = $request->validate([
-                'payment_method' => 'required|string|in:bank_transfer,mobile_money',
-                'phone_number' => 'required_if:payment_method,mobile_money|string|max:20',
+                'payment_method' => 'required|string|in:vodafone_cash,fawry,instapay',
+                'phone_number' => 'required_if:payment_method,vodafone_cash|string|max:15',
+                'reference_number' => 'required|string|max:50',
                 'amount' => 'required|numeric|min:0.01'
             ]);
 
-            // Create payment record
+            // Create streamlined payment record
             $payment = Payment::create([
                 'user_id' => $user->id,
                 'course_id' => $course->id,
                 'amount' => $validated['amount'],
                 'payment_method' => $validated['payment_method'],
+                'reference_number' => $validated['reference_number'],
                 'status' => 'pending',
                 'payment_data' => json_encode([
                     'phone_number' => $validated['phone_number'] ?? null,
-                    'course_name' => $course->name
+                    'course_name' => $course->name,
+                    'method_display' => $this->getPaymentMethodDisplay($validated['payment_method'])
                 ])
             ]);
 
@@ -203,54 +206,51 @@ class PaymentProcessingController extends Controller
     }
 
     /**
-     * Submit payment proof for single course
+     * Submit payment proof - SIMPLIFIED
      */
     public function submitProof(Request $request, $courseId)
     {
-        $validated = $request->validate([
-            'transaction_id' => 'required|string|max:100',
-            'payment_proof' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:5120',
-            'transaction_reference' => 'nullable|string|max:100'
-        ]);
+        try {
+            $validated = $request->validate([
+                'transaction_id' => 'required|string|max:100',
+                'payment_proof' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:5120'
+            ]);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            if ($request->ajax() || $request->wantsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Validation failed: ' . implode(', ', $e->errors()),
+                    'errors' => $e->errors()
+                ], 422);
+            }
+            throw $e;
+        }
 
         try {
             $user = Auth::user();
+            $course = Course::findOrFail($courseId);
             
-            // Find or create payment record
-            $payment = Payment::where('user_id', $user->id)
+            // Check if user already has pending payment for this course
+            $existingPayment = Payment::where('user_id', $user->id)
                 ->where('course_id', $courseId)
                 ->where('status', 'pending')
-                ->latest()
                 ->first();
-
-            if (!$payment) {
-                // Create new payment record if none exists
-                $course = Course::findOrFail($courseId);
-                $payment = Payment::create([
-                    'user_id' => $user->id,
-                    'course_id' => $courseId,
-                    'amount' => $course->price,
-                    'payment_method' => 'manual',
-                    'status' => 'pending',
-                    'payment_data' => json_encode([
-                        'course_name' => $course->name,
-                        'transaction_id' => $validated['transaction_id']
-                    ])
-                ]);
                 
-                Log::info('Payment record created for proof submission', [
-                    'payment_id' => $payment->id,
-                    'user_id' => $user->id,
-                    'course_id' => $courseId,
-                    'transaction_id' => $validated['transaction_id']
-                ]);
+            if ($existingPayment) {
+                if ($request->ajax() || $request->wantsJson()) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'You already have a pending payment for this course.'
+                    ], 400);
+                }
+                return back()->with('error', 'You already have a pending payment for this course.');
             }
-
-            // Update payment with transaction ID
-            $paymentData = is_array($payment->payment_data) ? $payment->payment_data : (json_decode($payment->payment_data, true) ?: []);
-            $paymentData['transaction_id'] = $validated['transaction_id'];
-            $paymentData['transaction_reference'] = $validated['transaction_reference'] ?? $validated['transaction_id'];
-            $paymentData['proof_submitted_at'] = now();
+            
+            // Create payment record
+            $paymentData = [
+                'transaction_id' => $validated['transaction_id'],
+                'course_name' => $course->name
+            ];
             
             // Handle file upload if provided
             if ($request->hasFile('payment_proof')) {
@@ -258,19 +258,25 @@ class PaymentProcessingController extends Controller
                 $paymentData['proof_path'] = $proofPath;
             }
             
-            $payment->update([
-                'payment_data' => json_encode($paymentData),
-                'status' => 'proof_submitted'
-            ]);
-
-            Log::info('Payment proof submitted', [
-                'payment_id' => $payment->id,
+            $payment = Payment::create([
                 'user_id' => $user->id,
-                'transaction_id' => $validated['transaction_id'],
-                'proof_path' => $paymentData['proof_path'] ?? null
+                'course_id' => $courseId,
+                'amount' => $course->price,
+                'payment_method' => 'manual',
+                'status' => 'pending',
+                'payment_data' => json_encode($paymentData)
             ]);
 
-            return back()->with('success', 'Payment submitted successfully! Transaction ID: ' . $validated['transaction_id'] . '. We will verify it within 24 hours.');
+            // Check if this is an AJAX request
+            if ($request->ajax() || $request->wantsJson()) {
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Payment submitted successfully! Transaction ID: ' . $validated['transaction_id'] . '. Admin will verify within 24 hours.',
+                    'payment_id' => $payment->id
+                ]);
+            }
+
+            return back()->with('success', 'Payment submitted! Transaction ID: ' . $validated['transaction_id'] . '. Admin will verify within 24 hours.');
 
         } catch (\Exception $e) {
             Log::error('Payment proof submission failed', [
@@ -279,6 +285,14 @@ class PaymentProcessingController extends Controller
                 'user_id' => Auth::id(),
                 'transaction_id' => $validated['transaction_id'] ?? 'not provided'
             ]);
+
+            // Check if this is an AJAX request
+            if ($request->ajax() || $request->wantsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Failed to submit payment. Error: ' . $e->getMessage()
+                ], 500);
+            }
 
             return back()->with('error', 'Failed to submit payment. Error: ' . $e->getMessage());
         }
@@ -321,7 +335,7 @@ class PaymentProcessingController extends Controller
                 
                 $payment->update([
                     'payment_data' => json_encode($paymentData),
-                    'status' => 'proof_submitted'
+                    'status' => 'pending'
                 ]);
             }
 
@@ -343,5 +357,18 @@ class PaymentProcessingController extends Controller
 
             return back()->with('error', 'Failed to submit bundle payment proof. Please try again.');
         }
+    }
+
+    /**
+     * Get display name for payment method
+     */
+    private function getPaymentMethodDisplay(string $method): string
+    {
+        return match($method) {
+            'vodafone_cash' => 'Vodafone Cash',
+            'fawry' => 'Fawry',
+            'instapay' => 'InstaPay',
+            default => ucfirst(str_replace('_', ' ', $method))
+        };
     }
 }
