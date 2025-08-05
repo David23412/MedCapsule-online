@@ -454,6 +454,18 @@
     border-left: 3px solid #f59e0b;
 }
 
+.notification-item.mastery {
+    border-left: 3px solid #10b981; /* GREEN BORDER for topic mastery */
+}
+
+.notification-item.fiery {
+    border-left: 3px solid #f97316; /* FIERY ORANGE BORDER for level up */
+}
+
+.notification-item.perfect {
+    border-left: 3px solid #8b5cf6; /* PURPLE BORDER for perfect scores */
+}
+
 .empty-notification {
     display: flex;
     flex-direction: column;
@@ -1147,7 +1159,7 @@ document.addEventListener('DOMContentLoaded', function() {
         
         console.log('🎨 Rendering', notifications.length, 'notifications with beautiful design');
         
-        // 🎨 COMPLETE NOTIFICATION ICON SYSTEM - ALL 47 TYPES FROM INVENTORY
+        // 🎨 COMPLETE NOTIFICATION ICON SYSTEM - ALL TYPES INCLUDING TUTOR & ASSIGNMENT
         function getNotificationIcon(type) {
             const iconMap = {
                 // 🎓 ACADEMIC & LEARNING (6 icons)
@@ -1157,6 +1169,26 @@ document.addEventListener('DOMContentLoaded', function() {
                 'level_up': 'fas fa-bolt', // LIGHTNING YELLOW ONE!
                 'assignment_due': 'fas fa-clock',
                 'assignment_created': 'fas fa-plus', // NEW ASSIGNMENT DROPPED!
+                
+                // 🎯 TUTOR MODE SPECIFIC - SIMPLIFIED
+                'tutor_quiz_completed': 'fas fa-check-circle', // SAME AS REGULAR QUIZ
+                'tutor_needs_practice': 'fas fa-redo-alt',
+                
+                // 📝 ASSIGNMENT SYSTEM - SIMPLIFIED
+                'assignment_completed': 'fas fa-clipboard-check',
+                'assignment_perfect': 'fas fa-star', // PURPLE STAR LIKE QUIZ
+                'tutor_assignment_assigned': 'fas fa-user-graduate',
+                'assignment_due_date_set': 'fas fa-calendar-alt',
+                'assignment_overdue_1h': 'fas fa-exclamation-circle',
+                'assignment_overdue_6h': 'fas fa-exclamation-triangle',
+                'assignment_overdue_24h': 'fas fa-exclamation',
+                'assignment_overdue_days': 'fas fa-times-circle',
+                'assignment_due_1h': 'fas fa-clock',
+                'assignment_due_3h': 'fas fa-clock',
+                'assignment_due_6h': 'fas fa-clock',
+                'assignment_due_12h': 'fas fa-clock',
+                'assignment_due_24h': 'fas fa-calendar',
+                'assignment_due_48h': 'fas fa-calendar-day',
                 
                 // 🏆 PROGRESS & MILESTONES (5 icons) - Real system features
                 'topic_completed': 'fas fa-check-circle',
@@ -1178,7 +1210,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 'review_mistakes': 'fas fa-exclamation-triangle',
                 'weak_topic_identified': 'fas fa-exclamation-circle',
                 'skipped_questions_detected': 'fas fa-forward',
-                'topic_needs_review': 'fas fa-exclamation-triangle',
                 'review_reminder': 'fas fa-clock',
                 
                 // 💳 PAYMENT & ACCESS (4 icons)
@@ -1197,10 +1228,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 'error': 'fas fa-exclamation-circle',
                 'test': 'fas fa-bell',
                 
-                // 🎯 SPECIAL FEATURES (3 icons) - REALISTIC TRIGGERS ONLY!
+                // 🎯 SPECIAL FEATURES - REALISTIC TRIGGERS ONLY!
                 'perfect_score': 'fas fa-star', // PURPLE STAR!
-                'first_attempt': 'fas fa-medal', // BLUE/PURPLE LOOKS BETTER!
-                'speed_demon': 'fas fa-tachometer-alt', // Triggered when quiz completed < 30 seconds
+                'topic_mastery': 'fas fa-check-circle', // GREEN CHECK MARK!
                 'consistency_king': 'fas fa-crown', // Triggered after 7+ day study streak
                 
                 // 📚 SUBJECT SPECIFIC - CUSTOM FAVI ICONS FOR ALL MEDICAL COURSES!
@@ -1244,8 +1274,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 'pharma_completed': 'fas fa-pills',
                 'pharma_halfway': 'fas fa-pills',
                 
-                // 💊 MEDCAPSULE ENROLLMENT - HALF BLUE HALF RED CAPSULE!
+                // 💊 MEDCAPSULE ENROLLMENT & WELCOME
                 'medcapsule_enrolled': 'fas fa-capsules', // COOL CAPSULE ICON!
+                'medcapsule_welcome': 'fas fa-capsules', // WELCOME MESSAGE ON LOGIN
                 
                 // Legacy support
                 'cardiology_completed': 'fas fa-heart',
@@ -1268,6 +1299,26 @@ document.addEventListener('DOMContentLoaded', function() {
                 'assignment_due': '#ef4444',     // red-500
                 'assignment_created': '#10b981', // emerald-500 for new assignments
                 
+                // 🎯 TUTOR MODE SPECIFIC - SIMPLIFIED
+                'tutor_quiz_completed': '#3b82f6',      // SAME BLUE AS REGULAR QUIZ
+                'tutor_needs_practice': '#ef4444',      // red-500
+                
+                // 📝 ASSIGNMENT SYSTEM - SIMPLIFIED
+                'assignment_completed': '#3b82f6',      // BLUE LIKE QUIZ
+                'assignment_perfect': '#8b5cf6',        // PURPLE LIKE QUIZ
+                'tutor_assignment_assigned': '#8b5cf6', // violet-500
+                'assignment_due_date_set': '#6b7280',   // gray-500
+                'assignment_overdue_1h': '#ef4444',     // red-500
+                'assignment_overdue_6h': '#dc2626',     // red-600
+                'assignment_overdue_24h': '#b91c1c',    // red-700
+                'assignment_overdue_days': '#991b1b',   // red-800
+                'assignment_due_1h': '#ef4444',         // red-500
+                'assignment_due_3h': '#f59e0b',         // amber-500
+                'assignment_due_6h': '#eab308',         // yellow-500
+                'assignment_due_12h': '#06b6d4',        // cyan-500
+                'assignment_due_24h': '#3b82f6',        // blue-500
+                'assignment_due_48h': '#6b7280',        // gray-500
+                
                 // 🏆 PROGRESS & MILESTONES - REAL FEATURES ONLY
                 'topic_completed': '#10b981',   // emerald-500
                 'streak_milestone': '#f97316',  // orange-500
@@ -1288,7 +1339,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 'review_mistakes': '#ef4444',   // red-500
                 'weak_topic_identified': '#ef4444', // red-500
                 'skipped_questions_detected': '#f59e0b', // amber-500
-                'topic_needs_review': '#ef4444', // red-500
                 'review_reminder': '#06b6d4',   // cyan-500
                 
                 // 💳 PAYMENT & ACCESS
@@ -1309,8 +1359,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 
                 // 🎯 SPECIAL FEATURES - REALISTIC TRIGGERS!
                 'perfect_score': '#8b5cf6',     // PURPLE STAR!
-                'first_attempt': '#3b82f6',     // BLUE LOOKS BETTER!
-                'speed_demon': '#fbbf24',       // amber-400 (quiz < 30 seconds)
+                'topic_mastery': '#10b981',     // GREEN CHECK MARK!
                 'consistency_king': '#f59e0b',  // amber-500 (7+ day streak)
                 
                 // 📚 SUBJECT SPECIFIC - CUSTOM COURSE FAVI ICONS WITH EYE-GRABBING COLORS!
@@ -1354,8 +1403,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 'pharma_completed': '#3b82f6',
                 'pharma_halfway': '#3b82f6',
                 
-                // 💊 MEDCAPSULE ENROLLMENT - SPECIAL GRADIENT COLOR!
+                // 💊 MEDCAPSULE ENROLLMENT & WELCOME - SPECIAL GRADIENT COLOR!
                 'medcapsule_enrolled': '#3b82f6',  // BLUE (will add red gradient in CSS)
+                'medcapsule_welcome': '#3b82f6',   // BLUE (welcome message on login)
                 
                 // Legacy support
                 'cardiology_completed': '#ef4444', // red-500 for heart

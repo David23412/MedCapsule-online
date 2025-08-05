@@ -19,7 +19,8 @@ class AdminMiddleware
 
         $user = auth()->user();
         if ($user->role !== 'admin') {
-            abort(403, 'Unauthorized. Only administrators can access this area.');
+            // Redirect non-admin users to homepage instead of showing 403
+            return redirect()->route('home')->with('error', 'Access denied. Only administrators can access this area.');
         }
 
         return $next($request);

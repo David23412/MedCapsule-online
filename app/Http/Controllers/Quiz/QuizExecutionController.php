@@ -209,8 +209,24 @@ class QuizExecutionController extends Controller
                 'course_name' => $course->name ?? $topic->name,
                 'topic_name' => $topic->name,
                 'user_quiz_count' => $this->quizExecutionService->getUserQuizCount(auth()->id()),
-                'assignment_completed' => $assignmentCompleted
+                'assignment_completed' => $assignmentCompleted,
+                'mode' => 'quiz' // Regular quiz mode
             ]);
+
+            // 🔔 ASSIGNMENT COMPLETION NOTIFICATION - Separate from quiz notification
+            if ($assignmentCompleted && $assignmentId) {
+                $assignment = \App\Models\Assignment::find($assignmentId);
+                if ($assignment) {
+                    \App\Services\NotificationTriggerService::onAssignmentCompleted(auth()->user(), [
+                        'score' => $result['score'],
+                        'total_questions' => $result['totalQuestions'],
+                        'percentage' => $result['percentageGrade'],
+                        'assignment_title' => $assignment->title,
+                        'assignment_id' => $assignmentId,
+                        'mode' => 'assignment'
+                    ]);
+                }
+            }
             
             return response()->json([
                 'success' => true,

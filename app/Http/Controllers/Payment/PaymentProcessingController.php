@@ -213,6 +213,7 @@ class PaymentProcessingController extends Controller
         try {
             $validated = $request->validate([
                 'transaction_id' => 'required|string|max:100',
+                'payment_method' => 'nullable|string|in:vodafone_cash,fawry,instapay',
                 'payment_proof' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:5120'
             ]);
         } catch (\Illuminate\Validation\ValidationException $e) {
@@ -258,11 +259,22 @@ class PaymentProcessingController extends Controller
                 $paymentData['proof_path'] = $proofPath;
             }
             
+            // Log the payment method detection for debugging
+            $paymentMethod = $validated['payment_method'] ?? 'manual';
+            Log::info('Single payment submission', [
+                'user_id' => $user->id,
+                'course_id' => $courseId,
+                'payment_method' => $paymentMethod,
+                'transaction_id' => $validated['transaction_id'],
+                'has_payment_method_in_request' => isset($validated['payment_method']),
+                'all_request_data' => $request->all()
+            ]);
+
             $payment = Payment::create([
                 'user_id' => $user->id,
                 'course_id' => $courseId,
                 'amount' => $course->price,
-                'payment_method' => 'manual',
+                'payment_method' => $paymentMethod,
                 'status' => 'pending',
                 'payment_data' => json_encode($paymentData)
             ]);
@@ -299,63 +311,184 @@ class PaymentProcessingController extends Controller
     }
 
     /**
-     * Submit bundle payment proof
+     * 🔥 FIXED BUNDLE PAYMENT SUBMISSION WITH AGGRESSIVE DEBUGGING 🔥
      */
     public function submitBundlePaymentProof(Request $request)
     {
-        $validated = $request->validate([
-            'bundle_id' => 'required|string',
-            'payment_proof' => 'required|image|mimes:jpeg,png,jpg,gif|max:5120',
-            'transaction_reference' => 'nullable|string|max:100'
+        // AGGRESSIVE LOGGING - LOG EVERYTHING
+        Log::info('🔥 BUNDLE PAYMENT: Starting submission', [
+            'user_id' => Auth::id(),
+            'request_data' => $request->all(),
+            'timestamp' => now()
         ]);
 
         try {
+            $validated = $request->validate([
+                'courses' => 'required|array|min:1',
+                'courses.*' => 'integer|exists:courses,id',
+                'payment_method' => 'required|string|in:vodafone_cash,fawry,instapay',
+                'transaction_id' => 'required|string|max:100',
+                'phone_number' => 'nullable|string|max:20',
+                'total_amount' => 'required|numeric|min:0.01'
+            ]);
+
+            Log::info('🔥 BUNDLE PAYMENT: Validation passed', [
+                'validated_data' => $validated
+            ]);
+
             $user = Auth::user();
+            $bundleId = 'bundle_' . uniqid() . '_' . time();
+            $createdPayments = [];
             
-            // Find bundle payments
-            $payments = Payment::select('id', 'user_id', 'course_id', 'status', 'payment_data')
-                ->where('user_id', $user->id)
-                ->where('payment_data->bundle_id', $validated['bundle_id'])
-                ->where('status', 'pending')
+            // Get courses and verify they exist
+            $courses = Course::select('id', 'name', 'price')
+                ->whereIn('id', $validated['courses'])
+                ->where('price', '>', 0)
                 ->get();
 
-            if ($payments->isEmpty()) {
-                return back()->with('error', 'No pending bundle payments found.');
-            }
+            Log::info('🔥 BUNDLE PAYMENT: Courses found', [
+                'requested_courses' => $validated['courses'],
+                'found_courses' => $courses->pluck('id')->toArray(),
+                'course_count' => $courses->count()
+            ]);
 
-            // Store payment proof
-            $proofPath = $request->file('payment_proof')->store('payment_proofs', 'public');
-            
-            // Update all bundle payments
-            foreach ($payments as $payment) {
-                $paymentData = is_array($payment->payment_data) ? $payment->payment_data : (json_decode($payment->payment_data, true) ?: []);
-                $paymentData['proof_path'] = $proofPath;
-                $paymentData['transaction_reference'] = $validated['transaction_reference'];
-                $paymentData['proof_submitted_at'] = now();
-                
-                $payment->update([
-                    'payment_data' => json_encode($paymentData),
-                    'status' => 'pending'
+            if ($courses->isEmpty()) {
+                Log::warning('🔥 BUNDLE PAYMENT: No valid courses found');
+                return response()->json([
+                    'success' => false,
+                    'message' => 'No valid courses found for bundle payment.'
                 ]);
             }
 
-            Log::info('Bundle payment proof submitted', [
-                'bundle_id' => $validated['bundle_id'],
-                'user_id' => $user->id,
-                'payments_count' => $payments->count(),
-                'proof_path' => $proofPath
+            // Check for existing access - BUT ALLOW PENDING PAYMENTS
+            $enrolledCourseIds = $user->courses()
+                ->whereIn('course_id', $validated['courses'])
+                ->where('is_enrolled', true)
+                ->pluck('course_id')
+                ->toArray();
+
+            Log::info('🔥 BUNDLE PAYMENT: Enrollment check', [
+                'enrolled_courses' => $enrolledCourseIds,
+                'user_id' => $user->id
             ]);
 
-            return back()->with('success', 'Bundle payment proof submitted successfully. We will verify it within 24 hours.');
+            $availableCourses = $courses->whereNotIn('id', $enrolledCourseIds);
+            
+            if ($availableCourses->isEmpty()) {
+                Log::warning('🔥 BUNDLE PAYMENT: User already enrolled in all courses');
+                return response()->json([
+                    'success' => false,
+                    'message' => 'You already have access to all selected courses.'
+                ]);
+            }
+
+            // Calculate bundle pricing
+            $courseCount = $availableCourses->count();
+            $individualTotal = $availableCourses->sum(function($course) {
+                return floor($course->price) + 0.99;
+            });
+            
+            $totalOriginalPrice = floor($individualTotal) + 0.99;
+            
+            $totalDiscount = 0;
+            if ($courseCount === 2) $totalDiscount = 50;
+            elseif ($courseCount === 3) $totalDiscount = 75;
+            elseif ($courseCount >= 4) $totalDiscount = 100;
+            
+            $finalBundleTotal = floor($totalOriginalPrice - $totalDiscount) + 0.99;
+
+            Log::info('🔥 BUNDLE PAYMENT: Pricing calculated', [
+                'course_count' => $courseCount,
+                'individual_total' => $individualTotal,
+                'total_discount' => $totalDiscount,
+                'final_total' => $finalBundleTotal
+            ]);
+
+            // Create payment records for each course
+            $totalDiscountedAmount = 0;
+            $totalProportionalOriginal = 0;
+            $courseIndex = 0;
+
+            foreach ($availableCourses as $course) {
+                $individualPrice = floor($course->price) + 0.99;
+                
+                // Calculate proportional pricing
+                $proportion = $individualPrice / $individualTotal;
+                $proportionalOriginalPrice = $proportion * $totalOriginalPrice;
+                
+                if ($courseIndex === $courseCount - 1) {
+                    $proportionalOriginalPrice = $totalOriginalPrice - $totalProportionalOriginal;
+                    $discountedAmount = $finalBundleTotal - $totalDiscountedAmount;
+                } else {
+                    $discountPerCourse = $totalDiscount / $courseCount;
+                    $discountedAmount = floor($proportionalOriginalPrice - $discountPerCourse) + 0.99;
+                    $totalDiscountedAmount += $discountedAmount;
+                    $totalProportionalOriginal += $proportionalOriginalPrice;
+                }
+                
+                $courseIndex++;
+                $actualDiscount = $proportionalOriginalPrice - $discountedAmount;
+                
+                // CREATE THE FUCKING PAYMENT RECORD
+                $payment = Payment::create([
+                    'user_id' => $user->id,
+                    'course_id' => $course->id,
+                    'amount' => $discountedAmount,
+                    'payment_method' => $validated['payment_method'],
+                    'status' => 'pending',
+                    'is_bundle' => true,
+                    'original_price' => $proportionalOriginalPrice,
+                    'discount_amount' => $actualDiscount,
+                    'payment_data' => [
+                        'bundle_id' => $bundleId,
+                        'phone_number' => $validated['phone_number'] ?? null,
+                        'course_name' => $course->name,
+                        'transaction_id' => $validated['transaction_id'],
+                        'submitted_at' => now(),
+                        'bundle_total_amount' => $finalBundleTotal,
+                        'original_course_price' => $proportionalOriginalPrice,
+                        'discount_per_course' => $actualDiscount
+                    ]
+                ]);
+                
+                $createdPayments[] = $payment;
+
+                Log::info('🔥 BUNDLE PAYMENT: Payment record created', [
+                    'payment_id' => $payment->id,
+                    'course_id' => $course->id,
+                    'amount' => $discountedAmount,
+                    'bundle_id' => $bundleId
+                ]);
+            }
+
+            Log::info('🔥 BUNDLE PAYMENT: All payments created successfully', [
+                'bundle_id' => $bundleId,
+                'user_id' => $user->id,
+                'transaction_id' => $validated['transaction_id'],
+                'courses' => $validated['courses'],
+                'payments_created' => count($createdPayments),
+                'total_amount' => $validated['total_amount']
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Bundle payment submitted successfully! We created ' . count($createdPayments) . ' payment records for verification.',
+                'bundle_id' => $bundleId,
+                'payments_created' => count($createdPayments)
+            ]);
 
         } catch (\Exception $e) {
-            Log::error('Bundle payment proof submission failed', [
+            Log::error('🔥 BUNDLE PAYMENT: Submission failed', [
                 'error' => $e->getMessage(),
-                'bundle_id' => $validated['bundle_id'],
+                'trace' => $e->getTraceAsString(),
+                'courses' => $validated['courses'] ?? [],
                 'user_id' => Auth::id()
             ]);
 
-            return back()->with('error', 'Failed to submit bundle payment proof. Please try again.');
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to submit bundle payment proof. Error: ' . $e->getMessage()
+            ], 500);
         }
     }
 

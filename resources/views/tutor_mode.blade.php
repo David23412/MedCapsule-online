@@ -1796,6 +1796,29 @@
                 if (data.success) {
                     console.log('✅ Tutor quiz attempt saved successfully');
                     
+                    // 🔔 TRIGGER TUTOR MODE COMPLETION NOTIFICATIONS
+                    fetch('{{ route("quiz.tutor.complete-session") }}', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
+                            'X-Requested-With': 'XMLHttpRequest'
+                        },
+                        body: JSON.stringify({
+                            correct_answers: correctAnswers,
+                            total_questions: totalQuestions,
+                            course_id: {{ $course->id }},
+                            topic_id: {{ $topic->id }}
+                        })
+                    })
+                    .then(response => response.json())
+                    .then(notificationData => {
+                        console.log('🔔 Tutor mode completion notifications triggered:', notificationData);
+                    })
+                    .catch(error => {
+                        console.log('ℹ️ Notification trigger encountered an issue, continuing normally');
+                    });
+                    
                     // Fetch updated source progress for tutor mode with LETHAL ERROR HANDLING
                     fetch(`/topics/{{ $topic->id }}/source-progress?mode=tutor`, {
                         method: 'GET',

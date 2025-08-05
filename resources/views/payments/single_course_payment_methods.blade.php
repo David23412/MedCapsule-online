@@ -120,8 +120,8 @@
         @endif
         
         <li class="nav-item" role="presentation">
-            <button class="nav-link payment-tab-bank py-3" id="bank-tab" data-bs-toggle="tab" data-bs-target="#bank-panel" type="button" role="tab">
-                <i class="fas fa-university me-2"></i>Bank Transfer
+            <button class="nav-link payment-tab-instapay py-3" id="instapay-tab" data-bs-toggle="tab" data-bs-target="#instapay-panel" type="button" role="tab">
+                <i class="fas fa-credit-card me-2"></i>InstaPay
             </button>
         </li>
     </ul>
@@ -162,27 +162,30 @@
             </div>
         </div>
         
-        <!-- Bank Transfer Panel -->
-        <div class="tab-pane fade" id="bank-panel" role="tabpanel">
+        <!-- InstaPay Panel -->
+        <div class="tab-pane fade" id="instapay-panel" role="tabpanel">
             <div class="d-flex align-items-center mb-3">
-                <div style="color: #c13584;" class="me-3"><i class="fas fa-university fa-2x"></i></div>
-                <div class="fw-bold fs-5">Transfer {{ $course->price }} EGP to:</div>
+                <div style="color: #c13584;" class="me-3"><i class="fas fa-credit-card fa-2x"></i></div>
+                <div class="fw-bold fs-5">Pay {{ $course->price }} EGP via:</div>
             </div>
             <div class="d-flex align-items-center my-3">
-                <code class="bg-white py-2 px-3 rounded border flex-grow-1 me-2 fs-5">{{ config('payment.bank.number', 'BANK-XXXXXXXXX') }}</code>
-                <button class="btn btn-lg text-secondary copy-btn" data-clipboard="{{ config('payment.bank.number', 'BANK-XXXXXXXXX') }}">
+                <code class="bg-white py-2 px-3 rounded border flex-grow-1 me-2 fs-5">{{ config('payment.instapay.number', 'INSTAPAY-XXXXXXXXX') }}</code>
+                <button class="btn btn-lg text-secondary copy-btn" data-clipboard="{{ config('payment.instapay.number', 'INSTAPAY-XXXXXXXXX') }}">
                     <i class="fas fa-copy"></i>
                 </button>
             </div>
             <div class="text-success fs-6">
-                <i class="fas fa-check-circle me-2"></i>Auto-verify with <code>BNK</code> followed by your transaction number
+                <i class="fas fa-check-circle me-2"></i>Auto-verify with <code>IP</code> followed by your transaction number
             </div>
         </div>
     </div>
     
     <!-- Payment Form -->
-                    <form id="coursePaymentForm" class="mb-0" method="POST" action="{{ secure_url(route('payments.submit-proof-course', ['course' => $course->id], false)) }}" data-course-id="{{ $course->id }}">
+                    <form id="coursePaymentForm" class="mb-0" method="POST" action="{{ secure_url(route('payments.submit-proof-course', ['courseId' => $course->id], false)) }}" data-course-id="{{ $course->id }}">
         @csrf
+        <!-- Hidden payment method field that gets updated by JavaScript -->
+        <input type="hidden" id="paymentMethodField" name="payment_method" value="vodafone_cash">
+        
         <!-- Transaction ID Input -->
         <div class="mb-4">
             <label for="transactionId" class="form-label">Transaction Code</label>
@@ -367,14 +370,47 @@ function showErrorMessage(message) {
     document.body.appendChild(container);
 }
 
+// Function to get current payment method from active tab
+function getCurrentPaymentMethod() {
+    const activeTab = document.querySelector('#paymentMethodTabs .nav-link.active');
+    if (activeTab) {
+        if (activeTab.id === 'vodafone-tab') return 'vodafone_cash';
+        if (activeTab.id === 'fawry-tab') return 'fawry';
+        if (activeTab.id === 'instapay-tab') return 'instapay';
+    }
+    return 'vodafone_cash'; // default
+}
+
 // Initialize payment form handling
 document.addEventListener('DOMContentLoaded', function() {
     const form = document.getElementById('coursePaymentForm');
+    const paymentMethodField = document.getElementById('paymentMethodField');
+    
     if (!form) {
         console.log('Payment form not found');
         return;
     }
     console.log('Payment form found');
+    
+    // Update payment method field when tabs are clicked
+    const paymentTabs = document.querySelectorAll('#paymentMethodTabs .nav-link');
+    paymentTabs.forEach(tab => {
+        tab.addEventListener('click', function() {
+            setTimeout(() => {
+                const paymentMethod = getCurrentPaymentMethod();
+                if (paymentMethodField) {
+                    paymentMethodField.value = paymentMethod;
+                    console.log('Payment method updated to:', paymentMethod);
+                }
+            }, 100); // Small delay to ensure tab is active
+        });
+    });
+    
+    // Set initial payment method
+    if (paymentMethodField) {
+        paymentMethodField.value = getCurrentPaymentMethod();
+        console.log('Initial payment method set to:', paymentMethodField.value);
+    }
 
     form.addEventListener('submit', function(e) {
         e.preventDefault();
@@ -387,8 +423,16 @@ document.addEventListener('DOMContentLoaded', function() {
             submitBtn.textContent = 'Processing...';
         }
 
-        // Submit the form data
+        // Ensure payment method is up to date
+        const paymentMethod = getCurrentPaymentMethod();
+        if (paymentMethodField) {
+            paymentMethodField.value = paymentMethod;
+        }
+        console.log('Final payment method:', paymentMethod);
+
+        // Submit the form data (payment method is now in the hidden field)
         const formData = new FormData(form);
+        
         fetch(form.action, {
             method: 'POST',
             headers: {
@@ -469,12 +513,12 @@ document.addEventListener('DOMContentLoaded', function() {
         border-color: #ffe082 !important;
     }
     
-    /* Bank Transfer Tab Styles */
-    .payment-tab-bank {
+    /* InstaPay Tab Styles */
+    .payment-tab-instapay {
         color: #c13584;
     }
     
-    .payment-tab-bank:hover, .payment-tab-bank.active {
+    .payment-tab-instapay:hover, .payment-tab-instapay.active {
         background-color: rgba(193, 53, 132, 0.1) !important;
         color: #833ab4 !important;
         border-color: rgba(193, 53, 132, 0.3) !important;

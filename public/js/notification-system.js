@@ -336,6 +336,7 @@ class NotificationSystem {
 
     getNotificationIcon(type) {
         const icons = {
+            // 🎓 ACADEMIC & LEARNING
             'course_welcome': 'fas fa-graduation-cap',
             'quiz_completed': 'fas fa-check-circle',
             'achievement': 'fas fa-trophy',
@@ -352,13 +353,43 @@ class NotificationSystem {
             'error': 'fas fa-exclamation-circle',
             'success': 'fas fa-check',
             'warning': 'fas fa-exclamation-triangle',
-            'info': 'fas fa-info-circle'
+            'info': 'fas fa-info-circle',
+            
+            // 🎯 TUTOR MODE SPECIFIC - SIMPLIFIED
+            'tutor_quiz_completed': 'fas fa-check-circle', // SAME AS REGULAR QUIZ
+            'tutor_needs_practice': 'fas fa-redo-alt',
+            
+            // 📝 ASSIGNMENT SYSTEM - SIMPLIFIED
+            'assignment_completed': 'fas fa-clipboard-check',
+            'assignment_perfect': 'fas fa-star', // PURPLE STAR LIKE QUIZ
+            'tutor_assignment_assigned': 'fas fa-user-graduate',
+            'assignment_due_date_set': 'fas fa-calendar-alt',
+            'assignment_overdue_1h': 'fas fa-exclamation-circle',
+            'assignment_overdue_6h': 'fas fa-exclamation-triangle',
+            'assignment_overdue_24h': 'fas fa-exclamation',
+            'assignment_overdue_days': 'fas fa-times-circle',
+            'assignment_due_1h': 'fas fa-clock',
+            'assignment_due_3h': 'fas fa-clock',
+            'assignment_due_6h': 'fas fa-clock',
+            'assignment_due_12h': 'fas fa-clock',
+            'assignment_due_24h': 'fas fa-calendar',
+            'assignment_due_48h': 'fas fa-calendar-day',
+            
+            // 🎯 SPECIAL FEATURES - REALISTIC TRIGGERS ONLY!
+            'perfect_score': 'fas fa-star', // PURPLE STAR!
+            'topic_mastery': 'fas fa-check-circle', // GREEN CHECK MARK!
+            'consistency_king': 'fas fa-crown', // Triggered after 7+ day study streak
+            
+            // 💊 MEDCAPSULE WELCOME & ENROLLMENT - HALF BLUE HALF RED CAPSULE!
+            'medcapsule_welcome': 'fas fa-capsules', // WELCOME MESSAGE ON LOGIN
+            'medcapsule_enrolled': 'fas fa-capsules' // COOL CAPSULE ICON!
         };
         return icons[type] || 'fas fa-bell';
     }
 
     getNotificationIconColor(type) {
         const colors = {
+            // 🎓 ACADEMIC & LEARNING
             'course_welcome': '#28a745',
             'quiz_completed': '#007bff',
             'achievement': '#ffc107',
@@ -375,7 +406,36 @@ class NotificationSystem {
             'error': '#dc3545',
             'success': '#28a745',
             'warning': '#ffc107',
-            'info': '#17a2b8'
+            'info': '#17a2b8',
+            
+            // 🎯 TUTOR MODE SPECIFIC - SIMPLIFIED
+            'tutor_quiz_completed': '#3b82f6',      // SAME BLUE AS REGULAR QUIZ
+            'tutor_needs_practice': '#ef4444',      // red-500
+            
+            // 📝 ASSIGNMENT SYSTEM - SIMPLIFIED
+            'assignment_completed': '#3b82f6',      // BLUE LIKE QUIZ
+            'assignment_perfect': '#8b5cf6',        // PURPLE LIKE QUIZ
+            'tutor_assignment_assigned': '#8b5cf6', // violet-500
+            'assignment_due_date_set': '#6b7280',   // gray-500
+            'assignment_overdue_1h': '#ef4444',     // red-500
+            'assignment_overdue_6h': '#dc2626',     // red-600
+            'assignment_overdue_24h': '#b91c1c',    // red-700
+            'assignment_overdue_days': '#991b1b',   // red-800
+            'assignment_due_1h': '#ef4444',         // red-500
+            'assignment_due_3h': '#f59e0b',         // amber-500
+            'assignment_due_6h': '#eab308',         // yellow-500
+            'assignment_due_12h': '#06b6d4',        // cyan-500
+            'assignment_due_24h': '#3b82f6',        // blue-500
+            'assignment_due_48h': '#6b7280',        // gray-500
+            
+            // 🎯 SPECIAL FEATURES - REALISTIC TRIGGERS!
+            'perfect_score': '#8b5cf6',     // PURPLE STAR!
+            'topic_mastery': '#10b981',     // GREEN CHECK MARK!
+            'consistency_king': '#f59e0b',  // amber-500 (7+ day streak)
+            
+            // 💊 MEDCAPSULE WELCOME & ENROLLMENT - SPECIAL GRADIENT COLOR!
+            'medcapsule_welcome': '#3b82f6',   // BLUE (welcome message on login)
+            'medcapsule_enrolled': '#3b82f6'   // BLUE (will add red gradient in CSS)
         };
         return colors[type] || '#6c757d';
     }

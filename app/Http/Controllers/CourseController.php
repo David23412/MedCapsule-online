@@ -9,6 +9,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Storage;
 use App\Models\Course;
 use App\Models\Topic;
 
@@ -107,7 +108,7 @@ class CourseController extends Controller
                 ->with(['users' => function($query) {
                     $query->select('users.id', 'users.name', 'users.email', 'users.profile_picture_url')
                         ->where('course_user.is_enrolled', true)
-                        ->take(4);
+                        ->take(6); // Increased to show more users
                 }]);
 
             // Apply academic year filter if provided
@@ -137,15 +138,18 @@ class CourseController extends Controller
             $course->completion_percentage = 0;
             $course->mastered_topics_count = 0;
             
-            // Format enrolled users for display
-            $course->enrolled_preview = $course->users->take(3)->map(function($user) {
+            // Format enrolled users for display - show up to 5 users
+            $course->enrolled_preview = $course->users->take(5)->map(function($user) {
                 return [
                     'name' => $user->name,
                     'profile_picture_url' => $user->profile_picture_url,
                     'initial' => strtoupper(substr($user->name, 0, 1))
                 ];
             });
-            $course->has_more = $course->users->count() > 3;
+            $course->has_more = $course->users->count() > 5;
+            
+            // Ensure enrolled_users_count is always set
+            $course->enrolled_users_count = $course->enrolled_users_count ?? 0;
         }
     }
 
@@ -191,7 +195,7 @@ class CourseController extends Controller
             ->with(['users' => function($query) {
                 $query->select('users.id', 'users.name', 'users.email', 'users.profile_picture_url')
                     ->where('course_user.is_enrolled', 1)
-                    ->take(4);
+                    ->take(6); // Increased to show more users
             }]);
     }
 
@@ -293,18 +297,22 @@ class CourseController extends Controller
     /**
      * Add a new course (admin only)
      */
-    public function addCourse(CourseRequest $request)
+    public function addCourse(Request $request)
     {
         $validated = $request->validate([
             'name' => 'required|string|max:255|unique:courses,name',
             'description' => 'required|string|max:2000',
-            'image' => 'nullable|url|max:2048',
+            'image_file' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:5120', // 5MB max
+            'image_url' => 'nullable|url|max:2048',
             'color' => 'required|string|regex:/^#[a-fA-F0-9]{6}$/',
             'title_color' => 'required|string|regex:/^#[a-fA-F0-9]{6}$/',
             'academic_year' => 'required|string|in:YEAR 1 - SEMESTER 1,YEAR 1 - SEMESTER 2,YEAR 2 - SEMESTER 1,YEAR 2 - SEMESTER 2,YEAR 3 - SEMESTER 1,YEAR 3 - SEMESTER 2,YEAR 4 - SEMESTER 1,YEAR 4 - SEMESTER 2,YEAR 5 - SEMESTER 1,YEAR 5 - SEMESTER 2,YEAR 6 - SEMESTER 1,YEAR 6 - SEMESTER 2,SAT,EST,ACT',
             'price' => 'nullable|numeric|min:0|max:999999.99'
         ], [
             'name.unique' => 'A course with this name already exists.',
+            'image_file.image' => 'The uploaded file must be an image.',
+            'image_file.mimes' => 'The image must be a file of type: jpeg, png, jpg, gif.',
+            'image_file.max' => 'The image may not be greater than 5MB.',
             'color.regex' => 'Color must be a valid hex color code (e.g., #FF5733).',
             'title_color.regex' => 'Title color must be a valid hex color code (e.g., #FF5733).',
             'academic_year.required' => 'Academic year is required.',
@@ -312,10 +320,25 @@ class CourseController extends Controller
         ]);
 
         try {
+            // Handle image upload or URL
+            $imageUrl = null;
+            
+            if ($request->hasFile('image_file')) {
+                // Store uploaded file
+                $file = $request->file('image_file');
+                $extension = $file->getClientOriginalExtension();
+                $filename = time() . '_' . uniqid() . '.' . $extension;
+                $path = $file->storeAs('course-images', $filename, 'public');
+                $imageUrl = '/storage/' . $path; // Use relative path instead of asset()
+            } elseif ($validated['image_url']) {
+                // Use provided URL
+                $imageUrl = $validated['image_url'];
+            }
+
             $course = Course::create([
                 'name' => $validated['name'],
                 'description' => $validated['description'],
-                'image' => $validated['image'] ?? null,
+                'image' => $imageUrl,
                 'color' => $validated['color'],
                 'title_color' => $validated['title_color'],
                 'academic_year' => $validated['academic_year'],

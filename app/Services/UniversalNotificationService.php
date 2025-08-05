@@ -16,16 +16,52 @@ class UniversalNotificationService
         // 🎓 ACADEMIC & LEARNING
         'course_welcome' => 'fas fa-graduation-cap',
         'quiz_completed' => 'fas fa-check-circle',
+        'perfect_score' => 'fas fa-star',
+        'first_attempt' => 'fas fa-rocket',
         'topic_mastery' => 'fas fa-graduation-cap',
         'level_up' => 'fas fa-level-up-alt',
         'assignment_due' => 'fas fa-clock',
         'grade_released' => 'fas fa-star',
         
+        // 🎯 TUTOR MODE SPECIFIC
+        'tutor_session_completed' => 'fas fa-bullseye',
+        'tutor_mastery_achieved' => 'fas fa-trophy',
+        'tutor_perfect_mastery' => 'fas fa-crown',
+        'tutor_perfect' => 'fas fa-star',
+        'tutor_strong_performance' => 'fas fa-thumbs-up',
+        'tutor_needs_practice' => 'fas fa-redo-alt',
+        
+        // 📝 ASSIGNMENT SPECIFIC
+        'assignment_assigned' => 'fas fa-calendar',
+        'assignment_completed' => 'fas fa-clipboard-check',
+        'assignment_exceptional' => 'fas fa-star',
+        'assignment_excellent' => 'fas fa-trophy',
+        'assignment_good' => 'fas fa-thumbs-up',
+        'assignment_passed' => 'fas fa-check-circle',
+        'assignment_needs_review' => 'fas fa-book',
+        'assignment_needs_improvement' => 'fas fa-dumbbell',
+        'assignment_perfect' => 'fas fa-bullseye',
+        
+        // ⏰ ASSIGNMENT DUE REMINDERS (Simplified)
+        'assignment_due_1h' => 'fas fa-exclamation-circle',
+        'assignment_due_3h' => 'fas fa-exclamation-circle',
+        
+        // 🚨 ASSIGNMENT OVERDUE
+        'assignment_overdue' => 'fas fa-exclamation-circle',
+        
+        // 📋 ASSIGNMENT SPECIFIC
+        'assignment_created' => 'fas fa-clipboard-list',
+        'assignment_due' => 'fas fa-clock',
+        'assignment_completed' => 'fas fa-clipboard-check',
+        'assignment_perfect' => 'fas fa-medal',
+        'assignment_passed' => 'fas fa-check-circle',
+        'assignment_needs_improvement' => 'fas fa-exclamation-triangle',
+        
         // 🏆 ACHIEVEMENTS & MILESTONES
         'achievement' => 'fas fa-trophy',
         'streak_milestone' => 'fas fa-fire',
         'study_streak' => 'fas fa-fire',
-        'correct_answers_milestone' => 'fas fa-trophy',
+        'correct_answers_milestone' => 'fas fa-star-of-life',
         'quiz_mastered' => 'fas fa-graduation-cap',
         
         // ⚡ ENERGY & PROGRESS (LIGHTNING YELLOW ONE!)
@@ -34,16 +70,37 @@ class UniversalNotificationService
         'power_up' => 'fas fa-bolt',
         'momentum' => 'fas fa-bolt',
         
-        // 🔥 STREAKS & MOTIVATION
+        // 🔥 COMPREHENSIVE STREAK SYSTEM (Standardized with bolt icons)
         'streak_reset' => 'fas fa-fire',
-        'streak_milestone' => 'fas fa-fire',
-        'study_streak' => 'fas fa-fire',
-        'burning_streak' => 'fas fa-fire',
+        'streak_day_1' => 'fas fa-seedling',
+        'streak_day_2' => 'fas fa-rocket',
+        'streak_day_3' => 'fas fa-bolt',
+        'streak_week_1' => 'fas fa-bolt',
+        'streak_day_10' => 'fas fa-bolt',
+        'streak_week_2' => 'fas fa-bolt',
+        'streak_day_15' => 'fas fa-bolt',
+        'streak_day_21' => 'fas fa-bolt',
+        'streak_month_1' => 'fas fa-bolt',
+        'streak_month_2' => 'fas fa-bolt',
+        'streak_month_3' => 'fas fa-bolt',
+        'streak_month_4' => 'fas fa-bolt',
+        'streak_month_5' => 'fas fa-bolt',
+        'streak_month_6' => 'fas fa-bolt',
+        'streak_month_7' => 'fas fa-bolt',
+        'streak_month_8' => 'fas fa-bolt',
+        'streak_month_9' => 'fas fa-bolt',
+        'streak_month_10' => 'fas fa-bolt',
+        'streak_month_11' => 'fas fa-bolt',
+        'streak_month_12' => 'fas fa-bolt',
+        'streak_year_1' => 'fas fa-bolt',
+        
+        // 💎 PREMIUM COURSE MASTERY
+        'course_mastery' => 'fas fa-gem',
         
         // ⚠️ WARNINGS & REVIEWS
         'review_mistakes' => 'fas fa-exclamation-triangle',
         'weak_topic_identified' => 'fas fa-exclamation-circle',
-        'skipped_questions_detected' => 'fas fa-forward',
+        'skipped_questions_detected' => 'fas fa-skip-forward',
         'topic_needs_review' => 'fas fa-exclamation-triangle',
         'review_reminder' => 'fas fa-clock',
         

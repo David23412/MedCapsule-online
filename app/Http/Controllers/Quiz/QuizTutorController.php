@@ -116,4 +116,59 @@ class QuizTutorController extends Controller
             'explanation' => $question->explanation
         ]);
     }
+
+    /**
+     * Handle tutor mode session completion
+     */
+    public function completeTutorSession(Request $request)
+    {
+        try {
+            $user = auth()->user();
+            $sessionData = $request->all();
+            
+            $correctAnswers = $sessionData['correct_answers'] ?? 0;
+            $totalQuestions = $sessionData['total_questions'] ?? 1;
+            $courseId = $sessionData['course_id'] ?? null;
+            $topicId = $sessionData['topic_id'] ?? null;
+            
+            // Get course and topic names
+            $course = $courseId ? Course::find($courseId) : null;
+            $topic = $topicId ? Topic::find($topicId) : null;
+            
+            // Trigger tutor mode completion notifications
+            \App\Services\NotificationTriggerService::onTutorModeCompleted($user, [
+                'correct_answers' => $correctAnswers,
+                'total_questions' => $totalQuestions,
+                'course_name' => $course->name ?? 'Course',
+                'topic_name' => $topic->name ?? 'Topic',
+                'course_id' => $courseId,
+                'topic_id' => $topicId,
+                'mode' => 'tutor'
+            ]);
+            
+            Log::info('Tutor session completed', [
+                'user_id' => $user->id,
+                'correct_answers' => $correctAnswers,
+                'total_questions' => $totalQuestions,
+                'course_id' => $courseId,
+                'topic_id' => $topicId
+            ]);
+            
+            return response()->json([
+                'success' => true,
+                'message' => 'Tutor session completed successfully'
+            ]);
+            
+        } catch (\Exception $e) {
+            Log::error('Error completing tutor session:', [
+                'error' => $e->getMessage(),
+                'user_id' => auth()->id()
+            ]);
+            
+            return response()->json([
+                'success' => false,
+                'message' => 'Error completing tutor session'
+            ], 500);
+        }
+    }
 }

@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Http\Requests\LoginRequest;
 use App\Services\QuizCacheService;
+use App\Services\SessionSecurityService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Log;
 use App\Services\QuizPerformanceService;
@@ -18,10 +19,12 @@ use Illuminate\Support\Facades\Cache;
     // TODO: Inject services in constructor
     class LoginController extends Controller
 {
-    public function __construct()
+    protected $securityService;
+
+    public function __construct(SessionSecurityService $securityService)
     {
         // DON'T call parent::__construct() to avoid auth middleware
-        // Controller initialized log ANNIHILATED
+        $this->securityService = $securityService;
     }
 
     public function showLoginForm()
@@ -43,6 +46,22 @@ use Illuminate\Support\Facades\Cache;
     {
         $credentials = $request->validated();
 
+        // Check if user is temporarily blocked
+        $email = $credentials['email'];
+        $user = \App\Models\User::where('email', $email)->first();
+        
+        if ($user) {
+            $blockKey = "blocked_user_{$user->id}";
+            if (Cache::has($blockKey)) {
+                return back()->withErrors([
+                    'email' => 'Account temporarily blocked due to suspicious activity. Please try again later.'
+                ])->onlyInput('email');
+            }
+
+            // Increment login attempts for security tracking
+            $this->securityService->incrementLoginAttempts($user->id);
+        }
+
         if (Auth::attempt($credentials)) {
             $request->session()->regenerate();
             
@@ -50,6 +69,35 @@ use Illuminate\Support\Facades\Cache;
             DB::table('sessions')
                 ->where('id', $request->session()->getId())
                 ->update(['is_visitor' => false]);
+
+            $user = Auth::user();
+            
+            // Analyze login attempt for security risks
+            $securityAnalysis = $this->securityService->analyzeLoginAttempt($user, $request);
+            
+            // Log the login event
+            $this->securityService->logSecurityEvent($user, 'login', $request, $securityAnalysis);
+            
+            // Handle high-risk logins
+            if ($securityAnalysis['risk_level'] === 'critical') {
+                // Force logout and require additional verification
+                Auth::logout();
+                $request->session()->invalidate();
+                
+                return redirect()->route('login')->with('error', 
+                    'Suspicious login detected. Please verify your identity and try again.');
+            }
+            
+            // Update user security data
+            $user->update([
+                'active_session_token' => $request->session()->getId(),
+                'session_created_at' => now(),
+                'device_fingerprint' => $securityAnalysis['fingerprint'],
+                'last_login_ip' => $securityAnalysis['ip'],
+                'last_user_agent' => $request->userAgent(),
+                'last_security_check' => now(),
+                'concurrent_login_attempts' => 0 // Reset on successful login
+            ]);
 
             // Auto-enroll in all free courses with eager loading
             $user = Auth::user()->load([
@@ -73,7 +121,26 @@ use Illuminate\Support\Facades\Cache;
                 // Continue with login even if auto-enrollment fails
             }
 
+            // 🔔 TRIGGER MEDCAPSULE WELCOME NOTIFICATION ON LOGIN
+            try {
+                \App\Services\NotificationTriggerService::onUserLogin($user);
+            } catch (\Exception $e) {
+                \Log::warning('Failed to send welcome notification on login', [
+                    'user_id' => $user->id,
+                    'error' => $e->getMessage()
+                ]);
+                // Continue with login even if notification fails
+            }
+
             return redirect()->intended('/courses');
+        }
+
+        // Log failed login attempt
+        if ($user) {
+            $this->securityService->logSecurityEvent($user, 'failed_login', $request, [
+                'risk_level' => 'medium',
+                'reason' => 'Invalid credentials'
+            ]);
         }
 
         return back()->withErrors([
@@ -82,6 +149,25 @@ use Illuminate\Support\Facades\Cache;
 
     public function logout(Request $request)
     {
+        // Log logout event and clear session data
+        if (Auth::check()) {
+            $user = Auth::user();
+            
+            // Log the logout event
+            $this->securityService->logSecurityEvent($user, 'logout', $request, [
+                'risk_level' => 'low',
+                'voluntary' => true
+            ]);
+            
+            // Clear all security-related session data
+            $user->update([
+                'active_session_token' => null,
+                'session_created_at' => null,
+                'device_fingerprint' => null,
+                'last_security_check' => null
+            ]);
+        }
+        
         Auth::logout();
         $request->session()->invalidate();
         $request->session()->regenerateToken();

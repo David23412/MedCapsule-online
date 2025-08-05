@@ -95,7 +95,14 @@ class Kernel extends ConsoleKernel
                 ->at('02:30')
                 ->withoutOverlapping()
                 ->runInBackground()
-                ->appendOutputTo(storage_path('logs/assignment-expiration.log'));}
+                ->appendOutputTo(storage_path('logs/assignment-expiration.log'));
+                
+        // Send assignment reminders at different intervals
+        $schedule->command('assignments:send-reminders')
+                ->hourly()
+                ->withoutOverlapping()
+                ->runInBackground()
+                ->appendOutputTo(storage_path('logs/assignment-reminders.log'));}
 
     /**
      * Register the commands for the application.
@@ -130,5 +137,6 @@ class Kernel extends ConsoleKernel
         Commands\BladeStressTestCommand::class,
         Commands\ModelStressTestEngine::class,
         Commands\ModelStressMonitor::class,
+        Commands\SendAssignmentReminders::class,
     ];
 } 

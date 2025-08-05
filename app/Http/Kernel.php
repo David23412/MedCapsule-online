@@ -36,6 +36,7 @@ class Kernel extends HttpKernel
             \Illuminate\View\Middleware\ShareErrorsFromSession::class,
             \App\Http\Middleware\VerifyCsrfToken::class,
             \Illuminate\Routing\Middleware\SubstituteBindings::class,
+            \App\Http\Middleware\SingleSessionMiddleware::class,
             \App\Http\Middleware\TrackUserActivity::class,
             \App\Http\Middleware\PerformanceMonitoring::class,
             \App\Http\Middleware\CourseCacheBuster::class,
@@ -79,5 +80,7 @@ class Kernel extends HttpKernel
         'assignment.security' => \App\Http\Middleware\AssignmentSecurityMiddleware::class,
         'assignment.access' => \App\Http\Middleware\CheckAssignmentAccess::class,
         'course.cache.buster' => \App\Http\Middleware\CourseCacheBuster::class,
+        'single.session' => \App\Http\Middleware\SingleSessionMiddleware::class,
+        'update.session' => \App\Http\Middleware\UpdateActiveSession::class,
     ];
 } 

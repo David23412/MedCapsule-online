@@ -27,6 +27,14 @@ class User extends Authenticatable
         'xp',
         'study_streak_days',
         'study_time_seconds',
+        'active_session_token',
+        'session_created_at',
+        'device_fingerprint',
+        'last_login_ip',
+        'last_user_agent',
+        'last_security_check',
+        'concurrent_login_attempts',
+        'last_suspicious_activity',
     ];
 
     protected $appends = ['course_progress'];
@@ -45,11 +53,15 @@ class User extends Authenticatable
     protected $casts = [
         'email_verified_at' => 'datetime',
         'last_active_at' => 'datetime',
+        'session_created_at' => 'datetime',
+        'last_security_check' => 'datetime',
+        'last_suspicious_activity' => 'datetime',
         'password' => 'hashed',
         'role' => 'string',
         'profile_picture_url' => 'string',
         'correct_answers_count' => 'integer',
         'total_questions_attempted' => 'integer',
+        'concurrent_login_attempts' => 'integer',
     ];
 
     /**
@@ -153,6 +165,14 @@ class User extends Authenticatable
     public function unreadNotifications()
     {
         return $this->notifications()->where('read', false);
+    }
+
+    /**
+     * Get the user's security logs.
+     */
+    public function securityLogs()
+    {
+        return $this->hasMany(SessionSecurityLog::class);
     }
 
     /**

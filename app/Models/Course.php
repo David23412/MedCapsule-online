@@ -242,7 +242,10 @@ class Course extends Model
             return 'Free';
         }
         
-        return number_format($this->price, 2) . ' ' . $this->currency;
+        // Round to nearest .99 (e.g., 279.98 becomes 279.99)
+        $roundedPrice = floor($this->price) + 0.99;
+        
+        return number_format($roundedPrice, 2) . ' ' . ($this->currency ?? 'EGP');
     }
 
     /** -------------------
@@ -294,6 +297,86 @@ class Course extends Model
 
         static::updated(function ($course) {
             $course->clearCaches();
+            
+            // 🚀 BULLETPROOF PRICE CHANGE LOGIC
+            if ($course->isDirty('price')) {
+                $originalPrice = $course->getOriginal('price');
+                $newPrice = $course->price;
+                
+                // SCENARIO 1: FREE TO PAID - Revoke all enrollments
+                if ($originalPrice == 0 && $newPrice > 0) {
+                    \Illuminate\Support\Facades\Log::info('🔒 Course changed from FREE to PAID - revoking enrollments', [
+                        'course_id' => $course->id,
+                        'course_name' => $course->name,
+                        'old_price' => $originalPrice,
+                        'new_price' => $newPrice
+                    ]);
+                    
+                    // Remove all enrollments for this course
+                    DB::table('course_user')
+                        ->where('course_id', $course->id)
+                        ->where('is_enrolled', true)
+                        ->delete();
+                    
+                    \Illuminate\Support\Facades\Log::info('✅ Enrollments revoked for course that became paid', [
+                        'course_id' => $course->id,
+                        'course_name' => $course->name
+                    ]);
+                }
+                
+                // SCENARIO 2: PAID TO FREE - Auto-enroll ALL users (keep existing enrollments)
+                elseif ($originalPrice > 0 && $newPrice == 0) {
+                    \Illuminate\Support\Facades\Log::info('🆓 Course changed from PAID to FREE - auto-enrolling all users', [
+                        'course_id' => $course->id,
+                        'course_name' => $course->name,
+                        'old_price' => $originalPrice,
+                        'new_price' => $newPrice
+                    ]);
+                    
+                    // Get all users who are NOT already enrolled
+                    $allUsers = \App\Models\User::all();
+                    $enrolledUserIds = DB::table('course_user')
+                        ->where('course_id', $course->id)
+                        ->where('is_enrolled', true)
+                        ->pluck('user_id')
+                        ->toArray();
+                    
+                    $usersToEnroll = $allUsers->whereNotIn('id', $enrolledUserIds);
+                    $enrollmentData = [];
+                    
+                    foreach ($usersToEnroll as $user) {
+                        $enrollmentData[] = [
+                            'user_id' => $user->id,
+                            'course_id' => $course->id,
+                            'is_enrolled' => true,
+                            'enrolled_at' => now(),
+                            'created_at' => now(),
+                            'updated_at' => now()
+                        ];
+                    }
+                    
+                    if (!empty($enrollmentData)) {
+                        DB::table('course_user')->insert($enrollmentData);
+                        
+                        \Illuminate\Support\Facades\Log::info('✅ Auto-enrolled users in free course', [
+                            'course_id' => $course->id,
+                            'course_name' => $course->name,
+                            'users_enrolled' => count($enrollmentData),
+                            'existing_enrollments_preserved' => count($enrolledUserIds)
+                        ]);
+                    }
+                }
+                
+                // SCENARIO 3: PAID TO PAID - Keep all existing enrollments (no action needed)
+                elseif ($originalPrice > 0 && $newPrice > 0) {
+                    \Illuminate\Support\Facades\Log::info('💰 Course price changed (PAID to PAID) - preserving all enrollments', [
+                        'course_id' => $course->id,
+                        'course_name' => $course->name,
+                        'old_price' => $originalPrice,
+                        'new_price' => $newPrice
+                    ]);
+                }
+            }
             
             // Increment cache version to invalidate all course caches
             $currentVersion = Cache::get('courses_cache_version', 1);

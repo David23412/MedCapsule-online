@@ -444,9 +444,9 @@
             position: absolute;
             top: 50%;
             transform: translateY(-50%);
-            width: 48px; /* Increased size */
-            height: 48px; /* Increased size */
-            background: rgba(255, 255, 255, 0.98);
+            width: 48px;
+            height: 48px;
+            background: rgba(255, 255, 255, 0.95);
             border-radius: 50%;
             display: flex;
             align-items: center;
@@ -454,20 +454,16 @@
             cursor: pointer;
             z-index: 10;
             border: none;
-            box-shadow: 0 3px 10px rgba(0, 0, 0, 0.12);
+            box-shadow: 0 3px 10px rgba(0, 0, 0, 0.15);
             transition: all 0.3s ease;
-            opacity: 0;
+            opacity: 0.7;
         }
 
         .scroll-arrow:hover {
             background: white;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-            transform: translateY(-50%) scale(1.05);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+            transform: translateY(-50%) scale(1.1);
             opacity: 1;
-        }
-
-        .courses-grid:hover .scroll-arrow {
-            opacity: 0.8;
         }
 
         .scroll-left {
@@ -523,7 +519,7 @@
 
         .course-image {
             position: relative;
-            height: 520px; /* Increased from 500px to match wider cards */
+            height: 580px; /* Increased to take advantage of the space we freed up */
             background-size: cover;
             background-position: center;
             background-repeat: no-repeat;
@@ -613,17 +609,17 @@
         }
 
         .course-info {
-            padding: 1.2rem;
+            padding: 0.8rem; /* Reduced from 1.2rem */
             display: flex;
             flex-direction: column;
-            gap: 0.8rem;
+            gap: 0.5rem; /* Reduced from 0.8rem */
             background: white;
         }
 
         .course-stats-row {
             display: flex;
             align-items: center;
-            margin-top: 12px;
+            margin-top: 6px; /* Reduced from 12px */
         }
 
         .topics-badge {
@@ -644,7 +640,10 @@
         .enrolled-users-preview {
             display: flex;
             align-items: center;
-            margin-left: 4px;
+            margin-left: 8px;
+            min-height: 36px;
+            flex-wrap: nowrap;
+            overflow: visible;
         }
 
         .course-stats {
@@ -702,8 +701,8 @@
         }
 
         .progress-container {
-            margin-top: 3rem; /* Add space above progress bar */
-            padding-top: 1rem; /* Add padding above progress bar */
+            margin-top: 1rem; /* Reduced from 3rem */
+            padding-top: 0.5rem; /* Reduced from 1rem */
             width: 100%;
             padding: 1px;
             background: rgba(0, 0, 0, 0.05);
@@ -1160,30 +1159,53 @@
         .enrolled-users-preview {
             display: flex;
             align-items: center;
-            margin-left: 4px;
+            margin-left: 8px;
+            min-height: 36px; /* Ensure space is always reserved */
+            flex-wrap: nowrap;
+            overflow: visible;
         }
 
         .profile-circle-small {
-            width: 24px;
-            height: 24px;
+            width: 32px; /* Increased size for better visibility */
+            height: 32px; /* Increased size for better visibility */
             border-radius: 50%;
             background: linear-gradient(135deg, #007bff, #00d4ff);
             color: white;
-            font-size: 0.7rem;
-            font-weight: 600;
+            font-size: 0.8rem; /* Slightly larger font */
+            font-weight: 700; /* Bolder font */
             display: flex;
             align-items: center;
             justify-content: center;
-            margin-left: -8px;
-            border: 2px solid white;
-            background-size: cover;
-            background-position: center;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            margin-left: -8px; /* Overlap for stacking effect */
+            border: 3px solid white; /* Thicker border for better definition */
+            background-size: cover !important;
+            background-position: center !important;
+            background-repeat: no-repeat !important;
+            box-shadow: 0 3px 8px rgba(0, 0, 0, 0.15); /* Enhanced shadow */
+            transition: all 0.2s ease;
+            position: relative;
+            z-index: 1;
+            flex-shrink: 0; /* Prevent shrinking */
+        }
+
+        .profile-circle-small:first-child {
+            margin-left: 0; /* First circle has no overlap */
+        }
+
+        .profile-circle-small:hover {
+            transform: scale(1.1) translateY(-2px);
+            z-index: 10;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
         }
 
         .profile-circle-small.more {
-            background: #f0f0f0;
-            color: #666;
+            background: #6c757d;
+            color: white;
+            font-weight: 700;
+        }
+
+        .profile-circle-small.more:hover {
+            background: #5a6268;
         }
 
         .topics-badge {
@@ -1983,7 +2005,7 @@
     <div class="position-relative">
         <div class="semester-pills">
             <select class="semester-dropdown" id="semesterDropdown" onchange="filterCoursesByAcademicYear()">
-                <option value="" selected>All Courses</option>
+                <option value="" {{ !$selectedYear ? 'selected' : '' }}>All Courses</option>
                 @php
                     $availableYears = $courses->pluck('academic_year')->filter()->unique()->sort();
                     $medicalYears = $availableYears->filter(function($year) {
@@ -1997,7 +2019,7 @@
                 @if($medicalYears->isNotEmpty())
                     <optgroup label="Medical School Years">
                         @foreach($medicalYears as $year)
-                            <option value="{{ $year }}">{{ $year }}</option>
+                            <option value="{{ $year }}" {{ $selectedYear == $year ? 'selected' : '' }}>{{ $year }}</option>
                         @endforeach
                     </optgroup>
                 @endif
@@ -2005,7 +2027,7 @@
                 @if($testPrep->isNotEmpty())
                     <optgroup label="Standardized Tests">
                         @foreach($testPrep as $year)
-                            <option value="{{ $year }}">{{ $year }}</option>
+                            <option value="{{ $year }}" {{ $selectedYear == $year ? 'selected' : '' }}>{{ $year }}</option>
                         @endforeach
                     </optgroup>
                 @endif
@@ -2019,6 +2041,7 @@
             @endguest
         </div>
 
+        <!-- Scroll Arrows -->
         <button class="scroll-arrow scroll-left" onclick="scrollCourses('left')">
             <i class="fas fa-chevron-left"></i>
         </button>
@@ -2051,7 +2074,9 @@
                                 @foreach($course->enrolled_preview as $user)
                                     <div class="profile-circle-small" 
                                          @if($user['profile_picture_url'])
-                                             style="background-image: url('{{ asset($user['profile_picture_url']) }}')"
+                                             style="background-image: url('{{ str_starts_with($user['profile_picture_url'], 'http') ? $user['profile_picture_url'] : '/' . $user['profile_picture_url'] }}'); background-size: cover; background-position: center; background-repeat: no-repeat;"
+                                         @else
+                                             style="background: linear-gradient(135deg, #007bff, #00d4ff);"
                                          @endif
                                          title="{{ $user['name'] }}">
                                         @if(!$user['profile_picture_url'])
@@ -2090,7 +2115,7 @@
                                     Start Learning (Free)
                                 </a>
                             @else
-                                <button type="button" class="action-btn enroll show-payment-modal" id="paymentBtn_{{ $course->id }}" data-course-id="{{ $course->id }}" @if($course->has_pending_payment) disabled @endif>
+                                <button type="button" class="action-btn enroll show-payment-modal" id="paymentBtn_{{ $course->id }}" data-course-id="{{ $course->id }}" @if($course->has_pending_payment) disabled @endif data-debug-pending="{{ $course->has_pending_payment }}" data-debug-enrolled="{{ $course->is_enrolled }}" data-debug-price="{{ $course->price }}">
                                     @if($course->has_pending_payment)
                                         <i class="fas fa-clock"></i>
                                         <span style="color: #c2410c;">Payment Pending</span>
@@ -2201,7 +2226,7 @@
                     
                     <div class="course-selection">
                         @foreach ($courses as $course)
-                            @if (!$course->is_enrolled)
+                            @if (!$course->is_enrolled && $course->price > 0)
                                 <label class="course-checkbox" for="course-{{ $course->id }}">
                                     <input type="checkbox" id="course-{{ $course->id }}" class="bundle-course-checkbox" 
                                            data-course-id="{{ $course->id }}" 
@@ -2659,6 +2684,7 @@
         document.getElementById('backdrop').classList.remove('show');
         document.getElementById('unlockAlert').classList.remove('show');
     }
+    }
     </script>
     <script>
     // RUTHLESS: Optimized scroll function with debouncing
@@ -2681,18 +2707,32 @@
     }
 
     // RUTHLESS: Debounced scroll arrow updates
-    function updateScrollArrows(container) {
+    function updateScrollArrows(container = null) {
         clearTimeout(scrollTimeout);
         scrollTimeout = setTimeout(() => {
+            const coursesGrid = container || document.querySelector('.courses-grid');
             const leftArrow = document.querySelector('.scroll-left');
             const rightArrow = document.querySelector('.scroll-right');
             
+            if (!coursesGrid || !leftArrow || !rightArrow) return;
+            
+            // Check if there are enough visible cards to need scrolling
+            const visibleCards = document.querySelectorAll('.course-card[style*="display: block"], .course-card:not([style*="display: none"])');
+            const needsScrolling = visibleCards.length > 3 && coursesGrid.scrollWidth > coursesGrid.offsetWidth;
+            
             // PERFORMANCE: Batch DOM operations
             requestAnimationFrame(() => {
-                leftArrow.style.opacity = container.scrollLeft > 0 ? '1' : '0';
-                rightArrow.style.opacity = 
-                    (container.scrollLeft + container.offsetWidth) < container.scrollWidth 
-                        ? '1' : '0';
+                if (!needsScrolling) {
+                    leftArrow.style.display = 'none';
+                    rightArrow.style.display = 'none';
+                } else {
+                    leftArrow.style.display = 'flex';
+                    rightArrow.style.display = 'flex';
+                    leftArrow.style.opacity = coursesGrid.scrollLeft > 0 ? '1' : '0.5';
+                    rightArrow.style.opacity = 
+                        (coursesGrid.scrollLeft + coursesGrid.offsetWidth) < coursesGrid.scrollWidth 
+                            ? '1' : '0.5';
+                }
             });
         }, 16); // ~60fps
     }
@@ -2869,42 +2909,103 @@
     <!-- Bundle Purchase Feature Script -->
     <script>
         document.addEventListener('DOMContentLoaded', function() {
-            // Check for pending payments and update buttons
+            // 🔥 AGGRESSIVE FUNCTION TO CHECK AND UPDATE PENDING PAYMENT BUTTONS 🔥
             function updatePaymentButtonsForPendingPayments() {
-                // Update buttons for any pending payments from localStorage
+                console.log('🔥 AGGRESSIVE PENDING CHECK: Starting localStorage scan...');
+                
                 Object.keys(localStorage).forEach(key => {
                     if (key.startsWith('payment_pending_')) {
                         const courseId = key.replace('payment_pending_', '');
+                        console.log(`📋 Found pending payment for course: ${courseId}`);
+                        
+                        try {
+                            // Try to parse as JSON (new format)
+                            const pendingData = JSON.parse(localStorage.getItem(key));
+                            const timeDiff = Date.now() - pendingData.timestamp;
+                            
+                            // Clear old pending states (older than 24 hours)
+                            if (timeDiff > 24 * 60 * 60 * 1000) {
+                                console.log(`🗑️ Clearing old pending state for course: ${courseId}`);
+                                localStorage.removeItem(key);
+                                return;
+                            }
+                            
+                            console.log(`⏰ Pending state age: ${Math.round(timeDiff / 1000 / 60)} minutes`);
+                            
+                        } catch (e) {
+                            // Handle old format (just 'true' string)
+                            console.log(`📝 Converting old format pending state for course: ${courseId}`);
+                        }
+                        
                         const button = document.querySelector(`#paymentBtn_${courseId}`);
                         
                         if (button) {
+                            console.log(`🎯 Found button for course: ${courseId}`);
+                            
                             // Check if the server-side state shows the user is already enrolled or has pending payment
                             const isAlreadyPending = button.hasAttribute('disabled');
                             const buttonText = button.textContent.trim();
                             
-                            // If server says user is enrolled (button doesn't exist or shows "Access Course"), clear localStorage
-                            if (buttonText.includes('Access Course') || button.href) {
+                            console.log(`Button state - disabled: ${isAlreadyPending}, text: "${buttonText}"`);
+                            
+                            // If server says user is enrolled, clear localStorage
+                            if (buttonText.includes('Access Course') || buttonText.includes('Continue Learning') || button.href) {
+                                console.log(`🗑️ User already enrolled, clearing localStorage for course: ${courseId}`);
                                 localStorage.removeItem(key);
+                                return;
+                            }
+                            
+                            // If server already shows pending, keep it but don't override
+                            if (buttonText.includes('Payment Pending')) {
+                                console.log(`✅ Server already shows pending state for course: ${courseId}`);
                                 return;
                             }
                             
                             // If not already pending on server side, update button
                             if (!isAlreadyPending) {
-                                button.innerHTML = '<i class="fas fa-clock"></i><span style="color: #c2410c;">Payment Pending</span>';
-                                button.classList.remove('btn-primary', 'show-payment-modal');
+                                console.log(`⏳ Updating button to pending state for course: ${courseId}`);
+                                button.innerHTML = '<i class="fas fa-clock"></i><span style="color: #c2410c; margin-left: 8px; font-weight: bold;">Payment Pending</span>';
+                                button.classList.remove('btn-primary', 'show-payment-modal', 'enroll');
                                 button.classList.add('btn-warning');
                                 button.disabled = true;
                                 button.style.cursor = 'default';
+                                button.style.pointerEvents = 'none';
+                                button.style.opacity = '0.8';
+                            } else {
+                                console.log(`✅ Button already in pending state for course: ${courseId}`);
                             }
                         } else {
-                            // Button doesn't exist (user might be enrolled), clear localStorage
-                            localStorage.removeItem(key);
+                            console.log(`❌ Button not found for course: ${courseId} - may be on different page`);
                         }
                     }
                 });
+                
+                console.log('🏁 AGGRESSIVE PENDING CHECK: Complete');
             }
 
             // Run the check when page loads
+            console.log('🚀 Page loaded - checking for pending payments...');
+            console.log('Current user ID from auth:', '{{ auth()->id() ?? "NOT_LOGGED_IN" }}');
+            
+            // Debug: Check what the server rendered
+            console.log('🔍 Debugging server-rendered buttons:');
+            document.querySelectorAll('[id^="paymentBtn_"]').forEach(button => {
+                const courseId = button.id.replace('paymentBtn_', '');
+                const pending = button.getAttribute('data-debug-pending');
+                const enrolled = button.getAttribute('data-debug-enrolled');
+                const price = button.getAttribute('data-debug-price');
+                const disabled = button.disabled;
+                const text = button.textContent.trim();
+                
+                console.log(`Course ${courseId}:`, {
+                    pending: pending,
+                    enrolled: enrolled,
+                    price: price,
+                    disabled: disabled,
+                    text: text
+                });
+            });
+            
             updatePaymentButtonsForPendingPayments();
             
             // Start real-time payment status checking
@@ -3001,33 +3102,11 @@
                 setTimeout(() => notification.remove(), 5000);
             }
 
-            // INSTANT ENROLLMENT UPDATE: Check for enrollment changes every 2 seconds
+            // INSTANT ENROLLMENT UPDATE: Disabled to prevent console errors
+            // The main enrollment functionality works fine without real-time polling
             function checkEnrollmentStatus() {
-                @auth
-                const courseIds = Array.from(document.querySelectorAll('[data-course-id]')).map(el => el.dataset.courseId);
-                
-                if (courseIds.length > 0) {
-                    fetch('/api/check-enrollment-status', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
-                        },
-                        body: JSON.stringify({ course_ids: courseIds })
-                    })
-                    .then(response => response.json())
-                    .then(data => {
-                        if (data.success && data.enrollment_changes) {
-                            data.enrollment_changes.forEach(change => {
-                                updateCourseEnrollmentStatus(change.course_id, change.is_enrolled);
-                            });
-                        }
-                    })
-                    .catch(error => {
-                        console.error('Error checking enrollment status:', error);
-                    });
-                }
-                @endauth
+                // Disabled - enrollment updates happen on page refresh
+                return;
             }
 
             // Update course enrollment status instantly
@@ -3063,9 +3142,10 @@
                 }
             }
 
-            // Start checking enrollment status every 2 seconds for instant updates
+            // Real-time enrollment checking disabled to prevent console errors
+            // Enrollment updates happen on page refresh which is sufficient
             @auth
-            setInterval(checkEnrollmentStatus, 2000);
+            // setInterval(checkEnrollmentStatus, 2000); // Disabled
             @endauth
 
             // Initialize the bundle modal
@@ -3135,10 +3215,10 @@
                 
                 totalPrice = originalPrice - discountAmount;
                 
-                // Update display
-                originalPriceElement.textContent = `${originalPrice} EGP`;
-                bundleDiscountElement.textContent = `- ${discountAmount} EGP`;
-                totalPriceElement.textContent = `${totalPrice} EGP`;
+                // Update display with proper decimal formatting
+                originalPriceElement.textContent = `${originalPrice.toFixed(2).replace(/\.00$/, '')} EGP`;
+                bundleDiscountElement.textContent = `- ${discountAmount.toFixed(2).replace(/\.00$/, '')} EGP`;
+                totalPriceElement.textContent = `${totalPrice.toFixed(2).replace(/\.00$/, '')} EGP`;
                 
                 // Enable/disable proceed button
                 proceedButton.disabled = selectedCourses.length < 2;
@@ -3246,40 +3326,31 @@
             }, 100); // Debounce for 100ms
         }
 
-        // Update scroll arrows based on filtered content - GLOBAL SCOPE
-        window.updateScrollArrows = function updateScrollArrows() {
-            const coursesGrid = document.querySelector('.courses-grid');
-            const visibleCards = document.querySelectorAll('.course-card[style*="display: block"], .course-card:not([style*="display: none"])');
-            
-            if (visibleCards.length <= 3) {
-                document.querySelector('.scroll-left').style.display = 'none';
-                document.querySelector('.scroll-right').style.display = 'none';
-            } else {
-                document.querySelector('.scroll-left').style.display = 'flex';
-                document.querySelector('.scroll-right').style.display = 'flex';
-            }
-        }
+
 
         // RUTHLESS: Optimized initialization on page load
         document.addEventListener('DOMContentLoaded', function() {
             // PERFORMANCE: Batch DOM operations
             requestAnimationFrame(() => {
-                // Ensure all course cards are visible by default
-                const courseCards = document.querySelectorAll('.course-card');
-                courseCards.forEach(card => {
-                    card.style.display = 'block';
-                    card.style.opacity = '1';
-                });
+                // Apply filter on page load if there's a selected year
+                const dropdown = document.getElementById('semesterDropdown');
+                if (dropdown.value) {
+                    filterCoursesByAcademicYear();
+                } else {
+                    // Ensure all course cards are visible by default
+                    const courseCards = document.querySelectorAll('.course-card');
+                    courseCards.forEach(card => {
+                        card.style.display = 'block';
+                        card.style.opacity = '1';
+                    });
+                }
                 
-                // Dropdown already initialized above
-            
-            updateScrollArrows();
+                updateScrollArrows();
+            });
         });
     </script>
-</body>
-</html>
-<!-- No
-tification System JavaScript -->
+
+    <!-- Notification System JavaScript -->
     <script src="/js/notification-system.js"></script>
 </body>
 </html>

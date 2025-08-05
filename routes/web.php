@@ -135,12 +135,14 @@ Route::get('/api/active-users', function() {
     }
 })->name('api.active-users');
 
-// ADMIN ROUTES - NO AUTH MIDDLEWARE BULLSHIT
-Route::get('/manage-access', [UserCourseController::class, 'index'])->name('admin.user-course');
-
-// Manage Access Routes - NO CSRF
-Route::post('/manage-access/enroll', [UserCourseController::class, 'enroll'])->name('admin.user-course.enroll')->withoutMiddleware([\App\Http\Middleware\VerifyCsrfToken::class]);
-Route::post('/manage-access/revoke', [UserCourseController::class, 'revoke'])->name('admin.user-course.revoke')->withoutMiddleware([\App\Http\Middleware\VerifyCsrfToken::class]);
+// ADMIN ROUTES - Protected with admin middleware
+Route::middleware(['auth', 'admin'])->group(function () {
+    Route::get('/manage-access', [UserCourseController::class, 'index'])->name('admin.user-course');
+    
+    // Manage Access Routes - NO CSRF but with admin protection
+    Route::post('/manage-access/enroll', [UserCourseController::class, 'enroll'])->name('admin.user-course.enroll')->withoutMiddleware([\App\Http\Middleware\VerifyCsrfToken::class]);
+    Route::post('/manage-access/revoke', [UserCourseController::class, 'revoke'])->name('admin.user-course.revoke')->withoutMiddleware([\App\Http\Middleware\VerifyCsrfToken::class]);
+});
 // Route removed - restore functionality is handled by revoke method (toggle)
 
 // Auth routes
@@ -178,13 +180,15 @@ Route::middleware('auth')->group(function () {
     Route::post('/learn/save-time', [LearnController::class, 'saveStudyTime'])
         ->name('learn.save-time');
     
-    // Admin routes
-    Route::get('/add-topic', [TopicController::class, 'showAddTopicForm'])->name('add-topic.form');
-    Route::post('/add-topic', [TopicController::class, 'addTopic'])->name('add-topic');
-    Route::get('/add-course', [CourseController::class, 'showAddCourseForm'])->name('add-course.form');
-    Route::post('/add-course', [CourseController::class, 'addCourse'])->name('add-course');
-    Route::get('/add-question', [QuestionController::class, 'showAddQuestionForm'])->name('add-question.form');
-    Route::post('/add-question', [QuestionController::class, 'storeQuestion'])->name('add-question');
+    // Admin routes - Protected with admin middleware
+    Route::middleware('admin')->group(function () {
+        Route::get('/add-topic', [TopicController::class, 'showAddTopicForm'])->name('add-topic.form');
+        Route::post('/add-topic', [TopicController::class, 'addTopic'])->name('add-topic');
+        Route::get('/add-course', [CourseController::class, 'showAddCourseForm'])->name('add-course.form');
+        Route::post('/add-course', [CourseController::class, 'addCourse'])->name('add-course');
+        Route::get('/add-question', [QuestionController::class, 'showAddQuestionForm'])->name('add-question.form');
+        Route::post('/add-question', [QuestionController::class, 'storeQuestion'])->name('add-question');
+    });
 
     
     // EMERGENCY DIRECT DATABASE UPDATE - NO MIDDLEWARE, NO AUTH
@@ -241,13 +245,16 @@ Route::middleware('auth')->group(function () {
         }
         return 'No admin user found';
     });
-    Route::get('/manage-access/search-users', [UserCourseController::class, 'searchUsers'])->name('admin.user-course.search');
-    Route::get('/manage-access/user-courses/{userId}', [UserCourseController::class, 'userCourses'])->name('admin.user-course.user-courses');
-    Route::post('/manage-access/toggle-admin', [UserCourseController::class, 'toggleAdmin'])->name('admin.user-course.toggle-admin');
-    Route::get('/manage-access/payments', [UserCourseController::class, 'payments'])->name('admin.user-course.payments');
-    Route::get('/manage-access/enrollments', [UserCourseController::class, 'getEnrollments'])->name('admin.user-course.enrollments');
-    Route::get('/manage-access/user-enrollments', [UserCourseController::class, 'getUserEnrollments'])->name('admin.user-course.user-enrollments');
-    Route::post('/manage-access/payment-settings', [UserCourseController::class, 'updatePaymentSettings'])->name('admin.payment-settings.update');
+    // Manage Access Routes - Admin only
+    Route::middleware('admin')->group(function () {
+        Route::get('/manage-access/search-users', [UserCourseController::class, 'searchUsers'])->name('admin.user-course.search');
+        Route::get('/manage-access/user-courses/{userId}', [UserCourseController::class, 'userCourses'])->name('admin.user-course.user-courses');
+        Route::post('/manage-access/toggle-admin', [UserCourseController::class, 'toggleAdmin'])->name('admin.user-course.toggle-admin');
+        Route::get('/manage-access/payments', [UserCourseController::class, 'payments'])->name('admin.user-course.payments');
+        Route::get('/manage-access/enrollments', [UserCourseController::class, 'getEnrollments'])->name('admin.user-course.enrollments');
+        Route::get('/manage-access/user-enrollments', [UserCourseController::class, 'getUserEnrollments'])->name('admin.user-course.user-enrollments');
+        Route::post('/manage-access/payment-settings', [UserCourseController::class, 'updatePaymentSettings'])->name('admin.payment-settings.update');
+    });
     
     // Delete Management Routes
     Route::get('/admin/delete', [DeleteController::class, 'index'])->name('admin.delete.index');
@@ -310,6 +317,8 @@ Route::middleware('auth')->group(function () {
             ->name('tutor.check-answer')
             ->where(['question' => '[0-9]+'])
             ->withoutMiddleware(['web']); // BYPASS ALL MIDDLEWARE FOR SPEED
+        Route::post('/tutor/complete-session', [App\Http\Controllers\Quiz\QuizTutorController::class, 'completeTutorSession'])
+            ->name('tutor.complete-session');
     });
 
     // Random Quiz Routes with CSRF and rate limiting - OPTIMIZED VERSION
@@ -396,12 +405,17 @@ Route::middleware('auth')->group(function () {
         // Payment Options - Legacy route for frontend compatibility
         Route::get('/{course}/options', [App\Http\Controllers\Payment\PaymentOptionsController::class, 'getPaymentOptions'])
             ->name('options');
+        Route::post('/bundle/options', [App\Http\Controllers\Payment\PaymentOptionsController::class, 'getBundlePaymentOptions'])
+            ->name('bundle.options');
+        Route::post('/bundle/process', [App\Http\Controllers\Payment\PaymentProcessingController::class, 'processBundleManualPayment'])
+            ->name('bundle.process')
+            ->middleware(['throttle:payment-processing,3,1']);
             
         // Streamlined Payment Processing
         Route::post('/process-manual/{course}', [App\Http\Controllers\Payment\PaymentProcessingController::class, 'processManualPayment'])
             ->name('process-manual')
             ->middleware(['throttle:5,1']);
-        Route::post('/submit-proof-course/{course}', [App\Http\Controllers\Payment\PaymentProcessingController::class, 'submitProof'])
+        Route::post('/submit-proof-course/{courseId}', [App\Http\Controllers\Payment\PaymentProcessingController::class, 'submitProof'])
             ->name('submit-proof-course')
             ->middleware(['throttle:10,1']);
         Route::post('/submit-proof/{payment}', [App\Http\Controllers\Payment\PaymentProcessingController::class, 'submitProof'])
@@ -469,7 +483,7 @@ Route::middleware('auth')->group(function () {
         ->middleware('auth');
 
     // Assignment Management Routes (Admin & Tutor)
-    Route::middleware(['auth'])->prefix('assignments')->name('assignments.')->group(function () {
+    Route::middleware(['auth', 'tutor'])->prefix('assignments')->name('assignments.')->group(function () {
         Route::get('/', [AssignmentController::class, 'index'])->name('index');
         Route::get('/create', [AssignmentController::class, 'bulkCreate'])->name('create');
         Route::post('/store', [AssignmentController::class, 'bulkStore'])->name('store');
@@ -551,8 +565,8 @@ Route::middleware('auth')->group(function () {
             ->middleware(['throttle:5,1']);
     });
 
-    // Topic Locking Routes (Admin & Tutor) - TEMPORARILY BYPASSING TUTOR MIDDLEWARE FOR TESTING
-    Route::middleware(['auth'])->prefix('topic-locking')->name('topic-locking.')->group(function () {
+    // Topic Locking Routes (Admin & Tutor)
+    Route::middleware(['auth', 'tutor'])->prefix('topic-locking')->name('topic-locking.')->group(function () {
         Route::get('/', [\App\Http\Controllers\TopicLocking\TopicLockingViewController::class, 'index'])->name('index');
         Route::get('/courses/{course}', [\App\Http\Controllers\TopicLocking\TopicLockingViewController::class, 'courseTopics'])->name('course');
         
@@ -613,14 +627,7 @@ Route::get('/health', function() {
     return response()->json(['status' => 'ok'], 200);
 });
 
-// TEMPORARY TEST ROUTE - BYPASS ALL AUTH
-Route::get('/test-topic-locking', function() {
-    $courses = \App\Models\Course::with(['topics' => function($query) {
-        $query->orderBy('name');
-    }])->orderBy('name')->get();
-    
-    return view('topic-locking.index', compact('courses'));
-})->name('test.topic-locking');
+// Test route removed - proper authentication now in place via /topic-locking route
 
 // Debug route for assignment creation
 Route::get('/debug/assignment-data', function() {
@@ -680,8 +687,8 @@ Route::get('/debug/mistakes-data', function() {
     ]);
 })->middleware('auth');
 
-// Admin Tutor Management Routes
-Route::middleware(['auth'])->prefix('admin/tutors')->name('admin.tutors.')->group(function () {
+// Admin Tutor Management Routes (Admin & Tutor Access)
+Route::middleware(['auth', 'tutor'])->prefix('admin/tutors')->name('admin.tutors.')->group(function () {
     Route::get('/', [App\Http\Controllers\Admin\TutorManagementController::class, 'index'])->name('index');
     Route::get('/create', [App\Http\Controllers\Admin\TutorManagementController::class, 'createTutor'])->name('create');
     Route::post('/store', [App\Http\Controllers\Admin\TutorManagementController::class, 'storeTutor'])->name('store');

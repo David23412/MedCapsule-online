@@ -106,6 +106,18 @@ class RegisterController extends Controller
 
             if (Auth::check()) {
                 Log::info('Auth check passed', ['user_id' => $user->id]);
+                
+                // 🔔 TRIGGER MEDCAPSULE WELCOME NOTIFICATION FOR NEW USER
+                try {
+                    \App\Services\NotificationTriggerService::onUserWelcome($user);
+                } catch (\Exception $e) {
+                    \Log::warning('Failed to send welcome notification for new user', [
+                        'user_id' => $user->id,
+                        'error' => $e->getMessage()
+                    ]);
+                    // Continue with registration even if notification fails
+                }
+                
                 return redirect()->intended(route('courses.index'))
                     ->with('success', 'Welcome to MedCapsule!');
             } else {

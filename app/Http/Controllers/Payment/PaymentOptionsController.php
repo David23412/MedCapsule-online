@@ -67,48 +67,66 @@ class PaymentOptionsController extends Controller
      */
     public function getBundlePaymentOptions(Request $request)
     {
-        $validated = $request->validate([
-            'courses' => 'required|array|min:1',
-            'courses.*' => 'integer|exists:courses,id'
-        ]);
+        try {
+            $validated = $request->validate([
+                'courses' => 'required|array|min:1',
+                'courses.*' => 'integer|exists:courses,id'
+            ]);
 
-        $user = Auth::user();
-        $courseIds = $validated['courses'];
-        
-        // Get courses with optimized query
-        $courses = Course::select('id', 'name', 'price')
-            ->whereIn('id', $courseIds)
-            ->get();
+            $user = Auth::user();
+            $courseIds = $validated['courses'];
+            
+            // Get courses with optimized query, excluding free courses
+            $courses = Course::select('id', 'name', 'price')
+                ->whereIn('id', $courseIds)
+                ->where('price', '>', 0) // Exclude free courses
+                ->get();
 
-        // Check for existing access
-        $enrolledCourseIds = $user->courses()
-            ->whereIn('course_id', $courseIds)
-            ->where('is_enrolled', true)
-            ->pluck('course_id')
-            ->toArray();
+            // Check for existing access
+            $enrolledCourseIds = $user->courses()
+                ->whereIn('course_id', $courseIds)
+                ->where('is_enrolled', true)
+                ->pluck('course_id')
+                ->toArray();
 
-        $availableCourses = $courses->whereNotIn('id', $enrolledCourseIds);
-        
-        if ($availableCourses->isEmpty()) {
+            $availableCourses = $courses->whereNotIn('id', $enrolledCourseIds);
+            
+            if ($availableCourses->isEmpty()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'You already have access to all selected courses.'
+                ]);
+            }
+
+            // Calculate total price with rounding to nearest .99 for each course
+            $totalPrice = $availableCourses->sum(function($course) {
+                return floor($course->price) + 0.99;
+            });
+            
+            // Generate bundle payment HTML
+            $html = view('payments.bundle_payment_methods', [
+                'courses' => $availableCourses,
+                'totalPrice' => $totalPrice
+            ])->render();
+            
+            return response()->json([
+                'success' => true,
+                'message' => 'Bundle payment options loaded successfully.',
+                'html' => $html,
+                'total_price' => $totalPrice
+            ]);
+            
+        } catch (\Exception $e) {
+            Log::error('Bundle payment options error', [
+                'error' => $e->getMessage(),
+                'user_id' => Auth::id(),
+                'courses' => $request->input('courses', [])
+            ]);
+            
             return response()->json([
                 'success' => false,
-                'message' => 'You already have access to all selected courses.'
-            ]);
+                'message' => 'Failed to load bundle payment options. Please try again.'
+            ], 500);
         }
-
-        $totalPrice = $availableCourses->sum('price');
-        
-        // Generate bundle payment HTML
-        $html = view('payments.bundle_payment_methods', [
-            'courses' => $availableCourses,
-            'totalPrice' => $totalPrice
-        ])->render();
-        
-        return response()->json([
-            'success' => true,
-            'message' => 'Bundle payment options loaded successfully.',
-            'html' => $html,
-            'total_price' => $totalPrice
-        ]);
     }
 }

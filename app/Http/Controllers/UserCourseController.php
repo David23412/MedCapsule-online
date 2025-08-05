@@ -389,6 +389,8 @@ class UserCourseController extends Controller
                     'payments.status',
                     'payments.created_at',
                     'payments.paid_at',
+                    'payments.is_bundle',
+                    'payments.payment_data',
                     'users.name as user_name',
                     'users.email as user_email',
                     'courses.name as course_name'
@@ -408,6 +410,19 @@ class UserCourseController extends Controller
                             ->offset(($page - 1) * $perPage)
                             ->limit($perPage)
                             ->get();
+
+            // Process bundle information for each payment
+            $payments = $payments->map(function($payment) {
+                $paymentData = json_decode($payment->payment_data, true) ?? [];
+                
+                // Add bundle information
+                $payment->is_bundle_payment = $payment->is_bundle || isset($paymentData['bundle_id']);
+                $payment->bundle_id = $paymentData['bundle_id'] ?? null;
+                $payment->bundle_total_amount = $paymentData['bundle_total_amount'] ?? null;
+                $payment->transaction_id = $paymentData['transaction_id'] ?? null;
+                
+                return $payment;
+            });
 
             // Get payment statistics with proper type casting
             $totalRevenue = DB::table('payments')->where('status', 'completed')->sum('amount');

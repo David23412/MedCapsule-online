@@ -276,6 +276,8 @@
             border: 2px solid #fff;
             transition: all 0.3s ease;
         }
+
+
     </style>
 </head>
 <body class="bg-light">
@@ -372,7 +374,7 @@
 
                     <!-- Right Column - Form Fields -->
                     <div class="col-lg-7">
-                        <form method="POST" action="{{ secure_url('add-course') }}">
+                        <form method="POST" action="{{ secure_url('add-course') }}" enctype="multipart/form-data">
                             @csrf
 
                             <div class="mb-4">
@@ -426,15 +428,60 @@
                             </div>
 
                             <div class="mb-4">
-                                <label for="image" class="form-label">Image URL</label>
-                                <input type="url" 
-                                       class="form-control" 
-                                       id="image" 
-                                       name="image" 
-                                       value="{{ old('image') }}" 
-                                       placeholder="https://example.com/image.jpg">
-                                <div class="form-text text-muted">
-                                    Provide a URL for the course cover image
+                                <label class="form-label">Course Image</label>
+                                
+                                <!-- Image Upload Tabs -->
+                                <ul class="nav nav-tabs mb-3" id="imageUploadTabs" role="tablist">
+                                    <li class="nav-item" role="presentation">
+                                        <button class="nav-link active" id="upload-tab" data-bs-toggle="tab" data-bs-target="#upload-panel" type="button" role="tab">
+                                            <i class="fas fa-upload me-1"></i>Upload Image
+                                        </button>
+                                    </li>
+                                    <li class="nav-item" role="presentation">
+                                        <button class="nav-link" id="url-tab" data-bs-toggle="tab" data-bs-target="#url-panel" type="button" role="tab">
+                                            <i class="fas fa-link me-1"></i>Image URL
+                                        </button>
+                                    </li>
+                                </ul>
+                                
+                                <div class="tab-content" id="imageUploadContent">
+                                    <!-- Upload Panel -->
+                                    <div class="tab-pane fade show active" id="upload-panel" role="tabpanel">
+                                        <div class="upload-area border-2 border-dashed border-primary rounded p-4 text-center position-relative" 
+                                             id="uploadArea" 
+                                             style="min-height: 120px; cursor: pointer; transition: all 0.3s ease;">
+                                            <input type="file" 
+                                                   class="form-control d-none" 
+                                                   id="image_file" 
+                                                   name="image_file" 
+                                                   accept="image/*">
+                                            <div id="uploadContent">
+                                                <i class="fas fa-cloud-upload-alt fa-2x text-primary mb-2"></i>
+                                                <p class="mb-1">Click to upload or drag and drop</p>
+                                                <small class="text-muted">PNG, JPG, JPEG up to 5MB</small>
+                                            </div>
+                                            <div id="uploadPreview" class="d-none">
+                                                <img id="previewImg" src="" alt="Preview" class="img-fluid rounded" style="max-height: 100px;">
+                                                <p class="mt-2 mb-0" id="fileName"></p>
+                                                <button type="button" class="btn btn-sm btn-outline-danger mt-2" id="removeImage">
+                                                    <i class="fas fa-times"></i> Remove
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <!-- URL Panel -->
+                                    <div class="tab-pane fade" id="url-panel" role="tabpanel">
+                                        <input type="url" 
+                                               class="form-control" 
+                                               id="image_url" 
+                                               name="image_url" 
+                                               value="{{ old('image_url') }}" 
+                                               placeholder="https://example.com/image.jpg">
+                                        <div class="form-text text-muted">
+                                            Provide a URL for the course cover image
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
 
@@ -522,7 +569,8 @@
         // Live preview functionality
         const nameInput = document.getElementById('name');
         const descriptionInput = document.getElementById('description');
-        const imageInput = document.getElementById('image');
+        const imageUrlInput = document.getElementById('image_url');
+        const imageFileInput = document.getElementById('image_file');
         const colorInput = document.getElementById('color');
         const titleColorInput = document.getElementById('title_color');
         const priceInput = document.getElementById('price');
@@ -539,6 +587,16 @@
         const colorPreview = document.getElementById('colorPreview');
         const titleColorPreview = document.getElementById('titleColorPreview');
         
+        // Image upload elements
+        const uploadArea = document.getElementById('uploadArea');
+        const uploadContent = document.getElementById('uploadContent');
+        const uploadPreview = document.getElementById('uploadPreview');
+        const previewImg = document.getElementById('previewImg');
+        const fileName = document.getElementById('fileName');
+        const removeImageBtn = document.getElementById('removeImage');
+        
+        let currentImageSource = null; // 'file' or 'url'
+        
         function updatePreview() {
             // Update title text
             previewTitle.textContent = nameInput.value || 'Course Preview';
@@ -546,9 +604,16 @@
             // Update description tooltip
             previewTooltip.textContent = descriptionInput.value || 'Course description will appear here';
             
-            // Update image if provided
-            if (imageInput.value) {
-                previewImage.style.backgroundImage = `url('${imageInput.value}')`;
+            // Update image based on current source
+            let imageUrl = null;
+            if (currentImageSource === 'file' && imageFileInput.files[0]) {
+                imageUrl = URL.createObjectURL(imageFileInput.files[0]);
+            } else if (currentImageSource === 'url' && imageUrlInput.value) {
+                imageUrl = imageUrlInput.value;
+            }
+            
+            if (imageUrl) {
+                previewImage.style.backgroundImage = `url('${imageUrl}')`;
             } else {
                 previewImage.style.backgroundImage = 'linear-gradient(135deg, #f5f7fa 0%, #e9ecef 100%)';
             }
@@ -588,12 +653,117 @@
             previewProgressFill.style.width = progress + '%';
         }
 
+        // Image upload functionality
+        uploadArea.addEventListener('click', () => {
+            imageFileInput.click();
+        });
 
+        uploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadArea.style.borderColor = '#0056b3';
+            uploadArea.style.backgroundColor = '#f8f9ff';
+        });
+
+        uploadArea.addEventListener('dragleave', (e) => {
+            e.preventDefault();
+            uploadArea.style.borderColor = '#007bff';
+            uploadArea.style.backgroundColor = 'transparent';
+        });
+
+        uploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadArea.style.borderColor = '#007bff';
+            uploadArea.style.backgroundColor = 'transparent';
+            
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                handleFileUpload(files[0]);
+            }
+        });
+
+        imageFileInput.addEventListener('change', (e) => {
+            if (e.target.files.length > 0) {
+                handleFileUpload(e.target.files[0]);
+            }
+        });
+
+        function handleFileUpload(file) {
+            // Validate file type
+            if (!file.type.startsWith('image/')) {
+                alert('Please select an image file.');
+                return;
+            }
+
+            // Validate file size (5MB)
+            if (file.size > 5 * 1024 * 1024) {
+                alert('File size must be less than 5MB.');
+                return;
+            }
+
+            // Clear URL input when file is uploaded
+            imageUrlInput.value = '';
+            currentImageSource = 'file';
+
+            // Show preview
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                previewImg.src = e.target.result;
+                fileName.textContent = file.name;
+                uploadContent.classList.add('d-none');
+                uploadPreview.classList.remove('d-none');
+                updatePreview();
+            };
+            reader.readAsDataURL(file);
+        }
+
+        removeImageBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            imageFileInput.value = '';
+            currentImageSource = null;
+            uploadContent.classList.remove('d-none');
+            uploadPreview.classList.add('d-none');
+            updatePreview();
+        });
+
+        // Handle URL input
+        imageUrlInput.addEventListener('input', () => {
+            if (imageUrlInput.value) {
+                // Clear file input when URL is provided
+                imageFileInput.value = '';
+                currentImageSource = 'url';
+                uploadContent.classList.remove('d-none');
+                uploadPreview.classList.add('d-none');
+            } else {
+                currentImageSource = null;
+            }
+            updatePreview();
+        });
+
+        // Tab switching logic
+        document.getElementById('upload-tab').addEventListener('click', () => {
+            imageUrlInput.value = '';
+            if (currentImageSource === 'url') {
+                currentImageSource = null;
+                updatePreview();
+            }
+        });
+
+        document.getElementById('url-tab').addEventListener('click', () => {
+            imageFileInput.value = '';
+            if (currentImageSource === 'file') {
+                currentImageSource = null;
+                uploadContent.classList.remove('d-none');
+                uploadPreview.classList.add('d-none');
+                updatePreview();
+            }
+        });
 
         // Add event listeners for real-time updates
-        [nameInput, descriptionInput, imageInput, colorInput, titleColorInput, priceInput].forEach(input => {
+        [nameInput, descriptionInput, imageUrlInput, colorInput, titleColorInput, priceInput].forEach(input => {
             input.addEventListener('input', updatePreview);
         });
+
+
 
         // Initial setup
         updatePreview();

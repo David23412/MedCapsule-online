@@ -212,6 +212,7 @@
 @php
 function getNotificationIcon($type) {
     $icons = [
+        // 🎓 ACADEMIC & LEARNING
         'course_welcome' => 'fas fa-graduation-cap',
         'quiz_completed' => 'fas fa-check-circle',
         'achievement' => 'fas fa-trophy',
@@ -236,7 +237,36 @@ function getNotificationIcon($type) {
         'review_mistakes' => 'fas fa-exclamation-triangle',
         'weak_topic_identified' => 'fas fa-exclamation-circle',
         'skipped_questions_detected' => 'fas fa-forward',
-        'test' => 'fas fa-bell'
+        'test' => 'fas fa-bell',
+        
+        // 🎯 TUTOR MODE SPECIFIC - SIMPLIFIED
+        'tutor_quiz_completed' => 'fas fa-check-circle', // SAME AS REGULAR QUIZ
+        'tutor_needs_practice' => 'fas fa-redo-alt',
+        
+        // 📝 ASSIGNMENT SYSTEM - SIMPLIFIED
+        'assignment_completed' => 'fas fa-clipboard-check',
+        'assignment_perfect' => 'fas fa-star', // PURPLE STAR LIKE QUIZ
+        'tutor_assignment_assigned' => 'fas fa-user-graduate',
+        'assignment_due_date_set' => 'fas fa-calendar-alt',
+        'assignment_overdue_1h' => 'fas fa-exclamation-circle',
+        'assignment_overdue_6h' => 'fas fa-exclamation-triangle',
+        'assignment_overdue_24h' => 'fas fa-exclamation',
+        'assignment_overdue_days' => 'fas fa-times-circle',
+        'assignment_due_1h' => 'fas fa-clock',
+        'assignment_due_3h' => 'fas fa-clock',
+        'assignment_due_6h' => 'fas fa-clock',
+        'assignment_due_12h' => 'fas fa-clock',
+        'assignment_due_24h' => 'fas fa-calendar',
+        'assignment_due_48h' => 'fas fa-calendar-day',
+        
+        // 🎯 SPECIAL FEATURES - REALISTIC TRIGGERS ONLY!
+        'perfect_score' => 'fas fa-star', // PURPLE STAR!
+        'topic_mastery' => 'fas fa-check-circle', // GREEN CHECK MARK!
+        'consistency_king' => 'fas fa-crown', // Triggered after 7+ day study streak
+        
+        // 💊 MEDCAPSULE WELCOME & ENROLLMENT - HALF BLUE HALF RED CAPSULE!
+        'medcapsule_welcome' => 'fas fa-capsules', // WELCOME MESSAGE ON LOGIN
+        'medcapsule_enrolled' => 'fas fa-capsules' // COOL CAPSULE ICON!
     ];
     
     return $icons[$type] ?? 'fas fa-bell';
@@ -272,7 +302,6 @@ function getNotificationIconColor($type) {
         'review_mistakes' => '#ef4444',   // red-500
         'weak_topic_identified' => '#ef4444', // red-500
         'skipped_questions_detected' => '#f59e0b', // amber-500
-        'topic_needs_review' => '#ef4444', // red-500
         'review_reminder' => '#06b6d4',   // cyan-500
         
         // 💳 PAYMENT & ACCESS
@@ -291,12 +320,34 @@ function getNotificationIconColor($type) {
         'error' => '#ef4444',             // red-500
         'test' => '#3b82f6',              // blue-500
         
-        // 🎯 SPECIAL ACHIEVEMENTS
-        'perfect_score' => '#fbbf24',     // amber-400
-        'first_attempt' => '#fbbf24',     // amber-400
-        'speed_demon' => '#fbbf24',       // amber-400
-        'consistency_king' => '#fbbf24',  // amber-400
-        'knowledge_master' => '#8b5cf6',  // violet-500
+        // 🎯 TUTOR MODE SPECIFIC - SIMPLIFIED
+        'tutor_quiz_completed' => '#3b82f6',      // SAME BLUE AS REGULAR QUIZ
+        'tutor_needs_practice' => '#ef4444',      // red-500
+        
+        // 📝 ASSIGNMENT SYSTEM - SIMPLIFIED
+        'assignment_completed' => '#3b82f6',      // BLUE LIKE QUIZ
+        'assignment_perfect' => '#8b5cf6',        // PURPLE LIKE QUIZ
+        'tutor_assignment_assigned' => '#8b5cf6', // violet-500
+        'assignment_due_date_set' => '#6b7280',   // gray-500
+        'assignment_overdue_1h' => '#ef4444',     // red-500
+        'assignment_overdue_6h' => '#dc2626',     // red-600
+        'assignment_overdue_24h' => '#b91c1c',    // red-700
+        'assignment_overdue_days' => '#991b1b',   // red-800
+        'assignment_due_1h' => '#ef4444',         // red-500
+        'assignment_due_3h' => '#f59e0b',         // amber-500
+        'assignment_due_6h' => '#eab308',         // yellow-500
+        'assignment_due_12h' => '#06b6d4',        // cyan-500
+        'assignment_due_24h' => '#3b82f6',        // blue-500
+        'assignment_due_48h' => '#6b7280',        // gray-500
+        
+        // 🎯 SPECIAL FEATURES - REALISTIC TRIGGERS!
+        'perfect_score' => '#8b5cf6',     // PURPLE STAR!
+        'topic_mastery' => '#10b981',     // GREEN CHECK MARK!
+        'consistency_king' => '#f59e0b',  // amber-500 (7+ day streak)
+        
+        // 💊 MEDCAPSULE WELCOME & ENROLLMENT - SPECIAL GRADIENT COLOR!
+        'medcapsule_welcome' => '#3b82f6',   // BLUE (welcome message on login)
+        'medcapsule_enrolled' => '#3b82f6',  // BLUE (will add red gradient in CSS)
         
         // 📚 SUBJECT SPECIFIC
         'anatomy_mastered' => '#ef4444',  // red-500

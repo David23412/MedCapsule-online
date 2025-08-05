@@ -48,7 +48,7 @@ class Payment extends Model
         static::updated(function ($payment) {
             if ($payment->wasChanged('status') && $payment->status === 'completed') {
                 $courseIds = $payment->is_bundle ? 
-                    $payment->bundle_courses : 
+                    ($payment->bundle_courses ?? []) : 
                     [$payment->course_id];
                 
                 event(new \App\Events\PaymentCompleted(

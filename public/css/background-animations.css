@@ -1,0 +1,280 @@
+/* Interactive Background Animations - Extracted from home.blade.php */
+
+.interactive-bg {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: -1;
+    overflow: hidden;
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+    pointer-events: none;
+}
+
+.floating-elements {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+}
+
+.floating-element {
+    position: absolute;
+    background: linear-gradient(45deg, rgba(33, 150, 243, 0.9), rgba(33, 150, 243, 0.7));
+    border-radius: 50%;
+    filter: none;
+    will-change: transform, opacity;
+    transform: translate3d(0, 0, 0);
+    animation: float-element 20s infinite ease-in-out;
+    box-shadow: 0 0 40px rgba(33, 150, 243, 0.6);
+    opacity: 1;
+}
+
+.floating-element::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 100%;
+    height: 100%;
+    background: inherit;
+    border-radius: 50%;
+    filter: blur(3px);
+    opacity: 0.8;
+}
+
+.floating-element:nth-child(1) {
+    width: 500px;
+    height: 500px;
+    top: -250px;
+    left: -250px;
+    animation-delay: 0s;
+    background: linear-gradient(45deg, rgba(33, 150, 243, 0.6), rgba(33, 150, 243, 0.4));
+}
+
+.floating-element:nth-child(2) {
+    width: 400px;
+    height: 400px;
+    top: 50%;
+    right: -200px;
+    animation-delay: -5s;
+    background: linear-gradient(45deg, rgba(255, 107, 107, 0.5), rgba(255, 107, 107, 0.3));
+}
+
+.floating-element:nth-child(3) {
+    width: 300px;
+    height: 300px;
+    bottom: -150px;
+    left: 20%;
+    animation-delay: -10s;
+    background: linear-gradient(45deg, rgba(76, 175, 80, 0.5), rgba(76, 175, 80, 0.3));
+}
+
+.floating-element:nth-child(4) {
+    width: 250px;
+    height: 250px;
+    top: 30%;
+    left: 40%;
+    animation-delay: -15s;
+    background: linear-gradient(45deg, rgba(156, 39, 176, 0.5), rgba(156, 39, 176, 0.3));
+}
+
+.floating-element:nth-child(5) {
+    width: 200px;
+    height: 200px;
+    bottom: 20%;
+    right: 15%;
+    animation-delay: -20s;
+    background: linear-gradient(45deg, rgba(255, 152, 0, 0.5), rgba(255, 152, 0, 0.3));
+}
+
+.floating-element:nth-child(6) {
+    width: 150px;
+    height: 150px;
+    top: 60%;
+    left: 10%;
+    animation-delay: -25s;
+    background: linear-gradient(45deg, rgba(233, 30, 99, 0.5), rgba(233, 30, 99, 0.3));
+}
+
+.floating-element:nth-child(7) {
+    width: 120px;
+    height: 120px;
+    top: 20%;
+    right: 30%;
+    animation-delay: -30s;
+    background: linear-gradient(45deg, rgba(0, 188, 212, 0.5), rgba(0, 188, 212, 0.3));
+}
+
+.floating-element:nth-child(8) {
+    width: 100px;
+    height: 100px;
+    bottom: 40%;
+    left: 50%;
+    animation-delay: -35s;
+    background: linear-gradient(45deg, rgba(121, 85, 72, 0.5), rgba(121, 85, 72, 0.3));
+}
+
+@keyframes float-element {
+    0% {
+        transform: translate3d(0, 0, 0) rotate(0deg) scale(1);
+        opacity: 0.8;
+    }
+
+    25% {
+        transform: translate3d(200px, 200px, 0) rotate(90deg) scale(1.3);
+        opacity: 1;
+    }
+
+    50% {
+        transform: translate3d(0, 400px, 0) rotate(180deg) scale(1);
+        opacity: 0.8;
+    }
+
+    75% {
+        transform: translate3d(-200px, 200px, 0) rotate(270deg) scale(0.7);
+        opacity: 1;
+    }
+
+    100% {
+        transform: translate3d(0, 0, 0) rotate(360deg) scale(1);
+        opacity: 0.8;
+    }
+}
+
+.connecting-lines {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+}
+
+.line {
+    position: absolute;
+    background: linear-gradient(90deg, rgba(33, 150, 243, 1), rgba(33, 150, 243, 0.8));
+    height: 4px;
+    transform-origin: left center;
+    animation: line-animation 12s infinite ease-in-out;
+    box-shadow: 0 0 20px rgba(33, 150, 243, 0.8);
+}
+
+.line:nth-child(1) {
+    top: 20%;
+    left: 0;
+    width: 100%;
+    animation-delay: 0s;
+}
+
+.line:nth-child(2) {
+    top: 40%;
+    left: 0;
+    width: 100%;
+    animation-delay: -3s;
+}
+
+.line:nth-child(3) {
+    top: 60%;
+    left: 0;
+    width: 100%;
+    animation-delay: -6s;
+}
+
+.line:nth-child(4) {
+    top: 80%;
+    left: 0;
+    width: 100%;
+    animation-delay: -9s;
+}
+
+@keyframes line-animation {
+    0% {
+        transform: scaleX(0);
+        opacity: 0;
+    }
+
+    50% {
+        transform: scaleX(1);
+        opacity: 0.9;
+    }
+
+    100% {
+        transform: scaleX(0);
+        opacity: 0;
+    }
+}
+
+.pulse-circles {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+}
+
+.pulse-circle {
+    position: absolute;
+    border: 3px solid rgba(33, 150, 243, 0.7);
+    border-radius: 50%;
+    animation: pulse-circle 6s infinite ease-out;
+    box-shadow: 0 0 20px rgba(33, 150, 243, 0.4);
+}
+
+.pulse-circle:nth-child(1) {
+    top: 30%;
+    left: 30%;
+    width: 300px;
+    height: 300px;
+    animation-delay: 0s;
+}
+
+.pulse-circle:nth-child(2) {
+    top: 60%;
+    left: 60%;
+    width: 200px;
+    height: 200px;
+    animation-delay: -2s;
+}
+
+.pulse-circle:nth-child(3) {
+    top: 20%;
+    left: 70%;
+    width: 150px;
+    height: 150px;
+    animation-delay: -4s;
+}
+
+@keyframes pulse-circle {
+    0% {
+        transform: scale(1);
+        opacity: 0.4;
+    }
+
+    100% {
+        transform: scale(2.5);
+        opacity: 0;
+    }
+}
+
+.gradient-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: radial-gradient(circle at center, transparent 0%, rgba(255, 255, 255, 0.9) 100%);
+    z-index: -1;
+    pointer-events: none;
+}
+
+.noise-texture {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
+    opacity: 0.08;
+    z-index: -1;
+    pointer-events: none;
+}

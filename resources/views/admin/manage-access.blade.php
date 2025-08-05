@@ -817,6 +817,32 @@
                 font-size: 0.8rem;
             }
         }
+
+        /* Bundle payment styling */
+        .badge.bg-warning {
+            color: #000 !important;
+        }
+        
+        .bundle-price-info {
+            line-height: 1.2;
+        }
+        
+        .bundle-price-info .text-muted {
+            font-size: 0.75rem;
+        }
+        
+        /* Notification container */
+        #notificationContainer {
+            position: fixed;
+            top: 0;
+            right: 0;
+            z-index: 9999;
+            pointer-events: none;
+        }
+        
+        #notificationContainer .alert {
+            pointer-events: all;
+        }
     </style>
 </head>
 <body>
@@ -1883,6 +1909,22 @@
                                 const actions = getPaymentActions(payment);
                                 const date = new Date(payment.created_at).toLocaleDateString();
                                 
+                                // Create bundle indicator and price display
+                                const bundleIndicator = payment.is_bundle_payment ? 
+                                    `<span class="badge bg-warning text-dark ms-1" title="Bundle Purchase">
+                                        <i class="fas fa-layer-group"></i> Bundle
+                                    </span>` : '';
+                                
+                                const priceDisplay = payment.is_bundle_payment && payment.bundle_total_amount ? 
+                                    `<div class="fw-bold text-success">${payment.amount} EGP <small class="text-muted">(Discounted)</small></div>
+                                     <small class="text-muted">Original: ${payment.original_price || 'N/A'} EGP | Bundle Total: ${payment.bundle_total_amount} EGP</small>` :
+                                    `<div class="fw-bold">${payment.amount} EGP</div>`;
+                                
+                                const transactionInfo = payment.transaction_id ? 
+                                    `<div><code class="small">${payment.reference_number || 'N/A'}</code></div>
+                                     <small class="text-muted">TX: ${payment.transaction_id}</small>` :
+                                    `<code class="small">${payment.reference_number || 'N/A'}</code>`;
+
                                 tbody.append(`
                                     <tr data-payment-id="${payment.id}">
                                         <td>#${payment.id}</td>
@@ -1890,11 +1932,14 @@
                                             <div class="fw-medium">${payment.user_name}</div>
                                             <small class="text-muted">${payment.user_email}</small>
                                         </td>
-                                        <td><span class="badge bg-primary">${payment.course_name}</span></td>
-                                        <td class="fw-bold">${payment.amount} EGP</td>
+                                        <td>
+                                            <span class="badge bg-primary">${payment.course_name}</span>
+                                            ${bundleIndicator}
+                                        </td>
+                                        <td>${priceDisplay}</td>
                                         <td><span class="badge bg-info">${payment.payment_method}</span></td>
                                         <td>${statusBadge}</td>
-                                        <td><code class="small">${payment.reference_number || 'N/A'}</code></td>
+                                        <td>${transactionInfo}</td>
                                         <td>${date}</td>
                                         <td>${actions}</td>
                                     </tr>
@@ -2028,8 +2073,8 @@
             })
             .then(data => {
                 if (data.success) {
-                    // Simple feedback without alert
-                    console.log('Payment accepted successfully!');
+                    // Show success notification
+                    showNotification('Payment accepted successfully!', 'success');
                     
                     // Update the UI
                     const row = document.querySelector(`[data-payment-id="${paymentId}"]`);
@@ -2055,6 +2100,7 @@
             })
             .catch(error => {
                 console.error('Error accepting payment:', error);
+                showNotification('Failed to accept payment: ' + error.message, 'error');
             });
         }
 
@@ -2077,8 +2123,8 @@
             .then(response => response.json())
             .then(data => {
                 if (data.success) {
-                    // Simple feedback without alert
-                    console.log('Payment rejected successfully');
+                    // Show success notification
+                    showNotification('Payment rejected successfully!', 'success');
                     
                     // Update the UI
                     const row = document.querySelector(`[data-payment-id="${paymentId}"]`);
@@ -2099,12 +2145,48 @@
                     // Refresh payment data
                     loadPayments();
                 } else {
-                    console.error('Failed to reject payment:', data.message);
+                    showNotification('Failed to reject payment: ' + (data.message || 'Unknown error'), 'error');
                 }
             })
             .catch(error => {
                 console.error('Error rejecting payment:', error);
+                showNotification('Failed to reject payment: ' + error.message, 'error');
             });
+        }
+
+        // Notification system
+        function showNotification(message, type = 'success') {
+            const container = document.getElementById('notificationContainer');
+            const notification = document.createElement('div');
+            
+            const bgColor = type === 'success' ? 'bg-success' : 'bg-danger';
+            const icon = type === 'success' ? 'fa-check-circle' : 'fa-exclamation-triangle';
+            
+            notification.className = `alert ${bgColor} text-white alert-dismissible fade show position-fixed`;
+            notification.style.cssText = `
+                top: 20px;
+                right: 20px;
+                z-index: 9999;
+                min-width: 300px;
+                box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            `;
+            
+            notification.innerHTML = `
+                <div class="d-flex align-items-center">
+                    <i class="fas ${icon} me-2"></i>
+                    <span>${message}</span>
+                    <button type="button" class="btn-close btn-close-white ms-auto" data-bs-dismiss="alert"></button>
+                </div>
+            `;
+            
+            container.appendChild(notification);
+            
+            // Auto-remove after 4 seconds
+            setTimeout(() => {
+                if (notification.parentNode) {
+                    notification.remove();
+                }
+            }, 4000);
         }
     </script>
 

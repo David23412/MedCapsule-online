@@ -23,7 +23,8 @@ class TutorMiddleware
 
         $user = auth()->user();
         if (!in_array($user->role, ['admin', 'tutor'])) {
-            abort(403, 'Unauthorized. Only tutors and admins can access this area.');
+            // Redirect non-admin/tutor users to homepage instead of showing 403
+            return redirect()->route('home')->with('error', 'Access denied. Only administrators and tutors can access this area.');
         }
 
         return $next($request);

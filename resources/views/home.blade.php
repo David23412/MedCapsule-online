@@ -202,6 +202,7 @@
             position: relative;
             z-index: 1;
             text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.1);
+            transform: translateY(-10px);
         }
 
         .hero-section p {
@@ -211,11 +212,13 @@
             position: relative;
             z-index: 1;
             text-shadow: 1px 1px 2px rgba(255, 255, 255, 0.8);
+            transform: translateY(-8px);
         }
 
         .hero-section .btn {
             position: relative;
             z-index: 1;
+            transform: translateY(-6px);
         }
 
         .btn-primary {
@@ -234,6 +237,111 @@
             transform: translateY(-4px) scale(1.05);
             box-shadow: 0 6px 15px rgba(33, 150, 243, 0.4);
         }
+
+        /* Hero Background Animation */
+        .hero-bg-animation {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 0;
+            pointer-events: none;
+            overflow: hidden;
+        }
+
+        .hero-content {
+            position: relative;
+            z-index: 2;
+        }
+
+        /* Floating Shapes */
+        .floating-shapes {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+        }
+
+        .shape {
+            position: absolute;
+            border-radius: 50%;
+            opacity: 0.5;
+            animation: float-around 20s infinite ease-in-out;
+        }
+
+        .shape-1 {
+            width: 300px;
+            height: 300px;
+            background: linear-gradient(45deg, rgba(33, 150, 243, 0.25), rgba(33, 150, 243, 0.08));
+            top: -150px;
+            left: -150px;
+            animation-delay: 0s;
+        }
+
+        .shape-2 {
+            width: 200px;
+            height: 200px;
+            background: linear-gradient(45deg, rgba(33, 150, 243, 0.22), rgba(33, 150, 243, 0.07));
+            top: 20%;
+            right: -100px;
+            animation-delay: -5s;
+        }
+
+        .shape-3 {
+            width: 150px;
+            height: 150px;
+            background: linear-gradient(45deg, rgba(33, 150, 243, 0.20), rgba(33, 150, 243, 0.06));
+            bottom: -75px;
+            left: 30%;
+            animation-delay: -10s;
+        }
+
+        .shape-4 {
+            width: 120px;
+            height: 120px;
+            background: linear-gradient(45deg, rgba(33, 150, 243, 0.18), rgba(33, 150, 243, 0.05));
+            top: 40%;
+            left: 20%;
+            animation-delay: -15s;
+        }
+
+        .shape-5 {
+            width: 180px;
+            height: 180px;
+            background: linear-gradient(45deg, rgba(33, 150, 243, 0.21), rgba(33, 150, 243, 0.07));
+            bottom: 30%;
+            right: 20%;
+            animation-delay: -8s;
+        }
+
+        .shape-6 {
+            width: 100px;
+            height: 100px;
+            background: linear-gradient(45deg, rgba(33, 150, 243, 0.19), rgba(33, 150, 243, 0.06));
+            top: 60%;
+            left: 70%;
+            animation-delay: -12s;
+        }
+
+        @keyframes float-around {
+            0% {
+                transform: translate(0, 0) rotate(0deg) scale(1);
+            }
+            25% {
+                transform: translate(50px, -30px) rotate(90deg) scale(1.1);
+            }
+            50% {
+                transform: translate(-20px, 40px) rotate(180deg) scale(0.9);
+            }
+            75% {
+                transform: translate(-40px, -20px) rotate(270deg) scale(1.05);
+            }
+            100% {
+                transform: translate(0, 0) rotate(360deg) scale(1);
+            }
+        }
+
+
 
         /* Features Section */
         .features {
@@ -587,267 +695,7 @@
             color: #f44336;
         }
 
-        /* SUBTLE BACKGROUND ANIMATION - HERO SECTION ONLY */
-        .interactive-bg {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            z-index: -1;
-            overflow: hidden;
-            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
-        }
 
-        .floating-elements {
-            position: absolute;
-            width: 100%;
-            height: 100%;
-            pointer-events: none;
-            z-index: -1;
-        }
-
-        .floating-element {
-            position: absolute;
-            background: linear-gradient(45deg, rgba(33, 150, 243, 0.2), rgba(33, 150, 243, 0.08));
-            border-radius: 50%;
-            filter: blur(3px);
-            animation: float-element 20s infinite ease-in-out;
-            opacity: 0.4;
-        }
-
-        .floating-element::before {
-            content: '';
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            width: 100%;
-            height: 100%;
-            background: inherit;
-            border-radius: 50%;
-            filter: blur(3px);
-            opacity: 0.7;
-        }
-
-        .floating-element:nth-child(1) {
-            width: 500px;
-            height: 500px;
-            top: -250px;
-            left: -250px;
-            animation-delay: 0s;
-        }
-
-        .floating-element:nth-child(2) {
-            width: 400px;
-            height: 400px;
-            top: 50%;
-            right: -200px;
-            animation-delay: -5s;
-        }
-
-        .floating-element:nth-child(3) {
-            width: 300px;
-            height: 300px;
-            bottom: -150px;
-            left: 20%;
-            animation-delay: -10s;
-        }
-
-        .floating-element:nth-child(4) {
-            width: 250px;
-            height: 250px;
-            top: 30%;
-            left: 40%;
-            animation-delay: -15s;
-        }
-
-        .floating-element:nth-child(5) {
-            width: 200px;
-            height: 200px;
-            bottom: 20%;
-            right: 15%;
-            animation-delay: -20s;
-        }
-
-        .floating-element:nth-child(6) {
-            width: 150px;
-            height: 150px;
-            top: 60%;
-            left: 10%;
-            animation-delay: -25s;
-        }
-
-        .floating-element:nth-child(7) {
-            width: 120px;
-            height: 120px;
-            top: 20%;
-            right: 30%;
-            animation-delay: -30s;
-        }
-
-        .floating-element:nth-child(8) {
-            width: 100px;
-            height: 100px;
-            bottom: 40%;
-            left: 50%;
-            animation-delay: -35s;
-        }
-
-        @keyframes float-element {
-            0% {
-                transform: translate(0, 0) rotate(0deg) scale(1);
-                opacity: 0.2;
-            }
-            25% {
-                transform: translate(150px, 150px) rotate(90deg) scale(1.2);
-                opacity: 0.4;
-            }
-            50% {
-                transform: translate(0, 300px) rotate(180deg) scale(1);
-                opacity: 0.2;
-            }
-            75% {
-                transform: translate(-150px, 150px) rotate(270deg) scale(0.8);
-                opacity: 0.4;
-            }
-            100% {
-                transform: translate(0, 0) rotate(360deg) scale(1);
-                opacity: 0.2;
-            }
-        }
-
-        .connecting-lines {
-            position: absolute;
-            width: 100%;
-            height: 100%;
-            pointer-events: none;
-        }
-
-        .line {
-            position: absolute;
-            background: linear-gradient(90deg, rgba(33, 150, 243, 0.15), rgba(33, 150, 243, 0.05));
-            height: 2px;
-            transform-origin: left center;
-            animation: line-animation 12s infinite ease-in-out;
-            z-index: -1;
-        }
-
-        .line:nth-child(1) {
-            top: 20%;
-            left: 0;
-            width: 100%;
-            animation-delay: 0s;
-        }
-
-        .line:nth-child(2) {
-            top: 40%;
-            left: 0;
-            width: 100%;
-            animation-delay: -3s;
-        }
-
-        .line:nth-child(3) {
-            top: 60%;
-            left: 0;
-            width: 100%;
-            animation-delay: -6s;
-        }
-
-        .line:nth-child(4) {
-            top: 80%;
-            left: 0;
-            width: 100%;
-            animation-delay: -9s;
-        }
-
-        @keyframes line-animation {
-            0% {
-                transform: scaleX(0);
-                opacity: 0;
-            }
-            50% {
-                transform: scaleX(1);
-                opacity: 0.4;
-            }
-            100% {
-                transform: scaleX(0);
-                opacity: 0;
-            }
-        }
-
-        .pulse-circles {
-            position: absolute;
-            width: 100%;
-            height: 100%;
-            pointer-events: none;
-        }
-
-        .pulse-circle {
-            position: absolute;
-            border: 2px solid rgba(33, 150, 243, 0.1);
-            border-radius: 50%;
-            animation: pulse-circle 8s infinite ease-out;
-            z-index: -1;
-        }
-
-        .pulse-circle:nth-child(1) {
-            top: 30%;
-            left: 30%;
-            width: 300px;
-            height: 300px;
-            animation-delay: 0s;
-        }
-
-        .pulse-circle:nth-child(2) {
-            top: 60%;
-            left: 60%;
-            width: 200px;
-            height: 200px;
-            animation-delay: -2s;
-        }
-
-        .pulse-circle:nth-child(3) {
-            top: 20%;
-            left: 70%;
-            width: 150px;
-            height: 150px;
-            animation-delay: -4s;
-        }
-
-        @keyframes pulse-circle {
-            0% {
-                transform: scale(1);
-                opacity: 0.4;
-            }
-            100% {
-                transform: scale(2.5);
-                opacity: 0;
-            }
-        }
-
-        .gradient-overlay {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: radial-gradient(circle at center, transparent 0%, rgba(255, 255, 255, 0.9) 100%);
-            z-index: -1;
-            pointer-events: none;
-        }
-
-        .noise-texture {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
-            opacity: 0.08;
-            z-index: -1;
-            pointer-events: none;
-        }
 
         /* Add these new styles */
         .streak-indicator {
@@ -2355,7 +2203,7 @@
                         <li class="nav-item">
                             <a href="{{ route('profile') }}" class="nav-link">
                                 <div class="profile-circle {{ !Auth::user()->profile_picture_url ? 'no-image' : '' }}" 
-                                     style="{{ Auth::user()->profile_picture_url ? 'background-image: url(' . asset(Auth::user()->profile_picture_url) . ');' : '' }}">
+                                     style="{{ Auth::user()->profile_picture_url ? 'background-image: url(' . secure_url(Auth::user()->profile_picture_url) . ');' : '' }}">
                                     @if(!Auth::user()->profile_picture_url)
                                         {{ substr(Auth::user()->name, 0, 1) }}
                                     @endif
@@ -2369,42 +2217,32 @@
     </nav>
 
     <main class="mt-4">
+
+
         <!-- Hero Section -->
         <div class="hero-section">
-            <!-- Interactive Background INSIDE hero section -->
-            <div class="interactive-bg">
-                <div class="floating-elements">
-                    <div class="floating-element"></div>
-                    <div class="floating-element"></div>
-                    <div class="floating-element"></div>
-                    <div class="floating-element"></div>
-                    <div class="floating-element"></div>
-                    <div class="floating-element"></div>
-                    <div class="floating-element"></div>
-                    <div class="floating-element"></div>
+            <!-- Background Animation -->
+            <div class="hero-bg-animation">
+                <div class="floating-shapes">
+                    <div class="shape shape-1"></div>
+                    <div class="shape shape-2"></div>
+                    <div class="shape shape-3"></div>
+                    <div class="shape shape-4"></div>
+                    <div class="shape shape-5"></div>
+                    <div class="shape shape-6"></div>
                 </div>
-                <div class="connecting-lines">
-                    <div class="line"></div>
-                    <div class="line"></div>
-                    <div class="line"></div>
-                    <div class="line"></div>
-                </div>
-                <div class="pulse-circles">
-                    <div class="pulse-circle"></div>
-                    <div class="pulse-circle"></div>
-                    <div class="pulse-circle"></div>
-                </div>
-                <div class="gradient-overlay"></div>
-                <div class="noise-texture"></div>
             </div>
             
-            <h1>Welcome to MedCapsule</h1>
-            <p>Your ultimate study companion for medical topics.</p>
-            @guest
-                <a href="{{ route('register') }}" class="btn btn-primary btn-lg">Get Started</a>
-            @else
-                <a href="{{ route('courses.index') }}" class="btn btn-primary btn-lg">Get Started</a>
-            @endguest
+            <!-- Hero Content -->
+            <div class="hero-content">
+                <h1>Welcome to MedCapsule</h1>
+                <p>Your ultimate study companion for medical topics.</p>
+                @guest
+                    <a href="{{ route('register') }}" class="btn btn-primary btn-lg">Get Started</a>
+                @else
+                    <a href="{{ route('courses.index') }}" class="btn btn-primary btn-lg">Get Started</a>
+                @endguest
+            </div>
         </div>
 
         <!-- Courses Section -->
