@@ -108,14 +108,16 @@ $assignment = Assignment::first();
 if (!$assignment) {
     $assignment = Assignment::create([
         'title' => 'Cardiovascular System Assessment',
-        'description' => 'Complete assessment of cardiovascular knowledge',
         'course_id' => 1,
         'topic_id' => 1,
-        'tutor_id' => $user->id,
         'deadline' => now()->addDays(7),
+        'duration_minutes' => 60,
         'assignment_mode' => 'complete_topic',
-        'status' => 'active'
+        'assigned_source' => null
     ]);
+    
+    // Assign to user using the pivot table
+    $assignment->assignedUsers()->attach($user->id);
 }
 
 // Test different assignment completion scenarios

@@ -72,16 +72,14 @@ class QuizAttempt extends Model
 
         // PHASE 2: Dispatch QuizAttemptCompleted event when quiz attempt is completed
         static::created(function ($quizAttempt) {
-            if ($quizAttempt->score !== null && $quizAttempt->total_questions !== null) {
-                $percentage = ($quizAttempt->score / $quizAttempt->total_questions) * 100;
-                
-                event(new \App\Events\QuizAttemptCompleted(
-                    $quizAttempt,
-                    $quizAttempt->score,
-                    $quizAttempt->total_questions,
-                    $percentage
-                ));
-            }
+            $percentage = ($quizAttempt->score / $quizAttempt->total_questions) * 100;
+            
+            event(new \App\Events\QuizAttemptCompleted(
+                $quizAttempt,
+                $quizAttempt->score,
+                $quizAttempt->total_questions,
+                $percentage
+            ));
         });
 
         // PHASE 2: Dispatch UserProgressUpdated event when progress changes (only for regular quizzes)
@@ -114,13 +112,18 @@ class QuizAttempt extends Model
             }
             
             // CRITICAL FIX: Ensure study_mode is set for tutor mode
-            if ($model->study_mode === null && $model->quiz_type === 'tutor') {
-                $model->study_mode = 'tutor';
+            if ($model->study_mode === 'tutor' && $model->quiz_type === null) {
+                $model->quiz_type = 'normal'; // Tutor mode uses normal quiz_type
             }
             
             // CRITICAL FIX: Ensure source is set for tutor mode
             if ($model->source === null && $model->study_mode === 'tutor') {
                 $model->source = 'General';
+            }
+            
+            // CRITICAL FIX: Ensure correct quiz_type for tutor mode
+            if ($model->study_mode === 'tutor' && $model->quiz_type !== 'normal') {
+                $model->quiz_type = 'normal';
             }
             
             // Validate data before saving with error handling
@@ -141,8 +144,7 @@ class QuizAttempt extends Model
                 \Log::error('QuizAttempt validation error', [
                     'error' => $e->getMessage(),
                     'data' => $model->toArray()
-                ]);
-                throw $e;
+                ]);                throw $e;
             }
 
             // Ensure percentage_grade is calculated correctly
@@ -159,8 +161,7 @@ class QuizAttempt extends Model
             $questionData = $model->question_data;
             foreach ($questionData as $key => $data) {
                 if (is_array($data)) {
-                    $questionData[$key]['answered_at'] = now()->toIso8601String();
-                }
+                    $questionData[$key]['answered_at'] = now()->toIso8601String();                }
             }
             $model->question_data = $questionData;
             
@@ -327,8 +328,7 @@ class QuizAttempt extends Model
                 
                 // Only keep the latest attempt per source (first one due to desc order)
                 if (!isset($sourceProgress[$source])) {
-                    $sourceProgress[$source] = [
-                        'score' => $attempt->score,
+                    $sourceProgress[$source] = [                        'score' => $attempt->score,
                         'total' => $attempt->total_questions,
                         'percentage' => $attempt->total_questions > 0 
                             ? ($attempt->score / $attempt->total_questions) * 100 
@@ -374,8 +374,7 @@ class QuizAttempt extends Model
     }
 
     /**
-     * Create a new quiz attempt with progress tracking
-     */
+     * Create a new quiz attempt with progress tracking     */
     public static function createWithProgress($data)
     {
         try {
@@ -448,8 +447,7 @@ class QuizAttempt extends Model
             if ($attempts->isEmpty()) {
                 return [
                     'overall' => [
-                        'score' => 0,
-                        'total' => 0,
+                        'score' => 0,                        'total' => 0,
                         'percentage' => 0
                     ],
                     'sources' => []
@@ -459,8 +457,7 @@ class QuizAttempt extends Model
             // Get the actual number of questions available in each source
             $sourceQuestionCounts = \App\Models\Question::where('topic_id', $topicId)
                 ->whereNotNull('source')
-                ->selectRaw('source, COUNT(*) as count')
-                ->groupBy('source')
+                ->selectRaw('source, COUNT(*) as count')                ->groupBy('source')
                 ->pluck('count', 'source')
                 ->toArray();
 
@@ -522,6 +519,7 @@ class QuizAttempt extends Model
     }
 
     // Format duration as human-readable string
+    // 💀 N+1 WARNING: This accessor accesses 'duration_seconds' - consider eager loading
     public function getDurationAttribute(): string
     {
         $minutes = floor($this->duration_seconds / 60);

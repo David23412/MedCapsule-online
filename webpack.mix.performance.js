@@ -9,7 +9,7 @@ if (mix.inProduction()) {
         terser: {
             terserOptions: {
                 compress: {
-// // // // // drop_console: true, // Remove console.log statements // Removed for production // Removed for production // Removed for production // Removed for production // Removed for production
+// // // // // // drop_console: true, // Remove console.log statements // Removed for production // Removed for production // Removed for production // Removed for production // Removed for production // Removed for production
                 },
             },
         },

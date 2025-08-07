@@ -315,10 +315,11 @@ class TopicLockingService
             return true;
         }
         
-        // Check if tutor is associated with the course
-        return DB::table('course_tutors')
-            ->where('tutor_id', $tutor->id)
+        // Check if tutor is enrolled in the course
+        return DB::table('course_user')
+            ->where('user_id', $tutor->id)
             ->where('course_id', $courseId)
+            ->where('is_enrolled', true)
             ->exists();
     }
     

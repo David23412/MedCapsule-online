@@ -30,9 +30,8 @@ class PaymentAdminController extends Controller
      */
     public function adminPaymentHistory(Request $request)
     {
-        $query = Payment::with(['user:id,name,email', 'course:id,name'])
-            ->select('id', 'user_id', 'course_id', 'amount', 'status', 'payment_method', 'created_at');
-
+        $query = Payment::with(['user:id,name,email', 'course:id,name']);
+        
         if ($status = $request->status) {
             $query->where('status', $status);
         }
@@ -102,6 +101,5 @@ class PaymentAdminController extends Controller
 
         return response()->json(['success' => true, 'message' => 'Payment rejected']);
     }
-
 
 }

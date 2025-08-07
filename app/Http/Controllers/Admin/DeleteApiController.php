@@ -18,8 +18,14 @@ class DeleteApiController extends Controller
      */
     public function getDeletionPreview(Request $request)
     {
-        $type = $request->type;
-        $id = $request->id;
+        // CRITICAL SECURITY FIX: Validate input parameters
+        $validated = $request->validate([
+            'type' => 'required|string|in:user,course,topic,question',
+            'id' => 'required|integer|min:1'
+        ]);
+        
+        $type = $validated['type'];
+        $id = $validated['id'];
 
         // LETHAL CACHING: Ultra-aggressive caching for deletion preview
         $cacheKey = "deletion_preview_{$type}_{$id}_" . now()->format('Y-m-d-H');
@@ -84,5 +90,6 @@ class DeleteApiController extends Controller
             default:
                 return response()->json(['error' => 'Invalid type'], 400);
         }
+        });
     }
 }

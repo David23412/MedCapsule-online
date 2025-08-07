@@ -41,7 +41,7 @@ class CoursePreviewController extends Controller
                 'timestamp' => now()->format('Y-m-d-H')
             ]);
 
-            return Cache::remember($cacheKey, 3600, function () use ($id, $previewType) {
+            $data = Cache::remember($cacheKey, 3600, function () use ($id, $previewType) {
                 $course = Course::select('id', 'name', 'description', 'price')
                     ->with([
                         'topics:id,course_id,name,case_type',
@@ -56,43 +56,50 @@ class CoursePreviewController extends Controller
                     // Medical course preview data
                     $casesCount = $course->topics->where('case_type', 'cases')->count();
                     $practicalCount = $course->topics->where('case_type', 'practical')->count();
-                
-            $quizCount = Topic::where('course_id', $course->id)
-                ->where('case_type', 'quiz')
-                ->count()->with(['relatedModel']); // TODO: Add actual relationships
+                    $quizCount = $course->topics->where('case_type', 'quiz')->count();
+                    
+                    return [
+                        'topicCount' => $topicCount,
+                        'casesCount' => $casesCount,
+                        'practicalCount' => $practicalCount,
+                        'quizCount' => $quizCount
+                    ];
+                } else {
+                    // Custom course preview data - FIXED N+1 QUERY
+                    $categories = Topic::where('course_id', $course->id)
+                        ->select('case_type')
+                        ->distinct()
+                        ->whereNotNull('case_type')
+                        ->pluck('case_type')
+                        ->toArray();
+                    
+                    // LETHAL FIX: Single query with groupBy instead of N+1 queries
+                    $categoryCounts = Topic::where('course_id', $course->id)
+                        ->whereIn('case_type', $categories)
+                        ->groupBy('case_type')
+                        ->selectRaw('case_type, COUNT(*) as count')
+                        ->pluck('count', 'case_type')
+                        ->toArray();
+                    
+                    // Ensure order matches categories array
+                    $orderedCounts = [];
+                    foreach ($categories as $category) {
+                        $orderedCounts[] = $categoryCounts[$category] ?? 0;
+                    }
             
-            return response()->json([
-                'topicCount' => $topicCount,
-                'casesCount' => $casesCount,
-                'practicalCount' => $practicalCount,
-                'quizCount' => $quizCount
-            ]);
-        
+                    return [
+                        'topicCount' => $topicCount,
+                        'categories' => $categories,
+                        'categoryCounts' => $orderedCounts
+                    ];
+                }
+            });
+            
+            return response()->json($data);
+            
         } catch (\Exception $e) {
-            \Log::error('Method execution failed', ['error' => $e->getMessage()]);
+            \Log::error('Course preview failed', ['error' => $e->getMessage()]);
             return response()->json(['success' => false, 'message' => 'Operation failed'], 500);
-        }
-} else {
-            // Custom course preview data
-            $categories = Topic::where('course_id', $course->id)
-                ->select('case_type')
-                ->distinct()
-                ->whereNotNull('case_type')
-                ->pluck('case_type')
-                ->toArray()->with(['relatedModel']); // TODO: Add actual relationships
-            
-            $categoryCounts = [];
-            foreach ($categories as $category) {
-                $categoryCounts[] = Topic::where('course_id', $course->id)
-                    ->where('case_type', $category)
-                    ->count();
-            }
-            
-            return response()->json([
-                'topicCount' => $topicCount,
-                'categories' => $categories,
-                'categoryCounts' => $categoryCounts
-            ]);
         }
     }
 }

@@ -89,6 +89,7 @@ class Question extends Model
      * Get the success rate for this question.
      * Returns 0 if no attempts have been made.
      */
+    // 💀 N+1 WARNING: This accessor accesses 'total_attempts' - consider eager loading
     public function getSuccessRateAttribute(): float
     {
         return $this->total_attempts > 0 
@@ -276,9 +277,7 @@ class Question extends Model
             }
             
             // 7. Calculate similarity
-            $similarityScore = $this->calculateTextSimilarity($normalizedSubmitted, $normalizedCorrect);
-            
-            Log::info('Similarity calculation complete', [
+            $similarityScore = $this->calculateTextSimilarity($normalizedSubmitted, $normalizedCorrect);            Log::info('Similarity calculation complete', [
                 'question_id' => $this->id,
                 'score' => $similarityScore,
                 'threshold' => $adjustedThreshold,

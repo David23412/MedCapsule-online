@@ -60,20 +60,20 @@ const ROUTE_STRATEGIES = [
  * Service Worker Installation
  */
 self.addEventListener('install', event => {
-    console.log('Service Worker installing...');
+// console.log('Service Worker installing...'); // Removed for production
     
     event.waitUntil(
         caches.open(CACHE_NAME)
             .then(cache => {
-                console.log('Caching critical resources...');
+// console.log('Caching critical resources...'); // Removed for production
                 return cache.addAll(CRITICAL_RESOURCES);
             })
             .then(() => {
-                console.log('Critical resources cached successfully');
+// console.log('Critical resources cached successfully'); // Removed for production
                 return self.skipWaiting();
             })
             .catch(error => {
-                console.error('Failed to cache critical resources:', error);
+// console.error('Failed to cache critical resources:', error); // Removed for production
             })
     );
 });
@@ -82,7 +82,7 @@ self.addEventListener('install', event => {
  * Service Worker Activation
  */
 self.addEventListener('activate', event => {
-    console.log('Service Worker activating...');
+// console.log('Service Worker activating...'); // Removed for production
     
     event.waitUntil(
         Promise.all([
@@ -121,7 +121,7 @@ self.addEventListener('fetch', event => {
     event.respondWith(
         handleRequest(request, strategy)
             .catch(error => {
-                console.error('Fetch failed:', error);
+// console.error('Fetch failed:', error); // Removed for production
                 return handleFallback(request);
             })
     );
@@ -131,7 +131,7 @@ self.addEventListener('fetch', event => {
  * Background Sync
  */
 self.addEventListener('sync', event => {
-    console.log('Background sync triggered:', event.tag);
+// console.log('Background sync triggered:', event.tag); // Removed for production
     
     if (event.tag === 'background-sync') {
         event.waitUntil(performBackgroundSync());
@@ -142,7 +142,7 @@ self.addEventListener('sync', event => {
  * Push Notification Handler
  */
 self.addEventListener('push', event => {
-    console.log('Push notification received:', event);
+// console.log('Push notification received:', event); // Removed for production
     
     if (event.data) {
         const data = event.data.json();
@@ -164,7 +164,7 @@ self.addEventListener('push', event => {
  * Notification Click Handler
  */
 self.addEventListener('notificationclick', event => {
-    console.log('Notification clicked:', event);
+// console.log('Notification clicked:', event); // Removed for production
     
     event.notification.close();
     
@@ -214,7 +214,7 @@ async function networkFirst(request) {
         
         return response;
     } catch (error) {
-        console.log('Network failed, trying cache:', error);
+// console.log('Network failed, trying cache:', error); // Removed for production
         return caches.match(request);
     }
 }
@@ -239,7 +239,7 @@ async function cacheFirst(request) {
         
         return response;
     } catch (error) {
-        console.log('Cache and network failed:', error);
+// console.log('Cache and network failed:', error); // Removed for production
         return handleFallback(request);
     }
 }
@@ -260,7 +260,7 @@ async function staleWhileRevalidate(request) {
             return response;
         })
         .catch(error => {
-            console.log('Network request failed:', error);
+// console.log('Network request failed:', error); // Removed for production
             return cached;
         });
     
@@ -342,7 +342,7 @@ async function cleanupOldCaches() {
         cacheNames
             .filter(name => !validCacheNames.includes(name))
             .map(name => {
-                console.log('Deleting old cache:', name);
+// console.log('Deleting old cache:', name); // Removed for production
                 return caches.delete(name);
             })
     );
@@ -363,7 +363,7 @@ async function preloadAPIData() {
                     }
                 })
                 .catch(error => {
-                    console.log('Failed to preload API data:', endpoint, error);
+// console.log('Failed to preload API data:', endpoint, error); // Removed for production
                 });
         })
     );
@@ -373,7 +373,7 @@ async function preloadAPIData() {
  * Background Sync Handler
  */
 async function performBackgroundSync() {
-    console.log('Performing background sync...');
+// console.log('Performing background sync...'); // Removed for production
     
     try {
         // Sync offline data
@@ -385,9 +385,9 @@ async function performBackgroundSync() {
         // Clean up old data
         await cleanupOldData();
         
-        console.log('Background sync completed successfully');
+// console.log('Background sync completed successfully'); // Removed for production
     } catch (error) {
-        console.error('Background sync failed:', error);
+// console.error('Background sync failed:', error); // Removed for production
         throw error;
     }
 }
@@ -397,14 +397,14 @@ async function performBackgroundSync() {
  */
 async function syncOfflineData() {
     // Implementation for syncing offline data
-    console.log('Syncing offline data...');
+// console.log('Syncing offline data...'); // Removed for production
 }
 
 /**
  * Update Cached Resources
  */
 async function updateCachedResources() {
-    console.log('Updating cached resources...');
+// console.log('Updating cached resources...'); // Removed for production
     
     const cache = await caches.open(CACHE_NAME);
     
@@ -417,7 +417,7 @@ async function updateCachedResources() {
                     }
                 })
                 .catch(error => {
-                    console.log('Failed to update cached resource:', resource, error);
+// console.log('Failed to update cached resource:', resource, error); // Removed for production
                 });
         })
     );
@@ -427,7 +427,7 @@ async function updateCachedResources() {
  * Clean Up Old Data
  */
 async function cleanupOldData() {
-    console.log('Cleaning up old data...');
+// console.log('Cleaning up old data...'); // Removed for production
     
     const cache = await caches.open(DYNAMIC_CACHE_NAME);
     const keys = await cache.keys();
@@ -443,7 +443,7 @@ async function cleanupOldData() {
             if (dateHeader) {
                 const responseDate = new Date(dateHeader).getTime();
                 if (responseDate < oneWeekAgo) {
-                    console.log('Removing old cache entry:', request.url);
+// console.log('Removing old cache entry:', request.url); // Removed for production
                     return cache.delete(request);
                 }
             }
@@ -495,10 +495,10 @@ async function preloadResources(resources) {
                     }
                 })
                 .catch(error => {
-                    console.log('Failed to preload resource:', resource, error);
+// console.log('Failed to preload resource:', resource, error); // Removed for production
                 });
         })
     );
 }
 
-console.log('Service Worker loaded successfully');
+// console.log('Service Worker loaded successfully'); // Removed for production

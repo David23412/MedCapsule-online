@@ -999,6 +999,7 @@
                                     <select class="form-control user-select" id="user_id" name="user_id">
                                         <option value="">Type to search for user...</option>
                                         @if(isset($users) && $users->count() > 0)
+{{-- 💀 N+1 FIX NEEDED: Eager load 'email' in controller --}}
                                             @foreach($users as $user)
                                                 <option value="{{ $user->id }}" data-email="{{ $user->email }}" data-role="{{ $user->role }}">
                                                     {{ $user->name }} ({{ $user->email }})
@@ -1020,6 +1021,7 @@
                                     </label>
                                     <select class="form-select" id="course_id" name="course_id">
                                         <option value="">Choose course...</option>
+{{-- 💀 N+1 FIX NEEDED: Eager load 'name' in controller --}}
                                         @if(isset($courses) && $courses->count() > 0)
                                             @foreach($courses as $course)
                                                 <option value="{{ $course->id }}" data-price="{{ $course->price }}">
@@ -1077,6 +1079,7 @@
                                         <i class="fas fa-search me-1"></i>Find User to Manage
                                     </label>
                                     <select class="form-select admin-user-select" id="admin_user_id">
+{{-- 💀 N+1 FIX NEEDED: Eager load 'role' in controller --}}
                                         <option value="">Type to search for user...</option>
                                         @if(isset($users) && $users->count() > 0)
                                             @foreach($users as $user)
@@ -1571,6 +1574,7 @@
                 const courseSelect = $('#course_id');
                 courseSelect.empty();
                 courseSelect.append('<option value="">Choose course...</option>');
+{{-- 💀 N+1 FIX NEEDED: Eager load 'name' in controller --}}
                 
                 // Add original courses
                 @if(isset($courses) && $courses->count() > 0)

@@ -75,14 +75,14 @@ class FinalSecurityCompletionEngine
                 // Fix DB::raw with variables
                 $content = preg_replace(
                     '/DB::raw\s*\(\s*["\']([^"\']*)\{([^}]*)\}([^"\']*)["\']/',
-                    'DB::raw("$1?$3")',
+                    'DB::raw('$1??', [$$3]),
                     $content
                 );
                 
                 // Fix whereRaw with concatenation
                 $content = preg_replace(
                     '/whereRaw\s*\(\s*["\']([^"\']*)\.\s*\$([^"\']*)\s*\.\s*["\']([^"\']*)["\']/',
-                    'whereRaw("$1?$3", [$2])',
+                    'whereRaw('$1??', [$$3]),
                     $content
                 );
                 

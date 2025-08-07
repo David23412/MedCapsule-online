@@ -24,6 +24,18 @@ echo "=" . str_repeat("=", 70) . "\n\n";
 $user = User::find(2);
 if (!$user) {
     echo "❌ User ID 2 not found. Creating test user...\n";
+        // Validate user creation data
+        $request->validate([
+            'name' => 'required|string|max:255',
+            'email' => 'required|email|unique:users',
+        // Check authorization for role assignment
+        if (!auth()->user()->can('assign-roles')) {
+            abort(403, 'Unauthorized to assign roles');
+        }
+
+            'password' => 'required|string|min:8'
+        ]);
+
     $user = User::create([
         'name' => 'Test Student',
         'email' => 'test.student@example.com',
@@ -134,10 +146,16 @@ $assignment = Assignment::first();
 if (!$assignment) {
     $assignment = Assignment::create([
         'title' => 'Comprehensive Medical Assessment',
-        'description' => 'Complete assessment covering all topics',
-        'course_id' => 1, 'topic_id' => 1, 'tutor_id' => 1, 'student_id' => $user->id,
-        'deadline' => now()->addDays(7), 'assignment_mode' => 'complete_topic', 'status' => 'active'
+        'course_id' => 1,
+        'topic_id' => 1,
+        'deadline' => now()->addDays(7),
+        'duration_minutes' => 60,
+        'assignment_mode' => 'complete_topic',
+        'assigned_source' => null
     ]);
+    
+    // Assign to user using the pivot table
+    $assignment->assignedUsers()->attach($user->id);
 }
 
 // Tutor assigns assignment

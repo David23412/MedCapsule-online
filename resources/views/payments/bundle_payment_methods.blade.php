@@ -35,6 +35,7 @@
             <h6 class="mb-0 fs-5">Bundle Summary</h6>
         </div>
         <div class="card-body p-3">
+{{-- 💀 N+1 FIX NEEDED: Eager load 'name' in controller --}}
             @foreach($courses as $course)
                 <div class="d-flex justify-content-between align-items-center mb-2">
                     <div>

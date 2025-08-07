@@ -279,9 +279,19 @@ class WrittenAnswerEvaluationService
         // Check 1: Empty answer = immediate fail
         if (empty($submittedAnswer)) {
             return [
-                'is_correct' => false,
-                'similarity_score' => 0.0,
-                'feedback' => 'No answer provided',
+                'isCorrect' => false,
+                'similarity' => 0.0,
+                'reason' => 'No answer provided',
+                'processing_time' => microtime(true) - $startTime
+            ];
+        }
+        
+        // Check 1.5: Empty correct answer = immediate fail
+        if (empty($correctAnswer)) {
+            return [
+                'isCorrect' => false,
+                'similarity' => 0.0,
+                'reason' => 'No correct answer to compare against',
                 'processing_time' => microtime(true) - $startTime
             ];
         }
@@ -289,9 +299,9 @@ class WrittenAnswerEvaluationService
         // Check 2: Exact match = immediate success (fastest path)
         if (strtolower($submittedAnswer) === strtolower($correctAnswer)) {
             return [
-                'is_correct' => true,
-                'similarity_score' => 1.0,
-                'feedback' => 'Perfect match!',
+                'isCorrect' => true,
+                'similarity' => 1.0,
+                'reason' => 'Perfect match!',
                 'processing_time' => microtime(true) - $startTime
             ];
         }
@@ -300,9 +310,9 @@ class WrittenAnswerEvaluationService
         $lengthDiff = abs(strlen($submittedAnswer) - strlen($correctAnswer));
         if ($lengthDiff > strlen($correctAnswer) * 0.5) {
             return [
-                'is_correct' => false,
-                'similarity_score' => 0.1,
-                'feedback' => 'Answer length significantly different',
+                'isCorrect' => false,
+                'similarity' => 0.1,
+                'reason' => 'Answer length significantly different',
                 'processing_time' => microtime(true) - $startTime
             ];
         }
@@ -314,9 +324,9 @@ class WrittenAnswerEvaluationService
         
         if (count($commonWords) === 0) {
             return [
-                'is_correct' => false,
-                'similarity_score' => 0.0,
-                'feedback' => 'No matching keywords found',
+                'isCorrect' => false,
+                'similarity' => 0.0,
+                'reason' => 'No matching keywords found',
                 'processing_time' => microtime(true) - $startTime
             ];
         }

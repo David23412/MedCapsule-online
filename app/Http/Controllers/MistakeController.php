@@ -5,9 +5,9 @@ namespace App\Http\Controllers;
 use App\Models\Mistake;
 use App\Models\Question;
 use Illuminate\Http\Request;
-use App\Services\QuizCacheService;
+use App\Services\CacheService;
 use Illuminate\Http\JsonResponse;
-use App\Services\QuizPerformanceService;
+use App\Services\QuizService;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Cache;
@@ -30,7 +30,7 @@ class MistakeController extends Controller
         Log::info('📌 Fetching mistakes for user', ['user_id' => $userId, 'course_filter' => $courseFilter]);
 
         // Ultra-aggressive caching for entire mistakes data
-        $cacheKey = QuizCacheService::generateCacheKey('mistakes_full', [
+        $cacheKey = CacheService::generateCacheKey('mistakes_full', [
             'user_id' => $userId, 
             'course_filter' => $courseFilter ?? 'all'
         ]);
@@ -48,19 +48,15 @@ class MistakeController extends Controller
                     ->get();
             });
 
-            // Fetch all mistakes along with the related questions that are not mastered
+            // 💀 LETHAL N+1 FIX: Optimized eager loading with single query
             $mistakesQuery = Mistake::where('user_id', $userId)
                 ->where('mastered', false)  // Only show non-mastered mistakes
-            ->select('*')  // Explicitly select all fields including 'skipped'
-            ->with(['question' => function($query) {
-                $query->select('id', 'question', 'topic_id', 'image_url', 'option_a', 'option_b', 'option_c', 'option_d', 'correct_answer', 'explanation')->with(['relatedModel']); // TODO: Add actual relationships
-                $query->with(['topic' => function($query) {
-                    $query->select('id', 'name', 'course_id');
-                    $query->with(['course' => function($query) {
-                        $query->select('id', 'name');
-                    }]);
-                }]);
-            }]);
+                ->select('*')  // Explicitly select all fields including 'skipped'
+                ->with([
+                    'question:id,question,question_type,topic_id,image_url,option_a,option_b,option_c,option_d,correct_answer,explanation',
+                    'question.topic:id,name,course_id',
+                    'question.topic.course:id,name'
+                ]);
         
         // Apply course filter if specified
         if ($courseFilter) {
@@ -77,14 +73,16 @@ class MistakeController extends Controller
 
         $mistakes = $mistakesQuery->orderBy('last_attempt_date', 'desc')->get();
 
-        // Ensure all skipped values are properly set
+        // LETHAL FIX: Batch update null skipped values to eliminate N+1 queries
+        $mistakesToUpdate = [];
         foreach ($mistakes as $mistake) {
             // Force skipped to be a boolean if it's null or not a boolean
             if ($mistake->skipped === null) {
-                $mistake->skipped = false;
-                $mistake->save();
+                $mistakesToUpdate[] = $mistake->id;
+                $mistake->skipped = false; // Update in memory for immediate use
                 
                 Log::info('Fixed null skipped value', [
+                    'mistake_id' => $mistake->id,
                     'question_id' => $mistake->question_id,
                     'new_value' => false
                 ]);
@@ -94,6 +92,15 @@ class MistakeController extends Controller
                 'question_id' => $mistake->question_id,
                 'skipped' => var_export($mistake->skipped, true),
                 'type' => gettype($mistake->skipped)
+            ]);
+        }
+        
+        // LETHAL OPTIMIZATION: Single batch update instead of N+1 saves
+        if (!empty($mistakesToUpdate)) {
+            Mistake::whereIn('id', $mistakesToUpdate)->update(['skipped' => false]);
+            Log::info('Batch updated skipped values', [
+                'count' => count($mistakesToUpdate),
+                'mistake_ids' => $mistakesToUpdate
             ]);
         }
 
@@ -232,9 +239,9 @@ class MistakeController extends Controller
             ->delete();
 
         if ($deleted) {
-            // 💀 LETHAL CACHE INVALIDATION 💀
-            $this->clearMistakeCaches($userId);
-            Log::info('✅ Mistake deleted');
+            // 🎯 SMART CACHE INVALIDATION - Clear cache immediately after deletion
+            \App\Http\Controllers\Quiz\QuizMistakeController::clearUserMistakeCaches($userId);
+            Log::info('✅ Mistake deleted with SMART cache invalidation');
         } else {
             Log::warning('⚠️ No mistake found to delete');
         }
@@ -260,10 +267,10 @@ class MistakeController extends Controller
                           ->delete();
 
         if ($deleted) {
-            // 💀 LETHAL CACHE INVALIDATION - CLEAR ALL MISTAKE CACHES 💀
-            $this->clearMistakeCaches($userId);
+            // 🎯 SMART CACHE INVALIDATION - Clear cache immediately after deletion
+            \App\Http\Controllers\Quiz\QuizMistakeController::clearUserMistakeCaches($userId);
             
-            Log::info("✅ Mistake successfully removed", [
+            Log::info("✅ Mistake successfully removed with SMART cache invalidation", [
                 'user_id' => $userId,
                 'question_id' => $question_id
             ]);
@@ -281,44 +288,71 @@ class MistakeController extends Controller
     }
     
     /**
-     * 💀 LETHAL CACHE INVALIDATION METHOD 💀
+     * 🚀 CRITICAL FIX: NUCLEAR CACHE INVALIDATION - CLEARS ALL MISTAKE CACHES
      */
     private function clearMistakeCaches($userId)
     {
         try {
-            // Clear all possible mistake cache keys
-            $cacheKeys = [
-                QuizCacheService::generateCacheKey('mistakes_full', ['user_id' => $userId, 'course_filter' => 'all']),
-                QuizCacheService::generateCacheKey('mistakes_full', ['user_id' => $userId, 'course_filter' => 'skipped']),
+            // 🔥 CRITICAL: Clear the EXACT cache keys used by QuizMistakeController
+            $criticalKeys = [
+                // QuizMistakeController cache keys
+                "mistakes_ultra_{$userId}__v2",           // No course filter
+                "mistakes_ultra_{$userId}_skipped_v2",    // Skipped filter
+                "mistakes_support_{$userId}",             // Supporting data cache
+            ];
+            
+            // 🔥 CRITICAL: Get all course IDs and clear their specific caches
+            $courseIds = \App\Models\Course::pluck('id')->toArray();
+            foreach ($courseIds as $courseId) {
+                $criticalKeys[] = "mistakes_ultra_{$userId}_{$courseId}_v2";
+            }
+            
+            // 🔥 CRITICAL: Clear legacy cache keys from MistakeController
+            $legacyKeys = [
+                CacheService::generateCacheKey('mistakes_full', ['user_id' => $userId, 'course_filter' => 'all']),
+                CacheService::generateCacheKey('mistakes_full', ['user_id' => $userId, 'course_filter' => 'skipped']),
                 "mistake_courses_{$userId}",
                 "mistakes_user_{$userId}",
                 "mistakes_count_{$userId}"
             ];
             
-            // Also clear any course-specific caches
-            $courses = \App\Models\Course::all();
-            foreach ($courses as $course) {
-                $cacheKeys[] = QuizCacheService::generateCacheKey('mistakes_full', [
+            // Add course-specific legacy cache keys
+            foreach ($courseIds as $courseId) {
+                $legacyKeys[] = CacheService::generateCacheKey('mistakes_full', [
                     'user_id' => $userId, 
-                    'course_filter' => $course->id
+                    'course_filter' => $courseId
                 ]);
             }
             
-            // Clear all cache keys
-            foreach ($cacheKeys as $key) {
+            // 🔥 NUCLEAR OPTION: Clear ALL cache keys
+            $allKeys = array_merge($criticalKeys, $legacyKeys);
+            
+            // Clear each key individually to ensure they're gone
+            foreach ($allKeys as $key) {
                 Cache::forget($key);
             }
             
-            Log::info("💀 CACHE CLEARED for user", [
+            // 🔥 EXTRA NUCLEAR: Clear any pattern-based caches
+            Cache::flush(); // This will clear ALL cache - nuclear option but ensures no stale data
+            
+            Log::info("🚀 NUCLEAR CACHE CLEARED - ALL MISTAKE CACHES DESTROYED", [
                 'user_id' => $userId,
-                'cache_keys_cleared' => count($cacheKeys)
+                'critical_keys_cleared' => count($criticalKeys),
+                'legacy_keys_cleared' => count($legacyKeys),
+                'total_keys_cleared' => count($allKeys),
+                'courses_processed' => count($courseIds),
+                'nuclear_flush' => true
             ]);
             
         } catch (\Exception $e) {
-            Log::error("❌ Error clearing mistake caches", [
+            Log::error("❌ Error in nuclear cache clearing", [
                 'user_id' => $userId,
                 'error' => $e->getMessage()
             ]);
+            
+            // 🔥 ULTIMATE FALLBACK: Nuclear cache flush
+            Cache::flush();
+            Log::info("🔥 FALLBACK: Complete cache flush executed");
         }
     }
 
@@ -341,8 +375,9 @@ class MistakeController extends Controller
                 $mistake->last_attempt_date = now();
                 $mistake->save();
 
-                // 💀 LETHAL CACHE INVALIDATION 💀
-                $this->clearMistakeCaches($userId);
+                // 🎯 SMART CACHE INVALIDATION - Clear cache immediately after skip
+                \App\Http\Controllers\Quiz\QuizMistakeController::clearUserMistakeCaches($userId);
+                Log::info("✅ Mistake skipped with SMART cache invalidation");
 
                 return response()->json([
                     'success' => true,

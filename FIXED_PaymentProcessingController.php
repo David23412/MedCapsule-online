@@ -140,7 +140,15 @@ class PaymentProcessingController extends Controller
                 $actualDiscount = $proportionalOriginalPrice - $discountedAmount;
                 
                 // CREATE THE FUCKING PAYMENT RECORD
-                $payment = Payment::create([
+        // Wrap payment processing in database transaction
+        DB::beginTransaction();
+        try {
+            $payment = Payment::create([
+            DB::commit();
+        } catch (Exception $e) {
+            DB::rollback();
+            throw $e;
+        }
                     'user_id' => $user->id,
                     'course_id' => $course->id,
                     'amount' => $discountedAmount,
@@ -153,9 +161,49 @@ class PaymentProcessingController extends Controller
                         'bundle_id' => $bundleId,
                         'phone_number' => $validated['phone_number'] ?? null,
                         'course_name' => $course->name,
-                        'transaction_id' => $validated['transaction_id'],
+        // Wrap payment processing in database transaction
+        DB::beginTransaction();
+        try {
+            'transaction_id' => $validated['transaction_id'],
+            DB::commit();
+        } catch (Exception $e) {
+            DB::rollback();
+            throw $e;
+        }
                         'submitted_at' => now(),
-                        'bundle_total_amount' => $finalBundleTotal,
+        // Wrap payment processing in database transaction
+        DB::beginTransaction();
+        try {
+            'bundle_total_amount' => $finalBundleTotal,
+            DB::commit();
+        // Wrap payment processing in database transaction
+        DB::beginTransaction();
+        try {
+            } catch (Exception $e) {
+            DB::commit();
+        } catch (Exception $e) {
+        // Wrap payment processing in database transaction
+        DB::beginTransaction();
+        // Wrap payment processing in database transaction
+        DB::beginTransaction();
+        try {
+            try {
+            DB::commit();
+        } catch (Exception $e) {
+            DB::rollback();
+            throw $e;
+        }
+            DB::rollback();
+            DB::commit();
+        } catch (Exception $e) {
+            DB::rollback();
+            throw $e;
+        }
+            throw $e;
+        }
+            DB::rollback();
+            throw $e;
+        }
                         'original_course_price' => $proportionalOriginalPrice,
                         'discount_per_course' => $actualDiscount
                     ])

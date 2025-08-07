@@ -28,7 +28,6 @@ return new class extends Migration
             $table->decimal('duration_minutes', 8, 2)->default(60.00);
             $table->string('assignment_mode')->default('complete_topic');
             $table->string('assigned_source')->nullable();
-            $table->enum('status', ['active', 'overdue', 'locked', 'expired'])->default('active');
             $table->timestamps();
             
             // 🚀 LEAN INDEXES: Only essential ones (detailed indexes in nuclear_performance_indexing)
@@ -36,39 +35,7 @@ return new class extends Migration
             $table->index('course_id');
         });
 
-        // Create a trigger that automatically updates assignment status (MySQL only)
-        if (DB::getDriverName() === 'mysql') {
-            DB::unprepared('
-                CREATE TRIGGER update_assignment_status_on_select
-                BEFORE UPDATE ON assignments
-                FOR EACH ROW
-                BEGIN
-                    -- Auto-update status based on deadline
-                    IF NEW.deadline < NOW() AND NEW.status = "active" THEN
-                        SET NEW.status = "overdue";
-                    END IF;
-                    
-                    -- Auto-reactivate if deadline is extended
-                    IF NEW.deadline > NOW() AND NEW.status = "overdue" THEN
-                        SET NEW.status = "active";
-                    END IF;
-                END
-            ');
-        }
-        
-        // Create a stored procedure to update overdue assignments (MySQL only)
-        if (DB::getDriverName() === 'mysql') {
-            DB::unprepared('
-                DROP PROCEDURE IF EXISTS UpdateOverdueAssignments;
-                CREATE PROCEDURE UpdateOverdueAssignments()
-                BEGIN
-                    UPDATE assignments 
-                    SET status = "overdue" 
-                    WHERE status = "active" 
-                    AND deadline < NOW();
-                END
-            ');
-        }
+
     }
 
     /**
@@ -76,10 +43,7 @@ return new class extends Migration
      */
     public function down(): void
     {
-        if (DB::getDriverName() === 'mysql') {
-            DB::unprepared('DROP TRIGGER IF EXISTS update_assignment_status_on_select');
-            DB::unprepared('DROP PROCEDURE IF EXISTS UpdateOverdueAssignments');
-        }
+
         Schema::dropIfExists('assignments');
     }
 };

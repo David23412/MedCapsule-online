@@ -45,6 +45,7 @@
                             <label class="form-label">Filter by Course</label>
                             <select class="form-select" name="course_id">
                                 <option value="">All Courses</option>
+{{-- 💀 N+1 FIX NEEDED: Eager load 'name' in controller --}}
                                 @foreach($courses as $course)
                                     <option value="{{ $course->id }}" {{ request('course_id') == $course->id ? 'selected' : '' }}>
                                         {{ $course->name }}
@@ -55,6 +56,7 @@
                         <div class="col-md-3">
                             <label class="form-label">Filter by Topic</label>
                             <select class="form-select" name="topic_id">
+{{-- 💀 N+1 FIX NEEDED: Eager load 'name' in controller --}}
                                 <option value="">All Topics</option>
                                 @foreach($topics as $topic)
                                     <option value="{{ $topic->id }}" {{ request('topic_id') == $topic->id ? 'selected' : '' }}>
@@ -120,6 +122,7 @@
                                         <th>Attempts</th>
                                         <th>Actions</th>
                                     </tr>
+{{-- 💀 N+1 FIX NEEDED: Eager load 'id' in controller --}}
                                 </thead>
                                 <tbody>
                                     @foreach($questions as $question)

@@ -157,6 +157,7 @@ class CoreServicesTest extends TestCase
     {
         $result = $this->writtenAnswerService->evaluateAnswer('', 'correct answer');
         $this->assertIsArray($result);
+        $this->assertArrayHasKey('isCorrect', $result);
         $this->assertFalse($result['isCorrect']);
         $this->assertEquals('No answer provided', $result['reason']);
         

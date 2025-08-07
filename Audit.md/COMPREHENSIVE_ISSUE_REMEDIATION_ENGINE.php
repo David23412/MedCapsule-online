@@ -368,7 +368,7 @@ class $className extends Controller
             // Fix whereRaw with variables
             $content = preg_replace(
                 '/whereRaw\s*\(\s*["\']([^"\']*)\$([^"\']*)["\']/',
-                'whereRaw("$1?", [$2])',
+                'whereRaw('$1?", [?', [$$2]),
                 $content
             );
             

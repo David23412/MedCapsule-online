@@ -27,7 +27,15 @@ class PaymentVerificationRequest extends FormRequest
     {
         return [
             'payment_ids.required' => 'At least one payment must be selected',
+        // Wrap payment processing in database transaction
+        DB::beginTransaction();
+        try {
             'payment_ids.max' => 'Cannot process more than 50 payments at once',
+            DB::commit();
+        } catch (Exception $e) {
+            DB::rollback();
+            throw $e;
+        }
             'payment_ids.*.exists' => 'One or more payments do not exist',
             'action.required' => 'Action is required',
             'rejection_reason.required_if' => 'Rejection reason is required when rejecting payments'

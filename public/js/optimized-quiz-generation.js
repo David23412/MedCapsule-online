@@ -63,9 +63,9 @@ class OptimizedQuizGenerator {
 
         try {
             await Promise.allSettled(promises);
-            console.log('🚀 OPTIMIZED: Prefetch complete - Ready for instant quiz generation');
+// console.log('🚀 OPTIMIZED: Prefetch complete - Ready for instant quiz generation'); // Removed for production
         } catch (error) {
-            console.warn('⚠️ F-16 RAPTOR: Some prefetch operations failed', error);
+// console.warn('⚠️ F-16 RAPTOR: Some prefetch operations failed', error); // Removed for production
         }
     }
 
@@ -100,9 +100,9 @@ class OptimizedQuizGenerator {
                 this.cache.set(`options_${topicId}`, optionsData);
             }
 
-            console.log(`🎯 OPTIMIZED: Prefetched data for topic ${topicId}`);
+// console.log(`🎯 OPTIMIZED: Prefetched data for topic ${topicId}`); // Removed for production
         } catch (error) {
-            console.warn(`⚠️ F-16 RAPTOR: Prefetch failed for topic ${topicId}`, error);
+// console.warn(`⚠️ F-16 RAPTOR: Prefetch failed for topic ${topicId}`, error); // Removed for production
         }
     }
 
@@ -172,7 +172,7 @@ class OptimizedQuizGenerator {
 
         } catch (error) {
             if (attempt < this.retryAttempts) {
-                console.warn(`🔄 F-16 RAPTOR: Retry attempt ${attempt + 1} for topic ${topicId}`);
+// console.warn(`🔄 F-16 RAPTOR: Retry attempt ${attempt + 1} for topic ${topicId}`); // Removed for production
                 await this.delay(1000 * attempt); // Exponential backoff
                 return this.generateQuizWithRetry(topicId, formData, attempt + 1);
             }
@@ -184,7 +184,7 @@ class OptimizedQuizGenerator {
      * Handle successful quiz generation
      */
     handleGenerationSuccess(response, topicId) {
-        console.log('✅ F-16 RAPTOR: Quiz generated successfully', response);
+// console.log('✅ F-16 RAPTOR: Quiz generated successfully', response); // Removed for production
         
         // Cache the result for instant future access
         this.cache.set(`quiz_${topicId}`, response.data);
@@ -209,7 +209,7 @@ class OptimizedQuizGenerator {
      * Handle quiz generation errors
      */
     handleGenerationError(message) {
-        console.error('❌ F-16 RAPTOR: Quiz generation failed', message);
+// console.error('❌ F-16 RAPTOR: Quiz generation failed', message); // Removed for production
         
         // Trigger error event
         document.dispatchEvent(new CustomEvent('quizGenerationError', {
@@ -322,7 +322,7 @@ document.head.appendChild(style);
 // Initialize Optimized Quiz Generator
 document.addEventListener('DOMContentLoaded', () => {
     window.optimizedQuizGenerator = new OptimizedQuizGenerator();
-    console.log('🚀 OPTIMIZED QUIZ GENERATION ENGINE INITIALIZED');
+// console.log('🚀 OPTIMIZED QUIZ GENERATION ENGINE INITIALIZED'); // Removed for production
 });
 
 // Export for module usage

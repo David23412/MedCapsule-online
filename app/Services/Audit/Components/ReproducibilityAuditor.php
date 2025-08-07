@@ -63,6 +63,11 @@ class ReproducibilityAuditor
      */
     private function executeMultipleRuns(Finding $finding, int $iterations): array
     {
+        // Enforce exactly 5 iterations for reproducibility testing
+        if ($iterations !== 5) {
+            throw new Exception('Reproducibility testing requires exactly 5 iterations');
+        }
+
         $results = [];
 
         for ($i = 1; $i <= $iterations; $i++) {
@@ -435,12 +440,26 @@ class ReproducibilityAuditor
             return $carry + ($result['is_reproducible'] ? 1 : 0);
         }, 0);
 
+        // Calculate total iterations executed
+        $totalIterationsExecuted = array_reduce($this->reproducibilityResults, function($carry, $result) {
+            return $carry + ($result['iterations'] ?? 0);
+        }, 0);
+
+        // Calculate average confidence score
+        $totalSuccessRate = array_reduce($this->reproducibilityResults, function($carry, $result) {
+            return $carry + ($result['success_rate'] ?? 0);
+        }, 0);
+        $averageConfidenceScore = $totalTests > 0 ? round($totalSuccessRate / $totalTests, 3) : 0.0;
+
         return [
             'total_tests' => $totalTests,
             'reproducible_tests' => $reproducibleTests,
             'reproducibility_rate' => $totalTests > 0 ? round(($reproducibleTests / $totalTests) * 100, 1) : 100.0,
             'threshold' => $this->reproducibilityThreshold * 100,
-            'iterations_per_test' => $this->defaultIterations
+            'iterations_per_test' => $this->defaultIterations,
+            'total_iterations_executed' => $totalIterationsExecuted,
+            'environment_variations_detected' => count($this->environmentVariations),
+            'average_confidence_score' => $averageConfidenceScore
         ];
     }
 }

@@ -66,6 +66,7 @@ class TutorDashboardViewController extends Controller
 
     /**
      * Get students for dashboard - Optimized with single query
+     * Only shows students enrolled in the same courses as the tutor
      */
     private function getStudentsForDashboard(User $user)
     {
@@ -75,8 +76,13 @@ class TutorDashboardViewController extends Controller
             $query = User::where('role', User::ROLE_STUDENT);
 
             if (!$user->isAdmin()) {
-                $query->whereHas('assignedTutors', function ($q) use ($user) {
-                    $q->where('tutor_id', $user->id);
+                // Get tutor's course IDs
+                $tutorCourseIds = $user->courses()->pluck('courses.id');
+                
+                // Only show students enrolled in the same courses as the tutor
+                $query->whereHas('courses', function ($q) use ($tutorCourseIds) {
+                    $q->whereIn('courses.id', $tutorCourseIds)
+                      ->where('course_user.is_enrolled', true);
                 });
             }
 
@@ -173,10 +179,22 @@ class TutorDashboardViewController extends Controller
 
     /**
      * Check if tutor can access specific student
+     * Tutors can only access students enrolled in their courses
      */
     private function canAccessStudent(User $tutor, User $student): bool
     {
-        return $tutor->assignedStudents()->where('student_id', $student->id)->exists();
+        if ($tutor->isAdmin()) {
+            return true;
+        }
+        
+        // Get tutor's course IDs
+        $tutorCourseIds = $tutor->courses()->pluck('courses.id');
+        
+        // Check if student is enrolled in any of the tutor's courses
+        return $student->courses()
+            ->whereIn('courses.id', $tutorCourseIds)
+            ->where('course_user.is_enrolled', true)
+            ->exists();
     }
 
     /**

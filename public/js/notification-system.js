@@ -21,7 +21,7 @@ class NotificationSystem {
         });
         
         this.isInitialized = true;
-        console.log('NotificationSystem initialized');
+// console.log('NotificationSystem initialized'); // Removed for production
     }
 
     setupEventListeners() {
@@ -120,7 +120,7 @@ class NotificationSystem {
                 this.updateBadge();
             }
         } catch (error) {
-            console.warn('Failed to load notifications:', error);
+// console.warn('Failed to load notifications:', error); // Removed for production
             this.showError('Failed to load notifications');
         } finally {
             this.isLoading = false;
@@ -229,7 +229,7 @@ class NotificationSystem {
                 this.updateMarkAllReadButton();
             }
         } catch (error) {
-            console.warn('Failed to mark notification as read:', error);
+// console.warn('Failed to mark notification as read:', error); // Removed for production
         }
     }
 
@@ -268,7 +268,7 @@ class NotificationSystem {
                 this.updateMarkAllReadButton();
             }
         } catch (error) {
-            console.warn('Failed to mark all notifications as read:', error);
+// console.warn('Failed to mark all notifications as read:', error); // Removed for production
         }
     }
 

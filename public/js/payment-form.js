@@ -1,10 +1,10 @@
 // Log when script loads
-console.log('PAYMENT SCRIPT LOADING');
+// console.log('PAYMENT SCRIPT LOADING'); // Removed for production
 
 // Global error handler
 window.onerror = function(msg, url, lineNo, columnNo, error) {
-    console.log('ERROR:', msg, 'at', lineNo, ':', columnNo);
-    console.log('Error object:', error);
+// console.log('ERROR:', msg, 'at', lineNo, ':', columnNo); // Removed for production
+// console.log('Error object:', error); // Removed for production
     return false;
 };
 
@@ -182,14 +182,14 @@ document.addEventListener('DOMContentLoaded', function() {
 
     const form = document.getElementById('coursePaymentForm');
     if (!form) {
-        console.log('Form not found');
+// console.log('Form not found'); // Removed for production
         return;
     }
-    console.log('Form found');
+// console.log('Form found'); // Removed for production
 
     form.addEventListener('submit', function(e) {
         e.preventDefault();
-        console.log('Form submitted');
+// console.log('Form submitted'); // Removed for production
 
         // Disable submit button
         const submitBtn = this.querySelector('#submitBtn');
@@ -211,7 +211,7 @@ document.addEventListener('DOMContentLoaded', function() {
         })
         .then(response => response.json())
         .then(data => {
-            console.log('Payment submission response:', data);
+// console.log('Payment submission response:', data); // Removed for production
             
             if (data.success) {
                 // Show success message
@@ -228,7 +228,7 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         })
         .catch(error => {
-            console.error('Payment submission error:', error);
+// console.error('Payment submission error:', error); // Removed for production
             
             // Show error message
             showErrorMessage('An error occurred while submitting your payment. Please try again.');
@@ -249,4 +249,4 @@ debugBtn.style.cssText = 'position: fixed; bottom: 10px; right: 10px; z-index: 9
 debugBtn.onclick = showSuccessMessage;
 document.body.appendChild(debugBtn);
 
-console.log('PAYMENT SCRIPT LOADED');
+// console.log('PAYMENT SCRIPT LOADED'); // Removed for production

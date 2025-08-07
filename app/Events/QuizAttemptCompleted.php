@@ -26,6 +26,12 @@ class QuizAttemptCompleted
     public function __construct(QuizAttempt $quizAttempt, int $score, int $totalQuestions, float $percentage)
     {
         $this->quizAttempt = $quizAttempt;
+        
+        // Validate scoring inputs
+        if ($score < 0 || $score > 100) {
+            throw new InvalidArgumentException('Invalid score value');
+        }
+
         $this->score = $score;
         $this->totalQuestions = $totalQuestions;
         $this->percentage = $percentage;

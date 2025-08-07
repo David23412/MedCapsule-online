@@ -70,27 +70,36 @@ class SecurityDashboardController extends Controller
      */
     public function logs(Request $request)
     {
+        // CRITICAL SECURITY FIX: Validate all filter parameters
+        $validated = $request->validate([
+            'event_type' => 'nullable|string|max:50',
+            'risk_level' => 'nullable|string|in:low,medium,high,critical',
+            'user_id' => 'nullable|integer|exists:users,id',
+            'date_from' => 'nullable|date',
+            'date_to' => 'nullable|date|after_or_equal:date_from'
+        ]);
+        
         $query = SessionSecurityLog::with('user');
 
-        // Apply filters
-        if ($request->filled('event_type')) {
-            $query->where('event_type', $request->event_type);
+        // Apply filters with validated data
+        if (!empty($validated['event_type'])) {
+            $query->where('event_type', $validated['event_type']);
         }
 
-        if ($request->filled('risk_level')) {
-            $query->where('risk_level', $request->risk_level);
+        if (!empty($validated['risk_level'])) {
+            $query->where('risk_level', $validated['risk_level']);
         }
 
-        if ($request->filled('user_id')) {
-            $query->where('user_id', $request->user_id);
+        if (!empty($validated['user_id'])) {
+            $query->where('user_id', $validated['user_id']);
         }
 
-        if ($request->filled('date_from')) {
-            $query->whereDate('created_at', '>=', $request->date_from);
+        if (!empty($validated['date_from'])) {
+            $query->whereDate('created_at', '>=', $validated['date_from']);
         }
 
-        if ($request->filled('date_to')) {
-            $query->whereDate('created_at', '<=', $request->date_to);
+        if (!empty($validated['date_to'])) {
+            $query->whereDate('created_at', '<=', $validated['date_to']);
         }
 
         $logs = $query->orderBy('created_at', 'desc')->paginate(50);

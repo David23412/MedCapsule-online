@@ -135,15 +135,15 @@ class QuizTutorController extends Controller
             $course = $courseId ? Course::find($courseId) : null;
             $topic = $topicId ? Topic::find($topicId) : null;
             
-            // Trigger tutor mode completion notifications
-            \App\Services\NotificationTriggerService::onTutorModeCompleted($user, [
-                'correct_answers' => $correctAnswers,
+            // Trigger tutor mode completion notifications using the existing onQuizCompleted method
+            \App\Services\NotificationTriggerService::onQuizCompleted($user, [
+                'score' => $correctAnswers,
                 'total_questions' => $totalQuestions,
                 'course_name' => $course->name ?? 'Course',
                 'topic_name' => $topic->name ?? 'Topic',
                 'course_id' => $courseId,
                 'topic_id' => $topicId,
-                'mode' => 'tutor'
+                'mode' => 'tutor' // This will trigger tutor-specific notifications
             ]);
             
             Log::info('Tutor session completed', [

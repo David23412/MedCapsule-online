@@ -44,27 +44,27 @@ const CACHE_STRATEGIES = {
 
 // INSTALL EVENT - Cache Critical Resources
 self.addEventListener('install', event => {
-    console.log('🚀 MedCapsule SW: Installing...');
+// console.log('🚀 MedCapsule SW: Installing...'); // Removed for production
     
     event.waitUntil(
         caches.open(CACHE_NAME)
             .then(cache => {
-                console.log('📦 Caching critical resources');
+// console.log('📦 Caching critical resources'); // Removed for production
                 return cache.addAll(CRITICAL_RESOURCES);
             })
             .then(() => {
-                console.log('✅ Critical resources cached');
+// console.log('✅ Critical resources cached'); // Removed for production
                 return self.skipWaiting();
             })
             .catch(error => {
-                console.error('❌ Cache installation failed:', error);
+// console.error('❌ Cache installation failed:', error); // Removed for production
             })
     );
 });
 
 // ACTIVATE EVENT - Clean Old Caches
 self.addEventListener('activate', event => {
-    console.log('🔄 MedCapsule SW: Activating...');
+// console.log('🔄 MedCapsule SW: Activating...'); // Removed for production
     
     event.waitUntil(
         caches.keys()
@@ -72,14 +72,14 @@ self.addEventListener('activate', event => {
                 return Promise.all(
                     cacheNames.map(cacheName => {
                         if (cacheName !== CACHE_NAME) {
-                            console.log('🗑️ Deleting old cache:', cacheName);
+// console.log('🗑️ Deleting old cache:', cacheName); // Removed for production
                             return caches.delete(cacheName);
                         }
                     })
                 );
             })
             .then(() => {
-                console.log('✅ Old caches cleaned');
+// console.log('✅ Old caches cleaned'); // Removed for production
                 return self.clients.claim();
             })
     );
@@ -129,7 +129,7 @@ async function handleRequest(request) {
         return await networkFirstWithOfflineFallback(request);
         
     } catch (error) {
-        console.error('🚨 Request handling failed:', error);
+// console.error('🚨 Request handling failed:', error); // Removed for production
         return await getOfflinePage();
     }
 }
@@ -153,7 +153,7 @@ async function handleQuizRequest(request) {
         // Try to serve from cache if available
         const cachedResponse = await caches.match(request);
         if (cachedResponse) {
-            console.log('📱 Serving quiz from cache (offline mode)');
+// console.log('📱 Serving quiz from cache (offline mode)'); // Removed for production
             return cachedResponse;
         }
         
@@ -177,7 +177,7 @@ async function cacheFirst(request) {
         }
         return response;
     } catch (error) {
-        console.log('📱 Network failed, serving offline fallback');
+// console.log('📱 Network failed, serving offline fallback'); // Removed for production
         return await getOfflinePage();
     }
 }
@@ -214,7 +214,7 @@ async function networkFirst(request) {
             // Check if cache is fresh (5 minutes)
             const cachedAt = cachedResponse.headers.get('sw-cached-at');
             if (cachedAt && (Date.now() - parseInt(cachedAt)) < 300000) {
-                console.log('📱 Serving API from cache');
+// console.log('📱 Serving API from cache'); // Removed for production
                 return cachedResponse;
             }
         }
@@ -235,7 +235,7 @@ async function staleWhileRevalidate(request) {
         }
         return response;
     }).catch(() => {
-        console.log('📱 Background fetch failed');
+// console.log('📱 Background fetch failed'); // Removed for production
     });
     
     // Return cached version immediately if available
@@ -403,7 +403,7 @@ self.addEventListener('sync', event => {
 
 // Handle offline quiz submissions
 async function handleQuizSubmissionSync() {
-    console.log('🔄 Syncing offline quiz submissions...');
+// console.log('🔄 Syncing offline quiz submissions...'); // Removed for production
     
     try {
         // Get pending submissions from IndexedDB
@@ -422,16 +422,16 @@ async function handleQuizSubmissionSync() {
                 
                 if (response.ok) {
                     await removePendingSubmission(submission.id);
-                    console.log('✅ Quiz submission synced successfully');
+// console.log('✅ Quiz submission synced successfully'); // Removed for production
                 } else {
-                    console.log('❌ Quiz submission sync failed');
+// console.log('❌ Quiz submission sync failed'); // Removed for production
                 }
             } catch (error) {
-                console.log('❌ Sync attempt failed:', error);
+// console.log('❌ Sync attempt failed:', error); // Removed for production
             }
         }
     } catch (error) {
-        console.error('🚨 Background sync failed:', error);
+// console.error('🚨 Background sync failed:', error); // Removed for production
     }
 }
 
@@ -483,4 +483,4 @@ self.addEventListener('message', event => {
     }
 });
 
-console.log('🚀 MedCapsule Service Worker loaded successfully!');
+// console.log('🚀 MedCapsule Service Worker loaded successfully!'); // Removed for production

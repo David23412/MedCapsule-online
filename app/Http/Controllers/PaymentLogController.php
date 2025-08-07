@@ -43,7 +43,12 @@ class PaymentLogController extends Controller
     {
         try {
             // LETHAL CACHING: Ultra-aggressive caching for payment logs
-            $filters = $request->only(['payment_id', 'action', 'date_from', 'date_to']);
+            $filters = $request->validate([
+                'payment_id' => 'nullable|integer|exists:payments,id',
+                'action' => 'nullable|string|max:50',
+                'date_from' => 'nullable|date',
+                'date_to' => 'nullable|date|after_or_equal:date_from'
+            ]);
             $cacheKey = QuizCacheService::generateCacheKey('payment_logs', [
                 'filters' => $filters,
                 'user_id' => auth()->id(),
@@ -52,9 +57,7 @@ class PaymentLogController extends Controller
 
             $data = Cache::remember($cacheKey, 1800, function () use ($request, $filters) {
                 $query = PaymentLog::query()
-                    ->with(['payment:id,user_id,amount,status', 'user:id,name,email', 'admin:id,name,email'])
-                    ->select('id', 'payment_id', 'user_id', 'admin_id', 'action', 'details', 'created_at')
-                    ->orderBy('created_at', 'desc');
+                    ->with(['payment:id,user_id,amount,status', 'user:id,name,email', 'admin:id,name,email'])->orderBy('created_at', 'desc');
                 
                 // Apply filters
                 if (!empty($filters['payment_id'])) {
@@ -80,19 +83,9 @@ class PaymentLogController extends Controller
             });
 
             return view('payment-logs', $data);
-            
         } catch (\Exception $e) {
-            Log::error('Payment logs failed', [
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString(),
-                'user_id' => auth()->id()
-            ]);
-            
-            return view('payment-logs', [
-                'logs' => collect([]),
-                'stats' => [],
-                'error' => 'Failed to load payment logs'
-            ]);
+            return view('payment-logs', ['logs' => collect(), 'stats' => []])
+                ->with('error', 'Failed to load payment logs: ' . $e->getMessage());
         }
     }
 
@@ -107,21 +100,6 @@ class PaymentLogController extends Controller
             'actions' => PaymentLog::select('action')->distinct()->pluck('action')
         ];
     }
-        
-        // Get available actions for filter dropdown
-        $actions = PaymentLog::select('action')
-            ->distinct()
-            ->pluck('action')
-            ->toArray();
-        
-        // Paginate results
-        $logs = $query->paginate(20);
-        
-        return view('admin.payment_logs.index', [
-            'logs' => $logs,
-            'actions' => $actions,
-            'filters' => $request->all()
-        ]);
     }
 
     /**
@@ -133,19 +111,19 @@ class PaymentLogController extends Controller
     public function showPaymentHistory(Payment $payment)
     {
         try {
-
-        $logs = $this->logService->getPaymentHistory($payment);
-        
-        return view('admin.payment_logs.payment_history', [
-            'payment' => $payment,
-            'logs' => $logs
-        ]);
-    
+            $logs = $this->logService->getPaymentHistory($payment);
+            
+            return view('admin.payment_logs.payment_history', [
+                'payment' => $payment,
+                'logs' => $logs
+            ]);
         } catch (\Exception $e) {
-            \Log::error('Method execution failed', ['error' => $e->getMessage()]);
-            return response()->json(['success' => false, 'message' => 'Operation failed'], 500);
+            return view('admin.payment_logs.payment_history', [
+                'payment' => $payment,
+                'logs' => collect()
+            ])->with('error', 'Failed to load payment history: ' . $e->getMessage());
         }
-}
+    }
 
     /**
      * Export payment logs to CSV.
@@ -156,14 +134,20 @@ class PaymentLogController extends Controller
     public function exportPaymentLogs(Request $request)
     {
         try {
-
-        // Validate request
-        // TODO: Create FormRequest class for validation
+            // Validate input data
+        $validated = $request->validate([
+            'payment_ids' => 'array',
+            'payment_ids.*' => 'integer',
+            'actions' => 'array',
+            'actions.*' => 'string|max:50',
+            'date_from' => 'nullable|date',
+            'date_to' => 'nullable|date|after_or_equal:date_from'
+        ]);
         
-        $paymentIds = $request->payment_ids ?? [];
-        $actions = $request->actions ?? [];
-        $dateFrom = $request->date_from;
-        $dateTo = $request->date_to;
+        $paymentIds = $validated['payment_ids'] ?? [];
+        $actions = $validated['actions'] ?? [];
+        $dateFrom = $validated['date_from'] ?? null;
+        $dateTo = $validated['date_to'] ?? null;
         
         // Export to CSV
         $exportResult = $this->logService->exportToCsv(
@@ -173,18 +157,16 @@ class PaymentLogController extends Controller
             $dateTo
         );
         
-        // Return file download
-        return Response::download(
-            $exportResult['path'],
-            $exportResult['filename'],
-            ['Content-Type' => 'text/csv']
-        );
-    
+            // Return file download
+            return Response::download(
+                $exportResult['path'],
+                $exportResult['filename'],
+                ['Content-Type' => 'text/csv']
+            );
         } catch (\Exception $e) {
-            \Log::error('Method execution failed', ['error' => $e->getMessage()]);
-            return response()->json(['success' => false, 'message' => 'Operation failed'], 500);
+            return redirect()->back()->with('error', 'Export failed: ' . $e->getMessage());
         }
-}
+    }
 
     /**
      * Run log summarization manually.
@@ -195,23 +177,22 @@ class PaymentLogController extends Controller
     public function summarizePaymentLogs(Request $request)
     {
         try {
-
-        // Validate request
-        // TODO: Create FormRequest class for validation
+            // Validate request
+        $validated = $request->validate([
+            'days' => 'required|integer|min:1|max:365',
+            'batch_size' => 'nullable|integer|min:10|max:1000'
+        ]);
         
-        // Run summarization
         $result = $this->logService->summarizeOldLogs(
-            $request->days,
-            $request->batch_size
+            $validated['days'],
+            $validated['batch_size'] ?? 100
         );
         
-        return redirect()
-            ->route('payment-logs')
-            ->with('success', "Summarized logs for {$result['processed_payments']
+            return redirect()
+                ->route('payment-logs')
+                ->with('success', "Summarized logs for {$result['processed_payments']} payments. Cutoff date: {$result['cutoff_date']}");
         } catch (\Exception $e) {
-            \Log::error('Method execution failed', ['error' => $e->getMessage()]);
-            return response()->json(['success' => false, 'message' => 'Operation failed'], 500);
+            return redirect()->back()->with('error', 'Summarization failed: ' . $e->getMessage());
         }
-} payments. Cutoff date: {$result['cutoff_date']}");
     }
 } 

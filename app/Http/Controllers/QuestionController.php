@@ -111,7 +111,7 @@ class QuestionController extends Controller
     {
         try {
             $question = Question::findOrFail($id);
-            $topics = Topic::all();
+            $topics = Topic::with(['course', 'questions'])->get();
             return view('edit_question', compact('question', 'topics'));
         } catch (\Exception $e) {
             \Log::error('Method execution failed', ['error' => $e->getMessage()]);

@@ -7,21 +7,21 @@
 
 // Define missing functions to prevent errors
 window.startPerformanceTracking = window.startPerformanceTracking || function() {
-    console.log('Performance tracking not available');
+// console.log('Performance tracking not available'); // Removed for production
     return { startTime: Date.now() };
 };
 
 window.endPerformanceTracking = window.endPerformanceTracking || function() {
-    console.log('Performance tracking not available');
+// console.log('Performance tracking not available'); // Removed for production
     return 0;
 };
 
 window.loadNotifications = window.loadNotifications || function() {
-    console.log('Notification loading not available');
+// console.log('Notification loading not available'); // Removed for production
 };
 
 window.initializeNotificationSystem = window.initializeNotificationSystem || function() {
-    console.log('Notification system initialization not available');
+// console.log('Notification system initialization not available'); // Removed for production
 };
 
 // Fix other potential missing functions
@@ -51,4 +51,4 @@ window.markAllNotificationsAsRead = window.markAllNotificationsAsRead || functio
 window.aggressiveAutoDelete = window.aggressiveAutoDelete || function() {};
 window.initializeNetworkMonitoring = window.initializeNetworkMonitoring || function() {};
 
-console.log('Notification system fix applied');
+// console.log('Notification system fix applied'); // Removed for production

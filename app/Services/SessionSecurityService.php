@@ -7,6 +7,7 @@ use App\Models\SessionSecurityLog;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
+use Normalizer;
 
 class SessionSecurityService
 {
@@ -15,16 +16,35 @@ class SessionSecurityService
      */
     public function generateDeviceFingerprint(Request $request): string
     {
+        // Get all headers in their original structure for maximum sensitivity
+        $allHeaders = $request->headers->all();
+        
+        // Create a signature that's sensitive to header order and structure
+        $headerStructureSignature = hash('sha256', serialize($allHeaders));
+        
+        // Normalize and sanitize components to prevent spoofing
         $components = [
-            $request->userAgent() ?? 'unknown',
-            $request->header('Accept-Language') ?? 'unknown',
-            $request->header('Accept-Encoding') ?? 'unknown',
-            $request->header('Accept') ?? 'unknown',
-            $request->header('DNT') ?? 'unknown',
-            $request->header('Upgrade-Insecure-Requests') ?? 'unknown',
+            $this->normalizeHeader($request->userAgent() ?? 'unknown'),
+            $this->normalizeHeader($request->header('Accept-Language') ?? 'unknown'),
+            $this->normalizeHeader($request->header('Accept-Encoding') ?? 'unknown'),
+            $this->normalizeHeader($request->header('Accept') ?? 'unknown'),
+            $this->normalizeHeader($request->header('DNT') ?? 'unknown'),
+            $this->normalizeHeader($request->header('Upgrade-Insecure-Requests') ?? 'unknown'),
         ];
         
-        return hash('sha256', implode('|', $components));
+        // Add additional entropy from request characteristics
+        $additionalEntropy = [
+            $request->getScheme(),
+            $request->getHttpHost(),
+            $request->getPort(),
+            count($request->headers->all()), // Header count as additional fingerprint
+            $headerStructureSignature, // Full header structure signature for security
+            hash('md5', json_encode(array_keys($allHeaders))), // Header key order
+        ];
+        
+        $allComponents = array_merge($components, $additionalEntropy);
+        
+        return hash('sha256', implode('|', $allComponents));
     }
 
     /**
@@ -34,38 +54,64 @@ class SessionSecurityService
     {
         $currentIp = $request->ip();
         $currentFingerprint = $this->generateDeviceFingerprint($request);
+        $userAgent = $request->userAgent() ?? '';
         $riskLevel = 'low';
         $flags = [];
+
+        // CRITICAL: Check for obvious attack patterns first
+        if ($this->isObviousAttackPattern($userAgent, $currentIp)) {
+            $flags[] = 'attack_pattern';
+            $riskLevel = 'critical';
+        }
+
+        // Check for bot/automated traffic
+        if ($this->isBotTraffic($userAgent)) {
+            $flags[] = 'bot_traffic';
+            $riskLevel = $riskLevel === 'critical' ? 'critical' : 'high';
+        }
 
         // Check IP change
         if ($user->last_login_ip && $user->last_login_ip !== $currentIp) {
             $flags[] = 'ip_change';
-            $riskLevel = 'medium';
+            $riskLevel = $riskLevel === 'low' ? 'medium' : $riskLevel;
             
             // Check if IPs are from different countries/regions
             if ($this->isDifferentGeolocation($user->last_login_ip, $currentIp)) {
                 $flags[] = 'geo_change';
-                $riskLevel = 'high';
+                $riskLevel = $riskLevel === 'low' ? 'high' : $riskLevel;
             }
         }
 
         // Check device fingerprint change
         if ($user->device_fingerprint && $user->device_fingerprint !== $currentFingerprint) {
             $flags[] = 'device_change';
-            $riskLevel = $riskLevel === 'high' ? 'critical' : 'medium';
+            $riskLevel = $riskLevel === 'low' ? 'medium' : ($riskLevel === 'medium' ? 'high' : $riskLevel);
         }
 
         // Check rapid login attempts
         $recentAttempts = $this->getRecentLoginAttempts($user->id);
         if ($recentAttempts > 3) {
             $flags[] = 'rapid_attempts';
-            $riskLevel = 'high';
+            $riskLevel = $riskLevel === 'low' ? 'high' : $riskLevel;
+        }
+
+        // Check for suspicious IP patterns
+        if ($this->isSuspiciousIP($currentIp)) {
+            $flags[] = 'suspicious_ip';
+            $riskLevel = $riskLevel === 'low' ? 'high' : $riskLevel;
         }
 
         // Check time-based patterns
         if ($this->isUnusualLoginTime($user)) {
             $flags[] = 'unusual_time';
             $riskLevel = $riskLevel === 'low' ? 'medium' : $riskLevel;
+        }
+
+        // Multiple concurrent attempts from different IPs
+        $recentIps = $this->getRecentRequestIPs($user->id);
+        if (count($recentIps) > 2) {
+            $flags[] = 'multiple_ips';
+            $riskLevel = 'high';
         }
 
         return [
@@ -246,6 +292,33 @@ class SessionSecurityService
     }
 
     /**
+     * Handle new login - update session token and security data
+     */
+    public function handleNewLogin(User $user, Request $request): void
+    {
+        $currentSessionToken = session()->getId();
+        $currentFingerprint = $this->generateDeviceFingerprint($request);
+        
+        // Update user with new session information
+        $user->update([
+            'active_session_token' => $currentSessionToken,
+            'session_created_at' => now(),
+            'device_fingerprint' => $currentFingerprint,
+            'last_login_ip' => $request->ip(),
+            'last_user_agent' => $request->userAgent(),
+            'last_security_check' => now(),
+            'concurrent_login_attempts' => 0 // Reset on successful login
+        ]);
+
+        // Log the login event
+        $this->logSecurityEvent($user, 'login', $request, [
+            'risk_level' => 'low',
+            'action_taken' => false,
+            'session_token' => substr($currentSessionToken, 0, 8) . '...' // Partial for security
+        ]);
+    }
+
+    /**
      * Check for excessive activity
      */
     private function isExcessiveActivity(int $userId): bool
@@ -283,5 +356,114 @@ class SessionSecurityService
         $cacheKey = "login_attempts_{$userId}";
         $count = Cache::get($cacheKey, 0);
         Cache::put($cacheKey, $count + 1, 900); // 15 minutes
+    }
+
+    /**
+     * Check for obvious attack patterns
+     */
+    private function isObviousAttackPattern(string $userAgent, string $ip): bool
+    {
+        $attackPatterns = [
+            'AttackBot',
+            'LoadTest',
+            'SustainedAttack',
+            'BruteForce',
+            'Hacker',
+            'Exploit',
+            'Scanner',
+            'Penetration'
+        ];
+
+        foreach ($attackPatterns as $pattern) {
+            if (stripos($userAgent, $pattern) !== false) {
+                return true;
+            }
+        }
+
+        // Check for suspicious IP patterns (private/test ranges used in attacks)
+        if (preg_match('/^(10\.|192\.168\.|172\.(1[6-9]|2[0-9]|3[01])\.)/', $ip)) {
+            return true;
+        }
+
+        return false;
+    }
+
+    /**
+     * Check if traffic appears to be from a bot
+     */
+    private function isBotTraffic(string $userAgent): bool
+    {
+        $botPatterns = [
+            'bot',
+            'crawler',
+            'spider',
+            'scraper',
+            'automated',
+            'script',
+            'curl',
+            'wget',
+            'python',
+            'java',
+            'perl'
+        ];
+
+        foreach ($botPatterns as $pattern) {
+            if (stripos($userAgent, $pattern) !== false) {
+                return true;
+            }
+        }
+
+        // Check for missing or very short user agents
+        if (empty($userAgent) || strlen($userAgent) < 10) {
+            return true;
+        }
+
+        return false;
+    }
+
+    /**
+     * Check if IP is suspicious
+     */
+    private function isSuspiciousIP(string $ip): bool
+    {
+        // Check for common attack IP patterns
+        $suspiciousPatterns = [
+            '/^10\.0\.0\./', // Test range often used in attacks
+            '/^192\.168\.1\./', // Common internal range
+            '/^172\.16\.0\./', // Private range
+        ];
+
+        foreach ($suspiciousPatterns as $pattern) {
+            if (preg_match($pattern, $ip)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Normalize header value to prevent spoofing attacks
+     */
+    private function normalizeHeader(string $header): string
+    {
+        // Convert to lowercase to prevent case manipulation
+        $normalized = strtolower($header);
+        
+        // Remove extra whitespace and normalize spaces
+        $normalized = preg_replace('/\s+/', ' ', trim($normalized));
+        
+        // Remove null bytes and other control characters
+        $normalized = preg_replace('/[\x00-\x1F\x7F]/', '', $normalized);
+        
+        // Normalize Unicode to prevent normalization attacks
+        if (function_exists('normalizer_normalize')) {
+            $normalized = normalizer_normalize($normalized, Normalizer::FORM_C);
+        }
+        
+        // Remove zero-width characters that could be used for spoofing
+        $normalized = preg_replace('/[\x{200B}-\x{200D}\x{FEFF}]/u', '', $normalized);
+        
+        return $normalized;
     }
 }

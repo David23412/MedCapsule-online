@@ -116,15 +116,21 @@ class TopicViewController extends Controller
         $totalQuestions = 0;
         $answeredQuestions = 0;
 
+        // Eager load all relationships at once to prevent N+1 queries
+        $topics->load(['questions:id,topic_id', 'userProgress:id,topic_id,user_id,progress_percentage']);
+        
         foreach ($topics as $topic) {
-            $totalQuestions += $topic->questions->count();
+            // LETHAL OPTIMIZATION: Cache question count to avoid repeated calls
+            $questionCount = $topic->questions->count();
+            $totalQuestions += $questionCount;
             
             if ($topic->userProgress->isNotEmpty()) {
                 $progress = $topic->userProgress->first();
                 if ($progress->progress_percentage >= 80) {
                     $completedTopics++;
                 }
-                $answeredQuestions += ($progress->progress_percentage / 100) * $topic->questions->count();
+                // Use cached count instead of calling count() again
+                $answeredQuestions += ($progress->progress_percentage / 100) * $questionCount;
             }
         }
 
@@ -152,23 +158,32 @@ class TopicViewController extends Controller
             ->values()
             ->toArray();
 
+        // LETHAL FIX: Batch load all data to eliminate N+1 queries
+        $questionCounts = \App\Models\Question::where('topic_id', $topic->id)
+            ->whereIn('source', $availableSources)
+            ->groupBy('source')
+            ->selectRaw('source, COUNT(*) as count')
+            ->pluck('count', 'source')
+            ->toArray();
+            
+        $latestAttempts = \App\Models\QuizAttempt::where([
+            'user_id' => $userId,
+            'topic_id' => $topic->id,
+            'study_mode' => $mode
+        ])
+        ->whereIn('source', $availableSources)
+        ->orderBy('created_at', 'desc')
+        ->get()
+        ->groupBy('source')
+        ->map(function($attempts) {
+            return $attempts->first(); // Get latest attempt per source
+        });
+
         $progressData = [];
         
         foreach ($availableSources as $source) {
-            // Get total questions available for this source
-            $totalQuestionsAvailable = \App\Models\Question::where('topic_id', $topic->id)
-                ->where('source', $source)
-                ->count();
-
-            // Get the latest quiz attempt for this source and mode
-            $latestAttempt = \App\Models\QuizAttempt::where([
-                'user_id' => $userId,
-                'topic_id' => $topic->id,
-                'study_mode' => $mode,
-                'source' => $source
-            ])
-            ->orderBy('created_at', 'desc')
-            ->first();
+            $totalQuestionsAvailable = $questionCounts[$source] ?? 0;
+            $latestAttempt = $latestAttempts[$source] ?? null;
 
             if ($latestAttempt) {
                 // Use correct_answers or fall back to score (they should be the same)

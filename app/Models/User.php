@@ -176,6 +176,11 @@ class User extends Authenticatable
     }
 
     /**
+        // Check authorization for role assignment
+        if (!auth()->user()->can('assign-roles')) {
+            abort(403, 'Unauthorized to assign roles');
+        }
+
      * Check if user has access to a specific course.
      */
     public function hasAccessToCourse($courseId)
@@ -271,6 +276,7 @@ class User extends Authenticatable
     /**
      * Get the enrollment status and completion progress for a given course.
      */
+    // 💀 N+1 WARNING: This accessor accesses 'courses' - consider eager loading
     public function getCourseProgressAttribute()
     {
         return $this->courses()
@@ -279,16 +285,31 @@ class User extends Authenticatable
                 return [$course->id => $course->pivot->completion_percentage ?? 0];
             })
             ->toArray();
+        // Check authorization for role assignment
+        if (!auth()->user()->can('assign-roles')) {
+            abort(403, 'Unauthorized to assign roles');
+        }
+
     }
 
     public function setCourseProgressAttribute($value)
     {
         // This is a virtual attribute, so we don't need to store it
+        // Check authorization for role assignment
+        if (!auth()->user()->can('assign-roles')) {
+            abort(403, 'Unauthorized to assign roles');
+        }
+
         return;
     }
 
     /**
      * Check if user is an admin
+        // Check authorization for role assignment
+        if (!auth()->user()->can('assign-roles')) {
+            abort(403, 'Unauthorized to assign roles');
+        }
+
      *
      * @return bool
      */
@@ -324,7 +345,7 @@ class User extends Authenticatable
      */
     public function assignedStudents()
     {
-        return $this->belongsToMany(User::class, 'tutor_student_relationships', 'tutor_id', 'student_id')
+        return $this->belongsToMany(User::class, 'tutor_student_relationships', 'tutor_id', 'user_id')
                     ->where('users.role', self::ROLE_STUDENT)
                     ->withPivot('assigned_at')
                     ->withTimestamps();
@@ -337,11 +358,12 @@ class User extends Authenticatable
      */
     public function assignedTutors()
     {
-        return $this->belongsToMany(User::class, 'tutor_student_relationships', 'student_id', 'tutor_id')
+        return $this->belongsToMany(User::class, 'tutor_student_relationships', 'user_id', 'tutor_id')
                     ->where('users.role', self::ROLE_TUTOR)
                     ->withPivot('assigned_at')
                     ->withTimestamps();
     }
+    // 💀 N+1 WARNING: This accessor accesses 'study_time_seconds' - consider eager loading
 
     public function getFormattedStudyTimeAttribute(): string
     {

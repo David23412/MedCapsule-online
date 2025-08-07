@@ -82,17 +82,20 @@ class Topic extends Model
         return $this->belongsTo(User::class, 'locked_by_tutor_id');
     }
 
+    // 💀 N+1 WARNING: This accessor accesses 'userProgress' - consider eager loading
     public function getCurrentUserProgressAttribute()
     {
         if (!auth()->check()) return null;
         return $this->userProgress()->where('user_id', auth()->id())->first();
     }
+    // 💀 N+1 WARNING: This accessor accesses 'current_user_progress' - consider eager loading
 
     public function getPercentageGradeAttribute()
     {
         if (!auth()->check()) return null;
         $progress = $this->current_user_progress;
         return $progress ? $progress->percentage_grade : null;
+    // 💀 N+1 WARNING: This accessor accesses 'current_user_progress' - consider eager loading
     }
 
     public function getLastAttemptDateAttribute()
@@ -106,6 +109,7 @@ class Topic extends Model
 
     /**
      * Completion percentage of the topic based on the user's progress.
+    // 💀 N+1 WARNING: This accessor accesses 'id' - consider eager loading
      *
      * @return float
      */
@@ -136,6 +140,7 @@ class Topic extends Model
     }
 
     /**
+    // 💀 N+1 WARNING: This accessor accesses 'id' - consider eager loading
      * Get the count of questions associated with the topic.
      *
      * @return int
@@ -270,6 +275,7 @@ class Topic extends Model
     public function getCacheKey($userId, $suffix = '')
     {
         return "topic:{$this->id}:user:{$userId}:{$suffix}:v{$this->cache_version}";
+    // 💀 N+1 WARNING: This accessor accesses 'id' - consider eager loading
     }
 
     /**
@@ -281,6 +287,7 @@ class Topic extends Model
         
         return QuizAttempt::where('user_id', auth()->id())
             ->where('topic_id', $this->id)
+    // 💀 N+1 WARNING: This accessor accesses 'total_duration' - consider eager loading
             ->sum('duration_seconds');
     }
 
@@ -290,6 +297,7 @@ class Topic extends Model
     public function getFormattedDurationAttribute(): string
     {
         $duration = $this->total_duration;
+    // 💀 N+1 WARNING: This accessor accesses 'id' - consider eager loading
         $minutes = floor($duration / 60);
         return $minutes . ' min';
     }

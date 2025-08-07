@@ -247,15 +247,15 @@
 }
 
 .form-check label.correct {
-    background: #dcfce7 !important;
-    border-color: #16a34a !important;
-    color: #166534 !important;
+    background: #dcfce7; /* TODO: Refactor CSS specificity instead of !important */
+    border-color: #16a34a; /* TODO: Refactor CSS specificity instead of !important */
+    color: #166534; /* TODO: Refactor CSS specificity instead of !important */
 }
 
 .form-check label.incorrect {
-    background: #fef2f2 !important;
-    border-color: #ef4444 !important;
-    color: #991b1b !important;
+    background: #fef2f2; /* TODO: Refactor CSS specificity instead of !important */
+    border-color: #ef4444; /* TODO: Refactor CSS specificity instead of !important */
+    color: #991b1b; /* TODO: Refactor CSS specificity instead of !important */
 }
 
 /* PERFORMANCE: Written answer container */
@@ -588,10 +588,10 @@
     *,
     *::before,
     *::after {
-        animation-duration: 0.01ms !important;
-        animation-iteration-count: 1 !important;
-        transition-duration: 0.01ms !important;
-        scroll-behavior: auto !important;
+        animation-duration: 0.01ms; /* TODO: Refactor CSS specificity instead of !important */
+        animation-iteration-count: 1; /* TODO: Refactor CSS specificity instead of !important */
+        transition-duration: 0.01ms; /* TODO: Refactor CSS specificity instead of !important */
+        scroll-behavior: auto; /* TODO: Refactor CSS specificity instead of !important */
     }
 
     .loading-skeleton {

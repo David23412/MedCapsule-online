@@ -49,7 +49,7 @@ function decodeHtmlEntities(text) {
             .replace(/&plus;/g, "+")
             .replace(/&ast;/g, "*");
     } catch (e) {
-        console.error('Error decoding HTML entities:', e);
+// console.error('Error decoding HTML entities:', e); // Removed for production
         return text; // Return the original text if decoding fails
     }
 }
@@ -95,7 +95,7 @@ function decodeHtmlEntitiesAdvanced(text) {
             .replace(/&plus;/g, "+")
             .replace(/&ast;/g, "*");
     } catch (e) {
-        console.error('Error decoding HTML entities:', e);
+// console.error('Error decoding HTML entities:', e); // Removed for production
         return text; // Return original text if there's an error
     }
 }

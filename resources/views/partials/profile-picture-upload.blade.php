@@ -21,7 +21,9 @@
         
         @if ($errors->has('profile_picture'))
             <div class="alert alert-danger mt-2">
-                {{ $errors->first('profile_picture') }}
+{{-- TODO: Move this query to controller --}}
+{{-- {{ $errors->first('profile_picture') }} --}}
+{{-- Use: Pass data from controller instead --}}
             </div>
         @endif
         

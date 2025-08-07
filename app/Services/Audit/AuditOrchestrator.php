@@ -6,7 +6,7 @@ use App\Services\Audit\Components\EvidenceTracker;
 use App\Services\Audit\Components\QualityGateEnforcer;
 use App\Services\Audit\Reports\AuditReport;
 use App\Services\Audit\Reports\ProgressReport;
-use App\Services\Audit\State\AuditState;
+use App\Services\Audit\Core\AuditState;
 use Exception;
 use Illuminate\Support\Facades\Log;
 
@@ -53,11 +53,12 @@ class AuditOrchestrator
 
     public function __construct(
         QualityGateEnforcer $qualityEnforcer,
-        EvidenceTracker $evidenceTracker
+        EvidenceTracker $evidenceTracker,
+        AuditState $auditState = null
     ) {
         $this->qualityEnforcer = $qualityEnforcer;
         $this->evidenceTracker = $evidenceTracker;
-        $this->currentState = new AuditState();
+        $this->currentState = $auditState ?? new AuditState();
         $this->startTime = microtime(true);
     }
 
@@ -157,7 +158,7 @@ class AuditOrchestrator
         $dependencies = $this->getPhaseDependencies($phase);
         
         foreach ($dependencies as $dependency) {
-            if (!isset($this->phaseResults[$dependency])) {
+            if (!$this->currentState->isPhaseCompleted($dependency)) {
                 Log::warning("Phase dependency not met", [
                     'phase' => $phase,
                     'missing_dependency' => $dependency
@@ -177,7 +178,7 @@ class AuditOrchestrator
         $dependencies = [
             'codebase_structural_analysis' => ['environment_detection'],
             'database_architecture_analysis' => ['environment_detection'],
-            'performance_benchmarking' => ['codebase_structural_analysis'],
+            'performance_benchmarking' => ['codebase_structural_analysis', 'database_architecture_analysis'],
             'chaos_injection_testing' => ['performance_benchmarking'],
             'security_scanning' => ['codebase_structural_analysis'],
             'interdependency_chain_analysis' => ['codebase_structural_analysis', 'database_architecture_analysis'],
@@ -206,9 +207,9 @@ class AuditOrchestrator
     public function trackProgress(): ProgressReport
     {
         return new ProgressReport(
-            $this->currentState->getCurrentPhase(),
+            $this->currentState->getCurrentPhase() ?? 'not_started',
             $this->currentState->getPhaseNumber(),
-            count($this->auditPhases),
+            count($this->auditPhases), // Total number of phases
             $this->currentState->getProgressPercentage(),
             $this->phaseResults,
             microtime(true) - $this->startTime
@@ -242,5 +243,93 @@ class AuditOrchestrator
     public function getPhaseResults(): array
     {
         return $this->phaseResults;
+    }
+
+    /**
+     * Get the complete phase sequence
+     */
+    public function getPhaseSequence(): array
+    {
+        $criticalPhases = [
+            'environment_detection',
+            'codebase_structural_analysis',
+            'database_architecture_analysis', 
+            'performance_benchmarking',
+            'chaos_injection_testing',
+            'security_scanning',
+            'infrastructure_assessment',
+            'business_logic_validation',
+            'dependency_audit'
+        ];
+
+        $phases = [
+            ['id' => 1, 'key' => 'environment_detection', 'name' => 'Environment Detection and Analysis', 'dependencies' => [], 'estimated_minutes' => 30],
+            ['id' => 2, 'key' => 'codebase_structural_analysis', 'name' => 'Codebase Structural Analysis', 'dependencies' => ['environment_detection'], 'estimated_minutes' => 60],
+            ['id' => 3, 'key' => 'database_architecture_analysis', 'name' => 'Database Architecture Analysis', 'dependencies' => ['environment_detection'], 'estimated_minutes' => 45],
+            ['id' => 4, 'key' => 'performance_benchmarking', 'name' => 'Performance Benchmarking', 'dependencies' => ['codebase_structural_analysis', 'database_architecture_analysis'], 'estimated_minutes' => 90],
+            ['id' => 5, 'key' => 'chaos_injection_testing', 'name' => 'Chaos Injection Testing', 'dependencies' => ['codebase_structural_analysis'], 'estimated_minutes' => 120],
+            ['id' => 6, 'key' => 'security_scanning', 'name' => 'Comprehensive Security Scanning', 'dependencies' => ['codebase_structural_analysis'], 'estimated_minutes' => 75],
+            ['id' => 7, 'key' => 'infrastructure_assessment', 'name' => 'Infrastructure Assessment', 'dependencies' => ['database_architecture_analysis'], 'estimated_minutes' => 30],
+            ['id' => 8, 'key' => 'business_logic_validation', 'name' => 'Business Logic Validation', 'dependencies' => ['codebase_structural_analysis'], 'estimated_minutes' => 60],
+            ['id' => 9, 'key' => 'dependency_audit', 'name' => 'Comprehensive Dependency Audit', 'dependencies' => ['codebase_structural_analysis'], 'estimated_minutes' => 45],
+            ['id' => 10, 'key' => 'configuration_audit', 'name' => 'System Configuration Audit', 'dependencies' => ['environment_detection'], 'estimated_minutes' => 30],
+            ['id' => 11, 'key' => 'logging_and_monitoring_review', 'name' => 'Logging and Monitoring Review', 'dependencies' => ['codebase_structural_analysis'], 'estimated_minutes' => 45],
+            ['id' => 12, 'key' => 'error_handling_analysis', 'name' => 'Error Handling Analysis', 'dependencies' => ['codebase_structural_analysis'], 'estimated_minutes' => 60],
+            ['id' => 13, 'key' => 'authentication_authorization_audit', 'name' => 'Authentication & Authorization Audit', 'dependencies' => ['security_scanning'], 'estimated_minutes' => 90],
+            ['id' => 14, 'key' => 'data_validation_testing', 'name' => 'Data Validation Testing', 'dependencies' => ['codebase_structural_analysis'], 'estimated_minutes' => 45],
+            ['id' => 15, 'key' => 'api_endpoint_testing', 'name' => 'API Endpoint Testing', 'dependencies' => ['codebase_structural_analysis'], 'estimated_minutes' => 120],
+            ['id' => 16, 'key' => 'ui_ux_consistency_check', 'name' => 'UI/UX Consistency Check', 'dependencies' => ['environment_detection'], 'estimated_minutes' => 60],
+            ['id' => 17, 'key' => 'mobile_responsiveness_testing', 'name' => 'Mobile Responsiveness Testing', 'dependencies' => ['ui_ux_consistency_check'], 'estimated_minutes' => 45],
+            ['id' => 18, 'key' => 'accessibility_compliance_audit', 'name' => 'Accessibility Compliance Audit', 'dependencies' => ['ui_ux_consistency_check'], 'estimated_minutes' => 75],
+            ['id' => 19, 'key' => 'seo_optimization_review', 'name' => 'SEO Optimization Review', 'dependencies' => ['ui_ux_consistency_check'], 'estimated_minutes' => 30],
+            ['id' => 20, 'key' => 'backup_recovery_testing', 'name' => 'Backup & Recovery Testing', 'dependencies' => ['database_architecture_analysis'], 'estimated_minutes' => 60],
+            ['id' => 21, 'key' => 'scalability_assessment', 'name' => 'Scalability Assessment', 'dependencies' => ['performance_benchmarking'], 'estimated_minutes' => 90],
+            ['id' => 22, 'key' => 'third_party_integration_audit', 'name' => 'Third-party Integration Audit', 'dependencies' => ['dependency_audit'], 'estimated_minutes' => 45],
+            ['id' => 23, 'key' => 'compliance_standards_verification', 'name' => 'Compliance Standards Verification', 'dependencies' => ['security_scanning'], 'estimated_minutes' => 60],
+            ['id' => 24, 'key' => 'final_report_generation', 'name' => 'Final Report Generation', 'dependencies' => ['performance_benchmarking', 'security_scanning', 'business_logic_validation'], 'estimated_minutes' => 45]
+        ];
+
+        // Add critical and completed flags to each phase
+        return array_map(function($phase) use ($criticalPhases) {
+            $phase['critical'] = in_array($phase['key'], $criticalPhases);
+            $phase['completed'] = $this->currentState->isPhaseCompleted($phase['key']);
+            return $phase;
+        }, $phases);
+    }
+
+    /**
+     * Get critical phases
+     */
+    public function getCriticalPhases(): array
+    {
+        $phases = $this->getPhaseSequence();
+        $criticalPhases = [];
+        
+        foreach ($phases as $phase) {
+            if (in_array($phase['key'], [
+                'environment_detection',
+                'codebase_structural_analysis',
+                'database_architecture_analysis', 
+                'performance_benchmarking',
+                'chaos_injection_testing',
+                'security_scanning',
+                'infrastructure_assessment',
+                'business_logic_validation',
+                'dependency_audit'
+            ])) {
+                $criticalPhases[$phase['key']] = $phase;
+            }
+        }
+        
+        return $criticalPhases;
+    }
+
+    /**
+     * Get total estimated time in minutes
+     */
+    public function getTotalEstimatedTime(): int
+    {
+        $phases = $this->getPhaseSequence();
+        return array_sum(array_column($phases, 'estimated_minutes'));
     }
 }

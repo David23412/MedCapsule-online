@@ -3,9 +3,9 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
-use App\Services\QuizCacheService;
+use App\Services\CacheService;
 use Illuminate\Http\JsonResponse;
-use App\Services\QuizPerformanceService;
+use App\Services\QuizService;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
@@ -36,14 +36,9 @@ class PaymentSettingsController extends Controller
         
         $data = Cache::remember($cacheKey, 3600, function () {
             // Load user with payment-related relationships
-            $user = auth()->user()->load([
-                'payments:id,user_id,course_id,amount,status,payment_method,created_at',
-                'payments.course:id,name,price',
+            $user = auth()->user()->load(['payments.course:id,name,price',
                 'courses:id,name,price',
-                'courses.payments:id,course_id,user_id,status'
-            ]);
-            
-            // Get current settings from config
+                'courses.payments:id,course_id,user_id,status'// Get current settings from config
             $settings = [
             'ocr' => [
                 'enabled' => config('payment.ocr.enabled', true),
@@ -114,17 +109,7 @@ class PaymentSettingsController extends Controller
             ]);
 
             return redirect()->route('payment-settings.form')
-                ->with('success', 'Payment settings updated successfully');
-        } catch (\Exception $e) {
-            Log::error('Error updating payment settings', [
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
-            ]);
-
-            return redirect()->route('payment-settings.form')
-                ->with('error', 'Failed to update settings: ' . $e->getMessage());
-        }
-    }
+                ->with('success', 'Payment settings updated successfully');}
 
     /**
      * Check if OCR is available on the system.
@@ -155,11 +140,7 @@ class PaymentSettingsController extends Controller
                 }
             }
 
-            return $isAvailable;
-        } catch (\Exception $e) {
-            return false;
-        }
-    }
+            return $isAvailable;}
 
     /**
      * Update the environment file with new values.

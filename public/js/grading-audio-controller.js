@@ -27,7 +27,7 @@ class GradingAudioController {
         });
 
         this.isInitialized = true;
-        console.log('GradingAudioController initialized');
+// console.log('GradingAudioController initialized'); // Removed for production
     }
 
     /**
@@ -44,7 +44,7 @@ class GradingAudioController {
         this.playAudio(sound);
         
         // Log for debugging
-        console.log(`Playing grading sound: ${sound} for score: ${scorePercentage}%`);
+// console.log(`Playing grading sound: ${sound} for score: ${scorePercentage}%`); // Removed for production
     }
 
     /**
@@ -70,7 +70,7 @@ class GradingAudioController {
         try {
             const audio = this.audioCache.get(soundPath);
             if (!audio) {
-                console.warn(`Audio not found in cache: ${soundPath}`);
+// console.warn(`Audio not found in cache: ${soundPath}`); // Removed for production
                 return;
             }
 
@@ -96,11 +96,11 @@ class GradingAudioController {
             } else {
                 // Wait for audio to load then play
                 audio.addEventListener('canplay', () => {
-                    audio.play().catch(e => console.warn('Delayed audio play failed:', e));
+// audio.play().catch(e => console.warn('Delayed audio play failed:', e)); // Removed for production
                 }, { once: true });
             }
         } catch (error) {
-            console.warn('Audio playback failed:', error);
+// console.warn('Audio playback failed:', error); // Removed for production
             // Fallback: try creating new audio instance
             this.playAudioFallback(soundPath);
         }
@@ -115,10 +115,10 @@ class GradingAudioController {
             const audio = new Audio(soundPath);
             audio.volume = 0.6;
             audio.play().catch(e => {
-                console.warn('Fallback audio playback also failed:', e);
+// console.warn('Fallback audio playback also failed:', e); // Removed for production
             });
         } catch (error) {
-            console.warn('Fallback audio creation failed:', error);
+// console.warn('Fallback audio creation failed:', error); // Removed for production
         }
     }
 

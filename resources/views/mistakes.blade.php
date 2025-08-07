@@ -1052,6 +1052,7 @@
                     <p>Fantastic work! You're crushing it with zero mistakes. Keep up the amazing progress!</p>
                 </div>
             @else
+{{-- 💀 N+1 FIX NEEDED: Eager load 'question' in controller --}}
                 @foreach($mistakes as $mistake)
                     <div class="mistake-card" data-question-id="{{ $mistake->question_id }}">
                         <!-- Normal Mode Content -->
@@ -1261,63 +1262,81 @@
         }
 
         function removeMistake(questionId) {
-            // Get the card and remove it immediately for better UX
+            // Get the card and show loading state
             const card = document.querySelector(`[data-question-id="${questionId}"]`);
-            if (card) {
-                card.style.transition = 'all 0.3s ease';
-                card.style.opacity = '0';
-                card.style.transform = 'translateY(-20px)';
-                
-                setTimeout(() => {
-                    card.remove();
-                    // Check if we need to show empty state
-                    if (document.querySelectorAll('.mistake-card').length === 0) {
-                        // Instead of reloading, show the empty state
-                        const mistakesContent = document.querySelector('#mistakes-content');
-                        if (mistakesContent) {
-                            mistakesContent.innerHTML = `
-                                <div class="empty-state">
-                                    <div class="confetti confetti-1"></div>
-                                    <div class="confetti confetti-2"></div>
-                                    <div class="confetti confetti-3"></div>
-                                    <div class="confetti confetti-4"></div>
-                                    <div class="confetti confetti-5"></div>
-                                    <i class="fas fa-check"></i>
-                                    <h3>No Mistakes!</h3>
-                                    <p>Fantastic work! You're crushing it with zero mistakes. Keep up the amazing progress!</p>
-                                </div>
-                            `;
-                        }
-                        return;
-                    }
-                }, 300);
+            if (!card) {
+                console.error('Card not found for question ID:', questionId);
+                return;
             }
 
-            // Make the API call
+            // Show loading state
+            const removeButton = card.querySelector('.remove-question');
+            if (removeButton) {
+                removeButton.disabled = true;
+                removeButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+                removeButton.style.opacity = '0.6';
+            }
+
+            // Make the API call FIRST
             const token = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
             
             fetch(`/review/remove/${questionId}`, {
                 method: 'POST',
                 headers: {
                     'X-CSRF-TOKEN': token,
-                    'X-Requested-With': 'XMLHttpRequest'
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Content-Type': 'application/json'
                 }
             })
-            .then(response => response.json())
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                return response.json();
+            })
             .then(data => {
                 if (data.success) {
-                    showToast('Question removed successfully!', 'success');
+                    // SUCCESS: Remove card with animation
+                    card.style.transition = 'all 0.3s ease';
+                    card.style.opacity = '0';
+                    card.style.transform = 'translateY(-20px)';
+                    
+                    setTimeout(() => {
+                        card.remove();
+                        
+                        // Check if we need to show empty state
+                        const remainingCards = document.querySelectorAll('.mistake-card');
+                        if (remainingCards.length === 0) {
+                            const mistakesContent = document.querySelector('#mistakes-content');
+                            if (mistakesContent) {
+                                mistakesContent.innerHTML = `
+                                    <div class="empty-state">
+                                        <i class="fas fa-check"></i>
+                                        <h3>No Mistakes!</h3>
+                                        <p>Fantastic work! You're crushing it with zero mistakes. Keep up the amazing progress!</p>
+                                    </div>
+                                `;
+                            }
+                        }
+                        
+                        showToast('Question removed successfully!', 'success');
+                    }, 300);
                 } else {
-                    showToast(data.message || 'Error removing question.', 'error');
+                    // API returned error
+                    throw new Error(data.message || 'Failed to remove question');
                 }
             })
             .catch(error => {
-                console.error('Error:', error);
-                // Only show error toast if the card is still visible
-                const cardStillExists = document.querySelector(`[data-question-id="${questionId}"]`);
-                if (cardStillExists) {
-                    showToast('Error removing question. Please try again.', 'error');
+                console.error('Error removing mistake:', error);
+                
+                // RESTORE button state on error
+                if (removeButton) {
+                    removeButton.disabled = false;
+                    removeButton.innerHTML = '<i class="fas fa-times"></i>';
+                    removeButton.style.opacity = '1';
                 }
+                
+                showToast('Error removing question. Please try again.', 'error');
             });
         }
 

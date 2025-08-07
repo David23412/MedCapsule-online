@@ -268,6 +268,28 @@ class AuditState
     }
 
     /**
+     * Get current phase number
+     */
+    public function getPhaseNumber(): int
+    {
+        // Return the next phase number based on completed phases
+        // If no phases completed, we're on phase 1
+        // If 2 phases completed, we're on phase 3
+        return count($this->completedPhases) + 1;
+    }
+
+    /**
+     * Get progress percentage
+     */
+    public function getProgressPercentage(): float
+    {
+        $totalPhases = 23; // Total number of phases - matches AuditOrchestrator
+        $completedPhases = count($this->completedPhases);
+        
+        return $totalPhases > 0 ? round(($completedPhases / $totalPhases) * 100, 2) : 0.0;
+    }
+
+    /**
      * Export state as array
      */
     public function toArray(): array

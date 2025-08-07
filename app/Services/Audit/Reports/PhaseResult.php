@@ -42,6 +42,11 @@ class PhaseResult
         return $this->findings;
     }
 
+    public function getFindingsCount(): int
+    {
+        return count($this->findings);
+    }
+
     public function addFinding(Finding $finding): void
     {
         $this->findings[] = $finding;

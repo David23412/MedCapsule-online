@@ -302,23 +302,35 @@ class DeleteActionController extends Controller
      */
     public function bulkDeleteQuestions(Request $request)
     {
-        $questionIds = $request->question_ids;
+        $validated = $request->validate([
+            'question_ids' => 'required|array',
+            'question_ids.*' => 'integer|exists:questions,id'
+        ]);
+        
+        $questionIds = $validated['question_ids'];
         $deletedCount = 0;
 
         try {
             DB::beginTransaction();
 
+            // LETHAL FIX: Batch load all questions to eliminate N+1 queries
+            $questions = Question::with(['topic.course'])
+                ->whereIn('id', $questionIds)
+                ->get()
+                ->keyBy('id');
+
+            $cacheService = app(CacheService::class);
+            
+            // Batch update all questions at once
+            Question::whereIn('id', $questionIds)->update(['deleted' => true]);
+            
+            // Clear caches for all questions
             foreach ($questionIds as $questionId) {
-                $question = Question::with(['topic.course'])->find($questionId);
-                
-                if (!$question) continue;
-
-                $question->update(['deleted' => true]);
-
-                $cacheService = app(CacheService::class);
-                $cacheService->clearQuestionCaches($question->id, $question->topic_id);
-                
-                $deletedCount++;
+                $question = $questions[$questionId] ?? null;
+                if ($question) {
+                    $cacheService->clearQuestionCaches($question->id, $question->topic_id);
+                    $deletedCount++;
+                }
             }
 
             session()->flush();

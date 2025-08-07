@@ -19,7 +19,7 @@ function initializeCategorization() {
     // Get course data from the page
     const courseDataElement = document.getElementById('course-data');
     if (!courseDataElement) {
-        console.error('Course data element not found');
+// console.error('Course data element not found'); // Removed for production
         return;
     }
 
@@ -53,7 +53,7 @@ function initializeCategorization() {
         addRippleEffect();
 
     } catch (error) {
-        console.error('Error initializing categorization:', error);
+// console.error('Error initializing categorization:', error); // Removed for production
     }
 }
 

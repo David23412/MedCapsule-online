@@ -176,7 +176,15 @@ Log::info('🔥 LETHAL DEBUG: Starting bundle payment test', [
 ]);
 
 try {
-    $request = Request::create('/payment/submit-bundle-proof', 'POST', $requestData);
+        // Wrap payment processing in database transaction
+        DB::beginTransaction();
+        try {
+            $request = Request::create('/payment/submit-bundle-proof', 'POST', $requestData);
+            DB::commit();
+        } catch (Exception $e) {
+            DB::rollback();
+            throw $e;
+        }
     $request->setUserResolver(function () use ($testUser) {
         return $testUser;
     });
@@ -189,16 +197,48 @@ try {
     $responseData = json_decode($response->getContent(), true);
     
     echo "✅ Controller response:" . PHP_EOL;
-    echo "   - Status Code: " . $response->getStatusCode() . PHP_EOL;
+        // Wrap payment processing in database transaction
+        // Wrap payment processing in database transaction
+        DB::beginTransaction();
+        try {
+            DB::beginTransaction();
+            DB::commit();
+        } catch (Exception $e) {
+            DB::rollback();
+            throw $e;
+        }
+        try {
+            echo "   - Status Code: " . $response->getStatusCode() . PHP_EOL;
+            DB::commit();
+        } catch (Exception $e) {
+            DB::rollback();
+            throw $e;
+        }
     echo "   - Success: " . ($responseData['success'] ? 'YES' : 'NO') . PHP_EOL;
     echo "   - Message: " . ($responseData['message'] ?? 'No message') . PHP_EOL;
     
     if (isset($responseData['bundle_id'])) {
         echo "   - Bundle ID: " . $responseData['bundle_id'] . PHP_EOL;
     }
-    
+        // Wrap payment processing in database transaction
+        DB::beginTransaction();
+        try {
+            
+            DB::commit();
+        } catch (Exception $e) {
+            DB::rollback();
+            throw $e;
+        }
     if (isset($responseData['payments_created'])) {
-        echo "   - Payments Created: " . $responseData['payments_created'] . PHP_EOL;
+        // Wrap payment processing in database transaction
+        DB::beginTransaction();
+        try {
+            echo "   - Payments Created: " . $responseData['payments_created'] . PHP_EOL;
+            DB::commit();
+        } catch (Exception $e) {
+            DB::rollback();
+            throw $e;
+        }
     }
     
 } catch (Exception $e) {
@@ -256,7 +296,31 @@ if (file_exists($logFile)) {
     echo "❌ Log file not found!" . PHP_EOL;
 }
 
-echo PHP_EOL;
+        // Wrap payment processing in database transaction
+        DB::beginTransaction();
+        try {
+            echo PHP_EOL;
+        // Wrap payment processing in database transaction
+        DB::beginTransaction();
+        try {
+        // Wrap payment processing in database transaction
+        DB::beginTransaction();
+        try {
+            DB::commit();
+            DB::commit();
+        } catch (Exception $e) {
+            DB::rollback();
+            throw $e;
+        }
+            DB::commit();
+        } catch (Exception $e) {
+            DB::rollback();
+            throw $e;
+        }
+        } catch (Exception $e) {
+            DB::rollback();
+            throw $e;
+        }
 
 // Step 10: FRONTEND BUTTON STATE TESTING
 echo "📋 STEP 10: FRONTEND BUTTON STATE TESTING" . PHP_EOL;

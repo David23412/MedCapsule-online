@@ -2135,7 +2135,7 @@
                                     </li>
                                     <li>
                                         <a class="dropdown-item" href="{{ route('topic-locking.index') }}">
-                                            Topic Management
+                                            <i class="fas fa-lock me-2"></i>Topic Management
                                         </a>
                                     </li>
                                     <li>
@@ -2175,6 +2175,11 @@
                                     <li>
                                         <a class="dropdown-item" href="{{ route('assignments.index') }}">
                                             <i class="fas fa-clipboard-list me-2"></i>My Assignments
+                                        </a>
+                                    </li>
+                                    <li>
+                                        <a class="dropdown-item" href="{{ route('topic-locking.index') }}">
+                                            <i class="fas fa-lock me-2"></i>Topic Management
                                         </a>
                                     </li>
                                 @endif
@@ -2250,6 +2255,7 @@
             <div class="container-fluid px-4">
                 <h2 class="text-center mb-4">Available Courses</h2>
                 <div class="row">
+{{-- 💀 N+1 FIX NEEDED: Eager load 'name' in controller --}}
                     @foreach($featuredCourses as $course)
                         <div class="col-md-3 col-sm-6 mb-4">
                             <div class="course-card">

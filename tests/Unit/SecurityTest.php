@@ -78,14 +78,15 @@ class SecurityTest extends TestCase
         $this->actingAs($this->user);
         
         // Test quiz submission with oversized answer
-        $oversizedAnswer = str_repeat('a', 10000); // 10KB answer
+        $oversizedAnswer = str_repeat('a', 1100000); // 1.1MB answer
         
         $response = $this->post(route('quiz.grade', ['course' => $this->course, 'topic' => $this->topic]), [
             'answers' => [$this->question->id => $oversizedAnswer],
             'time_taken' => 60
         ]);
         
-        // Should not crash and should handle gracefully
+        // Should return 413 Payload Too Large, not 500 Server Error
+        $this->assertEquals(413, $response->getStatusCode());
         $this->assertNotEquals(500, $response->getStatusCode());
     }
 

@@ -631,6 +631,175 @@ class CodeAnalyzer
         $this->analyzeServiceProviders($phpFiles);
         $this->analyzeMiddleware($phpFiles);
         $this->analyzeArtisanCommands($phpFiles);
+        $this->analyzeRepositoryPattern($phpFiles);
+        $this->analyzeServiceLayer($phpFiles);
+    }
+
+    /**
+     * Analyze Repository pattern usage
+     */
+    private function analyzeRepositoryPattern(array $phpFiles): void
+    {
+        $repositoryFiles = [];
+        $controllersWithoutRepositories = [];
+        
+        // Find repository files
+        foreach ($phpFiles as $fileInfo) {
+            if (strpos($fileInfo['path'], 'Repository') !== false || 
+                strpos($fileInfo['filename'], 'Repository.php') !== false) {
+                $repositoryFiles[] = $fileInfo;
+            }
+        }
+        
+        // Check controllers for repository usage
+        foreach ($phpFiles as $fileInfo) {
+            if (strpos($fileInfo['path'], 'Controller') === false) {
+                continue;
+            }
+            
+            $code = file_get_contents($fileInfo['absolute_path']);
+            
+            // Check if controller uses repositories
+            $hasRepositoryInjection = preg_match('/Repository\s+\$[a-zA-Z_]+/', $code) ||
+                                    preg_match('/use.*Repository;/', $code);
+            
+            // Check if controller has direct model usage
+            $hasDirectModelUsage = preg_match('/[A-Z][a-zA-Z]*::(find|where|get|all|create|update)/', $code);
+            
+            if ($hasDirectModelUsage && !$hasRepositoryInjection && $fileInfo['line_count'] > 50) {
+                $finding = new Finding(
+                    'ISSUE-' . str_pad($this->findingCounter++, 3, '0', STR_PAD_LEFT),
+                    'medium',
+                    'Controller uses direct model access instead of repository pattern',
+                    'architecture',
+                    'repository_pattern'
+                );
+                
+                $finding->addFileReference($fileInfo['path'], 1, 'Controller without repository pattern');
+                $finding->addMetric('controller_lines', $fileInfo['line_count'], 'lines');
+                $finding->addMetric('has_repository', 0, 'boolean');
+                $finding->addEvidence('static_analysis', [
+                    'has_direct_model_usage' => $hasDirectModelUsage,
+                    'has_repository_injection' => $hasRepositoryInjection,
+                    'controller_size' => $fileInfo['line_count']
+                ], 'Repository pattern analysis');
+                
+                $finding->setRecommendation('Implement repository pattern to separate data access logic');
+                $finding->setEstimatedHours(4);
+                
+                $this->findings[] = $finding;
+            }
+        }
+        
+        // Report on repository pattern adoption
+        if (count($repositoryFiles) === 0) {
+            $finding = new Finding(
+                'ISSUE-' . str_pad($this->findingCounter++, 3, '0', STR_PAD_LEFT),
+                'low',
+                'No repository pattern implementation found',
+                'architecture',
+                'repository_pattern'
+            );
+            
+            $finding->addFileReference('app/', 1, 'Application structure');
+            $finding->addMetric('repository_count', 0, 'files');
+            $finding->addEvidence('static_analysis', [
+                'repository_files_found' => count($repositoryFiles),
+                'pattern_adoption' => 'none'
+            ], 'Repository pattern adoption analysis');
+            
+            $finding->setRecommendation('Consider implementing repository pattern for better data access abstraction');
+            $finding->setEstimatedHours(8);
+            
+            $this->findings[] = $finding;
+        }
+    }
+
+    /**
+     * Analyze Service layer implementation
+     */
+    private function analyzeServiceLayer(array $phpFiles): void
+    {
+        $serviceFiles = [];
+        $controllersWithBusinessLogic = [];
+        
+        // Find service files
+        foreach ($phpFiles as $fileInfo) {
+            if (strpos($fileInfo['path'], 'Services/') !== false || 
+                strpos($fileInfo['filename'], 'Service.php') !== false) {
+                $serviceFiles[] = $fileInfo;
+            }
+        }
+        
+        // Check controllers for business logic that should be in services
+        foreach ($phpFiles as $fileInfo) {
+            if (strpos($fileInfo['path'], 'Controller') === false) {
+                continue;
+            }
+            
+            $code = file_get_contents($fileInfo['absolute_path']);
+            
+            // Look for complex business logic in controllers
+            $hasComplexLogic = preg_match_all('/if\s*\(/', $code) > 5 ||
+                             preg_match_all('/foreach\s*\(/', $code) > 3 ||
+                             preg_match_all('/while\s*\(/', $code) > 1;
+            
+            $hasServiceInjection = preg_match('/Service\s+\$[a-zA-Z_]+/', $code) ||
+                                 preg_match('/use.*Service;/', $code);
+            
+            if ($hasComplexLogic && !$hasServiceInjection && $fileInfo['line_count'] > 100) {
+                $finding = new Finding(
+                    'ISSUE-' . str_pad($this->findingCounter++, 3, '0', STR_PAD_LEFT),
+                    'medium',
+                    'Controller contains business logic that should be in service layer',
+                    'architecture',
+                    'service_layer'
+                );
+                
+                $finding->addFileReference($fileInfo['path'], 1, 'Controller with business logic');
+                $finding->addMetric('controller_lines', $fileInfo['line_count'], 'lines');
+                $finding->addMetric('has_service_injection', $hasServiceInjection ? 1 : 0, 'boolean');
+                $finding->addEvidence('static_analysis', [
+                    'has_complex_logic' => $hasComplexLogic,
+                    'has_service_injection' => $hasServiceInjection,
+                    'controller_size' => $fileInfo['line_count']
+                ], 'Service layer analysis');
+                
+                $finding->setRecommendation('Extract business logic to dedicated service classes');
+                $finding->setEstimatedHours(6);
+                
+                $this->findings[] = $finding;
+            }
+        }
+        
+        // Analyze service layer adoption
+        $controllerCount = count(array_filter($phpFiles, fn($f) => strpos($f['path'], 'Controller') !== false));
+        $serviceAdoptionRatio = $controllerCount > 0 ? count($serviceFiles) / $controllerCount : 0;
+        
+        if ($serviceAdoptionRatio < 0.3 && $controllerCount > 5) {
+            $finding = new Finding(
+                'ISSUE-' . str_pad($this->findingCounter++, 3, '0', STR_PAD_LEFT),
+                'medium',
+                'Low service layer adoption - business logic may be scattered',
+                'architecture',
+                'service_layer'
+            );
+            
+            $finding->addFileReference('app/Services/', 1, 'Service layer directory');
+            $finding->addMetric('service_count', count($serviceFiles), 'files');
+            $finding->addMetric('controller_count', $controllerCount, 'files');
+            $finding->addMetric('adoption_ratio', round($serviceAdoptionRatio, 2), 'ratio');
+            $finding->addEvidence('static_analysis', [
+                'service_files' => count($serviceFiles),
+                'controller_files' => $controllerCount,
+                'adoption_ratio' => $serviceAdoptionRatio
+            ], 'Service layer adoption analysis');
+            
+            $finding->setRecommendation('Implement service layer to centralize business logic');
+            $finding->setEstimatedHours(12);
+            
+            $this->findings[] = $finding;
+        }
     }
 
     /**

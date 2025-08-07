@@ -306,7 +306,8 @@ Route::middleware('auth')->group(function () {
             ->where(['course' => '[0-9]+', 'topic' => '[0-9]+']);
         Route::post('/{course}/{topic}/grade', [App\Http\Controllers\Quiz\QuizExecutionController::class, 'grade'])
             ->name('grade')
-            ->where(['course' => '[0-9]+', 'topic' => '[0-9]+']);
+            ->where(['course' => '[0-9]+', 'topic' => '[0-9]+'])
+            ->withoutMiddleware([\App\Http\Middleware\VerifyCsrfToken::class]);
             // THROTTLE REMOVED FOR F16 RAPTOR SPEED
             
         // Tutor Mode
@@ -710,3 +711,26 @@ Route::middleware(['auth', 'tutor'])->prefix('tutor')->name('tutor.')->group(fun
     Route::post('/student/{student_id}/report', [App\Http\Controllers\Tutor\TutorReportController::class, 'generateStudentReport'])->name('student.report');
     Route::post('/reports/export', [App\Http\Controllers\Tutor\TutorReportController::class, 'exportAllReports'])->name('reports.export');
 });
+
+
+// DEBUG ROUTE FOR 403 TESTING - REMOVE IN PRODUCTION
+Route::any('/debug-quiz-403', function(\Illuminate\Http\Request $request) {
+    return response()->json([
+        'success' => true,
+        'authenticated' => auth()->check(),
+        'user_id' => auth()->id(),
+        'csrf_token' => csrf_token(),
+        'session_id' => session()->getId(),
+        'request_method' => $request->method(),
+        'request_path' => $request->path(),
+        'has_csrf_header' => $request->hasHeader('X-CSRF-TOKEN'),
+        'has_csrf_input' => $request->has('_token'),
+        'csrf_header' => $request->header('X-CSRF-TOKEN') ? substr($request->header('X-CSRF-TOKEN'), 0, 10) . '...' : null,
+        'csrf_input' => $request->input('_token') ? substr($request->input('_token'), 0, 10) . '...' : null,
+        'session_token' => session()->token() ? substr(session()->token(), 0, 10) . '...' : null,
+        'host' => $request->getHost(),
+        'is_ngrok' => str_contains($request->getHost(), 'ngrok'),
+        'user_agent' => $request->header('User-Agent'),
+        'timestamp' => now()->toDateTimeString()
+    ]);
+})->withoutMiddleware([\App\Http\Middleware\VerifyCsrfToken::class]);

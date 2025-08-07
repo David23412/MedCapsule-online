@@ -57,8 +57,7 @@ function detectCourseTopic($text) {
             if (strpos($text, $keyword) !== false) {
                 $score++;
             }
-        }
-        $scores[$topic] = $score;
+        }        $scores[$topic] = $score;
     }
     
     arsort($scores);

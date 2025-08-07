@@ -72,8 +72,8 @@ class UserCourseController extends Controller
             Log::error('Stack trace: ' . $e->getTraceAsString());
             
             // Even in error, provide SOMETHING
-            $users = User::all();
-            $courses = Course::all();
+            $users = User::with(['courses'])->get();
+            $courses = Course::with(['topics', 'users'])->get();
             $userStats = [
                 'total_users' => $users->count(),
                 'active_users' => $users->count(),
@@ -115,8 +115,13 @@ class UserCourseController extends Controller
                 ], 422);
             }
 
-            $user = User::findOrFail($request->user_id);
-            $course = Course::findOrFail($request->course_id);
+            $validated = $request->validate([
+                'user_id' => 'required|integer|exists:users,id',
+                'course_id' => 'required|integer|exists:courses,id'
+            ]);
+            
+            $user = User::findOrFail($validated['user_id']);
+            $course = Course::findOrFail($validated['course_id']);
 
             Log::info('✅ User and Course found:', [
                 'user_id' => $user->id,
@@ -217,8 +222,13 @@ class UserCourseController extends Controller
                 ], 400);
             }
 
-            $user = User::findOrFail($request->user_id);
-            $course = Course::findOrFail($request->course_id);
+            $validated = $request->validate([
+                'user_id' => 'required|integer|exists:users,id',
+                'course_id' => 'required|integer|exists:courses,id'
+            ]);
+            
+            $user = User::findOrFail($validated['user_id']);
+            $course = Course::findOrFail($validated['course_id']);
 
             // Check if enrollment exists
             $enrollment = DB::table('course_user')
@@ -344,8 +354,35 @@ class UserCourseController extends Controller
                 ], 400);
             }
 
+        // Check authorization for role assignment
+        // Check authorization for role assignment
+        if (!auth()->user()->can('assign-roles')) {
+            abort(403, 'Unauthorized to assign roles');
+        }
+
+        // Check authorization for role assignment
+        if (!auth()->user()->can('assign-roles')) {
+            abort(403, 'Unauthorized to assign roles');
+        }
+
+        if (!auth()->user()->can('assign-roles')) {
+            abort(403, 'Unauthorized to assign roles');
+        }
+
+        // Check authorization for role assignment
+        if (!auth()->user()->can('assign-roles')) {
+            abort(403, 'Unauthorized to assign roles');
+        }
+
             $wasAdmin = $user->role === 'admin';
             $user->role = $wasAdmin ? 'student' : 'admin';
+        // Validate user creation data
+        $request->validate([
+            'name' => 'required|string|max:255',
+            'email' => 'required|email|unique:users',
+            'password' => 'required|string|min:8'
+        ]);
+
             $user->save();
 
             Log::info('Admin status toggled', [

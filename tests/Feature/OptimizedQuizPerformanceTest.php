@@ -2,8 +2,8 @@
 
 namespace Tests\Feature;
 
-use App\Services\QuizCacheService;
-use App\Services\QuizPerformanceService;
+use App\Services\CacheService;
+use App\Services\QuizService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
 use Tests\TestCase;

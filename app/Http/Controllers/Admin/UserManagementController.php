@@ -31,7 +31,11 @@ class UserManagementController extends Controller
      */
     public function searchUsers(Request $request)
     {
-        $query = $request->input('query', '');
+        $validated = $request->validate([
+            'query' => 'nullable|string|max:255'
+        ]);
+        
+        $query = $validated['query'] ?? '';
         
         if (strlen($query) < 2) {
             return response()->json(['users' => []]);
@@ -75,13 +79,28 @@ class UserManagementController extends Controller
                 ], 400);
             }
 
+        // Check authorization for role assignment
+        if (!auth()->user()->can('assign-roles')) {
+            abort(403, 'Unauthorized to assign roles');
+        }
+
             $user->role = $validated['make_admin'] ? 'admin' : 'student';
             $user->save();
+
+        // Check authorization for role assignment
+        if (!auth()->user()->can('assign-roles')) {
+            abort(403, 'Unauthorized to assign roles');
+        }
 
             // Clear user cache
             Cache::forget("user_search_*");
 
             Log::info('Admin status toggled', [
+        // Check authorization for role assignment
+        if (!auth()->user()->can('assign-roles')) {
+            abort(403, 'Unauthorized to assign roles');
+        }
+
                 'target_user_id' => $user->id,
                 'new_role' => $user->role,
                 'admin_id' => auth()->id()

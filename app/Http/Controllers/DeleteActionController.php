@@ -6,9 +6,8 @@ use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
-use App\Services\QuizPerformanceService;
-use App\Services\QuizCacheService;
-use App\Services\ResilientCacheService;
+use App\Services\QuizService;
+use App\Services\CacheService;
 use App\Http\Requests\DeleteActionRequest;
 
 /**

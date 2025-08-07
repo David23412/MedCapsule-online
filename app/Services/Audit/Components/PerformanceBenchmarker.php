@@ -111,6 +111,7 @@ class PerformanceBenchmarker
     {
         $criticalRoutes = [];
         
+        $routes = $routes->load('uri');
         foreach ($routes as $route) {
             $uri = $route->uri();
             $methods = $route->methods();

@@ -13,16 +13,32 @@ class QuizValidationService
      */
     public function validateQuizSubmission(Request $request, bool $isAssignment, int $userId, string $requestId): array
     {
+        // Pre-validation: Check for oversized payloads to prevent DoS attacks
+        $requestSize = strlen(json_encode($request->all()));
+        if ($requestSize > 1048576) { // 1MB limit
+            Log::warning('Oversized payload detected', [
+                'user_id' => $userId,
+                'request_size' => $requestSize,
+                'request_id' => $requestId
+            ]);
+            
+            throw new \Illuminate\Http\Exceptions\HttpResponseException(
+                response()->json([
+                    'success' => false,
+                    'error' => 'Request payload too large. Please reduce the size of your answers.'
+                ], 413) // 413 Payload Too Large
+            );
+        }
+        
         $validationRules = [
             'answers' => 'required|array|min:1|max:100',
             'answers.*' => 'nullable|string|max:2000',
             'mode' => 'nullable|string|in:quiz,tutor,random,assignment',
-            'study_mode' => 'nullable|string|in:quiz,tutor,random,assignment,mistake_review'
+            'study_mode' => 'nullable|string|in:quiz,tutor,random,assignment,mistake_review',
+            'duration_seconds' => $isAssignment 
+                ? 'nullable|integer|min:1|max:86400'
+                : 'required|integer|min:1|max:86400'
         ];
-        
-        $validationRules['time_taken'] = $isAssignment 
-            ? 'nullable|integer|min:1|max:86400'
-            : 'required|integer|min:1|max:86400';
         
         try {
             $validated = InputValidationService::validateInput($request->all(), $validationRules, [], [
@@ -60,10 +76,9 @@ class QuizValidationService
             );
         }
 
-        // Convert time_taken to duration_seconds for consistency
-        if (isset($validated['time_taken'])) {
-            $validated['duration_seconds'] = (int) $validated['time_taken'];
-            unset($validated['time_taken']);
+        // Ensure duration_seconds is an integer
+        if (isset($validated['duration_seconds'])) {
+            $validated['duration_seconds'] = (int) $validated['duration_seconds'];
         }
 
         // Handle mode and study_mode compatibility
@@ -74,6 +89,21 @@ class QuizValidationService
         } else {
             $validated['mode'] = $isAssignment ? 'assignment' : 'quiz';
             $validated['study_mode'] = $validated['mode'];
+        }
+
+        // ULTRA EFFICIENT: Handle pre-computed data from frontend
+        if (isset($validated['computed_locally']) && $validated['computed_locally']) {
+            Log::info('🚀 Processing pre-computed quiz data', [
+                'user_id' => $userId,
+                'mode' => $validated['mode'],
+                'answers_count' => count($validated['answers'] ?? []),
+                'request_id' => $requestId
+            ]);
+        }
+
+        // Ensure duration_seconds has a minimum value for tutor mode
+        if ($validated['mode'] === 'tutor' && (!isset($validated['duration_seconds']) || $validated['duration_seconds'] < 1)) {
+            $validated['duration_seconds'] = 1; // Minimum 1 second for tutor mode
         }
 
         return $validated;

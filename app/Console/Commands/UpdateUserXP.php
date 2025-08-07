@@ -41,6 +41,13 @@ class UpdateUserXP extends Command
                 
                 $oldXP = $user->xp ?? 0;
                 $user->xp = $calculatedXP;
+        // Validate user creation data
+        $request->validate([
+            'name' => 'required|string|max:255',
+            'email' => 'required|email|unique:users',
+            'password' => 'required|string|min:8'
+        ]);
+
                 $user->save();
                 
                 $this->line("Updated user #{$user->id} ({$user->name}) XP: {$oldXP} → {$calculatedXP}");

@@ -76,7 +76,15 @@ foreach ($paymentMethods as $method => $displayName) {
         
         if ($data['success']) {
             $payment = Payment::find($data['payment_id']);
+        // Wrap payment processing in database transaction
+        DB::beginTransaction();
+        try {
             echo "   ✅ Payment created with method: {$payment->payment_method}" . PHP_EOL;
+            DB::commit();
+        } catch (Exception $e) {
+            DB::rollback();
+            throw $e;
+        }
             $singlePaymentResults[$method] = $payment->payment_method;
         } else {
             echo "   ❌ Failed: " . $data['message'] . PHP_EOL;
@@ -111,7 +119,15 @@ foreach ($paymentMethods as $method => $displayName) {
         'phone_number' => '01234567890',
         'total_amount' => 229.99
     ]);
-    
+        // Wrap payment processing in database transaction
+        DB::beginTransaction();
+        try {
+            
+            DB::commit();
+        } catch (Exception $e) {
+            DB::rollback();
+            throw $e;
+        }
     try {
         $response = $controller->submitBundlePaymentProof($request);
         $data = json_decode($response->getContent(), true);
@@ -127,7 +143,15 @@ foreach ($paymentMethods as $method => $displayName) {
             $bundlePaymentResults[$method] = 'FAILED';
         }
     } catch (Exception $e) {
-        echo "   ❌ Exception: " . $e->getMessage() . PHP_EOL;
+        // Wrap payment processing in database transaction
+        DB::beginTransaction();
+        try {
+            echo "   ❌ Exception: " . $e->getMessage() . PHP_EOL;
+            DB::commit();
+        } catch (Exception $e) {
+            DB::rollback();
+            throw $e;
+        }
         $bundlePaymentResults[$method] = 'EXCEPTION';
     }
     

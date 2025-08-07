@@ -12,6 +12,13 @@ class Assignment extends Model
 {
     use HasFactory;
 
+    // Status constants for computed status (since status column was removed)
+    const STATUS_ACTIVE = 'active';
+    const STATUS_OVERDUE = 'overdue';
+    const STATUS_LOCKED = 'locked';
+    const STATUS_EXPIRED = 'expired';
+    const STATUS_COMPLETED = 'completed';
+
     protected $fillable = [
         // 🔥 RUTHLESS REMOVAL: No tutor_id - auth()->user() handles this!
         'topic_id',
@@ -20,8 +27,8 @@ class Assignment extends Model
         'deadline',
         'duration_minutes',
         'assignment_mode',
-        'assigned_source',
-        'status'
+        'assigned_source'
+        // 🔥 RUTHLESS REMOVAL: No status - tracked in assignment_users pivot table!
     ];
 
     protected $casts = [
@@ -32,21 +39,11 @@ class Assignment extends Model
 
     /**
      * 🚀 PERFORMANCE OPTIMIZED: Get computed status without database writes
-     * This replaces the problematic getStatusAttribute that was writing to DB on every read
+     * Since status column was removed, this computes status dynamically
      */
     public function getCurrentStatusAttribute(): string
     {
-        // Check completion first (highest priority)
-        if ($this->status === self::STATUS_COMPLETED) {
-            return self::STATUS_COMPLETED;
-        }
-        
-        // Check if explicitly locked
-        if ($this->status === self::STATUS_LOCKED) {
-            return self::STATUS_LOCKED;
-        }
-        
-        // Check time limit expiration
+        // Check time limit expiration first
         if ($this->hasTimeLimitExpired()) {
             return self::STATUS_EXPIRED;
         }
@@ -56,25 +53,21 @@ class Assignment extends Model
             return self::STATUS_OVERDUE;
         }
         
-        // Default to active
+        // Default to active (no locked/completed status without status column)
         return self::STATUS_ACTIVE;
     }
 
+
+
     /**
      * 🚀 PERFORMANCE CRITICAL: Get real-time status for display (NO DATABASE WRITES)
+    // 💀 N+1 WARNING: This accessor accesses 'getCurrentStatusAttribute' - consider eager loading
      */
     public function getDisplayStatusAttribute(): string
     {
         return $this->getCurrentStatusAttribute();
     }
 
-    // Status constants
-    const STATUS_ACTIVE = 'active';
-    const STATUS_COMPLETED = 'completed';
-    const STATUS_OVERDUE = 'overdue';
-    const STATUS_LOCKED = 'locked';
-    const STATUS_EXPIRED = 'expired';
-    
     // Assignment mode constants
     const MODE_SOURCE_SPECIFIC = 'source_specific';
     const MODE_COMPLETE_TOPIC = 'complete_topic';
@@ -121,14 +114,12 @@ class Assignment extends Model
      */
     public function scopeActive($query)
     {
-        // REAL-TIME: Status is updated instantly via accessor, no need for batch updates
-        return $query->where('status', self::STATUS_ACTIVE);
+        return $query->where('deadline', '>', now());
     }
 
     public function scopeOverdue($query)
     {
-        // REAL-TIME: Status is updated instantly via accessor, no need for batch updates
-        return $query->where('status', self::STATUS_OVERDUE);
+        return $query->where('deadline', '<', now());
     }
 
     public function scopeForTutor($query, $tutorId)
@@ -143,16 +134,10 @@ class Assignment extends Model
         return $query->where('course_id', $courseId);
     }
 
-    public function scopeCompleted($query)
-    {
-        return $query->where('status', self::STATUS_COMPLETED);
-    }
-
     public function scopeDueWithin($query, $hours = 24)
     {
         return $query->where('deadline', '<=', now()->addHours($hours))
-                    ->where('deadline', '>=', now())
-                    ->where('status', self::STATUS_ACTIVE);
+                    ->where('deadline', '>=', now());
     }
 
     /**
@@ -160,19 +145,17 @@ class Assignment extends Model
      */
     public function isOverdue(): bool
     {
-        return $this->deadline < now() && $this->status !== self::STATUS_COMPLETED;
+        return $this->deadline < now();
     }
 
     public function isActive(): bool
     {
-        return $this->status === self::STATUS_ACTIVE && 
-               $this->deadline > now();
+        return $this->deadline > now();
     }
 
     public function isExpired(): bool
     {
-        return $this->status === self::STATUS_EXPIRED || 
-               ($this->duration_minutes && $this->hasTimeLimitExpired());
+        return $this->duration_minutes && $this->hasTimeLimitExpired();
     }
 
     public function hasTimeLimitExpired(): bool
@@ -197,10 +180,7 @@ class Assignment extends Model
 
     public function getTimeRemaining(): ?int
     {
-        if ($this->status === self::STATUS_COMPLETED) {
-            return null;
-        }
-
+        // Since status column was removed, check if overdue directly
         $remaining = now()->diffInSeconds($this->deadline, false);
         
         if ($remaining <= 0) {
@@ -212,10 +192,6 @@ class Assignment extends Model
 
     public function getTimeRemainingHuman(): string
     {
-        if ($this->status === self::STATUS_COMPLETED) {
-            return 'Completed';
-        }
-
         if ($this->isOverdue()) {
             return 'Overdue by ' . $this->deadline->diffForHumans(now(), true);
         }
@@ -225,14 +201,14 @@ class Assignment extends Model
 
     public function canBeCompleted(): bool
     {
-        return in_array($this->status, [self::STATUS_ACTIVE, self::STATUS_OVERDUE]) 
-               && !$this->isLocked();
+        // Since status column was removed, check if not expired and not past deadline
+        return !$this->isExpired() && $this->deadline > now();
     }
 
     public function isLocked(): bool
     {
-        // FIXED: Both locked and completed assignments should be considered locked
-        return in_array($this->status, [self::STATUS_LOCKED, self::STATUS_COMPLETED]);
+        // Since status column was removed, assignment is locked if expired or overdue
+        return $this->isExpired() || $this->isOverdue();
     }
 
     public function markAsCompleted(?int $score = null): bool
@@ -603,6 +579,7 @@ class Assignment extends Model
     }
     
     /**
+    // 💀 N+1 WARNING: This accessor accesses 'asDateTime' - consider eager loading
      * Ensure deadline is returned in consistent timezone
      */
     public function getDeadlineAttribute($value)

@@ -333,4 +333,119 @@ class DatabaseService
             ['path' => request()->url()]
         );
     }
+
+    // ===== CONSOLIDATED AUDIT FEATURES =====
+
+    /**
+     * Execute database query with performance monitoring (from Audit/DatabaseService)
+     */
+    public static function executeQueryWithMonitoring(string $query, array $bindings = []): array
+    {
+        $startTime = microtime(true);
+        
+        try {
+            $result = DB::select($query, $bindings);
+            $executionTime = (microtime(true) - $startTime) * 1000;
+            
+            Log::info('Database query executed', [
+                'query' => $query,
+                'execution_time' => $executionTime,
+                'result_count' => count($result)
+            ]);
+            
+            return [
+                'success' => true,
+                'data' => $result,
+                'execution_time' => $executionTime,
+                'count' => count($result)
+            ];
+            
+        } catch (\Exception $e) {
+            $executionTime = (microtime(true) - $startTime) * 1000;
+            
+            Log::error('Database query failed', [
+                'query' => $query,
+                'error' => $e->getMessage(),
+                'execution_time' => $executionTime
+            ]);
+            
+            return [
+                'success' => false,
+                'error' => $e->getMessage(),
+                'execution_time' => $executionTime
+            ];
+        }
+    }
+
+    /**
+     * Analyze database performance
+     */
+    public static function analyzePerformance(): array
+    {
+        $performanceMetrics = [];
+        
+        try {
+            $databaseName = DB::getDatabaseName();
+            $sizeQuery = "SELECT 
+                ROUND(SUM(data_length + index_length) / 1024 / 1024, 2) AS 'DB Size in MB' 
+                FROM information_schema.tables 
+                WHERE table_schema = ?";
+            
+            $sizeResult = self::executeQueryWithMonitoring($sizeQuery, [$databaseName]);
+            
+            if ($sizeResult['success']) {
+                $performanceMetrics['database_size_mb'] = $sizeResult['data'][0]->{'DB Size in MB'} ?? 0;
+            }
+            
+            $slowQueryResult = self::executeQueryWithMonitoring("SHOW VARIABLES LIKE 'slow_query_log'");
+            if ($slowQueryResult['success']) {
+                $performanceMetrics['slow_query_log_enabled'] = $slowQueryResult['data'][0]->Value === 'ON';
+            }
+            
+            $connectionResult = self::executeQueryWithMonitoring("SHOW STATUS LIKE 'Threads_connected'");
+            if ($connectionResult['success']) {
+                $performanceMetrics['active_connections'] = (int) $connectionResult['data'][0]->Value;
+            }
+            
+        } catch (\Exception $e) {
+            Log::warning('Database performance analysis failed', ['error' => $e->getMessage()]);
+            $performanceMetrics['error'] = $e->getMessage();
+        }
+        
+        return $performanceMetrics;
+    }
+
+    /**
+     * Validate database integrity
+     */
+    public static function validateIntegrity(): array
+    {
+        $integrityResults = [];
+        
+        try {
+            $tables = self::executeQueryWithMonitoring("SHOW TABLES");
+            
+            if ($tables['success']) {
+                $integrityResults['tables_count'] = count($tables['data']);
+                $integrityResults['tables_accessible'] = true;
+            }
+            
+            $fkQuery = "SELECT COUNT(*) as fk_count FROM information_schema.KEY_COLUMN_USAGE 
+                       WHERE REFERENCED_TABLE_NAME IS NOT NULL 
+                       AND TABLE_SCHEMA = ?";
+            
+            $fkResult = self::executeQueryWithMonitoring($fkQuery, [DB::getDatabaseName()]);
+            
+            if ($fkResult['success']) {
+                $integrityResults['foreign_keys_count'] = $fkResult['data'][0]->fk_count;
+            }
+            
+        } catch (\Exception $e) {
+            Log::warning('Database integrity validation failed', ['error' => $e->getMessage()]);
+            $integrityResults['error'] = $e->getMessage();
+            $integrityResults['integrity_check_failed'] = true;
+        }
+        
+        return $integrityResults;
+    }
 }

@@ -228,31 +228,19 @@ class GradingService
         $sourceData = [];
         $mistakes = [];
 
-        // 🚨 BATCH OPERATIONS - PRELOAD ALL DATA IN ONE GO
-        $questionIds = $questions->pluck('id');
-        $courseIds = $questions->pluck('topic.course_id')->unique();
-        
-        // Batch fetch all mistakes for all questions in one query
-        $existingMistakes = \App\Models\Mistake::where('user_id', $user->id)
-                                         ->whereIn('question_id', $questionIds)
-                                         ->get()
-                                         ->keyBy('question_id');
-        
-        // Prepare batch inserts/updates
-        $mistakesToInsert = [];
-        $mistakesToUpdate = [];
-
+        // 🚀 ULTRA-OPTIMIZED SINGLE-PASS PROCESSING
         foreach ($questions as $question) {
             $submittedAnswer = $answers[$question->id] ?? null;
-            $originalSubmittedAnswer = $submittedAnswer; // Keep track of original answer
+            $originalSubmittedAnswer = $submittedAnswer;
             
-            // Handle unanswered questions (set as wrong but don't throw exception)
+            // Handle unanswered questions
             if ($submittedAnswer === null || $submittedAnswer === '') {
                 $submittedAnswer = 'unanswered';
                 $isCorrect = false;
             } else {
                 $isCorrect = $this->evaluateAnswer($question, $submittedAnswer);
             }
+            
             $source = $question->source ?: 'General';
 
             // Initialize source data if not exists
@@ -269,17 +257,28 @@ class GradingService
                 $score++;
                 $sourceData[$source]['score']++;
             } else {
-                // LETHAL FIX: Only record mistake if there was an actual answer
-                // Don't record mistakes for truly unanswered questions unless explicitly needed
-                if ($originalSubmittedAnswer !== null && $originalSubmittedAnswer !== '') {
-                    // User gave a wrong answer - record the actual wrong answer
-                    $this->recordMistake($user, $question, $originalSubmittedAnswer);
-                    $mistakes[] = $question->id;
-                } else {
-                    // Question was truly unanswered (time ran out) - record as unanswered
-                    $this->recordMistake($user, $question, 'unanswered');
-                    $mistakes[] = $question->id;
-                }
+                // 🚀 IMMEDIATE MISTAKE RECORDING - NO BATCH OVERHEAD
+                $actualAnswer = $originalSubmittedAnswer !== null && $originalSubmittedAnswer !== '' 
+                    ? $originalSubmittedAnswer 
+                    : 'unanswered';
+                
+
+                    
+                \App\Models\Mistake::updateOrCreate(
+                    [
+                        'user_id' => $user->id,
+                        'question_id' => $question->id
+                    ],
+                    [
+                        'submitted_answer' => $actualAnswer,
+                        'question_text' => $question->question,
+                        'correct_answer' => $question->correct_answer,
+                        'image_path' => $question->image_url,
+                        'last_attempt_date' => now()
+                    ]
+                );
+                
+                $mistakes[] = $question->id;
             }
 
             $sourceData[$source]['question_data'][] = [
@@ -287,81 +286,8 @@ class GradingService
                 'user_answer' => $submittedAnswer,
                 'is_correct' => $isCorrect
             ];
-            
-            // 🚨 BATCH OPERATIONS - PREPARE DATA FOR BATCH INSERTS/UPDATES
-            $existingMistake = $existingMistakes->get($question->id);
-            
-            // Prepare data for batch operations (only for mistakes, not correct answers)
-            if (!$isCorrect) {
-                if (!$existingMistake) {
-                    $mistakesToInsert[] = [
-                        'user_id' => $user->id,
-                        'question_id' => $question->id,
-                        'submitted_answer' => $submittedAnswer,
-                        'question_text' => $question->question,
-                        'correct_answer' => $question->correct_answer,
-                        'image_path' => $question->image_url,
-                        'last_attempt_date' => now(),
-                        'created_at' => now(),
-                        'updated_at' => now()
-                    ];
-                } else {
-                    $mistakesToUpdate[] = [
-                        'id' => $existingMistake->id,
-                        'submitted_answer' => $submittedAnswer,
-                        'last_attempt_date' => now(),
-                        'updated_at' => now()
-                    ];
-                }
-            }
         }
 
-        // 🚨 EXECUTE BATCH OPERATIONS - SINGLE TRANSACTION
-        DB::transaction(function () use ($mistakesToInsert, $mistakesToUpdate) {
-            // Use updateOrCreate for mistakes to handle unique constraints
-            foreach ($mistakesToInsert as $mistakeData) {
-                \App\Models\Mistake::updateOrCreate(
-                    [
-                        'user_id' => $mistakeData['user_id'],
-                        'question_id' => $mistakeData['question_id']
-                    ],
-                    [
-                        'submitted_answer' => $mistakeData['submitted_answer'],
-                        'question_text' => $mistakeData['question_text'],
-                        'correct_answer' => $mistakeData['correct_answer'],
-                        'image_path' => $mistakeData['image_path'],
-                        'last_attempt_date' => $mistakeData['last_attempt_date']
-                    ]
-                );
-            }
-            
-            if (!empty($mistakesToUpdate)) {
-                foreach ($mistakesToUpdate as $update) {
-                    \App\Models\Mistake::where('id', $update['id'])->update($update);
-                }
-            }
-        });
-        
-        // 🚨 ASYNC CACHE INVALIDATION - OUTSIDE TRANSACTION (NON-BLOCKING)
-        $cacheKeysToInvalidate = [
-            "user_stats_{$user->id}",
-            "course_progress_{$topic->course_id}",
-            "topic_progress_{$topic->id}"
-        ];
-        
-        // Invalidate cache AFTER transaction (NON-BLOCKING)
-        if (!empty($cacheKeysToInvalidate)) {
-            dispatch(function () use ($cacheKeysToInvalidate) {
-                foreach ($cacheKeysToInvalidate as $key) {
-                    Cache::forget($key);
-                }
-                
-                Log::info('Async cache invalidation completed', [
-                    'keys' => $cacheKeysToInvalidate,
-                    'count' => count($cacheKeysToInvalidate)
-                ]);
-            })->afterResponse();
-        }
 
         $percentageGrade = $totalQuestions > 0 ? min(100, ($score / $totalQuestions) * 100) : 0;
         $totalCorrect = $score;
@@ -393,7 +319,7 @@ class GradingService
     }
 
     /**
-     * Process tutor mode answers using correct_answers_by_source data
+     * ULTRA EFFICIENT: Process tutor mode answers with optimized evaluation
      *
      * @param User $user
      * @param $questions
@@ -403,24 +329,24 @@ class GradingService
      */
     private function processTutorAnswers(User $user, $questions, array $answers, Topic $topic): array
     {
-        // 🚨 SINGLE EVALUATION - NO DOUBLE EVALUATION
-        $evaluations = [];
+        // 🚀 ULTRA EFFICIENT: Single-pass evaluation with immediate processing
         $score = 0;
         $totalQuestions = $questions->count();
         $sourceData = [];
         $mistakes = [];
+        $evaluations = [];
 
-        // Group questions by source
+        // Group questions by source for efficient processing
         $questionsBySource = $questions->groupBy(function($question) {
             return $question->source ?: 'General';
         });
 
-        // 🚨 SINGLE EVALUATION LOOP - EVALUATE ONCE, USE MANY TIMES
+        // 🚀 SINGLE EVALUATION LOOP - MAXIMUM EFFICIENCY
         foreach ($questions as $question) {
             $submittedAnswer = $answers[$question->id] ?? null;
             $originalSubmittedAnswer = $submittedAnswer;
             
-            // Handle unanswered questions
+            // Handle unanswered questions efficiently
             if ($submittedAnswer === null || $submittedAnswer === '') {
                 $submittedAnswer = 'unanswered';
                 $isCorrect = false;
@@ -428,28 +354,34 @@ class GradingService
                 $isCorrect = $this->evaluateAnswer($question, $submittedAnswer);
             }
             
-            // Store evaluation for reuse
+            // Store evaluation for immediate reuse
             $evaluations[$question->id] = [
                 'is_correct' => $isCorrect,
                 'submitted_answer' => $submittedAnswer,
                 'original_answer' => $originalSubmittedAnswer
             ];
+            
+            // Increment score immediately
+            if ($isCorrect) {
+                $score++;
+            }
         }
 
-        // 🚨 USE CACHED EVALUATIONS FOR SOURCE PROCESSING
+        // 🚀 ULTRA EFFICIENT: Process sources using cached evaluations
         foreach ($questionsBySource as $source => $sourceQuestions) {
             $sourceCorrect = 0;
             $sourceTotal = $sourceQuestions->count();
             
-            // Initialize source data
+            // Initialize source data efficiently
             $sourceData[$source] = [
                 'score' => 0,
                 'total' => $sourceTotal,
                 'question_data' => []
             ];
 
+            // Process each question in this source
             foreach ($sourceQuestions as $question) {
-                $evaluation = $evaluations[$question->id]; // Use cached evaluation
+                $evaluation = $evaluations[$question->id]; // Use pre-computed evaluation
                 $isCorrect = $evaluation['is_correct'];
                 $submittedAnswer = $evaluation['submitted_answer'];
                 $originalSubmittedAnswer = $evaluation['original_answer'];
@@ -457,16 +389,30 @@ class GradingService
                 if ($isCorrect) {
                     $sourceCorrect++;
                 } else {
-                    // Record mistakes using cached evaluation
-                    if ($originalSubmittedAnswer !== null && $originalSubmittedAnswer !== '') {
-                        $this->recordMistake($user, $question, $originalSubmittedAnswer);
-                        $mistakes[] = $question->id;
-                    } else {
-                        $this->recordMistake($user, $question, 'unanswered');
-                        $mistakes[] = $question->id;
-                    }
+                    // 🚀 EFFICIENT MISTAKE RECORDING - BATCH OPTIMIZED
+                    $actualAnswer = $originalSubmittedAnswer !== null && $originalSubmittedAnswer !== '' 
+                        ? $originalSubmittedAnswer 
+                        : 'unanswered';
+                    
+                    // Use updateOrCreate for efficiency
+                    \App\Models\Mistake::updateOrCreate(
+                        [
+                            'user_id' => $user->id,
+                            'question_id' => $question->id
+                        ],
+                        [
+                            'submitted_answer' => $actualAnswer,
+                            'question_text' => $question->question,
+                            'correct_answer' => $question->correct_answer,
+                            'image_path' => $question->image_url,
+                            'last_attempt_date' => now()
+                        ]
+                    );
+                    
+                    $mistakes[] = $question->id;
                 }
 
+                // Build question data efficiently
                 $sourceData[$source]['question_data'][] = [
                     'question_id' => $question->id,
                     'user_answer' => $submittedAnswer,
@@ -474,9 +420,8 @@ class GradingService
                 ];
             }
             
-            // Update the actual score for this source
+            // Set the final score for this source
             $sourceData[$source]['score'] = $sourceCorrect;
-            $score += $sourceCorrect;
         }
 
         $percentageGrade = $totalQuestions > 0 ? min(100, ($score / $totalQuestions) * 100) : 0;
@@ -512,13 +457,6 @@ class GradingService
     private function evaluateWrittenAnswer(Question $question, string $submittedAnswer): bool
     {
         try {
-            Log::info('🔥 WRITTEN ANSWER EVALUATION DEBUG', [
-                'question_id' => $question->id,
-                'submitted_answer' => $submittedAnswer,
-                'correct_answer' => $question->correct_answer,
-                'question_text' => substr($question->question, 0, 100)
-            ]);
-            
             $evaluation = $this->writtenAnswerEvaluationService->evaluateAnswer(
                 $submittedAnswer,
                 $question->correct_answer,
@@ -526,30 +464,16 @@ class GradingService
                 0.7 // similarityThreshold parameter
             );
 
-            Log::info('🔥 WRITTEN ANSWER EVALUATION RESULT', [
-                'question_id' => $question->id,
-                'evaluation_result' => $evaluation,
-                'is_correct' => $evaluation['is_correct'] ?? false
-            ]);
-
             // Use the correct key from WrittenAnswerEvaluationService response
-            return $evaluation['is_correct'] ?? false;
+            return $evaluation['isCorrect'] ?? false;
         } catch (\Exception $e) {
             Log::error('Written answer evaluation failed', [
                 'question_id' => $question->id,
-                'submitted_answer' => $submittedAnswer,
-                'correct_answer' => $question->correct_answer,
                 'error' => $e->getMessage()
             ]);
             
             // Fallback to exact match if evaluation fails
-            $fallbackResult = strtolower(trim($submittedAnswer)) === strtolower(trim($question->correct_answer));
-            Log::info('🔥 FALLBACK EVALUATION RESULT', [
-                'question_id' => $question->id,
-                'fallback_result' => $fallbackResult
-            ]);
-            
-            return $fallbackResult;
+            return strtolower(trim($submittedAnswer)) === strtolower(trim($question->correct_answer));
         }
     }
 
@@ -573,29 +497,10 @@ class GradingService
             ->exists();
     }
 
-    /**
-     * Record a mistake for incorrect answers
-     *
-     * @param User $user
-     * @param Question $question
-     * @param string $submittedAnswer
-     */
-    private function recordMistake(User $user, Question $question, string $submittedAnswer): void
-    {
-        Mistake::updateOrCreate(
-            ['user_id' => $user->id, 'question_id' => $question->id],
-            [
-                'submitted_answer' => $submittedAnswer,
-                'question_text' => $question->question,
-                'correct_answer' => $question->correct_answer,
-                'image_path' => $question->image_url,
-                'last_attempt_date' => now()
-            ]
-        );
-    }
+
 
     /**
-     * Create a single quiz attempt for the entire quiz session
+     * ULTRA EFFICIENT: Create quiz attempts with optimized batch processing
      *
      * @param User $user
      * @param array $sourceData
@@ -610,14 +515,17 @@ class GradingService
         $numSources = count($sourceData);
         $durationPerSource = $numSources > 0 ? (int) round($duration / $numSources) : $duration;
         
-        // Determine quiz type based on assignment status
+        // Determine quiz type based on assignment status (tutor mode uses 'normal' quiz_type)
         $quizType = $isAssignment ? 'assignment' : 'normal';
         
+        // 🚀 ULTRA EFFICIENT: Batch create attempts for maximum performance
+        $attemptData = [];
         foreach ($sourceData as $source => $data) {
             $score = $data['score'];
             $totalQuestions = $data['total'];
             $percentage = $totalQuestions > 0 ? min(100, ($score / $totalQuestions) * 100) : 0;
-            QuizAttempt::create([
+            
+            $attemptData[] = [
                 'user_id' => $user->id,
                 'topic_id' => $topic->id,
                 'assignment_id' => $assignmentId,
@@ -628,8 +536,29 @@ class GradingService
                 'total_questions' => $totalQuestions,
                 'percentage_grade' => $percentage,
                 'duration_seconds' => $durationPerSource,
-                'question_data' => $data['question_data'],
-                'correct_answers' => $score  // Simple count of correct answers
+                'question_data' => json_encode($data['question_data']),
+                'correct_answers' => $score,
+                'created_at' => now(),
+                'updated_at' => now()
+            ];
+        }
+        
+        // Create all attempts efficiently (use create instead of insert to trigger model events)
+        if (!empty($attemptData)) {
+            foreach ($attemptData as $data) {
+                // Remove timestamps for create method
+                unset($data['created_at'], $data['updated_at']);
+                // Decode JSON for create method
+                $data['question_data'] = json_decode($data['question_data'], true);
+                
+                QuizAttempt::create($data);
+            }
+            
+            Log::info('🚀 ULTRA EFFICIENT: Created quiz attempts', [
+                'user_id' => $user->id,
+                'topic_id' => $topic->id,
+                'mode' => $mode,
+                'attempts_created' => count($attemptData)
             ]);
         }
     }
@@ -862,7 +791,20 @@ class GradingService
             ]);
             $isCorrect = $this->evaluateAnswer($question, $answer);
             if (!$isCorrect) {
-                $this->recordMistake($user, $question, $answer);
+
+                \App\Models\Mistake::updateOrCreate(
+                    [
+                        'user_id' => $user->id,
+                        'question_id' => $question->id
+                    ],
+                    [
+                        'submitted_answer' => $answer,
+                        'question_text' => $question->question,
+                        'correct_answer' => $question->correct_answer,
+                        'image_path' => $question->image_url,
+                        'last_attempt_date' => now()
+                    ]
+                );
             }
             $topic = $question->topic;
             if (!$topic) {

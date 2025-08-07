@@ -40,9 +40,11 @@ class CourseFactory extends Factory
         return [
             'name' => $courseName,
             'type' => 'medical', // Default to medical for backward compatibility
+            'academic_year' => '2024-1', // Required field
             'image' => 'courses/' . Str::slug($courseName) . '.jpg',
             'color' => $this->faker->randomElement(['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#06B6D4']),
             'price' => $this->faker->boolean(70) ? $this->faker->randomFloat(2, 50, 500) : null, // 70% chance of being paid
+            'is_active' => true, // Required field
             'created_at' => $this->faker->dateTimeBetween('-1 year', 'now'),
             'updated_at' => $this->faker->dateTimeBetween('-1 month', 'now'),
         ];

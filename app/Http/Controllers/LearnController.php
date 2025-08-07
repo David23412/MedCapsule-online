@@ -33,7 +33,7 @@ class LearnController extends Controller
         try {
             $userId = auth()->id();
             $mode = session('learn_mode', 'quiz');
-            $courseFilter = $request->input('course');
+            $courseFilter = $request->validate(['course' => 'nullable|integer|exists:courses,id'])['course'] ?? null;
             
             $cachedData = $this->mistakeService->getMistakesForLearning($userId, $mode, $courseFilter);
 
@@ -116,15 +116,13 @@ class LearnController extends Controller
         
         try {
             $userId = auth()->id();
-            $mode = $request->input('mode', 'quiz');
-            $selectedAnswer = $request->input('selected_answer');
-
-            if (!$selectedAnswer) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Missing required data: selected_answer is required'
-                ], 400);
-            }
+            $validated = $request->validate([
+                'mode' => 'nullable|string|in:quiz,review',
+                'selected_answer' => 'required|string|max:1000'
+            ]);
+            
+            $mode = $validated['mode'] ?? 'quiz';
+            $selectedAnswer = $validated['selected_answer'];
 
             $result = $this->mistakeService->reviewMistake($userId, $questionId, $selectedAnswer, $mode);
 
@@ -164,7 +162,7 @@ class LearnController extends Controller
         
         try {
             $userId = auth()->id();
-            $mode = $request->input('mode', 'quiz');
+            $mode = $request->validate(['mode' => 'nullable|string|in:quiz,review'])['mode'] ?? 'quiz';
             
             session(['learn_mode' => $mode]);
 
@@ -244,7 +242,7 @@ class LearnController extends Controller
     public function saveStudyTime(Request $request)
     {
         $userId = auth()->id();
-        $studyTime = $request->input('study_time', 0);
+        $studyTime = $request->validate(['study_time' => 'nullable|integer|min:0|max:86400'])['study_time'] ?? 0;
         
         $result = $this->studyTrackingService->saveStudyTime($userId, $studyTime);
         

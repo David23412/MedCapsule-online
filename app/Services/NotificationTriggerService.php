@@ -23,17 +23,7 @@ class NotificationTriggerService
 
         // Different notifications based on quiz mode
         if ($mode === 'tutor') {
-            // FIXED: Tutor quiz completed with score (same as regular quiz)
-            UniversalNotificationService::create(
-                $user,
-                'tutor_quiz_completed',
-                'Tutor Quiz Completed',
-                "You scored {$percentage}% in tutor mode for {$courseName}",
-                $quizData,
-                'normal'
-            );
-
-            // NEW: Tutor perfect score (purple star with purple border)
+            // FIXED: Perfect tutor score gets ONLY purple star notification (no duplicate)
             if ($percentage == 100) {
                 UniversalNotificationService::create(
                     $user,
@@ -54,19 +44,19 @@ class NotificationTriggerService
                     $quizData,
                     'normal'
                 );
+            } else {
+                // Regular tutor completion notification for non-perfect scores
+                UniversalNotificationService::create(
+                    $user,
+                    'tutor_quiz_completed',
+                    'Tutor Quiz Completed',
+                    "You scored {$percentage}% in tutor mode for {$courseName}",
+                    $quizData,
+                    'normal'
+                );
             }
         } else {
-            // FIXED: Only trigger quiz_completed for actual quiz mode (not mistake review)
-            UniversalNotificationService::create(
-                $user,
-                'quiz_completed',
-                'Quiz Completed',
-                "You scored {$percentage}% on {$courseName}",
-                $quizData,
-                'normal'
-            );
-
-            // FIXED: Perfect score gets purple star (not gold medal)
+            // FIXED: Perfect score gets ONLY purple star notification (no duplicate)
             if ($percentage == 100) {
                 UniversalNotificationService::create(
                     $user,
@@ -75,6 +65,16 @@ class NotificationTriggerService
                     "Amazing! You got 100% on {$courseName}",
                     $quizData,
                     'perfect' // PURPLE BORDER for perfect scores
+                );
+            } else {
+                // Regular quiz completion notification for non-perfect scores
+                UniversalNotificationService::create(
+                    $user,
+                    'quiz_completed',
+                    'Quiz Completed',
+                    "You scored {$percentage}% on {$courseName}",
+                    $quizData,
+                    'normal'
                 );
             }
 
@@ -293,17 +293,7 @@ class NotificationTriggerService
         $assignmentTitle = $assignmentData['assignment_title'] ?? 'Assignment';
         $assignmentId = $assignmentData['assignment_id'] ?? null;
 
-        // Main completion notification with score (like quiz system)
-        UniversalNotificationService::create(
-            $user,
-            'assignment_completed',
-            'Assignment Completed',
-            "You scored {$percentage}% on '{$assignmentTitle}'",
-            $assignmentData,
-            'normal'
-        );
-
-        // Perfect score notification (purple star with purple border)
+        // FIXED: Perfect assignment score gets ONLY purple star notification (no duplicate)
         if ($percentage == 100) {
             UniversalNotificationService::create(
                 $user,
@@ -312,6 +302,16 @@ class NotificationTriggerService
                 "Amazing! You got 100% on '{$assignmentTitle}'",
                 $assignmentData,
                 'perfect' // PURPLE BORDER for perfect scores
+            );
+        } else {
+            // Regular assignment completion notification for non-perfect scores
+            UniversalNotificationService::create(
+                $user,
+                'assignment_completed',
+                'Assignment Completed',
+                "You scored {$percentage}% on '{$assignmentTitle}'",
+                $assignmentData,
+                'normal'
             );
         }
 

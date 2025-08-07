@@ -6,23 +6,27 @@ use App\Http\Controllers\Controller;
 use App\Models\Course;
 use App\Models\Topic;
 use App\Models\Assignment;
-use App\Services\Quiz\QuizExecutionService;
+use App\Services\QuizService;
+use App\Services\GradingService;
 use App\Services\Quiz\QuizValidationService;
-use App\Services\ResilientCacheService;
+use App\Services\CacheService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Cache;
 
 class QuizExecutionController extends Controller
 {
-    protected $quizExecutionService;
+    protected $quizService;
+    protected $gradingService;
     protected $quizValidationService;
 
     public function __construct(
-        QuizExecutionService $quizExecutionService,
+        QuizService $quizService,
+        GradingService $gradingService,
         QuizValidationService $quizValidationService
     ) {
-        $this->quizExecutionService = $quizExecutionService;
+        $this->quizService = $quizService;
+        $this->gradingService = $gradingService;
         $this->quizValidationService = $quizValidationService;
     }
 
@@ -104,7 +108,14 @@ class QuizExecutionController extends Controller
         }
 
         // Get questions using service
-        $questions = $this->quizExecutionService->getQuestionsWithSmartValidation($topic, $sources);
+        $result = $this->quizService->generateQuizQuestions($topic, $sources, $user);
+        
+        if (!$result['success']) {
+            return redirect()->route('topics.forCourse', $course->id)
+                ->with('error', $result['message']);
+        }
+        
+        $questions = $result['questions'];
 
         if ($questions->isEmpty()) {
             return redirect()->route('topics.forCourse', $course->id)
@@ -131,19 +142,69 @@ class QuizExecutionController extends Controller
      */
     public function grade(Request $request, Course $course, Topic $topic)
     {
-        $userId = auth()->id();
+        $user = auth()->user();
+        
+        if (!$user) {
+            return response()->json([
+                'success' => false,
+                'error' => 'Authentication required.'
+            ], 401);
+        }
+        
+        $userId = $user->id;
         $requestId = uniqid('quiz_grade_');
         
+        // ULTRA EFFICIENT: Handle both JSON and FormData seamlessly with backward compatibility
+        $requestData = $request->isJson() ? $request->json()->all() : $request->all();
+        
+        // COMPATIBILITY: Ensure backward compatibility with existing forms
+        if (!$request->isJson() && !isset($requestData['duration_seconds']) && isset($requestData['time_taken'])) {
+            $requestData['duration_seconds'] = $requestData['time_taken'];
+        }
+        
+        // SECURITY: Check for oversized payloads to prevent DoS attacks
+        $requestSize = strlen(json_encode($requestData));
+        if ($requestSize > 1048576) { // 1MB limit
+            Log::warning('Oversized payload detected in quiz grading', [
+                'user_id' => $userId,
+                'request_size' => $requestSize,
+                'request_id' => $requestId
+            ]);
+            
+            return response()->json([
+                'success' => false,
+                'error' => 'Request payload too large. Please reduce the size of your answers.'
+            ], 413); // 413 Payload Too Large
+        }
+        
+        // EFFICIENCY BOOST: Log pre-computed data and performance metrics
+        $processingStartTime = microtime(true);
+        
+        if (isset($requestData['computed_locally']) && $requestData['computed_locally']) {
+            Log::info('🚀 ULTRA EFFICIENT: Received pre-computed tutor data', [
+                'user_id' => $userId,
+                'request_id' => $requestId,
+                'pre_computed' => true,
+                'answers_count' => count($requestData['answers'] ?? []),
+                'client_processing_time' => $requestData['client_processing_time'] ?? null,
+                'payload_size' => $requestSize
+            ]);
+        }
+        
         try {
-            // Assignment check using service
-            $assignmentCheck = $this->quizExecutionService->getAssignmentCheck($userId, $topic, $course);
-            $isAssignment = $assignmentCheck !== null;
+            // Assignment check
+            $assignmentId = $request->input('assignment_id');
+            $isAssignment = $assignmentId !== null;
+            
+            // ULTRA EFFICIENT: Create unified request for validation service
+            $validationRequest = new Request($requestData);
+            $validationRequest->setMethod('POST');
             
             // Validation using service
-            $validated = $this->quizValidationService->validateQuizSubmission($request, $isAssignment, $userId, $requestId);
+            $validated = $this->quizValidationService->validateQuizSubmission($validationRequest, $isAssignment, $userId, $requestId);
             
-            // Access validation using service
-            if (!$this->quizExecutionService->validateUserAccess($userId, $course, $topic)) {
+            // Access validation - check if user has access to course
+            if (!$user->isAdmin() && !$user->hasAccessToCourse($course->id) && $course->price && $course->price > 0) {
                 return response()->json([
                     'success' => false,
                     'error' => 'Access denied to this course.'
@@ -175,18 +236,19 @@ class QuizExecutionController extends Controller
             }
             
             // Process grading using service
-            $gradingResult = $this->quizExecutionService->processQuizGrading($validated, $topic, $course, $userId, $assignmentId);
-            
-            if (!$gradingResult['success']) {
-                return response()->json([
-                    'success' => false,
-                    'error' => 'Quiz grading temporarily unavailable. Please try again.'
-                ], 503);
-            }
+            $gradingResult = $this->gradingService->gradeQuiz(
+                $user,
+                $validated['answers'],
+                $validated['duration_seconds'],
+                $validated['mode'] ?? 'quiz',
+                $topic,
+                $course,
+                $assignmentId
+            );
             
             // LETHAL CACHE INVALIDATION
-            ResilientCacheService::safeForget("user_progress_{$userId}_{$topic->id}");
-            ResilientCacheService::safeForget("quiz_cache_{$userId}_{$topic->id}");
+            app(CacheService::class)->forget("user_progress_{$userId}_{$topic->id}");
+            app(CacheService::class)->forget("quiz_cache_{$userId}_{$topic->id}");
             
             // LETHAL DEBUG: Log assignment completion
             $assignmentCompleted = $assignmentId ? true : false;
@@ -195,50 +257,35 @@ class QuizExecutionController extends Controller
                     'assignment_id' => $assignmentId,
                     'user_id' => $userId,
                     'topic_id' => $topic->id,
-                    'percentage' => $gradingResult['data']['percentageGrade'] ?? 0
+                    'percentage' => $gradingResult['percentageGrade'] ?? 0
                 ]);
             }
             
-            $result = $gradingResult['data'];
+            // Get user quiz count for notifications
+            $userQuizCount = \App\Models\QuizAttempt::where('user_id', $userId)->count();
             
             // 🔔 CRITICAL NOTIFICATION INTEGRATION - Quiz Completion
             \App\Services\NotificationTriggerService::onQuizCompleted(auth()->user(), [
-                'score' => $result['score'],
-                'total_questions' => $result['totalQuestions'],
-                'percentage' => $result['percentageGrade'],
+                'score' => $gradingResult['score'],
+                'total_questions' => $gradingResult['totalQuestions'],
+                'percentage' => $gradingResult['percentageGrade'],
                 'course_name' => $course->name ?? $topic->name,
                 'topic_name' => $topic->name,
-                'user_quiz_count' => $this->quizExecutionService->getUserQuizCount(auth()->id()),
-                'assignment_completed' => $assignmentCompleted,
-                'mode' => 'quiz' // Regular quiz mode
+                'user_quiz_count' => $userQuizCount,
+                'assignment_completed' => $assignmentCompleted
             ]);
-
-            // 🔔 ASSIGNMENT COMPLETION NOTIFICATION - Separate from quiz notification
-            if ($assignmentCompleted && $assignmentId) {
-                $assignment = \App\Models\Assignment::find($assignmentId);
-                if ($assignment) {
-                    \App\Services\NotificationTriggerService::onAssignmentCompleted(auth()->user(), [
-                        'score' => $result['score'],
-                        'total_questions' => $result['totalQuestions'],
-                        'percentage' => $result['percentageGrade'],
-                        'assignment_title' => $assignment->title,
-                        'assignment_id' => $assignmentId,
-                        'mode' => 'assignment'
-                    ]);
-                }
-            }
             
             return response()->json([
                 'success' => true,
-                'score' => $result['score'],
-                'total' => $result['totalQuestions'],
-                'percentage' => $result['percentageGrade'],
-                'encouragement' => $result['encouragement'],
-                'source_progress' => $result['sourceProgress'] ?? [],
-                'correct_answers' => $result['correctAnswers'],
-                'xp_earned' => $result['xp_earned'] ?? 0,
-                'level_up' => $result['levelUp'] ?? false,
-                'new_level' => $result['newLevel'] ?? null,
+                'score' => $gradingResult['score'],
+                'total' => $gradingResult['totalQuestions'],
+                'percentage' => $gradingResult['percentageGrade'],
+                'encouragement' => $gradingResult['encouragement'],
+                'source_progress' => $gradingResult['source_progress'] ?? [],
+                'correct_answers' => $gradingResult['correct_answers'] ?? [],
+                'xp_earned' => $gradingResult['xp_earned'] ?? 0,
+                'level_up' => $gradingResult['level_up'] ?? false,
+                'new_level' => $gradingResult['new_level'] ?? null,
                 'assignment_completed' => $assignmentCompleted,
                 'assignment_id' => $assignmentId
             ])->header('Content-Type', 'application/json')->header('Access-Control-Allow-Origin', '*');

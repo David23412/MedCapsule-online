@@ -11,6 +11,7 @@ use Carbon\Carbon;
 use Illuminate\Support\Facades\Log;
 use App\Models\Question;
 use Illuminate\Support\Facades\Redis;
+use Exception;
 
 class CacheService
 {
@@ -532,5 +533,199 @@ class CacheService
         $pipeline->del("user_{$userId}_payment_history");
         
         $pipeline->exec();
+    }
+
+    // ===== CONSOLIDATED FEATURES FROM OTHER CACHE SERVICES =====
+
+    /**
+     * RESILIENT CACHE OPERATIONS (from ResilientCacheService)
+     */
+    private const MAX_RETRIES = 2;
+    private const RETRY_DELAY_MS = 50;
+    
+    /**
+     * Safe cache get with fallback
+     */
+    public static function safeGet(string $key, $default = null, array $context = [])
+    {
+        return self::executeWithRetry(function () use ($key) {
+            return Cache::get($key);
+        }, $default, 'cache_get', array_merge($context, ['key' => $key]));
+    }
+
+    /**
+     * Safe cache put with error handling
+     */
+    public static function safePut(string $key, $value, $ttl = null, array $context = []): bool
+    {
+        $result = self::executeWithRetry(function () use ($key, $value, $ttl) {
+            if ($ttl !== null) {
+                return Cache::put($key, $value, $ttl);
+            }
+            return Cache::put($key, $value);
+        }, false, 'cache_put', array_merge($context, ['key' => $key]));
+
+        return $result === true;
+    }
+
+    /**
+     * Safe cache remember with fallback
+     */
+    public static function safeRemember(string $key, $ttl, callable $callback, $fallback = null, array $context = [])
+    {
+        return self::executeWithRetry(function () use ($key, $ttl, $callback) {
+            return Cache::remember($key, $ttl, $callback);
+        }, $fallback, 'cache_remember', array_merge($context, ['key' => $key]));
+    }
+
+    /**
+     * Execute cache operation with retry logic
+     */
+    private static function executeWithRetry(callable $operation, $fallback, string $operationType, array $context = [])
+    {
+        $attempt = 0;
+        $lastException = null;
+
+        while ($attempt < self::MAX_RETRIES) {
+            try {
+                return $operation();
+            } catch (Exception $e) {
+                $lastException = $e;
+                $attempt++;
+                
+                Log::warning('Cache operation failed', [
+                    'operation' => $operationType,
+                    'attempt' => $attempt,
+                    'error' => $e->getMessage(),
+                    'context' => $context
+                ]);
+
+                if ($attempt < self::MAX_RETRIES) {
+                    $backoffDelay = self::RETRY_DELAY_MS * pow(2, $attempt - 1);
+                    $startTime = microtime(true);
+                    while ((microtime(true) - $startTime) * 1000 < $backoffDelay) {
+                        if (function_exists('sched_yield')) {
+                            sched_yield();
+                        }
+                    }
+                    continue;
+                }
+            }
+        }
+
+        Log::error('Cache operation failed after all retries', [
+            'operation' => $operationType,
+            'attempts' => $attempt,
+            'final_error' => $lastException->getMessage(),
+            'context' => $context
+        ]);
+
+        return $fallback;
+    }
+
+    /**
+     * QUIZ CACHE FEATURES (from QuizCacheService)
+     */
+    private const CACHE_TTL_SHORT = 300;    // 5 minutes
+    private const CACHE_TTL_MEDIUM = 1800;  // 30 minutes
+    private const CACHE_TTL_LONG = 3600;    // 1 hour
+
+    /**
+     * Generate optimized cache key with collision resistance
+     */
+    public static function generateCacheKey(string $prefix, array $data): string
+    {
+        $dataHash = hash('xxh3', serialize($data));
+        return "{$prefix}_{$dataHash}";
+    }
+
+    /**
+     * Store quiz data with intelligent TTL selection
+     */
+    public static function storeQuizData(string $key, $data, ?int $ttl = null): bool
+    {
+        try {
+            $ttl = $ttl ?? self::selectOptimalTTL($data);
+            return Cache::put($key, $data, $ttl);
+        } catch (Exception $e) {
+            Log::warning('Quiz cache storage failed', [
+                'key' => $key,
+                'error' => $e->getMessage()
+            ]);
+            return false;
+        }
+    }
+
+    /**
+     * Select optimal TTL based on data characteristics
+     */
+    private static function selectOptimalTTL($data): int
+    {
+        if (is_array($data)) {
+            $size = count($data);
+            
+            if ($size > 100) {
+                return self::CACHE_TTL_LONG;
+            } elseif ($size > 20) {
+                return self::CACHE_TTL_MEDIUM;
+            }
+        }
+        
+        return self::CACHE_TTL_SHORT;
+    }
+
+    /**
+     * Health check for cache system
+     */
+    public static function healthCheck(): array
+    {
+        $testKey = 'health_check_' . time();
+        $testValue = 'test_value_' . uniqid();
+        
+        try {
+            $startTime = microtime(true);
+            
+            $writeSuccess = self::safePut($testKey, $testValue, 60);
+            $readValue = self::safeGet($testKey);
+            $deleteSuccess = Cache::forget($testKey);
+            
+            $duration = (microtime(true) - $startTime) * 1000;
+            $isHealthy = $writeSuccess && ($readValue === $testValue) && $deleteSuccess;
+            
+            return [
+                'status' => $isHealthy ? 'healthy' : 'degraded',
+                'write_success' => $writeSuccess,
+                'read_success' => $readValue === $testValue,
+                'delete_success' => $deleteSuccess,
+                'response_time_ms' => round($duration, 2),
+                'timestamp' => now()
+            ];
+            
+        } catch (Exception $e) {
+            return [
+                'status' => 'unhealthy',
+                'error' => $e->getMessage(),
+                'timestamp' => now()
+            ];
+        }
+    }
+
+    /**
+     * Get cache statistics
+     */
+    public static function getStatistics(): array
+    {
+        try {
+            return [
+                'driver' => config('cache.default'),
+                'health' => self::healthCheck(),
+                'timestamp' => now()
+            ];
+        } catch (Exception $e) {
+            return [
+                'error' => $e->getMessage(),
+                'timestamp' => now()
+            ];
+        }
     }
 } 

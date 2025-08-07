@@ -35,7 +35,7 @@ function notificationBell() {
             this.websocket = new WebSocket(`ws://${window.location.host}/notifications/stream`);
             
             this.websocket.onopen = () => {
-                console.log('🔥 NUCLEAR SPEED: WebSocket connected for instant notifications');
+// console.log('🔥 NUCLEAR SPEED: WebSocket connected for instant notifications'); // Removed for production
             };
             
             this.websocket.onmessage = (event) => {
@@ -56,7 +56,7 @@ function notificationBell() {
             };
             
             this.websocket.onerror = (error) => {
-                console.error('WebSocket error:', error);
+// console.error('WebSocket error:', error); // Removed for production
                 // Fallback to immediate fetch (still faster than polling)
                 this.fetchNotifications();
             };
@@ -96,7 +96,7 @@ function notificationBell() {
             if (window.hasUserInteraction && this.notificationSound) {
                 this.notificationSound.currentTime = 0;
                 this.notificationSound.play().catch(error => {
-                    console.warn('Audio playback failed:', error);
+// console.warn('Audio playback failed:', error); // Removed for production
                 });
             }
         },
@@ -122,7 +122,7 @@ function notificationBell() {
                     this.lastFetched = Date.now();
                 }
             } catch (error) {
-                console.error('Error fetching notifications:', error);
+// console.error('Error fetching notifications:', error); // Removed for production
             } finally {
                 this.loading = false;
             }

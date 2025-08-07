@@ -3,52 +3,241 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
+use App\Models\Topic;
+use App\Models\Course;
+use App\Services\TopicLockingService;
 
 class TopicLockingController extends Controller
 {
     public function index()
     {
-        return view('topic-locking.index');
+        $user = auth()->user();
+        
+        // Debug: Log user info
+        \Log::info('TopicLocking - User Info', [
+            'user_id' => $user->id,
+            'user_role' => $user->role,
+            'is_admin' => $user->role === 'admin'
+        ]);
+        
+        // Get courses based on user role
+        if ($user->role === 'admin') {
+            // Admins can see all courses
+            $courses = \App\Models\Course::with(['topics' => function ($query) {
+                $query->select('id', 'course_id', 'name', 'is_locked');
+            }])->get();
+            
+            \Log::info('TopicLocking - Admin sees all courses', [
+                'course_count' => $courses->count(),
+                'course_names' => $courses->pluck('name')->toArray()
+            ]);
+        } else {
+            // Tutors can only see courses they're enrolled in
+            $courses = $user->courses()
+                ->with(['topics' => function ($query) {
+                    $query->select('id', 'course_id', 'name', 'is_locked');
+                }])
+                ->get();
+                
+            \Log::info('TopicLocking - Tutor enrolled courses', [
+                'course_count' => $courses->count(),
+                'course_names' => $courses->pluck('name')->toArray()
+            ]);
+            
+            // Debug: Check raw enrollment data
+            $enrollments = \DB::table('course_user')
+                ->where('user_id', $user->id)
+                ->where('is_enrolled', true)
+                ->get();
+                
+            \Log::info('TopicLocking - Raw enrollments', [
+                'enrollments' => $enrollments->toArray()
+            ]);
+        }
+        
+        return view('topic-locking.index', compact('courses'));
     }
 
-    public function courseTopics($course)
+    public function courseTopics($courseId)
     {
+        $user = auth()->user();
+        $course = \App\Models\Course::findOrFail($courseId);
+        
+        // Check if user has access to this course
+        if (!$user->isAdmin() && !$user->courses()->where('courses.id', $courseId)->exists()) {
+            abort(403, 'You do not have permission to manage topics in this course.');
+        }
+        
         return view('topic-locking.course', compact('course'));
     }
 
     public function lock($topicId)
     {
-        return response()->json(['success' => true]);
+        try {
+            $topic = \App\Models\Topic::findOrFail($topicId);
+            $user = auth()->user();
+            
+            $lockingService = app(\App\Services\TopicLockingService::class);
+            $success = $lockingService->lock($topic, $user);
+            
+            return response()->json([
+                'success' => $success,
+                'message' => 'Topic locked successfully'
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage()
+            ], 400);
+        }
     }
 
     public function unlock($topicId)
     {
-        return response()->json(['success' => true]);
+        try {
+            $topic = \App\Models\Topic::findOrFail($topicId);
+            $user = auth()->user();
+            
+            $lockingService = app(\App\Services\TopicLockingService::class);
+            $success = $lockingService->unlock($topic, $user);
+            
+            return response()->json([
+                'success' => $success,
+                'message' => 'Topic unlocked successfully'
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage()
+            ], 400);
+        }
     }
 
-    public function toggle($topic)
+    public function toggle($topicId)
     {
-        return response()->json(['success' => true]);
+        try {
+            $topic = \App\Models\Topic::findOrFail($topicId);
+            $user = auth()->user();
+            
+            $lockingService = app(\App\Services\TopicLockingService::class);
+            
+            if ($topic->is_locked) {
+                $success = $lockingService->unlock($topic, $user);
+                $message = 'Topic unlocked successfully';
+            } else {
+                $success = $lockingService->lock($topic, $user);
+                $message = 'Topic locked successfully';
+            }
+            
+            return response()->json([
+                'success' => $success,
+                'message' => $message,
+                'is_locked' => $topic->fresh()->is_locked
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage()
+            ], 400);
+        }
     }
 
     public function bulkLock(Request $request)
     {
-        return response()->json(['success' => true]);
+        try {
+            $topicIds = $request->input('topic_ids', []);
+            $user = auth()->user();
+            
+            $lockingService = app(\App\Services\TopicLockingService::class);
+            $results = $lockingService->bulkLock($topicIds, $user);
+            
+            return response()->json([
+                'success' => true,
+                'results' => $results
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage()
+            ], 400);
+        }
     }
 
     public function bulkUnlock(Request $request)
     {
-        return response()->json(['success' => true]);
+        try {
+            $topicIds = $request->input('topic_ids', []);
+            $user = auth()->user();
+            
+            $lockingService = app(\App\Services\TopicLockingService::class);
+            $results = $lockingService->bulkUnlock($topicIds, $user);
+            
+            return response()->json([
+                'success' => true,
+                'results' => $results
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage()
+            ], 400);
+        }
     }
 
-    public function lockCourse($course)
+    public function lockCourse($courseId)
     {
-        return response()->json(['success' => true]);
+        try {
+            $user = auth()->user();
+            $course = \App\Models\Course::findOrFail($courseId);
+            
+            // Check if user has access to this course
+            if (!$user->isAdmin() && !$user->courses()->where('courses.id', $courseId)->exists()) {
+                throw new \InvalidArgumentException('You do not have permission to manage topics in this course.');
+            }
+            
+            $topicIds = $course->topics()->pluck('id')->toArray();
+            $lockingService = app(\App\Services\TopicLockingService::class);
+            $results = $lockingService->bulkLock($topicIds, $user);
+            
+            return response()->json([
+                'success' => true,
+                'message' => 'All topics in course locked successfully',
+                'results' => $results
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage()
+            ], 400);
+        }
     }
 
-    public function unlockCourse($course)
+    public function unlockCourse($courseId)
     {
-        return response()->json(['success' => true]);
+        try {
+            $user = auth()->user();
+            $course = \App\Models\Course::findOrFail($courseId);
+            
+            // Check if user has access to this course
+            if (!$user->isAdmin() && !$user->courses()->where('courses.id', $courseId)->exists()) {
+                throw new \InvalidArgumentException('You do not have permission to manage topics in this course.');
+            }
+            
+            $topicIds = $course->topics()->pluck('id')->toArray();
+            $lockingService = app(\App\Services\TopicLockingService::class);
+            $results = $lockingService->bulkUnlock($topicIds, $user);
+            
+            return response()->json([
+                'success' => true,
+                'message' => 'All topics in course unlocked successfully',
+                'results' => $results
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage()
+            ], 400);
+        }
     }
 
     public function getTopicStatus($topic)

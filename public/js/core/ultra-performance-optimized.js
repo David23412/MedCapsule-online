@@ -233,10 +233,10 @@ class UltraPerformanceCore {
         if ('serviceWorker' in navigator) {
             navigator.serviceWorker.register('/service-worker.js')
                 .then(registration => {
-                    console.log('ServiceWorker registered:', registration);
+// console.log('ServiceWorker registered:', registration); // Removed for production
                 })
                 .catch(error => {
-                    console.log('ServiceWorker registration failed:', error);
+// console.log('ServiceWorker registration failed:', error); // Removed for production
                 });
         }
     }
@@ -563,7 +563,7 @@ class UltraPerformanceCore {
                     timestamp: Date.now()
                 })
             }).catch(error => {
-                console.log('Failed to report performance metrics:', error);
+// console.log('Failed to report performance metrics:', error); // Removed for production
             });
         }
     }

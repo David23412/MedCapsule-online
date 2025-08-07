@@ -1003,7 +1003,7 @@
                         @php
                             $questionText = is_string($mistake->question) ? $mistake->question : json_decode($mistake->question)->question;
                         @endphp
-                        {!! $questionText !!}
+                        {{ $questionText }}
                         @if($mistake->question && $mistake->question->image_url)
                             <img src="{{ asset($mistake->question->image_url) }}" alt="Question Image" class="question-image">
                         @endif
@@ -1032,7 +1032,7 @@
                             <div class="option" 
                                 data-option="{{ $option }}"
                                 data-is-correct="{{ $option === $mistake->question->correct_answer ? 'true' : 'false' }}">
-                                {!! $optionText !!}
+                                {{ $optionText }}
                             </div>
                         @endforeach
                     </div>

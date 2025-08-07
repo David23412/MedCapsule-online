@@ -3,35 +3,35 @@
  * Copy and paste this into your browser console on the courses page
  */
 
-console.log('🔍 Starting Bundle Payment Diagnostic...');
+// console.log('🔍 Starting Bundle Payment Diagnostic...'); // Removed for production
 
 // Step 1: Check if CSRF token exists
 const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
-console.log('1. CSRF Token:', csrfToken ? 'Found' : 'Missing');
+// console.log('1. CSRF Token:', csrfToken ? 'Found' : 'Missing'); // Removed for production
 if (csrfToken) {
-    console.log('   Token:', csrfToken.substring(0, 10) + '...');
+// console.log('   Token:', csrfToken.substring(0, 10) + '...'); // Removed for production
 }
 
 // Step 2: Check if bundle button exists
 const bundleBtn = document.getElementById('bundlePurchaseBtn');
-console.log('2. Bundle Button:', bundleBtn ? 'Found' : 'Missing');
+// console.log('2. Bundle Button:', bundleBtn ? 'Found' : 'Missing'); // Removed for production
 
 // Step 3: Check if bundle modal exists
 const bundleModal = document.getElementById('bundleModal');
-console.log('3. Bundle Modal:', bundleModal ? 'Found' : 'Missing');
+// console.log('3. Bundle Modal:', bundleModal ? 'Found' : 'Missing'); // Removed for production
 
 // Step 4: Check if course checkboxes exist
 const courseCheckboxes = document.querySelectorAll('.bundle-course-checkbox');
-console.log('4. Course Checkboxes:', courseCheckboxes.length);
+// console.log('4. Course Checkboxes:', courseCheckboxes.length); // Removed for production
 
 // Step 5: Test bundle options API call
 async function testBundleOptions() {
-    console.log('5. Testing Bundle Options API...');
+// console.log('5. Testing Bundle Options API...'); // Removed for production
     
     // Get first two available courses
     const availableCourses = Array.from(courseCheckboxes).slice(0, 2);
     if (availableCourses.length < 2) {
-        console.log('❌ Need at least 2 courses for bundle test');
+// console.log('❌ Need at least 2 courses for bundle test'); // Removed for production
         return;
     }
     
@@ -46,7 +46,7 @@ async function testBundleOptions() {
         total_price: originalPrice - 50
     };
     
-    console.log('   Test Data:', testData);
+// console.log('   Test Data:', testData); // Removed for production
     
     try {
         const response = await fetch('/payments/bundle/options', {
@@ -60,34 +60,34 @@ async function testBundleOptions() {
             body: JSON.stringify(testData)
         });
         
-        console.log('   Response Status:', response.status);
+// console.log('   Response Status:', response.status); // Removed for production
         
         if (response.ok) {
             const data = await response.json();
-            console.log('   ✅ Bundle Options Success:', data.success);
+// console.log('   ✅ Bundle Options Success:', data.success); // Removed for production
             if (data.success) {
-                console.log('   ✅ HTML Length:', data.html?.length || 0);
-                console.log('   ✅ Total Price:', data.total_price);
+// console.log('   ✅ HTML Length:', data.html?.length || 0); // Removed for production
+// console.log('   ✅ Total Price:', data.total_price); // Removed for production
             } else {
-                console.log('   ❌ Error:', data.message);
+// console.log('   ❌ Error:', data.message); // Removed for production
             }
         } else {
             const errorText = await response.text();
-            console.log('   ❌ HTTP Error:', response.status);
-            console.log('   ❌ Error Details:', errorText.substring(0, 200));
+// console.log('   ❌ HTTP Error:', response.status); // Removed for production
+// console.log('   ❌ Error Details:', errorText.substring(0, 200)); // Removed for production
         }
     } catch (error) {
-        console.log('   ❌ Network Error:', error.message);
+// console.log('   ❌ Network Error:', error.message); // Removed for production
     }
 }
 
 // Step 6: Test bundle submission API call
 async function testBundleSubmission() {
-    console.log('6. Testing Bundle Submission API...');
+// console.log('6. Testing Bundle Submission API...'); // Removed for production
     
     const availableCourses = Array.from(courseCheckboxes).slice(0, 2);
     if (availableCourses.length < 2) {
-        console.log('❌ Need at least 2 courses for bundle test');
+// console.log('❌ Need at least 2 courses for bundle test'); // Removed for production
         return;
     }
     
@@ -102,7 +102,7 @@ async function testBundleSubmission() {
         total_amount: originalPrice - 50
     };
     
-    console.log('   Test Data:', testData);
+// console.log('   Test Data:', testData); // Removed for production
     
     try {
         const response = await fetch('/payment/submit-bundle-proof', {
@@ -115,40 +115,40 @@ async function testBundleSubmission() {
             body: JSON.stringify(testData)
         });
         
-        console.log('   Response Status:', response.status);
+// console.log('   Response Status:', response.status); // Removed for production
         
         if (response.ok) {
             const data = await response.json();
-            console.log('   ✅ Bundle Submission Success:', data.success);
+// console.log('   ✅ Bundle Submission Success:', data.success); // Removed for production
             if (data.success) {
-                console.log('   ✅ Payments Created:', data.payments_created);
-                console.log('   ✅ Bundle ID:', data.bundle_id);
+// console.log('   ✅ Payments Created:', data.payments_created); // Removed for production
+// console.log('   ✅ Bundle ID:', data.bundle_id); // Removed for production
             } else {
-                console.log('   ❌ Error:', data.message);
+// console.log('   ❌ Error:', data.message); // Removed for production
             }
         } else {
             const errorText = await response.text();
-            console.log('   ❌ HTTP Error:', response.status);
-            console.log('   ❌ Error Details:', errorText.substring(0, 200));
+// console.log('   ❌ HTTP Error:', response.status); // Removed for production
+// console.log('   ❌ Error Details:', errorText.substring(0, 200)); // Removed for production
         }
     } catch (error) {
-        console.log('   ❌ Network Error:', error.message);
+// console.log('   ❌ Network Error:', error.message); // Removed for production
     }
 }
 
 // Run the tests
 testBundleOptions().then(() => {
-    console.log('');
+// console.log(''); // Removed for production
     return testBundleSubmission();
 }).then(() => {
-    console.log('');
-    console.log('🔍 Bundle Payment Diagnostic Complete!');
-    console.log('');
-    console.log('📋 Next Steps:');
-    console.log('1. If CSRF token is missing, check the meta tag in <head>');
-    console.log('2. If bundle button is missing, check if user is logged in');
-    console.log('3. If API calls fail, check browser Network tab for details');
-    console.log('4. If everything works here but not in UI, check JavaScript console for errors');
+// console.log(''); // Removed for production
+// console.log('🔍 Bundle Payment Diagnostic Complete!'); // Removed for production
+// console.log(''); // Removed for production
+// console.log('📋 Next Steps:'); // Removed for production
+// console.log('1. If CSRF token is missing, check the meta tag in <head>'); // Removed for production
+// console.log('2. If bundle button is missing, check if user is logged in'); // Removed for production
+// console.log('3. If API calls fail, check browser Network tab for details'); // Removed for production
+// console.log('4. If everything works here but not in UI, check JavaScript console for errors'); // Removed for production
 });
 
 // Export functions for manual testing

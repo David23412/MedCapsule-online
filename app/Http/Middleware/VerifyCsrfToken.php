@@ -31,9 +31,17 @@ class VerifyCsrfToken extends Middleware
         'manage-access/enroll',
         'manage-access/revoke',
         'manage-access/toggle-admin',
-        'manage-access/payment-settings'
+        'manage-access/payment-settings',
+        'quiz/*/grade',
+        'quiz/grade'
     ];
 
+    /**
+     * Determine if the request has a valid CSRF token.
+     *
+     * @param  \Illuminate\Http\Request  $request
+     * @return bool
+     */
     /**
      * Determine if the request has a valid CSRF token.
      *

@@ -99,12 +99,42 @@ class TopicController extends Controller
                 ->whereHas('assignedUsers', function($query) use ($user) {
                     $query->where('user_id', $user->id);
                 })
-                ->with(['topic:id,name,course_id'])
+                ->with([
+                    'topic:id,name,course_id',
+                    'quizAttempts' => function($query) use ($user) {
+                        $query->where('user_id', $user->id)
+                              ->select('id', 'assignment_id', 'user_id', 'percentage_grade', 'score', 'created_at');
+                    }
+                ])
                 ->get();
                 
-            // Attach dynamic progress for current user
+            // Attach dynamic progress for current user using eager loaded data
+        $assignments = $assignments->load('quizAttempts');
             foreach ($assignments as $assignment) {
-                $assignment->user_progress = $assignment->getUserProgress($user->id);
+                // Use eager loaded quizAttempts instead of making new queries
+                $attempts = $assignment->quizAttempts;
+                
+                if ($attempts->isEmpty()) {
+                    $assignment->user_progress = [
+                        'completed' => false,
+                        'score' => 0,
+                        'percentage' => 0,
+                        'attempts_count' => 0,
+                        'best_score' => 0,
+                        'latest_attempt' => null
+                    ];
+                } else {
+                    $bestAttempt = $attempts->sortByDesc('percentage_grade')->first();
+                    $assignment->user_progress = [
+                        'completed' => $bestAttempt->percentage_grade >= 80,
+                        'score' => $bestAttempt->score,
+                        'percentage' => $bestAttempt->percentage_grade,
+                        'attempts_count' => $attempts->count(),
+                        'best_score' => $bestAttempt->score,
+                        'latest_attempt' => $attempts->sortByDesc('created_at')->first()
+                    ];
+                }
+                
                 $assignment->display_status = $assignment->getCurrentStatusAttribute();
             }
         } elseif ($user->role === 'admin') {

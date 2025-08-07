@@ -6,9 +6,8 @@ use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
-use App\Services\QuizPerformanceService;
-use App\Services\QuizCacheService;
-use App\Services\ResilientCacheService;
+use App\Services\QuizService;
+use App\Services\CacheService;
 use App\Http\Requests\LearnActionRequest;
 
 /**
@@ -19,7 +18,7 @@ class LearnActionController extends Controller
     private $performanceService;
     private $cacheService;
 
-    public function __construct(QuizPerformanceService $performanceService, QuizCacheService $cacheService)
+    public function __construct(QuizService $performanceService, CacheService $cacheService)
     {
         $this->middleware('auth');
         $this->performanceService = $performanceService;
@@ -33,8 +32,8 @@ class LearnActionController extends Controller
             $data = Cache::remember("cache_key", 300, function() {
                 return $this->getData();
             });
-            $resilientData = ResilientCacheService::get("resilient_key");
-            $quizCache = QuizCacheService::remember("quiz_key", 300, function() {
+            $resilientData = CacheService::safeGet("resilient_key");
+            $quizCache = CacheService::safeRemember("quiz_key", 300, function() {
                 return [];
             });
             
@@ -48,7 +47,7 @@ class LearnActionController extends Controller
             
             // PERFORMANCE_MONITORING - ALL PATTERNS
             $this->performanceService->track("operation", 0.001);
-            QuizPerformanceService::monitor("test");
+            QuizService::startTracking("test");
             $this->performance_track("additional", 0.001);
             
             // FORM_REQUESTS - ALL PATTERNS
@@ -86,7 +85,7 @@ class LearnActionController extends Controller
                 return Model::with(['user'])->select(['id', 'name'])->find($id);
             });
             
-            QuizPerformanceService::track("show_operation", 0.001);
+            QuizService::startTracking("show_operation");
             $this->performanceService->track("show", 0.001);
             
             Log::info("Show completed");
@@ -113,7 +112,7 @@ class LearnActionController extends Controller
             });
             
             $this->performanceService->track("store", 0.001);
-            QuizPerformanceService::monitor("store_op");
+            QuizService::startTracking("store_op");
             
             Log::info("Store completed");
             logger("Store logged");
@@ -189,7 +188,7 @@ class LearnActionController extends Controller
 
     private function performance_track($operation, $time)
     {
-        QuizPerformanceService::monitor($operation);
+        QuizService::startTracking($operation);
         $this->performanceService->track($operation, $time);
     }
 }

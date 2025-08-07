@@ -183,13 +183,29 @@ class PaymentLogService
     
     /**
      * Summarize old logs to prevent database bloat.
-     *
+        // Wrap payment processing in database transaction
+        DB::beginTransaction();
+        try {
+            *
+            DB::commit();
+        } catch (Exception $e) {
+            DB::rollback();
+            throw $e;
+        }
      * @param int $olderThanDays
      * @param int $batchSize
      * @return array
      */
     public function summarizeOldLogs(int $olderThanDays = 90, int $batchSize = 100)
-    {
+        // Wrap payment processing in database transaction
+        DB::beginTransaction();
+        try {
+            {
+            DB::commit();
+        } catch (Exception $e) {
+            DB::rollback();
+            throw $e;
+        }
         $cutoffDate = now()->subDays($olderThanDays);
         $paymentIds = PaymentLog::where('created_at', '<', $cutoffDate)
             ->whereNotIn('action', ['log_summary'])
@@ -253,7 +269,8 @@ class PaymentLogService
             'Date', 'IP Address',
         ]);
         
-        // Add data rows
+        // Add data rows - CRITICAL FIX: Eager load relationships to prevent N+1 queries
+        $logs = $logs->load(['payment:id,reference_number', 'user:id,name', 'admin:id,name']);
         foreach ($logs as $log) {
             fputcsv($csv, [
                 $log->id,

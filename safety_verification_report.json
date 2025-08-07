@@ -1,0 +1,30 @@
+{
+    "execution_time": 1.89,
+    "total_files_checked": 36,
+    "verified_files": 36,
+    "issues_found": 1,
+    "safety_score": 85,
+    "issues_by_severity": {
+        "high": 1
+    },
+    "issues_by_type": {
+        "route_failure": 1
+    },
+    "safety_issues": [
+        {
+            "type": "route_failure",
+            "file": "routes",
+            "severity": "high",
+            "description": "Routes fail to load",
+            "details": "The \"--compact\" option does not exist."
+        }
+    ],
+    "recommendations": [
+        "Review and fix all identified safety issues before deployment",
+        "Test all modified functionality manually",
+        "Run comprehensive test suite",
+        "Monitor application performance after deployment",
+        "Set up database query monitoring",
+        "Implement automated performance regression testing"
+    ]
+}

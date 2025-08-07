@@ -1948,6 +1948,11 @@
                                             <i class="fas fa-clipboard-list me-2"></i>My Assignments
                                         </a>
                                     </li>
+                                    <li>
+                                        <a class="dropdown-item" href="{{ route('topic-locking.index') }}">
+                                            <i class="fas fa-lock me-2"></i>Topic Management
+                                        </a>
+                                    </li>
                                 @endif
                                 <li><hr class="dropdown-divider"></li>
                                 <li>
@@ -2047,6 +2052,7 @@
         </button>
         
         <div class="courses-grid">
+{{-- 💀 N+1 FIX NEEDED: Eager load 'topics_count' in controller --}}
             @foreach ($courses as $course)
                 <div class="course-card" 
                      style="--course-color: {{ $course->color }}; --course-title-color: {{ $course->title_color }}"

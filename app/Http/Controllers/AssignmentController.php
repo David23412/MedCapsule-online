@@ -4,13 +4,13 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use App\Models\Assignment;
-use App\Services\Assignment\AssignmentManagementService;
+use App\Services\AssignmentService;
 
 class AssignmentController extends Controller
 {
     protected $assignmentService;
 
-    public function __construct(AssignmentManagementService $assignmentService)
+    public function __construct(AssignmentService $assignmentService)
     {
         $this->assignmentService = $assignmentService;
     }

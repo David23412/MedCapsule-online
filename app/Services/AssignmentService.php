@@ -8,6 +8,7 @@ use App\Models\Topic;
 use App\Models\Course;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Cache;
 use Carbon\Carbon;
 use App\Services\NotificationService;
 
@@ -716,12 +717,27 @@ class AssignmentService
             return [];
         }
         
+        // Get tutor's course IDs
+        $tutor = User::find($tutorId);
+        $tutorCourseIds = $tutor->courses()->pluck('courses.id')->toArray();
+        
+        if (empty($tutorCourseIds)) {
+            return [];
+        }
+        
+        // Find students enrolled in tutor's courses
         $placeholders = str_repeat('?,', count($studentIds) - 1) . '?';
+        $coursePlaceholders = str_repeat('?,', count($tutorCourseIds) - 1) . '?';
+        
         $validStudents = DB::select("
-            SELECT user_id 
-            FROM tutor_student_relationships 
-            WHERE tutor_id = ? AND user_id IN ({$placeholders})
-        ", array_merge([$tutorId], $studentIds));
+            SELECT DISTINCT cu.user_id 
+            FROM course_user cu
+            JOIN users u ON cu.user_id = u.id
+            WHERE cu.user_id IN ({$placeholders})
+            AND cu.course_id IN ({$coursePlaceholders})
+            AND cu.is_enrolled = 1
+            AND u.role = 'student'
+        ", array_merge($studentIds, $tutorCourseIds));
         
         return array_column($validStudents, 'user_id');
     }
@@ -870,6 +886,7 @@ class AssignmentService
         // Process assignments into detailed reports
         $reports = [];
         
+        $assignments = $assignments->load('id');
         foreach ($assignments as $assignment) {
             $report = [
                 'id' => $assignment->id,
@@ -1025,6 +1042,233 @@ class AssignmentService
                 'questions_answered' => $questionsAnswered,
                 'total_questions' => $totalQuestions,
             ];
+        }
+    }
+
+    /**
+     * Get available courses for the current user
+     * Tutors only see their enrolled courses, admins see all
+     */
+    public function getAvailableCourses(): Collection
+    {
+        $user = auth()->user();
+        
+        if ($user->isAdmin()) {
+            return Course::select(['id', 'name'])->withCount('topics')->get();
+        }
+        
+        return $user->courses()
+            ->select(['courses.id', 'courses.name'])
+            ->withCount('topics')
+            ->get();
+    }
+
+    /**
+     * Get available topics for the current user
+     * Tutors only see topics from their enrolled courses, admins see all
+     */
+    public function getAvailableTopics(): Collection
+    {
+        $user = auth()->user();
+        
+        if ($user->isAdmin()) {
+            return Topic::select(['id', 'name', 'course_id'])
+                ->with('course:id,name')
+                ->withCount('questions')
+                ->get();
+        }
+        
+        $courseIds = $user->courses()->pluck('courses.id');
+        
+        return Topic::select(['id', 'name', 'course_id'])
+            ->with('course:id,name')
+            ->whereIn('course_id', $courseIds)
+            ->withCount('questions')
+            ->get();
+    }
+
+    /**
+     * Get available students for the current user
+     * Tutors only see students from their enrolled courses, admins see all
+     */
+    public function getAvailableStudents(): Collection
+    {
+        $user = auth()->user();
+        
+        if ($user->isAdmin()) {
+            return User::select(['id', 'name', 'email'])
+                ->where('role', User::ROLE_STUDENT)
+                ->orderBy('name')
+                ->get();
+        }
+        
+        // Get students enrolled in tutor's courses
+        $tutorCourseIds = $user->courses()->pluck('courses.id');
+        
+        return User::select(['users.id', 'users.name', 'users.email'])
+            ->join('course_user', 'users.id', '=', 'course_user.user_id')
+            ->where('users.role', User::ROLE_STUDENT)
+            ->whereIn('course_user.course_id', $tutorCourseIds)
+            ->where('course_user.is_enrolled', true)
+            ->distinct()
+            ->orderBy('users.name')
+            ->get();
+    }
+
+    // ===== CONSOLIDATED ASSIGNMENT MANAGEMENT FEATURES =====
+
+    /**
+     * Get assignments data with caching (from AssignmentManagementService)
+     * Only shows data from tutor's courses unless admin
+     */
+    public function getAssignmentsData(int $userId, ?string $status = null, ?int $courseId = null): array
+    {
+        $cacheKey = "assignments_data_{$userId}_{$status}_{$courseId}";
+        
+        return Cache::remember($cacheKey, 300, function () use ($userId, $status, $courseId) {
+            $user = User::find($userId);
+            
+            // Get assignments - filter by tutor's courses unless admin
+            $query = Assignment::with(['course:id,name', 'topic:id,name'])
+                ->select(['id', 'course_id', 'topic_id', 'title', 'deadline', 'status', 'created_at']);
+
+            if (!$user->isAdmin()) {
+                $tutorCourseIds = $user->courses()->pluck('courses.id');
+                $query->whereIn('course_id', $tutorCourseIds);
+            }
+
+            if ($status) {
+                $query->where('status', $status);
+            }
+            if ($courseId) {
+                $query->where('course_id', $courseId);
+            }
+
+            $assignments = $query->orderBy('deadline', 'asc')->get();
+            
+            // Get courses - only tutor's courses unless admin
+            if ($user->isAdmin()) {
+                $courses = Course::select(['id', 'name'])->get();
+            } else {
+                $courses = $user->courses()->select(['courses.id', 'courses.name'])->get();
+            }
+            
+            // Get students - only from tutor's courses unless admin
+            if ($user->isAdmin()) {
+                $students = User::select(['id', 'name', 'email'])
+                    ->where('role', User::ROLE_STUDENT)
+                    ->orderBy('name')
+                    ->get();
+            } else {
+                $tutorCourseIds = $user->courses()->pluck('courses.id');
+                $students = User::select(['users.id', 'users.name', 'users.email'])
+                    ->join('course_user', 'users.id', '=', 'course_user.user_id')
+                    ->where('users.role', User::ROLE_STUDENT)
+                    ->whereIn('course_user.course_id', $tutorCourseIds)
+                    ->where('course_user.is_enrolled', true)
+                    ->distinct()
+                    ->orderBy('users.name')
+                    ->get();
+            }
+
+            return compact('assignments', 'courses', 'students');
+        });
+    }
+
+    /**
+     * Get bulk create data with caching
+     * Only shows courses and students that the tutor has access to
+     */
+    public function getBulkCreateData(int $userId): array
+    {
+        $cacheKey = "bulk_create_data_{$userId}";
+        
+        return Cache::remember($cacheKey, 1800, function () use ($userId) {
+            $user = User::find($userId);
+            
+            // Get courses - only tutor's courses unless admin
+            if ($user->isAdmin()) {
+                $courses = Course::select(['id', 'name'])
+                    ->withCount('topics')
+                    ->get();
+            } else {
+                $courses = $user->courses()
+                    ->select(['courses.id', 'courses.name'])
+                    ->withCount('topics')
+                    ->get();
+            }
+            
+            // Get students - only from tutor's courses unless admin
+            if ($user->isAdmin()) {
+                $students = User::select(['id', 'name', 'email'])
+                    ->where('role', User::ROLE_STUDENT)
+                    ->orderBy('name')
+                    ->get();
+            } else {
+                $tutorCourseIds = $user->courses()->pluck('courses.id');
+                $students = User::select(['users.id', 'users.name', 'users.email'])
+                    ->join('course_user', 'users.id', '=', 'course_user.user_id')
+                    ->where('users.role', User::ROLE_STUDENT)
+                    ->whereIn('course_user.course_id', $tutorCourseIds)
+                    ->where('course_user.is_enrolled', true)
+                    ->distinct()
+                    ->orderBy('users.name')
+                    ->get();
+            }
+
+            // Get all topics grouped by course_id for instant loading
+            $allTopics = [];
+            if ($user->isAdmin()) {
+                $topics = Topic::with('course')
+                    ->withCount('questions')
+                    ->get();
+            } else {
+                $tutorCourseIds = $user->courses()->pluck('courses.id');
+                $topics = Topic::with('course')
+                    ->withCount('questions')
+                    ->whereIn('course_id', $tutorCourseIds)
+                    ->get();
+            }
+            
+            foreach ($topics as $topic) {
+                $allTopics[$topic->course_id][] = [
+                    'id' => $topic->id,
+                    'name' => $topic->name,
+                    'questions_count' => $topic->questions_count
+                ];
+            }
+            
+            // Get all sources grouped by topic_id for instant loading
+            $allSources = [];
+            foreach ($topics as $topic) {
+                // Get distinct sources for this topic
+                $sources = DB::table('questions')
+                    ->where('topic_id', $topic->id)
+                    ->whereNotNull('source')
+                    ->where('source', '!=', '')
+                    ->distinct()
+                    ->pluck('source')
+                    ->toArray();
+                
+                if (!empty($sources)) {
+                    $allSources[$topic->id] = $sources;
+                }
+            }
+
+            return compact('courses', 'students', 'allTopics', 'allSources');
+        });
+    }
+
+    /**
+     * Clear assignment-related caches
+     */
+    public function clearAssignmentCaches(int $userId, ?int $courseId = null): void
+    {
+        Cache::forget("assignments_data_{$userId}__");
+        Cache::forget("bulk_create_data_{$userId}");
+        
+        if ($courseId) {
+            Cache::forget("assignments_data_{$userId}_{$courseId}");
         }
     }
 }

@@ -2,8 +2,8 @@
 
 namespace Tests\Unit;
 
-use App\Services\QuizCacheService;
-use App\Services\QuizPerformanceService;
+use App\Services\CacheService;
+use App\Services\QuizService;
 use Illuminate\Support\Facades\Cache;
 use PHPUnit\Framework\TestCase;
 

@@ -831,6 +831,7 @@
                             <label for="course_id" class="form-label">Course <span class="field-required">*</span></label>
                             <select class="form-select" id="course_id" name="course_id" required>
                                 <option value="">Choose course...</option>
+{{-- 💀 N+1 FIX NEEDED: Eager load 'topics_count' in controller --}}
                                 @foreach($courses as $course)
                                     <option value="{{ $course->id }}">{{ $course->name }} ({{ $course->topics_count }} topics)</option>
                                 @endforeach
@@ -998,6 +999,7 @@
                             </div>
                         </div>
                         
+{{-- 💀 N+1 FIX NEEDED: Eager load 'username' in controller --}}
                         <div class="student-list" id="studentList">
                             @foreach($students as $student)
                                 <div class="student-item" data-student-id="{{ $student->id }}" data-student-name="{{ strtolower($student->name) }}" data-student-username="{{ strtolower($student->username ?? '') }}" onclick="toggleStudent({{ $student->id }})">

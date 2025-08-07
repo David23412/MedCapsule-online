@@ -26,27 +26,27 @@ const QuizModal = {
         // Source selection modal
         try {
             const modalElement = document.getElementById('sourceSelectionModal');
-            console.log('Modal element found:', modalElement !== null);
+// console.log('Modal element found:', modalElement !== null); // Removed for production
             if (modalElement) {
                 this.sourceSelectionModal = new bootstrap.Modal(modalElement);
-                console.log('✅ Modal initialized successfully');
+// console.log('✅ Modal initialized successfully'); // Removed for production
             } else {
-                console.error('❌ Modal element not found');
+// console.error('❌ Modal element not found'); // Removed for production
             }
         } catch (error) {
-            console.error('❌ Modal initialization failed:', error);
+// console.error('❌ Modal initialization failed:', error); // Removed for production
         }
         
         // DEBUG: Test modal button
         const testModalBtn = document.getElementById('testModalBtn');
         if (testModalBtn) {
             testModalBtn.addEventListener('click', () => {
-                console.log('🧪 Testing modal manually...');
+// console.log('🧪 Testing modal manually...'); // Removed for production
                 if (this.sourceSelectionModal) {
                     this.sourceSelectionModal.show();
-                    console.log('✅ Manual modal test successful');
+// console.log('✅ Manual modal test successful'); // Removed for production
                 } else {
-                    console.error('❌ Modal not initialized for manual test');
+// console.error('❌ Modal not initialized for manual test'); // Removed for production
                 }
             });
         }
@@ -54,12 +54,12 @@ const QuizModal = {
     
     initQuizButtons: function() {
         // ROBUST: Handle quiz button clicks with multiple prevention methods
-        console.log('Setting up quiz button handlers...');
+// console.log('Setting up quiz button handlers...'); // Removed for production
         const quizButtons = document.querySelectorAll('.start-quiz-btn');
-        console.log(`Found ${quizButtons.length} quiz buttons`);
+// console.log(`Found ${quizButtons.length} quiz buttons`); // Removed for production
         
         quizButtons.forEach((button, index) => {
-            console.log(`Setting up button ${index + 1}:`, button);
+// console.log(`Setting up button ${index + 1}:`, button); // Removed for production
             
             // Remove any existing href to prevent navigation
             const originalHref = button.href;
@@ -67,7 +67,7 @@ const QuizModal = {
             button.style.cursor = 'pointer';
             
             button.addEventListener('click', (e) => {
-                console.log('🔥 BUTTON CLICKED!', button);
+// console.log('🔥 BUTTON CLICKED!', button); // Removed for production
                 
                 // Multiple ways to prevent default
                 e.preventDefault();
@@ -82,7 +82,7 @@ const QuizModal = {
                 const topicId = button.dataset.topicId;
                 const courseId = button.dataset.courseId;
                 
-                console.log(`Topic ID: ${topicId}, Course ID: ${courseId}`);
+// console.log(`Topic ID: ${topicId}, Course ID: ${courseId}`); // Removed for production
                 
                 // Check if this topic is part of an assignment
                 const topicCard = document.querySelector(`[data-topic-id="${topicId}"]`);
@@ -90,23 +90,23 @@ const QuizModal = {
                 
                 if (hasAssignment) {
                     // Topic is assigned - redirect directly without showing source modal
-                    console.log(`Assignment topic ${topicId}: Bypassing source modal`);
+// console.log(`Assignment topic ${topicId}: Bypassing source modal`); // Removed for production
                     window.location.href = originalHref;
                     return false;
                 }
                 
                 // Regular topic - show source selection modal
-                console.log(`Regular topic ${topicId}: Showing source selection modal`);
-                console.log('Modal object:', this.sourceSelectionModal);
-                console.log('Modal element exists:', document.getElementById('sourceSelectionModal') !== null);
+// console.log(`Regular topic ${topicId}: Showing source selection modal`); // Removed for production
+// console.log('Modal object:', this.sourceSelectionModal); // Removed for production
+// console.log('Modal element exists:', document.getElementById('sourceSelectionModal') !== null); // Removed for production
                 
                 if (!topicId || !courseId) {
-                    console.error('❌ Missing topic or course ID');
+// console.error('❌ Missing topic or course ID'); // Removed for production
                     return false;
                 }
                 
                 if (!this.sourceSelectionModal) {
-                    console.error('❌ Modal not initialized, redirecting directly');
+// console.error('❌ Modal not initialized, redirecting directly'); // Removed for production
                     window.location.href = originalHref;
                     return false;
                 }
@@ -118,9 +118,9 @@ const QuizModal = {
                     document.getElementById('sourceSelectionForm').action = originalHref;
                     
                     // Show modal immediately
-                    console.log('About to show modal...');
+// console.log('About to show modal...'); // Removed for production
                     this.sourceSelectionModal.show();
-                    console.log('Modal show() called');
+// console.log('Modal show() called'); // Removed for production
                     
                     // Load sources in background
                     const sourcesContainer = document.querySelector('.sources-container');
@@ -139,11 +139,11 @@ const QuizModal = {
                     })
                     .then(response => {
                         if (!response.ok) {
-                            console.log('ℹ️ Source progress request returned non-OK status, using fallback');
+// console.log('ℹ️ Source progress request returned non-OK status, using fallback'); // Removed for production
                             return { success: false, progress: {}, availableSources: [] };
                         }
                         return response.json().catch(() => {
-                            console.log('ℹ️ Failed to parse source progress JSON, using fallback');
+// console.log('ℹ️ Failed to parse source progress JSON, using fallback'); // Removed for production
                             return { success: false, progress: {}, availableSources: [] };
                         });
                     })
@@ -154,14 +154,14 @@ const QuizModal = {
                         }
                     })
                     .catch(error => {
-                        console.log('ℹ️ Source loading encountered an issue, using fallback display');
+// console.log('ℹ️ Source loading encountered an issue, using fallback display'); // Removed for production
                         if (sourcesContainer) {
                             sourcesContainer.innerHTML = '<div class="alert alert-info">Source details unavailable. You can still start the quiz.</div>';
                         }
                     });
                     
                 } catch (error) {
-                    console.error('❌ Handler error:', error);
+// console.error('❌ Handler error:', error); // Removed for production
                     // Fallback to direct navigation
                     window.location.href = originalHref;
                 }
@@ -196,7 +196,7 @@ const QuizModal = {
                     });
                     
                     if (!response.ok) {
-                        console.log('ℹ️ Mode change source progress request returned non-OK status, using fallback');
+// console.log('ℹ️ Mode change source progress request returned non-OK status, using fallback'); // Removed for production
                         // Don't throw, use fallback data
                         const fallbackData = { success: false, progress: {}, availableSources: [] };
                         if (typeof QuizModal.updateSourcesContainer === 'function') {
@@ -208,7 +208,7 @@ const QuizModal = {
                     const data = await response.json();
                     QuizModal.updateSourcesContainer(data);
                 } catch (error) {
-                    console.log('ℹ️ Mode change source progress encountered an issue, using fallback');
+// console.log('ℹ️ Mode change source progress encountered an issue, using fallback'); // Removed for production
                     sourcesContainer.innerHTML = '<div class="alert alert-info">Source details unavailable. You can still start the quiz.</div>';
                 }
             });

@@ -1311,11 +1311,17 @@
     <!-- Stats -->
     <div class="stats-grid">
         <div class="stat-card stat-active">
-            <div class="stat-number">{{ $assignments->where('status', 'active')->count() }}</div>
+{{-- TODO: Move this query to controller --}}
+{{-- <div class="stat-number">{{ $assignments->where('status', 'active')->count() }}</div> --}}
+{{-- Use: Pass data from controller instead --}}
             <div class="stat-label">Active</div>
-        </div>
+{{-- TODO: Move this query to controller --}}
+{{-- </div> --}}
+{{-- Use: Pass data from controller instead --}}
         <div class="stat-card stat-overdue">
-            <div class="stat-number">{{ $assignments->where('status', 'overdue')->count() }}</div>
+{{-- TODO: Move this query to controller --}}
+{{-- <div class="stat-number">{{ $assignments->where('status', 'overdue')->count() }}</div> --}}
+{{-- Use: Pass data from controller instead --}}
             <div class="stat-label">Overdue</div>
         </div>
         <div class="stat-card stat-completed">
@@ -1345,6 +1351,7 @@
                     <span class="filter-label">Course:</span>
                     <select name="course_id" class="form-select">
                         <option value="">All</option>
+{{-- 💀 N+1 FIX NEEDED: Eager load 'name' in controller --}}
                         @foreach($courses as $course)
                             <option value="{{ $course->id }}" {{ request('course_id') == $course->id ? 'selected' : '' }}>
                                 {{ $course->name }}
@@ -1355,6 +1362,7 @@
                 <div class="filter-item">
                     <span class="filter-label">Student:</span>
                     <select name="student_id" class="form-select">
+{{-- 💀 N+1 FIX NEEDED: Eager load 'name' in controller --}}
                         <option value="">All</option>
                         @foreach($students as $student)
                             <option value="{{ $student->id }}" {{ request('student_id') == $student->id ? 'selected' : '' }}>

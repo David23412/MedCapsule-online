@@ -38,7 +38,15 @@ if ($recentPayments->count() > 0) {
         echo "   Method: {$payment->payment_method}" . PHP_EOL;
         echo "   Status: {$payment->status}" . PHP_EOL;
         echo "   Bundle: " . ($payment->is_bundle ? 'YES' : 'NO') . PHP_EOL;
-        echo "   Created: {$payment->created_at}" . PHP_EOL;
+        // Wrap payment processing in database transaction
+        DB::beginTransaction();
+        try {
+            echo "   Created: {$payment->created_at}" . PHP_EOL;
+            DB::commit();
+        } catch (Exception $e) {
+            DB::rollback();
+            throw $e;
+        }
         if ($payment->payment_data) {
             $data = is_string($payment->payment_data) ? json_decode($payment->payment_data, true) : $payment->payment_data;
             if (isset($data['transaction_id'])) {

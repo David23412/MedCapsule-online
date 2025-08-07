@@ -176,8 +176,9 @@ class HandleQuizCompletion implements ShouldQueue
      * Calculate and award XP
      */
     private function calculateAndAwardXP(QuizCompleted $event): void
-    {try {$score = $event->gradingResult['score'];
-            $duration = $event->quizAttempt->duration_seconds;
+    {
+        try {
+            $score = $event->gradingResult['score'];            $duration = $event->quizAttempt->duration_seconds;
             $percentage = $event->gradingResult['percentage_grade'];
             
             // Calculate XP

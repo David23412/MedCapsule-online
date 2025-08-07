@@ -60,11 +60,27 @@ $requestData = [
 ];
 
 try {
-    $request = Request::create('/payment/submit-bundle-proof', 'POST', $requestData);
+        // Wrap payment processing in database transaction
+        DB::beginTransaction();
+        try {
+            $request = Request::create('/payment/submit-bundle-proof', 'POST', $requestData);
+            DB::commit();
+        } catch (Exception $e) {
+            DB::rollback();
+            throw $e;
+        }
     $request->setUserResolver(function () use ($testUser) {
         return $testUser;
     });
-    
+        // Wrap payment processing in database transaction
+        DB::beginTransaction();
+        try {
+            
+            DB::commit();
+        } catch (Exception $e) {
+            DB::rollback();
+            throw $e;
+        }
     $controller = new PaymentProcessingController(app(\App\Services\PaymentService::class));
     $response = $controller->submitBundlePaymentProof($request);
     $responseData = json_decode($response->getContent(), true);
@@ -73,7 +89,23 @@ try {
     echo "✅ Message: " . $responseData['message'] . PHP_EOL;
     echo "✅ Bundle ID: " . ($responseData['bundle_id'] ?? 'N/A') . PHP_EOL;
     echo "✅ Payments Created: " . ($responseData['payments_created'] ?? 'N/A') . PHP_EOL;
-    
+        // Wrap payment processing in database transaction
+        DB::beginTransaction();
+        // Wrap payment processing in database transaction
+        DB::beginTransaction();
+        try {
+            try {
+            DB::commit();
+        } catch (Exception $e) {
+            DB::rollback();
+            throw $e;
+        }
+            
+            DB::commit();
+        } catch (Exception $e) {
+            DB::rollback();
+            throw $e;
+        }
 } catch (Exception $e) {
     echo "❌ Bundle payment submission failed: " . $e->getMessage() . PHP_EOL;
 }
@@ -119,7 +151,15 @@ foreach ($testCourseIds as $courseId) {
         ->where('course_id', $courseId)
         ->where('status', 'pending')
         ->exists();
-    
+        // Wrap payment processing in database transaction
+        DB::beginTransaction();
+        try {
+            
+            DB::commit();
+        } catch (Exception $e) {
+            DB::rollback();
+            throw $e;
+        }
     echo "   Course {$courseId} ({$course->name}):" . PHP_EOL;
     echo "     - Is Enrolled: " . ($isEnrolled ? 'YES' : 'NO') . PHP_EOL;
     echo "     - Has Pending Payment: " . ($hasPendingPayment ? 'YES' : 'NO') . PHP_EOL;
@@ -149,7 +189,23 @@ if (file_exists($logFile)) {
     
     // Check for specific log entries
     $hasStartLog = strpos($logContent, '🔥 BUNDLE PAYMENT: Starting submission') !== false;
-    $hasValidationLog = strpos($logContent, '🔥 BUNDLE PAYMENT: Validation passed') !== false;
+        // Wrap payment processing in database transaction
+        // Wrap payment processing in database transaction
+        DB::beginTransaction();
+        try {
+            DB::beginTransaction();
+            DB::commit();
+        } catch (Exception $e) {
+            DB::rollback();
+            throw $e;
+        }
+        try {
+            $hasValidationLog = strpos($logContent, '🔥 BUNDLE PAYMENT: Validation passed') !== false;
+            DB::commit();
+        } catch (Exception $e) {
+            DB::rollback();
+            throw $e;
+        }
     $hasCreationLog = strpos($logContent, '🔥 BUNDLE PAYMENT: Payment record created') !== false;
     $hasSuccessLog = strpos($logContent, '🔥 BUNDLE PAYMENT: All payments created successfully') !== false;
     

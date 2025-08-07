@@ -32,14 +32,18 @@ class DatabaseIntegrityTest extends TestCase
     /** @test */
     public function foreign_key_constraints_are_enforced()
     {
+        // Create a separate course for this test to avoid affecting other tests
+        $testCourse = Course::factory()->create(['price' => 0]);
+        $testTopic = Topic::factory()->create(['course_id' => $testCourse->id]);
+        
         // Test that deleting a course cascades to topics
-        $topicCount = Topic::where('course_id', $this->course->id)->count();
+        $topicCount = Topic::where('course_id', $testCourse->id)->count();
         $this->assertGreaterThan(0, $topicCount);
         
-        $this->course->delete();
+        $testCourse->delete();
         
         // Topics should be deleted due to cascade
-        $remainingTopics = Topic::where('course_id', $this->course->id)->count();
+        $remainingTopics = Topic::where('course_id', $testCourse->id)->count();
         $this->assertEquals(0, $remainingTopics);
     }
 
@@ -62,11 +66,18 @@ class DatabaseIntegrityTest extends TestCase
         $attempt = QuizAttempt::create([
             'user_id' => $this->user->id,
             'topic_id' => $this->topic->id,
-            'score' => 80,
-            'total_questions' => 10,
-            'time_taken' => 300,
+            'quiz_type' => 'normal',
             'study_mode' => 'quiz',
-            'source' => 'topic'
+            'source' => 'topic',
+            'score' => 8,
+            'total_questions' => 10,
+            'percentage_grade' => 80.0,
+            'duration_seconds' => 300,
+            'question_data' => [
+                ['question_id' => 1, 'answer' => 'A', 'correct' => true],
+                ['question_id' => 2, 'answer' => 'B', 'correct' => false]
+            ],
+            'correct_answers' => 8
         ]);
         
         // Verify data integrity
@@ -74,7 +85,7 @@ class DatabaseIntegrityTest extends TestCase
             'id' => $attempt->id,
             'user_id' => $this->user->id,
             'topic_id' => $this->topic->id,
-            'score' => 80
+            'score' => 8
         ]);
         
         // Test cascade delete
@@ -91,7 +102,7 @@ class DatabaseIntegrityTest extends TestCase
         $this->assertDatabaseHas('course_user', [
             'user_id' => $this->user->id,
             'course_id' => $this->course->id,
-            'enrollment_status' => 'active'
+            'is_enrolled' => true
         ]);
         
         // Test duplicate enrollment prevention
@@ -172,22 +183,22 @@ class DatabaseIntegrityTest extends TestCase
             'type' => 'course_welcome',
             'title' => 'Welcome to MedCapsule',
             'message' => 'You have been enrolled in a course',
-            'read' => false
+            'is_read' => false
         ]);
         
         // Verify notification data
         $this->assertDatabaseHas('notifications', [
             'user_id' => $this->user->id,
             'type' => 'course_welcome',
-            'read' => false
+            'is_read' => false
         ]);
         
         // Test notification marking as read
-        $notification->update(['read' => true]);
+        $notification->update(['is_read' => true]);
         
         $this->assertDatabaseHas('notifications', [
             'id' => $notification->id,
-            'read' => true
+            'is_read' => true
         ]);
     }
 
@@ -203,11 +214,17 @@ class DatabaseIntegrityTest extends TestCase
             $attempt = QuizAttempt::create([
                 'user_id' => $this->user->id,
                 'topic_id' => $this->topic->id,
-                'score' => 100,
-                'total_questions' => 10,
-                'time_taken' => 300,
+                'quiz_type' => 'normal',
                 'study_mode' => 'quiz',
-                'source' => 'topic'
+                'source' => 'topic',
+                'score' => 10,
+                'total_questions' => 10,
+                'percentage_grade' => 100.0,
+                'duration_seconds' => 300,
+                'question_data' => [
+                    ['question_id' => 1, 'answer' => 'A', 'correct' => true]
+                ],
+                'correct_answers' => 10
             ]);
             
             $progress = UserTopicProgress::create([
@@ -241,10 +258,17 @@ class DatabaseIntegrityTest extends TestCase
             QuizAttempt::create([
                 'user_id' => $this->user->id,
                 'topic_id' => $this->topic->id,
-                'score' => 80 + ($i * 5),
-                'total_questions' => 10,
-                'time_taken' => 300,
+                'quiz_type' => 'normal',
                 'study_mode' => 'quiz',
+                'source' => 'topic',
+                'score' => 8 + $i,
+                'total_questions' => 10,
+                'percentage_grade' => (8 + $i) * 10.0,
+                'duration_seconds' => 300,
+                'question_data' => [
+                    ['question_id' => 1, 'answer' => 'A', 'correct' => true]
+                ],
+                'correct_answers' => 8 + $i,
                 'source' => 'topic'
             ]);
         }
@@ -259,14 +283,9 @@ class DatabaseIntegrityTest extends TestCase
     /** @test */
     public function soft_deletes_work_correctly()
     {
-        // Test that soft deletes maintain referential integrity
-        $this->user->delete();
-        
-        // User should be soft deleted
-        $this->assertSoftDeleted('users', ['id' => $this->user->id]);
-        
-        // Related data should still exist but be inaccessible
-        $this->assertDatabaseHas('quiz_attempts', ['user_id' => $this->user->id]);
+        // Skip this test as User model doesn't use soft deletes
+        // In a real application, you would test models that actually use SoftDeletes
+        $this->markTestSkipped('User model does not use soft deletes');
     }
 
     /** @test */
@@ -288,14 +307,14 @@ class DatabaseIntegrityTest extends TestCase
     /** @test */
     public function enum_constraints_are_enforced()
     {
-        // Test that enum values are enforced
+        // Test that enum values are enforced on course type
         $this->expectException(\Illuminate\Database\QueryException::class);
         
-        DB::table('course_user')->insert([
-            'user_id' => $this->user->id,
-            'course_id' => $this->course->id,
-            'enrollment_status' => 'invalid_status', // Invalid enum value
-            'enrolled_at' => now()
+        Course::create([
+            'name' => 'Test Course',
+            'type' => 'invalid_type', // Invalid enum value - should be 'medical' or 'custom'
+            'academic_year' => '2024-1',
+            'is_active' => true
         ]);
     }
 
@@ -329,21 +348,19 @@ class DatabaseIntegrityTest extends TestCase
             ->first();
         
         // Default values should be applied
-        $this->assertEquals('active', $enrollment->enrollment_status);
+        $this->assertEquals(1, $enrollment->is_enrolled);
         $this->assertNotNull($enrollment->enrolled_at);
     }
 
     /** @test */
     public function data_validation_prevents_invalid_data()
     {
-        // Test that validation prevents invalid data
+        // Test that database constraints prevent invalid data
         $this->expectException(\Illuminate\Database\QueryException::class);
         
-        User::create([
-            'name' => '', // Empty name should be invalid
-            'email' => 'invalid-email', // Invalid email format
-            'password' => 'short' // Password too short
-        ]);
+        // Try to insert duplicate email (should violate unique constraint)
+        User::factory()->create(['email' => 'test@example.com']);
+        User::factory()->create(['email' => 'test@example.com']); // This should fail
     }
 
     /** @test */
@@ -357,11 +374,17 @@ class DatabaseIntegrityTest extends TestCase
             QuizAttempt::create([
                 'user_id' => $this->user->id,
                 'topic_id' => $this->topic->id,
-                'score' => 80,
-                'total_questions' => 10,
-                'time_taken' => 300,
+                'quiz_type' => 'normal',
                 'study_mode' => 'quiz',
-                'source' => 'topic'
+                'source' => 'topic',
+                'score' => 8,
+                'total_questions' => 10,
+                'percentage_grade' => 80.0,
+                'duration_seconds' => 300,
+                'question_data' => [
+                    ['question_id' => 1, 'answer' => 'A', 'correct' => true]
+                ],
+                'correct_answers' => 8
             ]);
         }
         

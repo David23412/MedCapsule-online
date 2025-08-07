@@ -885,9 +885,8 @@ class QuizService
 
             $questions = $query->get();
             
-            // NUCLEAR VERIFICATION: Double-check each question still exists
-            $validQuestions = collect();
-            foreach ($questions as $question) {
+            // NUCLEAR VERIFICATION: Filter out deleted questions while maintaining Eloquent Collection
+            $validQuestions = $questions->filter(function ($question) {
                 // Real-time database check for each question
                 $exists = Question::where('id', $question->id)
                     ->where('topic_id', $question->topic_id)
@@ -895,15 +894,15 @@ class QuizService
                     ->where('question', '!=', '')
                     ->exists();
                     
-                if ($exists) {
-                    $validQuestions->push($question);
-                } else {
+                if (!$exists) {
                     Log::warning('LETHAL FIX: Deleted question detected in getQuestionsForQuiz', [
                         'question_id' => $question->id,
                         'topic_id' => $question->topic_id
                     ]);
                 }
-            }
+                
+                return $exists;
+            });
             
             return $validQuestions;
         });
@@ -958,11 +957,145 @@ class QuizService
 
             return [
                 'total_attempts' => $totalAttempts,
+
                 'average_score' => round($averageScore, 1),
                 'best_score' => round($bestScore, 1),
                 'last_attempt' => $lastAttempt,
                 'improvement_trend' => $trend
             ];
         });
+    }
+
+    // ===== CONSOLIDATED QUIZ FEATURES =====
+
+    /**
+     * PERFORMANCE TRACKING (from QuizPerformanceService)
+     */
+    private static $performanceMetrics = [];
+
+    /**
+     * Start performance tracking for an operation
+     */
+    public static function startTracking(string $operation): string
+    {
+        $trackingId = uniqid($operation . '_', true);
+        
+        self::$performanceMetrics[$trackingId] = [
+            'operation' => $operation,
+            'start_time' => microtime(true),
+            'start_memory' => memory_get_usage(true),
+            'queries_before' => self::getQueryCount()
+        ];
+        
+        return $trackingId;
+    }
+
+    /**
+     * End performance tracking and log results
+     */
+    public static function endTracking(string $trackingId, array $additionalData = []): array
+    {
+        if (!isset(self::$performanceMetrics[$trackingId])) {
+            return [];
+        }
+
+        $metrics = self::$performanceMetrics[$trackingId];
+        $endTime = microtime(true);
+        $endMemory = memory_get_usage(true);
+        $queriesAfter = self::getQueryCount();
+
+        $performance = [
+            'operation' => $metrics['operation'],
+            'duration_ms' => round(($endTime - $metrics['start_time']) * 1000, 2),
+            'memory_used_mb' => round(($endMemory - $metrics['start_memory']) / 1024 / 1024, 2),
+            'queries_executed' => $queriesAfter - $metrics['queries_before']
+        ];
+
+        // Log performance data
+        Log::info('Quiz Performance Metrics', array_merge($performance, $additionalData));
+
+        // Clean up
+        unset(self::$performanceMetrics[$trackingId]);
+
+        return $performance;
+    }
+
+    /**
+     * Get current query count
+     */
+    private static function getQueryCount(): int
+    {
+        return count(DB::getQueryLog());
+    }
+
+    /**
+     * MEMORY EFFICIENT OPERATIONS (from MemoryEfficientQuizService)
+     */
+    private const CHUNK_SIZE = 100;
+    private const MAX_MEMORY_USAGE = 128 * 1024 * 1024; // 128MB
+    
+    /**
+     * Get questions using lazy loading for memory efficiency
+     */
+    public function getQuestionsLazy(Topic $topic, array $sources = ['all'], ?int $limit = null)
+    {
+        $query = $this->buildQuestionsQuery($topic, $sources);
+        
+        if ($limit) {
+            $query->limit($limit);
+        }
+        
+        return $query->lazy(self::CHUNK_SIZE);
+    }
+
+    /**
+     * Process questions in chunks to manage memory
+     */
+    public function processQuestionsInChunks(Topic $topic, array $sources, callable $processor, int $chunkSize = null): array
+    {
+        $chunkSize = $chunkSize ?? self::CHUNK_SIZE;
+        $results = [];
+        $processedCount = 0;
+        
+        $query = $this->buildQuestionsQuery($topic, $sources);
+        
+        $query->chunk($chunkSize, function ($questions) use ($processor, &$results, &$processedCount) {
+            // Check memory usage before processing
+            if (memory_get_usage(true) > self::MAX_MEMORY_USAGE) {
+                Log::warning('Memory usage approaching limit', [
+                    'current_usage' => memory_get_usage(true),
+                    'limit' => self::MAX_MEMORY_USAGE
+                ]);
+                return false; // Stop processing
+            }
+            
+            $chunkResults = $processor($questions);
+            if (is_array($chunkResults)) {
+                $results = array_merge($results, $chunkResults);
+            }
+            
+            $processedCount += $questions->count();
+        });
+        
+        return [
+            'results' => $results,
+            'processed_count' => $processedCount,
+            'memory_peak' => memory_get_peak_usage(true)
+        ];
+    }
+
+    /**
+     * Build optimized questions query
+     */
+    private function buildQuestionsQuery(Topic $topic, array $sources)
+    {
+        $query = Question::select('id', 'question', 'options', 'correct_answer', 'explanation', 'source')
+            ->where('topic_id', $topic->id);
+            
+        if (!in_array('all', $sources)) {
+            $query->whereIn('source', $sources);
+        }
+        
+        return $query;
     }
 } 

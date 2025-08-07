@@ -24,7 +24,7 @@ export default defineConfig({
             compress: {
                 drop_console: true,
                 drop_debugger: true,
-                pure_funcs: ['console.log', 'console.info', 'console.debug']
+// pure_funcs: ['console.log', 'console.info', 'console.debug'] // Removed for production
             }
         },
         

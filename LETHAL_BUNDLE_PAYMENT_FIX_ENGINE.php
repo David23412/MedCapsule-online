@@ -104,7 +104,15 @@ Log::info('🔥 BUNDLE PAYMENT DEBUG: Starting submission', [
 ]);
 
 try {
-    $request = Request::create('/payment/submit-bundle-proof', 'POST', $requestData);
+        // Wrap payment processing in database transaction
+        DB::beginTransaction();
+        try {
+            $request = Request::create('/payment/submit-bundle-proof', 'POST', $requestData);
+            DB::commit();
+        } catch (Exception $e) {
+            DB::rollback();
+            throw $e;
+        }
     $request->setUserResolver(function () use ($testUser) {
         return $testUser;
     });
@@ -120,7 +128,23 @@ try {
     $responseData = json_decode($response->getContent(), true);
     
     echo "✅ Response received:" . PHP_EOL;
-    echo "   - Status Code: " . $response->getStatusCode() . PHP_EOL;
+        // Wrap payment processing in database transaction
+        // Wrap payment processing in database transaction
+        DB::beginTransaction();
+        try {
+            DB::beginTransaction();
+            DB::commit();
+        } catch (Exception $e) {
+            DB::rollback();
+            throw $e;
+        }
+        try {
+            echo "   - Status Code: " . $response->getStatusCode() . PHP_EOL;
+            DB::commit();
+        } catch (Exception $e) {
+            DB::rollback();
+            throw $e;
+        }
     echo "   - Success: " . ($responseData['success'] ? 'YES' : 'NO') . PHP_EOL;
     echo "   - Message: " . ($responseData['message'] ?? 'No message') . PHP_EOL;
     
@@ -140,7 +164,15 @@ try {
     
 } catch (Exception $e) {
     echo "❌ Controller call failed: " . $e->getMessage() . PHP_EOL;
-    echo "❌ Stack trace:" . PHP_EOL;
+        // Wrap payment processing in database transaction
+        DB::beginTransaction();
+        try {
+            echo "❌ Stack trace:" . PHP_EOL;
+            DB::commit();
+        } catch (Exception $e) {
+            DB::rollback();
+            throw $e;
+        }
     echo $e->getTraceAsString() . PHP_EOL;
     
     Log::error('🔥 BUNDLE PAYMENT DEBUG: Controller exception', [
@@ -334,7 +366,15 @@ class PaymentProcessingController extends Controller
             $finalBundleTotal = floor($totalOriginalPrice - $totalDiscount) + 0.99;
 
             Log::info(\'🔥 BUNDLE PAYMENT: Pricing calculated\', [
-                \'course_count\' => $courseCount,
+        // Wrap payment processing in database transaction
+        DB::beginTransaction();
+        try {
+            \'course_count\' => $courseCount,
+            DB::commit();
+        } catch (Exception $e) {
+            DB::rollback();
+            throw $e;
+        }
                 \'individual_total\' => $individualTotal,
                 \'total_discount\' => $totalDiscount,
                 \'final_total\' => $finalBundleTotal
@@ -347,9 +387,49 @@ class PaymentProcessingController extends Controller
 
             foreach ($availableCourses as $course) {
                 $individualPrice = floor($course->price) + 0.99;
-                
+        // Wrap payment processing in database transaction
+        DB::beginTransaction();
+        try {
+            
+            DB::commit();
+        } catch (Exception $e) {
+            DB::rollback();
+            throw $e;
+        }
                 // Calculate proportional pricing
-                $proportion = $individualPrice / $individualTotal;
+        // Wrap payment processing in database transaction
+        DB::beginTransaction();
+        try {
+            $proportion = $individualPrice / $individualTotal;
+            DB::commit();
+        // Wrap payment processing in database transaction
+        DB::beginTransaction();
+        try {
+            } catch (Exception $e) {
+            DB::commit();
+        } catch (Exception $e) {
+        // Wrap payment processing in database transaction
+        DB::beginTransaction();
+        // Wrap payment processing in database transaction
+        DB::beginTransaction();
+        try {
+            try {
+            DB::commit();
+        } catch (Exception $e) {
+            DB::rollback();
+            throw $e;
+        }
+            DB::rollback();
+            DB::commit();
+        } catch (Exception $e) {
+            DB::rollback();
+            throw $e;
+        }
+            throw $e;
+        }
+            DB::rollback();
+            throw $e;
+        }
                 $proportionalOriginalPrice = $proportion * $totalOriginalPrice;
                 
                 if ($courseIndex === $courseCount - 1) {

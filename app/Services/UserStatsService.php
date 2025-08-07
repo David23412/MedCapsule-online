@@ -36,6 +36,7 @@ class UserStatsService
                     $user->study_streak_days = 1;
                 }
                 $user->last_study_date = $today;
+
                 $user->save();
             }
 

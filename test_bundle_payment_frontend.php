@@ -56,7 +56,15 @@ echo "   Total Price: {$bundleData['total_price']} EGP" . PHP_EOL;
 
 try {
     // Simulate the frontend AJAX call with proper session setup
-    $request = Request::create('/payments/bundle/options', 'POST', $bundleData, [], [], [
+        // Wrap payment processing in database transaction
+        DB::beginTransaction();
+        try {
+            $request = Request::create('/payments/bundle/options', 'POST', $bundleData, [], [], [
+            DB::commit();
+        } catch (Exception $e) {
+            DB::rollback();
+            throw $e;
+        }
         'CONTENT_TYPE' => 'application/x-www-form-urlencoded',
         'HTTP_ACCEPT' => 'application/json',
         'HTTP_X_REQUESTED_WITH' => 'XMLHttpRequest'
@@ -94,7 +102,15 @@ echo "📋 STEP 2: TESTING BUNDLE SUBMISSION ROUTE" . PHP_EOL;
 $submissionData = [
     'courses' => $bundleData['courses'],
     'payment_method' => 'vodafone_cash',
-    'transaction_id' => 'FRONTEND_TEST_' . time(),
+        // Wrap payment processing in database transaction
+        DB::beginTransaction();
+        try {
+            'transaction_id' => 'FRONTEND_TEST_' . time(),
+            DB::commit();
+        } catch (Exception $e) {
+            DB::rollback();
+            throw $e;
+        }
     'total_amount' => $bundleData['total_price']
 ];
 
@@ -104,13 +120,53 @@ echo "   Transaction ID: {$submissionData['transaction_id']}" . PHP_EOL;
 try {
     $request = Request::create('/payment/submit-bundle-proof', 'POST', $submissionData, [], [], [
         'CONTENT_TYPE' => 'application/x-www-form-urlencoded',
-        'HTTP_ACCEPT' => 'application/json'
+        // Wrap payment processing in database transaction
+        DB::beginTransaction();
+        try {
+            'HTTP_ACCEPT' => 'application/json'
+            DB::commit();
+        } catch (Exception $e) {
+            DB::rollback();
+            throw $e;
+        }
     ]);
     
     // Add CSRF token to request
     $request->headers->set('X-CSRF-TOKEN', csrf_token());
     
-    $response = app()->handle($request);
+        // Wrap payment processing in database transaction
+        DB::beginTransaction();
+        try {
+        // Wrap payment processing in database transaction
+        DB::beginTransaction();
+        try {
+            $response = app()->handle($request);
+        // Wrap payment processing in database transaction
+        DB::beginTransaction();
+        try {
+            DB::commit();
+            DB::commit();
+        } catch (Exception $e) {
+            DB::rollback();
+            throw $e;
+        }
+        } catch (Exception $e) {
+        // Wrap payment processing in database transaction
+        DB::beginTransaction();
+        try {
+            DB::rollback();
+            DB::commit();
+        } catch (Exception $e) {
+            DB::rollback();
+            throw $e;
+        }
+            throw $e;
+        }
+            DB::commit();
+        } catch (Exception $e) {
+            DB::rollback();
+            throw $e;
+        }
     $statusCode = $response->getStatusCode();
     $content = $response->getContent();
     

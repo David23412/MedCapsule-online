@@ -37,13 +37,7 @@ class TestFullAuditIntegration extends Command
             // Initialize orchestrator
             $orchestrator = new AuditOrchestrator(
                 $qualityGateEnforcer,
-                $evidenceTracker,
-                $fileScanner,
-                $securityScanner,
-                $frontendAnalyzer,
-                $businessLogicValidator,
-                $dependencyAuditor,
-                $testingAnalyzer
+                $evidenceTracker
             );
 
             $this->info('🔧 Components initialized successfully');

@@ -57,7 +57,15 @@ print_r($requestData);
 
 // Step 5: Call controller directly
 try {
-    $request = Request::create('/payment/submit-bundle-proof', 'POST', $requestData);
+        // Wrap payment processing in database transaction
+        DB::beginTransaction();
+        try {
+            $request = Request::create('/payment/submit-bundle-proof', 'POST', $requestData);
+            DB::commit();
+        } catch (Exception $e) {
+            DB::rollback();
+            throw $e;
+        }
     $request->setUserResolver(function () use ($testUser) {
         return $testUser;
     });
@@ -73,7 +81,23 @@ try {
     echo "   Success: " . ($responseData['success'] ? 'YES' : 'NO') . PHP_EOL;
     echo "   Message: " . ($responseData['message'] ?? 'No message') . PHP_EOL;
     
-    if (isset($responseData['bundle_id'])) {
+        // Wrap payment processing in database transaction
+        DB::beginTransaction();
+        // Wrap payment processing in database transaction
+        DB::beginTransaction();
+        try {
+            try {
+            DB::commit();
+        } catch (Exception $e) {
+            DB::rollback();
+            throw $e;
+        }
+            if (isset($responseData['bundle_id'])) {
+            DB::commit();
+        } catch (Exception $e) {
+            DB::rollback();
+            throw $e;
+        }
         echo "   Bundle ID: " . $responseData['bundle_id'] . PHP_EOL;
     }
     

@@ -73,9 +73,25 @@ class TutorReportController extends Controller
         $user = auth()->user();
         
         try {
-            $students = $user->isAdmin() 
-                ? User::where('role', User::ROLE_STUDENT)->get()
-                : $user->assignedStudents()->get();
+            if ($user->isAdmin()) {
+                $students = User::where('role', User::ROLE_STUDENT)
+                    ->with(['quizAttempts' => function($query) {
+                        $query->select('user_id', 'score');
+                    }])
+                    ->get();
+            } else {
+                // Get students enrolled in tutor's courses
+                $tutorCourseIds = $user->courses()->pluck('courses.id');
+                $students = User::where('role', User::ROLE_STUDENT)
+                    ->whereHas('courses', function ($q) use ($tutorCourseIds) {
+                        $q->whereIn('courses.id', $tutorCourseIds)
+                          ->where('course_user.is_enrolled', true);
+                    })
+                    ->with(['quizAttempts' => function($query) {
+                        $query->select('user_id', 'score');
+                    }])
+                    ->get();
+            }
 
             $csvData = $this->generateStudentsCSV($students);
             
@@ -97,10 +113,22 @@ class TutorReportController extends Controller
 
     /**
      * Check if tutor can access specific student
+     * Tutors can only access students enrolled in their courses
      */
     private function canAccessStudent(User $tutor, User $student): bool
     {
-        return $tutor->assignedStudents()->where('user_id', $student->id)->exists();
+        if ($tutor->isAdmin()) {
+            return true;
+        }
+        
+        // Get tutor's course IDs
+        $tutorCourseIds = $tutor->courses()->pluck('courses.id');
+        
+        // Check if student is enrolled in any of the tutor's courses
+        return $student->courses()
+            ->whereIn('courses.id', $tutorCourseIds)
+            ->where('course_user.is_enrolled', true)
+            ->exists();
     }
 
     /**
@@ -138,9 +166,12 @@ class TutorReportController extends Controller
     {
         $csv = "Student Name,Email,University,Quiz Average,Total Quizzes,Study Streak,Last Active\n";
 
+        $students = $students->load('quizAttempts');
         foreach ($students as $student) {
-            $avgScore = $student->quizAttempts()->avg('score') ?? 0;
-            $quizCount = $student->quizAttempts()->count();
+            // Use eager loaded quizAttempts to avoid N+1 queries
+            $quizAttempts = $student->quizAttempts;
+            $avgScore = $quizAttempts->avg('score') ?? 0;
+            $quizCount = $quizAttempts->count();
             $lastActive = $student->last_active_at ? $student->last_active_at->format('Y-m-d H:i:s') : 'Never';
             
             $csv .= "\"{$student->name}\",\"{$student->email}\",\"{$student->university}\"," . 

@@ -23,8 +23,8 @@ class QuizMistakeController extends Controller
     }
 
     /**
-     * 🚀 ULTRA-OPTIMIZED MISTAKES LOADER - SINGLE QUERY ARCHITECTURE
-     * Eliminates N+1 queries, reduces database load by 80%+
+     * 🎯 SMART HYBRID MISTAKES LOADER - FAST CACHE WITH INSTANT INVALIDATION
+     * Uses short-lived cache for performance + immediate invalidation for accuracy
      */
     public function showMistakes(Request $request)
     {
@@ -35,15 +35,16 @@ class QuizMistakeController extends Controller
             $userId = auth()->id();
             $courseFilter = $request->input('course');
             
-            Log::info('🎯 Loading mistakes with ULTRA optimization', [
+            Log::info('🎯 Loading mistakes with SMART HYBRID caching', [
                 'request_id' => $requestId,
                 'user_id' => $userId, 
                 'course_filter' => $courseFilter
             ]);
 
-            // 🔥 NUCLEAR OPTIMIZATION: Single query with all data - NO N+1 QUERIES
-            $cacheKey = "mistakes_ultra_{$userId}_{$courseFilter}_v2";
-            $mistakesData = Cache::remember($cacheKey, 3600, function() use ($userId, $courseFilter) {
+            // 🎯 SMART HYBRID: Short-lived cache (5 minutes) for performance
+            // But with immediate invalidation on writes for accuracy
+            $cacheKey = "mistakes_smart_{$userId}_{$courseFilter}_v3";
+            $mistakesData = Cache::remember($cacheKey, 300, function() use ($userId, $courseFilter) { // 5 minutes only
                 $query = DB::table('mistakes')
                     ->join('questions', 'mistakes.question_id', '=', 'questions.id')
                     ->join('topics', 'questions.topic_id', '=', 'topics.id')
@@ -120,9 +121,8 @@ class QuizMistakeController extends Controller
                 ];
             });
 
-            // 🎯 PARALLEL DATA LOADING: Get all supporting data in parallel
-            $supportingData = Cache::remember("mistakes_support_{$userId}", 1800, function() use ($userId) {
-                // Single query for all course data with counts
+            // 🎯 SMART HYBRID: Short-lived cache for supporting data (10 minutes)
+            $supportingData = Cache::remember("mistakes_support_smart_{$userId}", 600, function() use ($userId) {
                 $coursesWithCounts = DB::table('mistakes')
                     ->join('questions', 'mistakes.question_id', '=', 'questions.id')
                     ->join('topics', 'questions.topic_id', '=', 'topics.id')
@@ -180,11 +180,11 @@ class QuizMistakeController extends Controller
             $mistakesByCourse = $mistakes->groupBy('question.topic.course.name');
 
             $executionTime = (microtime(true) - $startTime) * 1000;
-            Log::info('✅ ULTRA-OPTIMIZED mistakes loaded', [
+            Log::info('🎯 SMART HYBRID mistakes loaded', [
                 'request_id' => $requestId,
                 'execution_time_ms' => round($executionTime, 2),
                 'mistakes_count' => $mistakes->count(),
-                'queries_eliminated' => '6+ queries reduced to 2'
+                'cache_status' => 'SMART HYBRID - 5min cache with instant invalidation'
             ]);
 
             return view('mistakes', [
@@ -199,7 +199,7 @@ class QuizMistakeController extends Controller
                     'execution_time_ms' => round($executionTime, 2),
                     'mistakes_count' => $mistakes->count(),
                     'courses_count' => $availableCourses->count(),
-                    'optimization_level' => 'ULTRA'
+                    'cache_status' => 'SMART HYBRID - Fast + Accurate'
                 ]
             ]);
 
@@ -241,5 +241,44 @@ class QuizMistakeController extends Controller
 
         // Return the actual submitted answer for display
         return $submittedAnswer;
+    }
+
+    /**
+     * 🎯 SMART CACHE INVALIDATION - Immediately clear specific user caches
+     * Called whenever mistakes are modified to ensure instant updates
+     */
+    public static function clearUserMistakeCaches($userId)
+    {
+        try {
+            // Clear the NEW smart cache keys
+            $cacheKeys = [
+                "mistakes_smart_{$userId}__v3",           // No course filter
+                "mistakes_smart_{$userId}_skipped_v3",    // Skipped filter
+                "mistakes_support_smart_{$userId}",       // Supporting data cache
+            ];
+            
+            // Get all course IDs and clear their specific caches
+            $courseIds = \App\Models\Course::pluck('id')->toArray();
+            foreach ($courseIds as $courseId) {
+                $cacheKeys[] = "mistakes_smart_{$userId}_{$courseId}_v3";
+            }
+            
+            // Clear all cache keys immediately
+            foreach ($cacheKeys as $key) {
+                Cache::forget($key);
+            }
+            
+            Log::info("🎯 SMART cache invalidation completed", [
+                'user_id' => $userId,
+                'cache_keys_cleared' => count($cacheKeys),
+                'strategy' => 'immediate_invalidation'
+            ]);
+            
+        } catch (\Exception $e) {
+            Log::error("❌ Error in smart cache invalidation", [
+                'user_id' => $userId,
+                'error' => $e->getMessage()
+            ]);
+        }
     }
 }

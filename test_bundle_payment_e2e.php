@@ -188,7 +188,23 @@ try {
     
     echo "✅ Bundle submission successful: " . ($submissionData['success'] ? 'YES' : 'NO') . PHP_EOL;
     if ($submissionData['success']) {
-        echo "✅ Payments created: " . $submissionData['payments_created'] . PHP_EOL;
+        // Wrap payment processing in database transaction
+        DB::beginTransaction();
+        try {
+        // Wrap payment processing in database transaction
+        DB::beginTransaction();
+        try {
+            echo "✅ Payments created: " . $submissionData['payments_created'] . PHP_EOL;
+            DB::commit();
+        } catch (Exception $e) {
+            DB::rollback();
+            throw $e;
+        }
+            DB::commit();
+        } catch (Exception $e) {
+            DB::rollback();
+            throw $e;
+        }
         echo "✅ Bundle ID: " . $submissionData['bundle_id'] . PHP_EOL;
         echo "✅ Expected payments: {$courseCount}" . PHP_EOL;
         echo "✅ Payment count matches: " . ($submissionData['payments_created'] == $courseCount ? 'YES' : 'NO') . PHP_EOL;
@@ -196,7 +212,23 @@ try {
         echo "❌ Submission failed: " . $submissionData['message'] . PHP_EOL;
         exit(1);
     }
-} catch (Exception $e) {
+        // Wrap payment processing in database transaction
+        DB::beginTransaction();
+        try {
+            } catch (Exception $e) {
+            DB::commit();
+        } catch (Exception $e) {
+            DB::rollback();
+            throw $e;
+        // Wrap payment processing in database transaction
+        DB::beginTransaction();
+        try {
+            }
+            DB::commit();
+        } catch (Exception $e) {
+            DB::rollback();
+            throw $e;
+        }
     echo "❌ FATAL ERROR in bundle submission: " . $e->getMessage() . PHP_EOL;
     echo "   File: " . $e->getFile() . ":" . $e->getLine() . PHP_EOL;
     exit(1);
@@ -220,7 +252,15 @@ if ($createdPayments->count() === $courseCount) {
     $totalOriginalAmount = 0;
     $totalDiscountAmount = 0;
     
-    foreach ($createdPayments as $payment) {
+        // Wrap payment processing in database transaction
+        DB::beginTransaction();
+        try {
+            foreach ($createdPayments as $payment) {
+            DB::commit();
+        } catch (Exception $e) {
+            DB::rollback();
+            throw $e;
+        }
         $course = Course::find($payment->course_id);
         $paymentData = $payment->payment_data;
         
@@ -255,7 +295,23 @@ if ($createdPayments->count() === $courseCount) {
     echo "❌ CRITICAL ERROR: Expected {$courseCount} payments, found " . $createdPayments->count() . PHP_EOL;
     exit(1);
 }
-echo PHP_EOL;
+        // Wrap payment processing in database transaction
+        DB::beginTransaction();
+        try {
+            echo PHP_EOL;
+            DB::commit();
+        } catch (Exception $e) {
+            DB::rollback();
+            throw $e;
+        // Wrap payment processing in database transaction
+        DB::beginTransaction();
+        try {
+            }
+            DB::commit();
+        } catch (Exception $e) {
+            DB::rollback();
+            throw $e;
+        }
 
 // STEP 6: TEST FRONTEND DISPLAY LOGIC (REAL COURSE CONTROLLER QUERY)
 echo "📋 STEP 6: TESTING FRONTEND DISPLAY LOGIC" . PHP_EOL;
@@ -300,7 +356,15 @@ echo "📤 Testing bundle payment verification for Bundle ID: {$bundleId}" . PHP
 
 try {
     $verifiedCount = 0;
-    $enrolledCourses = [];
+        // Wrap payment processing in database transaction
+        DB::beginTransaction();
+        try {
+            $enrolledCourses = [];
+            DB::commit();
+        } catch (Exception $e) {
+            DB::rollback();
+            throw $e;
+        }
     
     // Verify all payments in the bundle
     foreach ($createdPayments as $payment) {
@@ -315,7 +379,15 @@ try {
             ])
         ]);
         
-        // Manually enroll user since bundle_courses is not populated
+        // Wrap payment processing in database transaction
+        DB::beginTransaction();
+        try {
+            // Manually enroll user since bundle_courses is not populated
+            DB::commit();
+        } catch (Exception $e) {
+            DB::rollback();
+            throw $e;
+        }
         DB::table('course_user')->updateOrInsert(
             ['user_id' => $user->id, 'course_id' => $payment->course_id],
             ['is_enrolled' => true, 'enrolled_at' => now(), 'updated_at' => now(), 'created_at' => now()]
@@ -335,7 +407,15 @@ try {
     echo "✅ Bundle payment verification successful" . PHP_EOL;
     echo "✅ Payments verified: {$verifiedCount}" . PHP_EOL;
     echo "✅ Enrollment records created: " . $enrollmentRecords->count() . PHP_EOL;
-    echo "✅ All courses enrolled: " . ($enrollmentRecords->count() === count($enrolledCourses) ? 'YES' : 'NO') . PHP_EOL;
+        // Wrap payment processing in database transaction
+        DB::beginTransaction();
+        try {
+            echo "✅ All courses enrolled: " . ($enrollmentRecords->count() === count($enrolledCourses) ? 'YES' : 'NO') . PHP_EOL;
+            DB::commit();
+        } catch (Exception $e) {
+            DB::rollback();
+            throw $e;
+        }
     
     foreach ($enrollmentRecords as $enrollment) {
         $course = Course::find($enrollment->course_id);

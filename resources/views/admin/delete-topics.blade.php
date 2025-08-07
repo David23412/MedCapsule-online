@@ -61,6 +61,7 @@
                                     </tr>
                                 </thead>
                                 <tbody>
+{{-- 💀 N+1 FIX NEEDED: Eager load 'name' in controller --}}
                                     @foreach($topics as $topic)
                                         <tr>
                                             <td>

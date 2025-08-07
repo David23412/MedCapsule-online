@@ -101,21 +101,28 @@ class DeleteViewController extends Controller
      */
     public function showQuestions(Request $request)
     {
+        // CRITICAL SECURITY FIX: Validate all input parameters
+        $validated = $request->validate([
+            'course_id' => 'nullable|integer|exists:courses,id',
+            'topic_id' => 'nullable|integer|exists:topics,id',
+            'search' => 'nullable|string|max:255'
+        ]);
+        
         $query = Question::with(['topic.course'])
             ->withCount(['mistakes']);
 
-        if ($request->course_id) {
-            $query->whereHas('topic', function($q) use ($request) {
-                $q->where('course_id', $request->course_id);
+        if (!empty($validated['course_id'])) {
+            $query->whereHas('topic', function($q) use ($validated) {
+                $q->where('course_id', $validated['course_id']);
             });
         }
 
-        if ($request->topic_id) {
-            $query->where('topic_id', $request->topic_id);
+        if (!empty($validated['topic_id'])) {
+            $query->where('topic_id', $validated['topic_id']);
         }
 
-        if ($request->search) {
-            $query->where('question', 'like', '%' . $request->search . '%');
+        if (!empty($validated['search'])) {
+            $query->where('question', 'like', '%' . $validated['search'] . '%');
         }
 
         $questions = $query->orderBy('id', 'desc')->paginate(20);

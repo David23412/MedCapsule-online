@@ -1050,6 +1050,7 @@
                         <p>Contact an administrator to add courses for topic management.</p>
                     </div>
                 @else
+{{-- 💀 N+1 FIX NEEDED: Eager load 'id' in controller --}}
                     @foreach($courses as $course)
                         <div class="course-section" data-course-id="{{ $course->id }}">
                             <div class="course-header" onclick="toggleCourse({{ $course->id }})">
@@ -1066,9 +1067,13 @@
                                             </span>
                                             <span class="meta-item">
                                                 <i class="fas fa-lock"></i>
-                                                {{ $course->topics->where('is_locked', true)->count() }} locked
+{{-- TODO: Move this query to controller --}}
+{{-- {{ $course->topics->where('is_locked', true)->count() }} locked --}}
+{{-- Use: Pass data from controller instead --}}
                                             </span>
-                                            <span class="meta-item">
+{{-- TODO: Move this query to controller --}}
+{{-- <span class="meta-item"> --}}
+{{-- Use: Pass data from controller instead --}}
                                                 <i class="fas fa-unlock"></i>
                                                 {{ $course->topics->where('is_locked', false)->count() }} unlocked
                                             </span>

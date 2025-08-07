@@ -370,7 +370,21 @@ class StudentProgressService
     public function getProgressSummary(int $tutorId, array $params): array
     {
         try {
-            // Get tutor's students with optimized query
+            // Get tutor's students with course-based filtering
+            $tutor = User::find($tutorId);
+            $tutorCourseIds = $tutor->courses()->pluck('courses.id')->toArray();
+            
+            if (empty($tutorCourseIds)) {
+                return [
+                    'total_students' => 0,
+                    'students' => [],
+                    'overall_stats' => $this->calculateOverallStats([]),
+                    'generated_at' => now()->toISOString()
+                ];
+            }
+            
+            $coursePlaceholders = str_repeat('?,', count($tutorCourseIds) - 1) . '?';
+            
             $summaryData = DB::select("
                 SELECT 
                     u.id,
@@ -380,12 +394,14 @@ class StudentProgressService
                     MAX(qa.created_at) as last_activity,
                     COUNT(DISTINCT qa.course_id) as courses_attempted
                 FROM users u
-                JOIN tutor_student_relationships tsr ON u.id = tsr.student_id
+                JOIN course_user cu ON u.id = cu.user_id
                 LEFT JOIN quiz_attempts qa ON u.id = qa.user_id AND qa.created_at >= ?
-                WHERE tsr.tutor_id = ? AND tsr.status = 'active'
+                WHERE u.role = 'student' 
+                AND cu.course_id IN ({$coursePlaceholders})
+                AND cu.is_enrolled = 1
                 GROUP BY u.id, u.name
                 ORDER BY average_score DESC
-            ", [$this->getDateRangeStart($params['date_range']), $tutorId]);
+            ", array_merge([$this->getDateRangeStart($params['date_range'])], $tutorCourseIds));
 
             return [
                 'total_students' => count($summaryData),

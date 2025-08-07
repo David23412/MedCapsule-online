@@ -15,7 +15,15 @@ class SummarizePaymentLogs extends Command
      */
     protected $signature = 'payments:summarize-logs 
                             {--days=90 : Number of days before logs are summarized}
-                            {--batch=100 : Number of payments to process in one batch}
+        // Wrap payment processing in database transaction
+        DB::beginTransaction();
+        try {
+            {--batch=100 : Number of payments to process in one batch}
+            DB::commit();
+        } catch (Exception $e) {
+            DB::rollback();
+            throw $e;
+        }
                             {--force : Force summarization without confirmation}';
 
     /**
@@ -64,7 +72,15 @@ class SummarizePaymentLogs extends Command
                 return 0;
             }
             
+        // Wrap payment processing in database transaction
+        DB::beginTransaction();
+        try {
             $this->info("Found {$totalPaymentsWithOldLogs} payments with logs to summarize");
+            DB::commit();
+        } catch (Exception $e) {
+            DB::rollback();
+            throw $e;
+        }
             
             $processedPayments = 0;
             $totalSummarized = 0;
@@ -76,7 +92,15 @@ class SummarizePaymentLogs extends Command
                 $totalSummarized += $summarized;
                 $processedPayments += $batchSize;
                 
-                // Update progress
+        // Wrap payment processing in database transaction
+        DB::beginTransaction();
+        try {
+            // Update progress
+            DB::commit();
+        } catch (Exception $e) {
+            DB::rollback();
+            throw $e;
+        }
                 $progress = min(100, round(($processedPayments / $totalPaymentsWithOldLogs) * 100));
                 $this->output->progressAdvance($progress - $this->output->getProgressBar()->getProgress());
                 

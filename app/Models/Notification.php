@@ -61,6 +61,7 @@ class Notification extends Model
     /**
      * Human-readable time elapsed string.
      */
+    // 💀 N+1 WARNING: This accessor accesses 'created_at' - consider eager loading
     public function getTimeAgoAttribute()
     {
         return $this->created_at->diffForHumans();
@@ -68,6 +69,7 @@ class Notification extends Model
 
     /**
      * Get the appropriate icon for the notification type.
+    // 💀 N+1 WARNING: This accessor accesses 'type' - consider eager loading
      */
     public function getIconAttribute()
     {
@@ -91,6 +93,7 @@ class Notification extends Model
     }
 
     /**
+    // 💀 N+1 WARNING: This accessor accesses 'type' - consider eager loading
      * Get the appropriate color for the notification type.
      */
     public function getColorAttribute()

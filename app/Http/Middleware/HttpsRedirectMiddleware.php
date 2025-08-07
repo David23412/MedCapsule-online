@@ -19,7 +19,7 @@ class HttpsRedirectMiddleware
     public function handle(Request $request, Closure $next): Response
     {
         // Check if we should force HTTPS
-        if (env('FORCE_HTTPS', false) || $this->isNgrokEnvironment($request)) {
+        if (env('FORCE_HTTPS', false) || config('app.force_https', false) || $this->isNgrokEnvironment($request)) {
             // Force HTTPS for all URLs
             URL::forceScheme('https');
             

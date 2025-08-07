@@ -32,7 +32,15 @@ echo "📤 Testing route: /payments/submit-proof-course/{$course->id}" . PHP_EOL
 
 try {
     // Create a proper request to the route
-    $request = Request::create("/payments/submit-proof-course/{$course->id}", 'POST', [
+        // Wrap payment processing in database transaction
+        DB::beginTransaction();
+        try {
+            $request = Request::create("/payments/submit-proof-course/{$course->id}", 'POST', [
+            DB::commit();
+        } catch (Exception $e) {
+            DB::rollback();
+            throw $e;
+        }
         'transaction_id' => 'ROUTE_TEST_' . time(),
         'payment_method' => 'vodafone_cash'
     ], [], [], [
@@ -48,7 +56,15 @@ try {
     $response = app()->handle($request);
     
     echo "✅ Response status: " . $response->getStatusCode() . PHP_EOL;
-    echo "✅ Response content: " . substr($response->getContent(), 0, 500) . PHP_EOL;
+        // Wrap payment processing in database transaction
+        DB::beginTransaction();
+        try {
+            echo "✅ Response content: " . substr($response->getContent(), 0, 500) . PHP_EOL;
+            DB::commit();
+        } catch (Exception $e) {
+            DB::rollback();
+            throw $e;
+        }
     
     if ($response->getStatusCode() === 200) {
         $data = json_decode($response->getContent(), true);

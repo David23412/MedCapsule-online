@@ -12,9 +12,9 @@ class PaymentController extends Controller
     {
         $query = Payment::with('user', 'course');
         
-        // Handle search
+        // Handle search with validation
         if ($request->has('search') && !empty($request->search)) {
-            $search = $request->search;
+            $search = $request->validate(['search' => 'string|max:255'])['search'];
             $query->where(function($q) use ($search) {
                 $q->whereHas('user', function($userQuery) use ($search) {
                     $userQuery->where('name', 'like', "%{$search}%")
@@ -26,16 +26,10 @@ class PaymentController extends Controller
                 ->orWhere('reference_number', 'like', "%{$search}%")
                 ->orWhere('payment_data->transaction_id', 'like', "%{$search}%");
             });
-        }
-        
-        $payments = $query->orderBy('created_at', 'desc')->paginate(20);
-        
-        // Transform data for frontend
+        }// Transform data for frontend
         $transformedPayments = $payments->getCollection()->map(function($payment) {
             return [
-                'id' => $payment->id,
-                'user_name' => $payment->user->name ?? 'Unknown User',
-                'user_email' => $payment->user->email ?? 'No Email',
+                'id' => $payment->id,'user_email' => $payment->user->email ?? 'No Email',
                 'course_name' => $payment->course->name ?? 'Unknown Course',
                 'amount' => $payment->amount,
                 'currency' => 'EGP',

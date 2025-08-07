@@ -1130,7 +1130,7 @@
                 @php $qObj = is_array($question) ? $question['question'] : $question; @endphp
                 questionData[{{ $qObj->id ?? 0 }}] = {
                     correct_answer: '{{ $qObj->correct_answer ?? '' }}',
-                    explanation: `{!! addslashes($qObj->explanation ?? '') !!}`,
+                    explanation: `{{ addslashes($qObj->explanation ?? '') }}`,
                     question_type: '{{ $qObj->question_type ?? 'multiple_choice' }}'
                 };
             @endforeach
@@ -1514,11 +1514,8 @@
                     
                     // LETHAL DATA PREPARATION - Ultra-fast
                     const formData = new FormData(this);
-                    formData.append('time_taken', parseInt(durationSeconds) || 1); // LETHAL FIX: Ensure integer with fallback
+                    formData.append('duration_seconds', parseInt(durationSeconds) || 1);
                     formData.append('mode', '{{ $mode ?? 'quiz' }}');
-                    
-                    // LETHAL DEBUG: Log what we're sending
-                    console.log('🔥 SENDING time_taken:', parseInt(durationSeconds) || 1, 'type:', typeof (parseInt(durationSeconds) || 1));
                     
                     // ENSURE ALL ANSWERS ARE INCLUDED
                     // Double-check that all radio button answers are in the FormData

@@ -5,10 +5,10 @@
 
 // Enhanced function to update course buttons to pending state
 function updateCourseButtonsToPendingAggressive(courseIds) {
-    console.log('🔥 AGGRESSIVE BUTTON UPDATE: Starting for courses:', courseIds);
+// console.log('🔥 AGGRESSIVE BUTTON UPDATE: Starting for courses:', courseIds); // Removed for production
     
     courseIds.forEach(courseId => {
-        console.log(`🎯 Processing course ID: ${courseId}`);
+// console.log(`🎯 Processing course ID: ${courseId}`); // Removed for production
         
         // Store pending state in localStorage FIRST
         localStorage.setItem(`payment_pending_${courseId}`, JSON.stringify({
@@ -16,7 +16,7 @@ function updateCourseButtonsToPendingAggressive(courseIds) {
             status: 'pending',
             type: 'bundle'
         }));
-        console.log(`💾 Stored pending state in localStorage for course: ${courseId}`);
+// console.log(`💾 Stored pending state in localStorage for course: ${courseId}`); // Removed for production
         
         // Try multiple selectors to find the button
         const selectors = [
@@ -32,7 +32,7 @@ function updateCourseButtonsToPendingAggressive(courseIds) {
         for (const selector of selectors) {
             button = document.querySelector(selector);
             if (button) {
-                console.log(`✅ Found button with selector: ${selector}`);
+// console.log(`✅ Found button with selector: ${selector}`); // Removed for production
                 break;
             }
         }
@@ -43,11 +43,11 @@ function updateCourseButtonsToPendingAggressive(courseIds) {
                 try {
                     button = window.parent.document.querySelector(selector);
                     if (button) {
-                        console.log(`✅ Found button in parent window with selector: ${selector}`);
+// console.log(`✅ Found button in parent window with selector: ${selector}`); // Removed for production
                         break;
                     }
                 } catch (e) {
-                    console.log('Cannot access parent window:', e.message);
+// console.log('Cannot access parent window:', e.message); // Removed for production
                 }
             }
         }
@@ -58,17 +58,17 @@ function updateCourseButtonsToPendingAggressive(courseIds) {
                 try {
                     button = window.top.document.querySelector(selector);
                     if (button) {
-                        console.log(`✅ Found button in top window with selector: ${selector}`);
+// console.log(`✅ Found button in top window with selector: ${selector}`); // Removed for production
                         break;
                     }
                 } catch (e) {
-                    console.log('Cannot access top window:', e.message);
+// console.log('Cannot access top window:', e.message); // Removed for production
                 }
             }
         }
         
         if (button) {
-            console.log(`🔄 Updating button for course ${courseId} to pending state`);
+// console.log(`🔄 Updating button for course ${courseId} to pending state`); // Removed for production
             
             // Update button appearance
             button.innerHTML = '<i class="fas fa-clock"></i><span style="color: #c2410c; margin-left: 8px;">Payment Pending</span>';
@@ -86,23 +86,23 @@ function updateCourseButtonsToPendingAggressive(courseIds) {
             const newButton = button.cloneNode(true);
             button.parentNode.replaceChild(newButton, button);
             
-            console.log(`✅ Successfully updated button for course ${courseId}`);
+// console.log(`✅ Successfully updated button for course ${courseId}`); // Removed for production
         } else {
-            console.log(`❌ Could not find button for course ${courseId} - but localStorage is set for page reload`);
+// console.log(`❌ Could not find button for course ${courseId} - but localStorage is set for page reload`); // Removed for production
         }
     });
     
-    console.log('🏁 AGGRESSIVE BUTTON UPDATE: Complete');
+// console.log('🏁 AGGRESSIVE BUTTON UPDATE: Complete'); // Removed for production
 }
 
 // Enhanced function to check and apply pending states from localStorage
 function applyPendingStatesFromLocalStorage() {
-    console.log('🔍 AGGRESSIVE PENDING CHECK: Starting localStorage scan...');
+// console.log('🔍 AGGRESSIVE PENDING CHECK: Starting localStorage scan...'); // Removed for production
     
     Object.keys(localStorage).forEach(key => {
         if (key.startsWith('payment_pending_')) {
             const courseId = key.replace('payment_pending_', '');
-            console.log(`📋 Found pending payment for course: ${courseId}`);
+// console.log(`📋 Found pending payment for course: ${courseId}`); // Removed for production
             
             try {
                 const pendingData = JSON.parse(localStorage.getItem(key));
@@ -110,40 +110,40 @@ function applyPendingStatesFromLocalStorage() {
                 
                 // Clear old pending states (older than 24 hours)
                 if (timeDiff > 24 * 60 * 60 * 1000) {
-                    console.log(`🗑️ Clearing old pending state for course: ${courseId}`);
+// console.log(`🗑️ Clearing old pending state for course: ${courseId}`); // Removed for production
                     localStorage.removeItem(key);
                     return;
                 }
                 
-                console.log(`⏰ Pending state age: ${Math.round(timeDiff / 1000 / 60)} minutes`);
+// console.log(`⏰ Pending state age: ${Math.round(timeDiff / 1000 / 60)} minutes`); // Removed for production
                 
             } catch (e) {
                 // Handle old format (just 'true' string)
-                console.log(`📝 Converting old format pending state for course: ${courseId}`);
+// console.log(`📝 Converting old format pending state for course: ${courseId}`); // Removed for production
             }
             
             // Find and update the button
             const button = document.querySelector(`#paymentBtn_${courseId}`);
             
             if (button) {
-                console.log(`🎯 Found button for course: ${courseId}`);
+// console.log(`🎯 Found button for course: ${courseId}`); // Removed for production
                 
                 // Check if the server-side state shows the user is already enrolled
                 const isAlreadyPending = button.hasAttribute('disabled');
                 const buttonText = button.textContent.trim();
                 
-                console.log(`Button state - disabled: ${isAlreadyPending}, text: "${buttonText}"`);
+// console.log(`Button state - disabled: ${isAlreadyPending}, text: "${buttonText}"`); // Removed for production
                 
                 // If server says user is enrolled, clear localStorage
                 if (buttonText.includes('Access Course') || buttonText.includes('Continue Learning') || button.href) {
-                    console.log(`🗑️ User already enrolled, clearing localStorage for course: ${courseId}`);
+// console.log(`🗑️ User already enrolled, clearing localStorage for course: ${courseId}`); // Removed for production
                     localStorage.removeItem(key);
                     return;
                 }
                 
                 // If not already pending on server side, update button
                 if (!isAlreadyPending && !buttonText.includes('Payment Pending')) {
-                    console.log(`⏳ Updating button to pending state for course: ${courseId}`);
+// console.log(`⏳ Updating button to pending state for course: ${courseId}`); // Removed for production
                     button.innerHTML = '<i class="fas fa-clock"></i><span style="color: #c2410c; margin-left: 8px;">Payment Pending</span>';
                     button.classList.remove('btn-primary', 'show-payment-modal', 'enroll');
                     button.classList.add('btn-warning');
@@ -151,32 +151,32 @@ function applyPendingStatesFromLocalStorage() {
                     button.style.cursor = 'default';
                     button.style.pointerEvents = 'none';
                 } else {
-                    console.log(`✅ Button already in correct pending state for course: ${courseId}`);
+// console.log(`✅ Button already in correct pending state for course: ${courseId}`); // Removed for production
                 }
             } else {
-                console.log(`❌ Button not found for course: ${courseId} - may be on different page`);
+// console.log(`❌ Button not found for course: ${courseId} - may be on different page`); // Removed for production
             }
         }
     });
     
-    console.log('🏁 AGGRESSIVE PENDING CHECK: Complete');
+// console.log('🏁 AGGRESSIVE PENDING CHECK: Complete'); // Removed for production
 }
 
 // Enhanced bundle payment form handler
 function initializeBundlePaymentFormAggressive() {
-    console.log('🔍 AGGRESSIVE FORM INIT: Looking for bundle payment form...');
+// console.log('🔍 AGGRESSIVE FORM INIT: Looking for bundle payment form...'); // Removed for production
     
     const form = document.getElementById('bundlePaymentForm');
     if (!form) {
-        console.log('❌ Bundle payment form not found');
+// console.log('❌ Bundle payment form not found'); // Removed for production
         return;
     }
     
-    console.log('✅ Bundle payment form found, adding aggressive handler');
+// console.log('✅ Bundle payment form found, adding aggressive handler'); // Removed for production
     
     form.addEventListener('submit', function(e) {
         e.preventDefault();
-        console.log('🚀 AGGRESSIVE FORM SUBMIT: Bundle payment form submitted!');
+// console.log('🚀 AGGRESSIVE FORM SUBMIT: Bundle payment form submitted!'); // Removed for production
         
         // Disable submit button immediately
         const submitBtn = this.querySelector('#submitBtn');
@@ -218,7 +218,7 @@ function initializeBundlePaymentFormAggressive() {
             total_amount: parseFloat(document.querySelector('input[name="total_amount"]').value)
         };
         
-        console.log('🚀 AGGRESSIVE SUBMIT: Posting to /payment/submit-bundle-proof with data:', submissionData);
+// console.log('🚀 AGGRESSIVE SUBMIT: Posting to /payment/submit-bundle-proof with data:', submissionData); // Removed for production
         
         // Submit the form
         fetch('/payment/submit-bundle-proof', {
@@ -231,14 +231,14 @@ function initializeBundlePaymentFormAggressive() {
             body: JSON.stringify(submissionData)
         })
         .then(response => {
-            console.log('📡 AGGRESSIVE SUBMIT: Response status:', response.status);
+// console.log('📡 AGGRESSIVE SUBMIT: Response status:', response.status); // Removed for production
             return response.json();
         })
         .then(data => {
-            console.log('📦 AGGRESSIVE SUBMIT: Response data:', data);
+// console.log('📦 AGGRESSIVE SUBMIT: Response data:', data); // Removed for production
             
             if (data.success) {
-                console.log('✅ AGGRESSIVE SUBMIT: Bundle payment successful!');
+// console.log('✅ AGGRESSIVE SUBMIT: Bundle payment successful!'); // Removed for production
                 
                 // IMMEDIATELY update course buttons to show pending state
                 updateCourseButtonsToPendingAggressive(courseIds);
@@ -247,7 +247,7 @@ function initializeBundlePaymentFormAggressive() {
                 showSuccessMessageAggressive();
                 
             } else {
-                console.log('❌ AGGRESSIVE SUBMIT: Bundle payment failed:', data.message);
+// console.log('❌ AGGRESSIVE SUBMIT: Bundle payment failed:', data.message); // Removed for production
                 showErrorMessageAggressive(data.message || 'Bundle payment submission failed. Please try again.');
                 
                 // Re-enable submit button
@@ -258,7 +258,7 @@ function initializeBundlePaymentFormAggressive() {
             }
         })
         .catch(error => {
-            console.error('❌ AGGRESSIVE SUBMIT: Error:', error);
+// console.error('❌ AGGRESSIVE SUBMIT: Error:', error); // Removed for production
             showErrorMessageAggressive('An error occurred while submitting your bundle payment. Please try again.');
             
             // Re-enable submit button
@@ -272,7 +272,7 @@ function initializeBundlePaymentFormAggressive() {
 
 // Enhanced success message
 function showSuccessMessageAggressive() {
-    console.log('🎉 AGGRESSIVE SUCCESS: Showing success message');
+// console.log('🎉 AGGRESSIVE SUCCESS: Showing success message'); // Removed for production
     
     // Create success overlay
     const overlay = document.createElement('div');
@@ -330,7 +330,7 @@ function showSuccessMessageAggressive() {
 
 // Enhanced error message
 function showErrorMessageAggressive(message) {
-    console.log('❌ AGGRESSIVE ERROR: Showing error message:', message);
+// console.log('❌ AGGRESSIVE ERROR: Showing error message:', message); // Removed for production
     
     const overlay = document.createElement('div');
     overlay.style.cssText = `
@@ -380,7 +380,7 @@ function showErrorMessageAggressive(message) {
 
 // Initialize everything when DOM is ready
 document.addEventListener('DOMContentLoaded', function() {
-    console.log('🚀 AGGRESSIVE INIT: DOM loaded, initializing bundle payment system');
+// console.log('🚀 AGGRESSIVE INIT: DOM loaded, initializing bundle payment system'); // Removed for production
     
     // Apply pending states from localStorage
     applyPendingStatesFromLocalStorage();
@@ -388,15 +388,15 @@ document.addEventListener('DOMContentLoaded', function() {
     // Initialize bundle payment form if present
     initializeBundlePaymentFormAggressive();
     
-    console.log('✅ AGGRESSIVE INIT: Bundle payment system initialized');
+// console.log('✅ AGGRESSIVE INIT: Bundle payment system initialized'); // Removed for production
 });
 
 // Also run when page becomes visible (for tab switching)
 document.addEventListener('visibilitychange', function() {
     if (!document.hidden) {
-        console.log('👁️ AGGRESSIVE VISIBILITY: Page became visible, checking pending states');
+// console.log('👁️ AGGRESSIVE VISIBILITY: Page became visible, checking pending states'); // Removed for production
         applyPendingStatesFromLocalStorage();
     }
 });
 
-console.log('🔥 LETHAL BUNDLE PAYMENT BUTTON FIX LOADED 🔥');
+// console.log('🔥 LETHAL BUNDLE PAYMENT BUTTON FIX LOADED 🔥'); // Removed for production

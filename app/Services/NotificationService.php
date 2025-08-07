@@ -178,7 +178,7 @@ class NotificationService
         $sentCount = 0;
         
         // Get assignments due within 24 hours that haven't been reminded
-        $assignments = \App\Models\Assignment::with(['student', 'tutor', 'topic', 'course'])
+        $assignments = \App\Models\Assignment::with(['assignedUsers', 'topic', 'course'])
             ->where('status', \App\Models\Assignment::STATUS_ACTIVE)
             ->where('deadline', '<=', now()->addHours(24))
             ->where('deadline', '>', now())
@@ -188,26 +188,31 @@ class NotificationService
             })
             ->get();
 
+        $assignments = $assignments->load('assignedUsers');
         foreach ($assignments as $assignment) {
-            try {
-                $this->createAssignmentNotification(
-                    $assignment->user_id,
-                    'assignment_reminder',
-                    'Assignment Due Soon!',
-                    "Reminder: '{$assignment->title}' is due {$assignment->deadline->diffForHumans()}",
-                    [
+            // Send notification to each assigned user
+            foreach ($assignment->assignedUsers as $user) {
+                try {
+                    $this->createAssignmentNotification(
+                        $user->id,
+                        'assignment_reminder',
+                        'Assignment Due Soon!',
+                        "Reminder: '{$assignment->title}' is due {$assignment->deadline->diffForHumans()}",
+                        [
+                            'assignment_id' => $assignment->id,
+                            'deadline' => $assignment->deadline->toISOString(),
+                            'time_remaining' => $assignment->getTimeRemaining(),
+                            'action_url' => route('student.assignments.show', $assignment->id)
+                        ]
+                    );
+                    $sentCount++;
+                } catch (\Exception $e) {
+                    Log::error('Failed to send assignment reminder', [
                         'assignment_id' => $assignment->id,
-                        'deadline' => $assignment->deadline->toISOString(),
-                        'time_remaining' => $assignment->getTimeRemaining(),
-                        'action_url' => route('student.assignments.show', $assignment->id)
-                    ]
-                );
-                $sentCount++;
-            } catch (\Exception $e) {
-                Log::error('Failed to send assignment reminder', [
-                    'assignment_id' => $assignment->id,
-                    'error' => $e->getMessage()
-                ]);
+                        'user_id' => $user->id,
+                        'error' => $e->getMessage()
+                    ]);
+                }
             }
         }
 
@@ -222,7 +227,7 @@ class NotificationService
         $sentCount = 0;
         
         // Get assignments that just became overdue
-        $assignments = \App\Models\Assignment::with(['student', 'tutor', 'topic', 'course'])
+        $assignments = \App\Models\Assignment::with(['assignedUsers', 'topic', 'course'])
             ->where('status', \App\Models\Assignment::STATUS_OVERDUE)
             ->where('deadline', '>=', now()->subHours(1))
             ->whereDoesntHave('notifications', function($query) {
@@ -232,40 +237,52 @@ class NotificationService
             ->get();
 
         foreach ($assignments as $assignment) {
-            try {
-                // Notify student
-                $this->createAssignmentNotification(
-                    $assignment->user_id,
-                    'assignment_overdue',
-                    'Assignment Overdue',
-                    "'{$assignment->title}' is now overdue. Please complete it as soon as possible or request an extension.",
-                    [
+            // Send notification to each assigned user
+            foreach ($assignment->assignedUsers as $user) {
+                try {
+                    // Notify student
+                    $this->createAssignmentNotification(
+                        $user->id,
+                        'assignment_overdue',
+                        'Assignment Overdue',
+                        "'{$assignment->title}' is now overdue. Please complete it as soon as possible or request an extension.",
+                        [
+                            'assignment_id' => $assignment->id,
+                            'overdue_by' => $assignment->deadline->diffForHumans(),
+                            'action_url' => route('student.assignments.show', $assignment->id)
+                        ]
+                    );
+                    $sentCount++;
+                } catch (\Exception $e) {
+                    Log::error('Failed to send overdue assignment notification', [
                         'assignment_id' => $assignment->id,
-                        'overdue_by' => $assignment->deadline->diffForHumans(),
-                        'action_url' => route('student.assignments.show', $assignment->id)
-                    ]
-                );
-
-                // Notify tutor
-                $this->createAssignmentNotification(
-                    $assignment->tutor_id,
-                    'assignment_overdue_tutor',
-                    'Student Assignment Overdue',
-                    "{$assignment->student->name}'s assignment '{$assignment->title}' is now overdue.",
-                    [
+                        'user_id' => $user->id,
+                        'error' => $e->getMessage()
+                    ]);
+                }
+            }
+            
+            // Notify tutor (if assignment has a tutor relationship)
+            if (method_exists($assignment, 'tutor') && $assignment->tutor) {
+                try {
+                    $this->createAssignmentNotification(
+                        $assignment->tutor->id,
+                        'assignment_overdue_tutor',
+                        'Student Assignment Overdue',
+                        "Assignment '{$assignment->title}' is now overdue.",
+                        [
+                            'assignment_id' => $assignment->id,
+                            'overdue_by' => $assignment->deadline->diffForHumans(),
+                            'action_url' => route('assignments.show', $assignment->id)
+                        ]
+                    );
+                    $sentCount++;
+                } catch (\Exception $e) {
+                    Log::error('Failed to send tutor overdue notification', [
                         'assignment_id' => $assignment->id,
-                        'student_name' => $assignment->student->name,
-                        'overdue_by' => $assignment->deadline->diffForHumans(),
-                        'action_url' => route('assignments.show', $assignment->id)
-                    ]
-                );
-
-                $sentCount += 2; // Count both student and tutor notifications
-            } catch (\Exception $e) {
-                Log::error('Failed to send overdue notification', [
-                    'assignment_id' => $assignment->id,
-                    'error' => $e->getMessage()
-                ]);
+                        'error' => $e->getMessage()
+                    ]);
+                }
             }
         }
 
@@ -911,7 +928,7 @@ class NotificationService
     {
         try {
             // Get all admin users
-            $admins = User::where('role', 'admin')->get();
+            $admins = User::where('role', 'admin')->with(['markAsRead'])->get();
             
             if ($admins->isEmpty()) {
                 Log::warning('No admin users found to notify about payment', [
@@ -1012,7 +1029,7 @@ class NotificationService
         
         try {
             // Get all admin users
-            $admins = User::where('role', 'admin')->get();
+            $admins = User::where('role', 'admin')->with(['notify'])->get();
             
             if ($admins->isEmpty()) {
                 Log::warning('No admin users found for daily payment digest');

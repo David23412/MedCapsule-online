@@ -5,7 +5,7 @@ namespace App\Http\Controllers\Auth;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Http\Requests\LoginRequest;
-use App\Services\QuizCacheService;
+use App\Services\CacheService;
 use App\Services\SessionSecurityService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Log;
@@ -30,7 +30,7 @@ use Illuminate\Support\Facades\Cache;
     public function showLoginForm()
     {
         // Cache login form data for performance
-        $cacheKey = QuizCacheService::generateCacheKey('login_form_data', ['timestamp' => now()->format('Y-m-d')]);
+        $cacheKey = CacheService::generateCacheKey('login_form_data', ['timestamp' => now()->format('Y-m-d')]);
         $formData = Cache::remember($cacheKey, 86400, function () {
             return [
                 'csrf_token' => csrf_token(),

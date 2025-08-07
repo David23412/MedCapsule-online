@@ -35,7 +35,7 @@ class OptimizedTopicsPage {
             eventHandlers: 0
         };
         
-        console.log('🚀 Optimized Topics Page initialized');
+// console.log('🚀 Optimized Topics Page initialized'); // Removed for production
     }
 
     /**
@@ -286,7 +286,7 @@ class OptimizedTopicsPage {
             // Construct URL
             window.location.href = `/quiz/${courseId}/${topicId}`;
         } else {
-            console.error('Missing quiz URL or topic/course IDs');
+// console.error('Missing quiz URL or topic/course IDs'); // Removed for production
         }
     }
 
@@ -306,7 +306,7 @@ class OptimizedTopicsPage {
             // Construct assignment URL
             window.location.href = `/quiz/${courseId}/${topicId}?assignment_id=${assignmentId}`;
         } else {
-            console.error('Missing assignment URL or required IDs');
+// console.error('Missing assignment URL or required IDs'); // Removed for production
         }
     }
 
@@ -381,7 +381,7 @@ class OptimizedTopicsPage {
             this.caseFilters.removeEventListener('click', this.handleFilterInteraction);
         }
 
-        console.log('🚀 Optimized Topics Page destroyed');
+// console.log('🚀 Optimized Topics Page destroyed'); // Removed for production
     }
 
     /**
@@ -426,10 +426,10 @@ document.addEventListener('visibilitychange', function() {
     if (window.optimizedTopicsPage && window.optimizedTopicsPage.assignmentCountdowns.size > 0) {
         if (document.visibilityState === 'visible') {
             // Resume countdowns when page becomes visible
-            console.log('🚀 Resuming assignment countdowns');
+// console.log('🚀 Resuming assignment countdowns'); // Removed for production
         } else {
             // Pause countdowns when page is hidden
-            console.log('🚀 Pausing assignment countdowns');
+// console.log('🚀 Pausing assignment countdowns'); // Removed for production
         }
     }
 });

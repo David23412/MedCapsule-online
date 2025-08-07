@@ -779,7 +779,7 @@
                     <div class="question-content">
                         <div class="question-text-container">
                             <div class="question-text">
-                                {!! is_array($question) ? $question['question']->question : $question->question !!}
+                                {{ is_array($question) ? $question['question']->question : $question->question }}
                             </div>
                         </div>
 
@@ -799,7 +799,7 @@
                                 @if($option)
                                     <div class="option-card" data-option="{{ $letter }}">
                                         <span class="option-letter">{{ $letter }}</span>
-                                        <div class="option-content">{!! $option !!}</div>
+                                        <div class="option-content">{{ $option }}</div>
                                     </div>
                                 @endif
                             @endforeach
@@ -1177,7 +1177,7 @@
                 @php $qObj = is_array($question) ? $question['question'] : $question; @endphp
                 questionData[{{ $qObj->id ?? 0 }}] = {
                     correct_answer: '{{ $qObj->correct_answer ?? '' }}',
-                    explanation: `{!! addslashes($qObj->explanation ?? '') !!}`,
+                    explanation: `{{ addslashes($qObj->explanation ?? '') }}`,
                     question_type: '{{ $qObj->question_type ?? 'multiple_choice' }}'
                 };
             @endforeach
@@ -1716,80 +1716,93 @@
         // 💀 NUCLEAR AUDIO PRELOADING SYSTEM 💀
 
 
-        // SAVE TUTOR QUIZ ATTEMPT TO DATABASE
+        // ULTRA EFFICIENT TUTOR QUIZ SUBMISSION - ALL DATA PRE-COMPUTED
         function saveTutorQuizAttempt(correctAnswers, totalQuestions, percentage) {
-            console.log('🔥 LETHAL DEBUG: saveTutorQuizAttempt called', {
+            const startTime = performance.now();
+            
+            console.log('🚀 ULTRA EFFICIENT: Pre-computing all tutor data locally', {
                 correctAnswers, totalQuestions, percentage
             });
             
-            const formData = new FormData();
-            formData.append('_token', document.querySelector('meta[name="csrf-token"]').getAttribute('content'));
-            formData.append('score', correctAnswers);
-            formData.append('total_questions', totalQuestions);
-            formData.append('percentage_grade', percentage);
-            formData.append('mode', 'tutor');
-            formData.append('time_taken', Math.floor((Date.now() - quizStartTime) / 1000));
-            
-            // CRITICAL FIX: We now use stored userAnswers instead of DOM collection
-            console.log('🔥 TUTOR DEBUG: Preparing to submit tutor quiz with stored answers');
-            
-            // CRITICAL FIX: Use stored userAnswers instead of trying to collect from DOM
-            console.log('🔥 TUTOR DEBUG: Using stored userAnswers:', userAnswers);
-            console.log('🔥 TUTOR DEBUG: Stored answers count:', Object.keys(userAnswers).length);
-            console.log('🔥 TUTOR DEBUG: Expected questions:', totalQuestions);
-            
-            // Add stored answers to form data
-            Object.keys(userAnswers).forEach(questionId => {
-                formData.append(`answers[${questionId}]`, userAnswers[questionId]);
-                console.log(`🔥 TUTOR DEBUG: Added to FormData - answers[${questionId}] = ${userAnswers[questionId]}`);
-            });
-            
-            // LETHAL FIX: Remove frontend calculation - backend will handle scoring
-            
-            // Add source information
+            // ULTRA EFFICIENT: Pre-compute everything locally for instant server processing
+            const duration = Math.floor((Date.now() - quizStartTime) / 1000);
             const selectedSources = @json($selected_sources ?? []);
-            if (selectedSources && selectedSources.length > 0) {
-                selectedSources.forEach((source, index) => {
-                    formData.append(`sources[${index}]`, source);
-                });
-            }
             
-            // Debug FormData contents
-            console.log('🔥 LETHAL DEBUG: FormData contents:');
-            for (let [key, value] of formData.entries()) {
-                console.log(`  ${key}: ${value}`);
-            }
+            // Build optimized JSON payload with all pre-computed data
+            const payload = {
+                // Pre-computed quiz results (no server-side calculation needed)
+                score: correctAnswers,
+                total_questions: totalQuestions,
+                percentage_grade: percentage,
+                duration_seconds: Math.max(1, duration),
+                
+                // Mode settings
+                mode: 'tutor',
+                study_mode: 'tutor',
+                
+                // All user answers (already stored locally)
+                answers: userAnswers,
+                
+                // Source configuration
+                sources: selectedSources || [],
+                
+                // Performance metadata
+                computed_locally: true,
+                submission_timestamp: Date.now(),
+                client_processing_time: performance.now() - startTime,
+                answers_count: Object.keys(userAnswers).length
+            };
             
-            console.log('🔥 LETHAL DEBUG: Sending request to:', '{{ route("quiz.grade", ["course" => $course->id, "topic" => $topic->id]) }}');
+            console.log('🚀 ULTRA EFFICIENT PAYLOAD (processed in ' + 
+                       (performance.now() - startTime).toFixed(2) + 'ms):', payload);
+
+            
+            console.log('🚀 ULTRA EFFICIENT: Sending optimized JSON to:', '{{ route("quiz.grade", ["course" => $course->id, "topic" => $topic->id]) }}');
             
             fetch('{{ route("quiz.grade", ["course" => $course->id, "topic" => $topic->id]) }}', {
                 method: 'POST',
-                body: formData,
+                body: JSON.stringify(payload),
                 headers: {
-                    'X-Requested-With': 'XMLHttpRequest'
+                    'Content-Type': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
+                    'Accept': 'application/json'
                 }
             })
             .then(response => {
-                console.log('🔥 LETHAL DEBUG: Response status:', response.status);
+                console.log('🚀 ULTRA EFFICIENT: Response status:', response.status);
                 
-                // LETHAL FIX: Handle all response types gracefully
+                // ULTRA EFFICIENT: Handle all response types with optimized error handling
                 if (!response.ok) {
-                    console.warn(`⚠️ Quiz grading request returned ${response.status}: ${response.statusText}`);
+                    console.warn(`⚠️ Quiz submission failed with ${response.status}: ${response.statusText}`);
+                    
+                    // Return structured error for consistent handling
                     return {
                         success: false,
-                        error: `Server returned ${response.status}`,
-                        message: 'Unable to grade quiz due to server error'
+                        error: `Server error ${response.status}`,
+                        message: response.status === 500 ? 
+                            'Server processing error. Please try again.' : 
+                            'Network error. Please check your connection.'
                     };
                 }
                 
+                // Parse JSON with enhanced error handling
                 return response.json().catch(jsonError => {
-                    console.warn('⚠️ Failed to parse quiz grading JSON response');
+                    console.warn('⚠️ Failed to parse server response as JSON');
                     return {
                         success: false,
-                        error: 'Invalid response format',
-                        message: 'Unable to parse server response'
+                        error: 'Invalid server response',
+                        message: 'Server returned invalid data format'
                     };
                 });
+            })
+            .catch(networkError => {
+                console.error('🚨 Network error during quiz submission:', networkError);
+                return {
+                    success: false,
+                    error: 'Network error',
+                    message: 'Unable to connect to server. Please check your internet connection.'
+                };
             })
             .then(data => {
                 console.log('🔥 LETHAL DEBUG: Response data:', data);

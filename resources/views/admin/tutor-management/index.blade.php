@@ -261,6 +261,7 @@
                     <p>Assign <strong id="studentName"></strong> to:</p>
                     <select class="form-select" id="tutorSelect">
                         <option value="">Select a tutor...</option>
+{{-- 💀 N+1 FIX NEEDED: Eager load 'assignedStudents' in controller --}}
                         @foreach($recentTutors as $tutor)
                             <option value="{{ $tutor->id }}">{{ $tutor->name }} ({{ $tutor->assignedStudents->count() }} students)</option>
                         @endforeach

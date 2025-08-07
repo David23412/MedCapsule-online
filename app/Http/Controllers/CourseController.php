@@ -59,7 +59,7 @@ class CourseController extends Controller
     {
         $userId = auth()->id();
         $isLoggedIn = auth()->check();
-        $selectedYear = $request->get('academic_year');
+        $selectedYear = $request->validate(['academic_year' => 'nullable|string|max:10'])['academic_year'] ?? null;
 
         // INSTANT UPDATES: No cache for enrollment status - always fresh data
         $cacheVersion = Cache::get('courses_cache_version', 1);
@@ -84,25 +84,7 @@ class CourseController extends Controller
                 ) as enrolled_users_count')
             ];
 
-            if ($isLoggedIn) {
-                // Check for enrollment in course_user table using boolean field
-                $subqueries[] = DB::raw("(
-                    SELECT COUNT(*) > 0
-                    FROM course_user
-                    WHERE course_user.course_id = courses.id
-                    AND course_user.user_id = {$userId}
-                    AND course_user.is_enrolled = 1
-                ) as is_enrolled");
-                
-                // Add pending payment check as subquery to avoid N+1
-                $subqueries[] = DB::raw("(
-                    SELECT COUNT(*) > 0
-                    FROM payments
-                    WHERE payments.course_id = courses.id
-                    AND payments.user_id = {$userId}
-                    AND payments.status = 'pending'
-                ) as has_pending_payment");
-            }
+            // Note: Enrollment and payment status will be checked via relationships instead of raw SQL
 
             $query = Course::select(array_merge(['courses.*'], $subqueries))
                 ->with(['users' => function($query) {
@@ -133,20 +115,24 @@ class CourseController extends Controller
      */
     private function formatCoursesForDisplay($courses): void
     {
+        // Eager load relationships to prevent N+1 queries
+        $courses->load(['users:id,name,profile_picture_url']);
+        
         foreach ($courses as $course) {
             $course->is_enrolled = isset($course->is_enrolled) ? (bool)$course->is_enrolled : false;
             $course->completion_percentage = 0;
             $course->mastered_topics_count = 0;
             
-            // Format enrolled users for display - show up to 5 users
-            $course->enrolled_preview = $course->users->take(5)->map(function($user) {
+            // Format enrolled users for display - show up to 5 users (using eager loaded data)
+            $enrolledUsers = $course->users ?? collect();
+            $course->enrolled_preview = $enrolledUsers->take(5)->map(function($user) {
                 return [
                     'name' => $user->name,
                     'profile_picture_url' => $user->profile_picture_url,
                     'initial' => strtoupper(substr($user->name, 0, 1))
                 ];
             });
-            $course->has_more = $course->users->count() > 5;
+            $course->has_more = $enrolledUsers->count() > 5;
             
             // Ensure enrolled_users_count is always set
             $course->enrolled_users_count = $course->enrolled_users_count ?? 0;
@@ -173,23 +159,7 @@ class CourseController extends Controller
             ) as enrolled_users_count')
         ];
 
-        if ($isLoggedIn) {
-            $subqueries[] = DB::raw("(
-                SELECT COUNT(*) > 0
-                FROM course_user
-                WHERE course_user.course_id = courses.id
-                AND course_user.user_id = {$userId}
-                AND course_user.is_enrolled = 1
-            ) as is_enrolled");
-            
-            $subqueries[] = DB::raw("(
-                SELECT COUNT(*) > 0
-                FROM payments
-                WHERE payments.course_id = courses.id
-                AND payments.user_id = {$userId}
-                AND payments.status = 'pending'
-            ) as has_pending_payment");
-        }
+        // Note: Enrollment and payment status will be checked via relationships instead of raw SQL
 
         return Course::select(array_merge(['courses.*'], $subqueries))
             ->with(['users' => function($query) {

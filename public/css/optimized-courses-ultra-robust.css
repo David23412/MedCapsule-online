@@ -67,26 +67,26 @@ body {
 
 /* ACCESSIBILITY: Skip navigation */
 .sr-only {
-  position: absolute !important;
-  width: 1px !important;
-  height: 1px !important;
-  padding: 0 !important;
-  margin: -1px !important;
-  overflow: hidden !important;
-  clip: rect(0, 0, 0, 0) !important;
-  white-space: nowrap !important;
-  border: 0 !important;
+  position: absolute; /* TODO: Refactor CSS specificity instead of !important */
+  width: 1px; /* TODO: Refactor CSS specificity instead of !important */
+  height: 1px; /* TODO: Refactor CSS specificity instead of !important */
+  padding: 0; /* TODO: Refactor CSS specificity instead of !important */
+  margin: -1px; /* TODO: Refactor CSS specificity instead of !important */
+  overflow: hidden; /* TODO: Refactor CSS specificity instead of !important */
+  clip: rect(0, 0, 0, 0); /* TODO: Refactor CSS specificity instead of !important */
+  white-space: nowrap; /* TODO: Refactor CSS specificity instead of !important */
+  border: 0; /* TODO: Refactor CSS specificity instead of !important */
 }
 
 .sr-only:focus {
-  position: static !important;
-  width: auto !important;
-  height: auto !important;
-  padding: 0.5rem 1rem !important;
-  margin: 0 !important;
-  overflow: visible !important;
-  clip: auto !important;
-  white-space: normal !important;
+  position: static; /* TODO: Refactor CSS specificity instead of !important */
+  width: auto; /* TODO: Refactor CSS specificity instead of !important */
+  height: auto; /* TODO: Refactor CSS specificity instead of !important */
+  padding: 0.5rem 1rem; /* TODO: Refactor CSS specificity instead of !important */
+  margin: 0; /* TODO: Refactor CSS specificity instead of !important */
+  overflow: visible; /* TODO: Refactor CSS specificity instead of !important */
+  clip: auto; /* TODO: Refactor CSS specificity instead of !important */
+  white-space: normal; /* TODO: Refactor CSS specificity instead of !important */
   background: var(--primary-color);
   color: white;
   border-radius: var(--border-radius);
@@ -111,7 +111,7 @@ body {
 }
 
 .navbar-brand {
-  color: var(--primary-color) !important;
+  color: var(--primary-color); /* TODO: Refactor CSS specificity instead of !important */
   font-weight: 700;
   font-size: 1.8rem;
   transition: var(--transition);
@@ -120,7 +120,7 @@ body {
 
 .navbar-brand:hover,
 .navbar-brand:focus {
-  color: var(--secondary-color) !important;
+  color: var(--secondary-color); /* TODO: Refactor CSS specificity instead of !important */
   transform: translateY(-2px) translateZ(0);
 }
 
@@ -240,7 +240,7 @@ body {
   background: white;
   box-shadow: var(--shadow-lg);
   transform: translateY(-50%) scale(1.1) translateZ(0);
-  opacity: 1 !important;
+  opacity: 1; /* TODO: Refactor CSS specificity instead of !important */
 }
 
 .scroll-arrow:focus {
@@ -250,7 +250,7 @@ body {
 
 .scroll-arrow[aria-disabled="true"] {
   cursor: not-allowed;
-  opacity: 0.3 !important;
+  opacity: 0.3; /* TODO: Refactor CSS specificity instead of !important */
 }
 
 .courses-grid:hover .scroll-arrow {
@@ -587,7 +587,7 @@ body {
   color: #92400e;
   border-color: #fed7aa;
   cursor: not-allowed;
-  transform: none !important;
+  transform: none; /* TODO: Refactor CSS specificity instead of !important */
   opacity: 0.7;
 }
 
@@ -706,10 +706,10 @@ body {
   *,
   *::before,
   *::after {
-    animation-duration: 0.01ms !important;
-    animation-iteration-count: 1 !important;
-    transition-duration: 0.01ms !important;
-    scroll-behavior: auto !important;
+    animation-duration: 0.01ms; /* TODO: Refactor CSS specificity instead of !important */
+    animation-iteration-count: 1; /* TODO: Refactor CSS specificity instead of !important */
+    transition-duration: 0.01ms; /* TODO: Refactor CSS specificity instead of !important */
+    scroll-behavior: auto; /* TODO: Refactor CSS specificity instead of !important */
   }
   
   .loading-skeleton {
@@ -786,7 +786,7 @@ body {
   .scroll-arrow,
   .info-icon,
   .action-btn {
-    display: none !important;
+    display: none; /* TODO: Refactor CSS specificity instead of !important */
   }
   
   .course-card {

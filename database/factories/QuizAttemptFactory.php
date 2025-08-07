@@ -15,7 +15,8 @@ class QuizAttemptFactory extends Factory
     {
         return [
             'user_id' => User::factory(),
-            'topic_id' => Topic::factory(),
+            'topic_id' => Topic::factory(),        }
+
             'score' => $this->faker->numberBetween(0, 10),
             'total_questions' => 10,
             'duration_seconds' => $this->faker->numberBetween(60, 1200),

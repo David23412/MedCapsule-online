@@ -3,7 +3,7 @@
 namespace App\Services\Learning;
 
 use App\Models\Mistake;
-use App\Services\QuizCacheService;
+use App\Services\CacheService;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -15,7 +15,7 @@ class MistakeManagementService
      */
     public function getMistakesForLearning(int $userId, string $mode, ?string $courseFilter = null): array
     {
-        $cacheKey = QuizCacheService::generateCacheKey('learn_mistakes', [
+        $cacheKey = CacheService::generateCacheKey('learn_mistakes', [
             'user_id' => $userId,
             'mode' => $mode,
             'course_filter' => $courseFilter,
@@ -94,6 +94,48 @@ class MistakeManagementService
     }
 
     /**
+     * LETHAL CONSOLIDATION: Methods merged from LearnMistakesService
+     */
+    
+    /**
+     * Skip a mistake for a user
+     */
+    public function skipMistake(int $userId, int $questionId): bool
+    {
+        $mistake = Mistake::where('user_id', $userId)
+            ->where('question_id', $questionId)
+            ->first();
+            
+        if ($mistake) {
+            $mistake->update(['skipped' => true]);
+            return true;
+        }
+        
+        return false;
+    }
+    
+    /**
+     * Remove a mistake for a user
+     */
+    public function removeMistake(int $userId, int $questionId): bool
+    {
+        return Mistake::where('user_id', $userId)
+            ->where('question_id', $questionId)
+            ->delete() > 0;
+    }
+    
+    /**
+     * Get skipped mistakes for a user
+     */
+    public function getSkippedMistakes(int $userId): \Illuminate\Support\Collection
+    {
+        return Mistake::where('user_id', $userId)
+            ->where('skipped', true)
+            ->with('question')
+            ->get();
+    }
+
+    /**
      * Process mistake review
      */
     public function reviewMistake(int $userId, int $questionId, string $selectedAnswer, string $mode): array
@@ -146,28 +188,4 @@ class MistakeManagementService
             ->get();
     }
 
-    /**
-     * Remove a mistake
-     */
-    public function removeMistake(int $userId, int $questionId): array
-    {
-        $mistake = Mistake::select('id', 'user_id', 'question_id')
-                        ->where('user_id', $userId)
-                        ->where('question_id', $questionId)
-                        ->first();
-
-        if (!$mistake) {
-            return [
-                'success' => false,
-                'message' => 'Mistake not found'
-            ];
-        }
-
-        $mistake->delete();
-
-        return [
-            'success' => true,
-            'message' => 'Mistake removed successfully'
-        ];
-    }
 }

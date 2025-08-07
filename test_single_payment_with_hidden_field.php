@@ -32,7 +32,15 @@ echo "📤 Testing single payment with hidden field approach..." . PHP_EOL;
 
 try {
     // Simulate form submission with hidden payment_method field
-    $request = Request::create("/payments/submit-proof-course/{$course->id}", 'POST', [
+        // Wrap payment processing in database transaction
+        DB::beginTransaction();
+        try {
+            $request = Request::create("/payments/submit-proof-course/{$course->id}", 'POST', [
+            DB::commit();
+        } catch (Exception $e) {
+            DB::rollback();
+            throw $e;
+        }
         'transaction_id' => 'HIDDEN_FIELD_TEST_' . time(),
         'payment_method' => 'vodafone_cash', // This would come from the hidden field
         '_token' => csrf_token()
@@ -43,7 +51,15 @@ try {
     
     echo "📋 Request data: " . json_encode($request->all()) . PHP_EOL;
     
-    $response = app()->handle($request);
+        // Wrap payment processing in database transaction
+        DB::beginTransaction();
+        try {
+            $response = app()->handle($request);
+            DB::commit();
+        } catch (Exception $e) {
+            DB::rollback();
+            throw $e;
+        }
     
     echo "✅ Response status: " . $response->getStatusCode() . PHP_EOL;
     

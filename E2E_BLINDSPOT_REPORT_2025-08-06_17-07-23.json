@@ -1,0 +1,153 @@
+{
+    "timestamp": "2025-08-06 17:07:23",
+    "summary": {
+        "total_blindspots": 8,
+        "critical": 0,
+        "high": 1,
+        "medium": 7
+    },
+    "blindspots": [
+        {
+            "category": "TOPIC_LOCKING",
+            "issue": "Topic locking service error",
+            "severity": "HIGH",
+            "details": {
+                "error": "You do not have permission to lock\/unlock topics in this course"
+            },
+            "timestamp": "2025-08-06 17:07:22"
+        },
+        {
+            "category": "CACHE",
+            "issue": "Cache data integrity issue",
+            "severity": "MEDIUM",
+            "details": {
+                "expected": {
+                    "test": "data",
+                    "timestamp": "2025-08-06T14:07:23.351399Z"
+                },
+                "actual": {
+                    "test": "data",
+                    "timestamp": "2025-08-06T14:07:23.351399Z"
+                }
+            },
+            "timestamp": "2025-08-06 17:07:23"
+        },
+        {
+            "category": "API",
+            "issue": "API route not found: \/api\/user",
+            "severity": "MEDIUM",
+            "details": [],
+            "timestamp": "2025-08-06 17:07:23"
+        },
+        {
+            "category": "API",
+            "issue": "API route not found: \/api\/active-users",
+            "severity": "MEDIUM",
+            "details": [],
+            "timestamp": "2025-08-06 17:07:23"
+        },
+        {
+            "category": "API",
+            "issue": "API route not found: \/api\/topic\/{topic}\/access",
+            "severity": "MEDIUM",
+            "details": [],
+            "timestamp": "2025-08-06 17:07:23"
+        },
+        {
+            "category": "API",
+            "issue": "API route not found: \/api\/topic\/{topic}\/sources",
+            "severity": "MEDIUM",
+            "details": [],
+            "timestamp": "2025-08-06 17:07:23"
+        },
+        {
+            "category": "API",
+            "issue": "API route not found: \/api\/topic\/{topic}\/lock",
+            "severity": "MEDIUM",
+            "details": [],
+            "timestamp": "2025-08-06 17:07:23"
+        },
+        {
+            "category": "API",
+            "issue": "API route not found: \/api\/topic\/{topic}\/unlock",
+            "severity": "MEDIUM",
+            "details": [],
+            "timestamp": "2025-08-06 17:07:23"
+        }
+    ],
+    "categorized": {
+        "TOPIC_LOCKING": [
+            {
+                "category": "TOPIC_LOCKING",
+                "issue": "Topic locking service error",
+                "severity": "HIGH",
+                "details": {
+                    "error": "You do not have permission to lock\/unlock topics in this course"
+                },
+                "timestamp": "2025-08-06 17:07:22"
+            }
+        ],
+        "CACHE": [
+            {
+                "category": "CACHE",
+                "issue": "Cache data integrity issue",
+                "severity": "MEDIUM",
+                "details": {
+                    "expected": {
+                        "test": "data",
+                        "timestamp": "2025-08-06T14:07:23.351399Z"
+                    },
+                    "actual": {
+                        "test": "data",
+                        "timestamp": "2025-08-06T14:07:23.351399Z"
+                    }
+                },
+                "timestamp": "2025-08-06 17:07:23"
+            }
+        ],
+        "API": [
+            {
+                "category": "API",
+                "issue": "API route not found: \/api\/user",
+                "severity": "MEDIUM",
+                "details": [],
+                "timestamp": "2025-08-06 17:07:23"
+            },
+            {
+                "category": "API",
+                "issue": "API route not found: \/api\/active-users",
+                "severity": "MEDIUM",
+                "details": [],
+                "timestamp": "2025-08-06 17:07:23"
+            },
+            {
+                "category": "API",
+                "issue": "API route not found: \/api\/topic\/{topic}\/access",
+                "severity": "MEDIUM",
+                "details": [],
+                "timestamp": "2025-08-06 17:07:23"
+            },
+            {
+                "category": "API",
+                "issue": "API route not found: \/api\/topic\/{topic}\/sources",
+                "severity": "MEDIUM",
+                "details": [],
+                "timestamp": "2025-08-06 17:07:23"
+            },
+            {
+                "category": "API",
+                "issue": "API route not found: \/api\/topic\/{topic}\/lock",
+                "severity": "MEDIUM",
+                "details": [],
+                "timestamp": "2025-08-06 17:07:23"
+            },
+            {
+                "category": "API",
+                "issue": "API route not found: \/api\/topic\/{topic}\/unlock",
+                "severity": "MEDIUM",
+                "details": [],
+                "timestamp": "2025-08-06 17:07:23"
+            }
+        ]
+    }
+}

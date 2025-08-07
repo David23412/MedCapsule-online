@@ -434,7 +434,7 @@
 .unread-indicator {
     position: absolute;
     left: 8px;
-    top: 50%;
+    top: 40%;
     transform: translateY(-50%);
     width: 6px;
     height: 6px;

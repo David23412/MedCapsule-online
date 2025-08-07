@@ -161,9 +161,17 @@ class StudentProgressController extends Controller
                     ])
                     ->findOrFail($studentId);
                 
-                // Verify tutor access
-                if (!auth()->user()->isAdmin() && !auth()->user()->assignedStudents()->where('user_id', $studentId)->exists()) {
-                    return $this->jsonResponse(false, 'Unauthorized access to student data', [], 403);
+                // Verify tutor access - check if student is in tutor's courses
+                if (!auth()->user()->isAdmin()) {
+                    $tutorCourseIds = auth()->user()->courses()->pluck('courses.id');
+                    $hasAccess = $student->courses()
+                        ->whereIn('courses.id', $tutorCourseIds)
+                        ->where('course_user.is_enrolled', true)
+                        ->exists();
+                    
+                    if (!$hasAccess) {
+                        return $this->jsonResponse(false, 'Unauthorized access to student data', [], 403);
+                    }
                 }
                 
                 // Cache key based on student and recent updates

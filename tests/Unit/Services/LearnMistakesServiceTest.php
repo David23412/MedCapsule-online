@@ -3,7 +3,7 @@
 namespace Tests\Unit\Services;
 
 use Tests\TestCase;
-use App\Services\LearnMistakesService;
+use App\Services\Learning\MistakeManagementService;
 use App\Models\SkippedQuestion;
 use App\Models\Question;
 use App\Models\User;
@@ -24,7 +24,7 @@ class LearnMistakesServiceTest extends TestCase
     {
         parent::setUp();
         
-        $this->service = new LearnMistakesService();
+        $this->service = new MistakeManagementService();
         $this->user = User::factory()->create(['role' => 'student']);
         $course = Course::factory()->create();
         $this->topic = Topic::factory()->create(['course_id' => $course->id]);

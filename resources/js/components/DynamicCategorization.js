@@ -41,7 +41,7 @@ class DynamicCategorization {
      */
     init() {
         if (!this.container || !this.topicsContainer) {
-            console.error('Container elements not found');
+// console.error('Container elements not found'); // Removed for production
             return;
         }
         
