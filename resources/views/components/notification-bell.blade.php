@@ -6,7 +6,9 @@
         <button 
             @click="toggleNotifications" 
             class="position-relative focus:outline-none"
-            aria-label="Notifications"
+            aria-label="Toggle notifications"
+            :aria-expanded="isOpen"
+            aria-haspopup="true"
         >
             <i class="fas fa-bell"></i>
             <span 
@@ -36,6 +38,7 @@
                     @click="markAllAsRead()"
                     class="mark-all-read"
                     x-cloak
+                    aria-label="Mark all notifications as read"
                 >
                     <i class="fas fa-check-double me-1"></i>
                     Mark all as read

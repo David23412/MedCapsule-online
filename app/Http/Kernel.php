@@ -30,6 +30,7 @@ class Kernel extends HttpKernel
         'web' => [
             \App\Http\Middleware\SqlInjectionProtectionMiddleware::class,
             \App\Http\Middleware\RequestTimeoutMiddleware::class,
+            \App\Http\Middleware\AggressiveRateLimitMiddleware::class,
             \App\Http\Middleware\EncryptCookies::class,
             \Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse::class,
             \Illuminate\Session\Middleware\StartSession::class,
