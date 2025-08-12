@@ -62,7 +62,7 @@ class StudentProgressOptimizationVerificationTest extends TestCase
         
         // Verify caching patterns
         $this->assertStringContainsString('Cache::remember', $content, 'Controller should implement caching');
-        $this->assertStringContainsString('QuizCacheService::generateCacheKey', $content, 'Controller should use optimized cache keys');
+        $this->assertStringContainsString('QuizUltraConsolidatedCacheService::generateCacheKey', $content, 'Controller should use optimized cache keys');
         
         // Verify cache durations for different operations
         $this->assertStringContainsString('900', $content, 'Should use 15-minute cache for comprehensive data');

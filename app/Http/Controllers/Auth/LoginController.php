@@ -5,7 +5,7 @@ namespace App\Http\Controllers\Auth;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Http\Requests\LoginRequest;
-use App\Services\CacheService;
+use App\Services\Core\UltraConsolidatedCacheService;
 use App\Services\SessionSecurityService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Log;
@@ -30,7 +30,7 @@ use Illuminate\Support\Facades\Cache;
     public function showLoginForm()
     {
         // Cache login form data for performance
-        $cacheKey = CacheService::generateCacheKey('login_form_data', ['timestamp' => now()->format('Y-m-d')]);
+        $cacheKey = UltraConsolidatedCacheService::generateCacheKey('login_form_data', ['timestamp' => now()->format('Y-m-d')]);
         $formData = Cache::remember($cacheKey, 86400, function () {
             return [
                 'csrf_token' => csrf_token(),
@@ -98,6 +98,10 @@ use Illuminate\Support\Facades\Cache;
                 'last_security_check' => now(),
                 'concurrent_login_attempts' => 0 // Reset on successful login
             ]);
+            
+            // Clear home page cache to ensure fresh user data is loaded
+            \Illuminate\Support\Facades\Cache::forget("home_nuclear_v5_auth_{$user->id}_" . now()->format('Y-m-d-H'));
+            \Illuminate\Support\Facades\Cache::forget("home_nuclear_v5_guest_guest_" . now()->format('Y-m-d-H'));
 
             // Auto-enroll in all free courses with eager loading
             $user = Auth::user()->load([
@@ -132,7 +136,7 @@ use Illuminate\Support\Facades\Cache;
                 // Continue with login even if notification fails
             }
 
-            return redirect()->intended('/courses');
+            return redirect()->intended('/');
         }
 
         // Log failed login attempt

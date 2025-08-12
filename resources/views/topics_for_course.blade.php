@@ -109,6 +109,248 @@
             color: #dc3545 !important;
             transform: none !important;
         }
+
+        /* TOPIC WITH VIDEO CONTAINER */
+        .topic-with-video-container {
+            position: relative;
+            margin-bottom: 1.25rem;
+        }
+
+        .topic-with-video-container .topic-card {
+            width: 100%;
+            margin-bottom: 0;
+        }
+
+        /* VIDEO PLAY BUTTON STYLES - MINIMAL SLEEK DESIGN */
+        .video-play-btn {
+            position: absolute;
+            right: -90px;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 44px;
+            height: 44px;
+            background: white;
+            border: 2px solid #007bff;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            box-shadow: 0 2px 8px rgba(0, 123, 255, 0.15);
+            z-index: 10;
+        }
+
+        .video-play-btn:hover {
+            background: #007bff;
+            transform: translateY(-50%) scale(1.05);
+            box-shadow: 0 4px 12px rgba(0, 123, 255, 0.25);
+        }
+
+        .video-play-btn i {
+            color: #007bff;
+            font-size: 1rem;
+            margin-left: 2px; /* Slight offset for play icon centering */
+            transition: color 0.2s ease;
+        }
+
+        .video-play-btn:hover i {
+            color: white;
+        }
+
+        /* VIDEO MODAL STYLES - OPTIMIZED FOR HORIZONTAL LAYOUT */
+        .video-modal .modal-dialog {
+            max-width: 90vw;
+            width: 90vw;
+            margin: 1rem auto;
+        }
+
+        .video-modal .modal-content {
+            border: none;
+            border-radius: 16px;
+            overflow: hidden;
+            background: #000;
+        }
+
+        .video-modal .modal-header {
+            background: #ffffff;
+            color: #333;
+            border: none;
+            border-bottom: 1px solid #e9ecef;
+            padding: 0.5rem 1rem;
+            box-shadow: none;
+            min-height: 40px;
+        }
+
+        .video-modal .modal-title {
+            font-weight: 400;
+            font-size: 0.95rem;
+            color: #2563eb;
+            margin: 0;
+        }
+
+        .video-modal .btn-close {
+            color: #6c757d;
+            opacity: 0.7;
+            transition: opacity 0.2s ease;
+        }
+
+        .video-modal .btn-close:hover {
+            opacity: 1;
+            color: #495057;
+        }
+
+        .video-modal .header-actions {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .video-modal .modal-header .btn {
+            padding: 0.25rem 0.5rem;
+            font-size: 0.8rem;
+            line-height: 1;
+        }
+
+        .video-modal .btn-outline-secondary {
+            border-color: #dee2e6;
+            color: #6c757d;
+            background: transparent;
+            transition: all 0.2s ease;
+        }
+
+        .video-modal .btn-outline-secondary:hover {
+            border-color: #adb5bd;
+            color: #495057;
+            background-color: #f8f9fa;
+        }
+
+        /* Video size toggle states */
+        .video-modal.video-expanded .modal-dialog {
+            max-width: 100vw !important;
+            width: 100vw !important;
+            margin: 0 !important;
+            height: 100vh !important;
+        }
+
+        .video-modal.video-expanded .modal-content {
+            height: 100vh !important;
+            border-radius: 0 !important;
+        }
+
+        .video-modal.video-expanded .video-container {
+            height: calc(100vh - 40px) !important;
+        }
+
+        /* Smooth transitions for resize */
+        .video-modal .modal-dialog,
+        .video-modal .video-container {
+            transition: all 0.3s ease-out;
+        }
+
+        /* Play overlay hover effects */
+        .play-overlay:hover {
+            background: rgba(0,0,0,0.8) !important;
+            border-color: #3b82f6 !important;
+            transform: scale(1.05);
+        }
+
+        .video-modal .modal-body {
+            padding: 0;
+            background: #000;
+        }
+
+        .video-container {
+            position: relative;
+            width: 100%;
+            height: 500px; /* Fixed height for now to ensure visibility */
+            background: #000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .video-loading {
+            color: white;
+            font-size: 1.1rem;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+        }
+
+        .video-container iframe {
+            width: 100%;
+            height: 100%;
+            border: none;
+            display: block; /* Ensure iframe is visible */
+        }
+
+        /* Responsive video sizing */
+        @media (max-width: 768px) {
+            .video-modal .modal-dialog {
+                max-width: 98vw;
+                width: 98vw;
+                margin: 0.5rem auto;
+            }
+        }
+
+        @media (min-width: 1200px) {
+            .video-modal .modal-dialog {
+                max-width: 90vw;
+                width: 90vw;
+            }
+        }
+
+        /* Ensure modal opens with proper dimensions */
+        .video-modal.show .modal-dialog {
+            transform: none !important;
+        }
+
+        /* Smooth modal transitions */
+        .video-modal .modal-dialog {
+            transition: all 0.3s ease-out;
+        }
+
+        /* Prevent modal from jumping during open */
+        .video-modal .modal-content {
+            transform: none !important;
+        }
+
+        /* Fullscreen modal on smaller screens */
+        @media (max-width: 991.98px) {
+            .video-modal .modal-dialog {
+                max-width: 100vw;
+                width: 100vw;
+                height: 100vh;
+                margin: 0;
+            }
+            
+            .video-modal .modal-content {
+                height: 100vh;
+                border-radius: 0;
+            }
+            
+            .video-modal .modal-body {
+                flex: 1;
+                display: flex;
+                flex-direction: column;
+            }
+            
+            .video-container {
+                flex: 1;
+                padding-bottom: 0;
+                height: 100%;
+            }
+        }
+
+        /* Disable text selection globally on video modal */
+        .video-modal * {
+            -webkit-user-select: none;
+            -moz-user-select: none;
+            -ms-user-select: none;
+            user-select: none;
+        }
     </style>
     <style>
         body{font-family:'Poppins',sans-serif;background-color:#f8f9fa;zoom:.72;margin:0;padding:0;line-height:1.6;-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale}
@@ -2074,6 +2316,30 @@
         </div>
     </div>
 
+
+
+    <!-- Video Modal - FULL WIDTH FOR HORIZONTAL LAYOUT -->
+    <div class="modal fade video-modal" id="videoModal" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered modal-fullscreen-lg-down">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="videoModalTitle">Video Lecture</h5>
+                    <div class="header-actions">
+                        <button type="button" class="btn btn-sm btn-outline-secondary me-2" id="resizeVideoBtn" title="Toggle video size">
+                            <i class="fas fa-expand"></i>
+                        </button>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                </div>
+                <div class="modal-body">
+                    <div class="video-container" id="videoContainer">
+                        <div class="video-loading">Loading video...</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Course Header -->
     <header class="course-header">
         <div class="particle"></div>
@@ -2331,12 +2597,14 @@
                     // $isLocked = $topic->status === 'locked';
                 @endphp
                 
-                <div class="topic-card" 
-                     data-case-type="{{ $topic->case_type }}" 
-                     data-topic-id="{{ $topic->id }}"
-                     data-has-assignment="false">
-                    
-                    {{-- Regular topics don't have assignment status bars --}}
+                {{-- Topic Card Container with Video Button --}}
+                <div class="topic-with-video-container">
+                    <div class="topic-card" 
+                         data-case-type="{{ $topic->case_type }}" 
+                         data-topic-id="{{ $topic->id }}"
+                         data-has-assignment="false">
+                        
+                        {{-- Regular topics don't have assignment status bars --}}
                     
                     <div class="topic-info">
                         <div class="topic-main">
@@ -2426,7 +2694,18 @@
                             </a>
                         @endif
                     </div>
-                    <div class="case-type-badge {{ $topic->case_type }}">{{ $topic->case_type }}</div>
+                        <div class="case-type-badge {{ $topic->case_type }}">{{ $topic->case_type }}</div>
+                    </div>
+                    
+                    {{-- Video Play Button OUTSIDE the card --}}
+                    @if($topic->video)
+                        <button class="video-play-btn" 
+                                data-video-id="{{ $topic->video->id }}" 
+                                data-video-title="{{ $topic->video->title }}"
+                                onclick="playVideo({{ $topic->video->id }}, '{{ $topic->video->title }}')">
+                            <i class="fas fa-play"></i>
+                        </button>
+                    @endif
                 </div>
             @endforeach
         @else
@@ -2444,10 +2723,750 @@
     
     <!-- Topic-specific JavaScript files -->
     <!-- Removed asset URL -->
+    <script src="/js/secure-video-component.js" onload="console.log('✅ Secure video component script loaded')" onerror="console.error('❌ Failed to load secure video component script')"></script>
+    <script>
+        // Debug asset loading
+        console.log('🔍 Current location:', window.location.href);
+        console.log('🔍 Script src:', document.currentScript?.src || 'unknown');
+        console.log('🔍 Base URL:', document.baseURI);
+        
+        // Check for cross-origin issues and implement workarounds
+        if (window.location.protocol === 'https:' && 
+            (window.location.hostname.includes('ngrok') || 
+             window.location.hostname.includes('localhost') ||
+             window.location.hostname.includes('127.0.0.1'))) {
+            console.warn('⚠️ Cross-origin environment detected. Implementing workarounds...');
+            
+            // Add meta tag to help with cross-origin
+            const meta = document.createElement('meta');
+            meta.httpEquiv = 'Content-Security-Policy';
+            meta.content = "frame-src 'self' https://www.youtube.com https://www.youtube-nocookie.com;";
+            document.head.appendChild(meta);
+            
+            // Force allow cross-origin for iframes
+            document.addEventListener('DOMContentLoaded', function() {
+                const iframes = document.querySelectorAll('iframe[src*="youtube"]');
+                iframes.forEach(iframe => {
+                    iframe.setAttribute('allow', 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share');
+                    iframe.setAttribute('sandbox', 'allow-scripts allow-same-origin allow-forms allow-popups allow-popups-to-escape-sandbox');
+                });
+            });
+        }
+    </script>
+    <script>
+        // Verify secure video component is loaded
+        if (typeof generateSecureVideoOverlay === 'undefined') {
+            console.warn('⚠️ Secure video component not loaded yet, retrying...');
+            // Retry loading after a short delay
+            setTimeout(() => {
+                if (typeof generateSecureVideoOverlay === 'undefined') {
+                    console.error('❌ Secure video component failed to load');
+                } else {
+                    console.log('✅ Secure video component loaded successfully');
+                }
+            }, 100);
+        } else {
+            console.log('✅ Secure video component already loaded');
+        }
+    </script>
+    
+    <script>
+        // Additional error handling for script loading
+        window.addEventListener('error', function(e) {
+            if (e.target.src && e.target.src.includes('secure-video-component.js')) {
+                console.error('❌ Failed to load secure-video-component.js:', e);
+            }
+        });
+        
+        // Test if function is available globally
+        console.log('🔍 Checking global scope for generateSecureVideoOverlay...');
+        console.log('window.generateSecureVideoOverlay:', typeof window.generateSecureVideoOverlay);
+        console.log('generateSecureVideoOverlay:', typeof generateSecureVideoOverlay);
+        
+        // Fallback: If function is not available, define it inline
+        if (typeof generateSecureVideoOverlay === 'undefined') {
+            console.log('🔄 Loading fallback generateSecureVideoOverlay function...');
+            window.generateSecureVideoOverlay = function(youtubeId, videoTitle, autoplay = true, showControls = true) {
+                const autoplayParam = autoplay ? '1' : '0';
+                return `
+                    <div class="secure-video-wrapper" style="width: 100%; height: 100%; background: #000; position: relative; overflow: hidden;">
+                        <iframe 
+                            id="hiddenYoutubePlayer"
+                            src="https://www.youtube.com/embed/${youtubeId}?autoplay=${autoplayParam}&rel=0&modestbranding=1&showinfo=0&controls=0&disablekb=1&fs=0&iv_load_policy=3&modestbranding=1&playsinline=1&enablejsapi=1"
+                            style="width: 100%; height: 100%; border: none; display: block; position: absolute; top: 0; left: 0; z-index: 1;"
+                            frameborder="0"
+                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                            allowfullscreen
+                            title="${videoTitle}">
+                        </iframe>
+                        
+                        <div class="security-overlay" style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: transparent; z-index: 10; pointer-events: none;"></div>
+                        
+                        ${showControls ? `
+                        <div class="custom-youtube-controls" style="position: absolute; bottom: 0; left: 0; right: 0; background: linear-gradient(transparent, rgba(0,0,0,0.9)); padding: 1.5rem; display: flex; align-items: center; gap: 1rem; opacity: 0; transition: opacity 0.3s ease; z-index: 100; pointer-events: auto;">
+                            <button class="play-pause-btn" style="background: #2563eb; color: white; border: none; border-radius: 50%; width: 45px; height: 45px; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 1.3rem; transition: all 0.2s ease;">⏸️</button>
+                            <div class="progress-bar" style="flex: 1; height: 6px; background: rgba(255,255,255,0.2); border-radius: 3px; cursor: pointer; position: relative; overflow: hidden;">
+                                <div class="progress-fill" style="height: 100%; background: linear-gradient(90deg, #2563eb, #3b82f6); border-radius: 3px; width: 0%; transition: width 0.1s ease; position: relative;"></div>
+                            </div>
+                            <div class="time-display" style="color: white; font-size: 0.9rem; min-width: 120px; text-align: center; font-weight: 500; text-shadow: 0 1px 2px rgba(0,0,0,0.8);">0:00 / 0:00</div>
+                            <button class="fullscreen-btn" style="background: rgba(255,255,255,0.1); color: white; border: 1px solid rgba(255,255,255,0.3); border-radius: 6px; padding: 0.6rem; cursor: pointer; transition: all 0.2s ease; font-size: 1.1rem;">⛶</button>
+                        </div>
+                        ` : ''}
+                        
+                        <div class="security-watermark" style="position: absolute; top: 20px; right: 20px; color: #2563eb; font-size: 1.5rem; font-weight: 900; z-index: 1000; pointer-events: auto; user-select: none; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; text-shadow: 0 2px 4px rgba(0,0,0,0.9), 0 4px 8px rgba(0,0,0,0.6); letter-spacing: 0.05em; text-transform: uppercase; font-stretch: expanded;">
+                            MEDCAPSULE
+                        </div>
+                        
+                        <!-- INVISIBLE SECURITY OVERLAY - Actually blocks copy link clicks -->
+                        <div class="copy-link-blocker" style="position: absolute; top: 0; right: 0; width: 300px; height: 150px; background: transparent; z-index: 999; pointer-events: auto; cursor: not-allowed;"></div>
+                        
+
+                    </div>
+                `;
+            };
+            console.log('✅ Fallback function loaded successfully');
+        }
+    </script>
     
 
     <script>
+        // SIMPLE Video play function - directly plays videos
+        function playVideo(videoId, videoTitle) {
+            console.log('🎬 Starting video playback for:', videoId, videoTitle);
+            
+            const modal = document.getElementById('videoModal');
+            const modalTitle = document.getElementById('videoModalTitle');
+            const videoContainer = document.getElementById('videoContainer');
+            
+            // Set modal title
+            modalTitle.textContent = videoTitle;
+            
+            // Show loading state
+            videoContainer.innerHTML = '<div class="video-loading">🎬 Loading video...</div>';
+            
+            // Show modal with proper sizing
+            const bsModal = new bootstrap.Modal(modal, {
+                backdrop: 'static',
+                keyboard: false
+            });
+            bsModal.show();
+            
+            // Ensure modal opens with proper dimensions
+            setTimeout(() => {
+                modal.classList.add('show');
+            }, 150);
+            
+            // Initialize resize functionality
+            const resizeBtn = document.getElementById('resizeVideoBtn');
+            if (resizeBtn) {
+                resizeBtn.addEventListener('click', function() {
+                    const isExpanded = modal.classList.contains('video-expanded');
+                    if (isExpanded) {
+                        modal.classList.remove('video-expanded');
+                        this.innerHTML = '<i class="fas fa-expand"></i>';
+                        this.title = 'Expand video';
+                    } else {
+                        modal.classList.add('video-expanded');
+                        this.innerHTML = '<i class="fas fa-compress"></i>';
+                        this.title = 'Compress video';
+                    }
+                });
+            }
+            
+            // Get the YouTube video ID from the database
+            console.log('🎥 Creating YouTube video player for video ID:', videoId);
+            
+            // Fetch the video details to get the YouTube video ID
+            fetch(`/api/video/${videoId}`, {
+                method: 'GET',
+                headers: {
+                    'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                    'Accept': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest'
+                },
+                credentials: 'same-origin'
+            })
+            .then(response => response.json())
+            .then(videoData => {
+                if (videoData.success && videoData.video.youtube_video_id) {
+                    const youtubeId = videoData.video.youtube_video_id;
+                    console.log('✅ YouTube video ID found:', youtubeId);
+                    
+                    // Create SECURE YouTube custom player using component function
+                    if (typeof generateSecureVideoOverlay === 'function') {
+                        videoContainer.innerHTML = generateSecureVideoOverlay(youtubeId, videoTitle, true, true);
+                        
+                        // Initialize secure YouTube player functionality
+                        initializeSecureYouTubePlayer(videoContainer, youtubeId);
+                    } else {
+                        console.error('❌ generateSecureVideoOverlay function not found. Loading fallback...');
+                        // Fallback to direct YouTube iframe with origin parameter
+                        videoContainer.innerHTML = `
+                            <div class="secure-video-wrapper" style="width: 100%; height: 100%; background: #000; position: relative; overflow: hidden;">
+                                <iframe 
+                                    src="https://www.youtube-nocookie.com/embed/${youtubeId}?autoplay=1&rel=0&modestbranding=1&showinfo=0&controls=1&disablekb=1&fs=0&iv_load_policy=3&playsinline=1&origin=${encodeURIComponent(window.location.origin)}"
+                                    style="width: 100%; height: 100%; border: none; display: block;"
+                                    frameborder="0"
+                                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                                    sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-popups-to-escape-sandbox"
+                                    title="${videoTitle}">
+                                </iframe>
+                            </div>
+                        `;
+                    }
+                    
+                    console.log('✅ Secure YouTube custom player created successfully');
+                } else {
+                    throw new Error('Video not found or no YouTube ID available');
+                }
+            })
+            .catch(error => {
+                console.error('❌ Failed to load video details:', error);
+                videoContainer.innerHTML = '<div class="video-loading text-danger">❌ Failed to load video. Please check the video configuration.</div>';
+            });
+        }
+
+
+
+        // 🎬 CUSTOM VIDEO PLAYER - Works with your own uploaded videos only
+        function createCustomVideoPlayer(container, videoUrl, title) {
+            container.innerHTML = `
+                <div class="custom-video-wrapper" style="width: 100%; height: 100%; background: #000; position: relative; overflow: hidden;">
+                    <!-- CUSTOM HTML5 VIDEO PLAYER - Full control -->
+                    <video 
+                        id="customVideoPlayer"
+                        src="${videoUrl}"
+                        preload="metadata"
+                        style="width: 100%; height: 100%; border: none; display: block;"
+                        oncontextmenu="return false;"
+                        onselectstart="return false;"
+                        ondragstart="return false;">
+                        Your browser does not support the video tag.
+                    </video>
+                    
+                    <!-- Custom Video Controls Overlay -->
+                    <div class="custom-video-controls" style="
+                        position: absolute;
+                        bottom: 0;
+                        left: 0;
+                        right: 0;
+                        background: linear-gradient(transparent, rgba(0,0,0,0.8));
+                        padding: 1rem;
+                        display: flex;
+                        align-items: center;
+                        gap: 1rem;
+                        opacity: 0;
+                        transition: opacity 0.3s ease;
+                        z-index: 10000;
+                        pointer-events: auto;
+                    ">
+
+                        
+                        <div class="progress-bar" style="
+                            flex: 1;
+                            height: 4px;
+                            background: rgba(255,255,255,0.3);
+                            border-radius: 2px;
+                            cursor: pointer;
+                            position: relative;
+                        ">
+                            <div class="progress-fill" style="
+                                height: 100%;
+                                background: #2563eb;
+                                border-radius: 2px;
+                                width: 0%;
+                                transition: width 0.1s ease;
+                            "></div>
+                        </div>
+                        
+                        <div class="time-display" style="
+                            color: white;
+                            font-size: 0.9rem;
+                            min-width: 100px;
+                            text-align: center;
+                        ">0:00 / 0:00</div>
+                        
+                        <button class="fullscreen-btn" style="
+                            background: transparent;
+                            color: white;
+                            border: 1px solid rgba(255,255,255,0.5);
+                            border-radius: 4px;
+                            padding: 0.5rem;
+                            cursor: pointer;
+                        ">⛶</button>
+                    </div>
+                    
+                    <!-- Play Button Overlay -->
+                    <div class="play-overlay" style="
+                        position: absolute;
+                        top: 50%;
+                        left: 50%;
+                        transform: translate(-50%, -50%);
+                        background: rgba(0,0,0,0.8);
+                        color: white;
+                        padding: 2rem 3rem;
+                        border-radius: 12px;
+                        font-size: 1.5rem;
+                        border: 3px solid #2563eb;
+                        cursor: pointer;
+                        transition: all 0.3s ease;
+                        z-index: 1000;
+                        display: flex;
+                        align-items: center;
+                        gap: 1rem;
+                    ">
+                        <span style="font-size: 2rem;">▶️</span>
+                        <span>Click to Play</span>
+                    </div>
+                </div>
+            `;
+            
+            // Initialize custom video player functionality
+            const video = container.querySelector('#customVideoPlayer');
+            const wrapper = container.querySelector('.custom-video-wrapper');
+            const customControls = container.querySelector('.custom-video-controls');
+            const playOverlay = container.querySelector('.play-overlay');
+            const progressBar = container.querySelector('.progress-bar');
+            const progressFill = container.querySelector('.progress-fill');
+            const timeDisplay = container.querySelector('.time-display');
+            const fullscreenBtn = container.querySelector('.fullscreen-btn');
+            
+            if (video) {
+                // Apply security features
+                enhanceVideoSecurity(video);
+                addVideoWatermark(video, 'Medcapsule');
+                
+                // Play overlay click handler
+                if (playOverlay) {
+                    playOverlay.addEventListener('click', function() {
+                        video.play();
+                        playOverlay.style.display = 'none';
+                        customControls.style.opacity = '1';
+                    });
+                }
+                
+                // Play/Pause button
+                if (playPauseBtn) {
+                    playPauseBtn.addEventListener('click', function() {
+                        if (video.paused) {
+                            video.play();
+                            this.innerHTML = '⏸️';
+                        } else {
+                            video.pause();
+                            this.innerHTML = '▶️';
+                        }
+                    });
+                }
+                
+                // Progress bar
+                if (progressBar && progressFill) {
+                    progressBar.addEventListener('click', function(e) {
+                        const rect = this.getBoundingClientRect();
+                        const clickX = e.clientX - rect.left;
+                        const width = rect.width;
+                        const clickPercent = clickX / width;
+                        const seekTime = clickPercent * video.duration;
+                        video.currentTime = seekTime;
+                    });
+                }
+                
+                // Fullscreen button
+                if (fullscreenBtn) {
+                    fullscreenBtn.addEventListener('click', function() {
+                        if (document.fullscreenElement) {
+                            document.exitFullscreen();
+                        } else {
+                            wrapper.requestFullscreen();
+                        }
+                    });
+                }
+                
+                // Video event listeners
+                video.addEventListener('timeupdate', function() {
+                    if (progressFill && timeDisplay) {
+                        const progress = (video.currentTime / video.duration) * 100;
+                        progressFill.style.width = progress + '%';
+                        timeDisplay.textContent = `${formatTime(video.currentTime)} / ${formatTime(video.duration)}`;
+                    }
+                });
+                
+                video.addEventListener('loadedmetadata', function() {
+                    if (timeDisplay) {
+                        timeDisplay.textContent = `0:00 / ${formatTime(video.duration)}`;
+                    }
+                });
+                
+                video.addEventListener('ended', function() {
+                    if (playPauseBtn) {
+                        playPauseBtn.innerHTML = '▶️';
+                    }
+                    if (playOverlay) {
+                        playOverlay.style.display = 'flex';
+                    }
+                });
+                
+                // Show/hide controls on hover
+                wrapper.addEventListener('mouseenter', function() {
+                    customControls.style.opacity = '1';
+                });
+                
+                wrapper.addEventListener('mouseleave', function() {
+                    customControls.style.opacity = '0';
+                });
+                
+                // Update play button state
+                video.addEventListener('play', function() {
+                    if (playPauseBtn) {
+                        playPauseBtn.innerHTML = '⏸️';
+                    }
+                });
+                
+                video.addEventListener('pause', function() {
+                    if (playPauseBtn) {
+                        playPauseBtn.innerHTML = '▶️';
+                    }
+                });
+            }
+        }
+
+        // Helper function to format time
+        function formatTime(seconds) {
+            const mins = Math.floor(seconds / 60);
+            const secs = Math.floor(seconds % 60);
+            return `${mins}:${secs.toString().padStart(2, '0')}`;
+        }
+
+        // 🔒 SECURITY: Enhanced video security features
+        function enhanceVideoSecurity(videoElement) {
+            if (!videoElement) return;
+            
+            // Disable right-click context menu
+            videoElement.addEventListener('contextmenu', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                return false;
+            }, true);
+            
+            // Disable text selection
+            videoElement.addEventListener('selectstart', function(e) {
+                e.preventDefault();
+                return false;
+            }, true);
+            
+            // Disable drag and drop
+            videoElement.addEventListener('dragstart', function(e) {
+                e.preventDefault();
+                return false;
+            }, true);
+            
+            // Disable keyboard shortcuts
+            videoElement.addEventListener('keydown', function(e) {
+                // Allow only essential keys: space (play/pause), arrow keys (seek), f (fullscreen)
+                const allowedKeys = [' ', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'f', 'F'];
+                if (!allowedKeys.includes(e.key)) {
+                    e.preventDefault();
+                    return false;
+                }
+            }, true);
+            
+            // Prevent video download attempts
+            videoElement.addEventListener('loadstart', function() {
+                // Remove any download attributes
+                this.removeAttribute('download');
+                this.removeAttribute('controlsList');
+            });
+        }
+
+
+
+
+
+        // 🔒 VIDEO SECURITY: Domain restriction and watermarking
+        function addVideoWatermark(videoElement, text = 'Medcapsule') {
+            if (!videoElement) return;
+            
+            // Create watermark overlay
+            const watermark = document.createElement('div');
+            watermark.style.cssText = `
+                position: absolute;
+                top: 10px;
+                right: 10px;
+                background: rgba(0,0,0,0.7);
+                color: white;
+                padding: 0.5rem 1rem;
+                border-radius: 4px;
+                font-size: 0.8rem;
+                font-weight: bold;
+                z-index: 1000;
+                pointer-events: none;
+                user-select: none;
+            `;
+            watermark.textContent = text;
+            
+            // Add to video container
+            const container = videoElement.parentElement;
+            if (container && container.style.position === 'relative') {
+                container.appendChild(watermark);
+            }
+        }
+
+        // 🔒 SECURE YOUTUBE PLAYER: Custom player with YouTube API control
+        function initializeSecureYouTubePlayer(container, youtubeId) {
+            // Load YouTube API if not already loaded
+            if (!window.YT) {
+                const tag = document.createElement('script');
+                tag.src = 'https://www.youtube.com/iframe_api';
+                const firstScriptTag = document.getElementsByTagName('script')[0];
+                firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
+            }
+
+            // Wait for YouTube API to be ready
+            if (window.YT && window.YT.Player) {
+                createSecurePlayer();
+            } else {
+                window.onYouTubeIframeAPIReady = createSecurePlayer;
+            }
+
+            function createSecurePlayer() {
+                const wrapper = container.querySelector('.secure-video-wrapper');
+                const iframe = container.querySelector('#hiddenYoutubePlayer');
+                const customControls = container.querySelector('.custom-youtube-controls');
+                const playOverlay = container.querySelector('.play-overlay');
+                const playPauseBtn = container.querySelector('.play-pause-btn');
+                const progressBar = container.querySelector('.progress-bar');
+                const progressFill = container.querySelector('.progress-fill');
+                const timeDisplay = container.querySelector('.time-display');
+                const fullscreenBtn = container.querySelector('.fullscreen-btn');
+
+                // Create YouTube player instance
+                const player = new YT.Player('hiddenYoutubePlayer', {
+                    height: '100%',
+                    width: '100%',
+                    videoId: youtubeId,
+                    playerVars: {
+                        'autoplay': 0,
+                        'controls': 0,
+                        'disablekb': 1,
+                        'fs': 0,
+                        'iv_load_policy': 3,
+                        'modestbranding': 1,
+                        'playsinline': 1,
+                        'rel': 0,
+                        'showinfo': 0
+                    },
+                    events: {
+                        'onReady': onPlayerReady,
+                        'onStateChange': onPlayerStateChange,
+                        'onError': onPlayerError
+                    }
+                });
+
+                // Player ready event
+                function onPlayerReady(event) {
+                    console.log('🔒 Secure YouTube player ready');
+                    
+                    // Hide play overlay and show controls
+                    if (playOverlay) playOverlay.style.display = 'none';
+                    if (customControls) customControls.style.opacity = '1';
+                    
+                    // Apply security measures
+                    applyYouTubeSecurityMeasures(iframe);
+                }
+
+                // Player state change event
+                function onPlayerStateChange(event) {
+                    const state = event.data;
+                    
+                    if (state === YT.PlayerState.PLAYING) {
+                        if (playPauseBtn) playPauseBtn.innerHTML = '⏸️';
+                        if (playOverlay) playOverlay.style.display = 'none';
+                        startProgressUpdate();
+                    } else if (state === YT.PlayerState.PAUSED) {
+                        if (playPauseBtn) playPauseBtn.innerHTML = '▶️';
+                    } else if (state === YT.PlayerState.ENDED) {
+                        if (playPauseBtn) playPauseBtn.innerHTML = '▶️';
+                        if (playOverlay) playOverlay.style.display = 'flex';
+                        stopProgressUpdate();
+                    }
+                }
+
+                // Player error event
+                function onPlayerError(event) {
+                    console.error('❌ YouTube player error:', event.data);
+                    container.innerHTML = '<div class="video-loading text-danger">❌ Video playback error. Please try again.</div>';
+                }
+
+                // Progress update timer
+                let progressInterval;
+                function startProgressUpdate() {
+                    progressInterval = setInterval(() => {
+                        if (player && player.getCurrentTime && player.getDuration) {
+                            const currentTime = player.getCurrentTime();
+                            const duration = player.getDuration();
+                            
+                            if (progressFill && timeDisplay && duration > 0) {
+                                const progress = (currentTime / duration) * 100;
+                                progressFill.style.width = progress + '%';
+                                timeDisplay.textContent = `${formatTime(currentTime)} / ${formatTime(duration)}`;
+                            }
+                        }
+                    }, 100);
+                }
+
+                function stopProgressUpdate() {
+                    if (progressInterval) {
+                        clearInterval(progressInterval);
+                        progressInterval = null;
+                    }
+                }
+
+                // Control event listeners
+                if (playPauseBtn) {
+                    playPauseBtn.addEventListener('click', function() {
+                        if (player && player.playVideo && player.pauseVideo) {
+                            const state = player.getPlayerState();
+                            if (state === YT.PlayerState.PLAYING) {
+                                player.pauseVideo();
+                            } else {
+                                player.playVideo();
+                            }
+                        }
+                    });
+                }
+
+                if (progressBar) {
+                    progressBar.addEventListener('click', function(e) {
+                        if (player && player.seekTo) {
+                            const rect = this.getBoundingClientRect();
+                            const clickX = e.clientX - rect.left;
+                            const width = rect.width;
+                            const clickPercent = clickX / width;
+                            const seekTime = clickPercent * player.getDuration();
+                            player.seekTo(seekTime, true);
+                        }
+                    });
+                }
+
+                if (fullscreenBtn) {
+                    fullscreenBtn.addEventListener('click', function() {
+                        if (document.fullscreenElement) {
+                            document.exitFullscreen();
+                        } else {
+                            wrapper.requestFullscreen();
+                        }
+                    });
+                }
+
+                // Show/hide controls on hover
+                if (wrapper) {
+                    wrapper.addEventListener('mouseenter', function() {
+                        if (customControls) customControls.style.opacity = '1';
+                    });
+                    
+                    wrapper.addEventListener('mouseleave', function() {
+                        if (customControls) customControls.style.opacity = '0';
+                    });
+                }
+            }
+        }
+
+        // 🔒 YOUTUBE SECURITY: Apply additional security measures
+        function applyYouTubeSecurityMeasures(iframe) {
+            if (!iframe) return;
+            
+            // Disable right-click on iframe
+            iframe.addEventListener('contextmenu', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                return false;
+            }, true);
+            
+            // Prevent iframe inspection
+            iframe.addEventListener('load', function() {
+                try {
+                    // Remove any YouTube branding elements that might be accessible
+                    const iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
+                    if (iframeDoc) {
+                        // This is a security measure - YouTube iframes are cross-origin
+                        // so we can't directly manipulate their content, but we can
+                        // ensure our overlay prevents interaction
+                    }
+                } catch (e) {
+                    // Cross-origin restrictions - this is expected and good for security
+                }
+            });
+            
+            // Additional security: prevent iframe focus for keyboard shortcuts
+            iframe.addEventListener('focus', function() {
+                this.blur();
+            });
+        }
+
         document.addEventListener('DOMContentLoaded', function() {
+            // 🔒 ENHANCED SECURITY: Prevent developer tools access
+            let devtools = { open: false, orientation: null };
+            
+            // Detect developer tools opening
+            setInterval(() => {
+                const threshold = 160;
+                const widthThreshold = window.outerWidth - window.innerWidth > threshold;
+                const heightThreshold = window.outerHeight - window.innerHeight > threshold;
+                
+                if (widthThreshold || heightThreshold) {
+                    if (!devtools.open) {
+                        devtools.open = true;
+                        console.warn('🔒 Security: Developer tools detected');
+                        // You can add additional security measures here
+                    }
+                } else {
+                    devtools.open = false;
+                }
+            }, 500);
+
+            // 🔒 PREVENT RIGHT-CLICK ON VIDEO MODAL
+            document.addEventListener('contextmenu', function(e) {
+                if (e.target.closest('.video-modal')) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    return false;
+                }
+            }, true);
+
+            // 🔒 PREVENT KEYBOARD SHORTCUTS FOR VIDEO
+            document.addEventListener('keydown', function(e) {
+                if (e.target.closest('.video-modal')) {
+                    // Allow only essential keys: space (play/pause), arrow keys (seek), f (fullscreen)
+                    const allowedKeys = [' ', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'f', 'F'];
+                    if (!allowedKeys.includes(e.key)) {
+                        e.preventDefault();
+                        return false;
+                    }
+                }
+            }, true);
+
+            // 🔒 PREVENT DRAG AND DROP ON VIDEO
+            document.addEventListener('dragstart', function(e) {
+                if (e.target.closest('.video-modal')) {
+                    e.preventDefault();
+                    return false;
+                }
+            }, true);
+
+            // Suppress CORS warnings from YouTube tracking (these don't affect functionality)
+            const originalError = console.error;
+            console.error = function(...args) {
+                if (args[0] && typeof args[0] === 'string' && 
+                    (args[0].includes('Cross-origin redirection') || 
+                     args[0].includes('Cross-Origin Resource Sharing') ||
+                     args[0].includes('access control checks'))) {
+                    // Suppress YouTube tracking CORS warnings
+                    return;
+                }
+                originalError.apply(console, args);
+            };
+
+
+
             // Initialize external TopicFilters if available
             if (typeof TopicFilters !== 'undefined') {
                 TopicFilters.init();
@@ -2673,9 +3692,9 @@
 
             // Handle source progress updates from quiz completion
             document.addEventListener('sourceProgressUpdated', function(e) {
-                const { topicId, progress, availableSources, allSourcesMastered, assignmentId } = e.detail;
+                const { topicId, progress, availableSources, allSourcesMastered, assignmentId, mode } = e.detail;
                 
-                // Update source progress bars in the modal
+                // ALWAYS update source progress bars in the modal (for both quiz and tutor mode)
                 if (progress) {
                     updateSourcesContainer({
                         progress: progress,
@@ -2683,33 +3702,38 @@
                     });
                 }
                 
-                // Update topic mastery status - FIXED: Only update the correct card type
-                let targetCard = null;
-                
-                if (assignmentId) {
-                    // This is an assignment completion - find the specific assignment card
-                    targetCard = document.querySelector(`[data-assignment-id="${assignmentId}"]`);
+                // CRITICAL: Only update topic card for quiz mode, NOT tutor mode
+                if (mode !== 'tutor') {
+                    // Update topic mastery status - FIXED: Only update the correct card type
+                    let targetCard = null;
+                    
+                    if (assignmentId) {
+                        // This is an assignment completion - find the specific assignment card
+                        targetCard = document.querySelector(`[data-assignment-id="${assignmentId}"]`);
 
-                } else {
-                    // This is regular quiz completion - find the regular topic card (not assignment cards)
-                    targetCard = document.querySelector(`[data-topic-id="${topicId}"][data-has-assignment="false"]`);
+                    } else {
+                        // This is regular quiz completion - find the regular topic card (not assignment cards)
+                        targetCard = document.querySelector(`[data-topic-id="${topicId}"][data-has-assignment="false"]`);
 
-                }
-                
-                if (targetCard) {
-                    const gradeBadge = targetCard.querySelector('.grade-badge');
-                    if (gradeBadge) {
-                        gradeBadge.className = `grade-badge ${allSourcesMastered ? 'grade-mastered' : 'grade-good'}`;
-                        gradeBadge.innerHTML = allSourcesMastered ? 
-                            '<i class="fas fa-star"></i> Mastered' : 
-                            '<i class="fas fa-check"></i> Good';
                     }
                     
-                    // Update assignment progress bar if this is an assignment completion
-                    if (assignmentId) {
-                        console.log('🎯 Assignment completion detected, updating progress for assignment:', assignmentId);
-                        updateAssignmentProgress(assignmentId, targetCard);
+                    if (targetCard) {
+                        const gradeBadge = targetCard.querySelector('.grade-badge');
+                        if (gradeBadge) {
+                            gradeBadge.className = `grade-badge ${allSourcesMastered ? 'grade-mastered' : 'grade-good'}`;
+                            gradeBadge.innerHTML = allSourcesMastered ? 
+                                '<i class="fas fa-star"></i> Mastered' : 
+                                '<i class="fas fa-check"></i> Good';
+                        }
+                        
+                        // Update assignment progress bar if this is an assignment completion
+                        if (assignmentId) {
+                            console.log('🎯 Assignment completion detected, updating progress for assignment:', assignmentId);
+                            updateAssignmentProgress(assignmentId, targetCard);
+                        }
                     }
+                } else {
+                    console.log('🎓 TUTOR MODE: Source modal updated, topic card unchanged');
                 }
             });
 
@@ -2827,11 +3851,30 @@
                                 card.classList.add('selected');
                             }
 
-                    // Determine status class based on percentage
-                            const statusClass = progress.percentage >= 90 ? 'completed' : 
-                                      progress.percentage >= 50 ? 'in-progress' :
-                                      progress.percentage > 0 ? 'failed' :
-                                              'not-started';
+                    // FIXED: Determine status class based on attempts and percentage
+                            let statusClass, statusText, statusIcon;
+                            
+                            if (progress.has_attempts) {
+                                // Source has been attempted
+                                if (progress.percentage >= 90) {
+                                    statusClass = 'completed';
+                                    statusText = 'Completed';
+                                    statusIcon = 'fas fa-check-circle';
+                                } else if (progress.percentage >= 50) {
+                                    statusClass = 'in-progress';
+                                    statusText = 'In Progress';
+                                    statusIcon = 'fas fa-clock';
+                                } else {
+                                    statusClass = 'failed';
+                                    statusText = 'Failed';
+                                    statusIcon = 'fas fa-times-circle';
+                                }
+                            } else {
+                                // Source has not been attempted yet
+                                statusClass = 'not-started';
+                                statusText = 'Not started yet';
+                                statusIcon = 'fas fa-circle';
+                            }
 
                             card.innerHTML = `
                                 <div class="source-status ${statusClass}"></div>
@@ -2844,13 +3887,7 @@
                                                 <span class="ms-2 source-name">${source}</span>
                                             </div>
                                     <div class="source-status-text ${statusClass}">
-                                                ${progress.percentage >= 90 ? 
-                                                    '<i class="fas fa-check-circle me-1"></i>Completed' : 
-                                                    progress.percentage >= 50 ? 
-                                                    '<i class="fas fa-clock me-1"></i>In Progress' :
-                                                    progress.percentage > 0 ?
-                                                    '<i class="fas fa-times-circle me-1"></i>Failed' :
-                                                    '<i class="fas fa-circle me-1"></i>Not Started'}
+                                                <i class="${statusIcon} me-1"></i>${statusText}
                                             </div>
                                         </div>
                                         <div class="source-progress-bar">

@@ -1452,9 +1452,19 @@
                         if (progressBar) {
                             progressBar.style.width = `${data.percentage}%`;
                     
-                            // Update status class
-                            const statusClass = data.percentage >= 90 ? 'completed' :
-                                              data.percentage >= 50 ? 'in-progress' : 'failed';
+                            // FIXED: Update status class based on attempts and percentage
+                            let statusClass;
+                            if (data.has_attempts) {
+                                if (data.percentage >= 90) {
+                                    statusClass = 'completed';
+                                } else if (data.percentage >= 50) {
+                                    statusClass = 'in-progress';
+                                } else {
+                                    statusClass = 'failed';
+                                }
+                            } else {
+                                statusClass = 'not-started';
+                            }
                             progressBar.className = `source-progress-value ${statusClass}`;
                             
                             // Update questions count
@@ -1701,7 +1711,7 @@
                                 confetti({
                                     particleCount: 100,
                                     spread: 70,
-                                    origin: { x: 0.5, y: 0.5 },
+                                    origin: { x: 0.62, y: 0.45 },
                                     colors: ['#FFD700', '#FFA500', '#FF69B4', '#00CED1', '#98FB98'],
                                     zIndex: 10000
                                 });
@@ -2106,7 +2116,7 @@
             confetti({
                 particleCount: 100,
                 spread: 70,
-                origin: { y: 0.6 },
+                origin: { x: 0.62, y: 0.45 },
                 colors: ['#FFD700', '#FFA500', '#FF69B4', '#00CED1', '#98FB98'],
                 zIndex: 9999
             });

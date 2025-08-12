@@ -7,7 +7,7 @@ use App\Observers\PaymentObserver;
 use App\Services\GradingService;
 use App\Services\QuizService;
 use App\Services\NotificationService;
-use App\Services\CacheService;
+use App\Services\Core\UltraConsolidatedCacheService;
 use App\Services\UserStatsService;
 use App\Services\WrittenAnswerEvaluationService;
 use App\Services\QueryMonitoringService;
@@ -23,7 +23,7 @@ class AppServiceProvider extends ServiceProvider
         // Register GradingService with dependencies
         $this->app->singleton(GradingService::class, function ($app) {
             return new GradingService(
-                $app->make(CacheService::class),
+                $app->make(\App\Services\Core\UltraConsolidatedCacheService::class),
                 $app->make(UserStatsService::class),
                 $app->make(NotificationService::class),
                 $app->make(WrittenAnswerEvaluationService::class)
@@ -33,7 +33,7 @@ class AppServiceProvider extends ServiceProvider
         // Register QuizService with dependencies
         $this->app->singleton(QuizService::class, function ($app) {
             return new QuizService(
-                $app->make(CacheService::class)
+                $app->make(\App\Services\Core\UltraConsolidatedCacheService::class)
             );
         });
 
@@ -42,9 +42,9 @@ class AppServiceProvider extends ServiceProvider
             return new NotificationService();
         });
 
-        // Register CacheService as singleton
-        $this->app->singleton(CacheService::class, function ($app) {
-            return new CacheService();
+        // Register UltraConsolidatedCacheService as singleton (replaces CacheService)
+        $this->app->singleton(\App\Services\Core\UltraConsolidatedCacheService::class, function ($app) {
+            return new \App\Services\Core\UltraConsolidatedCacheService();
         });
 
         // Register UserStatsService as singleton
@@ -81,10 +81,10 @@ class AppServiceProvider extends ServiceProvider
             );
         });
 
-        // Register PerformanceOptimizationService as singleton
+        // Register PerformanceOptimizationService as singleton (updated to use consolidated cache)
         $this->app->singleton(\App\Services\PerformanceOptimizationService::class, function ($app) {
             return new \App\Services\PerformanceOptimizationService(
-                $app->make(CacheService::class)
+                $app->make(\App\Services\Core\UltraConsolidatedCacheService::class)
             );
         });
 
@@ -114,7 +114,7 @@ class AppServiceProvider extends ServiceProvider
         });
 
         // Register ResilientCacheService as singleton
-        $this->app->singleton(\App\Services\ResilientCacheService::class, function ($app) {
+        $this->app->singleton(\App\Services\ResilientUltraConsolidatedCacheService::class, function ($app) {
             return new \App\Services\ResilientCacheService();
         });
         

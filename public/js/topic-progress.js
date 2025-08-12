@@ -13,21 +13,46 @@ document.addEventListener('DOMContentLoaded', function() {
                 
                 if (progressBar) {
                     progressBar.style.width = `${progress.percentage}%`;
-                    progressBar.className = `source-progress-value ${progress.percentage >= 90 ? 'completed' : 
-                                          progress.percentage >= 50 ? 'in-progress' : 'failed'}`;
+                    
+                    // FIXED: Determine status class based on attempts and percentage
+                    let statusClass;
+                    if (progress.has_attempts) {
+                        if (progress.percentage >= 90) {
+                            statusClass = 'completed';
+                        } else if (progress.percentage >= 50) {
+                            statusClass = 'in-progress';
+                        } else {
+                            statusClass = 'failed';
+                        }
+                    } else {
+                        statusClass = 'not-started';
+                    }
+                    
+                    progressBar.className = `source-progress-value ${statusClass}`;
                 }
                 
                 if (statusText) {
-                    if (progress.percentage >= 90) {
-                        statusText.innerHTML = '<i class="fas fa-check-circle me-1"></i>Completed';
-                        statusText.className = 'source-status-text completed';
-                    } else if (progress.percentage >= 50) {
-                        statusText.innerHTML = '<i class="fas fa-clock me-1"></i>In Progress';
-                        statusText.className = 'source-status-text in-progress';
+                    // FIXED: Determine status text and class based on attempts and percentage
+                    let statusTextContent, statusClass;
+                    
+                    if (progress.has_attempts) {
+                        if (progress.percentage >= 90) {
+                            statusTextContent = '<i class="fas fa-check-circle me-1"></i>Completed';
+                            statusClass = 'completed';
+                        } else if (progress.percentage >= 50) {
+                            statusTextContent = '<i class="fas fa-clock me-1"></i>In Progress';
+                            statusClass = 'in-progress';
+                        } else {
+                            statusTextContent = '<i class="fas fa-times-circle me-1"></i>Failed';
+                            statusClass = 'failed';
+                        }
                     } else {
-                        statusText.innerHTML = '<i class="fas fa-times-circle me-1"></i>Failed';
-                        statusText.className = 'source-status-text failed';
+                        statusTextContent = '<i class="fas fa-circle me-1"></i>Not started yet';
+                        statusClass = 'not-started';
                     }
+                    
+                    statusText.innerHTML = statusTextContent;
+                    statusText.className = `source-status-text ${statusClass}`;
                 }
                 
                 if (questionsCount) {

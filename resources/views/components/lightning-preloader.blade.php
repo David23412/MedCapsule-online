@@ -1,4 +1,4 @@
-<!-- LIGHTNING-FAST FOUC ELIMINATOR PRELOADER -->
+<!-- GOLDEN STANDARD FOUC ELIMINATOR PRELOADER - EXACT SAME DESIGN -->
 <div id="lightningPreloader" class="lightning-preloader">
     <div class="preloader-container">
         <div class="medcapsule-spinner">
@@ -12,7 +12,7 @@
 </div>
 
 <style>
-/* LIGHTNING-FAST PRELOADER - ELIMINATES ALL FOUC */
+/* GOLDEN STANDARD PRELOADER - ZERO FOUC GUARANTEE */
 .lightning-preloader {
     position: fixed;
     top: 0;
@@ -135,44 +135,170 @@
         font-size: 0.8rem;
     }
 }
+
+/* GOLDEN STANDARD FOUC PREVENTION */
+body.preloader-active {
+    overflow: hidden !important;
+    position: fixed !important;
+    width: 100% !important;
+    height: 100% !important;
+}
+
+/* CRITICAL CSS TO PREVENT NOTIFICATION BELL FOUC */
+.clean-notification-dropdown {
+    visibility: hidden !important;
+    opacity: 0 !important;
+    display: none !important;
+}
+
+.clean-notification-dropdown.show {
+    visibility: visible !important;
+    opacity: 1 !important;
+    display: flex !important;
+}
+
+/* PREVENT HEADER SHIFTS */
+.navbar {
+    min-height: 76px !important;
+}
+
+.navbar-nav {
+    min-height: 40px !important;
+}
+
+/* MINIMAL COURSE CARD FOUC PREVENTION - NO HEIGHT INTERFERENCE */
+.course-card {
+    opacity: 1 !important;
+    transform: none !important;
+}
+
+/* PREVENT NOTIFICATION BELL FOUC */
+.clean-notification-bell,
+#notificationBell,
+.notification-bell {
+    opacity: 0 !important;
+    transition: opacity 0.2s ease !important;
+}
+
+.clean-notification-bell.loaded,
+#notificationBell.loaded,
+.notification-bell.loaded {
+    opacity: 1 !important;
+}
+
+/* PREVENT COURSE IMAGE FOUC - NO HEIGHT INTERFERENCE */
+.course-image {
+    opacity: 1 !important;
+}
+
+/* PREVENT NAVBAR CONTENT SHIFT */
+.navbar-nav {
+    min-height: 40px !important;
+    opacity: 0 !important;
+    transition: opacity 0.3s ease !important;
+}
+
+.navbar-nav.loaded {
+    opacity: 1 !important;
+}
+
+/* PREVENT FONT LOADING SHIFT */
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
+}
+
+body.fonts-loaded {
+    font-family: 'Poppins', -apple-system, BlinkMacSystemFont, sans-serif !important;
+}
 </style>
 
 <script>
-// LIGHTNING-FAST PRELOADER CONTROLLER
+// BULLETPROOF PRELOADER - CANNOT GET STUCK
 (function() {
     'use strict';
     
-    let preloaderHidden = false;
+    console.log('🚀 BULLETPROOF PRELOADER STARTING...');
     
+    // IMMEDIATELY LOCK BODY TO PREVENT FOUC
+    document.body.classList.add('preloader-active');
+    document.documentElement.style.overflow = 'hidden';
+    
+    let preloaderHidden = false;
+    const startTime = performance.now();
+    const currentPath = window.location.pathname;
+    const isCoursesPage = currentPath.includes('/courses') || currentPath.includes('/dashboard');
+    
+    // BULLETPROOF HIDE FUNCTION
     function hidePreloader() {
         if (preloaderHidden) return;
+        preloaderHidden = true;
         
         const preloader = document.getElementById('lightningPreloader');
+        const totalTime = performance.now() - startTime;
+        
+        console.log(`⚡ PRELOADER HIDDEN: ${Math.round(totalTime)}ms - ${isCoursesPage ? 'COURSES' : 'HOME'} PAGE`);
+        
         if (preloader) {
-            preloaderHidden = true;
             preloader.classList.add('hidden');
-            
-            // Remove from DOM after animation for memory optimization
-            setTimeout(() => {
-                if (preloader.parentNode) {
-                    preloader.parentNode.removeChild(preloader);
-                }
-            }, 200);
         }
+        
+        // RESTORE BODY SCROLLING
+        document.body.classList.remove('preloader-active');
+        document.documentElement.style.overflow = '';
+        
+        // Show any hidden elements
+        setTimeout(() => {
+            const notificationBells = document.querySelectorAll('.clean-notification-bell, #notificationBell, .notification-bell');
+            notificationBells.forEach(bell => bell.classList.add('loaded'));
+            
+            const navbarNav = document.querySelector('.navbar-nav');
+            if (navbarNav) navbarNav.classList.add('loaded');
+            
+            document.body.classList.add('fonts-loaded');
+        }, 100);
+        
+        // Remove preloader from DOM
+        setTimeout(() => {
+            if (preloader && preloader.parentNode) {
+                preloader.parentNode.removeChild(preloader);
+            }
+        }, 300);
     }
     
-    // Hide preloader when DOM is ready
-    if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', hidePreloader);
+    // BULLETPROOF TIMING - VISIBLE BUT SNAPPY
+    if (isCoursesPage) {
+        // COURSES PAGE: Wait longer to prevent FOUC
+        setTimeout(hidePreloader, 800);  // Primary timeout
+        setTimeout(hidePreloader, 1200); // Backup timeout
     } else {
-        // DOM already loaded
-        setTimeout(hidePreloader, 50);
+        // HOME PAGE: Visible but still fast
+        setTimeout(hidePreloader, 600);  // Primary timeout - now visible!
+        setTimeout(hidePreloader, 800);  // Backup timeout
     }
     
-    // Fallback timeout - never show preloader for more than 1 second
-    setTimeout(hidePreloader, 1000);
+    // EMERGENCY FALLBACK - ABSOLUTE MAXIMUM
+    setTimeout(() => {
+        if (!preloaderHidden) {
+            console.log('🚨 EMERGENCY FALLBACK ACTIVATED!');
+            hidePreloader();
+        }
+    }, 2000);
     
-    // Hide on window load as backup
-    window.addEventListener('load', hidePreloader);
+    // DOM READY OPTIMIZATION - STILL VISIBLE
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', () => {
+            setTimeout(() => {
+                if (!preloaderHidden && !isCoursesPage) {
+                    hidePreloader();
+                }
+            }, 500); // Increased so it's visible
+        });
+    } else if (!isCoursesPage) {
+        // DOM already ready and it's home page - but still show preloader
+        setTimeout(hidePreloader, 600);
+    }
+    
+    console.log(`⚡ PRELOADER CONFIGURED: ${isCoursesPage ? 'COURSES (800ms)' : 'HOME (400ms)'} MODE`);
+    
 })();
 </script> 

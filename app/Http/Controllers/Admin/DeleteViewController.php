@@ -21,7 +21,7 @@ class DeleteViewController extends Controller
     public function index()
     {
         try {
-            $cacheKey = QuizCacheService::generateCacheKey('delete_index', ['user_id' => auth()->id() ?? 'guest']);
+            $cacheKey = QuizUltraConsolidatedCacheService::generateCacheKey('delete_index', ['user_id' => auth()->id() ?? 'guest']);
             
             $data = Cache::remember($cacheKey, 600, function () {
                 $stats = [

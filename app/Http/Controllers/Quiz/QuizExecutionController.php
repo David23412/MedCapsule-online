@@ -9,7 +9,7 @@ use App\Models\Assignment;
 use App\Services\QuizService;
 use App\Services\GradingService;
 use App\Services\Quiz\QuizValidationService;
-use App\Services\CacheService;
+use App\Services\Core\UltraConsolidatedCacheService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Cache;
@@ -79,7 +79,7 @@ class QuizExecutionController extends Controller
             Log::info('Assignment ID provided', ['assignment_id' => $assignmentId]);
             
             $assignment = Cache::remember("assignment_{$assignmentId}", 300, function () use ($assignmentId) {
-                return Assignment::select('id', 'topic_id', 'status', 'created_at', 'course_id', 'duration_minutes', 'assignment_mode', 'assigned_source', 'deadline', 'title')
+                return Assignment::select('id', 'topic_id', 'created_at', 'course_id', 'duration_minutes', 'assignment_mode', 'assigned_source', 'deadline', 'title')
                     ->with(['topic:id,name,course_id', 'topic.course:id,name'])
                     ->find($assignmentId);
             });
@@ -87,7 +87,7 @@ class QuizExecutionController extends Controller
             if ($assignment) {
                 Log::info('Assignment found', [
                     'assignment_id' => $assignment->id,
-                    'status' => $assignment->status,
+                    'status' => $assignment->getCurrentStatusAttribute(),
                     'current_user_id' => $user->id
                 ]);
             } else {
@@ -247,8 +247,8 @@ class QuizExecutionController extends Controller
             );
             
             // LETHAL CACHE INVALIDATION
-            app(CacheService::class)->forget("user_progress_{$userId}_{$topic->id}");
-            app(CacheService::class)->forget("quiz_cache_{$userId}_{$topic->id}");
+            app(UltraConsolidatedCacheService::class)->forget("user_progress_{$userId}_{$topic->id}");
+            app(UltraConsolidatedCacheService::class)->forget("quiz_cache_{$userId}_{$topic->id}");
             
             // LETHAL DEBUG: Log assignment completion
             $assignmentCompleted = $assignmentId ? true : false;

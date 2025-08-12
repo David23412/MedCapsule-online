@@ -1,8 +1,12 @@
+<?php
+
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Models\Question;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\DB;
+use App\Http\Controllers\VideoController;
+use App\Http\Controllers\VideoProxyController;
 
 /*
 |--------------------------------------------------------------------------
@@ -15,7 +19,7 @@ use Illuminate\Support\Facades\DB;
 |
 */
 
-Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
+Route::middleware('auth')->get('/user', function (Request $request) {
     return $request->user();
 });
 
@@ -164,7 +168,7 @@ Route::post('/test-payment-verify/{payment}', function($payment) {
     }
 }); 
 
-Route::middleware('auth:sanctum')->group(function () {
+Route::middleware('auth')->group(function () {
     // User progress endpoint for milestone bar updates
     Route::get('/user/progress', function () {
         return response()->json([
@@ -173,4 +177,10 @@ Route::middleware('auth:sanctum')->group(function () {
             'study_streak_days' => auth()->user()->study_streak_days ?? 0
         ]);
     });
+    
+    // Video management routes
+    Route::post('/upload-video', [VideoController::class, 'uploadVideo']);
+    Route::post('/video-token/{videoId}', [VideoController::class, 'getVideoAccess']);
+    Route::get('/video-stream/{token}', [VideoController::class, 'getVideoStream']);
 }); 
+

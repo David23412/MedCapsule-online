@@ -28,7 +28,7 @@ class SendMistakeReviewNotification implements ShouldQueue
     public function handle(MistakesNeedReview $event): void
     {
         try {
-            $this->notificationService->createReviewMistakesNotification(
+            \App\Services\NotificationTriggerService::onMistakesNeedReview(
                 $event->user,
                 $event->mistakeCount
             );

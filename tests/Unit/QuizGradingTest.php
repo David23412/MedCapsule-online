@@ -8,7 +8,7 @@ use Illuminate\Foundation\Testing\WithFaker;
 use App\Http\Controllers\QuizController;
 use App\Services\GradingService;
 use App\Services\QuizService;
-use App\Services\CacheService;
+use App\Services\Core\UltraConsolidatedCacheService;
 use App\Services\UserStatsService;
 use App\Models\Question;
 use App\Models\Topic;
@@ -69,7 +69,7 @@ class QuizGradingTest extends TestCase
         $this->quizController = new QuizController(
             $this->gradingService,
             app(QuizService::class),
-            app(CacheService::class),
+            app(UltraConsolidatedCacheService::class),
             app(UserStatsService::class)
         );
         

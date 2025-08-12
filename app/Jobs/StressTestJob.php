@@ -13,7 +13,7 @@ use Illuminate\Support\Facades\Auth;
 use App\Models\User;
 use App\Models\Quiz;
 use App\Models\Assignment;
-use App\Models\Notification;
+// REMOVED: use App\Models\Notification; - Using cache-based notifications instead
 use App\Models\Course;
 use Carbon\Carbon;
 
@@ -98,7 +98,7 @@ class StressTestJob implements ShouldQueue
             }
             
             // Add small delay to simulate real user behavior
-            usleep(rand(10000, 50000)); // 10-50ms
+            app('performance.async')->delayAsync(rand(10000, 50000)); // 10-50ms
         }
     }
 
@@ -266,12 +266,12 @@ class StressTestJob implements ShouldQueue
         $latencyMs = $this->parameters['latency_ms'] ?? 500;
         
         // Simulate network delay
-        usleep($latencyMs * 1000);
+        app('performance.async')->delayAsync($latencyMs );
         
         // Execute database operations with simulated latency
         for ($i = 0; $i < 10; $i++) {
             DB::select("SELECT SLEEP(0.05)"); // 50ms per query
-            usleep(rand(10000, 100000)); // Additional random delay
+            app('performance.async')->delayAsync(rand(10000, 100000)); // Additional random delay
         }
     }
 

@@ -168,18 +168,18 @@ class Mistake extends Model
             // Clear course-specific caches
             $courses = \App\Models\Course::all();
             foreach ($courses as $course) {
-                $cacheKeys[] = \App\Services\QuizCacheService::generateCacheKey('mistakes_full', [
+                $cacheKeys[] = \App\Services\QuizUltraConsolidatedCacheService::generateCacheKey('mistakes_full', [
                     'user_id' => $this->user_id, 
                     'course_filter' => $course->id
                 ]);
             }
             
             // Clear general mistake caches
-            $cacheKeys[] = \App\Services\QuizCacheService::generateCacheKey('mistakes_full', [
+            $cacheKeys[] = \App\Services\QuizUltraConsolidatedCacheService::generateCacheKey('mistakes_full', [
                 'user_id' => $this->user_id, 
                 'course_filter' => 'all'
             ]);
-            $cacheKeys[] = \App\Services\QuizCacheService::generateCacheKey('mistakes_full', [
+            $cacheKeys[] = \App\Services\QuizUltraConsolidatedCacheService::generateCacheKey('mistakes_full', [
                 'user_id' => $this->user_id, 
                 'course_filter' => 'skipped'
             ]);

@@ -115,7 +115,7 @@ class RealWorldAttackSimulationTest extends TestCase
             echo "  → Flags: " . implode(', ', $analysis['flags']) . "\n\n";
             
             // Small delay to simulate real-world timing
-            usleep(100000); // 100ms
+            app('performance.async')->delayAsync(100000); // 100ms
         }
         
         $totalTime = (microtime(true) - $startTime) * 1000;
@@ -459,7 +459,7 @@ class RealWorldAttackSimulationTest extends TestCase
             $attackStats['total_requests']++;
             
             // Small delay to prevent overwhelming
-            usleep(10000); // 10ms
+            app('performance.async')->delayAsync(10000); // 10ms
         }
         
         $actualDuration = time() - $startTime;

@@ -2,7 +2,7 @@
 
 namespace App\Events;
 
-use App\Models\Notification;
+// REMOVED: use App\Models\Notification; - Using cache-based notifications instead
 use Illuminate\Broadcasting\Channel;
 use Illuminate\Broadcasting\InteractsWithSockets;
 use Illuminate\Broadcasting\PresenceChannel;

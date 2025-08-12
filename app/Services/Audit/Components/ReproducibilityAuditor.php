@@ -82,7 +82,7 @@ class ReproducibilityAuditor
                 ];
 
                 // Add small delay between iterations to avoid race conditions
-                usleep(100000); // 100ms
+                app('performance.async')->delayAsync(100000); // 100ms
 
             } catch (Exception $e) {
                 $results[] = [

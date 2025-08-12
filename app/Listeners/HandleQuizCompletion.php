@@ -5,7 +5,7 @@ namespace App\Listeners;
 use App\Events\QuizCompleted;
 use App\Services\UserStatsService;
 use App\Services\NotificationService;
-use App\Services\CacheService;
+use App\Services\Core\UltraConsolidatedCacheService;
 use App\Models\Mistake;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Queue\InteractsWithQueue;
@@ -23,7 +23,7 @@ class HandleQuizCompletion implements ShouldQueue
 
     protected UserStatsService $userStatsService;
     protected NotificationService $notificationService;
-    protected CacheService $cacheService;
+    protected UltraConsolidatedCacheService $cacheService;
 
     /**
      * Create the event listener.
@@ -31,7 +31,7 @@ class HandleQuizCompletion implements ShouldQueue
     public function __construct(
         UserStatsService $userStatsService,
         NotificationService $notificationService,
-        CacheService $cacheService
+        UltraConsolidatedCacheService $cacheService
     ) {
         $this->userStatsService = $userStatsService;
         $this->notificationService = $notificationService;
@@ -125,15 +125,21 @@ class HandleQuizCompletion implements ShouldQueue
         try {
             $percentage = $event->gradingResult['percentage_grade'];
             
-            // Check for achievements and send notifications
+            // LETHAL FIX: Use new notification system for topic mastery
             if ($percentage >= 90) {
-                $this->notificationService->createTopicMasteryNotification(
+                \App\Services\NotificationTriggerService::onTopicMastery(
                     $event->user,
-                    $event->topic->name
+                    $event->topic->name,
+                    $event->course->name ?? null
                 );
+                
+                // Check for course mastery after topic mastery
+                if ($event->course) {
+                    $this->checkForCourseMastery($event->user, $event->course);
+                }
             }
             
-            // Check for level up
+            // LETHAL FIX: Use new notification system for level up
             $this->checkForLevelUp($event->user);
             
         } catch (\Exception $e) {
@@ -208,16 +214,58 @@ class HandleQuizCompletion implements ShouldQueue
             $newLevel = floor($user->xp / 1000) + 1;
             
             if ($newLevel > $currentLevel) {
-                $this->notificationService->createLevelUpNotification(
+                \App\Services\NotificationTriggerService::onLevelUp(
                     $user, 
                     $newLevel, 
-                    $user->xp
+                    'quiz_completion'
                 );
             }
             
         } catch (\Exception $e) {
             Log::error('Level up check failed', [
                 'user_id' => $user->id,
+                'error' => $e->getMessage()
+            ]);
+        }
+    }
+
+    /**
+     * Check for course mastery after topic mastery
+     */
+    private function checkForCourseMastery($user, $course): void
+    {
+        try {
+            // Check if user has mastered all topics in this course
+            $totalTopics = $course->topics()->count();
+            $masteredTopics = \App\Models\UserTopicProgress::where('user_id', $user->id)
+                ->whereIn('topic_id', $course->topics()->pluck('id'))
+                ->where('percentage_grade', '>=', 90) // 90%+ accuracy for mastery
+                ->count();
+                
+            if ($totalTopics > 0 && $masteredTopics >= $totalTopics) {
+                // Check if we already sent a mastery notification for this course
+                $existingNotification = $user->notifications()
+                    ->where('type', 'course_mastery')
+                    ->where('data->course_id', $course->id)
+                    ->exists();
+                    
+                if (!$existingNotification) {
+                    // Trigger course mastery notification
+                    \App\Services\NotificationTriggerService::onCourseMastery($user, $course->name);
+                    
+                    Log::info('Course mastery achieved after topic mastery', [
+                        'user_id' => $user->id,
+                        'course_id' => $course->id,
+                        'course_name' => $course->name,
+                        'mastered_topics' => $masteredTopics,
+                        'total_topics' => $totalTopics
+                    ]);
+                }
+            }
+        } catch (\Exception $e) {
+            Log::error('Course mastery check failed', [
+                'user_id' => $user->id,
+                'course_id' => $course->id ?? null,
                 'error' => $e->getMessage()
             ]);
         }

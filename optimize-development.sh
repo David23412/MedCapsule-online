@@ -13,6 +13,7 @@ php artisan route:cache
 # Warm up cache with development data
 echo "🔥 Warming up development cache..."
 php artisan cache:warm
+php artisan cache:warm-home
 
 # Install development dependencies
 echo "📦 Installing development dependencies..."

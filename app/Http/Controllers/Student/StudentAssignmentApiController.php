@@ -66,7 +66,7 @@ class StudentAssignmentApiController extends Controller
         }
 
         // LETHAL EAGER LOADING: Load assignments with comprehensive related data
-        $assignments = Assignment::select('id', 'user_id', 'topic_id', 'course_id', 'title', 'status', 'deadline', 'created_at', 'tutor_id')
+        $assignments = Assignment::select('id', 'user_id', 'topic_id', 'course_id', 'title', 'deadline', 'created_at')
                                 ->with([
                                     'topic:id,name,course_id',
                                     'topic.course:id,name',
@@ -75,8 +75,12 @@ class StudentAssignmentApiController extends Controller
                                 ])
                                 ->where('user_id', auth()->id())
                                 ->where('course_id', $courseId)
-                                ->whereIn('status', [Assignment::STATUS_ACTIVE, Assignment::STATUS_OVERDUE])
                                 ->get()
+                                ->filter(function($assignment) {
+                                    // Filter by computed status since status column doesn't exist
+                                    $status = $assignment->getCurrentStatusAttribute();
+                                    return in_array($status, [Assignment::STATUS_ACTIVE, Assignment::STATUS_OVERDUE]);
+                                })
                                 ->map(function($assignment) {
                                     return [
                                         'id' => $assignment->id,

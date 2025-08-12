@@ -3,14 +3,14 @@
 namespace App\Observers;
 
 use App\Models\Question;
-use App\Services\CacheService;
+use App\Services\Core\UltraConsolidatedCacheService;
 use Illuminate\Support\Facades\Log;
 
 class QuestionObserver
 {
     protected $cacheService;
 
-    public function __construct(CacheService $cacheService)
+    public function __construct(UltraConsolidatedCacheService $cacheService)
     {
         $this->cacheService = $cacheService;
     }

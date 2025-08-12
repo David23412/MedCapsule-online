@@ -57,7 +57,7 @@ class ConnectionManager
                 }
                 
                 // Exponential backoff: 100ms, 200ms, 400ms
-                usleep(pow(2, $attempt - 1) * 100000);
+                app('performance.async')->delayAsync(pow(2, $attempt - 1) * 100000);
             }
         }
     }

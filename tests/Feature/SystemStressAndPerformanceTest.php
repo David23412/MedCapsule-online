@@ -610,7 +610,7 @@ class SystemStressAndPerformanceTest extends TestCase
     private function simulateNetworkLatency()
     {
         // Simulate network delay
-        usleep(rand(10000, 50000)); // 10-50ms delay
+        app('performance.async')->delayAsync(rand(10000, 50000)); // 10-50ms delay
     }
 
     private function simulateConcurrentWrites()

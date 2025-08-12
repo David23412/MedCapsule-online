@@ -3,7 +3,7 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
-use App\Services\CacheService;
+use App\Services\Core\UltraConsolidatedCacheService;
 use Illuminate\Http\JsonResponse;
 use App\Services\QuizService;
 use Illuminate\Support\Facades\Config;
@@ -29,7 +29,7 @@ class PaymentSettingsController extends Controller
     public function showPaymentSettingsForm()
     {
         // Ultra-aggressive caching for payment settings with eager loading
-        $cacheKey = QuizCacheService::generateCacheKey('payment_settings', [
+        $cacheKey = QuizUltraConsolidatedCacheService::generateCacheKey('payment_settings', [
             'user_id' => auth()->id(),
             'timestamp' => now()->format('Y-m-d-H')
         ]);

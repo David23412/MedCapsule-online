@@ -6,7 +6,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
-use App\Services\CacheService;
+use App\Services\Core\UltraConsolidatedCacheService;
 
 class Question extends Model
 {
@@ -670,7 +670,7 @@ class Question extends Model
         static::deleted(function ($question) {
             try {
                 // Clear all caches using the CacheService
-                $cacheService = app(CacheService::class);
+                $cacheService = app(UltraConsolidatedCacheService::class);
                 $cacheService->clearQuestionCaches($question->id, $question->topic_id);
                 
                 // Force clear all session data that might contain questions
@@ -694,7 +694,7 @@ class Question extends Model
         static::updated(function ($question) {
             try {
                 // Clear all caches using the CacheService
-                $cacheService = app(CacheService::class);
+                $cacheService = app(UltraConsolidatedCacheService::class);
                 $cacheService->clearQuestionCaches($question->id, $question->topic_id);
                 
                 // Log the update and cache clearing

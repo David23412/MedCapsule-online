@@ -14,6 +14,7 @@ use App\Models\UserTopicProgress;
 use App\Models\QuizAttempt;
 use App\Models\SourceProgress;
 use App\Models\QuestionAttempt;
+use App\Models\Video;
 
 class Topic extends Model
 {
@@ -80,6 +81,16 @@ class Topic extends Model
     public function lockedByTutor(): BelongsTo
     {
         return $this->belongsTo(User::class, 'locked_by_tutor_id');
+    }
+
+    public function video()
+    {
+        return $this->hasOne(Video::class);
+    }
+    
+    public function hasVideo()
+    {
+        return $this->video()->exists();
     }
 
     // 💀 N+1 WARNING: This accessor accesses 'userProgress' - consider eager loading

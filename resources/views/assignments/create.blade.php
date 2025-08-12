@@ -772,16 +772,182 @@
         .duration-btn i {
             font-size: 1rem;
         }
+
+        /* DEADLINE INPUT STYLING */
+        .deadline-inputs {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 0.5rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .deadline-inputs .form-control,
+        .deadline-inputs .form-select {
+            font-size: 0.9rem;
+            padding: 0.75rem 0.5rem;
+        }
+
+        .deadline-ampm {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 0.5rem;
+        }
+
+        .deadline-ampm .form-select {
+            font-size: 0.9rem;
+            padding: 0.75rem 0.5rem;
+        }
+
+        /* LIGHTNING-FAST PRELOADER - ELIMINATES ALL FOUC */
+        .lightning-preloader {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 99999;
+            transition: opacity 0.2s ease, visibility 0.2s ease;
+            will-change: opacity, visibility;
+            backface-visibility: hidden;
+            transform: translateZ(0);
+        }
+
+        .lightning-preloader.hidden {
+            opacity: 0;
+            visibility: hidden;
+            pointer-events: none;
+        }
+
+        .preloader-container {
+            text-align: center;
+            animation: fadeInUp 0.3s ease-out;
+        }
+
+        .medcapsule-spinner {
+            position: relative;
+            width: 60px;
+            height: 60px;
+            margin: 0 auto 1.5rem;
+        }
+
+        .spinner-ring {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            border: 3px solid transparent;
+            border-top: 3px solid #007bff;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        .spinner-ring:nth-child(1) {
+            animation-delay: 0s;
+            border-top-color: #007bff;
+        }
+
+        .spinner-ring:nth-child(2) {
+            animation-delay: -0.33s;
+            border-top-color: #0056b3;
+            width: 80%;
+            height: 80%;
+            top: 10%;
+            left: 10%;
+        }
+
+        .spinner-ring:nth-child(3) {
+            animation-delay: -0.66s;
+            border-top-color: #004085;
+            width: 60%;
+            height: 60%;
+            top: 20%;
+            left: 20%;
+        }
+
+        .preloader-brand {
+            font-size: 1.8rem;
+            font-weight: 700;
+            color: #007bff;
+            margin-bottom: 0.5rem;
+            letter-spacing: -0.5px;
+            text-shadow: 0 1px 3px rgba(0, 123, 255, 0.1);
+        }
+
+        .preloader-subtitle {
+            font-size: 0.9rem;
+            color: #6c757d;
+            font-weight: 500;
+            opacity: 0.8;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* PERFORMANCE OPTIMIZATIONS */
+        .lightning-preloader * {
+            will-change: auto;
+            backface-visibility: hidden;
+            transform: translateZ(0);
+        }
+
+        /* RESPONSIVE DESIGN */
+        @media (max-width: 768px) {
+            .medcapsule-spinner {
+                width: 50px;
+                height: 50px;
+            }
+            
+            .preloader-brand {
+                font-size: 1.5rem;
+            }
+            
+            .preloader-subtitle {
+                font-size: 0.8rem;
+            }
+            
+            .deadline-inputs {
+                grid-template-columns: 1fr 1fr;
+                gap: 0.75rem;
+            }
+            
+            .deadline-inputs .form-control:first-child {
+                grid-column: 1 / -1;
+            }
+            
+            .deadline-ampm {
+                grid-template-columns: 1fr;
+                gap: 0.75rem;
+            }
+        }
     </style>
 </head>
 <body>
-    <!-- Preloader to prevent FOUC -->
-    <div class="page-preloader" id="pagePreloader">
-        <div class="preloader-content">
-            <div class="spinner-border text-primary" role="status">
-                <span class="visually-hidden">Loading...</span>
+    <!-- LIGHTNING-FAST FOUC ELIMINATOR PRELOADER -->
+    <div id="lightningPreloader" class="lightning-preloader">
+        <div class="preloader-container">
+            <div class="medcapsule-spinner">
+                <div class="spinner-ring"></div>
+                <div class="spinner-ring"></div>
+                <div class="spinner-ring"></div>
             </div>
-            <div class="preloader-text">MedCapsule</div>
+            <div class="preloader-brand">MedCapsule</div>
+            <div class="preloader-subtitle">Loading...</div>
         </div>
     </div>
 
@@ -944,8 +1110,27 @@
                         
                         <div class="form-field">
                             <label for="deadline" class="form-label">Deadline <span class="field-required">*</span></label>
-                            <input type="datetime-local" class="form-control" id="deadline" name="deadline" 
-                                   required min="{{ now()->format('Y-m-d\TH:i') }}">
+                            <div class="deadline-inputs">
+                                <input type="date" class="form-control" id="deadline_date" name="deadline_date" 
+                                       required min="{{ now()->format('Y-m-d') }}">
+                                <select class="form-select" id="deadline_hour" name="deadline_hour" required>
+                                    @for($i = 1; $i <= 12; $i++)
+                                        <option value="{{ $i }}" {{ $i == 12 ? 'selected' : '' }}>{{ $i }}</option>
+                                    @endfor
+                                </select>
+                                <select class="form-select" id="deadline_minute" name="deadline_minute" required>
+                                    @for($i = 0; $i < 60; $i += 15)
+                                        <option value="{{ $i }}" {{ $i == 0 ? 'selected' : '' }}>{{ str_pad($i, 2, '0', STR_PAD_LEFT) }}</option>
+                                    @endfor
+                                </select>
+                            </div>
+                            <div class="deadline-ampm">
+                                <select class="form-select" id="deadline_ampm" name="deadline_ampm" required>
+                                    <option value="AM">AM</option>
+                                    <option value="PM" selected>PM</option>
+                                </select>
+                                <input type="hidden" id="deadline" name="deadline">
+                            </div>
                             <div class="quick-actions">
                                 <button type="button" class="quick-btn" onclick="setQuickDeadlineSeconds(10)">10s</button>
                                 <button type="button" class="quick-btn" onclick="setQuickDeadline(1)">Tomorrow</button>
@@ -1051,23 +1236,11 @@
     </div>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
     <script>
-        // LETHAL PRELOADER HANDLER - ELIMINATES FOUC
+        // Show navbar after page loads
         document.addEventListener('DOMContentLoaded', function() {
-            const preloader = document.getElementById('pagePreloader');
             const navbar = document.querySelector('.navbar');
-            
-            // Hide preloader and show navbar after everything is loaded
-            setTimeout(() => {
-                preloader.classList.add('hidden');
+            if (navbar) {
                 navbar.style.opacity = '1';
-            }, 300);
-        });
-
-        // LETHAL PAGE TRANSITION HANDLER
-        document.addEventListener('beforeunload', function() {
-            const preloader = document.getElementById('pagePreloader');
-            if (preloader) {
-                preloader.classList.remove('hidden');
             }
         });
 
@@ -1274,34 +1447,46 @@
             document.getElementById('duration_minutes').value = minutes;
         }
 
-        // TIMEZONE-AWARE DEADLINE SETTING
+        // TIMEZONE-AWARE DEADLINE SETTING - 12 HOUR FORMAT
         function setQuickDeadline(days) {
             const now = new Date();
             now.setDate(now.getDate() + days);
             now.setHours(23, 59, 0, 0);
             
-            // Format for datetime-local input (YYYY-MM-DDTHH:MM)
+            // Set date
             const year = now.getFullYear();
             const month = String(now.getMonth() + 1).padStart(2, '0');
             const day = String(now.getDate()).padStart(2, '0');
-            const hours = String(now.getHours()).padStart(2, '0');
-            const minutes = String(now.getMinutes()).padStart(2, '0');
+            document.getElementById('deadline_date').value = `${year}-${month}-${day}`;
             
-            document.getElementById('deadline').value = `${year}-${month}-${day}T${hours}:${minutes}`;
+            // Set time to 11:59 PM
+            document.getElementById('deadline_hour').value = '11';
+            document.getElementById('deadline_minute').value = '45';
+            document.getElementById('deadline_ampm').value = 'PM';
         }
 
         function setQuickDeadlineSeconds(seconds) {
             const now = new Date();
             now.setSeconds(now.getSeconds() + seconds);
             
-            // Format for datetime-local input (YYYY-MM-DDTHH:MM)
+            // Set date
             const year = now.getFullYear();
             const month = String(now.getMonth() + 1).padStart(2, '0');
             const day = String(now.getDate()).padStart(2, '0');
-            const hours = String(now.getHours()).padStart(2, '0');
-            const minutes = String(now.getMinutes()).padStart(2, '0');
+            document.getElementById('deadline_date').value = `${year}-${month}-${day}`;
             
-            document.getElementById('deadline').value = `${year}-${month}-${day}T${hours}:${minutes}`;
+            // Set time
+            let hours = now.getHours();
+            const minutes = now.getMinutes();
+            const ampm = hours >= 12 ? 'PM' : 'AM';
+            
+            // Convert to 12-hour format
+            hours = hours % 12;
+            hours = hours ? hours : 12; // 0 should be 12
+            
+            document.getElementById('deadline_hour').value = hours;
+            document.getElementById('deadline_minute').value = Math.floor(minutes / 15) * 15; // Round to nearest 15
+            document.getElementById('deadline_ampm').value = ampm;
         }
 
         // PRELOADED DATA FOR INSTANT LOADING
@@ -1389,6 +1574,35 @@
             }
         }
 
+        // COMBINE DEADLINE INPUTS INTO SINGLE DATETIME
+        function updateDeadlineField() {
+            const date = document.getElementById('deadline_date').value;
+            const hour = parseInt(document.getElementById('deadline_hour').value);
+            const minute = parseInt(document.getElementById('deadline_minute').value);
+            const ampm = document.getElementById('deadline_ampm').value;
+            
+            if (date && hour && minute !== undefined && ampm) {
+                // Convert 12-hour to 24-hour format
+                let hour24 = hour;
+                if (ampm === 'PM' && hour !== 12) {
+                    hour24 = hour + 12;
+                } else if (ampm === 'AM' && hour === 12) {
+                    hour24 = 0;
+                }
+                
+                // Format as YYYY-MM-DDTHH:MM
+                const formattedHour = String(hour24).padStart(2, '0');
+                const formattedMinute = String(minute).padStart(2, '0');
+                document.getElementById('deadline').value = `${date}T${formattedHour}:${formattedMinute}`;
+            }
+        }
+
+        // UPDATE DEADLINE WHEN ANY INPUT CHANGES
+        document.getElementById('deadline_date').addEventListener('change', updateDeadlineField);
+        document.getElementById('deadline_hour').addEventListener('change', updateDeadlineField);
+        document.getElementById('deadline_minute').addEventListener('change', updateDeadlineField);
+        document.getElementById('deadline_ampm').addEventListener('change', updateDeadlineField);
+
         // INSTANT FORM VALIDATION
         document.getElementById('assignmentForm').addEventListener('submit', function(e) {
             const selectedStudents = document.querySelectorAll('.student-checkbox-input:checked').length;
@@ -1398,6 +1612,9 @@
                 alert('⚡ Select at least one student!');
                 return false;
             }
+            
+            // Update deadline field before validation
+            updateDeadlineField();
             
             const deadline = new Date(document.getElementById('deadline').value);
             const now = new Date();
@@ -1537,6 +1754,9 @@
             updateSelectionSummary();
             updateSourceRequirement();
             
+            // Set default deadline (tomorrow at 11:59 PM)
+            setQuickDeadline(1);
+            
             // Auto-focus first field for speed
             document.getElementById('course_id').focus();
             
@@ -1548,6 +1768,46 @@
                 }
             });
         });
+    </script>
+
+    <script>
+    // LIGHTNING-FAST PRELOADER CONTROLLER
+    (function() {
+        'use strict';
+        
+        let preloaderHidden = false;
+        
+        function hidePreloader() {
+            if (preloaderHidden) return;
+            
+            const preloader = document.getElementById('lightningPreloader');
+            if (preloader) {
+                preloaderHidden = true;
+                preloader.classList.add('hidden');
+                
+                // Remove from DOM after animation for memory optimization
+                setTimeout(() => {
+                    if (preloader.parentNode) {
+                        preloader.parentNode.removeChild(preloader);
+                    }
+                }, 200);
+            }
+        }
+        
+        // Hide preloader when DOM is ready
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', hidePreloader);
+        } else {
+            // DOM already loaded
+            setTimeout(hidePreloader, 50);
+        }
+        
+        // Fallback timeout - never show preloader for more than 1 second
+        setTimeout(hidePreloader, 1000);
+        
+        // Hide on window load as backup
+        window.addEventListener('load', hidePreloader);
+    })();
     </script>
 </body>
 </html>

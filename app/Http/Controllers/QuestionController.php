@@ -22,7 +22,7 @@ class QuestionController extends Controller
     public function showAddQuestionForm()
     {
         // Ultra-aggressive caching for topics
-        $cacheKey = QuizCacheService::generateCacheKey('admin_topics_all', ['timestamp' => now()->format('Y-m-d-H')]);
+        $cacheKey = QuizUltraConsolidatedCacheService::generateCacheKey('admin_topics_all', ['timestamp' => now()->format('Y-m-d-H')]);
         $topics = Cache::remember($cacheKey, 3600, function () {
             return Topic::select('id', 'name', 'course_id')->with('course:id,name')->get();
         });

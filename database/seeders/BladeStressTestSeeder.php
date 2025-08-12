@@ -1095,7 +1095,7 @@ class BladeStressTestSeeder extends Seeder
             }
         } catch (Exception $e) {
             // Simulate operation throttling
-            usleep(1000); // 1ms delay
+            app('performance.async')->delayAsync(1000); // 1ms delay
         }
     }
     

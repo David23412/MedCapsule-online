@@ -49,7 +49,7 @@ class PaymentLogController extends Controller
                 'date_from' => 'nullable|date',
                 'date_to' => 'nullable|date|after_or_equal:date_from'
             ]);
-            $cacheKey = QuizCacheService::generateCacheKey('payment_logs', [
+            $cacheKey = QuizUltraConsolidatedCacheService::generateCacheKey('payment_logs', [
                 'filters' => $filters,
                 'user_id' => auth()->id(),
                 'timestamp' => now()->format('Y-m-d-H')

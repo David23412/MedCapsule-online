@@ -16,12 +16,73 @@
     <link rel="dns-prefetch" href="//cdn.jsdelivr.net">
     <link rel="dns-prefetch" href="//cdnjs.cloudflare.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    
+    <!-- SUPER MINIMAL CRITICAL CSS -->
+    <style>
+        /* ESSENTIAL FOUC PREVENTION + PERFORMANCE */
+        .clean-notification-dropdown{display:none!important}
+        .clean-notification-dropdown.show{display:flex!important}
+        .navbar{min-height:76px!important}
+        .course-card{opacity:1!important;transform:none!important;contain:layout style paint}
+        .course-image{background-color:#f8f9fa!important;opacity:1!important;will-change:auto}
+        body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif!important}
+        /* INSTANT PERFORMANCE BOOST */
+        *{box-sizing:border-box}
+        .courses-grid{contain:layout style;transform:translateZ(0)}
+        .course-card{backface-visibility:hidden}
+    </style>
+    
+    <!-- SUPER FAST IMAGE PRELOADING - ONLY FIRST 2 VISIBLE IMAGES -->
+    @foreach ($courses->take(2) as $course)
+        @php
+            $imageUrl = $course->image_url;
+            // AGGRESSIVE image optimization
+            if (str_contains($imageUrl, 'unsplash.com')) {
+                $imageUrl = str_replace('?', '?w=420&h=580&fit=crop&auto=format,compress&q=60&fm=webp&', $imageUrl);
+            } elseif (str_contains($imageUrl, 'picsum.photos')) {
+                $imageUrl = str_replace('picsum.photos/', 'picsum.photos/420/580/', $imageUrl) . '?blur=1';
+            }
+        @endphp
+        <link rel="preload" as="image" href="{{ $imageUrl }}" fetchpriority="high">
+    @endforeach
+    
+    <!-- SUPER AGGRESSIVE RESOURCE HINTS -->
+    <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+    <link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>
+    <link rel="preconnect" href="https://fonts.googleapis.com" crossorigin>
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="preconnect" href="https://code.jquery.com" crossorigin>
+    
+    <!-- ONLY PRECONNECT TO ACTIVE IMAGE DOMAINS -->
+    @if($courses->isNotEmpty())
+        @php
+            $imageDomains = $courses->pluck('image_url')->map(function($url) {
+                return parse_url($url, PHP_URL_HOST);
+            })->unique()->take(2); // Only first 2 domains
+        @endphp
+        @foreach($imageDomains as $domain)
+            <link rel="preconnect" href="https://{{ $domain }}" crossorigin>
+        @endforeach
+    @endif
 
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/css2?family=Crimson+Pro:wght@700;800;900&display=swap" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <!-- SUPER LIGHTNING SPEED CSS LOADING - FIXED ONLOAD HANDLER -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="preload" as="style" onload="if(this){this.onload=null;this.rel='stylesheet';}">
+    <noscript><link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet"></noscript>
+    
+    <!-- INSTANT FONT LOADING - SYSTEM FONTS FIRST -->
+    <style>
+        /* INSTANT SYSTEM FONTS - ZERO DELAY */
+        body, .navbar-brand, .course-title, .preloader-brand {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif !important;
+        }
+    </style>
+    
+    <!-- LOAD CUSTOM FONTS IN BACKGROUND - FIXED ONLOAD HANDLER -->
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="preload" as="style" onload="if(this&&document.body){this.onload=null;this.rel='stylesheet';document.body.style.fontFamily='Poppins, -apple-system, BlinkMacSystemFont, sans-serif';}">
+    
+    <!-- FONT AWESOME - ASYNC LOAD - FIXED ONLOAD HANDLER -->
+    <link rel="preload" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" as="style" onload="if(this){this.onload=null;this.rel='stylesheet';}">
+    <noscript><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css"></noscript>
 
     <style>
         /* Success animation for payment completion */
@@ -422,9 +483,9 @@
 
         .courses-grid {
             display: flex;
-            gap: 2rem; /* Increased gap between cards */
-            padding: 1.5rem 3rem; /* Increased padding */
-            margin: 1rem 3rem 2rem; /* Added bottom margin */
+            gap: 2rem;
+            padding: 1.5rem 3rem;
+            margin: 1rem 3rem 2rem;
             max-width: 100%;
             overflow-x: auto;
             scroll-behavior: smooth;
@@ -432,8 +493,13 @@
             -ms-overflow-style: none;
             position: relative;
             scroll-snap-type: x mandatory;
-            padding-bottom: 20px; /* Reduced from 30px */
+            padding-bottom: 20px;
             -webkit-overflow-scrolling: touch;
+            /* CRITICAL PERFORMANCE OPTIMIZATIONS */
+            contain: layout style;
+            will-change: scroll-position;
+            /* PREVENT LAYOUT SHIFTS */
+            min-height: 700px;
         }
 
         .courses-grid::-webkit-scrollbar {
@@ -486,16 +552,18 @@
             border-radius: 16px;
             overflow: hidden;
             box-shadow: 0 3px 6px rgba(0, 0, 0, 0.08);
-            transition: all 0.3s ease;
+            transition: transform 0.2s ease;
             width: 420px;
             margin-bottom: 3rem;
-            transform: translateY(0);
             position: relative;
             border: 2px solid var(--course-color, #3b82f6);
             border-left: 8px solid var(--course-color, #3b82f6);
-            /* RUTHLESS GPU OPTIMIZATION - SAME VISUAL EFFECT */
-            will-change: transform;
+            /* INSTANT VISIBILITY - NO LOADING DELAYS */
+            opacity: 1;
             transform: translate3d(0, 0, 0);
+            /* PERFORMANCE OPTIMIZATIONS */
+            will-change: transform;
+            contain: layout style paint;
         }
 
         .course-card::before {
@@ -519,10 +587,57 @@
 
         .course-image {
             position: relative;
-            height: 580px; /* Increased to take advantage of the space we freed up */
+            height: 580px;
             background-size: cover;
             background-position: center;
             background-repeat: no-repeat;
+            /* LIGHTNING FAST LOADING - NO TRANSITIONS */
+            background-color: #f8f9fa;
+            opacity: 1;
+            transform: scale(1);
+            /* CRITICAL PERFORMANCE OPTIMIZATIONS */
+            will-change: auto;
+            contain: layout style paint;
+            image-rendering: -webkit-optimize-contrast;
+            image-rendering: crisp-edges;
+        }
+
+        .course-image.loading {
+            background: linear-gradient(135deg, #f5f7fa 0%, #e9ecef 100%);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .course-image.loading::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, 
+                transparent 0%, 
+                rgba(255, 255, 255, 0.4) 50%, 
+                transparent 100%);
+            animation: shimmer 1s infinite;
+        }
+
+        @keyframes shimmer {
+            0% { left: -100%; }
+            100% { left: 100%; }
+        }
+
+        .course-image.error {
+            background: linear-gradient(135deg, #f5f7fa 0%, #e9ecef 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .course-image.error::after {
+            content: '📚';
+            font-size: 4rem;
+            opacity: 0.3;
         }
 
         .info-icon {
@@ -1552,31 +1667,7 @@
             100% { transform: rotate(360deg); }
         }
         
-        /* Bundle Purchase Button Styles */
-        .bundle-purchase-btn {
-            background: linear-gradient(135deg, #4f46e5, #6366f1);
-            color: white;
-            border: none;
-            padding: 0.5rem 1.2rem;
-            border-radius: 50px;
-            font-weight: 600;
-            font-size: 0.9rem;
-            display: flex;
-            align-items: center;
-            transition: all 0.3s ease;
-            box-shadow: 0 4px 6px rgba(79, 70, 229, 0.25);
-            margin-left: auto;
-        }
-        
-        .bundle-purchase-btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 6px 12px rgba(79, 70, 229, 0.3);
-            background: linear-gradient(135deg, #4338ca, #4f46e5);
-        }
-        
-        .bundle-purchase-btn i {
-            margin-right: 0.5rem;
-        }
+
         
         /* Modal Styles - Fixed for Edge compatibility */
         .modal-backdrop {
@@ -1634,166 +1725,7 @@
             position: relative;
         }
 
-        /* Bundle Modal Styles - Fixed for Edge compatibility */
-        .bundle-modal .modal-backdrop {
-            background: rgba(0, 0, 0, 0.5) !important;
-            backdrop-filter: none !important;
-            position: fixed !important;
-            top: 0 !important;
-            left: 0 !important;
-            width: 100% !important;
-            height: 100% !important;
-            z-index: 1040 !important;
-            transform: none !important;
-            will-change: auto !important;
-            transition: none !important;
-        }
 
-        .bundle-modal .modal-backdrop.show {
-            opacity: 1 !important;
-        }
-
-        .bundle-modal .modal-backdrop.fade {
-            opacity: 0 !important;
-            transition: none !important;
-        }
-
-        .bundle-modal .modal-backdrop.fade.show {
-            opacity: 1 !important;
-            transition: none !important;
-        }
-
-        /* Edge-specific modal backdrop override */
-        @supports (-ms-ime-align: auto) {
-            .bundle-modal .modal-backdrop,
-            .bundle-modal .modal-backdrop.show,
-            .bundle-modal .modal-backdrop.fade.show {
-                background: rgba(0, 0, 0, 0.5) !important;
-                opacity: 1 !important;
-                position: fixed !important;
-                top: 0 !important;
-                left: 0 !important;
-                right: 0 !important;
-                bottom: 0 !important;
-                width: 100% !important;
-                height: 100% !important;
-                z-index: 1040 !important;
-                backdrop-filter: none !important;
-                filter: none !important;
-                transform: none !important;
-                transition: none !important;
-            }
-        }
-
-        .bundle-modal .modal-content {
-            border-radius: 12px;
-            border: none;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
-            overflow: hidden;
-            z-index: 1041 !important;
-            position: relative;
-        }
-        
-        .bundle-modal .modal-header {
-            background: linear-gradient(135deg, #4f46e5, #6366f1);
-            color: white;
-            border-bottom: none;
-            padding: 1.5rem;
-        }
-        
-        .bundle-modal .modal-title {
-            font-weight: 600;
-            font-size: 1.4rem;
-        }
-        
-        .bundle-modal .modal-body {
-            padding: 1.5rem;
-        }
-        
-        .course-selection {
-            display: flex;
-            flex-direction: column;
-            gap: 0.8rem;
-            margin-bottom: 1.5rem;
-        }
-        
-        .course-checkbox {
-            display: flex;
-            align-items: center;
-            padding: 0.8rem 1rem;
-            border-radius: 8px;
-            border: 1px solid #e5e7eb;
-            transition: all 0.2s ease;
-            cursor: pointer;
-        }
-        
-        .course-checkbox:hover {
-            background: #f9fafb;
-            transform: translateY(-2px);
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
-        }
-        
-        .course-checkbox.selected {
-            border-color: #4f46e5;
-            background: rgba(79, 70, 229, 0.05);
-        }
-        
-        .course-checkbox input {
-            margin-right: 0.8rem;
-            width: 18px;
-            height: 18px;
-            accent-color: #4f46e5;
-        }
-        
-        .bundle-pricing {
-            background: #f9fafb;
-            border-radius: 8px;
-            padding: 1.2rem;
-            margin-bottom: 1.5rem;
-        }
-        
-        .price-row {
-            display: flex;
-            justify-content: space-between;
-            margin-bottom: 0.5rem;
-        }
-        
-        .price-row.total {
-            margin-top: 1rem;
-            padding-top: 1rem;
-            border-top: 1px solid #e5e7eb;
-            font-weight: 600;
-            font-size: 1.1rem;
-        }
-        
-        .discount {
-            color: #10b981;
-            font-weight: 500;
-        }
-        
-        .bundle-btn {
-            width: 100%;
-            background: #4f46e5;
-            color: white;
-            border: none;
-            padding: 0.8rem;
-            border-radius: 8px;
-            font-weight: 600;
-            transition: all 0.3s ease;
-        }
-        
-        .bundle-btn:hover {
-            background: #4338ca;
-            transform: translateY(-2px);
-            box-shadow: 0 4px 6px rgba(79, 70, 229, 0.2);
-        }
-        
-        .bundle-btn:disabled {
-            background: #d1d5db;
-            cursor: not-allowed;
-            transform: none;
-            box-shadow: none;
-        }
 
         /* Add this CSS to the existing styles section */
         .action-btn.enroll:disabled {
@@ -2040,9 +1972,6 @@
             
             @guest
             @else
-                <button class="bundle-purchase-btn ms-auto" id="bundlePurchaseBtn">
-                    <i class="fas fa-shopping-cart me-2"></i>Bundle Purchase
-                </button>
             @endguest
         </div>
 
@@ -2059,7 +1988,19 @@
                      data-academic-year="{{ $course->academic_year }}"
                      data-course-id="{{ $course->id }}"
                      data-semester="{{ $course->semester }}">
-                    <div class="course-image" style="background-image: url('{{ $course->image_url }}')" onerror="this.style.backgroundImage = 'linear-gradient(135deg, #f5f7fa 0%, #e9ecef 100%)'">
+                    @php
+                        $optimizedImageUrl = $course->image_url;
+                        // Apply same optimization as preload
+                        if (str_contains($optimizedImageUrl, 'unsplash.com')) {
+                            $optimizedImageUrl = str_replace('?', '?w=420&h=580&fit=crop&auto=format,compress&q=75&', $optimizedImageUrl);
+                        } elseif (str_contains($optimizedImageUrl, 'picsum.photos')) {
+                            $optimizedImageUrl = str_replace('picsum.photos/', 'picsum.photos/420/580/', $optimizedImageUrl);
+                        }
+                    @endphp
+                    <div class="course-image" 
+                         style="background-image: url('{{ $optimizedImageUrl }}');"
+                         data-bg-image="{{ $optimizedImageUrl }}" 
+                         data-course-name="{{ $course->name }}">
                         <div class="info-icon">
                             <i class="fas fa-info"></i>
                             <div class="info-tooltip">
@@ -2217,65 +2158,131 @@
         </div>
     </div>
 
-    <!-- Bundle Purchase Modal -->
-    <div class="modal fade bundle-modal" id="bundleModal" tabindex="-1" aria-labelledby="bundleModalLabel" aria-hidden="true">
-        <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title" id="bundleModalLabel">
-                        <i class="fas fa-shopping-cart me-2"></i>Purchase Course Bundle
-                    </h5>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
-                <div class="modal-body">
-                    <p class="mb-3">Select multiple courses to purchase as a bundle and save money with our discounted pricing.</p>
-                    
-                    <div class="course-selection">
-                        @foreach ($courses as $course)
-                            @if (!$course->is_enrolled && $course->price > 0)
-                                <label class="course-checkbox" for="course-{{ $course->id }}">
-                                    <input type="checkbox" id="course-{{ $course->id }}" class="bundle-course-checkbox" 
-                                           data-course-id="{{ $course->id }}" 
-                                           data-course-name="{{ $course->name }}" 
-                                           data-course-price="{{ $course->price ?? 200 }}">
-                                    <div>
-                                        <strong>{{ $course->name }}</strong>
-                                        <div class="text-muted">Individual Price: {{ $course->formatted_price ?? '200 EGP' }}</div>
-                                    </div>
-                                </label>
-                            @endif
-                        @endforeach
-                    </div>
-                    
-                    <div class="bundle-pricing">
-                        <h6 class="mb-3">Bundle Summary</h6>
-                        <div class="price-row">
-                            <span>Original Price:</span>
-                            <span id="originalPrice">0 EGP</span>
-                        </div>
-                        <div class="price-row">
-                            <span>Bundle Discount:</span>
-                            <span class="discount" id="bundleDiscount">0 EGP</span>
-                        </div>
-                        <div class="price-row total">
-                            <span>Total:</span>
-                            <span id="totalPrice">0 EGP</span>
-                        </div>
-                    </div>
-                    
-                    <button id="proceedBundlePayment" class="bundle-btn" disabled>
-                        Proceed to Payment
-                    </button>
-                </div>
-            </div>
-        </div>
-    </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.6/dist/umd/popper.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.min.js"></script>
-    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.2/dist/gsap.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/alpinejs@2.8.2/dist/alpine.min.js" defer></script>
+
+    <!-- SUPER LIGHTNING SPEED SCRIPT LOADING -->
+    <script>
+        // CRITICAL: Load scripts only when needed
+        const scripts = [
+            { src: 'https://code.jquery.com/jquery-3.6.0.min.js', priority: 'high' },
+            { src: 'https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js', priority: 'medium' },
+            { src: 'https://cdn.jsdelivr.net/npm/gsap@3.12.2/dist/gsap.min.js', priority: 'low' },
+            { src: 'https://cdn.jsdelivr.net/npm/alpinejs@2.8.2/dist/alpine.min.js', priority: 'low' }
+        ];
+
+        // LOAD HIGH PRIORITY SCRIPTS IMMEDIATELY
+        scripts.filter(s => s.priority === 'high').forEach(script => {
+            const s = document.createElement('script');
+            s.src = script.src;
+            s.async = true;
+            document.head.appendChild(s);
+        });
+
+        // LOAD MEDIUM PRIORITY AFTER DOM READY
+        document.addEventListener('DOMContentLoaded', () => {
+            scripts.filter(s => s.priority === 'medium').forEach(script => {
+                const s = document.createElement('script');
+                s.src = script.src;
+                s.async = true;
+                document.head.appendChild(s);
+            });
+        });
+
+        // LOAD LOW PRIORITY AFTER WINDOW LOAD
+        window.addEventListener('load', () => {
+            setTimeout(() => {
+                scripts.filter(s => s.priority === 'low').forEach(script => {
+                    const s = document.createElement('script');
+                    s.src = script.src;
+                    s.async = true;
+                    document.head.appendChild(s);
+                });
+            }, 100);
+        });
+    </script>
+    
+    <!-- SUPER LIGHTNING SPEED PERFORMANCE SYSTEM -->
+    <script>
+        // IMMEDIATE EXECUTION - ZERO DELAYS
+        (function() {
+            // MINIMAL CRITICAL CSS INJECTION
+            const style = document.createElement('style');
+            style.textContent = `
+                .clean-notification-dropdown { display: none !important; }
+                .clean-notification-dropdown.show { display: flex !important; }
+                .course-image { opacity: 1 !important; background-color: #f8f9fa; }
+                .course-card { opacity: 1 !important; transform: none !important; }
+                /* INSTANT SKELETON LOADING */
+                .course-image:not([style*="background-image"]) {
+                    background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+                    background-size: 200% 100%;
+                    animation: shimmer 1.5s infinite;
+                }
+                @keyframes shimmer {
+                    0% { background-position: -200% 0; }
+                    100% { background-position: 200% 0; }
+                }
+            `;
+            document.head.appendChild(style);
+        })();
+
+        // SUPER FAST IMAGE LOADING - BATCH PROCESSING
+        document.addEventListener('DOMContentLoaded', function() {
+            const courseImages = document.querySelectorAll('.course-image[data-bg-image]');
+            const imageQueue = Array.from(courseImages);
+            let loadedCount = 0;
+            
+            // LOAD FIRST 2 IMAGES IMMEDIATELY (ABOVE FOLD)
+            const immediateImages = imageQueue.slice(0, 2);
+            const lazyImages = imageQueue.slice(2);
+            
+            // IMMEDIATE LOADING FOR VISIBLE IMAGES
+            immediateImages.forEach(imageElement => {
+                loadImage(imageElement);
+            });
+            
+            // LAZY LOADING FOR REST
+            const observer = new IntersectionObserver((entries) => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) {
+                        loadImage(entry.target);
+                        observer.unobserve(entry.target);
+                    }
+                });
+            }, { rootMargin: '100px' });
+            
+            lazyImages.forEach(img => observer.observe(img));
+            
+            function loadImage(imageElement) {
+                const imageUrl = imageElement.dataset.bgImage;
+                
+                // OPTIMIZE IMAGE URL FOR SPEED
+                let optimizedUrl = imageUrl;
+                if (imageUrl.includes('unsplash.com')) {
+                    optimizedUrl = imageUrl.replace('?', '?w=420&h=580&fit=crop&auto=format,compress&q=60&fm=webp&');
+                } else if (imageUrl.includes('picsum.photos')) {
+                    optimizedUrl = imageUrl.replace('picsum.photos/', 'picsum.photos/420/580/');
+                }
+                
+                const img = new Image();
+                img.onload = () => {
+                    imageElement.style.backgroundImage = `url('${optimizedUrl}')`;
+                    imageElement.style.animation = 'none';
+                    loadedCount++;
+                    
+                    if (loadedCount === 1) {
+                        console.log('⚡ FIRST IMAGE LOADED - PAGE FEELS FAST!');
+                    }
+                };
+                img.onerror = () => {
+                    imageElement.style.backgroundImage = 'linear-gradient(135deg, #f5f7fa 0%, #e9ecef 100%)';
+                    imageElement.style.animation = 'none';
+                };
+                img.src = optimizedUrl;
+            }
+        });
+    </script>
+    
     <script>
         // Same notification bell logic from the home page
         function notificationBell() {
@@ -2690,7 +2697,6 @@
         document.getElementById('backdrop').classList.remove('show');
         document.getElementById('unlockAlert').classList.remove('show');
     }
-    }
     </script>
     <script>
     // RUTHLESS: Optimized scroll function with debouncing
@@ -2769,25 +2775,71 @@
                 }, 100);
             }
         });
-
-        });
     </script>
     <script>
         // Payment Modal Initialization 
-        try {
+        document.addEventListener('DOMContentLoaded', function() {
+            try {
+                // Wait for Bootstrap to be available
+                if (typeof bootstrap === 'undefined') {
+                    console.warn('Bootstrap not loaded yet, waiting...');
+                    setTimeout(() => {
+                        initializePaymentModal();
+                    }, 1000);
+                    return;
+                }
+                
+                initializePaymentModal();
+            } catch (e) {
+                console.warn('Payment modal initialization error:', e);
+            }
+        });
+        
+        function initializePaymentModal() {
+            console.log('🔧 Initializing payment modal...');
+            
+            // Check if modal element exists
+            const modalElement = document.getElementById('paymentModal');
+            if (!modalElement) {
+                console.error('❌ Payment modal element not found');
+                return;
+            }
+            
             // Initialize payment modal
-            const paymentModal = new bootstrap.Modal(document.getElementById('paymentModal'));
+            const paymentModal = new bootstrap.Modal(modalElement);
+            console.log('✅ Payment modal initialized successfully');
             
             // Add click event to all payment buttons
-            document.querySelectorAll('.show-payment-modal').forEach(button => {
-                button.addEventListener('click', function() {
+            const paymentButtons = document.querySelectorAll('.show-payment-modal');
+            console.log(`🔍 Found ${paymentButtons.length} payment buttons`);
+            
+            paymentButtons.forEach(button => {
+                console.log('🔧 Setting up payment button:', button.id, button.className);
+                button.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    
+                    console.log('🎯 Payment button clicked:', this.id, this.getAttribute('data-course-id'));
                     const courseId = this.getAttribute('data-course-id');
                     
+                    if (!courseId) {
+                        console.error('❌ No course ID found on button');
+                        return;
+                    }
+                    
                     // Show modal with loading state
+                    console.log('📋 Showing payment modal...');
                     paymentModal.show();
                     
                     // Get CSRF token
-                    const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+                    const csrfMeta = document.querySelector('meta[name="csrf-token"]');
+                    if (!csrfMeta) {
+                        console.error('❌ CSRF token meta tag not found');
+                        alert('Security token not found. Please refresh the page.');
+                        return;
+                    }
+                    const csrfToken = csrfMeta.getAttribute('content');
+                    console.log('🔐 CSRF token found:', csrfToken ? 'Yes' : 'No');
                     
                     // Fetch payment options
                     fetch(`/payments/${courseId}/options`, {
@@ -2907,12 +2959,10 @@
                     });
                 });
             }
-        } catch (e) {
-            console.warn('Payment modal initialization error:', e);
         }
     </script>
     
-    <!-- Bundle Purchase Feature Script -->
+    <!-- Payment Status Management Script -->
     <script>
         document.addEventListener('DOMContentLoaded', function() {
             // 🔥 AGGRESSIVE FUNCTION TO CHECK AND UPDATE PENDING PAYMENT BUTTONS 🔥
@@ -3154,153 +3204,7 @@
             // setInterval(checkEnrollmentStatus, 2000); // Disabled
             @endauth
 
-            // Initialize the bundle modal
-            const bundleModal = new bootstrap.Modal(document.getElementById('bundleModal'));
-            
-            // Bundle button click event
-            const bundlePurchaseBtn = document.getElementById('bundlePurchaseBtn');
-            if (bundlePurchaseBtn) {
-                bundlePurchaseBtn.addEventListener('click', function() {
-                    bundleModal.show();
-                });
-            }
-            
-            // Course selection and pricing calculations
-            const courseCheckboxes = document.querySelectorAll('.bundle-course-checkbox');
-            const proceedButton = document.getElementById('proceedBundlePayment');
-            const originalPriceElement = document.getElementById('originalPrice');
-            const bundleDiscountElement = document.getElementById('bundleDiscount');
-            const totalPriceElement = document.getElementById('totalPrice');
-            
-            // Initialize course selection tracking
-            let selectedCourses = [];
-            let originalPrice = 0;
-            let discountAmount = 0;
-            let totalPrice = 0;
-            
-            // Add event listeners to checkboxes
-            courseCheckboxes.forEach(checkbox => {
-                checkbox.addEventListener('change', updateBundlePricing);
-            });
-            
-            function updateBundlePricing() {
-                // Reset selected courses array
-                selectedCourses = [];
-                
-                // Get all checked courses
-                courseCheckboxes.forEach(checkbox => {
-                    if (checkbox.checked) {
-                        selectedCourses.push({
-                            id: checkbox.dataset.courseId,
-                            name: checkbox.dataset.courseName,
-                            price: parseFloat(checkbox.dataset.coursePrice)
-                        });
-                        
-                        // Update the parent label
-                        checkbox.closest('.course-checkbox').classList.add('selected');
-                    } else {
-                        checkbox.closest('.course-checkbox').classList.remove('selected');
-                    }
-                });
-                
-                // Calculate pricing
-                originalPrice = selectedCourses.reduce((total, course) => total + course.price, 0);
-                
-                // Apply discount based on number of courses
-                // 2 courses: 50 EGP discount (e.g., 400 -> 350)
-                // 4 courses: 100 EGP discount (e.g., 600 -> 500)
-                if (selectedCourses.length === 2) {
-                    discountAmount = 50;
-                } else if (selectedCourses.length === 3) {
-                    discountAmount = 75;
-                } else if (selectedCourses.length >= 4) {
-                    discountAmount = 100;
-                } else {
-                    discountAmount = 0;
-                }
-                
-                totalPrice = originalPrice - discountAmount;
-                
-                // Update display with proper decimal formatting
-                originalPriceElement.textContent = `${originalPrice.toFixed(2).replace(/\.00$/, '')} EGP`;
-                bundleDiscountElement.textContent = `- ${discountAmount.toFixed(2).replace(/\.00$/, '')} EGP`;
-                totalPriceElement.textContent = `${totalPrice.toFixed(2).replace(/\.00$/, '')} EGP`;
-                
-                // Enable/disable proceed button
-                proceedButton.disabled = selectedCourses.length < 2;
-            }
-            
-            // Handle proceed to payment button
-            if (proceedButton) {
-                proceedButton.addEventListener('click', function() {
-                    // Show loading state
-                    proceedButton.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Processing...';
-                    proceedButton.disabled = true;
-                    
-                    // Get CSRF token
-                    const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
-                    
-                    // Prepare data for bundle purchase
-                    const bundleData = {
-                        courses: selectedCourses.map(course => course.id),
-                        original_price: originalPrice,
-                        discount_amount: discountAmount,
-                        total_price: totalPrice
-                    };
-                    
-                    // Make AJAX request to get bundle payment options instead of direct processing
-                    fetch('/payments/bundle/options', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'Accept': 'application/json',
-                            'X-CSRF-TOKEN': csrfToken,
-                            'X-Requested-With': 'XMLHttpRequest'
-                        },
-                        body: JSON.stringify(bundleData)
-                    })
-                    .then(response => {
-                        if (!response.ok) {
-                            throw new Error('Network response was not ok: ' + response.status);
-                        }
-                        return response.json();
-                    })
-                    .then(data => {
-                        console.log('Bundle payment options response:', data);
-                        
-                        if (data.success) {
-                            // Hide bundle modal
-                            bundleModal.hide();
-                            
-                            // Show the payment modal with options from your existing system
-                            const paymentModal = new bootstrap.Modal(document.getElementById('paymentModal'));
-                            
-                            // Update the payment modal content with the bundle payment options
-                            const modalContent = document.querySelector('#paymentModal .modal-content');
-                            modalContent.innerHTML = data.html;
-                            
-                            // Show the payment modal
-                            paymentModal.show();
-                        } else {
-                            // Show error message
-                            console.error('Bundle payment options failed:', data.message);
-                            alert(data.message || 'Failed to load bundle payment options. Please try again.');
-                            
-                            // Reset button state
-                            proceedButton.innerHTML = 'Proceed to Payment';
-                            proceedButton.disabled = false;
-                        }
-                    })
-                    .catch(error => {
-                        console.error('Error loading bundle payment options:', error);
-                        alert('An error occurred while loading payment options. Please try again later.');
-                        
-                        // Reset button state
-                        proceedButton.innerHTML = 'Proceed to Payment';
-                        proceedButton.disabled = selectedCourses.length < 2;
-                    });
-                });
-            }
+
         });
 
         // RUTHLESS: Optimized Academic Year Filtering Function - GLOBAL SCOPE
@@ -3358,5 +3262,186 @@
 
     <!-- Notification System JavaScript -->
     <script src="/js/notification-system.js"></script>
+    
+    <!-- PERFORMANCE MONITORING & BOTTLENECK DETECTION -->
+    <script>
+        // COMPREHENSIVE PERFORMANCE TESTING SYSTEM
+        (function() {
+            const perfData = {
+                startTime: performance.now(),
+                domStart: null,
+                domEnd: null,
+                imagesLoaded: 0,
+                totalImages: 0,
+                scriptsLoaded: 0,
+                totalScripts: 0,
+                cssLoaded: 0,
+                totalCSS: 0,
+                bottlenecks: []
+            };
+
+            // MARK PERFORMANCE MILESTONES
+            function markMilestone(name, time = performance.now()) {
+                const duration = time - perfData.startTime;
+                console.log(`⚡ PERF: ${name} - ${Math.round(duration)}ms`);
+                
+                if (duration > 500) {
+                    perfData.bottlenecks.push({ name, duration });
+                }
+                
+                if (window.performance && window.performance.mark) {
+                    window.performance.mark(name);
+                }
+            }
+
+            // DOM LOADING MEASUREMENT
+            if (document.readyState === 'loading') {
+                perfData.domStart = performance.now();
+                document.addEventListener('DOMContentLoaded', () => {
+                    perfData.domEnd = performance.now();
+                    markMilestone('DOM_READY', perfData.domEnd);
+                });
+            } else {
+                markMilestone('DOM_ALREADY_READY');
+            }
+
+            // MEASURE RESOURCE LOADING
+            window.addEventListener('load', () => {
+                markMilestone('WINDOW_LOAD');
+                
+                // COUNT RESOURCES
+                perfData.totalImages = document.querySelectorAll('img, [style*="background-image"], [data-bg-image]').length;
+                perfData.totalScripts = document.querySelectorAll('script[src]').length;
+                perfData.totalCSS = document.querySelectorAll('link[rel="stylesheet"]').length;
+                
+                // FINAL PERFORMANCE REPORT
+                setTimeout(() => {
+                    generatePerformanceReport();
+                }, 100);
+            });
+
+            // TRACK IMAGE LOADING
+            function trackImageLoading() {
+                const images = document.querySelectorAll('img');
+                images.forEach(img => {
+                    if (img.complete) {
+                        perfData.imagesLoaded++;
+                    } else {
+                        img.addEventListener('load', () => {
+                            perfData.imagesLoaded++;
+                            if (perfData.imagesLoaded === images.length) {
+                                markMilestone('ALL_IMAGES_LOADED');
+                            }
+                        });
+                        img.addEventListener('error', () => {
+                            perfData.imagesLoaded++;
+                        });
+                    }
+                });
+            }
+
+            // GENERATE COMPREHENSIVE PERFORMANCE REPORT
+            function generatePerformanceReport() {
+                const totalTime = performance.now() - perfData.startTime;
+                
+                console.log(`
+🚀 COURSES PAGE PERFORMANCE REPORT
+=====================================
+📊 TOTAL LOAD TIME: ${Math.round(totalTime)}ms
+📄 DOM Ready: ${Math.round(perfData.domEnd - perfData.startTime)}ms
+🖼️  Images: ${perfData.imagesLoaded}/${perfData.totalImages}
+📜 Scripts: ${perfData.totalScripts}
+🎨 CSS Files: ${perfData.totalCSS}
+
+🐌 BOTTLENECKS (>500ms):
+${perfData.bottlenecks.map(b => `   - ${b.name}: ${Math.round(b.duration)}ms`).join('\n') || '   None detected!'}
+
+💡 OPTIMIZATION SUGGESTIONS:
+${generateOptimizationSuggestions(totalTime)}
+                `);
+
+                // SEND PERFORMANCE DATA TO CONSOLE FOR ANALYSIS
+                window.PERF_DATA = perfData;
+                window.PERF_DATA.totalTime = totalTime;
+            }
+
+            function generateOptimizationSuggestions(totalTime) {
+                const suggestions = [];
+                
+                if (totalTime > 2000) {
+                    suggestions.push('   🔥 CRITICAL: Page takes >2s - needs immediate optimization');
+                }
+                if (perfData.totalImages > 10) {
+                    suggestions.push('   📸 Consider lazy loading for images');
+                }
+                if (perfData.totalScripts > 5) {
+                    suggestions.push('   📜 Bundle/minify JavaScript files');
+                }
+                if (perfData.bottlenecks.length > 0) {
+                    suggestions.push('   ⚠️  Address bottlenecks listed above');
+                }
+                
+                if (suggestions.length === 0) {
+                    suggestions.push('   ✅ Performance looks good!');
+                }
+                
+                return suggestions.join('\n');
+            }
+
+            // TRACK RESOURCE LOADING IN REAL-TIME
+            document.addEventListener('DOMContentLoaded', () => {
+                trackImageLoading();
+                
+                // MEASURE SPECIFIC COMPONENTS
+                setTimeout(() => {
+                    const navbar = document.querySelector('.navbar');
+                    const coursesGrid = document.querySelector('.courses-grid');
+                    const notificationBell = document.querySelector('.clean-notification-bell');
+                    
+                    if (navbar) markMilestone('NAVBAR_RENDERED');
+                    if (coursesGrid) markMilestone('COURSES_GRID_RENDERED');
+                    if (notificationBell) markMilestone('NOTIFICATION_BELL_RENDERED');
+                }, 10);
+            });
+
+            // EXPOSE PERFORMANCE TESTING FUNCTIONS
+            window.runPerformanceTest = function() {
+                console.log('🧪 Running performance test...');
+                const start = performance.now();
+                location.reload();
+            };
+
+            window.analyzeBottlenecks = function() {
+                if (window.PERF_DATA) {
+                    console.log('🔍 BOTTLENECK ANALYSIS:', window.PERF_DATA);
+                    return window.PERF_DATA;
+                } else {
+                    console.log('❌ No performance data available. Reload the page first.');
+                }
+            };
+
+        })();
+    </script>
+
+    <!-- SERVICE WORKER FOR LIGHTNING SPEED -->
+    <script>
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('/sw.js')
+                .then(registration => {
+                    console.log('🚀 Service Worker registered for lightning-fast caching');
+                    
+                    // Check for updates
+                    registration.addEventListener('updatefound', () => {
+                        console.log('🔄 Service Worker update found');
+                    });
+                })
+                .catch(error => {
+                    console.warn('Service Worker registration failed:', error);
+                    // Don't let service worker errors break the page
+                });
+        } else {
+            console.log('Service Worker not supported in this browser');
+        }
+    </script>
 </body>
 </html>

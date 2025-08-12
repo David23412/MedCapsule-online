@@ -214,23 +214,7 @@ class PaymentSecurityTest extends TestCase
         $this->assertTrue($this->user->hasAccessToCourse($this->course->id));
     }
 
-    /** @test */
-    public function it_validates_bundle_payment_security()
-    {
-        $courses = Course::factory()->count(3)->create(['price' => 50]);
-        
-        $this->actingAs($this->user);
 
-        // Test bundle payment with tampered course list
-        $response = $this->post('/payments/bundle/process-manual', [
-            'courses' => $courses->pluck('id')->toArray(),
-            'amount' => 100, // Should be 150 (3 * 50)
-            'reference_code' => 'BUNDLE123',
-            'payment_method' => 'vodafone_cash',
-        ]);
-
-        $response->assertSessionHasErrors(['amount']);
-    }
 
     /** @test */
     public function it_handles_concurrent_payment_processing()

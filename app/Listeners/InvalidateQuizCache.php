@@ -3,7 +3,7 @@
 namespace App\Listeners;
 
 use App\Events\QuizAttemptCompleted;
-use App\Services\CacheService;
+use App\Services\Core\UltraConsolidatedCacheService;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Support\Facades\Log;
@@ -17,7 +17,7 @@ class InvalidateQuizCache implements ShouldQueue
     /**
      * Create the event listener.
      */
-    public function __construct(CacheService $cacheService)
+    public function __construct(UltraConsolidatedCacheService $cacheService)
     {
         $this->cacheService = $cacheService;
     }

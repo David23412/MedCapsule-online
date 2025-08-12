@@ -9,7 +9,7 @@ use App\Models\Course;
 use App\Models\QuizAttempt;
 use App\Models\Mistake;
 use App\Models\UserTopicProgress;
-use App\Services\CacheService;
+use App\Services\Core\UltraConsolidatedCacheService;
 use App\Services\UserStatsService;
 use App\Services\NotificationService;
 use App\Services\WrittenAnswerEvaluationService;
@@ -27,7 +27,7 @@ class GradingService
     protected $writtenAnswerEvaluationService;
 
     public function __construct(
-        CacheService $cacheService,
+        UltraConsolidatedCacheService $cacheService,
         UserStatsService $userStatsService,
         NotificationService $notificationService,
         WrittenAnswerEvaluationService $writtenAnswerEvaluationService
@@ -87,6 +87,9 @@ class GradingService
 
             // Calculate and award XP
             $xpResult = $this->calculateAndAwardXP($user, $gradingResult['score'], $duration, $gradingResult['percentageGrade']);
+
+            // Update study streak for ALL quiz types (including first quiz)
+            $this->updateStudyStreak($user);
 
             // Update topic progress ONLY for regular quizzes, NOT assignments or tutor mode
             if (!$assignmentId && $mode === 'quiz') {
@@ -490,11 +493,23 @@ class GradingService
     {
         // CRITICAL FIX: Only return true if assignment_id is explicitly provided
         // Don't assume it's an assignment just because assignments exist for the topic
-        return $assignmentId !== null && \App\Models\Assignment::where('id', $assignmentId)
+        // Check if assignment exists and is accessible (status is computed dynamically)
+        if ($assignmentId === null) {
+            return false;
+        }
+        
+        $assignment = \App\Models\Assignment::where('id', $assignmentId)
             ->where('topic_id', $topic->id)
             ->where('course_id', $course->id)
-            ->whereIn('status', [\App\Models\Assignment::STATUS_ACTIVE, \App\Models\Assignment::STATUS_OVERDUE])
-            ->exists();
+            ->first();
+            
+        if (!$assignment) {
+            return false;
+        }
+        
+        // Check if assignment is in an accessible state (active or overdue)
+        $status = $assignment->getCurrentStatusAttribute();
+        return in_array($status, [\App\Models\Assignment::STATUS_ACTIVE, \App\Models\Assignment::STATUS_OVERDUE]);
     }
 
 
@@ -686,6 +701,10 @@ class GradingService
      */
     private function updateTopicProgress(User $user, Topic $topic, int $score, int $totalQuestions): void
     {
+        // Clear cache first to ensure fresh calculation
+        $cacheKey = "topic_progress_{$user->id}_{$topic->id}_quiz";
+        \Illuminate\Support\Facades\Cache::forget($cacheKey);
+        
         // Use QuizAttempt::getTopicProgress to get the true overall progress
         $progress = \App\Models\QuizAttempt::getTopicProgress($user->id, $topic->id, 'quiz');
         $overallPercentage = $progress['overall']['percentage'] ?? 0;
@@ -1003,5 +1022,33 @@ class GradingService
             'total' => $totalQuestionsInSource,
             'percentage' => round($latestAttempt->percentage_grade, 2)
         ];
+    }
+
+    /**
+     * Update study streak for user after quiz completion
+     *
+     * @param User $user
+     */
+    private function updateStudyStreak(User $user): void
+    {
+        try {
+            // Store original streak for notification comparison
+            $originalStreak = $user->study_streak_days ?? 0;
+            
+            // Update the streak using the User model method
+            $newStreak = $user->updateStudyStreak();
+            
+            Log::info('Study streak updated after quiz', [
+                'user_id' => $user->id,
+                'original_streak' => $originalStreak,
+                'new_streak' => $newStreak,
+                'streak_increased' => $newStreak > $originalStreak
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Failed to update study streak', [
+                'user_id' => $user->id,
+                'error' => $e->getMessage()
+            ]);
+        }
     }
 } 

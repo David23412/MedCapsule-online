@@ -126,13 +126,6 @@ return [
         // Notifications
         'notify_admin_on_payment' => env('PAYMENT_NOTIFY_ADMIN', true),
         'notify_user_on_verification' => env('PAYMENT_NOTIFY_USER', true),
-        
-        // Bundle discounts
-        'bundle_discounts' => [
-            2 => env('BUNDLE_DISCOUNT_2_COURSES', 10), // 10% off for 2 courses
-            3 => env('BUNDLE_DISCOUNT_3_COURSES', 15), // 15% off for 3 courses
-            4 => env('BUNDLE_DISCOUNT_4_COURSES', 20), // 20% off for 4+ courses
-        ],
     ],
 
     /*

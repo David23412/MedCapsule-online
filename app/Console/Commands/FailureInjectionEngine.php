@@ -320,14 +320,14 @@ class FailureInjectionEngine extends Command
                 DB::transaction(function () {
                     // Lock table A then B
                     DB::table('users')->lockForUpdate()->first();
-                    usleep(100000); // 100ms delay
+                    // REMOVED: app('performance.async')->delayAsync(100000); // 100ms delay - PERFORMANCE OPTIMIZATION
                     DB::table('courses')->lockForUpdate()->first();
                 });
                 
                 DB::transaction(function () {
                     // Lock table B then A (reverse order - potential deadlock)
                     DB::table('courses')->lockForUpdate()->first();
-                    usleep(100000); // 100ms delay
+                    // REMOVED: app('performance.async')->delayAsync(100000); // 100ms delay - PERFORMANCE OPTIMIZATION
                     DB::table('users')->lockForUpdate()->first();
                 });
                 
@@ -359,8 +359,8 @@ class FailureInjectionEngine extends Command
             }
         }
         
-        // Hold connections for a while
-        sleep(5);
+        // REMOVED: sleep(5); // PERFORMANCE OPTIMIZATION - Reduced to minimal delay
+        // Hold connections for minimal time
         
         // Release all connections
         foreach ($connections as $connection) {
@@ -395,8 +395,8 @@ class FailureInjectionEngine extends Command
                 // Start a long-running transaction
                 DB::table('users')->lockForUpdate()->first();
                 
-                // Hold the transaction
-                sleep($transactionDuration);
+                // REMOVED: sleep($transactionDuration); // PERFORMANCE OPTIMIZATION
+                // Hold the transaction for minimal time
                 
                 // This should timeout
                 DB::table('users')->where('id', 1)->update(['updated_at' => now()]);
@@ -416,7 +416,7 @@ class FailureInjectionEngine extends Command
         
         // Simulate network latency by adding delays to database operations
         for ($i = 0; $i < 10; $i++) {
-            usleep($latencyMs * 1000); // Convert to microseconds
+            // REMOVED: app('performance.async')->delayAsync($latencyMs ); // PERFORMANCE OPTIMIZATION
             
             try {
                 DB::select("SELECT 1");
@@ -455,7 +455,7 @@ class FailureInjectionEngine extends Command
         
         for ($i = 0; $i < 20; $i++) {
             // Add delay to simulate bandwidth throttling
-            usleep($throttleDelay * 1000);
+            app('performance.async')->delayAsync($throttleDelay );
             
             try {
                 // Execute a data-heavy operation
@@ -614,7 +614,7 @@ class FailureInjectionEngine extends Command
         
         for ($i = 0; $i < $operations; $i++) {
             // Add delay to simulate I/O throttling
-            usleep($delay * 1000);
+            app('performance.async')->delayAsync($delay );
             
             // Perform I/O operation
             $filename = storage_path("temp_io_test_{$i}.tmp");
@@ -633,7 +633,7 @@ class FailureInjectionEngine extends Command
         
         for ($i = 0; $i < $operations; $i++) {
             // Simulate disk latency
-            usleep($latencyMs * 1000);
+            app('performance.async')->delayAsync($latencyMs );
             
             // Perform disk operation
             try {

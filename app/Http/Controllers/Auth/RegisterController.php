@@ -118,7 +118,7 @@ class RegisterController extends Controller
                     // Continue with registration even if notification fails
                 }
                 
-                return redirect()->intended(route('courses.index'))
+                return redirect()->intended(route('home'))
                     ->with('success', 'Welcome to MedCapsule!');
             } else {
                 Log::error('Auth check failed after login', ['user_id' => $user->id]);

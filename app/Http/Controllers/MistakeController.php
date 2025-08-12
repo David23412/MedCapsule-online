@@ -5,7 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Mistake;
 use App\Models\Question;
 use Illuminate\Http\Request;
-use App\Services\CacheService;
+use App\Services\Core\UltraConsolidatedCacheService;
 use Illuminate\Http\JsonResponse;
 use App\Services\QuizService;
 use Illuminate\Support\Facades\Log;
@@ -30,7 +30,7 @@ class MistakeController extends Controller
         Log::info('📌 Fetching mistakes for user', ['user_id' => $userId, 'course_filter' => $courseFilter]);
 
         // Ultra-aggressive caching for entire mistakes data
-        $cacheKey = CacheService::generateCacheKey('mistakes_full', [
+        $cacheKey = UltraConsolidatedCacheService::generateCacheKey('mistakes_full', [
             'user_id' => $userId, 
             'course_filter' => $courseFilter ?? 'all'
         ]);
@@ -309,8 +309,8 @@ class MistakeController extends Controller
             
             // 🔥 CRITICAL: Clear legacy cache keys from MistakeController
             $legacyKeys = [
-                CacheService::generateCacheKey('mistakes_full', ['user_id' => $userId, 'course_filter' => 'all']),
-                CacheService::generateCacheKey('mistakes_full', ['user_id' => $userId, 'course_filter' => 'skipped']),
+                UltraConsolidatedCacheService::generateCacheKey('mistakes_full', ['user_id' => $userId, 'course_filter' => 'all']),
+                UltraConsolidatedCacheService::generateCacheKey('mistakes_full', ['user_id' => $userId, 'course_filter' => 'skipped']),
                 "mistake_courses_{$userId}",
                 "mistakes_user_{$userId}",
                 "mistakes_count_{$userId}"
@@ -318,7 +318,7 @@ class MistakeController extends Controller
             
             // Add course-specific legacy cache keys
             foreach ($courseIds as $courseId) {
-                $legacyKeys[] = CacheService::generateCacheKey('mistakes_full', [
+                $legacyKeys[] = UltraConsolidatedCacheService::generateCacheKey('mistakes_full', [
                     'user_id' => $userId, 
                     'course_filter' => $courseId
                 ]);

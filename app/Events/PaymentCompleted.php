@@ -53,7 +53,6 @@ class PaymentCompleted
             'user_id' => $this->userId,
             'course_ids' => $this->courseIds,
             'amount' => $this->payment->amount,
-            'is_bundle' => $this->payment->is_bundle,
             'timestamp' => now()->toISOString(),
         ];
     }

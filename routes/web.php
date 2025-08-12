@@ -248,6 +248,21 @@ Route::middleware('auth')->group(function () {
     // Manage Access Routes - Admin only
     Route::middleware('admin')->group(function () {
         Route::get('/manage-access/search-users', [UserCourseController::class, 'searchUsers'])->name('admin.user-course.search');
+        
+        // Video Management Routes
+        Route::get('/admin/videos', [App\Http\Controllers\VideoController::class, 'index'])->name('admin.videos.index');
+        Route::post('/admin/videos', [App\Http\Controllers\VideoController::class, 'store'])->name('admin.videos.store');
+        Route::post('/admin/videos/{video}/toggle', [App\Http\Controllers\VideoController::class, 'toggle'])->name('admin.videos.toggle');
+        Route::delete('/admin/videos/{video}', [App\Http\Controllers\VideoController::class, 'destroy'])->name('admin.videos.destroy');
+        
+        // API route for getting course topics
+        Route::get('/api/courses/{course}/topics', function($courseId) {
+            $topics = \App\Models\Topic::where('course_id', $courseId)
+                ->select('id', 'name')
+                ->orderBy('display_order')
+                ->get();
+            return response()->json($topics);
+        });
         Route::get('/manage-access/user-courses/{userId}', [UserCourseController::class, 'userCourses'])->name('admin.user-course.user-courses');
         Route::post('/manage-access/toggle-admin', [UserCourseController::class, 'toggleAdmin'])->name('admin.user-course.toggle-admin');
         Route::get('/manage-access/payments', [UserCourseController::class, 'payments'])->name('admin.user-course.payments');
@@ -275,7 +290,25 @@ Route::middleware('auth')->group(function () {
     
     // Course enrollment and topic routes
     Route::post('/courses/{course}/enroll', [CourseController::class, 'enroll'])->name('courses.enroll');
-    Route::get('/topics/{courseId}', [TopicController::class, 'forCourse'])->name('topics.forCourse')->where('courseId', '[0-9]+')->middleware(\App\Http\Middleware\DebugRouteMiddleware::class);
+    
+    // Handle legacy/invalid course IDs by redirecting to available course
+    Route::get('/topics/{courseId}', function($courseId) {
+        $courseId = (int) $courseId;
+        
+        // Check if course exists
+        if (!\App\Models\Course::find($courseId)) {
+            // Redirect to first available course
+            $firstCourse = \App\Models\Course::first();
+            if ($firstCourse) {
+                return redirect("/topics/{$firstCourse->id}")
+                    ->with('info', "Course {$courseId} not found. Redirected to available course.");
+            }
+            abort(404, "No courses available");
+        }
+        
+        // Course exists, proceed normally
+        return app(TopicController::class)->forCourse($courseId);
+    })->name('topics.forCourse')->where('courseId', '[0-9]+')->middleware(\App\Http\Middleware\DebugRouteMiddleware::class);
     
     // EMERGENCY DEBUG ROUTE
     Route::get('/debug-topics/{courseId}', function($courseId) {
@@ -373,22 +406,15 @@ Route::middleware('auth')->group(function () {
         // Payment Options
         Route::get('/options/{course}', [App\Http\Controllers\Payment\PaymentOptionsController::class, 'getPaymentOptions'])
             ->name('options');
-        Route::post('/bundle-options', [App\Http\Controllers\Payment\PaymentOptionsController::class, 'getBundlePaymentOptions'])
-            ->name('bundle-options');
+
             
         // Payment Processing
         Route::post('/process/{course}', [App\Http\Controllers\Payment\PaymentProcessingController::class, 'processManualPayment'])
             ->name('process')
             ->middleware(['throttle:payment-processing,5,1']);
-        Route::post('/process-bundle', [App\Http\Controllers\Payment\PaymentProcessingController::class, 'processBundleManualPayment'])
-            ->name('process-bundle')
-            ->middleware(['throttle:payment-processing,3,1']);
         Route::post('/submit-proof/{courseId}', [App\Http\Controllers\Payment\PaymentProcessingController::class, 'submitProof'])
             ->name('submit-proof')
             ->middleware(['throttle:10,1']);
-        Route::post('/submit-bundle-proof', [App\Http\Controllers\Payment\PaymentProcessingController::class, 'submitBundlePaymentProof'])
-            ->name('submit-bundle-proof')
-            ->middleware(['throttle:5,1']);
             
         // Payment Status
         Route::get('/history', [App\Http\Controllers\Payment\PaymentStatusController::class, 'history'])
@@ -406,17 +432,13 @@ Route::middleware('auth')->group(function () {
         // Payment Options - Legacy route for frontend compatibility
         Route::get('/{course}/options', [App\Http\Controllers\Payment\PaymentOptionsController::class, 'getPaymentOptions'])
             ->name('options');
-        Route::post('/bundle/options', [App\Http\Controllers\Payment\PaymentOptionsController::class, 'getBundlePaymentOptions'])
-            ->name('bundle.options');
-        Route::post('/bundle/process', [App\Http\Controllers\Payment\PaymentProcessingController::class, 'processBundleManualPayment'])
-            ->name('bundle.process')
-            ->middleware(['throttle:payment-processing,3,1']);
+
             
         // Streamlined Payment Processing
         Route::post('/process-manual/{course}', [App\Http\Controllers\Payment\PaymentProcessingController::class, 'processManualPayment'])
             ->name('process-manual')
             ->middleware(['throttle:5,1']);
-        Route::post('/submit-proof-course/{courseId}', [App\Http\Controllers\Payment\PaymentProcessingController::class, 'submitProof'])
+        Route::post('/submit-proof-course/{courseId}', [App\Http\Controllers\Payment\PaymentProcessingController::class, 'submitProofForCourse'])
             ->name('submit-proof-course')
             ->middleware(['throttle:10,1']);
         Route::post('/submit-proof/{payment}', [App\Http\Controllers\Payment\PaymentProcessingController::class, 'submitProof'])
@@ -483,9 +505,15 @@ Route::middleware('auth')->group(function () {
         ->name('topics.source-progress')
         ->middleware('auth');
 
+    // Video access endpoint
+    Route::get('/video-access/{video}', 'App\Http\Controllers\VideoController@getVideoAccess')
+        ->name('video.access')
+        ->middleware('auth');
+
     // Assignment Management Routes (Admin & Tutor)
     Route::middleware(['auth', 'tutor'])->prefix('assignments')->name('assignments.')->group(function () {
         Route::get('/', [AssignmentController::class, 'index'])->name('index');
+
         Route::get('/create', [AssignmentController::class, 'bulkCreate'])->name('create');
         Route::post('/store', [AssignmentController::class, 'bulkStore'])->name('store');
         Route::get('/{assignment}', [AssignmentController::class, 'show'])->name('show');
@@ -734,3 +762,46 @@ Route::any('/debug-quiz-403', function(\Illuminate\Http\Request $request) {
         'timestamp' => now()->toDateTimeString()
     ]);
 })->withoutMiddleware([\App\Http\Middleware\VerifyCsrfToken::class]);
+
+// Video access endpoints (moved from API routes for session-based auth)
+Route::middleware(['auth'])->prefix('api')->group(function () {
+    Route::get('/video-access/{video}', [App\Http\Controllers\VideoController::class, 'getVideoAccess']);
+    // Support both GET and POST for video token generation
+    Route::get('/video-token/{video}', [App\Http\Controllers\VideoProxyController::class, 'generateSecureToken']);
+    Route::post('/video-token/{video}', [App\Http\Controllers\VideoProxyController::class, 'generateSecureToken']);
+    Route::get('/video-stream/{token}', [App\Http\Controllers\VideoProxyController::class, 'serveVideo']);
+    
+    // Simple video details endpoint for YouTube videos
+    Route::get('/video/{video}', function($videoId) {
+        $video = \App\Models\Video::find($videoId);
+        if (!$video) {
+            return response()->json(['success' => false, 'message' => 'Video not found']);
+        }
+        return response()->json([
+            'success' => true,
+            'video' => [
+                'id' => $video->id,
+                'title' => $video->title,
+                'youtube_video_id' => $video->youtube_video_id,
+                'description' => $video->description,
+                'duration' => $video->duration
+            ]
+        ]);
+    });
+    
+    // Test route returns a working video-token URL using the first available video
+    Route::get('/test-video', function() {
+        $video = \App\Models\Video::select('id')->orderBy('id')->first();
+        return response()->json([
+            'message' => 'Video routes working',
+            'test_video_url' => $video ? url('/api/video-token/'.$video->id) : null,
+            'has_video' => (bool) $video,
+            'available_routes' => [
+                'GET /api/video-token/{video}',
+                'POST /api/video-token/{video}',
+                'GET /api/video-stream/{token}',
+                'GET /api/video-access/{video}'
+            ]
+        ]);
+    });
+});

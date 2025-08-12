@@ -143,7 +143,7 @@ class QuizOptimizationTest extends TestCase
         $this->assertStringContains('throttle:quiz-generation', $content);
         
         // Verify aggressive caching
-        $this->assertStringContains('ResilientCacheService::safeRemember', $content);
+        $this->assertStringContains('ResilientUltraConsolidatedCacheService::safeRemember', $content);
         $this->assertStringContains('Cache::remember', $content);
         
         // Verify ultra-fast cache key generation

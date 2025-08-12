@@ -71,6 +71,49 @@
         .btn-primary:hover {
             background: #1976d2;
         }
+        
+        /* NUCLEAR: Lightning fast loading optimization */
+        html {
+            visibility: hidden;
+        }
+        
+        .page-loaded {
+            animation: fadeInFast 0.3s ease-out;
+        }
+        
+        @keyframes fadeInFast {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        /* NUCLEAR: Preloader optimization */
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: #f8fafc;
+            z-index: 9999;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: opacity 0.3s ease-out;
+        }
+        
+        .loading-spinner {
+            width: 40px;
+            height: 40px;
+            border: 3px solid #e3f2fd;
+            border-top: 3px solid #2196f3;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
     </style>
 
     <!-- Favicon -->
@@ -78,26 +121,53 @@
     <link rel="shortcut icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 50'%3E%3Crect fill='%23007bff' x='10' y='15' width='80' height='20' rx='10' ry='10' /%3E%3Crect x='50' y='15' width='40' height='20' fill='%23ff0000' rx='0 10 10 0' ry='10'/%3E%3Cline x1='50' y1='15' x2='50' y2='35' stroke='white' stroke-width='1.5' stroke-dasharray='2,1'/%3E%3C/svg%3E">
     <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 50'%3E%3Crect fill='%23007bff' x='10' y='15' width='80' height='20' rx='10' ry='10' /%3E%3Crect x='50' y='15' width='40' height='20' fill='%23ff0000' rx='0 10 10 0' ry='10'/%3E%3Cline x1='50' y1='15' x2='50' y2='35' stroke='white' stroke-width='1.5' stroke-dasharray='2,1'/%3E%3C/svg%3E">
     
-    <!-- RUTHLESS: Resource hints for faster loading -->
+    <!-- NUCLEAR: Resource hints for LIGHTNING FAST loading -->
     <link rel="dns-prefetch" href="//fonts.googleapis.com">
     <link rel="dns-prefetch" href="//cdn.jsdelivr.net">
     <link rel="dns-prefetch" href="//cdnjs.cloudflare.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="preload" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" as="style">
+    <link rel="preload" href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" as="style">
+    <link rel="preload" href="/js/notification-system.js" as="script">
 
-    <!-- Bootstrap CSS -->
+    <!-- NUCLEAR: Load critical CSS immediately -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
 
-    <!-- Google Fonts -->
+    <!-- NUCLEAR: Load fonts with optimal display -->
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
 
-    <!-- Font Awesome -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <!-- NUCLEAR: Load Font Awesome asynchronously with faster loading -->
+    <link rel="preload" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" as="style" onload="this.onload=null;this.rel='stylesheet'">
+    <noscript><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css"></noscript>
 
-    <!-- Notification System -->
-    <script src="/js/notification-system.js"></script>
+    <!-- NUCLEAR: Load notification system with defer for faster page load -->
+    <script src="/js/notification-system.js" defer></script>
     
     <!-- CSRF Token - for notification system -->
     <meta name="csrf-token" content="{{ csrf_token() }}">
+
+    <!-- NUCLEAR: Instant page loading optimization -->
+    <script>
+        // LIGHTNING: Preload critical data immediately
+        window.MedCapsule = {
+            csrfToken: '{{ csrf_token() }}',
+            baseUrl: '{{ url('/') }}',
+            user: @json(auth()->user() ? ['id' => auth()->id(), 'name' => auth()->user()->name] : null),
+            performance: {
+                startTime: performance.now(),
+                domReady: false
+            }
+        };
+        
+        // NUCLEAR: Hide page until fully loaded to prevent FOUC
+        document.documentElement.style.visibility = 'hidden';
+        document.addEventListener('DOMContentLoaded', function() {
+            window.MedCapsule.performance.domReady = true;
+            document.documentElement.style.visibility = 'visible';
+            // Add loaded class for animations
+            document.body.classList.add('page-loaded');
+        });
+    </script>
 
     <!-- Notification system styles handled by components -->
 
@@ -608,51 +678,148 @@
             font-weight: 500;
         }
 
+        /* GOLDEN STANDARD Streak Indicator - Enhanced Spacing */
         .streak-indicator {
+            background: #f9f9f9;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.1);
             display: flex;
             align-items: center;
-            gap: 0.75rem;
-            padding: 0.5rem 1rem;
-            background: linear-gradient(45deg, #ff6b6b, #ff8e8e);
-            border-radius: 25px;
-            box-shadow: 0 4px 15px rgba(255, 107, 107, 0.3);
+            justify-content: center;
+            flex-direction: column;
+            margin: 1.5rem auto;
+            padding: 10px;
+            transition: all 0.3s ease;
+            width: 110px;
+            height: 110px;
+            position: relative;
+            cursor: pointer;
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            background: rgba(255, 255, 255, 0.08);
+            border-radius: 50%;
+            backdrop-filter: blur(12px);
+            box-shadow: 0 0 25px rgba(25, 118, 210, 0.25);
+        }
+
+        .streak-indicator:hover {
+            transform: translateY(-2px) scale(1.05);
+            box-shadow: 
+                0 12px 40px rgba(33, 150, 243, 0.25),
+                0 4px 12px rgba(0, 0, 0, 0.15),
+                inset 0 1px 0 rgba(255, 255, 255, 0.9);
+        }
+
+        .streak-circle {
+            width: 100%;
+            height: 100%;
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .streak-circle svg {
+            width: 100%;
+            height: 100%;
+            transform: rotate(-90deg);
+            filter: drop-shadow(0 0 8px rgba(51, 154, 240, 0.4));
+        }
+
+        .streak-circle circle {
+            fill: none;
+            stroke-width: 3;
+            stroke-linecap: round;
+            transition: all 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .streak-bg {
+            stroke: rgba(33, 150, 243, 0.15);
+        }
+
+        .streak-progress {
+            stroke: #2196f3;
+            stroke-dasharray: 251.2;
+            stroke-dashoffset: 251.2;
+            transition: stroke-dashoffset 1.5s cubic-bezier(0.4, 0, 0.2, 1);
+            filter: drop-shadow(0 0 6px rgba(33, 150, 243, 0.6));
+        }
+
+        .streak-content {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            width: 100%;
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            z-index: 2;
         }
 
         .streak-value {
-            font-size: 2rem;
-            font-weight: bold;
-            color: white;
-            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            font-size: 1.5rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, #1565c0, #2196f3);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            position: relative;
+            line-height: 1;
+            margin-bottom: 0.2rem;
+            text-shadow: 0 0 25px rgba(33, 150, 243, 0.6);
+            animation: glowPulse 2s infinite;
+        }
+
+        .streak-label {
+            font-size: 0.55rem;
+            background: linear-gradient(135deg, #1565c0, #2196f3);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            opacity: 0.95;
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            animation: glowPulse 2s infinite 0.5s;
+            margin-left: 2px;
+        }
+
+        @keyframes valueGlow {
+            0%, 100% { 
+                filter: drop-shadow(0 2px 4px rgba(33, 150, 243, 0.3));
+                transform: scale(1);
+            }
+            50% { 
+                filter: drop-shadow(0 4px 8px rgba(33, 150, 243, 0.5));
+                transform: scale(1.02);
+            }
+        }
+
+        @keyframes glowPulse {
+            0% { 
+                filter: brightness(1) drop-shadow(0 0 10px rgba(25, 118, 210, 0.5));
+                transform: scale(1);
+            }
+            50% { 
+                filter: brightness(1.4) drop-shadow(0 0 15px rgba(25, 118, 210, 0.7));
+                transform: scale(1.05);
+            }
+            100% { 
+                filter: brightness(1) drop-shadow(0 0 10px rgba(25, 118, 210, 0.5));
+                transform: scale(1);
+            }
         }
 
         .streak-fire {
-            font-size: 2.5rem;
-            color: #ffd700;
-            filter: drop-shadow(0 0 5px rgba(255, 215, 0, 0.5));
+            position: absolute;
+            bottom: -2px;
+            right: -2px;
+            color: #ff6b6b;
             animation: flame 1.5s infinite;
+            font-size: 1rem;
         }
 
         @keyframes flame {
-            0% { 
-                transform: scale(1) rotate(0deg) translateY(0);
-                filter: drop-shadow(0 0 5px rgba(255, 215, 0, 0.5));
-            }
-            25% { 
-                transform: scale(1.2) rotate(5deg) translateY(-5px);
-                filter: drop-shadow(0 0 8px rgba(255, 215, 0, 0.7));
-            }
-            50% { 
-                transform: scale(1.1) rotate(-5deg) translateY(0);
-                filter: drop-shadow(0 0 6px rgba(255, 215, 0, 0.6));
-            }
-            75% { 
-                transform: scale(1.3) rotate(5deg) translateY(-8px);
-                filter: drop-shadow(0 0 10px rgba(255, 215, 0, 0.8));
-            }
-            100% { 
-                transform: scale(1) rotate(0deg) translateY(0);
-                filter: drop-shadow(0 0 5px rgba(255, 215, 0, 0.5));
-            }
+            0% { transform: scale(1) rotate(0deg); }
+            50% { transform: scale(1.2) rotate(5deg); }
+            100% { transform: scale(1) rotate(0deg); }
         }
 
         .profile-actions {
@@ -697,30 +864,7 @@
 
 
 
-        /* Add these new styles */
-        .streak-indicator {
-            display: inline-flex;
-            align-items: center;
-            gap: 5px;
-            animation: pulse 2s infinite;
-        }
 
-        .streak-fire {
-            color: #ff6b6b;
-            animation: flame 1.5s infinite;
-        }
-
-        @keyframes pulse {
-            0% { transform: scale(1); }
-            50% { transform: scale(1.05); }
-            100% { transform: scale(1); }
-        }
-
-        @keyframes flame {
-            0% { transform: scale(1) rotate(0deg); }
-            50% { transform: scale(1.2) rotate(5deg); }
-            100% { transform: scale(1) rotate(0deg); }
-        }
 
         .progress-circle {
             position: relative;
@@ -757,31 +901,87 @@
             color: #2196f3;
         }
 
-        /* Add these styles in the <style> section */
+        /* Enhanced Dropdown Menu - Matching Courses.blade.php Elegance */
         .dropdown-menu {
+            display: none;
+            position: absolute;
             background: white;
             border: none;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
             border-radius: 12px;
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
-            padding: 0.5rem;
+            padding: 1rem;
+            min-width: 220px;
+            z-index: 1000;
+            pointer-events: auto;
+        }
+
+        .dropdown-menu-end {
+            right: 0;
+            left: auto;
+        }
+
+        .dropdown-menu.show {
+            display: block;
         }
 
         .dropdown-item {
+            display: block;
+            width: 100%;
             padding: 0.75rem 1rem;
+            clear: both;
+            text-align: inherit;
+            white-space: nowrap;
+            background: none;
+            border: none;
             border-radius: 8px;
-            color: #333;
-            transition: all 0.2s ease;
+            color: #212529;
+            text-decoration: none;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            cursor: pointer;
+            position: relative;
+            z-index: 2;
         }
 
-        .dropdown-item:hover {
-            background: #f0f7ff;
+        .dropdown-item:hover,
+        .dropdown-item:focus {
+            background-color: rgba(33, 150, 243, 0.1);
             color: #2196f3;
             transform: translateX(5px);
         }
 
+        .dropdown-item i {
+            width: 20px;
+            text-align: center;
+            pointer-events: none;
+        }
+
         .dropdown-divider {
+            height: 0;
+            margin: 0.75rem 0;
+            overflow: hidden;
+            border-top: 1px solid #e9ecef;
+            opacity: 0.1;
+            pointer-events: none;
+        }
+
+        /* Enhanced Streak Container Spacing */
+        .dropdown-menu .d-flex.justify-content-center {
+            padding: 1rem 0;
             margin: 0.5rem 0;
-            border-color: #eee;
+        }
+
+        /* Remove any cramped spacing from the streak indicator in dropdown */
+        .dropdown-menu .streak-indicator {
+            margin: 0 auto;
+            transform: scale(1.1);
+        }
+
+        /* Make progress circle the main outline ring */
+        .streak-progress {
+            stroke-width: 4 !important;
+            stroke: #2196f3;
+            fill: none;
+            stroke-linecap: round;
         }
 
         .badge {
@@ -2092,8 +2292,7 @@
                                     <div class="streak-indicator" data-streak="{{ Auth::user()->study_streak_days ?? 0 }}">
                                         <div class="streak-circle">
                                             <svg viewBox="0 0 100 100">
-                                                <circle class="streak-bg" cx="50" cy="50" r="40"></circle>
-                                                <circle class="streak-progress" cx="50" cy="50" r="40"></circle>
+                                                <circle class="streak-progress" cx="50" cy="50" r="45"></circle>
                                             </svg>
                                             <div class="streak-content">
                                                 <div class="streak-value">{{ Auth::user()->study_streak_days ?? 0 }}</div>
@@ -2262,9 +2461,6 @@
                                 <div class="course-header">
                                     <h4>
                                         {{ $course->name }}
-                                        @if($course->quiz_count > 5)
-                                            <span class="popular-badge">Featured</span>
-                                        @endif
                                     </h4>
                                 </div>
                                 <div class="course-details">
@@ -2383,8 +2579,7 @@
                 <a href="/about">About</a> | 
                 <a href="/contact">Contact</a> | 
                 <a href="/faq">FAQ</a> | 
-                <a href="/privacy">Privacy Policy</a> |
-                <a href="/demo"><strong>Try 40 Free Questions</strong></a>
+                <a href="/privacy">Privacy Policy</a>
             </p>
         </div>
     </footer>
@@ -2731,19 +2926,29 @@
                     }, 300);
                 }
                 
-                // Enhanced hover effects
+                // Enhanced hover effects with better performance
                 const streakFire = streakIndicator.querySelector('.streak-fire');
                 if (streakFire && streak > 0) {
                     streakIndicator.addEventListener('mouseenter', () => {
                         streakFire.style.transform = 'scale(1.3) rotate(10deg)';
                         streakFire.style.filter = 'drop-shadow(0 0 8px rgba(255, 107, 107, 0.8))';
+                        streakIndicator.style.transform = 'translateY(-2px) scale(1.05)';
                     });
                     
                     streakIndicator.addEventListener('mouseleave', () => {
                         streakFire.style.transform = 'scale(1) rotate(0deg)';
                         streakFire.style.filter = 'none';
+                        streakIndicator.style.transform = 'translateY(0) scale(1)';
                     });
                 }
+                
+                // Add click effect for better interactivity
+                streakIndicator.addEventListener('click', () => {
+                    streakIndicator.style.transform = 'scale(0.95)';
+                    setTimeout(() => {
+                        streakIndicator.style.transform = 'scale(1)';
+                    }, 150);
+                });
             });
         });
     </script>

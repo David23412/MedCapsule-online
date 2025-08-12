@@ -145,7 +145,7 @@ class SessionSecurityTest extends TestCase
             }
             
             // Small delay to simulate real-world scenario
-            usleep(10000); // 10ms
+            app('performance.async')->delayAsync(10000); // 10ms
         }
         
         $totalTime = (microtime(true) - $startTime) * 1000;

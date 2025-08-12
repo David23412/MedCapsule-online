@@ -1283,6 +1283,26 @@
         color: rgba(255, 255, 255, 0.7) !important;
     }
 
+    /* Fix for weak topic practice button - exact size 81px x 26px */
+    .topic-review-item .btn-sm {
+        width: 81px !important;
+        height: 26px !important;
+        padding: 2px 8px !important;
+        font-size: 11px !important;
+        line-height: 1.2 !important;
+        display: inline-flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        border-radius: 4px !important;
+        white-space: nowrap !important;
+    }
+
+    .topic-review-item .btn-sm i {
+        font-size: 10px !important;
+        margin-left: 4px !important;
+        margin-right: 0 !important;
+    }
+
 </style>
     </style>
 </head>
@@ -1527,7 +1547,7 @@
                                 <div class="d-flex justify-content-between align-items-center">
                                     <div>
                                         <h6 class="mb-1">
-                                            {{ $icon }}
+                                            {!! $icon !!}
                                             {{ $topic->name }}
                                         </h6>
                                         <small class="text-muted">Course: {{ $topic->course->name }}</small>

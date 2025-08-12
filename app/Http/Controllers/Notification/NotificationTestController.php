@@ -133,7 +133,7 @@ class NotificationTestController extends Controller
                 [
                     'type' => 'payment_success',
                     'title' => 'Payment Processed Successfully',
-                    'message' => 'Your payment of $299.99 for Premium Medical Course Bundle has been processed. You now have access to all premium content.',
+                    'message' => 'Your payment of $299.99 for Premium Medical Course has been processed. You now have access to all premium content.',
                     'priority' => 'normal'
                 ],
                 [

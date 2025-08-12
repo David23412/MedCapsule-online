@@ -60,6 +60,21 @@ class TopicController extends Controller
         $course = Course::select('id', 'name', 'created_at', 'type', 'price')->find($requestedCourseId);
         
         if (!$course) {
+            // Log the attempt for debugging
+            Log::warning("Attempt to access non-existent course", [
+                'requested_course_id' => $requestedCourseId,
+                'user_id' => auth()->id(),
+                'url' => request()->url(),
+                'referer' => request()->header('referer')
+            ]);
+            
+            // Check if there are any available courses to redirect to
+            $availableCourse = Course::first();
+            if ($availableCourse) {
+                return redirect()->route('topics.forCourse', $availableCourse->id)
+                    ->with('warning', "Course {$requestedCourseId} not found. Showing available course instead.");
+            }
+            
             abort(404, "Course with ID {$requestedCourseId} not found");
         }
 
@@ -83,12 +98,17 @@ class TopicController extends Controller
                 ->with('error', 'You need to purchase this course to access its content.');
         }
         
-        // Load the course with its topics and user progress
+        // Load the course with its topics, user progress, and videos
         $topics = Topic::where('course_id', $course->id)
             ->orderBy('display_order')
-            ->with(['userProgress' => function($query) use ($user) {
-                $query->where('user_id', $user->id);
-            }])
+            ->with([
+                'userProgress' => function($query) use ($user) {
+                    $query->where('user_id', $user->id);
+                },
+                'video' => function($query) {
+                    $query->where('is_active', true);
+                }
+            ])
             ->get();
 
         // 🚀 GENIUS: Load assignments using efficient pivot table filtering
@@ -101,7 +121,7 @@ class TopicController extends Controller
                 })
                 ->with([
                     'topic:id,name,course_id',
-                    'quizAttempts' => function($query) use ($user) {
+                    'attempts' => function($query) use ($user) {
                         $query->where('user_id', $user->id)
                               ->select('id', 'assignment_id', 'user_id', 'percentage_grade', 'score', 'created_at');
                     }
@@ -109,10 +129,9 @@ class TopicController extends Controller
                 ->get();
                 
             // Attach dynamic progress for current user using eager loaded data
-        $assignments = $assignments->load('quizAttempts');
             foreach ($assignments as $assignment) {
-                // Use eager loaded quizAttempts instead of making new queries
-                $attempts = $assignment->quizAttempts;
+                // Use eager loaded attempts instead of making new queries
+                $attempts = $assignment->attempts;
                 
                 if ($attempts->isEmpty()) {
                     $assignment->user_progress = [
@@ -195,7 +214,7 @@ class TopicController extends Controller
     }
 
     /**
-     * ✅ Get source-specific progress for a topic - DELEGATES TO SPECIALIZED CONTROLLER
+     * ✅ Get source-specific progress for a topic - FIXED: Shows separate progress for each mode
      */
     public function getSourceProgress(Topic $topic)
     {
@@ -211,8 +230,8 @@ class TopicController extends Controller
                 ->pluck('count', 'source')
                 ->toArray();
             
-            // Get progress for each source using QuizAttempt
-            $progress = QuizAttempt::getTopicProgress($userId, $topic->id, $mode);
+            // FIXED: Get progress ONLY for the selected mode (quiz OR tutor, not both)
+            $modeProgress = QuizAttempt::getTopicProgress($userId, $topic->id, $mode);
             
             // Format the response, ensuring each source has an entry even if no attempts
             $formattedProgress = [];
@@ -220,28 +239,47 @@ class TopicController extends Controller
             $totalCompleted = 0;
             
             foreach ($sourceCounts as $source => $count) {
-                $sourceData = $progress['sources'][$source] ?? null;
-                $completed = $sourceData ? $sourceData['score'] : 0;
-                $total = $sourceData ? $sourceData['total'] : 0;
+                // Get data ONLY from the selected mode
+                $modeData = $modeProgress['sources'][$source] ?? null;
+                
+                // Use mode-specific stats
+                $completed = $modeData ? $modeData['score'] : 0;
+                $attempted = $modeData ? $modeData['total'] : 0;
                 
                 $formattedProgress[$source] = [
                     'completed' => $completed,
-                    'total' => $total,
+                    'total' => $attempted,
                     'total_questions_available' => $count,
-                    'percentage' => $total > 0 ? round(($completed / $total) * 100, 2) : 0
+                    'percentage' => $attempted > 0 ? round(($completed / $attempted) * 100, 2) : 0,
+                    'has_attempts' => $attempted > 0  // CRITICAL: Flag based on actual attempts in this mode
                 ];
                 
                 $totalAvailable += $count;
                 $totalCompleted += $completed;
             }
 
-            // Add overall progress
-            $formattedProgress['all'] = [
-                'completed' => $progress['overall']['score'],
-                'total' => $progress['overall']['total'],
-                'total_questions_available' => $totalAvailable,
-                'percentage' => $progress['overall']['percentage']
-            ];
+            // Add overall progress (only for quiz mode, tutor mode has no overall)
+            if ($mode === 'quiz') {
+                $overallAttempted = $modeProgress['overall']['total'];
+                $overallCompleted = $modeProgress['overall']['score'];
+                
+                $formattedProgress['all'] = [
+                    'completed' => $overallCompleted,
+                    'total' => $overallAttempted,
+                    'total_questions_available' => $totalAvailable,
+                    'percentage' => $modeProgress['overall']['percentage'],
+                    'has_attempts' => $overallAttempted > 0
+                ];
+            } else {
+                // Tutor mode: no overall progress
+                $formattedProgress['all'] = [
+                    'completed' => 0,
+                    'total' => 0,
+                    'total_questions_available' => $totalAvailable,
+                    'percentage' => 0,
+                    'has_attempts' => false
+                ];
+            }
             
             // Add metadata about available sources
             $response = [

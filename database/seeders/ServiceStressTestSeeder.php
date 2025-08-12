@@ -9,7 +9,7 @@ use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Event;
 use App\Services\AssignmentService;
-use App\Services\CacheService;
+use App\Services\Core\UltraConsolidatedCacheService;
 use App\Services\CourseFilterService;
 use App\Services\GradingService;
 use App\Services\MedicalKnowledgeService;
@@ -78,7 +78,7 @@ class ServiceStressTestSeeder extends Seeder
         
         $services = [
             'AssignmentService' => AssignmentService::class,
-            'CacheService' => CacheService::class,
+            'CacheService' => UltraConsolidatedCacheService::class,
             'CourseFilterService' => CourseFilterService::class,
             'GradingService' => GradingService::class,
             'MedicalKnowledgeService' => MedicalKnowledgeService::class,
@@ -86,7 +86,7 @@ class ServiceStressTestSeeder extends Seeder
             'PaymentService' => PaymentService::class,
             'QuizService' => QuizService::class,
             'UserStatsService' => UserStatsService::class,
-            'QuizCacheService' => QuizCacheService::class,
+            'QuizCacheService' => QuizUltraConsolidatedCacheService::class,
             'StudentProgressService' => StudentProgressService::class,
             'TopicLockingService' => TopicLockingService::class,
             'TextProcessingService' => TextProcessingService::class,
@@ -1176,7 +1176,7 @@ class ServiceStressTestSeeder extends Seeder
                         GradingService::class,
                         NotificationService::class,
                         QuizService::class,
-                        CacheService::class
+                        UltraConsolidatedCacheService::class
                     ];
                     
                     $serviceClass = $services[rand(0, count($services) - 1)];

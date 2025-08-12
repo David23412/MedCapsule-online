@@ -21,6 +21,7 @@ php artisan view:cache
 # Warm up cache
 echo "🔥 Warming up cache..."
 php artisan cache:warm
+php artisan cache:warm-home
 
 # Optimize Composer autoloader
 echo "📦 Optimizing Composer autoloader..."

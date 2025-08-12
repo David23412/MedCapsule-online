@@ -11,7 +11,7 @@ use App\Models\Mistake;
 use App\Models\QuizAttempt;
 use App\Services\GradingService;
 use App\Services\QuizService;
-use App\Services\CacheService;
+use App\Services\Core\UltraConsolidatedCacheService;
 use App\Services\UserStatsService;
 use App\Services\NotificationService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -103,7 +103,7 @@ class QuizIntegrationTest extends TestCase
         // Initialize services
         $this->gradingService = app(GradingService::class);
         $this->quizService = app(QuizService::class);
-        $this->cacheService = app(CacheService::class);
+        $this->cacheService = app(UltraConsolidatedCacheService::class);
         $this->userStatsService = app(UserStatsService::class);
         $this->notificationService = app(NotificationService::class);
     }

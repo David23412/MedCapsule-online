@@ -19,7 +19,7 @@ class UniversalNotificationService
         'perfect_score' => 'fas fa-star',
         'first_attempt' => 'fas fa-rocket',
         'topic_mastery' => 'fas fa-graduation-cap',
-        'level_up' => 'fas fa-level-up-alt',
+        'level_up' => 'fas fa-bolt',
         'assignment_due' => 'fas fa-clock',
         'grade_released' => 'fas fa-star',
         
@@ -40,7 +40,7 @@ class UniversalNotificationService
         'assignment_passed' => 'fas fa-check-circle',
         'assignment_needs_review' => 'fas fa-book',
         'assignment_needs_improvement' => 'fas fa-dumbbell',
-        'assignment_perfect' => 'fas fa-bullseye',
+        'assignment_perfect' => 'fas fa-star',
         
         // ⏰ ASSIGNMENT DUE REMINDERS (Simplified)
         'assignment_due_1h' => 'fas fa-exclamation-circle',
@@ -53,7 +53,7 @@ class UniversalNotificationService
         'assignment_created' => 'fas fa-clipboard-list',
         'assignment_due' => 'fas fa-clock',
         'assignment_completed' => 'fas fa-clipboard-check',
-        'assignment_perfect' => 'fas fa-medal',
+        'assignment_perfect' => 'fas fa-star',
         'assignment_passed' => 'fas fa-check-circle',
         'assignment_needs_improvement' => 'fas fa-exclamation-triangle',
         

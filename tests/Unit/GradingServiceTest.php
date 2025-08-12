@@ -4,7 +4,7 @@ namespace Tests\Unit;
 
 use Tests\TestCase;
 use App\Services\GradingService;
-use App\Services\CacheService;
+use App\Services\Core\UltraConsolidatedCacheService;
 use App\Services\UserStatsService;
 use App\Services\NotificationService;
 use App\Services\WrittenAnswerEvaluationService;
@@ -33,7 +33,7 @@ class GradingServiceTest extends TestCase
     {
         parent::setUp();
         
-        $this->cacheService = Mockery::mock(CacheService::class);
+        $this->cacheService = Mockery::mock(UltraConsolidatedCacheService::class);
         $this->userStatsService = Mockery::mock(UserStatsService::class);
         $this->notificationService = Mockery::mock(NotificationService::class);
         $this->writtenAnswerEvaluationService = Mockery::mock(WrittenAnswerEvaluationService::class);

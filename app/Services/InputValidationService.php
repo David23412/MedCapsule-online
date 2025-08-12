@@ -290,7 +290,7 @@ class InputValidationService
             $submissionHash = md5(serialize($data));
             $cacheKey = "submission_hash_{$context['user_id']}_" . $submissionHash;
             
-            if (ResilientCacheService::safeGet($cacheKey)) {
+            if (ResilientUltraConsolidatedCacheService::safeGet($cacheKey)) {
                 Log::warning('Duplicate submission detected', [
                     'user_id' => $context['user_id'],
                     'hash' => $submissionHash,
@@ -300,7 +300,7 @@ class InputValidationService
             }
             
             // Cache this submission hash for 5 minutes
-            ResilientCacheService::safePut($cacheKey, true, 300);
+            ResilientUltraConsolidatedCacheService::safePut($cacheKey, true, 300);
         }
 
         if ($context['action'] === 'random_quiz_grade' && isset($context['user_id'])) {
@@ -419,7 +419,7 @@ class InputValidationService
      */
     public static function checkRateLimit(string $key, int $maxAttempts = 60, int $timeWindowSeconds = 60): bool
     {
-        $attempts = ResilientCacheService::safeGet($key, 0);
+        $attempts = ResilientUltraConsolidatedCacheService::safeGet($key, 0);
         
         if ($attempts >= $maxAttempts) {
             Log::warning('Rate limit exceeded for validation', [
@@ -431,7 +431,7 @@ class InputValidationService
             return false;
         }
         
-        ResilientCacheService::safePut($key, $attempts + 1, $timeWindowSeconds);
+        ResilientUltraConsolidatedCacheService::safePut($key, $attempts + 1, $timeWindowSeconds);
         return true;
     }
 

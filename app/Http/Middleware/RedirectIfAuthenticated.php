@@ -16,7 +16,7 @@ class RedirectIfAuthenticated
             if (Auth::guard($guard)->check()) {
                 // If trying to access login or register while authenticated
                 if ($request->is('login') || $request->is('register')) {
-                    return redirect()->route('courses.index');
+                    return redirect()->route('home');
                 }
             }
         }

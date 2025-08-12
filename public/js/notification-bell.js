@@ -178,6 +178,5 @@ function notificationBell() {
 window.addEventListener('beforeunload', () => {
     if (window.notificationBellInstance) {
         window.notificationBellInstance.cleanup();
-            }
+    }
 }); 
-} 

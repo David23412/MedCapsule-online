@@ -8,7 +8,7 @@ use App\Services\GradingService;
 use App\Services\QuizService;
 use App\Services\NotificationService;
 use App\Services\UserStatsService;
-use App\Services\CacheService;
+use App\Services\Core\UltraConsolidatedCacheService;
 use App\Services\PaymentVerificationService;
 use App\Services\FraudDetectionService;
 use App\Services\PaymentLogService;
@@ -31,7 +31,7 @@ class AppServiceProvider extends ServiceProvider
         $this->app->singleton(QuizService::class);
         $this->app->singleton(NotificationService::class);
         $this->app->singleton(UserStatsService::class);
-        $this->app->singleton(CacheService::class);
+        $this->app->singleton(UltraConsolidatedCacheService::class);
         
         // PHASE 3: Query monitoring service
         $this->app->singleton(QueryMonitoringService::class);
@@ -52,7 +52,7 @@ class AppServiceProvider extends ServiceProvider
         $this->app->alias(QuizService::class, 'quiz.service');
         $this->app->alias(NotificationService::class, 'notification.service');
         $this->app->alias(UserStatsService::class, 'user.stats.service');
-        $this->app->alias(CacheService::class, 'cache.service');
+        $this->app->alias(UltraConsolidatedCacheService::class, 'cache.service');
         $this->app->alias(QueryMonitoringService::class, 'query.monitor.service');
     }
 
@@ -86,11 +86,11 @@ class AppServiceProvider extends ServiceProvider
                 return $app->make(UserStatsService::class);
             });
             
-        // Configure QuizService with CacheService dependency
+        // Configure QuizService with UltraConsolidatedCacheService dependency
         $this->app->when(QuizService::class)
-            ->needs(CacheService::class)
+            ->needs(UltraConsolidatedCacheService::class)
             ->give(function ($app) {
-                return $app->make(CacheService::class);
+                return $app->make(UltraConsolidatedCacheService::class);
             });
             
         // Configure PaymentVerificationService with optional dependencies

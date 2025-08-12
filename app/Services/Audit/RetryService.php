@@ -18,7 +18,7 @@ class RetryService
                     throw $e;
                 }
                 
-                usleep($delay * 1000 * $attempts); // Exponential backoff
+                app('performance.async')->delayAsync($delay  * $attempts); // Exponential backoff
             }
         }
     }

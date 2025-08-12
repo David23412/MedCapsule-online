@@ -220,7 +220,7 @@ class PerformanceBenchmarker
             }
             
             // Small delay between requests
-            usleep(100000); // 100ms
+            app('performance.async')->delayAsync(100000); // 100ms
         }
         
         // Analyze results and create findings

@@ -40,7 +40,7 @@ class StudentProgressController extends Controller
                 $validatedData = $request->getValidatedWithDefaults();
                 
                 // Ultra-fast cache key generation
-                $cacheKey = QuizCacheService::generateCacheKey('student_progress', [
+                $cacheKey = QuizUltraConsolidatedCacheService::generateCacheKey('student_progress', [
                     'user_id' => $studentId,
                     'tutor_id' => auth()->id(),
                     'params' => $validatedData
@@ -85,7 +85,7 @@ class StudentProgressController extends Controller
             $validatedData = $request->getValidatedWithDefaults();
             
             // Ultra-fast cache key for real-time data
-            $cacheKey = QuizCacheService::generateCacheKey('student_realtime', [
+            $cacheKey = QuizUltraConsolidatedCacheService::generateCacheKey('student_realtime', [
                 'user_id' => $studentId,
                 'timestamp' => now()->format('Y-m-d-H-i')
             ]);
@@ -116,7 +116,7 @@ class StudentProgressController extends Controller
             $validatedData = $request->getValidatedWithDefaults();
             
             // Performance analytics with aggressive caching
-            $cacheKey = QuizCacheService::generateCacheKey('analytics', [
+            $cacheKey = QuizUltraConsolidatedCacheService::generateCacheKey('analytics', [
                 'user_id' => $studentId,
                 'params' => $validatedData
             ]);
@@ -175,7 +175,7 @@ class StudentProgressController extends Controller
                 }
                 
                 // Cache key based on student and recent updates
-                $cacheKey = QuizCacheService::generateCacheKey('student_dashboard', [
+                $cacheKey = QuizUltraConsolidatedCacheService::generateCacheKey('student_dashboard', [
                     'user_id' => $studentId,
                     'tutor_id' => auth()->id(),
                     'timestamp' => $student->updated_at->timestamp
@@ -218,7 +218,7 @@ class StudentProgressController extends Controller
             $validatedData = $request->getValidatedWithDefaults();
             
             // Ultra-fast comparison analytics
-            $cacheKey = QuizCacheService::generateCacheKey('comparison_analytics', [
+            $cacheKey = QuizUltraConsolidatedCacheService::generateCacheKey('comparison_analytics', [
                 'user_id' => $studentId,
                 'tutor_id' => auth()->id(),
                 'params' => $validatedData
@@ -307,7 +307,7 @@ class StudentProgressController extends Controller
             $validatedData = $request->getValidatedWithDefaults();
             
             // Ultra-fast summary with aggressive caching
-            $cacheKey = QuizCacheService::generateCacheKey('progress_summary', [
+            $cacheKey = QuizUltraConsolidatedCacheService::generateCacheKey('progress_summary', [
                 'tutor_id' => auth()->id(),
                 'params' => $validatedData
             ]);

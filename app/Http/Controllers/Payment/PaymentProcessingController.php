@@ -60,6 +60,69 @@ class PaymentProcessingController extends Controller
     }
 
     /**
+     * Submit payment proof for a course (creates payment record if needed)
+     */
+    public function submitProofForCourse(Request $request, $courseId)
+    {
+        $user = Auth::user();
+        $course = Course::findOrFail($courseId);
+        
+        $validated = $request->validate([
+            'payment_method' => 'required|string|in:vodafone_cash,fawry,instapay',
+            'transaction_id' => 'required|string|max:100'
+        ]);
+
+        try {
+            DB::beginTransaction();
+            
+            // Check if user already has a pending payment for this course
+            $existingPayment = Payment::where('user_id', $user->id)
+                ->where('course_id', $courseId)
+                ->whereIn('status', ['pending', 'under_review'])
+                ->first();
+            
+            if ($existingPayment) {
+                // Update existing payment
+                $existingPayment->update([
+                    'payment_method' => $validated['payment_method'],
+                    'reference_number' => $validated['transaction_id'],
+                    'status' => 'under_review',
+                    'paid_at' => now()
+                ]);
+                
+                $payment = $existingPayment;
+            } else {
+                // Create new payment record
+                $payment = Payment::create([
+                    'user_id' => $user->id,
+                    'course_id' => $courseId,
+                    'amount' => $course->price,
+                    'payment_method' => $validated['payment_method'],
+                    'reference_number' => $validated['transaction_id'],
+                    'status' => 'under_review',
+                    'paid_at' => now()
+                ]);
+            }
+
+            DB::commit();
+            
+            return response()->json([
+                'success' => true,
+                'message' => 'Payment submitted successfully and is under review.',
+                'payment_id' => $payment->id
+            ]);
+            
+        } catch (Exception $e) {
+            DB::rollback();
+            
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to submit payment: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
      * Submit payment proof
      */
     public function submitProof(Request $request, Payment $payment)

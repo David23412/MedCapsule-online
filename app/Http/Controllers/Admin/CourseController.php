@@ -26,7 +26,7 @@ class CourseController extends Controller
     public function index()
     {
         // Ultra-aggressive caching for courses index
-        $cacheKey = QuizCacheService::generateCacheKey('admin_courses_index', [
+        $cacheKey = QuizUltraConsolidatedCacheService::generateCacheKey('admin_courses_index', [
             'user_id' => auth()->id() ?? 'guest',
             'timestamp' => now()->format('Y-m-d-H')
         ]);
@@ -128,37 +128,36 @@ class CourseController extends Controller
     public function update(Request $request, $id)
     {
         try {
-
-        $course = Course::findOrFail($id);
-        
-        $validatedData = // TODO: Create FormRequest class for validation
-        
-        // Handle course type change
-        $oldType = $course->type ?? 'medical';
-        $newType = $validatedData['type'] ?? 'medical';
-        
-        // If changing from medical to custom, log the change
-        if ($oldType === 'medical' && $newType === 'custom') {
-            Log::info('Course type changed from medical to custom', [
-                'course_id' => $course->id,
-                'course_name' => $course->name,
-                'user_id' => auth()->id(),
-                'user_name' => auth()->user()->name
-            ]);
+            $course = Course::findOrFail($id);
+            
+            $validatedData = // TODO: Create FormRequest class for validation
+            
+            // Handle course type change
+            $oldType = $course->type ?? 'medical';
+            $newType = $validatedData['type'] ?? 'medical';
+            
+            // If changing from medical to custom, log the change
+            if ($oldType === 'medical' && $newType === 'custom') {
+                Log::info('Course type changed from medical to custom', [
+                    'course_id' => $course->id,
+                    'course_name' => $course->name,
+                    'user_id' => auth()->id(),
+                    'user_name' => auth()->user()->name
+                ]);
+            }
+            
+            $course->update($validatedData);
+            
+            // Clear any cached course data
+            Cache::forget("course_{$id}");
+            
+            return redirect()->route('admin.courses.index')
+                             ->with('success', 'Course updated successfully');
         
         } catch (\Exception $e) {
             \Log::error('Method execution failed', ['error' => $e->getMessage()]);
             return response()->json(['success' => false, 'message' => 'Operation failed'], 500);
         }
-}
-        
-        $course->update($validatedData);
-        
-        // Clear any cached course data
-        Cache::forget("course_{$id}");
-        
-        return redirect()->route('admin.courses.index')
-                         ->with('success', 'Course updated successfully');
     }
 
     /**

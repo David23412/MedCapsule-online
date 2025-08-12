@@ -35,7 +35,7 @@ class CoursePreviewController extends Controller
             $previewType = $request->input('type', 'medical');
             
             // LETHAL CACHING: Ultra-aggressive caching for course preview
-            $cacheKey = QuizCacheService::generateCacheKey('course_preview', [
+            $cacheKey = QuizUltraConsolidatedCacheService::generateCacheKey('course_preview', [
                 'course_id' => $id,
                 'type' => $previewType,
                 'timestamp' => now()->format('Y-m-d-H')

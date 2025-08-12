@@ -22,7 +22,7 @@ class HealthCheckService
     public static function performHealthCheck(): array
     {
         // Cache health check results for 30 seconds to avoid excessive DB queries
-        return ResilientCacheService::safeRemember(
+        return ResilientUltraConsolidatedCacheService::safeRemember(
             'health_check_status',
             30,
             function () {
@@ -144,7 +144,7 @@ class HealthCheckService
      */
     private static function checkCache(): array
     {
-        return ResilientCacheService::healthCheck();
+        return ResilientUltraConsolidatedCacheService::healthCheck();
     }
 
     /**
@@ -318,7 +318,7 @@ class HealthCheckService
             }
             
             // Check cache functionality
-            $cacheTest = ResilientCacheService::safePut('health_quick_' . time(), 'test', 60);
+            $cacheTest = ResilientUltraConsolidatedCacheService::safePut('health_quick_' . time(), 'test', 60);
             if (!$cacheTest) {
                 return false;
             }
@@ -349,7 +349,7 @@ class HealthCheckService
                     'upload_max_filesize' => ini_get('upload_max_filesize'),
                     'post_max_size' => ini_get('post_max_size')
                 ],
-                'cache' => ResilientCacheService::getStatistics(),
+                'cache' => ResilientUltraConsolidatedCacheService::getStatistics(),
                 'database' => [
                     'driver' => config('database.default'),
                     'health' => DatabaseService::healthCheck()

@@ -7,7 +7,7 @@ use App\Models\Course;
 use App\Models\Topic;
 use App\Models\Question;
 use App\Services\QuizService;
-use App\Services\CacheService;
+use App\Services\Core\UltraConsolidatedCacheService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Cache;
@@ -21,7 +21,7 @@ class QuizTutorController extends Controller
     protected $quizService;
     protected $cacheService;
 
-    public function __construct(QuizService $quizService, CacheService $cacheService)
+    public function __construct(QuizService $quizService, UltraConsolidatedCacheService $cacheService)
     {
         $this->middleware(['auth']);
         $this->quizService = $quizService;
@@ -118,7 +118,7 @@ class QuizTutorController extends Controller
     }
 
     /**
-     * Handle tutor mode session completion
+     * Handle tutor mode session completion - CRITICAL FIX: Save quiz attempt to database
      */
     public function completeTutorSession(Request $request)
     {
@@ -130,12 +130,47 @@ class QuizTutorController extends Controller
             $totalQuestions = $sessionData['total_questions'] ?? 1;
             $courseId = $sessionData['course_id'] ?? null;
             $topicId = $sessionData['topic_id'] ?? null;
+            $source = $sessionData['source'] ?? 'General';
+            $questionData = $sessionData['question_data'] ?? [];
+            $durationSeconds = $sessionData['duration_seconds'] ?? 0;
             
             // Get course and topic names
             $course = $courseId ? Course::find($courseId) : null;
             $topic = $topicId ? Topic::find($topicId) : null;
             
-            // Trigger tutor mode completion notifications using the existing onQuizCompleted method
+            // CRITICAL FIX: Create quiz attempt record for tutor mode
+            if ($topicId && $totalQuestions > 0) {
+                $percentage = ($correctAnswers / $totalQuestions) * 100;
+                
+                $quizAttemptData = [
+                    'user_id' => $user->id,
+                    'topic_id' => $topicId,
+                    'quiz_type' => 'tutor',
+                    'study_mode' => 'tutor',
+                    'source' => $source,
+                    'score' => $correctAnswers,
+                    'total_questions' => $totalQuestions,
+                    'percentage_grade' => round($percentage, 2),
+                    'duration_seconds' => $durationSeconds,
+                    'question_data' => $questionData,
+                    'correct_answers' => $correctAnswers
+                ];
+                
+                // Create the quiz attempt using the optimized method
+                $result = \App\Models\QuizAttempt::createWithProgress($quizAttemptData);
+                
+                Log::info('🔥 TUTOR MODE: Quiz attempt created successfully', [
+                    'user_id' => $user->id,
+                    'topic_id' => $topicId,
+                    'source' => $source,
+                    'score' => $correctAnswers,
+                    'total' => $totalQuestions,
+                    'percentage' => $percentage,
+                    'attempt_id' => $result['attempt']->id ?? null
+                ]);
+            }
+            
+            // Trigger tutor mode completion notifications
             \App\Services\NotificationTriggerService::onQuizCompleted($user, [
                 'score' => $correctAnswers,
                 'total_questions' => $totalQuestions,
@@ -143,31 +178,33 @@ class QuizTutorController extends Controller
                 'topic_name' => $topic->name ?? 'Topic',
                 'course_id' => $courseId,
                 'topic_id' => $topicId,
-                'mode' => 'tutor' // This will trigger tutor-specific notifications
+                'mode' => 'tutor'
             ]);
             
-            Log::info('Tutor session completed', [
+            Log::info('Tutor session completed with database record', [
                 'user_id' => $user->id,
                 'correct_answers' => $correctAnswers,
                 'total_questions' => $totalQuestions,
                 'course_id' => $courseId,
-                'topic_id' => $topicId
+                'topic_id' => $topicId,
+                'source' => $source
             ]);
             
             return response()->json([
                 'success' => true,
-                'message' => 'Tutor session completed successfully'
+                'message' => 'Tutor session completed and progress saved successfully'
             ]);
             
         } catch (\Exception $e) {
             Log::error('Error completing tutor session:', [
                 'error' => $e->getMessage(),
-                'user_id' => auth()->id()
+                'user_id' => auth()->id(),
+                'trace' => $e->getTraceAsString()
             ]);
             
             return response()->json([
                 'success' => false,
-                'message' => 'Error completing tutor session'
+                'message' => 'Error completing tutor session: ' . $e->getMessage()
             ], 500);
         }
     }

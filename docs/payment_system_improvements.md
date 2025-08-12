@@ -284,22 +284,4 @@ Course prices need to be managed through manual database edits, lacking a user-f
 - [ ] Create a bulk price update feature for multiple courses
 - [ ] Implement scheduled/future price changes
 
-## 15. Course Bundle and Package Payment System
-
-**Potential Issue:**
-Users can only purchase single courses, with no support for course bundles or package discounts.
-
-**Impact:**
-- Limited marketing and sales strategies
-- No price ladder implementation
-- More complex checkout process for users wanting multiple courses
-
-### Implementation Steps:
-- [ ] Create a CourseBundle model that can group multiple courses
-- [ ] Implement bundle pricing logic (fixed price or percentage discount)
-- [ ] Add a BundleEnrollment model to track bundle purchases
-- [ ] Create an admin interface for managing bundles
-- [ ] Implement bundle-specific reference numbers for payments
-- [ ] Add bundle verification process to enroll in all included courses
-- [ ] Create bundle promotional features (limited time offers, etc.)
-- [ ] Implement a simple recommendation system for related bundles 
+ 

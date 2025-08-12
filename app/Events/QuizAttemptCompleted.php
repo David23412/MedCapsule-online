@@ -10,6 +10,7 @@ use Illuminate\Broadcasting\PrivateChannel;
 use Illuminate\Contracts\Broadcasting\ShouldBroadcast;
 use Illuminate\Foundation\Events\Dispatchable;
 use Illuminate\Queue\SerializesModels;
+use InvalidArgumentException;
 
 class QuizAttemptCompleted
 {
@@ -28,7 +29,7 @@ class QuizAttemptCompleted
         $this->quizAttempt = $quizAttempt;
         
         // Validate scoring inputs
-        if ($score < 0 || $score > 100) {
+        if ($score < 0 || $score > $totalQuestions) {
             throw new InvalidArgumentException('Invalid score value');
         }
 

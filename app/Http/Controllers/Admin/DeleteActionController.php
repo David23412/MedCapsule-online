@@ -7,7 +7,7 @@ use Illuminate\Http\Request;
 use App\Http\Requests\DeleteRequest;
 use Illuminate\Support\Facades\{DB, Log, Cache};
 use App\Models\{Course, Topic, Question, User, QuizAttempt, Mistake, UserTopicProgress};
-use App\Services\CacheService;
+use App\Services\Core\UltraConsolidatedCacheService;
 use Carbon\Carbon;
 
 class DeleteActionController extends Controller
@@ -196,7 +196,7 @@ class DeleteActionController extends Controller
 
             $question->update(['deleted' => true]);
 
-            $cacheService = app(CacheService::class);
+            $cacheService = app(UltraConsolidatedCacheService::class);
             $cacheService->clearQuestionCaches($question->id, $question->topic_id);
             
             session()->flush();
@@ -319,7 +319,7 @@ class DeleteActionController extends Controller
                 ->get()
                 ->keyBy('id');
 
-            $cacheService = app(CacheService::class);
+            $cacheService = app(UltraConsolidatedCacheService::class);
             
             // Batch update all questions at once
             Question::whereIn('id', $questionIds)->update(['deleted' => true]);

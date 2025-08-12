@@ -11,12 +11,13 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use App\Services\UltraFastQueryCache;
 
 class QuizService
 {
     protected $cacheService;
 
-    public function __construct(CacheService $cacheService)
+    public function __construct(Core\UltraConsolidatedCacheService $cacheService)
     {
         $this->cacheService = $cacheService;
     }

@@ -6,7 +6,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Facades\DB;
-use App\Services\CacheService;
+use App\Services\Core\UltraConsolidatedCacheService;
 use Illuminate\Support\Facades\Validator;
 
 class QuizAttempt extends Model
@@ -80,6 +80,28 @@ class QuizAttempt extends Model
                 $quizAttempt->total_questions,
                 $percentage
             ));
+            
+            // CRITICAL FIX: Clear profile cache when new quiz attempt is created
+            try {
+                $cacheKey = "user_profile_optimized_{$quizAttempt->user_id}_" . now()->format('Y-m-d-H');
+                \Illuminate\Support\Facades\Cache::forget($cacheKey);
+                
+                // Also clear the previous hour's cache to ensure immediate updates
+                $previousHourKey = "user_profile_optimized_{$quizAttempt->user_id}_" . now()->subHour()->format('Y-m-d-H');
+                \Illuminate\Support\Facades\Cache::forget($previousHourKey);
+                
+                \Log::info('Profile cache cleared after quiz attempt', [
+                    'user_id' => $quizAttempt->user_id,
+                    'quiz_type' => $quizAttempt->quiz_type,
+                    'study_mode' => $quizAttempt->study_mode,
+                    'duration_seconds' => $quizAttempt->duration_seconds
+                ]);
+            } catch (\Exception $e) {
+                \Log::warning('Failed to clear profile cache', [
+                    'error' => $e->getMessage(),
+                    'user_id' => $quizAttempt->user_id
+                ]);
+            }
         });
 
         // PHASE 2: Dispatch UserProgressUpdated event when progress changes (only for regular quizzes)
@@ -291,18 +313,40 @@ class QuizAttempt extends Model
     }
 
     /**
-     * Get topic progress for a user with error handling
+     * Get topic progress for a user based on TOTAL QUESTIONS ANSWERED CORRECTLY across ALL SOURCES
+     * EFFICIENT IMPLEMENTATION: Total Questions in Topic / Correct Questions in Topic × 100
+     * CACHED for 5 minutes for performance
      */
     public static function getTopicProgress($userId, $topicId, $studyMode = 'quiz')
     {
-        try {
-            $attempts = self::where('user_id', $userId)
-                ->where('topic_id', $topicId)
-                ->where('study_mode', $studyMode)
-                ->orderBy('created_at', 'desc')
-                ->get();
+        // CRITICAL: Tutor mode uses separate method - no overall progress calculation
+        if ($studyMode === 'tutor') {
+            return self::getTutorSourceProgress($userId, $topicId);
+        }
+        
+        // Cache key for this specific user/topic/mode combination
+        $cacheKey = "topic_progress_{$userId}_{$topicId}_{$studyMode}";
+        
+        return \Illuminate\Support\Facades\Cache::remember($cacheKey, 300, function () use ($userId, $topicId, $studyMode) {
+            return self::calculateTopicProgress($userId, $topicId, $studyMode);
+        });
+    }
 
-            if ($attempts->isEmpty()) {
+    /**
+     * Calculate topic progress (internal method)
+     * OPTIMIZED LOGIC: Count unique questions answered correctly out of total available questions by source
+     */
+    private static function calculateTopicProgress($userId, $topicId, $studyMode)
+    {
+        try {
+            // STEP 1: Get total questions available in this topic by source (OPTIMIZED: Single query)
+            $totalQuestionsBySource = \App\Models\Question::where('topic_id', $topicId)
+                ->selectRaw('source, COUNT(*) as total')
+                ->groupBy('source')
+                ->pluck('total', 'source')
+                ->toArray();
+
+            if (empty($totalQuestionsBySource)) {
                 return [
                     'overall' => [
                         'score' => 0,
@@ -313,49 +357,91 @@ class QuizAttempt extends Model
                 ];
             }
 
-            // Get the actual number of questions available in each source
-            $sourceQuestionCounts = \App\Models\Question::where('topic_id', $topicId)
-                ->whereNotNull('source')
-                ->selectRaw('source, COUNT(*) as count')
-                ->groupBy('source')
-                ->pluck('count', 'source')
+            // STEP 2: Get quiz attempts and extract unique correct questions (OPTIMIZED: Minimal data fetch)
+            $attempts = self::where('user_id', $userId)
+                ->where('topic_id', $topicId)
+                ->where('study_mode', $studyMode)
+                ->select(['source', 'question_data'])
+                ->get();
+
+            // STEP 3: Get question ID to source mapping for accurate source assignment
+            $questionSourceMap = \App\Models\Question::where('topic_id', $topicId)
+                ->pluck('source', 'id')
                 ->toArray();
 
-            // Group by source and get LATEST attempt per source (not accumulated)
-            $sourceProgress = [];
+            // STEP 4: Process correct questions and attempted questions by their ACTUAL source (CRITICAL FIX)
+            $correctQuestionsBySource = [];
+            $attemptedQuestionsBySource = [];
+            
             foreach ($attempts as $attempt) {
-                $source = $attempt->source ?: 'General';
-                
-                // Only keep the latest attempt per source (first one due to desc order)
-                if (!isset($sourceProgress[$source])) {
-                    $sourceProgress[$source] = [                        'score' => $attempt->score,
-                        'total' => $attempt->total_questions,
-                        'percentage' => $attempt->total_questions > 0 
-                            ? ($attempt->score / $attempt->total_questions) * 100 
-                            : 0
-                    ];
+                // Extract question IDs and map to their actual sources
+                if (is_array($attempt->question_data)) {
+                    foreach ($attempt->question_data as $questionData) {
+                        if (!empty($questionData['question_id'])) {
+                            
+                            $questionId = $questionData['question_id'];
+                            $actualSource = $questionSourceMap[$questionId] ?? 'General';
+                            
+                            // Track all attempted questions
+                            if (!isset($attemptedQuestionsBySource[$actualSource])) {
+                                $attemptedQuestionsBySource[$actualSource] = [];
+                            }
+                            $attemptedQuestionsBySource[$actualSource][$questionId] = true;
+                            
+                            // Track correct questions
+                            if (!empty($questionData['is_correct'])) {
+                                if (!isset($correctQuestionsBySource[$actualSource])) {
+                                    $correctQuestionsBySource[$actualSource] = [];
+                                }
+                                $correctQuestionsBySource[$actualSource][$questionId] = true;
+                            }
+                        }
+                    }
                 }
             }
 
-            // Calculate overall progress from LATEST attempts per source (not accumulated)
-            $totalScore = 0;
-            $totalQuestions = 0;
-            foreach ($sourceProgress as $data) {
-                $totalScore += $data['score'];
-                $totalQuestions += $data['total'];
+            // STEP 5: Calculate progress for each source (OPTIMIZED: Direct count)
+            $sourceProgress = [];
+            $totalCorrectQuestions = 0;
+            $totalQuestionsInTopic = array_sum($totalQuestionsBySource);
+
+            foreach ($totalQuestionsBySource as $source => $totalQuestions) {
+                // Count unique correct questions (OPTIMIZED: array_keys count)
+                $correctCount = isset($correctQuestionsBySource[$source]) 
+                    ? count($correctQuestionsBySource[$source]) 
+                    : 0;
+                
+                // Count unique attempted questions
+                $attemptedCount = isset($attemptedQuestionsBySource[$source])
+                    ? count($attemptedQuestionsBySource[$source])
+                    : 0;
+                
+                $percentage = $attemptedCount > 0 ? ($correctCount / $attemptedCount) * 100 : 0;
+                
+                $sourceProgress[$source] = [
+                    'score' => $correctCount,
+                    'total' => $attemptedCount, // FIXED: Use attempted count, not available count
+                    'percentage' => round($percentage, 2)
+                ];
+                
+                $totalCorrectQuestions += $correctCount;
             }
-            $overallPercentage = $totalQuestions > 0 ? ($totalScore / $totalQuestions) * 100 : 0;
+
+            // STEP 6: Calculate overall percentage (OPTIMIZED: Pre-calculated total)
+            $overallPercentage = $totalQuestionsInTopic > 0 
+                ? ($totalCorrectQuestions / $totalQuestionsInTopic) * 100 
+                : 0;
 
             return [
                 'overall' => [
-                    'score' => $totalScore,
-                    'total' => $totalQuestions,
-                    'percentage' => $overallPercentage
+                    'score' => $totalCorrectQuestions,
+                    'total' => $totalQuestionsInTopic,
+                    'percentage' => round($overallPercentage, 2)
                 ],
                 'sources' => $sourceProgress
             ];
         } catch (\Exception $e) {
-            \Log::error('Error getting topic progress', [
+            \Log::error('Error calculating topic progress', [
                 'user_id' => $userId,
                 'topic_id' => $topicId,
                 'study_mode' => $studyMode,
@@ -368,6 +454,114 @@ class QuizAttempt extends Model
                     'total' => 0,
                     'percentage' => 0
                 ],
+                'sources' => []
+            ];
+        }
+    }
+
+    /**
+     * Get tutor mode source progress - ONLY for source modal updates
+     * Does NOT calculate overall progress - tutor mode is source-specific only
+     */
+    private static function getTutorSourceProgress($userId, $topicId)
+    {
+        try {
+            // Get total questions available in this topic by source
+            $totalQuestionsBySource = \App\Models\Question::where('topic_id', $topicId)
+                ->selectRaw('source, COUNT(*) as total')
+                ->groupBy('source')
+                ->pluck('total', 'source')
+                ->toArray();
+
+            if (empty($totalQuestionsBySource)) {
+                return [
+                    'overall' => ['score' => 0, 'total' => 0, 'percentage' => 0],
+                    'sources' => []
+                ];
+            }
+
+            // Get tutor mode attempts only
+            $attempts = self::where('user_id', $userId)
+                ->where('topic_id', $topicId)
+                ->where('study_mode', 'tutor')
+                ->select(['source', 'question_data'])
+                ->get();
+
+            // Get question ID to source mapping
+            $questionSourceMap = \App\Models\Question::where('topic_id', $topicId)
+                ->pluck('source', 'id')
+                ->toArray();
+
+            // Process ALL questions by their actual source (correct and incorrect)
+            $correctQuestionsBySource = [];
+            $attemptedQuestionsBySource = [];
+            
+            foreach ($attempts as $attempt) {
+                if (is_array($attempt->question_data)) {
+                    foreach ($attempt->question_data as $questionData) {
+                        if (!empty($questionData['question_id'])) {
+                            
+                            $questionId = $questionData['question_id'];
+                            $actualSource = $questionSourceMap[$questionId] ?? 'General';
+                            
+                            // Track all attempted questions
+                            if (!isset($attemptedQuestionsBySource[$actualSource])) {
+                                $attemptedQuestionsBySource[$actualSource] = [];
+                            }
+                            $attemptedQuestionsBySource[$actualSource][$questionId] = true;
+                            
+                            // Track correct questions
+                            if (!empty($questionData['is_correct'])) {
+                                if (!isset($correctQuestionsBySource[$actualSource])) {
+                                    $correctQuestionsBySource[$actualSource] = [];
+                                }
+                                $correctQuestionsBySource[$actualSource][$questionId] = true;
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Calculate progress for each source - TUTOR MODE ONLY
+            $sourceProgress = [];
+            
+            foreach ($totalQuestionsBySource as $source => $totalQuestions) {
+                $correctCount = isset($correctQuestionsBySource[$source]) 
+                    ? count($correctQuestionsBySource[$source]) 
+                    : 0;
+                
+                $attemptedCount = isset($attemptedQuestionsBySource[$source])
+                    ? count($attemptedQuestionsBySource[$source])
+                    : 0;
+                
+                $percentage = $attemptedCount > 0 ? ($correctCount / $attemptedCount) * 100 : 0;
+                
+                $sourceProgress[$source] = [
+                    'score' => $correctCount,
+                    'total' => $attemptedCount, // FIXED: Use attempted count, not available count
+                    'percentage' => round($percentage, 2)
+                ];
+            }
+
+            // TUTOR MODE: No overall progress calculation - return empty overall
+            return [
+                'overall' => [
+                    'score' => 0,
+                    'total' => 0,
+                    'percentage' => 0
+                ],
+                'sources' => $sourceProgress
+            ];
+            
+        } catch (\Exception $e) {
+            \Log::error('Error calculating tutor source progress', [
+                'user_id' => $userId,
+                'topic_id' => $topicId,
+                'error' => $e->getMessage()
+            ]);
+            
+            return [
+                'overall' => ['score' => 0, 'total' => 0, 'percentage' => 0],
                 'sources' => []
             ];
         }
@@ -405,7 +599,7 @@ class QuizAttempt extends Model
 
             // Clear relevant caches
             try {
-                app(CacheService::class)->clearUserTopicProgressCache($data['user_id'], $data['topic_id']);
+                app(UltraConsolidatedCacheService::class)->clearUserTopicProgressCache($data['user_id'], $data['topic_id']);
             } catch (\Exception $e) {
                 \Log::warning('Failed to clear cache after quiz attempt creation', [
                     'error' => $e->getMessage()

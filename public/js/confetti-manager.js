@@ -150,8 +150,17 @@ class ConfettiManager {
      * @param {HTMLElement|string} container - Container element or selector
      */
     static celebratePerfectScore(container = null) {
+        // Safari-specific positioning fix
+        const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+        
+        let originX = 0.5;
+        if (isSafari) {
+            // EXTREME left shift for Safari's fucked positioning
+            originX = 0.25;
+        }
+        
         this.triggerConfetti(container, 'heavy', {
-            origin: { y: 0.6 },
+            origin: { x: originX, y: 0.6 },
             colors: ['#FFD700', '#FFA500', '#FF69B4'],
             shapes: ['star', 'circle']
         });
@@ -211,6 +220,106 @@ class ConfettiManager {
         ];
 
         this.createBurst(points, 'heavy');
+    }
+
+    /**
+     * Trigger confetti specifically for modal popups with perfect center positioning
+     * This method ensures confetti appears exactly in the center of the modal, especially for Safari
+     * @param {string} type - 'perfect', 'good', 'achievement'
+     */
+    static triggerModalConfetti(type = 'good') {
+        if (typeof confetti === 'undefined') {
+            return;
+        }
+
+        try {
+            // Clear any existing confetti first
+            this.clearConfetti();
+
+            // Safari-specific positioning fix
+            const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+            
+            let centerX = 0.5;
+            let centerY = 0.5;
+            
+            if (isSafari) {
+                // Safari viewport compensation - EXTREME left shift to obliterate Safari's positioning bug
+                centerX = 0.25; // EXTREME left shift - Safari's positioning is completely fucked
+                centerY = 0.5;
+            }
+
+            const centerOptions = {
+                origin: { 
+                    x: centerX,
+                    y: centerY
+                },
+                zIndex: 10001  // Above modal
+            };
+
+            let confettiOptions = {};
+
+            switch (type) {
+                case 'perfect':
+                    confettiOptions = {
+                        particleCount: 150,
+                        spread: 80,
+                        startVelocity: 35,
+                        decay: 0.85,
+                        gravity: 1.2,
+                        colors: ['#FFD700', '#FFA500', '#FF69B4', '#00CED1'],
+                        shapes: ['star', 'circle'],
+                        ...centerOptions
+                    };
+                    break;
+                    
+                case 'good':
+                    confettiOptions = {
+                        particleCount: 100,
+                        spread: 70,
+                        startVelocity: 30,
+                        decay: 0.9,
+                        gravity: 1,
+                        colors: ['#00CED1', '#98FB98', '#4ECDC4', '#45B7D1'],
+                        ...centerOptions
+                    };
+                    break;
+                    
+                case 'achievement':
+                    confettiOptions = {
+                        particleCount: 75,
+                        spread: 60,
+                        startVelocity: 25,
+                        decay: 0.9,
+                        gravity: 0.8,
+                        colors: ['#96CEB4', '#FFEAA7', '#DDA0DD', '#FFB6C1'],
+                        ...centerOptions
+                    };
+                    break;
+                    
+                default:
+                    confettiOptions = {
+                        particleCount: 100,
+                        spread: 70,
+                        startVelocity: 30,
+                        decay: 0.9,
+                        gravity: 1,
+                        colors: ['#00CED1', '#98FB98', '#4ECDC4'],
+                        ...centerOptions
+                    };
+            }
+
+            // Trigger the confetti animation
+            const animation = confetti(confettiOptions);
+            this.activeConfetti.push(animation);
+
+            // Auto-cleanup after animation completes
+            setTimeout(() => {
+                this.clearConfetti();
+            }, 3000);
+
+        } catch (error) {
+            // Silent fail for production
+        }
     }
 }
 

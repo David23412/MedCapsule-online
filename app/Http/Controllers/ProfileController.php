@@ -49,10 +49,10 @@ use App\Models\QuizAttempt;
     {
         $user = Auth::user();
         
-        // RUTHLESS OPTIMIZATION: Extended caching with better key strategy
-        $cacheKey = "user_profile_optimized_{$user->id}_" . now()->format('Y-m-d');
+        // RUTHLESS OPTIMIZATION: More responsive caching with hourly granularity
+        $cacheKey = "user_profile_optimized_{$user->id}_" . now()->format('Y-m-d-H');
         
-        $profileData = Cache::remember($cacheKey, 7200, function () use ($user) {
+        $profileData = Cache::remember($cacheKey, 3600, function () use ($user) {
             // Calculate accuracy from user's total attempts and correct answers
             $totalQuestions = $user->total_questions_attempted ?? 0;
             $totalCorrect = $user->getTotalCorrectAnswers();

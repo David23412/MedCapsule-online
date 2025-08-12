@@ -239,7 +239,7 @@ class QueueIntegrityManager
                     Log::info("Restarted {$subsystem}");
                     
                     // Wait a moment for subsystem to initialize
-                    usleep(500000); // 0.5 seconds
+                    app('performance.async')->delayAsync(500000); // 0.5 seconds
                     
                 } catch (Exception $e) {
                     Log::error("Failed to restart {$subsystem}", [
@@ -556,7 +556,7 @@ class QueueIntegrityManager
             }
             
             // If jobs are running, wait just a tiny bit
-            usleep(100000); // 0.1 seconds max
+            app('performance.async')->delayAsync(100000); // 0.1 seconds max
             
             $waitTime = (microtime(true) - $startTime) * 1000;
             Log::info("Ultra-quick job wait completed", [
@@ -596,7 +596,7 @@ class QueueIntegrityManager
                 }
                 
                 // Small delay between restarts
-                usleep(100000); // 0.1 seconds
+                app('performance.async')->delayAsync(100000); // 0.1 seconds
                 
             } catch (Exception $e) {
                 Log::error("Failed to restart {$subsystem}", [

@@ -226,7 +226,7 @@ class OptimizedRandomQuizController extends Controller
     public function getRandomQuizStats(): JsonResponse
     {
         try {
-            $cacheKey = QuizCacheService::generateCacheKey('random_quiz_stats', [
+            $cacheKey = QuizUltraConsolidatedCacheService::generateCacheKey('random_quiz_stats', [
                 'user_id' => auth()->id()
             ]);
             

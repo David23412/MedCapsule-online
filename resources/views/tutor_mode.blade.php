@@ -846,10 +846,10 @@
                     <i class="fas fa-redo"></i>
                     Retry Quiz
                 </button>
-                <button class="popup-btn continue-btn" id="continue-btn" onclick="window.location.href='/topics/{{ $course->id }}'">
-                    <i class="fas fa-arrow-right"></i>
-                    Continue Learning
-                </button>
+                <a href="{{ route('topics.forCourse', $course->id) }}" class="popup-btn view-progress-btn" id="view-progress-btn">
+                    <i class="fas fa-chart-line"></i>
+                    View Progress
+                </a>
             </div>
         </div>
     </div>
@@ -1566,7 +1566,7 @@
                     confetti({
                         particleCount: 100,
                         spread: 70,
-                        origin: { x: 0.5, y: 0.5 },
+                        origin: { x: 0.62, y: 0.45 },
                         colors: ['#FFD700', '#FFA500', '#FF69B4', '#00CED1', '#98FB98'],
                         zIndex: 10000
                     });
@@ -1809,7 +1809,29 @@
                 if (data.success) {
                     console.log('✅ Tutor quiz attempt saved successfully');
                     
-                    // 🔔 TRIGGER TUTOR MODE COMPLETION NOTIFICATIONS
+                    // 🔔 TRIGGER TUTOR MODE COMPLETION NOTIFICATIONS AND SAVE QUIZ ATTEMPT
+                    const duration = Math.floor((Date.now() - quizStartTime) / 1000);
+                    const selectedSources = @json($selected_sources ?? []);
+                    const primarySource = selectedSources && selectedSources.length > 0 && !selectedSources.includes('all') 
+                        ? selectedSources[0] 
+                        : 'General';
+                    
+                    // Build question data for database storage
+                    const questionDataForDb = [];
+                    for (let i = 1; i <= totalQuestions; i++) {
+                        const questionId = document.querySelector(`#question-${i}`)?.dataset?.questionId;
+                        const userAnswer = userAnswers[i] || '';
+                        const isCorrect = correctAnswers >= i; // Simplified for now
+                        
+                        if (questionId) {
+                            questionDataForDb.push({
+                                question_id: parseInt(questionId),
+                                user_answer: userAnswer,
+                                is_correct: isCorrect
+                            });
+                        }
+                    }
+                    
                     fetch('{{ route("quiz.tutor.complete-session") }}', {
                         method: 'POST',
                         headers: {
@@ -1821,7 +1843,10 @@
                             correct_answers: correctAnswers,
                             total_questions: totalQuestions,
                             course_id: {{ $course->id }},
-                            topic_id: {{ $topic->id }}
+                            topic_id: {{ $topic->id }},
+                            source: primarySource,
+                            duration_seconds: Math.max(1, duration),
+                            question_data: questionDataForDb
                         })
                     })
                     .then(response => response.json())
@@ -1880,7 +1905,8 @@
                                     progress: progressData.progress,
                                     availableSources: progressData.availableSources || [],
                                 allSourcesMastered: progressData.progress ? Object.values(progressData.progress).every(p => p.percentage >= 90) : false,
-                                timestamp: Date.now()
+                                timestamp: Date.now(),
+                                mode: 'tutor' // CRITICAL: Identify this as tutor mode
                             };
                             
                             // Store in localStorage for cross-page communication
@@ -1927,7 +1953,8 @@
                                     progress: {},
                                     availableSources: [],
                             allSourcesMastered: false,
-                            timestamp: Date.now()
+                            timestamp: Date.now(),
+                            mode: 'tutor' // CRITICAL: Identify this as tutor mode
                         };
                         
                         // Store in localStorage for cross-page communication
@@ -1951,7 +1978,8 @@
                                 progress: {},
                                 availableSources: [],
                             allSourcesMastered: false,
-                            timestamp: Date.now()
+                            timestamp: Date.now(),
+                            mode: 'tutor' // CRITICAL: Identify this as tutor mode
                         };
                         
                         // Store in localStorage for cross-page communication

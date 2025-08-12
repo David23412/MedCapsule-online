@@ -212,11 +212,17 @@
 function updatePaymentButton(courseId) {
     const button = document.querySelector(`#paymentBtn_${courseId}`);
     if (button) {
-        button.innerHTML = '<i class="fas fa-clock"></i><span style="color: #c2410c;">Payment Pending</span>';
-        button.classList.remove('btn-primary', 'show-payment-modal');
+        button.innerHTML = '<i class="fas fa-clock"></i><span style="color: #c2410c; margin-left: 8px; font-weight: bold;">Payment Pending</span>';
+        button.classList.remove('btn-primary', 'show-payment-modal', 'enroll');
         button.classList.add('btn-warning');
         button.disabled = true;
         button.style.cursor = 'default';
+        button.style.pointerEvents = 'none';
+        button.style.opacity = '0.8';
+        
+        console.log('🔄 Payment button updated to pending state for course:', courseId);
+    } else {
+        console.warn('⚠️ Payment button not found for course:', courseId);
     }
 }
 
@@ -224,8 +230,24 @@ function showSuccessMessage() {
     // Store pending state and update button
     const courseId = document.getElementById('coursePaymentForm').getAttribute('data-course-id');
     if (courseId) {
-        localStorage.setItem(`payment_pending_${courseId}`, 'true');
+        // Store pending state with timestamp
+        const pendingData = {
+            timestamp: Date.now(),
+            courseId: courseId,
+            status: 'pending'
+        };
+        localStorage.setItem(`payment_pending_${courseId}`, JSON.stringify(pendingData));
+        
+        // Update button immediately
         updatePaymentButton(courseId);
+        
+        // Close the payment modal
+        const paymentModal = bootstrap.Modal.getInstance(document.getElementById('paymentModal'));
+        if (paymentModal) {
+            paymentModal.hide();
+        }
+        
+        console.log('✅ Payment pending state stored for course:', courseId);
     }
 
     // Create success message container

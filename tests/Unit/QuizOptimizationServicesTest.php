@@ -2,7 +2,7 @@
 
 namespace Tests\Unit;
 
-use App\Services\CacheService;
+use App\Services\Core\UltraConsolidatedCacheService;
 use App\Services\QuizService;
 use Illuminate\Support\Facades\Cache;
 use PHPUnit\Framework\TestCase;
@@ -27,8 +27,8 @@ class QuizOptimizationServicesTest extends TestCase
             'difficulty' => 'medium'
         ];
 
-        $key1 = QuizCacheService::generateCacheKey('quiz_test', $data);
-        $key2 = QuizCacheService::generateCacheKey('quiz_test', $data);
+        $key1 = QuizUltraConsolidatedCacheService::generateCacheKey('quiz_test', $data);
+        $key2 = QuizUltraConsolidatedCacheService::generateCacheKey('quiz_test', $data);
 
         // Same data should generate same key
         $this->assertEquals($key1, $key2);
@@ -42,8 +42,8 @@ class QuizOptimizationServicesTest extends TestCase
         $data1 = ['topic_id' => 123, 'user_id' => 456];
         $data2 = ['topic_id' => 123, 'user_id' => 789];
 
-        $key1 = QuizCacheService::generateCacheKey('quiz_test', $data1);
-        $key2 = QuizCacheService::generateCacheKey('quiz_test', $data2);
+        $key1 = QuizUltraConsolidatedCacheService::generateCacheKey('quiz_test', $data1);
+        $key2 = QuizUltraConsolidatedCacheService::generateCacheKey('quiz_test', $data2);
 
         // Different data should generate different keys
         $this->assertNotEquals($key1, $key2);
@@ -65,7 +65,7 @@ class QuizOptimizationServicesTest extends TestCase
         
         for ($i = 0; $i < 10000; $i++) {
             $testData = array_merge($data, ['iteration' => $i]);
-            $key = QuizCacheService::generateCacheKey('performance_test', $testData);
+            $key = QuizUltraConsolidatedCacheService::generateCacheKey('performance_test', $testData);
         }
         
         $endTime = microtime(true);
@@ -84,7 +84,7 @@ class QuizOptimizationServicesTest extends TestCase
         $this->assertStringContains($operation, $trackingId);
 
         // Simulate some work
-        usleep(1000); // 1ms
+        app('performance.async')->delayAsync(1000); // 1ms
 
         $performance = QuizPerformanceService::endTracking($trackingId, [
             'test_data' => 'value'
@@ -189,7 +189,7 @@ class QuizOptimizationServicesTest extends TestCase
 
     public function test_cache_stats_structure()
     {
-        $stats = QuizCacheService::getCacheStats();
+        $stats = QuizUltraConsolidatedCacheService::getCacheStats();
         
         $this->assertIsArray($stats);
         $this->assertArrayHasKey('hit_rate', $stats);
@@ -208,7 +208,7 @@ class QuizOptimizationServicesTest extends TestCase
     public function test_ttl_selection_logic()
     {
         // Test TTL selection with reflection (accessing private method)
-        $reflection = new \ReflectionClass(QuizCacheService::class);
+        $reflection = new \ReflectionClass(QuizUltraConsolidatedCacheService::class);
         $method = $reflection->getMethod('selectOptimalTTL');
         $method->setAccessible(true);
 

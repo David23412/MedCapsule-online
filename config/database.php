@@ -64,8 +64,8 @@ return [
                 PDO::ATTR_STRINGIFY_FETCHES => false,
                 PDO::MYSQL_ATTR_USE_BUFFERED_QUERY => true,
                 PDO::MYSQL_ATTR_LOCAL_INFILE => true,
-                PDO::ATTR_TIMEOUT => 300, // 5 minutes timeout
-                PDO::MYSQL_ATTR_INIT_COMMAND => "SET time_zone = '+00:00', wait_timeout = 28800, interactive_timeout = 28800, net_read_timeout = 300, net_write_timeout = 300",
+                PDO::ATTR_TIMEOUT => 30, // Reduced timeout for faster failures
+                PDO::MYSQL_ATTR_INIT_COMMAND => "SET time_zone = '+00:00', wait_timeout = 28800, interactive_timeout = 28800, net_read_timeout = 60, net_write_timeout = 60, innodb_lock_wait_timeout = 10",
             ]) : [],
         ],
 

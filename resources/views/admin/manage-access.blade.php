@@ -818,16 +818,15 @@
             }
         }
 
-        /* Bundle payment styling */
         .badge.bg-warning {
             color: #000 !important;
         }
         
-        .bundle-price-info {
+        .price-info {
             line-height: 1.2;
         }
         
-        .bundle-price-info .text-muted {
+        .price-info .text-muted {
             font-size: 0.75rem;
         }
         
@@ -971,6 +970,11 @@
             <li class="nav-item" role="presentation">
                 <button class="nav-link" id="payment-tab" data-bs-toggle="tab" data-bs-target="#payment-history" type="button" role="tab">
                     <i class="fas fa-credit-card me-2"></i>Payment History
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="video-tab" data-bs-toggle="tab" data-bs-target="#video-management" type="button" role="tab">
+                    <i class="fas fa-video me-2"></i>Video Management
                 </button>
             </li>
         </ul>
@@ -1913,16 +1917,8 @@
                                 const actions = getPaymentActions(payment);
                                 const date = new Date(payment.created_at).toLocaleDateString();
                                 
-                                // Create bundle indicator and price display
-                                const bundleIndicator = payment.is_bundle_payment ? 
-                                    `<span class="badge bg-warning text-dark ms-1" title="Bundle Purchase">
-                                        <i class="fas fa-layer-group"></i> Bundle
-                                    </span>` : '';
-                                
-                                const priceDisplay = payment.is_bundle_payment && payment.bundle_total_amount ? 
-                                    `<div class="fw-bold text-success">${payment.amount} EGP <small class="text-muted">(Discounted)</small></div>
-                                     <small class="text-muted">Original: ${payment.original_price || 'N/A'} EGP | Bundle Total: ${payment.bundle_total_amount} EGP</small>` :
-                                    `<div class="fw-bold">${payment.amount} EGP</div>`;
+                                // Create price display
+                                const priceDisplay = `<div class="fw-bold">${payment.amount} EGP</div>`;
                                 
                                 const transactionInfo = payment.transaction_id ? 
                                     `<div><code class="small">${payment.reference_number || 'N/A'}</code></div>
@@ -1938,7 +1934,6 @@
                                         </td>
                                         <td>
                                             <span class="badge bg-primary">${payment.course_name}</span>
-                                            ${bundleIndicator}
                                         </td>
                                         <td>${priceDisplay}</td>
                                         <td><span class="badge bg-info">${payment.payment_method}</span></td>
@@ -2195,5 +2190,305 @@
     </script>
 
 
+</body>
+</html>   
+         <!-- Video Management Tab -->
+            <div class="tab-pane fade" id="video-management" role="tabpanel">
+                <div class="row g-4">
+                    <!-- Add Video Form -->
+                    <div class="col-lg-6">
+                        <div class="card">
+                            <div class="card-header">
+                                <div>
+                                    <i class="fas fa-video me-2"></i>Add Video to Topic
+                                </div>
+                                <span class="badge bg-info">
+                                    <i class="fas fa-youtube"></i> YouTube Integration
+                                </span>
+                            </div>
+                            <div class="card-body">
+                                <form id="addVideoForm">
+                                    @csrf
+                                    <div class="mb-3">
+                                        <label class="form-label">
+                                            <i class="fas fa-graduation-cap me-1"></i>Select Course
+                                        </label>
+                                        <select class="form-select" id="video_course_id" name="course_id">
+                                            <option value="">Choose course...</option>
+                                            @if(isset($courses) && $courses->count() > 0)
+                                                @foreach($courses as $course)
+                                                    <option value="{{ $course->id }}">{{ $course->name }}</option>
+                                                @endforeach
+                                            @endif
+                                        </select>
+                                    </div>
+                                    
+                                    <div class="mb-3">
+                                        <label class="form-label">
+                                            <i class="fas fa-book me-1"></i>Select Topic
+                                        </label>
+                                        <select class="form-select" id="video_topic_id" name="topic_id" disabled>
+                                            <option value="">First select a course...</option>
+                                        </select>
+                                    </div>
+                                    
+                                    <div class="mb-3">
+                                        <label class="form-label">
+                                            <i class="fab fa-youtube me-1"></i>YouTube URL
+                                        </label>
+                                        <input type="url" class="form-control" id="youtube_url" name="youtube_url" 
+                                               placeholder="https://youtu.be/VIDEO_ID or https://www.youtube.com/watch?v=VIDEO_ID">
+                                        <div class="form-text">
+                                            <i class="fas fa-lightbulb me-1"></i>
+                                            Paste any YouTube URL - we'll extract the video ID automatically
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="mb-3">
+                                        <label class="form-label">
+                                            <i class="fas fa-tag me-1"></i>Video Title
+                                        </label>
+                                        <input type="text" class="form-control" id="video_title" name="title" 
+                                               placeholder="Enter video title">
+                                    </div>
+                                    
+                                    <div class="mb-3">
+                                        <label class="form-label">
+                                            <i class="fas fa-align-left me-1"></i>Description (Optional)
+                                        </label>
+                                        <textarea class="form-control" id="video_description" name="description" 
+                                                  rows="3" placeholder="Brief description of the video content"></textarea>
+                                    </div>
+                                    
+                                    <button type="submit" class="btn btn-primary">
+                                        <i class="fas fa-plus me-2"></i>Add Video
+                                    </button>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Video List -->
+                    <div class="col-lg-6">
+                        <div class="card">
+                            <div class="card-header">
+                                <div>
+                                    <i class="fas fa-list me-2"></i>Existing Videos
+                                </div>
+                                <span class="badge bg-success" id="video-count">
+                                    <i class="fas fa-video"></i> Loading...
+                                </span>
+                            </div>
+                            <div class="card-body">
+                                <div class="table-responsive">
+                                    <table class="table table-sm">
+                                        <thead>
+                                            <tr>
+                                                <th>Topic</th>
+                                                <th>Video</th>
+                                                <th>Status</th>
+                                                <th>Actions</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="videos-table-body">
+                                            <tr>
+                                                <td colspan="4" class="text-center py-3">
+                                                    <i class="fas fa-spinner fa-spin"></i> Loading videos...
+                                                </td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Video Management JavaScript -->
+    <script>
+        $(document).ready(function() {
+            // Load videos when video tab is clicked
+            $('#video-tab').on('click', function() {
+                loadVideos();
+            });
+            
+            // Course selection handler for video form
+            $('#video_course_id').on('change', function() {
+                const courseId = $(this).val();
+                const topicSelect = $('#video_topic_id');
+                
+                if (courseId) {
+                    // Load topics for selected course
+                    $.ajax({
+                        url: `/api/courses/${courseId}/topics`,
+                        method: 'GET',
+                        success: function(topics) {
+                            topicSelect.empty().append('<option value="">Select topic...</option>');
+                            topics.forEach(topic => {
+                                topicSelect.append(`<option value="${topic.id}">${topic.name}</option>`);
+                            });
+                            topicSelect.prop('disabled', false);
+                        },
+                        error: function() {
+                            showNotification('Failed to load topics', 'error');
+                        }
+                    });
+                } else {
+                    topicSelect.empty().append('<option value="">First select a course...</option>').prop('disabled', true);
+                }
+            });
+            
+            // Add video form submission
+            $('#addVideoForm').on('submit', function(e) {
+                e.preventDefault();
+                
+                const formData = {
+                    topic_id: $('#video_topic_id').val(),
+                    youtube_url: $('#youtube_url').val(),
+                    title: $('#video_title').val(),
+                    description: $('#video_description').val(),
+                    _token: '{{ csrf_token() }}'
+                };
+                
+                $.ajax({
+                    url: '/admin/videos',
+                    method: 'POST',
+                    data: formData,
+                    success: function(response) {
+                        if (response.success) {
+                            showNotification('Video added successfully!', 'success');
+                            $('#addVideoForm')[0].reset();
+                            $('#video_topic_id').prop('disabled', true).empty().append('<option value="">First select a course...</option>');
+                            loadVideos();
+                        } else {
+                            showNotification(response.message || 'Failed to add video', 'error');
+                        }
+                    },
+                    error: function(xhr) {
+                        const response = xhr.responseJSON;
+                        showNotification(response?.message || 'Failed to add video', 'error');
+                    }
+                });
+            });
+        });
+        
+        // Load videos function
+        function loadVideos() {
+            $.ajax({
+                url: '/admin/videos',
+                method: 'GET',
+                success: function(response) {
+                    const tbody = $('#videos-table-body');
+                    tbody.empty();
+                    
+                    if (response.videos && response.videos.length > 0) {
+                        $('#video-count').html(`<i class="fas fa-video"></i> ${response.videos.length}`);
+                        
+                        response.videos.forEach(video => {
+                            const statusBadge = video.is_active ? 
+                                '<span class="badge bg-success">Active</span>' : 
+                                '<span class="badge bg-secondary">Inactive</span>';
+                                
+                            tbody.append(`
+                                <tr>
+                                    <td>
+                                        <div class="fw-medium">${video.topic_name}</div>
+                                        <small class="text-muted">${video.course_name}</small>
+                                    </td>
+                                    <td>
+                                        <div class="fw-medium">${video.title}</div>
+                                        <small class="text-muted">
+                                            <i class="fab fa-youtube text-danger"></i> 
+                                            ${video.youtube_video_id.substring(0, 8)}...
+                                        </small>
+                                    </td>
+                                    <td>${statusBadge}</td>
+                                    <td>
+                                        <div class="btn-group btn-group-sm">
+                                            <button class="btn btn-outline-primary btn-sm" onclick="toggleVideoStatus(${video.id})">
+                                                <i class="fas fa-toggle-${video.is_active ? 'on' : 'off'}"></i>
+                                            </button>
+                                            <button class="btn btn-outline-danger btn-sm" onclick="deleteVideo(${video.id})">
+                                                <i class="fas fa-trash"></i>
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                            `);
+                        });
+                    } else {
+                        $('#video-count').html('<i class="fas fa-video"></i> 0');
+                        tbody.append(`
+                            <tr>
+                                <td colspan="4" class="text-center py-3 text-muted">
+                                    <i class="fas fa-video fa-2x mb-2"></i>
+                                    <div>No videos found</div>
+                                    <small>Add your first video using the form</small>
+                                </td>
+                            </tr>
+                        `);
+                    }
+                },
+                error: function() {
+                    showNotification('Failed to load videos', 'error');
+                }
+            });
+        }
+        
+        // Toggle video status
+        function toggleVideoStatus(videoId) {
+            $.ajax({
+                url: `/admin/videos/${videoId}/toggle`,
+                method: 'POST',
+                data: { _token: '{{ csrf_token() }}' },
+                success: function(response) {
+                    if (response.success) {
+                        showNotification('Video status updated!', 'success');
+                        loadVideos();
+                    } else {
+                        showNotification('Failed to update video status', 'error');
+                    }
+                },
+                error: function() {
+                    showNotification('Failed to update video status', 'error');
+                }
+            });
+        }
+        
+        // Delete video
+        function deleteVideo(videoId) {
+            if (confirm('Are you sure you want to delete this video?')) {
+                $.ajax({
+                    url: `/admin/videos/${videoId}`,
+                    method: 'DELETE',
+                    data: { _token: '{{ csrf_token() }}' },
+                    success: function(response) {
+                        if (response.success) {
+                            showNotification('Video deleted successfully!', 'success');
+                            loadVideos();
+                        } else {
+                            showNotification('Failed to delete video', 'error');
+                        }
+                    },
+                    error: function() {
+                        showNotification('Failed to delete video', 'error');
+                    }
+                });
+            }
+        }
+    </script>
+
+    <!-- Notification Container -->
+    <div id="notificationContainer"></div>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- Select2 JS -->
+    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+    <!-- jQuery -->
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 </body>
 </html>

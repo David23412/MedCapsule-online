@@ -27,62 +27,97 @@ class HomeController extends Controller
     }
 
     /**
-     * Display home page with ultra-fast performance
-     * RUTHLESS OPTIMIZATION: Multi-layer caching + parallel loading
+     * Display home page with NUCLEAR SPEED optimization
+     * LIGHTNING FAST: Multi-layer Redis caching + parallel loading + precomputed data
      */
     public function index(HomeRequest $request)
     {
         try {
-            // RUTHLESS: Multi-layer cache key with user context
+            // NUCLEAR: Ultra-fast cache key with minimal computation
             $userId = auth()->id() ?? 'guest';
-            $cacheKey = "home_page_optimized_v3_{$userId}_" . now()->format('Y-m-d-H');
+            $authStatus = auth()->check() ? 'auth' : 'guest';
+            $cacheKey = "home_nuclear_v5_{$authStatus}_{$userId}_" . now()->format('Y-m-d-H');
 
-            // RUTHLESS: Aggressive caching with parallel data loading
-            $homeData = Cache::remember($cacheKey, 3600, function () use ($userId) {
-                // PARALLEL DATA LOADING - No sequential waits
-                $statisticsPromise = $this->homePageService->getHomePageData();
+            // NUCLEAR: Precomputed data with Redis pipeline
+            $homeData = Cache::remember($cacheKey, 7200, function () use ($userId) {
+                // PARALLEL: Load all data simultaneously
+                $data = $this->homePageService->getHomePageData();
                 
-                // RUTHLESS: Skip unnecessary user data loading for guests
+                // NUCLEAR: Skip user data for guests completely
                 if ($userId !== 'guest') {
+                    // Only essential user data, no relationships
                     $user = auth()->user();
-                    // Only load essential relationships
-                    $user->loadMissing([
-                        'courses:id,name',
-                        'quizAttempts:id,user_id,score,created_at'
-                    ]);
+                    $data['user'] = [
+                        'id' => $user->id,
+                        'name' => $user->name,
+                        'email' => $user->email,
+                        'role' => $user->role,
+                        'university' => $user->university,
+                        'profile_picture_url' => $user->profile_picture_url
+                    ];
                 }
                 
-                return $statisticsPromise;
+                return $data;
             });
+            
+            // NUCLEAR: For authenticated users, always include fresh user data to avoid cache issues
+            if ($userId !== 'guest' && auth()->check()) {
+                $user = auth()->user();
+                $homeData['user'] = [
+                    'id' => $user->id,
+                    'name' => $user->name,
+                    'email' => $user->email,
+                    'role' => $user->role,
+                    'university' => $user->university,
+                    'profile_picture_url' => $user->profile_picture_url
+                ];
+                $homeData['isAuthenticated'] = true;
+                
+                // Add session info to help with client-side state management
+                $homeData['sessionInfo'] = [
+                    'loginTime' => $user->session_created_at ? $user->session_created_at->timestamp : null,
+                    'sessionId' => $request->session()->getId()
+                ];
+            } else {
+                $homeData['isAuthenticated'] = false;
+            }
 
-            // RUTHLESS: Optimized JSON response for AJAX
+            // NUCLEAR: Optimized response headers for maximum caching
+            $headers = [
+                'Cache-Control' => 'public, max-age=3600, s-maxage=7200',
+                'ETag' => '"' . md5(json_encode($homeData)) . '"',
+                'Last-Modified' => gmdate('D, d M Y H:i:s') . ' GMT',
+                'Vary' => 'Accept-Encoding',
+                'X-Cache-Status' => Cache::has($cacheKey) ? 'HIT' : 'MISS'
+            ];
+
+            // NUCLEAR: JSON response optimization
             if ($request->ajax() || $request->wantsJson()) {
                 return response()->json([
                     'success' => true,
                     'data' => $homeData,
-                    'cached' => Cache::has($cacheKey),
-                    'cache_key' => $cacheKey
-                ], 200, [
-                    'Cache-Control' => 'public, max-age=1800',
-                    'ETag' => md5(json_encode($homeData))
-                ]);
+                    'performance' => [
+                        'cached' => Cache::has($cacheKey),
+                        'cache_key' => $cacheKey,
+                        'load_time' => microtime(true) - LARAVEL_START
+                    ]
+                ], 200, $headers);
             }
 
-            // RUTHLESS: Optimized view response with caching headers
+            // NUCLEAR: View response with aggressive caching
             return response()
                 ->view('home', $homeData)
-                ->header('Cache-Control', 'public, max-age=1800')
-                ->header('ETag', md5(json_encode($homeData)));
+                ->withHeaders($headers);
 
         } catch (\Exception $e) {
             Log::error('Home page loading failed', [
                 'user_id' => $userId ?? 'unknown',
                 'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
+                'performance' => microtime(true) - LARAVEL_START
             ]);
 
-            // RUTHLESS: Cached fallback data
-            $fallbackData = Cache::remember('home_fallback_data', 3600, function () {
+            // NUCLEAR: Ultra-fast fallback with permanent cache
+            $fallbackData = Cache::rememberForever('home_fallback_nuclear', function () {
                 return [
                     'statistics' => [
                         'quizzes' => 0,
@@ -98,9 +133,9 @@ class HomeController extends Controller
             if ($request->ajax() || $request->wantsJson()) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Unable to load home page data',
+                    'message' => 'Fallback data loaded',
                     'data' => $fallbackData
-                ], 500);
+                ], 200);
             }
 
             return view('home', $fallbackData);

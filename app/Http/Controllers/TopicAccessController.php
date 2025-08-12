@@ -47,7 +47,7 @@ use Illuminate\Http\Response;
             }
 
             // LETHAL OPTIMIZATION: Ultra-aggressive caching for topic access
-            $cacheKey = QuizCacheService::generateCacheKey('topic_access', [
+            $cacheKey = QuizUltraConsolidatedCacheService::generateCacheKey('topic_access', [
                 'topic_id' => $topic->id,
                 'user_id' => $user->id,
                 'timestamp' => now()->format('Y-m-d-H')
@@ -227,11 +227,15 @@ use Illuminate\Http\Response;
      */
     private function getActiveAssignment(Topic $topic, User $user): ?Assignment
     {
-        return Assignment::select('id', 'topic_id', 'user_id', 'status', 'deadline', 'created_at')
+        $assignments = Assignment::select('id', 'topic_id', 'user_id', 'deadline', 'created_at')
             ->where('topic_id', $topic->id)
             ->where('user_id', $user->id)
-            ->where('status', Assignment::STATUS_ACTIVE)
-            ->first();
+            ->get();
+            
+        // Filter by computed status since status column doesn't exist
+        return $assignments->first(function($assignment) {
+            return $assignment->getCurrentStatusAttribute() === Assignment::STATUS_ACTIVE;
+        });
     }
     
     /**
@@ -243,11 +247,16 @@ use Illuminate\Http\Response;
      */
     private function getExpiredAssignment(Topic $topic, User $user): ?Assignment
     {
-        return Assignment::select('id', 'topic_id', 'user_id', 'status', 'deadline', 'created_at')
+        $assignments = Assignment::select('id', 'topic_id', 'user_id', 'deadline', 'created_at')
             ->where('topic_id', $topic->id)
             ->where('user_id', $user->id)
-            ->whereIn('status', [Assignment::STATUS_EXPIRED, Assignment::STATUS_COMPLETED, Assignment::STATUS_OVERDUE])
-            ->first();
+            ->get();
+            
+        // Filter by computed status since status column doesn't exist
+        return $assignments->first(function($assignment) {
+            $status = $assignment->getCurrentStatusAttribute();
+            return in_array($status, [Assignment::STATUS_EXPIRED, Assignment::STATUS_COMPLETED, Assignment::STATUS_OVERDUE]);
+        });
     }
     
     /**

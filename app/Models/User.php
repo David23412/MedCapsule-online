@@ -498,7 +498,7 @@ class User extends Authenticatable
             // Send streak reset notification if applicable
             if ($wasReset) {
                 try {
-                    app(\App\Services\NotificationService::class)->createStreakResetNotification($this);
+                    \App\Services\NotificationTriggerService::onStreakReset($this);
                     \Illuminate\Support\Facades\Log::info('Created streak reset notification', [
                         'user_id' => $this->id,
                         'previous_streak' => $originalStreak
@@ -548,20 +548,37 @@ class User extends Authenticatable
     private function createStreakNotificationIfNeeded($currentStreak, $previousStreak)
     {
         // Only create notifications for new streaks or significant milestones
-        $milestones = [1, 2, 3, 7, 14, 30, 60, 100];
+        $milestones = [1, 2, 3, 7, 10, 14, 15, 21, 30, 60, 90, 120, 150, 180, 365];
         
         if ($currentStreak > $previousStreak && in_array($currentStreak, $milestones)) {
             try {
-                app(\App\Services\NotificationService::class)->createStudyStreakNotification($this, $currentStreak);
+                \App\Services\NotificationTriggerService::onStudyStreak($this, $currentStreak);
                 \Illuminate\Support\Facades\Log::info('Created streak milestone notification', [
                     'user_id' => $this->id,
-                    'streak' => $currentStreak
+                    'streak' => $currentStreak,
+                    'previous_streak' => $previousStreak
                 ]);
             } catch (\Exception $e) {
                 \Illuminate\Support\Facades\Log::error('Failed to create streak notification', [
                     'error' => $e->getMessage(),
                     'user_id' => $this->id,
                     'streak' => $currentStreak
+                ]);
+            }
+        }
+        
+        // SPECIAL CASE: First quiz ever (streak goes from 0 to 1)
+        if ($previousStreak == 0 && $currentStreak == 1) {
+            try {
+                \App\Services\NotificationTriggerService::onStudyStreak($this, 1);
+                \Illuminate\Support\Facades\Log::info('Created first quiz streak notification', [
+                    'user_id' => $this->id,
+                    'streak' => 1
+                ]);
+            } catch (\Exception $e) {
+                \Illuminate\Support\Facades\Log::error('Failed to create first quiz streak notification', [
+                    'error' => $e->getMessage(),
+                    'user_id' => $this->id
                 ]);
             }
         }

@@ -147,7 +147,7 @@ class AdvancedSecurityEdgeCasesTest extends TestCase
                     $user = User::find($this->testUser->id);
                     
                     // Simulate processing delay
-                    usleep(rand(1000, 5000)); // 1-5ms
+                    app('performance.async')->delayAsync(rand(1000, 5000)); // 1-5ms
                     
                     $user->update([
                         'active_session_token' => 'session_' . $i . '_' . time(),
@@ -489,7 +489,7 @@ class AdvancedSecurityEdgeCasesTest extends TestCase
             $requestCount++;
             
             // Small delay to prevent overwhelming the system
-            usleep(1000); // 1ms
+            app('performance.async')->delayAsync(1000); // 1ms
         }
         
         $avgResponseTime = array_sum($responseTimes) / count($responseTimes);

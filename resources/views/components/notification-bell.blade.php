@@ -34,7 +34,7 @@
         aria-label="Notifications"
         aria-hidden="true"
     >
-        @include('components.notification-dropdown')
+        <!-- Notifications will be dynamically rendered here -->
     </div>
 </div>
 
@@ -845,9 +845,27 @@ document.addEventListener('DOMContentLoaded', function() {
         
         // Close dropdown when clicking outside
         document.addEventListener('click', function(e) {
-            if (!notificationSystem.contains(e.target)) {
-                closeDropdown();
+            // Don't close if clicking on notification system
+            if (notificationSystem.contains(e.target)) {
+                return;
             }
+            
+            // Don't close if clicking on payment modal
+            const paymentModal = document.getElementById('paymentModal');
+            if (paymentModal && paymentModal.contains(e.target)) {
+                return;
+            }
+            
+            // Don't close if clicking on any modal
+            const modals = document.querySelectorAll('.modal');
+            for (let modal of modals) {
+                if (modal.contains(e.target)) {
+                    return;
+                }
+            }
+            
+            // Close dropdown for all other clicks
+            closeDropdown();
         });
         
         // Prevent dropdown from closing when clicking inside
@@ -1172,6 +1190,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 
                 // 🎯 TUTOR MODE SPECIFIC - SIMPLIFIED
                 'tutor_quiz_completed': 'fas fa-check-circle', // SAME AS REGULAR QUIZ
+                'tutor_perfect': 'fas fa-star', // PURPLE STAR FOR 100% IN TUTOR MODE
                 'tutor_needs_practice': 'fas fa-redo-alt',
                 
                 // 📝 ASSIGNMENT SYSTEM - SIMPLIFIED
@@ -1301,6 +1320,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 
                 // 🎯 TUTOR MODE SPECIFIC - SIMPLIFIED
                 'tutor_quiz_completed': '#3b82f6',      // SAME BLUE AS REGULAR QUIZ
+                'tutor_perfect': '#8b5cf6',             // PURPLE STAR FOR 100% IN TUTOR MODE
                 'tutor_needs_practice': '#ef4444',      // red-500
                 
                 // 📝 ASSIGNMENT SYSTEM - SIMPLIFIED
@@ -1320,101 +1340,155 @@ document.addEventListener('DOMContentLoaded', function() {
                 'assignment_due_48h': '#6b7280',        // gray-500
                 
                 // 🏆 PROGRESS & MILESTONES - REAL FEATURES ONLY
-                'topic_completed': '#10b981',   // emerald-500
-                'streak_milestone': '#f97316',  // orange-500
-                'study_streak': '#f97316',      // orange-500
-                'correct_answers_milestone': '#f59e0b', // amber-500
-                'quiz_mastered': '#10b981',     // emerald-500
-                
-                // ⚡ ENERGY & PROGRESS (LIGHTNING YELLOW ONE!)
-                'energy_boost': '#fbbf24',      // amber-400
-                'power_up': '#fbbf24',          // amber-400
-                'momentum': '#fbbf24',          // amber-400
-                
-                // 🔥 STREAKS & MOTIVATION
-                'streak_reset': '#f97316',      // orange-500
-                'burning_streak': '#f97316',    // orange-500
+                'streak_day_1': '#10b981',              // emerald-500 (first quiz)
+                'streak_day_2': '#3b82f6',              // blue-500
+                'streak_day_3': '#fbbf24',              // amber-400
+                'streak_week_1': '#fbbf24',             // amber-400
+                'streak_day_10': '#fbbf24',             // amber-400
+                'streak_week_2': '#fbbf24',             // amber-400
+                'streak_day_15': '#fbbf24',             // amber-400
+                'streak_day_21': '#fbbf24',             // amber-400
+                'streak_month_1': '#fbbf24',            // amber-400
+                'streak_month_2': '#fbbf24',            // amber-400
+                'streak_month_3': '#fbbf24',            // amber-400
+                'streak_month_6': '#fbbf24',            // amber-400
+                'streak_year_1': '#fbbf24',             // amber-400
+                'course_mastery': '#1e40af',            // deep blue for course mastery
+                'correct_answers_milestone': '#7c3aed', // deep purple for milestones
+                'streak_reset': '#f97316',              // orange-500
                 
                 // ⚠️ WARNINGS & REVIEWS
-                'review_mistakes': '#ef4444',   // red-500
-                'weak_topic_identified': '#ef4444', // red-500
-                'skipped_questions_detected': '#f59e0b', // amber-500
-                'review_reminder': '#06b6d4',   // cyan-500
+                'review_mistakes': '#ef4444',           // red-500
+                'weak_topic_identified': '#ef4444',     // red-500
+                'skipped_questions_detected': '#3b82f6', // blue-500
                 
                 // 💳 PAYMENT & ACCESS
-                'payment_success': '#10b981',   // emerald-500
-                'payment_failed': '#ef4444',    // red-500
-                'course_access_granted': '#10b981', // emerald-500
-                'course_access_denied': '#ef4444',  // red-500
+                'payment_success': '#10b981',           // emerald-500
+                'payment_failed': '#ef4444',            // red-500
+                'course_access_granted': '#10b981',     // emerald-500
+                'course_access_denied': '#ef4444',      // red-500
                 
                 // 🔔 SYSTEM & GENERAL
-                'system_update': '#6b7280',     // gray-500
-                'announcement': '#3b82f6',      // blue-500
-                'reminder': '#06b6d4',          // cyan-500
-                'info': '#06b6d4',              // cyan-500
-                'success': '#10b981',           // emerald-500
-                'warning': '#f59e0b',           // amber-500
-                'error': '#ef4444',             // red-500
-                'test': '#3b82f6',              // blue-500
+                'system_update': '#6b7280',             // gray-500
+                'announcement': '#3b82f6',              // blue-500
+                'success': '#10b981',                   // emerald-500
+                'warning': '#f59e0b',                   // amber-500
+                'error': '#ef4444',                     // red-500
+                'info': '#06b6d4',                      // cyan-500
                 
-                // 🎯 SPECIAL FEATURES - REALISTIC TRIGGERS!
-                'perfect_score': '#8b5cf6',     // PURPLE STAR!
-                'topic_mastery': '#10b981',     // GREEN CHECK MARK!
-                'consistency_king': '#f59e0b',  // amber-500 (7+ day streak)
+                // 🎯 SPECIAL ACHIEVEMENTS
+                'perfect_score': '#8b5cf6',             // PURPLE STAR!
                 
-                // 📚 SUBJECT SPECIFIC - CUSTOM COURSE FAVI ICONS WITH EYE-GRABBING COLORS!
-                'anatomy_enrolled': '#dc2626',     // BLOOD RED FOR ANATOMY!
+                // 📚 SUBJECT-SPECIFIC COURSE NOTIFICATIONS
+                'anatomy_enrolled': '#dc2626',          // red-600
                 'anatomy_completed': '#dc2626',
                 'anatomy_halfway': '#dc2626',
                 
-                'biochemistry_enrolled': '#10b981', // EMERALD GREEN FOR CHEMISTRY!
+                'biochemistry_enrolled': '#10b981',     // emerald-500
                 'biochemistry_completed': '#10b981',
                 'biochemistry_halfway': '#10b981',
                 
-                'physiology_enrolled': '#ef4444',  // RED FOR HEARTBEAT!
+                'physiology_enrolled': '#ef4444',       // red-500
                 'physiology_completed': '#ef4444',
                 'physiology_halfway': '#ef4444',
                 
-                'histology_enrolled': '#8b5cf6',   // PURPLE FOR MICROSCOPE!
+                'histology_enrolled': '#8b5cf6',        // violet-500
                 'histology_completed': '#8b5cf6',
                 'histology_halfway': '#8b5cf6',
                 
-                'microbiology_enrolled': '#f59e0b', // AMBER FOR BACTERIA!
+                'microbiology_enrolled': '#f59e0b',     // AMBER FOR BACTERIA!
                 'microbiology_completed': '#f59e0b',
                 'microbiology_halfway': '#f59e0b',
                 
-                'parasitology_enrolled': '#84cc16', // LIME GREEN FOR BUGS!
+                'parasitology_enrolled': '#84cc16',     // LIME GREEN FOR BUGS!
                 'parasitology_completed': '#84cc16',
                 'parasitology_halfway': '#84cc16',
                 
-                'ethics_enrolled': '#6366f1',      // INDIGO FOR JUSTICE SCALES!
+                'ethics_enrolled': '#6366f1',           // INDIGO FOR JUSTICE SCALES!
                 'ethics_completed': '#6366f1',
                 'ethics_halfway': '#6366f1',
                 
-                'psychology_enrolled': '#ec4899',  // PINK FOR BRAIN/PSYCHOLOGY!
+                'psychology_enrolled': '#ec4899',       // PINK FOR BRAIN/PSYCHOLOGY!
                 'psychology_completed': '#ec4899',
                 'psychology_halfway': '#ec4899',
                 
-                'patient_care_enrolled': '#06b6d4', // CYAN FOR DOCTOR!
+                'patient_care_enrolled': '#06b6d4',     // CYAN FOR DOCTOR!
                 'patient_care_completed': '#06b6d4',
                 'patient_care_halfway': '#06b6d4',
                 
-                'pharma_enrolled': '#3b82f6',      // BLUE FOR PILLS!
+                'pharma_enrolled': '#3b82f6',           // BLUE FOR PILLS!
                 'pharma_completed': '#3b82f6',
                 'pharma_halfway': '#3b82f6',
                 
                 // 💊 MEDCAPSULE ENROLLMENT & WELCOME - SPECIAL GRADIENT COLOR!
-                'medcapsule_enrolled': '#3b82f6',  // BLUE (will add red gradient in CSS)
-                'medcapsule_welcome': '#3b82f6',   // BLUE (welcome message on login)
+                'medcapsule_enrolled': '#3b82f6',       // BLUE (will add red gradient in CSS)
+                'medcapsule_welcome': '#3b82f6',        // BLUE (welcome message on login)
                 
                 // Legacy support
-                'cardiology_completed': '#ef4444', // red-500 for heart
-                'pharmacology_quiz': '#06b6d4',    // cyan-500 for pills
+                'cardiology_completed': '#ef4444',      // red-500 for heart
+                'pharmacology_quiz': '#06b6d4',         // cyan-500 for pills
                 
                 // 🎨 CUSTOM TYPES - ONLY REAL FEATURES
-                'milestone_reached': '#10b981'  // emerald-500
+                'milestone_reached': '#10b981'          // emerald-500
             };
             return colors[type] || '#6b7280';
+        }
+        
+        // 🎨 LETHAL BORDER COLOR SYSTEM - BASED ON PRIORITY
+        function getNotificationBorderColor(priority, type) {
+            // Override priority for specific notification types
+            if (type === 'perfect_score' || type === 'tutor_perfect' || type === 'assignment_perfect') {
+                return '#8b5cf6'; // PURPLE BORDER for perfect scores
+            }
+            if (type === 'topic_mastery') {
+                return '#10b981'; // GREEN BORDER for topic mastery
+            }
+            if (type === 'level_up') {
+                return '#f97316'; // FIERY BORDER for level up
+            }
+            if (type === 'course_mastery') {
+                return '#1e40af'; // DEEP BLUE BORDER for course mastery
+            }
+            if (type === 'correct_answers_milestone') {
+                return '#7c3aed'; // DEEP PURPLE BORDER for milestones
+            }
+            if (type === 'medcapsule_welcome') {
+                return '#3b82f6'; // BLUE BORDER for welcome
+            }
+            if (type === 'assignment_assigned') {
+                return '#3b82f6'; // BLUE BORDER for new assignments
+            }
+            if (type === 'streak_day_1') {
+                return '#10b981'; // GREEN BORDER for first quiz
+            }
+            if (type === 'assignment_due_1h' || type === 'assignment_due_3h' || type === 'assignment_overdue') {
+                return '#ef4444'; // RED BORDER for urgent deadlines
+            }
+            if (type === 'payment_failed') {
+                return '#ef4444'; // RED BORDER for payment failures
+            }
+            
+            // Default priority-based borders
+            switch (priority) {
+                case 'urgent':
+                    return '#ef4444'; // RED BORDER
+                case 'high':
+                    return '#f59e0b'; // AMBER BORDER
+                case 'perfect':
+                    return '#8b5cf6'; // PURPLE BORDER
+                case 'mastery':
+                    return '#10b981'; // GREEN BORDER
+                case 'premium':
+                    return '#1e40af'; // DEEP BLUE BORDER
+                case 'fiery':
+                    return '#f97316'; // FIERY BORDER
+                case 'exotic':
+                    return '#7c3aed'; // DEEP PURPLE BORDER
+                case 'blue':
+                    return '#3b82f6'; // BLUE BORDER
+                default:
+                    return 'transparent'; // NO BORDER for normal priority
+            }
         }
         
         let notificationHTML = `
@@ -1442,9 +1516,10 @@ document.addEventListener('DOMContentLoaded', function() {
                                     notification.priority === 'high' ? 'high' : 'normal';
                 const readClass = notification.read ? 'read' : 'unread';
                 const iconColor = getNotificationIconColor(notification.type);
+                const borderColor = getNotificationBorderColor(notification.priority, notification.type);
                 
                 notificationHTML += `
-                    <div class="notification-item ${priorityClass} ${readClass}" data-id="${notification.id}">
+                    <div class="notification-item ${priorityClass} ${readClass}" data-id="${notification.id}" style="border-left: 4px solid ${borderColor};">
                         <div class="notification-icon" style="background-color: ${iconColor}20; border: 1px solid ${iconColor}30;">
                             <i class="${getNotificationIcon(notification.type)}" style="color: ${iconColor};"></i>
                         </div>

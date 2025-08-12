@@ -23,7 +23,7 @@ class NotificationTriggerService
 
         // Different notifications based on quiz mode
         if ($mode === 'tutor') {
-            // FIXED: Perfect tutor score gets ONLY purple star notification (no duplicate)
+            // LETHAL FIX: Perfect tutor score gets ONLY purple star notification (no duplicate)
             if ($percentage == 100) {
                 UniversalNotificationService::create(
                     $user,
@@ -32,17 +32,6 @@ class NotificationTriggerService
                     "Outstanding! You got 100% in tutor mode for {$courseName}",
                     $quizData,
                     'perfect' // PURPLE BORDER for perfect scores
-                );
-            }
-            // NEW: Tutor needs practice for scores less than 50%
-            elseif ($percentage < 50) {
-                UniversalNotificationService::create(
-                    $user,
-                    'tutor_needs_practice',
-                    'More Practice Needed',
-                    "You scored {$percentage}% in tutor mode. Try again!",
-                    $quizData,
-                    'normal'
                 );
             } else {
                 // Regular tutor completion notification for non-perfect scores
@@ -54,9 +43,21 @@ class NotificationTriggerService
                     $quizData,
                     'normal'
                 );
+                
+                // NEW: Tutor needs practice for scores less than 50%
+                if ($percentage < 50) {
+                    UniversalNotificationService::create(
+                        $user,
+                        'tutor_needs_practice',
+                        'More Practice Needed',
+                        "You scored {$percentage}% in tutor mode. Try again!",
+                        $quizData,
+                        'normal'
+                    );
+                }
             }
         } else {
-            // FIXED: Perfect score gets ONLY purple star notification (no duplicate)
+            // LETHAL FIX: Perfect score gets ONLY purple star notification (no duplicate)
             if ($percentage == 100) {
                 UniversalNotificationService::create(
                     $user,
@@ -194,7 +195,7 @@ class NotificationTriggerService
     }
 
     // 🎯 NEW: Topic mastery notification (GREEN BORDER)
-    public static function onTopicMastery(User $user, string $topicName, string $courseName = null)
+    public static function onTopicMastery(User $user, string $topicName, ?string $courseName = null)
     {
         UniversalNotificationService::create(
             $user,
@@ -231,7 +232,7 @@ class NotificationTriggerService
     }
 
     // 🆙 NEW: Level up notification (FIERY BORDER)
-    public static function onLevelUp(User $user, int $newLevel, string $context = null)
+    public static function onLevelUp(User $user, int $newLevel, ?string $context = null)
     {
         UniversalNotificationService::create(
             $user,
@@ -254,7 +255,7 @@ class NotificationTriggerService
     /**
      * 1) ASSIGNMENT ASSIGNED TO STUDENT
      */
-    public static function onTutorAssignsAssignment(User $student, Assignment $assignment, User $tutor = null)
+    public static function onTutorAssignsAssignment(User $student, Assignment $assignment, ?User $tutor = null)
     {
         // Combined notification with due date info
         if ($assignment->due_date) {
@@ -283,7 +284,7 @@ class NotificationTriggerService
     }
 
     /**
-     * FIXED: SIMPLIFIED ASSIGNMENT COMPLETION (like quiz system)
+     * LETHAL FIX: SIMPLIFIED ASSIGNMENT COMPLETION (like quiz system)
      */
     public static function onAssignmentCompleted(User $user, array $assignmentData)
     {
@@ -293,7 +294,7 @@ class NotificationTriggerService
         $assignmentTitle = $assignmentData['assignment_title'] ?? 'Assignment';
         $assignmentId = $assignmentData['assignment_id'] ?? null;
 
-        // FIXED: Perfect assignment score gets ONLY purple star notification (no duplicate)
+        // LETHAL FIX: Perfect assignment score gets ONLY purple star notification (no duplicate)
         if ($percentage == 100) {
             UniversalNotificationService::create(
                 $user,
@@ -399,7 +400,7 @@ class NotificationTriggerService
     /**
      * NEW: Admin grants course access (separate from payment)
      */
-    public static function onAdminGrantsCourseAccess(User $user, string $courseName, User $admin = null)
+    public static function onAdminGrantsCourseAccess(User $user, string $courseName, ?User $admin = null)
     {
         $adminName = $admin ? $admin->name : 'Administrator';
         

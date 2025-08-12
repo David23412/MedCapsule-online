@@ -3,7 +3,7 @@
 namespace App\Services\Learning;
 
 use App\Models\Mistake;
-use App\Services\CacheService;
+use App\Services\Core\UltraConsolidatedCacheService;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -15,12 +15,12 @@ class MistakeManagementService
      */
     public function getMistakesForLearning(int $userId, string $mode, ?string $courseFilter = null): array
     {
-        $cacheKey = CacheService::generateCacheKey('learn_mistakes', [
+        $cacheKey = "learn_mistakes_" . md5(serialize([
             'user_id' => $userId,
             'mode' => $mode,
             'course_filter' => $courseFilter,
             'timestamp' => now()->format('Y-m-d-H')
-        ]);
+        ]));
 
         return Cache::remember($cacheKey, 1800, function () use ($userId, $mode, $courseFilter) {
             $mistakes = Mistake::where('user_id', $userId)

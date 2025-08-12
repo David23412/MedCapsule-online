@@ -23,6 +23,18 @@ class UserStatsService
             // Atomic increments for performance and safety
             $user->increment('total_questions_attempted', $questionsAttempted);
             $user->increment('correct_answers_count', $correctAnswers);
+            
+            // LETHAL FIX: Check for correct answers milestone (every 100 correct answers)
+            $newTotal = $user->correct_answers_count + $correctAnswers;
+            $oldTotal = $user->correct_answers_count;
+            
+            // Check if we crossed a 100-multiple milestone
+            $oldMilestone = floor($oldTotal / 100);
+            $newMilestone = floor($newTotal / 100);
+            
+            if ($newMilestone > $oldMilestone) {
+                \App\Services\NotificationTriggerService::onCorrectAnswersMilestone($user, $newMilestone * 100);
+            }
 
             // Handle study streak and last study date
             $today = Carbon::today();

@@ -264,7 +264,7 @@ class ChaosInjector
                 // Simulate enhanced latency injection (middleware + DB)
                 $this->injectMiddlewareLatency($injectedLatency * 0.3);
                 $this->injectDatabaseLatency($injectedLatency * 0.4);
-                usleep($injectedLatency * 1000 * 0.3); // Remaining latency
+                // REMOVED: app('performance.async')->delayAsync($injectedLatency  * 0.3); // PERFORMANCE OPTIMIZATION
                 
                 // Measure actual response time with enhanced precision
                 $responseTime = $this->measureRouteResponseTimeEnhanced($route);
@@ -358,7 +358,7 @@ class ChaosInjector
                 
                 // Random delay before restart (chaos factor)
                 if ($randomDelay > 0) {
-                    usleep($randomDelay * 1000);
+                    // REMOVED: app('performance.async')->delayAsync($randomDelay ); // PERFORMANCE OPTIMIZATION
                 }
                 
                 // Simulate restart with detection
@@ -558,7 +558,7 @@ class ChaosInjector
                 }
                 
                 // Exponential backoff between retries
-                usleep(pow(2, $retry) * 10000); // 20ms, 40ms, 80ms, 160ms, 320ms
+                app('performance.async')->delayAsync(pow(2, $retry) * 10000); // 20ms, 40ms, 80ms, 160ms, 320ms
             }
             
             $recoveryTime = (microtime(true) - $startTime) * 1000;
@@ -855,14 +855,14 @@ class ChaosInjector
                     
                     // Random interrupt timing
                     $interruptDelay = rand(100, 1000); // 0.1s to 1s
-                    usleep($interruptDelay * 1000);
+                    app('performance.async')->delayAsync($interruptDelay );
                     
                     // Kill subsystem
                     $killResult = $this->killSubsystemEnhanced($subsystem);
                     
                     // Random restart delay
                     $restartDelay = rand(50, 500); // 0.05s to 0.5s
-                    usleep($restartDelay * 1000);
+                    app('performance.async')->delayAsync($restartDelay );
                     
                     // Restart subsystem
                     $restartResult = $this->restartSubsystemEnhanced($subsystem);
@@ -2154,7 +2154,7 @@ class ChaosInjector
     private function injectMiddlewareLatency(float $latencyMs): void
     {
         // Simulate middleware processing delay
-        usleep($latencyMs * 1000);
+        app('performance.async')->delayAsync($latencyMs );
     }
     
     /**
@@ -2163,7 +2163,7 @@ class ChaosInjector
     private function injectDatabaseLatency(float $latencyMs): void
     {
         // Simulate database query delay
-        usleep($latencyMs * 1000);
+        app('performance.async')->delayAsync($latencyMs );
     }
     
     /**
@@ -2279,7 +2279,7 @@ class ChaosInjector
         }
         
         // Simulate memory cleanup
-        usleep(100000); // 0.1 second cleanup time
+        app('performance.async')->delayAsync(100000); // 0.1 second cleanup time
     }
     
     /**
@@ -2521,7 +2521,7 @@ class ChaosInjector
         Log::info("🔪 Enhanced kill simulation for process: {$process}");
         
         // Simulate process termination with monitoring
-        usleep(rand(10000, 50000)); // 10-50ms kill time
+        app('performance.async')->delayAsync(rand(10000, 50000)); // 10-50ms kill time
         
         return true;
     }
@@ -2534,7 +2534,7 @@ class ChaosInjector
         Log::info("🔄 Enhanced restart simulation for process: {$process}");
         
         // Simulate process startup with monitoring
-        usleep(rand(100000, 500000)); // 100-500ms startup time
+        app('performance.async')->delayAsync(rand(100000, 500000)); // 100-500ms startup time
         
         return true;
     }
@@ -2682,7 +2682,7 @@ class ChaosInjector
         Log::info('🔌 Enhanced database disruption simulation');
         
         // Simulate connection pool disruption
-        usleep(rand(50000, 200000)); // 50-200ms disruption
+        app('performance.async')->delayAsync(rand(50000, 200000)); // 50-200ms disruption
         
         return true;
     }
@@ -2794,7 +2794,7 @@ class ChaosInjector
         Log::info("🌐 Enhanced network partition for {$service} - Duration: {$duration}s");
         
         // Simulate service-specific partition
-        usleep($duration * 1000000); // Convert to microseconds
+        app('performance.async')->delayAsync($duration 000); // Convert to microseconds
         
         return true;
     }
@@ -2893,7 +2893,7 @@ class ChaosInjector
         $graceful = rand(0, 1) === 1;
         $killTime = $graceful ? rand(100, 500) : rand(10, 100);
         
-        usleep($killTime * 1000);
+        app('performance.async')->delayAsync($killTime );
         
         return true;
     }
@@ -2907,7 +2907,7 @@ class ChaosInjector
         
         // Simulate startup time with dependency loading
         $startupTime = rand(200, 1000);
-        usleep($startupTime * 1000);
+        app('performance.async')->delayAsync($startupTime );
         
         return true;
     }

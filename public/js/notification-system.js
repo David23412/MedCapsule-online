@@ -15,13 +15,19 @@ class NotificationSystem {
     init() {
         if (this.isInitialized) return;
         
-        document.addEventListener('DOMContentLoaded', () => {
+        // NUCLEAR: Use faster event listener for immediate initialization
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', () => {
+                this.setupEventListeners();
+                this.loadNotifications();
+            });
+        } else {
+            // Document already loaded, initialize immediately
             this.setupEventListeners();
             this.loadNotifications();
-        });
+        }
         
         this.isInitialized = true;
-// console.log('NotificationSystem initialized'); // Removed for production
     }
 
     setupEventListeners() {

@@ -102,7 +102,23 @@ class Kernel extends ConsoleKernel
                 ->hourly()
                 ->withoutOverlapping()
                 ->runInBackground()
-                ->appendOutputTo(storage_path('logs/assignment-reminders.log'));}
+                ->appendOutputTo(storage_path('logs/assignment-reminders.log'));
+                
+        // Check for course mastery achievements daily
+        $schedule->command('courses:check-mastery')
+                ->daily()
+                ->at('06:00')
+                ->withoutOverlapping()
+                ->runInBackground()
+                ->appendOutputTo(storage_path('logs/course-mastery.log'));
+                
+        // Send mistake review reminders daily
+        $schedule->command('notifications:send-mistake-reminders')
+                ->daily()
+                ->at('10:00')
+                ->withoutOverlapping()
+                ->runInBackground()
+                ->appendOutputTo(storage_path('logs/mistake-reminders.log'));}
 
     /**
      * Register the commands for the application.
@@ -138,5 +154,9 @@ class Kernel extends ConsoleKernel
         Commands\ModelStressTestEngine::class,
         Commands\ModelStressMonitor::class,
         Commands\SendAssignmentReminders::class,
+        Commands\CheckCourseMastery::class,
+        Commands\SendMistakeReviewReminders::class,
+        Commands\TestAllNotifications::class,
+        Commands\NuclearNotificationOptimization::class,
     ];
 } 

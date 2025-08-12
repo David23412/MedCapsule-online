@@ -315,11 +315,30 @@ const QuizModal = {
                 card.classList.add('selected');
             }
 
-            // Determine status class based on percentage
-            const statusClass = progress.percentage >= 90 ? 'completed' : 
-                      progress.percentage >= 50 ? 'in-progress' :
-                      progress.percentage > 0 ? 'failed' :
-                              'not-started';
+            // FIXED: Determine status class based on attempts and percentage
+            let statusClass, statusText, statusIcon;
+            
+            if (progress.has_attempts) {
+                // Source has been attempted
+                if (progress.percentage >= 90) {
+                    statusClass = 'completed';
+                    statusText = 'Completed';
+                    statusIcon = 'fas fa-check-circle';
+                } else if (progress.percentage >= 50) {
+                    statusClass = 'in-progress';
+                    statusText = 'In Progress';
+                    statusIcon = 'fas fa-clock';
+                } else {
+                    statusClass = 'failed';
+                    statusText = 'Failed';
+                    statusIcon = 'fas fa-times-circle';
+                }
+            } else {
+                // Source has not been attempted yet
+                statusClass = 'not-started';
+                statusText = 'Not started yet';
+                statusIcon = 'fas fa-circle';
+            }
 
             card.innerHTML = `
                 <div class="source-status ${statusClass}"></div>
@@ -332,13 +351,7 @@ const QuizModal = {
                                 <span class="ms-2 source-name">${source}</span>
                             </div>
                     <div class="source-status-text ${statusClass}">
-                                ${progress.percentage >= 90 ? 
-                                    '<i class="fas fa-check-circle me-1"></i>Completed' : 
-                                    progress.percentage >= 50 ? 
-                                    '<i class="fas fa-clock me-1"></i>In Progress' :
-                                    progress.percentage > 0 ?
-                                    '<i class="fas fa-times-circle me-1"></i>Failed' :
-                                    '<i class="fas fa-circle me-1"></i>Not Started'}
+                                <i class="${statusIcon} me-1"></i>${statusText}
                             </div>
                         </div>
                         <div class="source-progress-bar">

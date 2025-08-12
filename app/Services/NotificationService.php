@@ -2,7 +2,7 @@
 
 namespace App\Services;
 
-use App\Models\Notification;
+// REMOVED: use App\Models\Notification; - Using cache-based notifications instead
 use App\Models\User;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
@@ -26,16 +26,15 @@ class NotificationService
         string $title,
         string $message,
         ?array $data = null
-    ): Notification {
-        return Notification::create([
-            'user_id' => $userId,
-            'type' => $type,
-            'title' => $title,
-            'message' => $message,
-            'data' => $data ? json_encode($data) : null,
-            'is_read' => false,
-            'read_at' => null
-        ]);
+    ): array {
+        // Use UniversalNotificationService instead of database
+        return UniversalNotificationService::create(
+            User::find($userId),
+            $type,
+            $title,
+            $message,
+            $data ?? []
+        );
     }
 
     /**
@@ -43,10 +42,8 @@ class NotificationService
      */
     public function getUnreadNotifications(User $user): Collection
     {
-        return $user->notifications()
-            ->where('is_read', false)
-            ->orderBy('created_at', 'desc')
-            ->get();
+        return UniversalNotificationService::getNotifications($user)
+            ->where('read', false);
     }
 
     /**
@@ -54,10 +51,7 @@ class NotificationService
      */
     public function getAllNotifications(User $user, int $limit = 50): Collection
     {
-        return $user->notifications()
-            ->orderBy('created_at', 'desc')
-            ->limit($limit)
-            ->get();
+        return UniversalNotificationService::getNotifications($user, $limit);
     }
 
     /**
@@ -65,12 +59,7 @@ class NotificationService
      */
     public function markAllAsRead(User $user): void
     {
-        $user->notifications()
-            ->where('is_read', false)
-            ->update([
-                'is_read' => true,
-                'read_at' => now()
-            ]);
+        UniversalNotificationService::markAllAsRead($user);
     }
 
     /**
@@ -82,7 +71,7 @@ class NotificationService
         string $title,
         string $message,
         array $assignmentData = []
-    ): Notification {
+    ): array {
         return $this->createNotification(
             $userId,
             $type,
@@ -95,20 +84,18 @@ class NotificationService
     /**
      * Notify student about new assignment
      */
-    public function notifyAssignmentCreated(\App\Models\Assignment $assignment): Notification
+    public function notifyAssignmentCreated(\App\Models\Assignment $assignment): array
     {
         return $this->createAssignmentNotification(
             $assignment->user_id,
             'assignment_created',
             'New Assignment: ' . $assignment->title,
-            "You have a new assignment from {$assignment->tutor->name} for {$assignment->topic->name}. Due: {$assignment->deadline->format('M j, Y g:i A')}",
+            "You have a new assignment for {$assignment->topic->name}. Due: {$assignment->deadline->format('M j, Y g:i A')}",
             [
                 'assignment_id' => $assignment->id,
-                'tutor_name' => $assignment->tutor->name,
                 'topic_name' => $assignment->topic->name,
                 'course_name' => $assignment->course->name,
-                'deadline' => $assignment->deadline->toISOString(),
-                'action_url' => route('student.assignments.show', $assignment->id)
+                'deadline' => $assignment->deadline->toISOString()
             ]
         );
     }
@@ -116,7 +103,7 @@ class NotificationService
     /**
      * Notify student about deadline change
      */
-    public function notifyDeadlineChanged(\App\Models\Assignment $assignment, \Carbon\Carbon $oldDeadline): Notification
+    public function notifyDeadlineChanged(\App\Models\Assignment $assignment, \Carbon\Carbon $oldDeadline): array
     {
         return $this->createAssignmentNotification(
             $assignment->user_id,
@@ -126,8 +113,7 @@ class NotificationService
             [
                 'assignment_id' => $assignment->id,
                 'old_deadline' => $oldDeadline->toISOString(),
-                'new_deadline' => $assignment->deadline->toISOString(),
-                'action_url' => route('student.assignments.show', $assignment->id)
+                'new_deadline' => $assignment->deadline->toISOString()
             ]
         );
     }
@@ -178,8 +164,7 @@ class NotificationService
         $sentCount = 0;
         
         // Get assignments due within 24 hours that haven't been reminded
-        $assignments = \App\Models\Assignment::with(['assignedUsers', 'topic', 'course'])
-            ->where('status', \App\Models\Assignment::STATUS_ACTIVE)
+        $allAssignments = \App\Models\Assignment::with(['assignedUsers', 'topic', 'course'])
             ->where('deadline', '<=', now()->addHours(24))
             ->where('deadline', '>', now())
             ->whereDoesntHave('notifications', function($query) {
@@ -187,6 +172,11 @@ class NotificationService
                       ->where('created_at', '>=', now()->subHours(12));
             })
             ->get();
+            
+        // Filter by computed status since status column doesn't exist
+        $assignments = $allAssignments->filter(function($assignment) {
+            return $assignment->getCurrentStatusAttribute() === \App\Models\Assignment::STATUS_ACTIVE;
+        });
 
         $assignments = $assignments->load('assignedUsers');
         foreach ($assignments as $assignment) {
@@ -227,14 +217,18 @@ class NotificationService
         $sentCount = 0;
         
         // Get assignments that just became overdue
-        $assignments = \App\Models\Assignment::with(['assignedUsers', 'topic', 'course'])
-            ->where('status', \App\Models\Assignment::STATUS_OVERDUE)
+        $allAssignments = \App\Models\Assignment::with(['assignedUsers', 'topic', 'course'])
             ->where('deadline', '>=', now()->subHours(1))
             ->whereDoesntHave('notifications', function($query) {
                 $query->where('type', 'assignment_overdue')
                       ->where('created_at', '>=', now()->subHours(2));
             })
             ->get();
+            
+        // Filter by computed status since status column doesn't exist
+        $assignments = $allAssignments->filter(function($assignment) {
+            return $assignment->getCurrentStatusAttribute() === \App\Models\Assignment::STATUS_OVERDUE;
+        });
 
         foreach ($assignments as $assignment) {
             // Send notification to each assigned user

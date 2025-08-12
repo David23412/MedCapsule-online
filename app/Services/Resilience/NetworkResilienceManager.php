@@ -118,7 +118,7 @@ class NetworkResilienceManager
                 }
                 
                 // Exponential backoff
-                usleep(pow(2, $attempt - 1) * 100000);
+                app('performance.async')->delayAsync(pow(2, $attempt - 1) * 100000);
             }
         }
     }

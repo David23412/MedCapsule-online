@@ -4,7 +4,7 @@ namespace Tests\Unit;
 
 use Tests\TestCase;
 use App\Services\QuizService;
-use App\Services\CacheService;
+use App\Services\Core\UltraConsolidatedCacheService;
 use App\Models\User;
 use App\Models\Course;
 use App\Models\Topic;
@@ -27,7 +27,7 @@ class QuizServiceTest extends TestCase
     {
         parent::setUp();
         
-        $this->cacheService = Mockery::mock(CacheService::class);
+        $this->cacheService = Mockery::mock(UltraConsolidatedCacheService::class);
         $this->quizService = new QuizService($this->cacheService);
         
         $this->user = User::factory()->create();

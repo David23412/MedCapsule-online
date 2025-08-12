@@ -8,8 +8,8 @@ use App\Models\Topic;
 use App\Models\Course;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Cache;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\Cache;
 use App\Services\NotificationService;
 
 class AssignmentService
@@ -31,7 +31,6 @@ class AssignmentService
             $this->validateAssignmentData($data);
 
             // Set default values with validation
-            $data['status'] = $data['status'] ?? Assignment::STATUS_ACTIVE;
             $data['duration_minutes'] = $data['duration_minutes'] ?? 60;
             $data['assignment_mode'] = $data['assignment_mode'] ?? Assignment::MODE_COMPLETE_TOPIC;
             
@@ -51,6 +50,9 @@ class AssignmentService
                     ]));
                     
                     $assignment = Assignment::create($validData);
+                    
+                    // Clear assignment caches immediately after creation
+                    $this->clearAssignmentCaches(auth()->id());
                     
                     // Send notification with error isolation
                     $this->sendAssignmentNotification($assignment, 'created');
@@ -87,116 +89,42 @@ class AssignmentService
         }
     }
 
-    /**
-     * Create bulk assignments for multiple students with optimized performance and error handling
-     * TUTORS HAVE FULL FLEXIBILITY - NO DUPLICATE CONSTRAINTS!
-     */
-    public function createBulkAssignments(int $tutorId, array $studentIds, array $assignmentData): \Illuminate\Support\Collection
-    {
-        if (empty($studentIds)) {
-            throw new \InvalidArgumentException('Student IDs array cannot be empty');
-        }
 
-        if (count($studentIds) > 1000) {
-            throw new \InvalidArgumentException('Cannot create more than 1000 assignments at once');
-        }
-
-        $assignments = collect();
-        $errors = collect();
-        $currentUser = auth()->user();
-
-        try {
-            // Pre-validate tutor-student relationships in bulk for better performance
-            if ($currentUser->role !== 'admin') {
-                $validRelationships = $this->validateBulkTutorStudentRelationships($tutorId, $studentIds);
-                $invalidStudents = array_diff($studentIds, $validRelationships);
-                
-                if (!empty($invalidStudents)) {
-                    throw new \InvalidArgumentException(
-                        'Invalid tutor-student relationships for student IDs: ' . implode(', ', $invalidStudents)
-                    );
-                }
-            }
-
-            // Use chunked processing for large batches
-            $chunks = array_chunk($studentIds, 100); // Process in chunks of 100
-            
-            foreach ($chunks as $chunk) {
-                DB::transaction(function() use ($tutorId, $chunk, $assignmentData, &$assignments, &$errors) {
-                    foreach ($chunk as $studentId) {
-                        try {
-                            $data = array_merge($assignmentData, [
-                                'tutor_id' => $tutorId,
-                                'user_id' => $studentId
-                            ]);
-
-                            // Clean up any legacy skip_existing flags
-                            unset($data['skip_existing']);
-
-                            $assignment = $this->createSingleAssignmentOptimized($data);
-                            $assignments->push($assignment);
-
-                        } catch (\Exception $e) {
-                            $errors->push([
-                                'student_id' => $studentId,
-                                'error' => $e->getMessage()
-                            ]);
-                            
-                            \Log::warning('Failed to create assignment for student in bulk operation', [
-                                'tutor_id' => $tutorId,
-                                'student_id' => $studentId,
-                                'error' => $e->getMessage()
-                            ]);
-                        }
-                    }
-                });
-            }
-
-            // Log summary of bulk operation
-            \Log::info('Bulk assignment creation completed', [
-                'tutor_id' => $tutorId,
-                'total_students' => count($studentIds),
-                'successful_assignments' => $assignments->count(),
-                'errors' => $errors->count()
-            ]);
-
-            // If there were errors but some assignments were created, log the errors
-            if ($errors->isNotEmpty()) {
-                \Log::warning('Bulk assignment creation had errors', [
-                    'errors' => $errors->toArray()
-                ]);
-            }
-
-            return $assignments;
-
-        } catch (\Exception $e) {
-            \Log::error('Critical error in bulk assignment creation', [
-                'tutor_id' => $tutorId,
-                'student_count' => count($studentIds),
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
-            ]);
-            throw new \RuntimeException('Bulk assignment creation failed: ' . $e->getMessage());
-        }
-    }
 
     /**
      * Update an existing assignment
      */
     public function updateAssignment(Assignment $assignment, array $data): Assignment
     {
-        // Prevent updating completed assignments
-        if ($assignment->status === Assignment::STATUS_COMPLETED && !isset($data['score'])) {
-            throw new \InvalidArgumentException('Cannot update completed assignment except for score');
+        // Only validate deadline if it's being changed and not empty
+        if (isset($data['deadline']) && !empty($data['deadline'])) {
+            $newDeadline = Carbon::parse($data['deadline']);
+            if ($newDeadline->isPast()) {
+                throw new \InvalidArgumentException('Assignment deadline must be in the future');
+            }
         }
-
-        // Validate deadline changes
-        if (isset($data['deadline']) && Carbon::parse($data['deadline'])->isPast()) {
-            throw new \InvalidArgumentException('Assignment deadline must be in the future');
+        
+        // Remove empty deadline from update data to keep existing deadline
+        if (isset($data['deadline']) && empty($data['deadline'])) {
+            unset($data['deadline']);
         }
 
         $assignment->update($data);
         return $assignment->fresh();
+    }
+
+    /**
+     * Update user-specific deadline extensions (stored in pivot table)
+     */
+    public function updateUserExtensions(Assignment $assignment, array $userExtensions): void
+    {
+        foreach ($userExtensions as $userId => $extensionDeadline) {
+            // Update the pivot table with the extended deadline
+            $assignment->assignedUsers()->updateExistingPivot($userId, [
+                'extended_deadline' => Carbon::parse($extensionDeadline),
+                'updated_at' => now()
+            ]);
+        }
     }
 
     /**
@@ -220,23 +148,26 @@ class AssignmentService
         DB::beginTransaction();
         
         try {
-            // Update with score percentage if available and assignment not already completed
-            if ($scorePercentage !== null && $assignment->status !== Assignment::STATUS_COMPLETED) {
-                $assignment->update([
-                    'status' => Assignment::STATUS_COMPLETED,
-                    'completed_at' => now(),
-                    'score' => $score,
-                    'score_percentage' => $scorePercentage
-                ]);
+            // Update with score percentage if available
+            if ($scorePercentage !== null) {
+                // Since status column was removed, completion is tracked in quiz_attempts
                 $result = true;
             } else {
                 $result = $assignment->markAsCompleted($score);
             }
             
             if ($result) {
-                // Send completion notifications
+                // LETHAL FIX: Use new notification system for assignment completion
                 try {
-                    $this->notificationService->notifyAssignmentCompleted($assignment->fresh());
+                    $assignmentData = [
+                        'assignment_id' => $assignment->id,
+                        'assignment_title' => $assignment->title,
+                        'score' => $scorePercentage ?? $assignment->score,
+                        'total_questions' => $assignment->total_questions ?? 1,
+                        'completed_at' => $assignment->completed_at?->toISOString()
+                    ];
+                    
+                    \App\Services\NotificationTriggerService::onAssignmentCompleted($assignment->user, $assignmentData);
                 } catch (\Exception $e) {
                     \Log::error('Failed to send assignment completion notification', [
                         'assignment_id' => $assignment->id,
@@ -387,14 +318,12 @@ class AssignmentService
             $query->where('course_id', $filters['course_id']);
         }
 
-        // Default ordering - most urgent first
+        // Default ordering - most urgent first (based on deadline since status column was removed)
         $query->orderByRaw("
             CASE 
-                WHEN status = 'overdue' THEN 1
-                WHEN status = 'active' AND deadline <= NOW() + INTERVAL 24 HOUR THEN 2
-                WHEN status = 'active' THEN 3
-                WHEN status = 'completed' THEN 4
-                ELSE 5
+                WHEN deadline < NOW() THEN 1
+                WHEN deadline <= NOW() + INTERVAL 24 HOUR THEN 2
+                ELSE 3
             END
         ")->orderBy('deadline', 'asc');
 
@@ -420,8 +349,15 @@ class AssignmentService
         $assignments = Assignment::forStudent($studentId)->get();
         
         $totalAssignments = $assignments->count();
-        $completedAssignments = $assignments->where('status', Assignment::STATUS_COMPLETED)->count();
-        $overdueAssignments = $assignments->where('status', Assignment::STATUS_OVERDUE)->count();
+        
+        // Filter by computed status since status column doesn't exist
+        $completedAssignments = $assignments->filter(function($assignment) {
+            return $assignment->getCurrentStatusAttribute() === Assignment::STATUS_COMPLETED;
+        })->count();
+        
+        $overdueAssignments = $assignments->filter(function($assignment) {
+            return $assignment->getCurrentStatusAttribute() === Assignment::STATUS_OVERDUE;
+        })->count();
         
         $averageScore = $assignments->whereNotNull('score')->avg('score') ?? 0;
         $completionRate = $totalAssignments > 0 ? ($completedAssignments / $totalAssignments) * 100 : 0;
@@ -442,12 +378,15 @@ class AssignmentService
      */
     public function deleteAssignment(Assignment $assignment): bool
     {
-        // Prevent deletion of completed assignments
-        if ($assignment->status === Assignment::STATUS_COMPLETED) {
-            throw new \InvalidArgumentException('Cannot delete completed assignments');
+        // Since status column was removed, allow deletion
+        $result = $assignment->delete();
+        
+        // Clear assignment caches immediately after deletion
+        if ($result) {
+            $this->clearAssignmentCaches(auth()->id());
         }
-
-        return $assignment->delete();
+        
+        return $result;
     }
 
     /**
@@ -459,21 +398,10 @@ class AssignmentService
             throw new \InvalidArgumentException('New deadline must be in the future');
         }
 
-        if ($assignment->status === Assignment::STATUS_COMPLETED) {
-            throw new \InvalidArgumentException('Cannot extend deadline for completed assignment');
-        }
-
         $oldDeadline = $assignment->deadline;
 
-        // If assignment was overdue, reactivate it
-        if ($assignment->status === Assignment::STATUS_OVERDUE) {
-            $assignment->update([
-                'deadline' => $newDeadline,
-                'status' => Assignment::STATUS_ACTIVE
-            ]);
-        } else {
-            $assignment->update(['deadline' => $newDeadline]);
-        }
+        // Update deadline (status is computed dynamically)
+        $assignment->update(['deadline' => $newDeadline]);
 
         // 🔥 LETHAL FIX: Dispatch AssignmentDeadlineChanged event
         try {
@@ -493,23 +421,24 @@ class AssignmentService
      */
     public function handleAssignmentExpiry(Assignment $assignment): void
     {
-        if ($assignment->status !== Assignment::STATUS_ACTIVE) {
+        // Since status column was removed, expiry is computed dynamically
+        if (!$assignment->isExpired()) {
             return;
         }
         
-        DB::transaction(function() use ($assignment) {
-            $assignment->markAsExpired();
-            
-            // Send notification
-            try {
-                $this->notificationService->notifyAssignmentExpired($assignment->fresh());
-            } catch (\Exception $e) {
-                \Log::error('Failed to send assignment expiry notification', [
-                    'assignment_id' => $assignment->id,
-                    'error' => $e->getMessage()
-                ]);
-            }
-        });
+        // LETHAL FIX: Use new notification system for assignment expiry
+        try {
+            \App\Services\NotificationTriggerService::onAssignmentOverdueReminder(
+                $assignment->user, 
+                $assignment, 
+                0 // 0 hours = overdue
+            );
+        } catch (\Exception $e) {
+            \Log::error('Failed to send assignment expiry notification', [
+                'assignment_id' => $assignment->id,
+                'error' => $e->getMessage()
+            ]);
+        }
     }
     
     /**
@@ -517,21 +446,13 @@ class AssignmentService
      */
     public function autoSubmitAssignment(Assignment $assignment, array $answers = []): bool
     {
-        if ($assignment->status !== Assignment::STATUS_ACTIVE) {
+        if (!$assignment->isActive()) {
             return false;
         }
         
         DB::transaction(function() use ($assignment, $answers) {
             // Calculate score based on current answers
             $scoreData = $this->calculateAssignmentScore($assignment, $answers);
-            
-            // Mark as expired with partial score
-            $assignment->update([
-                'status' => Assignment::STATUS_EXPIRED,
-                'expired_at' => now(),
-                'score' => $scoreData['score'],
-                'score_percentage' => $scoreData['score_percentage']
-            ]);
             
             // Create assignment attempt record
             DB::table('assignment_attempts')->insert([
@@ -551,9 +472,16 @@ class AssignmentService
                 'updated_at' => now()
             ]);
             
-            // Send notification
+            // LETHAL FIX: Use new notification system for assignment auto-submission
             try {
-                $this->notificationService->notifyAssignmentAutoSubmitted($assignment->fresh());
+                $assignmentData = [
+                    'assignment_id' => $assignment->id,
+                    'assignment_title' => $assignment->title,
+                    'score' => $scoreData['score_percentage'],
+                    'total_questions' => $scoreData['total_questions'],
+                    'auto_submitted' => true
+                ];
+                \App\Services\NotificationTriggerService::onAssignmentCompleted($assignment->user, $assignmentData);
             } catch (\Exception $e) {
                 \Log::error('Failed to send assignment auto-submit notification', [
                     'assignment_id' => $assignment->id,
@@ -689,16 +617,42 @@ class AssignmentService
         try {
             switch ($type) {
                 case 'created':
-                    $this->notificationService->notifyAssignmentCreated($assignment);
+                    // LETHAL FIX: Use new notification system for assignment creation
+                    \App\Services\NotificationTriggerService::onTutorAssignsAssignment(
+                        $assignment->user, 
+                        $assignment, 
+                        $assignment->tutor
+                    );
                     break;
                 case 'completed':
-                    $this->notificationService->notifyAssignmentCompleted($assignment);
+                    // LETHAL FIX: Use new notification system for assignment completion
+                    $assignmentData = [
+                        'assignment_id' => $assignment->id,
+                        'assignment_title' => $assignment->title,
+                        'score' => $assignment->score,
+                        'total_questions' => $assignment->total_questions ?? 1,
+                        'completed_at' => $assignment->completed_at?->toISOString()
+                    ];
+                    \App\Services\NotificationTriggerService::onAssignmentCompleted($assignment->user, $assignmentData);
                     break;
                 case 'expired':
-                    $this->notificationService->notifyAssignmentExpired($assignment);
+                    // LETHAL FIX: Use new notification system for assignment expiry
+                    \App\Services\NotificationTriggerService::onAssignmentOverdueReminder(
+                        $assignment->user, 
+                        $assignment, 
+                        0 // 0 hours = overdue
+                    );
                     break;
                 case 'auto_submitted':
-                    $this->notificationService->notifyAssignmentAutoSubmitted($assignment);
+                    // LETHAL FIX: Use new notification system for auto-submission
+                    $assignmentData = [
+                        'assignment_id' => $assignment->id,
+                        'assignment_title' => $assignment->title,
+                        'score' => $assignment->score ?? 0,
+                        'total_questions' => $assignment->total_questions ?? 1,
+                        'auto_submitted' => true
+                    ];
+                    \App\Services\NotificationTriggerService::onAssignmentCompleted($assignment->user, $assignmentData);
                     break;
             }
         } catch (\Exception $e) {
@@ -904,7 +858,7 @@ class AssignmentService
                     'name' => $assignment->course->name,
                 ],
                 'deadline' => $assignment->deadline->format('Y-m-d H:i:s'),
-                'status' => $assignment->status,
+                'status' => $assignment->getCurrentStatusAttribute(),
                 'assignment_mode' => $assignment->assignment_mode,
                 'duration_minutes' => $assignment->duration_minutes,
                 'created_at' => $assignment->created_at->format('Y-m-d H:i:s'),
@@ -918,9 +872,8 @@ class AssignmentService
             $report['source_details'] = $this->getSourceCompletionDetails($assignment);
             
             // Calculate partial completion for incomplete assignments
-            if ($assignment->status !== Assignment::STATUS_COMPLETED) {
-                $report['partial_completion'] = $this->calculatePartialCompletion($assignment);
-            }
+            // Since status column was removed, check if assignment is not completed via quiz attempts
+            $report['partial_completion'] = $this->calculatePartialCompletion($assignment);
             
             $reports[] = $report;
         }
@@ -1121,58 +1074,71 @@ class AssignmentService
      * Get assignments data with caching (from AssignmentManagementService)
      * Only shows data from tutor's courses unless admin
      */
-    public function getAssignmentsData(int $userId, ?string $status = null, ?int $courseId = null): array
+    public function getAssignmentsData(int $userId, ?string $status = null, ?int $courseId = null, bool $bypassCache = false): array
     {
         $cacheKey = "assignments_data_{$userId}_{$status}_{$courseId}";
         
+        // 🚀 INSTANT REFRESH: Bypass cache if requested or use shorter cache time
+        if ($bypassCache) {
+            // Clear all related cache keys when bypassing
+            $this->clearAssignmentCaches($userId);
+            return $this->fetchAssignmentsData($userId, $status, $courseId);
+        }
+        
         return Cache::remember($cacheKey, 300, function () use ($userId, $status, $courseId) {
-            $user = User::find($userId);
-            
-            // Get assignments - filter by tutor's courses unless admin
-            $query = Assignment::with(['course:id,name', 'topic:id,name'])
-                ->select(['id', 'course_id', 'topic_id', 'title', 'deadline', 'status', 'created_at']);
-
-            if (!$user->isAdmin()) {
-                $tutorCourseIds = $user->courses()->pluck('courses.id');
-                $query->whereIn('course_id', $tutorCourseIds);
-            }
-
-            if ($status) {
-                $query->where('status', $status);
-            }
-            if ($courseId) {
-                $query->where('course_id', $courseId);
-            }
-
-            $assignments = $query->orderBy('deadline', 'asc')->get();
-            
-            // Get courses - only tutor's courses unless admin
-            if ($user->isAdmin()) {
-                $courses = Course::select(['id', 'name'])->get();
-            } else {
-                $courses = $user->courses()->select(['courses.id', 'courses.name'])->get();
-            }
-            
-            // Get students - only from tutor's courses unless admin
-            if ($user->isAdmin()) {
-                $students = User::select(['id', 'name', 'email'])
-                    ->where('role', User::ROLE_STUDENT)
-                    ->orderBy('name')
-                    ->get();
-            } else {
-                $tutorCourseIds = $user->courses()->pluck('courses.id');
-                $students = User::select(['users.id', 'users.name', 'users.email'])
-                    ->join('course_user', 'users.id', '=', 'course_user.user_id')
-                    ->where('users.role', User::ROLE_STUDENT)
-                    ->whereIn('course_user.course_id', $tutorCourseIds)
-                    ->where('course_user.is_enrolled', true)
-                    ->distinct()
-                    ->orderBy('users.name')
-                    ->get();
-            }
-
-            return compact('assignments', 'courses', 'students');
+            return $this->fetchAssignmentsData($userId, $status, $courseId);
         });
+    }
+
+
+    
+    private function fetchAssignmentsData(int $userId, ?string $status = null, ?int $courseId = null): array
+    {
+        $user = User::find($userId);
+        
+        // Get assignments - filter by tutor's courses unless admin
+        $query = Assignment::with(['course:id,name', 'topic:id,name'])
+            ->select(['id', 'course_id', 'topic_id', 'title', 'deadline', 'created_at']);
+
+        if (!$user->isAdmin()) {
+            $tutorCourseIds = $user->courses()->pluck('courses.id');
+            $query->whereIn('course_id', $tutorCourseIds);
+        }
+
+        // Status filtering removed since status column was removed
+        // Status is now computed dynamically based on deadline
+        if ($courseId) {
+            $query->where('course_id', $courseId);
+        }
+
+        $assignments = $query->orderBy('deadline', 'asc')->get();
+        
+        // Get courses - only tutor's courses unless admin
+        if ($user->isAdmin()) {
+            $courses = Course::select(['id', 'name'])->get();
+        } else {
+            $courses = $user->courses()->select(['courses.id', 'courses.name'])->get();
+        }
+        
+        // Get students - only from tutor's courses unless admin
+        if ($user->isAdmin()) {
+            $students = User::select(['id', 'name', 'email'])
+                ->where('role', User::ROLE_STUDENT)
+                ->orderBy('name')
+                ->get();
+        } else {
+            $tutorCourseIds = $user->courses()->pluck('courses.id');
+            $students = User::select(['users.id', 'users.name', 'users.email'])
+                ->join('course_user', 'users.id', '=', 'course_user.user_id')
+                ->where('users.role', User::ROLE_STUDENT)
+                ->whereIn('course_user.course_id', $tutorCourseIds)
+                ->where('course_user.is_enrolled', true)
+                ->distinct()
+                ->orderBy('users.name')
+                ->get();
+        }
+
+        return compact('assignments', 'courses', 'students');
     }
 
     /**
@@ -1260,15 +1226,83 @@ class AssignmentService
     }
 
     /**
+     * Create bulk assignments from validated form data
+     * This method matches what the controller expects
+     */
+    public function createBulkAssignments(array $validated, int $tutorId): int
+    {
+        try {
+            $studentIds = $validated['student_ids'];
+            
+            // Prepare assignment data (remove student_ids from the data)
+            $assignmentData = array_merge($validated, [
+                'tutor_id' => $tutorId
+            ]);
+            unset($assignmentData['student_ids']);
+            
+            $createdCount = 0;
+            
+            // Create individual assignments for each student using the pivot table approach
+            DB::transaction(function() use ($assignmentData, $studentIds, &$createdCount) {
+                // First create the assignment template
+                $assignment = Assignment::create([
+                    'topic_id' => $assignmentData['topic_id'],
+                    'course_id' => $assignmentData['course_id'],
+                    'title' => $assignmentData['title'],
+                    'deadline' => $assignmentData['deadline'],
+                    'duration_minutes' => $assignmentData['duration_minutes'] ?? 60,
+                    'assignment_mode' => $assignmentData['assignment_mode'],
+                    'assigned_source' => $assignmentData['assigned_source'] ?? null
+                ]);
+                
+                // Then assign it to all students via pivot table
+                $assignment->assignedUsers()->attach($studentIds);
+                
+                $createdCount = count($studentIds);
+                
+                // Send notifications (disabled for now due to notification service issues)
+                // foreach ($studentIds as $studentId) {
+                //     try {
+                //         $this->notificationService->notifyAssignmentCreated($assignment);
+                //     } catch (\Exception $e) {
+                //         \Log::warning('Failed to send assignment notification', [
+                //             'assignment_id' => $assignment->id,
+                //             'student_id' => $studentId,
+                //             'error' => $e->getMessage()
+                //         ]);
+                //     }
+                // }
+            });
+            
+            // 🚀 INSTANT CACHE INVALIDATION - Clear all assignment-related caches
+            \Cache::tags(['assignments'])->flush();
+            \Cache::forget("assignments_data_{$tutorId}_null_null");
+            
+            // Clear cache for all affected students
+            foreach ($studentIds as $studentId) {
+                \Cache::forget("assignments_data_{$studentId}_null_null");
+            }
+            
+            return $createdCount;
+            
+        } catch (\Exception $e) {
+            \Log::error('Failed to create bulk assignments', [
+                'validated' => $validated,
+                'tutor_id' => $tutorId,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            throw new \RuntimeException('Failed to create assignments: ' . $e->getMessage());
+        }
+    }
+
+    /**
      * Clear assignment-related caches
      */
-    public function clearAssignmentCaches(int $userId, ?int $courseId = null): void
+    public function clearAssignmentCaches(int $userId): void
     {
         Cache::forget("assignments_data_{$userId}__");
         Cache::forget("bulk_create_data_{$userId}");
-        
-        if ($courseId) {
-            Cache::forget("assignments_data_{$userId}_{$courseId}");
-        }
+        Cache::forget("counter_data_{$userId}");
     }
 }

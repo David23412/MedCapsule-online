@@ -2,7 +2,7 @@
 
 namespace Tests\Feature;
 
-use App\Services\CacheService;
+use App\Services\Core\UltraConsolidatedCacheService;
 use App\Services\QuizService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
@@ -26,9 +26,9 @@ class OptimizedQuizPerformanceTest extends TestCase
             'difficulty' => 'medium'
         ];
 
-        $key1 = QuizCacheService::generateCacheKey('quiz_test', $data);
-        $key2 = QuizCacheService::generateCacheKey('quiz_test', $data);
-        $key3 = QuizCacheService::generateCacheKey('quiz_test', array_merge($data, ['difficulty' => 'hard']));
+        $key1 = QuizUltraConsolidatedCacheService::generateCacheKey('quiz_test', $data);
+        $key2 = QuizUltraConsolidatedCacheService::generateCacheKey('quiz_test', $data);
+        $key3 = QuizUltraConsolidatedCacheService::generateCacheKey('quiz_test', array_merge($data, ['difficulty' => 'hard']));
 
         // Same data should generate same key
         $this->assertEquals($key1, $key2);
@@ -47,11 +47,11 @@ class OptimizedQuizPerformanceTest extends TestCase
         $data = ['questions' => [1, 2, 3], 'metadata' => ['difficulty' => 'medium']];
 
         // Store data
-        $stored = QuizCacheService::storeQuizData($key, $data);
+        $stored = QuizUltraConsolidatedCacheService::storeQuizData($key, $data);
         $this->assertTrue($stored);
 
         // Retrieve data
-        $retrieved = QuizCacheService::getQuizData($key);
+        $retrieved = QuizUltraConsolidatedCacheService::getQuizData($key);
         $this->assertEquals($data, $retrieved);
     }
 
@@ -60,14 +60,14 @@ class OptimizedQuizPerformanceTest extends TestCase
         $key = 'non_existent_key';
         $fallbackData = ['fallback' => true];
 
-        $retrieved = QuizCacheService::getQuizData($key, function () use ($fallbackData) {
+        $retrieved = QuizUltraConsolidatedCacheService::getQuizData($key, function () use ($fallbackData) {
             return $fallbackData;
         });
 
         $this->assertEquals($fallbackData, $retrieved);
         
         // Should now be cached
-        $cachedData = QuizCacheService::getQuizData($key);
+        $cachedData = QuizUltraConsolidatedCacheService::getQuizData($key);
         $this->assertEquals($fallbackData, $cachedData);
     }
 
@@ -80,7 +80,7 @@ class OptimizedQuizPerformanceTest extends TestCase
         $this->assertStringContains($operation, $trackingId);
 
         // Simulate some work
-        usleep(1000); // 1ms
+        app('performance.async')->delayAsync(1000); // 1ms
 
         $performance = QuizPerformanceService::endTracking($trackingId, [
             'additional_data' => 'test'
@@ -100,7 +100,7 @@ class OptimizedQuizPerformanceTest extends TestCase
         $expectedResult = ['quiz_data' => 'test'];
 
         $result = QuizPerformanceService::trackQuizGeneration($topicId, $userId, function () use ($expectedResult) {
-            usleep(2000); // 2ms
+            app('performance.async')->delayAsync(2000); // 2ms
             return $expectedResult;
         });
 
@@ -121,7 +121,7 @@ class OptimizedQuizPerformanceTest extends TestCase
         $startTime = microtime(true);
         
         for ($i = 0; $i < 1000; $i++) {
-            $key = QuizCacheService::generateCacheKey('performance_test', array_merge($data, ['iteration' => $i]));
+            $key = QuizUltraConsolidatedCacheService::generateCacheKey('performance_test', array_merge($data, ['iteration' => $i]));
         }
         
         $endTime = microtime(true);
@@ -137,11 +137,11 @@ class OptimizedQuizPerformanceTest extends TestCase
         $userId = 123;
 
         // This should not throw any exceptions
-        QuizCacheService::warmupCache($topicIds, $userId);
+        QuizUltraConsolidatedCacheService::warmupCache($topicIds, $userId);
 
         // Verify warming markers are set
         foreach ($topicIds as $topicId) {
-            $warmingKey = QuizCacheService::generateCacheKey('quiz_options', [
+            $warmingKey = QuizUltraConsolidatedCacheService::generateCacheKey('quiz_options', [
                 'topic_id' => $topicId,
                 'user_id' => $userId
             ]) . '_warming';
@@ -159,7 +159,7 @@ class OptimizedQuizPerformanceTest extends TestCase
         Cache::put("quiz_gen_{$topicId}_456", 'test_data', 300);
         
         // Clear cache for topic
-        QuizCacheService::clearTopicCache($topicId);
+        QuizUltraConsolidatedCacheService::clearTopicCache($topicId);
         
         // Verify cache is cleared (this is a simplified test)
         // In a real implementation, you'd verify the specific keys are gone
@@ -190,7 +190,7 @@ class OptimizedQuizPerformanceTest extends TestCase
 
     public function test_cache_stats_functionality()
     {
-        $stats = QuizCacheService::getCacheStats();
+        $stats = QuizUltraConsolidatedCacheService::getCacheStats();
         
         $this->assertIsArray($stats);
         $this->assertArrayHasKey('hit_rate', $stats);
@@ -207,7 +207,7 @@ class OptimizedQuizPerformanceTest extends TestCase
         // Test with invalid data that might cause serialization issues
         $invalidData = fopen('php://memory', 'r');
         
-        $result = QuizCacheService::storeQuizData('test_invalid', $invalidData);
+        $result = QuizUltraConsolidatedCacheService::storeQuizData('test_invalid', $invalidData);
         
         // Should handle gracefully and return false
         $this->assertFalse($result);

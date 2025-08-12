@@ -20,13 +20,7 @@ return new class extends Migration
             $table->string('payment_method'); // 'fawry', 'vodafone_cash', etc.
             $table->string('status'); // 'pending', 'completed', 'failed', 'expired'
             $table->json('payment_data')->nullable(); // Store gateway-specific data
-            $table->timestamp('paid_at')->nullable();
-            
-            // 💥 BUNDLE PAYMENT FIELDS
-            $table->boolean('is_bundle')->default(false);
-            $table->json('bundle_courses')->nullable();
-            $table->decimal('original_price', 10, 2)->nullable();
-            $table->decimal('discount_amount', 10, 2)->nullable();
+            $table->timestamp('paid_at')->nullable(); // When payment was submitted/created
             
             $table->timestamps();
 
@@ -35,7 +29,6 @@ return new class extends Migration
             $table->index('course_id');
             $table->index('reference_number');
             $table->index('status');
-            $table->index('is_bundle');
         });
     }
 

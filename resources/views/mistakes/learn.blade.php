@@ -1965,7 +1965,7 @@
                     confetti({
                         particleCount: 150,
                         spread: 60,
-                        origin: { x: 0.5, y: 0.5 },
+                        origin: { x: 0.62, y: 0.45 },
                         colors: ['#007bff', '#0056b3', '#3b82f6', '#60a5fa'],
                         ticks: 400,
                         disableForReducedMotion: true,

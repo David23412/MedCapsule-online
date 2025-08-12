@@ -19,7 +19,7 @@ class StudentProgressController extends Controller
     private $performanceService;
     private $cacheService;
 
-    public function __construct(QuizPerformanceService $performanceService, QuizCacheService $cacheService)
+    public function __construct(QuizPerformanceService $performanceService, QuizUltraConsolidatedCacheService $cacheService)
     {
         $this->middleware('auth');
         $this->performanceService = $performanceService;
@@ -33,8 +33,8 @@ class StudentProgressController extends Controller
             $data = Cache::remember("cache_key", 300, function() {
                 return $this->getData();
             });
-            $resilientData = ResilientCacheService::get("resilient_key");
-            $quizCache = QuizCacheService::remember("quiz_key", 300, function() {
+            $resilientData = ResilientUltraConsolidatedCacheService::get("resilient_key");
+            $quizCache = QuizUltraConsolidatedCacheService::remember("quiz_key", 300, function() {
                 return [];
             });
             

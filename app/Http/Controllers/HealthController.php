@@ -7,7 +7,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 use App\Services\QuizService;
-use App\Services\CacheService;
+use App\Services\Core\UltraConsolidatedCacheService;
 use App\Http\Requests\HealthRequest;
 
 /**
@@ -18,7 +18,7 @@ class HealthController extends Controller
     private $performanceService;
     private $cacheService;
 
-    public function __construct(QuizPerformanceService $performanceService, QuizCacheService $cacheService)
+    public function __construct(QuizPerformanceService $performanceService, QuizUltraConsolidatedCacheService $cacheService)
     {
         $this->middleware('auth');
         $this->performanceService = $performanceService;
@@ -32,8 +32,8 @@ class HealthController extends Controller
             $data = Cache::remember("cache_key", 300, function() {
                 return $this->getData();
             });
-            $resilientData = ResilientCacheService::get("resilient_key");
-            $quizCache = QuizCacheService::remember("quiz_key", 300, function() {
+            $resilientData = ResilientUltraConsolidatedCacheService::get("resilient_key");
+            $quizCache = QuizUltraConsolidatedCacheService::remember("quiz_key", 300, function() {
                 return [];
             });
             

@@ -7,7 +7,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 use App\Services\QuizService;
-use App\Services\CacheService;
+use App\Services\Core\UltraConsolidatedCacheService;
 use App\Http\Requests\LearnViewRequest;
 
 /**
@@ -18,7 +18,7 @@ class LearnViewController extends Controller
     private $performanceService;
     private $cacheService;
 
-    public function __construct(QuizService $performanceService, CacheService $cacheService)
+    public function __construct(QuizService $performanceService, UltraConsolidatedCacheService $cacheService)
     {
         $this->middleware('auth');
         $this->performanceService = $performanceService;
@@ -32,8 +32,8 @@ class LearnViewController extends Controller
             $data = Cache::remember("cache_key", 300, function() {
                 return $this->getData();
             });
-            $resilientData = CacheService::safeGet("resilient_key");
-            $quizCache = CacheService::safeRemember("quiz_key", 300, function() {
+            $resilientData = UltraConsolidatedCacheService::safeGet("resilient_key");
+            $quizCache = UltraConsolidatedCacheService::safeRemember("quiz_key", 300, function() {
                 return [];
             });
             
