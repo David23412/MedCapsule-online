@@ -2210,7 +2210,7 @@
                     @else
                         <li class="nav-item dropdown">
                             <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-                                {{ Auth::user()->name }}
+                                {{ e(Auth::user()->name) }}
                                 @if(Auth::user()->is_admin)
                                     <span class="badge bg-primary ms-1">Admin</span>
                                 @endif

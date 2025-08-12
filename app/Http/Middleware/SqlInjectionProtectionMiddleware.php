@@ -10,349 +10,242 @@ use Symfony\Component\HttpFoundation\Response;
 class SqlInjectionProtectionMiddleware
 {
     /**
-     * GOLDEN STANDARD: Comprehensive SQL injection patterns
+     * SQL injection patterns to detect various attack vectors
      */
-    private const SQL_INJECTION_PATTERNS = [
-        // Basic SQL injection patterns
-        '/(\s|^)(union|select|insert|update|delete|drop|create|alter|exec|execute)\s+/i',
-        '/(\s|^)(or|and)\s+[\'"]*\s*[\d\w]+\s*[\'"]*\s*=\s*[\'"]*\s*[\d\w]+/i',
-        '/(\s|^)(or|and)\s+[\'"]*\s*\d+\s*[\'"]*\s*=\s*[\'"]*\s*\d+/i',
-        
-        // Advanced injection patterns
-        '/[\'"]\s*;\s*(drop|delete|update|insert|create|alter)/i',
-        '/(\s|^)(0x[a-f0-9]+|char\(|ascii\(|substring\()/i',
-        '/(\s|^)(waitfor\s+delay|benchmark\(|sleep\()/i',
-        '/(\s|^)(information_schema|mysql\.|sys\.)/i',
-        
-        // Comment-based injections
-        '/\/\*[\s\S]*?\*\//',
-        '/--[\s\S]*$/',
-        '/(\s|^)#[\s\S]*$/',
-        
+    private array $sqlPatterns = [
         // Union-based injections
         '/(\s|^)union\s+(all\s+)?select/i',
-        '/(\s|^)order\s+by\s+\d+/i',
-        '/(\s|^)group\s+by\s+[\w\s,]+\s+having/i',
+        '/(\s|^)union\s+(distinct\s+)?select/i',
         
-        // Boolean-based blind injections
+        // Boolean-based blind injections  
         '/(\s|^)(true|false)\s*[\)]*\s*(and|or)/i',
-        '/(\s|^)\d+\s*=\s*\d+(\s+(and|or)|\s*--)/i',
-        '/(\s|^)[\'"]\s*[\'"]\s*=\s*[\'"]\s*[\'"](\s+(and|or)|\s*--)/i',
+        '/(\s|^)(1|0)\s*=\s*(1|0)\s*(and|or)/i',
         
         // Time-based blind injections
         '/(\s|^)if\s*\(\s*[\w\s=\'\"]+\s*,\s*sleep\s*\(\s*\d+\s*\)\s*,/i',
-        '/(\s|^)case\s+when\s+[\w\s=\'\"]+\s+then\s+sleep\s*\(\s*\d+\s*\)/i',
+        '/(\s|^)(pg_sleep|sleep|delay|waitfor)\s*\(/i',
         
         // Error-based injections
         '/(\s|^)(extractvalue|updatexml|exp|floor|rand)\s*\(/i',
-        '/(\s|^)convert\s*\(\s*int\s*,/i',
-        '/(\s|^)cast\s*\(\s*[\w\s]+\s+as\s+int\s*\)/i',
+        '/(\s|^)(cast|convert|char|ascii|substring|mid)\s*\(/i',
         
         // Stacked queries
-        '/;\s*(select|insert|update|delete|drop|create|alter)/i',
+        '/;\s*(drop|create|alter|delete|insert|update)\s+/i',
+        '/;\s*(exec|execute|sp_)\s*/i',
         
-        // Hex encoding attempts
-        '/0x[a-f0-9]{2,}/i',
+        // Comment-based
+        '/\/\*.*\*\//s',
+        '/--\s*.*/s',
+        '/#.*$/m',
         
-        // PHP function calls that could be dangerous
-        '/(\s|^)(eval|exec|system|shell_exec|passthru|file_get_contents|fopen|file|readfile)\s*\(/i',
+        // Database specific functions
+        '/(\s|^)(load_file|into\s+outfile|dumpfile)\s*\(/i',
+        '/(\s|^)(information_schema|mysql|pg_catalog)\./i',
+        '/(\s|^)(sysobjects|syscolumns|systables)\s/i',
         
-        // Database-specific functions
-        '/(\s|^)(load_file|into\s+outfile|into\s+dumpfile)/i',
-        '/(\s|^)(pg_sleep|pg_version|version\(\))/i',
-        '/(\s|^)(user\(\)|database\(\)|@@version)/i'
+        // Advanced patterns
+        '/(\s|^)(benchmark|heavy_query)\s*\(/i',
+        '/(\s|^)(user|database|version|@@)\s*\(/i',
+        '/(\s|^)0x[0-9a-f]+/i', // Hex encoding
     ];
-    
-    /**
-     * Suspicious character sequences
-     */
-    private const SUSPICIOUS_SEQUENCES = [
-        "';", '";', "' or ", '" or ', "' and ", '" and ',
-        "1=1", "1=0", "true=true", "false=false",
-        "../", "..\\", "<script", "</script>",
-        "javascript:", "vbscript:", "onload=", "onerror="
-    ];
-    
-    /**
-     * Maximum allowed special characters ratio
-     */
-    private const MAX_SPECIAL_CHAR_RATIO = 0.3;
 
     /**
      * Handle an incoming request.
      */
     public function handle(Request $request, Closure $next): Response
     {
-        $requestId = uniqid('sql_protect_');
+        // Check all input vectors
+        $inputData = $this->getAllInputData($request);
         
-        // Skip protection for safe routes (if configured)
-        if ($this->shouldSkipProtection($request)) {
-            return $next($request);
+        foreach ($inputData as $source => $data) {
+            if (is_string($data)) {
+                $threat = $this->detectSqlInjection($data);
+                if ($threat) {
+                    $this->logThreat($request, $source, $data, $threat);
+                    return $this->blockRequest($threat['severity']);
+                }
+            } elseif (is_array($data)) {
+                $threat = $this->scanArrayRecursively($data);
+                if ($threat) {
+                    $this->logThreat($request, $source, $data, $threat);
+                    return $this->blockRequest($threat['severity']);
+                }
+            }
         }
-        
-        Log::info('SQL injection protection check started', [
-            'request_id' => $requestId,
-            'url' => $request->fullUrl(),
-            'method' => $request->method(),
-            'user_id' => auth()->id(),
-            'ip' => $request->ip()
-        ]);
-        
-        // Check all input data
-        $threatDetected = $this->scanForThreats($request, $requestId);
-        
-        if ($threatDetected['detected']) {
-            return $this->blockRequest($request, $threatDetected, $requestId);
-        }
-        
-        Log::info('SQL injection protection check passed', [
-            'request_id' => $requestId
-        ]);
-        
+
         return $next($request);
     }
-    
+
     /**
-     * Check if protection should be skipped for this route
+     * Get all input data from various sources
      */
-    private function shouldSkipProtection(Request $request): bool
+    private function getAllInputData(Request $request): array
     {
-        $skipRoutes = [
-            // Add routes that need to be skipped if any
-            // Example: 'api/file-upload'
-        ];
-        
-        $currentRoute = $request->path();
-        return in_array($currentRoute, $skipRoutes);
-    }
-    
-    /**
-     * Scan all request data for SQL injection threats
-     */
-    private function scanForThreats(Request $request, string $requestId): array
-    {
-        $threats = [];
-        
-        // Scan URL parameters
-        $urlThreats = $this->scanArray($request->query->all(), 'url_parameters');
-        if (!empty($urlThreats)) {
-            $threats = array_merge($threats, $urlThreats);
-        }
-        
-        // Scan POST data
-        $postThreats = $this->scanArray($request->request->all(), 'post_data');
-        if (!empty($postThreats)) {
-            $threats = array_merge($threats, $postThreats);
-        }
-        
-        // Scan JSON payload
-        if ($request->isJson()) {
-            $jsonData = $request->json()->all();
-            $jsonThreats = $this->scanArray($jsonData, 'json_payload');
-            if (!empty($jsonThreats)) {
-                $threats = array_merge($threats, $jsonThreats);
-            }
-        }
-        
-        // Scan headers for injection attempts
-        $headerThreats = $this->scanHeaders($request);
-        if (!empty($headerThreats)) {
-            $threats = array_merge($threats, $headerThreats);
-        }
-        
-        // Scan raw content
-        $rawContent = $request->getContent();
-        if (!empty($rawContent) && !$request->isJson()) {
-            $contentThreats = $this->scanString($rawContent, 'raw_content');
-            if (!empty($contentThreats)) {
-                $threats = array_merge($threats, $contentThreats);
-            }
-        }
-        
         return [
-            'detected' => !empty($threats),
-            'threats' => $threats,
-            'count' => count($threats)
+            'query' => $request->query(),
+            'post' => $request->post(),
+            'json' => $request->json() ? $request->json()->all() : [],
+            'headers' => $request->headers->all(),
+            'path' => $request->path(),
+            'url' => $request->fullUrl(),
+            'user_agent' => $request->userAgent(),
+            'referer' => $request->header('referer'),
         ];
     }
-    
+
+    /**
+     * Detect SQL injection patterns in a string
+     */
+    private function detectSqlInjection(string $input): ?array
+    {
+        // Normalize input for better detection
+        $normalized = strtolower(trim($input));
+        
+        // Skip empty strings
+        if (empty($normalized)) {
+            return null;
+        }
+
+        // Check each pattern
+        foreach ($this->sqlPatterns as $pattern) {
+            if (preg_match($pattern, $normalized)) {
+                return [
+                    'pattern' => $pattern,
+                    'severity' => $this->getSeverity($pattern),
+                    'input' => substr($input, 0, 500), // Limit logged input
+                ];
+            }
+        }
+
+        // Additional heuristics
+        return $this->checkHeuristics($normalized, $input);
+    }
+
     /**
      * Scan array data recursively
      */
-    private function scanArray(array $data, string $source, string $path = ''): array
+    private function scanArrayRecursively(array $data): ?array
     {
-        $threats = [];
-        
         foreach ($data as $key => $value) {
-            $currentPath = $path ? "{$path}.{$key}" : $key;
-            
-            if (is_array($value)) {
-                $subThreats = $this->scanArray($value, $source, $currentPath);
-                $threats = array_merge($threats, $subThreats);
-            } elseif (is_string($value)) {
-                $stringThreats = $this->scanString($value, $source, $currentPath);
-                $threats = array_merge($threats, $stringThreats);
-            }
-            
-            // Also scan the key itself
-            if (is_string($key)) {
-                $keyThreats = $this->scanString($key, $source, "{$currentPath}_key");
-                $threats = array_merge($threats, $keyThreats);
+            if (is_string($value)) {
+                $threat = $this->detectSqlInjection($value);
+                if ($threat) {
+                    return $threat;
+                }
+            } elseif (is_array($value)) {
+                $threat = $this->scanArrayRecursively($value);
+                if ($threat) {
+                    return $threat;
+                }
             }
         }
-        
-        return $threats;
+        return null;
     }
-    
+
     /**
-     * Scan string for SQL injection patterns
+     * Additional heuristic checks
      */
-    private function scanString(string $value, string $source, string $path = ''): array
+    private function checkHeuristics(string $normalized, string $original): ?array
     {
-        $threats = [];
+        // Check for suspicious keyword combinations
+        $suspiciousKeywords = ['select', 'union', 'from', 'where', 'drop', 'insert', 'update', 'delete'];
+        $keywordCount = 0;
         
-        // Skip empty or very short strings
-        if (strlen($value) < 2) {
-            return $threats;
-        }
-        
-        // Check against SQL injection patterns
-        foreach (self::SQL_INJECTION_PATTERNS as $pattern) {
-            if (preg_match($pattern, $value, $matches)) {
-                $threats[] = [
-                    'type' => 'sql_injection_pattern',
-                    'source' => $source,
-                    'path' => $path,
-                    'pattern' => $pattern,
-                    'match' => $matches[0] ?? '',
-                    'value_snippet' => $this->createSnippet($value, $matches[0] ?? ''),
-                    'severity' => 'high'
-                ];
+        foreach ($suspiciousKeywords as $keyword) {
+            if (strpos($normalized, $keyword) !== false) {
+                $keywordCount++;
             }
         }
         
-        // Check for suspicious character sequences
-        foreach (self::SUSPICIOUS_SEQUENCES as $sequence) {
-            if (stripos($value, $sequence) !== false) {
-                $threats[] = [
-                    'type' => 'suspicious_sequence',
-                    'source' => $source,
-                    'path' => $path,
-                    'sequence' => $sequence,
-                    'value_snippet' => $this->createSnippet($value, $sequence),
-                    'severity' => 'medium'
-                ];
-            }
-        }
-        
-        // Check special character ratio
-        $specialCharRatio = $this->calculateSpecialCharRatio($value);
-        if ($specialCharRatio > self::MAX_SPECIAL_CHAR_RATIO && strlen($value) > 10) {
-            $threats[] = [
-                'type' => 'high_special_char_ratio',
-                'source' => $source,
-                'path' => $path,
-                'ratio' => $specialCharRatio,
-                'threshold' => self::MAX_SPECIAL_CHAR_RATIO,
-                'value_snippet' => substr($value, 0, 100),
-                'severity' => 'low'
+        // If multiple SQL keywords present, flag as suspicious
+        if ($keywordCount >= 3) {
+            return [
+                'pattern' => 'heuristic_multiple_keywords',
+                'severity' => 'medium',
+                'input' => substr($original, 0, 500),
+                'keyword_count' => $keywordCount,
             ];
         }
-        
-        return $threats;
+
+        // Check for encoded patterns
+        if (preg_match('/(%27|%22|%2d|%2f|%5c)/i', $original)) {
+            return [
+                'pattern' => 'url_encoded_injection',
+                'severity' => 'high',
+                'input' => substr($original, 0, 500),
+            ];
+        }
+
+        return null;
     }
-    
+
     /**
-     * Scan HTTP headers for injection attempts
+     * Determine severity based on pattern
      */
-    private function scanHeaders(Request $request): array
+    private function getSeverity(string $pattern): string
     {
-        $threats = [];
-        $dangerousHeaders = ['user-agent', 'referer', 'x-forwarded-for', 'cookie'];
-        
-        foreach ($dangerousHeaders as $header) {
-            $value = $request->header($header);
-            if ($value) {
-                $headerThreats = $this->scanString($value, 'header', $header);
-                $threats = array_merge($threats, $headerThreats);
+        $highSeverityPatterns = [
+            'union',
+            'drop',
+            'delete',
+            'alter',
+            'exec',
+            'load_file',
+            'into\s+outfile',
+        ];
+
+        foreach ($highSeverityPatterns as $highPattern) {
+            if (stripos($pattern, $highPattern) !== false) {
+                return 'critical';
             }
         }
-        
-        return $threats;
+
+        return 'high';
     }
-    
+
     /**
-     * Calculate the ratio of special characters in a string
+     * Log security threat
      */
-    private function calculateSpecialCharRatio(string $value): float
+    private function logThreat(Request $request, string $source, $data, array $threat): void
     {
-        if (empty($value)) {
-            return 0;
-        }
-        
-        $specialChars = preg_match_all('/[^a-zA-Z0-9\s]/', $value);
-        return $specialChars / strlen($value);
-    }
-    
-    /**
-     * Create a snippet showing the problematic part of the value
-     */
-    private function createSnippet(string $value, string $match): string
-    {
-        $position = stripos($value, $match);
-        if ($position === false) {
-            return substr($value, 0, 100);
-        }
-        
-        $start = max(0, $position - 20);
-        $length = min(100, strlen($value) - $start);
-        
-        return substr($value, $start, $length);
-    }
-    
-    /**
-     * Block the request and log the threat
-     */
-    private function blockRequest(Request $request, array $threatData, string $requestId): Response
-    {
-        Log::critical('SQL injection attempt detected and blocked', [
-            'request_id' => $requestId,
-            'url' => $request->fullUrl(),
-            'method' => $request->method(),
-            'user_id' => auth()->id(),
+        Log::warning('SQL Injection Attempt Detected', [
             'ip' => $request->ip(),
             'user_agent' => $request->userAgent(),
-            'threats' => $threatData['threats'],
-            'threat_count' => $threatData['count'],
-            'timestamp' => now()->toISOString()
+            'url' => $request->fullUrl(),
+            'method' => $request->method(),
+            'source' => $source,
+            'pattern' => $threat['pattern'],
+            'severity' => $threat['severity'],
+            'input_preview' => $threat['input'],
+            'user_id' => auth()->id(),
+            'session_id' => session()->getId(),
+            'timestamp' => now()->toISOString(),
         ]);
-        
-        // Count high severity threats
-        $highSeverityCount = count(array_filter($threatData['threats'], function($threat) {
-            return ($threat['severity'] ?? 'low') === 'high';
-        }));
-        
-        // Determine response based on threat severity
-        if ($highSeverityCount > 0) {
-            // High severity - immediate block
-            return response()->json([
-                'error' => 'Request blocked for security reasons',
-                'code' => 'SQL_INJECTION_DETECTED',
-                'request_id' => $requestId
-            ], 403);
-        } else {
-            // Medium/Low severity - warning but allow
-            Log::warning('Potential SQL injection patterns detected but allowed', [
-                'request_id' => $requestId,
-                'threat_count' => $threatData['count']
-            ]);
-            
-            // Could implement stricter rules here if needed
-            return response()->json([
-                'error' => 'Request contains potentially dangerous content',
-                'code' => 'SUSPICIOUS_CONTENT_DETECTED',
-                'request_id' => $requestId
-            ], 400);
-        }
+    }
+
+    /**
+     * Block request based on severity
+     */
+    private function blockRequest(string $severity): Response
+    {
+        $statusCode = match($severity) {
+            'critical' => 403,
+            'high' => 403,
+            'medium' => 422,
+            default => 400,
+        };
+
+        $message = match($severity) {
+            'critical' => 'Request blocked due to critical security threat',
+            'high' => 'Request blocked due to security violation',
+            'medium' => 'Request contains suspicious content',
+            default => 'Invalid request format',
+        };
+
+        return response()->json([
+            'error' => $message,
+            'code' => 'SECURITY_VIOLATION',
+            'severity' => $severity,
+        ], $statusCode);
     }
 }

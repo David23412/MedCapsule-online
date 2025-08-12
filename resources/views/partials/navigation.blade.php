@@ -22,8 +22,8 @@
                     </li>
                 @else
                     <li class="nav-item dropdown">
-                        <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-                            {{ Auth::user()->name }}
+                        <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="User account menu">
+                            {{ e(Auth::user()->name) }}
                             @if(Auth::user()->is_admin)
                                 <span class="badge bg-primary ms-1">Admin</span>
                             @endif
@@ -109,7 +109,7 @@
                             <div class="profile-circle {{ !Auth::user()->profile_picture_url ? 'no-image' : '' }}" 
                                  style="{{ Auth::user()->profile_picture_url ? 'background-image: url(' . secure_url(Auth::user()->profile_picture_url) . ');' : '' }}">
                                 @if(!Auth::user()->profile_picture_url)
-                                    {{ substr(Auth::user()->name, 0, 1) }}
+                                    {{ e(substr(Auth::user()->name, 0, 1)) }}
                                 @endif
                             </div>
                         </a>

@@ -6,329 +6,364 @@ use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\RateLimiter;
 use Symfony\Component\HttpFoundation\Response;
 
 class AggressiveRateLimitMiddleware
 {
     /**
-     * GOLDEN STANDARD: Multiple rate limiting tiers
+     * Rate limit configurations by context
      */
-    const RATE_LIMITS = [
+    private array $rateLimits = [
         'quiz_submit' => [
             'per_minute' => 10,
             'per_hour' => 100,
-            'per_day' => 1000
+            'per_day' => 1000,
         ],
         'payment' => [
             'per_minute' => 5,
             'per_hour' => 20,
-            'per_day' => 50
+            'per_day' => 50,
         ],
         'api' => [
             'per_minute' => 30,
             'per_hour' => 500,
-            'per_day' => 2000
+            'per_day' => 2000,
         ],
         'general' => [
             'per_minute' => 60,
             'per_hour' => 1000,
-            'per_day' => 5000
-        ]
+            'per_day' => 5000,
+        ],
     ];
-    
+
     /**
      * Suspicious behavior thresholds
      */
-    const SUSPICIOUS_THRESHOLDS = [
-        'rapid_requests' => 20, // More than 20 requests in 10 seconds
-        'failed_attempts' => 10, // More than 10 failed attempts in 5 minutes
-        'large_payloads' => 5    // More than 5 large payloads in 1 minute
+    private array $behaviorThresholds = [
+        'rapid_requests' => 20, // requests in 10 seconds
+        'large_payloads' => 5,  // >1MB requests per minute
+        'failure_rate' => 10,   // failures in 5 minutes
     ];
+
+    /**
+     * Progressive blocking durations (in minutes)
+     */
+    private array $blockingDurations = [1, 5, 10, 20, 60, 120, 240];
 
     /**
      * Handle an incoming request.
      */
-    public function handle(Request $request, Closure $next, string $type = 'general'): Response
+    public function handle(Request $request, Closure $next, string $context = 'general'): Response
     {
-        $identifier = $this->getIdentifier($request);
-        $requestId = uniqid('rate_limit_');
+        $clientId = $this->getClientIdentifier($request);
+        $rateLimitKey = "rate_limit:{$context}:{$clientId}";
         
-        // Determine rate limit type based on request
-        $rateLimitType = $this->determineRateLimitType($request, $type);
-        
-        Log::info('Rate limit check started', [
-            'request_id' => $requestId,
-            'identifier' => $identifier,
-            'type' => $rateLimitType,
-            'url' => $request->fullUrl(),
-            'method' => $request->method(),
-            'user_id' => auth()->id()
-        ]);
-        
-        // Check if IP is temporarily blocked
-        if ($this->isTemporarilyBlocked($identifier)) {
-            return $this->rateLimitResponse('TEMPORARILY_BLOCKED', $requestId, $identifier);
+        // Check if client is currently blocked
+        if ($this->isBlocked($clientId)) {
+            return $this->blockResponse($request, 'Client temporarily blocked');
         }
-        
-        // Check multiple rate limit tiers
-        $rateLimitResult = $this->checkMultipleTiers($identifier, $rateLimitType);
-        if (!$rateLimitResult['allowed']) {
-            $this->logRateLimitViolation($requestId, $identifier, $rateLimitResult['tier'], $rateLimitType);
-            return $this->rateLimitResponse($rateLimitResult['tier'], $requestId, $identifier);
+
+        // Check rate limits
+        $rateLimitViolation = $this->checkRateLimits($rateLimitKey, $context);
+        if ($rateLimitViolation) {
+            $this->handleRateLimitViolation($request, $clientId, $rateLimitViolation);
+            return $this->rateLimitResponse($request, $rateLimitViolation);
         }
-        
-        // Check for suspicious behavior patterns
-        $suspiciousResult = $this->checkSuspiciousBehavior($identifier, $request);
-        if ($suspiciousResult['suspicious']) {
-            $this->handleSuspiciousBehavior($identifier, $suspiciousResult['patterns'], $requestId);
+
+        // Check for suspicious behavior
+        $suspiciousBehavior = $this->checkSuspiciousBehavior($request, $clientId);
+        if ($suspiciousBehavior) {
+            $this->handleSuspiciousBehavior($request, $clientId, $suspiciousBehavior);
+            return $this->suspiciousResponse($request, $suspiciousBehavior);
         }
-        
-        // Track successful request
-        $this->trackRequest($identifier, $rateLimitType, $request);
-        
+
+        // Track request
+        $this->trackRequest($request, $clientId, $context);
+
         $response = $next($request);
-        
-        // Track response status for failure pattern detection
-        $this->trackResponseStatus($identifier, $response->getStatusCode(), $requestId);
-        
-        Log::info('Rate limit check passed', [
-            'request_id' => $requestId,
-            'identifier' => $identifier,
-            'type' => $rateLimitType
-        ]);
-        
+
+        // Track response for failure analysis
+        $this->trackResponse($request, $response, $clientId);
+
         return $response;
     }
-    
+
     /**
-     * Get unique identifier for rate limiting
+     * Get unique client identifier
      */
-    private function getIdentifier(Request $request): string
+    private function getClientIdentifier(Request $request): string
     {
-        // Combine IP and User ID for more accurate tracking
-        $ip = $request->ip();
-        $userId = auth()->id() ?? 'guest';
-        return "rate_limit:{$ip}:{$userId}";
+        // Combine IP, User Agent, and User ID for better tracking
+        $components = [
+            $request->ip(),
+            md5($request->userAgent() ?? 'unknown'),
+            auth()->id() ?? 'guest',
+        ];
+
+        return md5(implode(':', $components));
     }
-    
+
     /**
-     * Determine rate limit type based on request characteristics
+     * Check if client is currently blocked
      */
-    private function determineRateLimitType(Request $request, string $defaultType): string
+    private function isBlocked(string $clientId): bool
     {
-        $path = $request->path();
-        
-        // Quiz-related endpoints
-        if (str_contains($path, 'quiz') && $request->isMethod('POST')) {
-            return 'quiz_submit';
-        }
-        
-        // Payment-related endpoints
-        if (str_contains($path, 'payment') || str_contains($path, 'purchase')) {
-            return 'payment';
-        }
-        
-        // API endpoints
-        if (str_starts_with($path, 'api/')) {
-            return 'api';
-        }
-        
-        return $defaultType;
+        $blockKey = "blocked:{$clientId}";
+        return Cache::has($blockKey);
     }
-    
+
     /**
-     * Check if identifier is temporarily blocked
+     * Check rate limits for the given context
      */
-    private function isTemporarilyBlocked(string $identifier): bool
+    private function checkRateLimits(string $rateLimitKey, string $context): ?array
     {
-        return Cache::has("{$identifier}:blocked");
+        $limits = $this->rateLimits[$context] ?? $this->rateLimits['general'];
+
+        foreach ($limits as $period => $limit) {
+            $periodKey = "{$rateLimitKey}:{$period}";
+            $currentCount = Cache::get($periodKey, 0);
+
+            if ($currentCount >= $limit) {
+                return [
+                    'period' => $period,
+                    'limit' => $limit,
+                    'current' => $currentCount,
+                    'type' => 'rate_limit',
+                ];
+            }
+        }
+
+        return null;
     }
-    
-    /**
-     * Check multiple rate limit tiers
-     */
-    private function checkMultipleTiers(string $identifier, string $type): array
-    {
-        $limits = self::RATE_LIMITS[$type] ?? self::RATE_LIMITS['general'];
-        
-        // Check per-minute limit
-        $minuteKey = "{$identifier}:minute:" . now()->format('Y-m-d-H-i');
-        $minuteCount = Cache::get($minuteKey, 0);
-        if ($minuteCount >= $limits['per_minute']) {
-            return ['allowed' => false, 'tier' => 'PER_MINUTE', 'count' => $minuteCount, 'limit' => $limits['per_minute']];
-        }
-        
-        // Check per-hour limit
-        $hourKey = "{$identifier}:hour:" . now()->format('Y-m-d-H');
-        $hourCount = Cache::get($hourKey, 0);
-        if ($hourCount >= $limits['per_hour']) {
-            return ['allowed' => false, 'tier' => 'PER_HOUR', 'count' => $hourCount, 'limit' => $limits['per_hour']];
-        }
-        
-        // Check per-day limit
-        $dayKey = "{$identifier}:day:" . now()->format('Y-m-d');
-        $dayCount = Cache::get($dayKey, 0);
-        if ($dayCount >= $limits['per_day']) {
-            return ['allowed' => false, 'tier' => 'PER_DAY', 'count' => $dayCount, 'limit' => $limits['per_day']];
-        }
-        
-        return ['allowed' => true];
-    }
-    
+
     /**
      * Check for suspicious behavior patterns
      */
-    private function checkSuspiciousBehavior(string $identifier, Request $request): array
+    private function checkSuspiciousBehavior(Request $request, string $clientId): ?array
     {
-        $patterns = [];
-        
-        // Check for rapid requests (burst pattern)
-        $rapidKey = "{$identifier}:rapid:" . floor(time() / 10); // 10-second windows
+        // Check for rapid requests (20+ in 10 seconds)
+        $rapidKey = "rapid:{$clientId}";
         $rapidCount = Cache::get($rapidKey, 0);
-        if ($rapidCount >= self::SUSPICIOUS_THRESHOLDS['rapid_requests']) {
-            $patterns[] = 'RAPID_REQUESTS';
+        if ($rapidCount >= $this->behaviorThresholds['rapid_requests']) {
+            return [
+                'type' => 'rapid_requests',
+                'count' => $rapidCount,
+                'threshold' => $this->behaviorThresholds['rapid_requests'],
+            ];
         }
-        
+
         // Check for large payload abuse
-        $payloadSize = strlen($request->getContent());
-        if ($payloadSize > 1048576) { // 1MB
-            $largeKey = "{$identifier}:large:" . now()->format('Y-m-d-H-i');
+        if ($this->hasLargePayload($request)) {
+            $largeKey = "large_payloads:{$clientId}";
             $largeCount = Cache::get($largeKey, 0);
-            if ($largeCount >= self::SUSPICIOUS_THRESHOLDS['large_payloads']) {
-                $patterns[] = 'LARGE_PAYLOAD_ABUSE';
+            if ($largeCount >= $this->behaviorThresholds['large_payloads']) {
+                return [
+                    'type' => 'large_payloads',
+                    'count' => $largeCount,
+                    'threshold' => $this->behaviorThresholds['large_payloads'],
+                ];
             }
         }
-        
-        return [
-            'suspicious' => !empty($patterns),
-            'patterns' => $patterns
-        ];
+
+        // Check failure rate
+        $failureKey = "failures:{$clientId}";
+        $failureCount = Cache::get($failureKey, 0);
+        if ($failureCount >= $this->behaviorThresholds['failure_rate']) {
+            return [
+                'type' => 'high_failure_rate',
+                'count' => $failureCount,
+                'threshold' => $this->behaviorThresholds['failure_rate'],
+            ];
+        }
+
+        return null;
     }
-    
+
     /**
-     * Handle suspicious behavior
+     * Check if request has large payload
      */
-    private function handleSuspiciousBehavior(string $identifier, array $patterns, string $requestId): void
+    private function hasLargePayload(Request $request): bool
     {
-        Log::warning('Suspicious behavior detected', [
-            'request_id' => $requestId,
-            'identifier' => $identifier,
-            'patterns' => $patterns,
-            'timestamp' => now()->toISOString()
-        ]);
-        
-        // Increase block time for repeated offenses
-        $offenseKey = "{$identifier}:offenses";
-        $offenseCount = Cache::get($offenseKey, 0);
-        $blockDuration = min(300 * pow(2, $offenseCount), 3600); // Max 1 hour
-        
-        // Temporarily block the identifier
-        Cache::put("{$identifier}:blocked", true, now()->addSeconds($blockDuration));
-        Cache::put($offenseKey, $offenseCount + 1, now()->addDay());
-        
-        Log::warning('Identifier temporarily blocked for suspicious behavior', [
-            'identifier' => $identifier,
-            'block_duration_seconds' => $blockDuration,
-            'offense_count' => $offenseCount + 1,
-            'patterns' => $patterns
-        ]);
+        $contentLength = $request->header('Content-Length', 0);
+        return $contentLength > 1048576; // 1MB
     }
-    
+
     /**
-     * Track successful request
+     * Track the current request
      */
-    private function trackRequest(string $identifier, string $type, Request $request): void
+    private function trackRequest(Request $request, string $clientId, string $context): void
     {
-        $now = now();
-        
-        // Increment all tier counters
-        $minuteKey = "{$identifier}:minute:" . $now->format('Y-m-d-H-i');
-        $hourKey = "{$identifier}:hour:" . $now->format('Y-m-d-H');
-        $dayKey = "{$identifier}:day:" . $now->format('Y-m-d');
-        $rapidKey = "{$identifier}:rapid:" . floor(time() / 10);
-        
-        Cache::increment($minuteKey, 1);
-        Cache::increment($hourKey, 1);
-        Cache::increment($dayKey, 1);
+        $rateLimitKey = "rate_limit:{$context}:{$clientId}";
+        $limits = $this->rateLimits[$context] ?? $this->rateLimits['general'];
+
+        foreach ($limits as $period => $limit) {
+            $periodKey = "{$rateLimitKey}:{$period}";
+            $ttl = $this->getTTLForPeriod($period);
+            
+            Cache::increment($periodKey, 1);
+            Cache::expire($periodKey, $ttl);
+        }
+
+        // Track rapid requests (10-second window)
+        $rapidKey = "rapid:{$clientId}";
         Cache::increment($rapidKey, 1);
-        
-        // Set expiration times
-        Cache::expire($minuteKey, 60);
-        Cache::expire($hourKey, 3600);
-        Cache::expire($dayKey, 86400);
-        Cache::expire($rapidKey, 20);
-        
-        // Track large payloads
-        $payloadSize = strlen($request->getContent());
-        if ($payloadSize > 1048576) { // 1MB
-            $largeKey = "{$identifier}:large:" . $now->format('Y-m-d-H-i');
+        Cache::expire($rapidKey, 10);
+
+        // Track large payloads (1-minute window)
+        if ($this->hasLargePayload($request)) {
+            $largeKey = "large_payloads:{$clientId}";
             Cache::increment($largeKey, 1);
             Cache::expire($largeKey, 60);
         }
     }
-    
+
     /**
-     * Track response status for failure pattern detection
+     * Track response for failure analysis
      */
-    private function trackResponseStatus(string $identifier, int $statusCode, string $requestId): void
+    private function trackResponse(Request $request, Response $response, string $clientId): void
     {
-        // Track failed requests (4xx, 5xx)
-        if ($statusCode >= 400) {
-            $failKey = "{$identifier}:failures:" . floor(time() / 300); // 5-minute windows
-            $failCount = Cache::increment($failKey, 1);
-            Cache::expire($failKey, 600);
-            
-            if ($failCount >= self::SUSPICIOUS_THRESHOLDS['failed_attempts']) {
-                Log::warning('High failure rate detected', [
-                    'request_id' => $requestId,
-                    'identifier' => $identifier,
-                    'failure_count' => $failCount,
-                    'threshold' => self::SUSPICIOUS_THRESHOLDS['failed_attempts']
-                ]);
-            }
+        // Track failures (4xx and 5xx responses)
+        if ($response->getStatusCode() >= 400) {
+            $failureKey = "failures:{$clientId}";
+            Cache::increment($failureKey, 1);
+            Cache::expire($failureKey, 300); // 5 minutes
         }
     }
-    
+
     /**
-     * Log rate limit violation
+     * Handle rate limit violation
      */
-    private function logRateLimitViolation(string $requestId, string $identifier, string $tier, string $type): void
+    private function handleRateLimitViolation(Request $request, string $clientId, array $violation): void
     {
-        Log::warning('Rate limit exceeded', [
-            'request_id' => $requestId,
-            'identifier' => $identifier,
-            'tier' => $tier,
-            'type' => $type,
-            'timestamp' => now()->toISOString()
+        Log::warning('Rate limit violation detected', [
+            'client_id' => $clientId,
+            'ip' => $request->ip(),
+            'user_id' => auth()->id(),
+            'violation' => $violation,
+            'url' => $request->fullUrl(),
+            'method' => $request->method(),
+            'user_agent' => $request->userAgent(),
+        ]);
+
+        // Apply progressive blocking for repeated violations
+        $this->applyProgressiveBlocking($clientId, 'rate_limit');
+    }
+
+    /**
+     * Handle suspicious behavior
+     */
+    private function handleSuspiciousBehavior(Request $request, string $clientId, array $behavior): void
+    {
+        Log::warning('Suspicious behavior detected', [
+            'client_id' => $clientId,
+            'ip' => $request->ip(),
+            'user_id' => auth()->id(),
+            'behavior' => $behavior,
+            'url' => $request->fullUrl(),
+            'method' => $request->method(),
+            'user_agent' => $request->userAgent(),
+        ]);
+
+        // Apply blocking based on behavior type
+        $blockDuration = match($behavior['type']) {
+            'rapid_requests' => 5,
+            'large_payloads' => 10,
+            'high_failure_rate' => 15,
+            default => 5,
+        };
+
+        $this->blockClient($clientId, $blockDuration);
+    }
+
+    /**
+     * Apply progressive blocking with exponential backoff
+     */
+    private function applyProgressiveBlocking(string $clientId, string $reason): void
+    {
+        $violationKey = "violations:{$clientId}";
+        $violationCount = Cache::get($violationKey, 0);
+        
+        // Increment violation count
+        Cache::put($violationKey, $violationCount + 1, 86400); // 24 hours
+
+        // Get blocking duration based on violation count
+        $durationIndex = min($violationCount, count($this->blockingDurations) - 1);
+        $blockDuration = $this->blockingDurations[$durationIndex];
+
+        $this->blockClient($clientId, $blockDuration, $reason);
+    }
+
+    /**
+     * Block client for specified duration
+     */
+    private function blockClient(string $clientId, int $durationMinutes, string $reason = 'policy_violation'): void
+    {
+        $blockKey = "blocked:{$clientId}";
+        $blockData = [
+            'reason' => $reason,
+            'blocked_at' => now()->toISOString(),
+            'duration_minutes' => $durationMinutes,
+            'expires_at' => now()->addMinutes($durationMinutes)->toISOString(),
+        ];
+
+        Cache::put($blockKey, $blockData, $durationMinutes * 60);
+
+        Log::info('Client blocked', [
+            'client_id' => $clientId,
+            'reason' => $reason,
+            'duration_minutes' => $durationMinutes,
         ]);
     }
-    
+
     /**
-     * Generate rate limit response
+     * Get TTL for period type
      */
-    private function rateLimitResponse(string $tier, string $requestId, string $identifier): Response
+    private function getTTLForPeriod(string $period): int
     {
-        $message = match($tier) {
-            'PER_MINUTE' => 'Too many requests per minute. Please slow down.',
-            'PER_HOUR' => 'Hourly request limit exceeded. Please try again later.',
-            'PER_DAY' => 'Daily request limit exceeded. Please try again tomorrow.',
-            'TEMPORARILY_BLOCKED' => 'Access temporarily restricted due to suspicious activity.',
-            default => 'Rate limit exceeded. Please try again later.'
+        return match($period) {
+            'per_minute' => 60,
+            'per_hour' => 3600,
+            'per_day' => 86400,
+            default => 3600,
         };
-        
-        Log::warning('Rate limit response sent', [
-            'request_id' => $requestId,
-            'identifier' => $identifier,
-            'tier' => $tier,
-            'message' => $message
-        ]);
-        
+    }
+
+    /**
+     * Return rate limit response
+     */
+    private function rateLimitResponse(Request $request, array $violation): Response
+    {
+        $retryAfter = $this->getTTLForPeriod($violation['period']);
+
         return response()->json([
             'error' => 'Rate limit exceeded',
-            'message' => $message,
-            'tier' => $tier,
-            'request_id' => $requestId
+            'message' => "Too many requests. Limit: {$violation['limit']} per {$violation['period']}",
+            'retry_after' => $retryAfter,
+            'current_count' => $violation['current'],
+        ], 429)->header('Retry-After', $retryAfter);
+    }
+
+    /**
+     * Return suspicious behavior response
+     */
+    private function suspiciousResponse(Request $request, array $behavior): Response
+    {
+        return response()->json([
+            'error' => 'Suspicious activity detected',
+            'message' => "Request pattern flagged: {$behavior['type']}",
+            'code' => 'SUSPICIOUS_BEHAVIOR',
         ], 429);
+    }
+
+    /**
+     * Return blocked client response
+     */
+    private function blockResponse(Request $request, string $message): Response
+    {
+        return response()->json([
+            'error' => 'Access temporarily blocked',
+            'message' => $message,
+            'code' => 'CLIENT_BLOCKED',
+        ], 403);
     }
 }

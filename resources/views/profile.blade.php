@@ -1339,7 +1339,7 @@
                        style="position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); border: 0;">
             </form>
             <div class="welcome-text">
-                <h1>Welcome back, {{ auth()->user()->name }}! <span class="wave-emoji" id="waveEmoji">👋</span></h1>
+                <h1>Welcome back, {{ e(auth()->user()->name) }}! <span class="wave-emoji" id="waveEmoji">👋</span></h1>
                 <div class="d-flex align-items-center gap-3">
                     <p><i class="fas fa-calendar-alt"></i> Member since {{ auth()->user()->created_at->format('F Y') }}</p>
                     
