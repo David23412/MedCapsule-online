@@ -15,8 +15,9 @@ class PaymentService
      */
     public function createPayment(User $user, Course $course, array $data): Payment
     {
-        // Check if already enrolled
-        if ($user->courses()->where('course_id', $course->id)->where('is_enrolled', true)->exists()) {
+        // Check if already enrolled using SSOT service
+        $enrollmentService = app(\App\Support\State\EnrollmentService::class);
+        if ($enrollmentService->isEnrolled($user->id, $course->id)) {
             throw new \Exception('Already enrolled in this course');
         }
 

@@ -1,0 +1,4 @@
+file,line,pattern,context,reason,action_needed
+app/Http/Controllers/Learn/LearnActionController.php,30,$mistake->mastered_at = now(),Setting mastered timestamp,Clear context with $mistake variable,Safe to migrate
+app/Http/Controllers/Course/CourseViewController.php,85,$course->mastered_topics_count = 0,Setting display property,Clear context with $course variable,Safe to migrate  
+app/Http/Controllers/CourseController.php,95,$course->mastered_topics_count = 0,Setting display property,Clear context with $course variable,Safe to migrate

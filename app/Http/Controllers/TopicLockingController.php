@@ -6,6 +6,7 @@ use Illuminate\Http\Request;
 use App\Models\Topic;
 use App\Models\Course;
 use App\Services\TopicLockingService;
+use App\Support\State\TopicLockService;
 
 class TopicLockingController extends Controller
 {
@@ -21,11 +22,22 @@ class TopicLockingController extends Controller
         ]);
         
         // Get courses based on user role
+        $topicLockService = app(TopicLockService::class);
+        
         if ($user->role === 'admin') {
             // Admins can see all courses
             $courses = \App\Models\Course::with(['topics' => function ($query) {
                 $query->select('id', 'course_id', 'name', 'is_locked');
             }])->get();
+            
+            // Enhance topics with SSOT lock status
+            foreach ($courses as $course) {
+                foreach ($course->topics as $topic) {
+                    $lockStatus = $topicLockService->getTopicLockStatus($topic);
+                    $topic->ssot_is_locked = $lockStatus['is_locked'];
+                    $topic->lock_reason = $lockStatus['lock_reason'];
+                }
+            }
             
             \Log::info('TopicLocking - Admin sees all courses', [
                 'course_count' => $courses->count(),
@@ -38,6 +50,15 @@ class TopicLockingController extends Controller
                     $query->select('id', 'course_id', 'name', 'is_locked');
                 }])
                 ->get();
+                
+            // Enhance topics with SSOT lock status
+            foreach ($courses as $course) {
+                foreach ($course->topics as $topic) {
+                    $lockStatus = $topicLockService->getTopicLockStatus($topic);
+                    $topic->ssot_is_locked = $lockStatus['is_locked'];
+                    $topic->lock_reason = $lockStatus['lock_reason'];
+                }
+            }
                 
             \Log::info('TopicLocking - Tutor enrolled courses', [
                 'course_count' => $courses->count(),
@@ -120,8 +141,10 @@ class TopicLockingController extends Controller
             $user = auth()->user();
             
             $lockingService = app(\App\Services\TopicLockingService::class);
+            $topicLockService = app(TopicLockService::class);
             
-            if ($topic->is_locked) {
+            // Use SSOT service to check current lock status
+            if ($topicLockService->isTopicLocked($topic)) {
                 $success = $lockingService->unlock($topic, $user);
                 $message = 'Topic unlocked successfully';
             } else {
@@ -129,10 +152,13 @@ class TopicLockingController extends Controller
                 $message = 'Topic locked successfully';
             }
             
+            // Get updated lock status from SSOT service
+            $updatedLockStatus = $topicLockService->getTopicLockStatus($topic->fresh());
+            
             return response()->json([
                 'success' => $success,
                 'message' => $message,
-                'is_locked' => $topic->fresh()->is_locked
+                'is_locked' => $updatedLockStatus['is_locked']
             ]);
         } catch (\Exception $e) {
             return response()->json([

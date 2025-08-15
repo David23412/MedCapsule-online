@@ -12,7 +12,7 @@ return new class extends Migration
             $table->id();
             $table->foreignId('user_id')->constrained()->onDelete('cascade');
             $table->foreignId('topic_id')->nullable()->constrained()->onDelete('cascade');
-            $table->foreignId('assignment_id')->nullable()->constrained()->onDelete('cascade'); // 🔥 CONSOLIDATED
+            $table->unsignedBigInteger('assignment_id')->nullable(); // Will add foreign key later
             $table->string('quiz_type')->default('normal'); // normal, random, etc.
             $table->string('study_mode')->nullable(); // quiz or tutor, now nullable
             $table->string('source')->nullable(); // Which source this attempt is for (Assuit, Cairo, etc.)

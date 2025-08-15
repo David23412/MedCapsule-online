@@ -16,19 +16,25 @@
     <ul class="dropdown-menu dropdown-menu-end">
         <!-- Study Streak Indicator with Enhanced Navigation -->
         <li class="d-flex justify-content-center">
-            <div class="streak-indicator dropdown" data-streak="{{ $user->study_streak_days ?? 0 }}">
+            @php
+                // SSOT: Get study streak from UserProgressService
+                $userProgressService = app(\App\Support\State\UserProgressService::class);
+                $userProgress = $userProgressService->getUserProgress(auth()->id());
+                $studyStreak = $userProgress['study_streak_days'] ?? 0;
+            @endphp
+            <div class="streak-indicator dropdown" data-streak="{{ $studyStreak }}">
                 <div class="streak-circle" data-bs-toggle="dropdown" aria-expanded="false" role="button">
                     <svg viewBox="0 0 100 100">
                         <circle class="streak-bg" cx="50" cy="50" r="40"></circle>
                         <circle class="streak-progress" cx="50" cy="50" r="40"></circle>
                     </svg>
                     <div class="streak-content">
-                        <div class="streak-value" data-value="{{ $user->study_streak_days ?? 0 }}">
-                            {{ $user->study_streak_days ?? 0 }}
+                        <div class="streak-value" data-value="{{ $studyStreak }}">
+                            {{ $studyStreak }}
                         </div>
                         <div class="streak-label">Streak</div>
                     </div>
-                    @if(($user->study_streak_days ?? 0) > 0)
+                    @if($studyStreak > 0)
                         <div class="streak-fire">
                             <i class="fas fa-fire"></i>
                         </div>
@@ -132,7 +138,7 @@
                     <li class="streak-stats">
                         <div class="d-flex justify-content-between align-items-center px-3 py-2">
                             <div class="text-center">
-                                <div class="fw-bold text-primary">{{ $user->study_streak_days ?? 0 }}</div>
+                                <div class="fw-bold text-primary">{{ $studyStreak }}</div>
                                 <small class="text-muted">Current</small>
                             </div>
                             <div class="text-center">

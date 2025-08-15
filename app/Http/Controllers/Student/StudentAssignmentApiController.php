@@ -27,18 +27,19 @@ class StudentAssignmentApiController extends Controller
         Log::info('Method getCountdownData called', ['user_id' => auth()->id(), 'timestamp' => now()]);
         $this->authorize('view', $assignment);
 
-        $timeRemaining = $assignment->getTimeRemaining();
-        $isOverdue = $assignment->isOverdue();
+        $statusService = app(\App\Support\State\AssignmentStatusService::class);
+        $timeRemaining = $statusService->getTimeRemaining($assignment);
+        $isOverdue = $statusService->isOverdue($assignment);
 
         return response()->json([
             'assignment_id' => $assignment->id,
             'deadline' => $assignment->deadline->toISOString(),
             'time_remaining_seconds' => $timeRemaining,
-            'time_remaining_human' => $assignment->getTimeRemainingHuman(),
+            'time_remaining_human' => $statusService->getTimeRemainingHuman($assignment),
             'is_overdue' => $isOverdue,
-            'status' => $assignment->status,
+            'status' => $statusService->getStatus($assignment),
             'difficulty_level' => $assignment->getDifficultyLevel(),
-            'can_be_completed' => $assignment->canBeCompleted()
+            'can_be_completed' => $statusService->canAccess($assignment)
         ]);
     }
 
@@ -77,22 +78,24 @@ class StudentAssignmentApiController extends Controller
                                 ->where('course_id', $courseId)
                                 ->get()
                                 ->filter(function($assignment) {
-                                    // Filter by computed status since status column doesn't exist
-                                    $status = $assignment->getCurrentStatusAttribute();
-                                    return in_array($status, [Assignment::STATUS_ACTIVE, Assignment::STATUS_OVERDUE]);
+                                    // Filter by computed status using SSOT service
+                                    $statusService = app(\App\Support\State\AssignmentStatusService::class);
+                                    $status = $statusService->getStatus($assignment);
+                                    return in_array($status, [\App\Support\State\AssignmentStatusService::STATUS_ACTIVE, \App\Support\State\AssignmentStatusService::STATUS_OVERDUE]);
                                 })
                                 ->map(function($assignment) {
+                                    $statusService = app(\App\Support\State\AssignmentStatusService::class);
                                     return [
                                         'id' => $assignment->id,
                                         'title' => $assignment->title,
                                         'topic_name' => $assignment->topic->name,
                                         'topic_id' => $assignment->topic_id,
                                         'deadline' => $assignment->deadline->toISOString(),
-                                        'time_remaining_human' => $assignment->getTimeRemainingHuman(),
-                                        'status' => $assignment->status,
+                                        'time_remaining_human' => $statusService->getTimeRemainingHuman($assignment),
+                                        'status' => $statusService->getStatus($assignment),
                                         'difficulty_level' => $assignment->getDifficultyLevel(),
-                                        'is_overdue' => $assignment->isOverdue(),
-                                        'can_be_completed' => $assignment->canBeCompleted()
+                                        'is_overdue' => $statusService->isOverdue($assignment),
+                                        'can_be_completed' => $statusService->canAccess($assignment)
                                     ];
                                 });
 
@@ -109,11 +112,17 @@ class StudentAssignmentApiController extends Controller
         
         $stats = [
             'total' => $assignments->count(),
-            'active' => $assignments->where('status', Assignment::STATUS_ACTIVE)->count(),
-            'overdue' => $assignments->where('status', Assignment::STATUS_OVERDUE)->count(),
-            'completed' => $assignments->where('status', Assignment::STATUS_COMPLETED)->count(),
+            'active' => $assignments->filter(function($assignment) {
+                return $assignment->getCurrentStatusAttribute() === Assignment::STATUS_ACTIVE;
+            })->count(),
+            'overdue' => $assignments->filter(function($assignment) {
+                return $assignment->getCurrentStatusAttribute() === Assignment::STATUS_OVERDUE;
+            })->count(),
+            'completed' => $assignments->filter(function($assignment) {
+                return $assignment->getCurrentStatusAttribute() === Assignment::STATUS_COMPLETED;
+            })->count(),
             'urgent' => $assignments->filter(function($assignment) {
-                return $assignment->status === Assignment::STATUS_ACTIVE && 
+                return $assignment->getCurrentStatusAttribute() === Assignment::STATUS_ACTIVE && 
                        $assignment->deadline->diffInHours(now()) <= 24;
             })->count()
         ];

@@ -43,14 +43,14 @@ class MistakeController extends Controller
                     ->join('questions', 'topics.id', '=', 'questions.topic_id')
                     ->join('mistakes', 'questions.id', '=', 'mistakes.question_id')
                     ->where('mistakes.user_id', $userId)
-                    ->where('mistakes.mastered', false)
+                    ->where('mistakes.correct_streak', '<', config('mistakes.thresholds.quiz', 4))
                     ->distinct()
                     ->get();
             });
 
             // 💀 LETHAL N+1 FIX: Optimized eager loading with single query
             $mistakesQuery = Mistake::where('user_id', $userId)
-                ->where('mastered', false)  // Only show non-mastered mistakes
+                ->where('correct_streak', '<', config('mistakes.thresholds.quiz', 4))  // Only show non-mastered mistakes using SSOT logic
                 ->select('*')  // Explicitly select all fields including 'skipped'
                 ->with([
                     'question:id,question,question_type,topic_id,image_url,option_a,option_b,option_c,option_d,correct_answer,explanation',

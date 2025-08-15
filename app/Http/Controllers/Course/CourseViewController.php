@@ -7,6 +7,7 @@ use App\Http\Requests\HomeRequest;
 use App\Models\Course;
 use App\Services\QuizCacheService;
 use App\Services\CourseFilterService;
+use App\Support\State\EnrollmentService;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 
@@ -74,10 +75,9 @@ class CourseViewController extends Controller
         $isEnrolled = false;
 
         if ($user) {
-            $isEnrolled = $user->courses()
-                ->where('course_id', $course->id)
-                ->where('is_enrolled', true)
-                ->exists();
+            // SSOT: Use EnrollmentService instead of direct database query
+            $enrollmentService = app(EnrollmentService::class);
+            $isEnrolled = $enrollmentService->isEnrolled($user->id, $course->id);
         }
 
         return view('course', compact('course', 'isEnrolled'));
@@ -91,8 +91,17 @@ class CourseViewController extends Controller
         // Eager load all relationships at once to prevent N+1 queries
         $courses->load(['enrolledUsers:id,name,avatar', 'topics:id,course_id']);
         
+        $enrollmentService = app(EnrollmentService::class);
+        $userId = auth()->id();
+        
         foreach ($courses as $course) {
-            $course->is_enrolled = isset($course->is_enrolled) ? (bool)$course->is_enrolled : false;
+            // SSOT: Use EnrollmentService instead of direct field access
+            if ($userId) {
+                $course->is_enrolled = $enrollmentService->isEnrolled($userId, $course->id);
+            } else {
+                $course->is_enrolled = false;
+            }
+            
             $course->completion_percentage = 0;
             $course->mastered_topics_count = 0;
             

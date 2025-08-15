@@ -81,8 +81,10 @@ class BackfillProgressData extends Command
                 $stats['users_processed']++;
                 
                 try {
-                    $cachedCount = $user->correct_answers_count ?? 0;
-                    $actualCount = UserProgressService::calculateTotalCorrectAnswers($user);
+                    // SSOT: Use UserProgressService for both cached and computed values
+                    $progressService = app(\App\Support\State\UserProgressService::class);
+                    $cachedCount = $user->correct_answers_count ?? 0; // Legacy field for comparison
+                    $actualCount = $progressService->getTotalCorrectAnswers($user->id);
                     
                     if ($cachedCount !== $actualCount) {
                         if (!$dryRun) {

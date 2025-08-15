@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use App\Models\User;
 use App\Models\Course;
+use App\Support\State\EnrollmentService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
@@ -182,13 +183,11 @@ class UserCourseController extends Controller
                 ]);
             }
 
-            // Verify the enrollment was created/updated
-            $verificationEnrollment = DB::table('course_user')
-                ->where('user_id', $user->id)
-                ->where('course_id', $course->id)
-                ->first();
+            // SSOT: Verify enrollment via EnrollmentService
+            $enrollmentService = app(EnrollmentService::class);
+            $enrollmentStatus = $enrollmentService->getEnrollmentStatus($user->id, $course->id);
 
-            if (!$verificationEnrollment || !$verificationEnrollment->is_enrolled) {
+            if (!$enrollmentStatus['enrolled']) {
                 throw new \Exception('Failed to create/update enrollment in database');
             }
 
@@ -198,8 +197,8 @@ class UserCourseController extends Controller
             Log::info('✅ ENROLLMENT COMPLETED SUCCESSFULLY', [
                 'user_id' => $user->id,
                 'course_id' => $course->id,
-                'is_enrolled' => $verificationEnrollment->is_enrolled,
-                'enrolled_at' => $verificationEnrollment->enrolled_at
+                'is_enrolled' => $enrollmentStatus['enrolled'],
+                'enrolled_at' => $enrollmentStatus['enrolled_at']
             ]);
 
             return response()->json([
@@ -212,7 +211,7 @@ class UserCourseController extends Controller
                     'course_id' => $course->id,
                     'course_name' => $course->name,
                     'is_enrolled' => true,
-                    'enrolled_at' => $verificationEnrollment->enrolled_at
+                    'enrolled_at' => $enrollmentStatus['enrolled_at']
                 ]
             ]);
 
@@ -263,8 +262,12 @@ class UserCourseController extends Controller
                 ], 400);
             }
 
+            // SSOT: Use EnrollmentService to get current status
+            $enrollmentService = app(EnrollmentService::class);
+            $currentStatus = $enrollmentService->isEnrolled($user->id, $course->id);
+            
             // Simple toggle: if enrolled, revoke it. If revoked, enroll it.
-            $newStatus = !$enrollment->is_enrolled;
+            $newStatus = !$currentStatus;
             $action = $newStatus ? 'granted' : 'revoked';
 
             DB::table('course_user')

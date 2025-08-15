@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Topic;
 use App\Models\User;
 use App\Models\Assignment;
+use App\Support\State\TopicLockService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Http\Request;
@@ -80,11 +81,13 @@ use Illuminate\Http\Response;
                     ];
                 }
                 
-                // Check if topic is locked
-                if ($topic->is_locked) {
+                // Check if topic is locked using SSOT service
+                $topicLockService = app(TopicLockService::class);
+                if ($topicLockService->isTopicLocked($topic)) {
+                    $lockStatus = $topicLockService->getTopicLockStatus($topic);
                     return [
                         'can_access' => false,
-                        'reason' => $topic->lock_reason ?? 'Topic is locked by tutor',
+                        'reason' => $lockStatus['lock_reason'] ?? 'Topic is locked by tutor',
                         'locked_by' => $topic->lockedByTutor ? $topic->lockedByTutor->name : 'A tutor',
                         'locked_at' => $topic->locked_at ? $topic->locked_at->format('Y-m-d H:i:s') : null,
                         'status_code' => Response::HTTP_FORBIDDEN

@@ -1792,17 +1792,23 @@
                             </a>
                             <ul class="dropdown-menu dropdown-menu-end">
                                 <li class="d-flex justify-content-center">
-                                    <div class="streak-indicator" data-streak="{{ Auth::user()->study_streak_days ?? 0 }}">
+                                    @php
+                                        // SSOT: Get study streak from UserProgressService
+                                        $userProgressService = app(\App\Support\State\UserProgressService::class);
+                                        $userProgress = $userProgressService->getUserProgress(auth()->id());
+                                        $studyStreak = $userProgress['study_streak_days'] ?? 0;
+                                    @endphp
+                                    <div class="streak-indicator" data-streak="{{ $studyStreak }}">
                                         <div class="streak-circle">
                                             <svg viewBox="0 0 100 100">
                                                 <circle class="streak-bg" cx="50" cy="50" r="40"></circle>
                                                 <circle class="streak-progress" cx="50" cy="50" r="40"></circle>
                                             </svg>
                                             <div class="streak-content">
-                                                <div class="streak-value">{{ Auth::user()->study_streak_days ?? 0 }}</div>
+                                                <div class="streak-value">{{ $studyStreak }}</div>
                                                 <div class="streak-label">Streak</div>
                                             </div>
-                                            @if((Auth::user()->study_streak_days ?? 0) > 0)
+                                            @if($studyStreak > 0)
                                                 <div class="streak-fire">
                                                     <i class="fas fa-fire"></i>
                                                 </div>

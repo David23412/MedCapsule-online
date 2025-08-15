@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Carbon\Carbon;
+use App\Support\State\AssignmentStatusService;
 
 class Assignment extends Model
 {
@@ -36,23 +37,13 @@ class Assignment extends Model
     ];
 
     /**
-     * 🚀 PERFORMANCE OPTIMIZED: Get computed status without database writes
+     * 🚀 PERFORMANCE OPTIMIZED: Get computed status via SSOT
      * Since status column was removed, this computes status dynamically
      */
     public function getCurrentStatusAttribute(): string
     {
-        // Check time limit expiration first
-        if ($this->hasTimeLimitExpired()) {
-            return self::STATUS_EXPIRED;
-        }
-        
-        // Check deadline expiration
-        if ($this->deadline < now()) {
-            return self::STATUS_OVERDUE;
-        }
-        
-        // Default to active (no locked/completed status without status column)
-        return self::STATUS_ACTIVE;
+        $statusService = app(AssignmentStatusService::class);
+        return $statusService->getStatus($this);
     }
 
 
@@ -167,21 +158,24 @@ class Assignment extends Model
     }
 
     /**
-     * Business Logic Methods
+     * Business Logic Methods - SSOT via AssignmentStatusService
      */
     public function isOverdue(): bool
     {
-        return $this->deadline < now();
+        $statusService = app(AssignmentStatusService::class);
+        return $statusService->isOverdue($this);
     }
 
     public function isActive(): bool
     {
-        return $this->deadline > now();
+        $statusService = app(AssignmentStatusService::class);
+        return $statusService->isActive($this);
     }
 
     public function isExpired(): bool
     {
-        return $this->duration_minutes && $this->hasTimeLimitExpired();
+        $statusService = app(AssignmentStatusService::class);
+        return $statusService->isExpired($this);
     }
 
     public function hasTimeLimitExpired(): bool

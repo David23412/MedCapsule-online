@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Mistake;
 use Illuminate\Http\Request;
 use App\Services\UserStatsService;
+use App\Support\State\MistakeMasteryService;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\DB;
 
@@ -16,11 +17,13 @@ use Illuminate\Support\Facades\DB;
 class LearnActionController extends Controller
 {
     protected $userStatsService;
+    protected $mistakeMasteryService;
 
-    public function __construct(UserStatsService $userStatsService)
+    public function __construct(UserStatsService $userStatsService, MistakeMasteryService $mistakeMasteryService)
     {
         $this->middleware(['auth']);
         $this->userStatsService = $userStatsService;
+        $this->mistakeMasteryService = $mistakeMasteryService;
     }
 
     /**
@@ -53,10 +56,12 @@ class LearnActionController extends Controller
                 ], 404);
             }
 
-            // Update mistake based on rating
+            // Update mistake based on rating using SSOT service
             if ($rating >= 4) {
-                $mistake->mastered = true;
+                // Set streak to mastery threshold to mark as mastered
+                $mistake->correct_streak = config('mistakes.thresholds.quiz', 4);
                 $mistake->mastered_at = now();
+                $mistake->save();
             }
 
             $mistake->last_reviewed = now();
@@ -68,7 +73,7 @@ class LearnActionController extends Controller
             return response()->json([
                 'success' => true,
                 'message' => 'Review recorded successfully',
-                'mastered' => $mistake->mastered
+                'mastered' => $this->mistakeMasteryService->isMastered($mistake)
             ]);
             
         } catch (\Exception $e) {

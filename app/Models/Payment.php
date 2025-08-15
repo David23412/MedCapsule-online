@@ -17,14 +17,15 @@ class Payment extends Model
         'reference_number',
         'amount',
         'payment_method',
-        'status',
         'payment_data',
-        'paid_at'
+        'paid_at',
+        'failed_at'
     ];
 
     protected $casts = [
         'payment_data' => 'json',
-        'paid_at' => 'datetime'
+        'paid_at' => 'datetime',
+        'failed_at' => 'datetime'
     ];
 
     protected static function boot()
@@ -38,9 +39,10 @@ class Payment extends Model
             }
         });
 
-        // PHASE 2: Dispatch PaymentCompleted event when payment is completed
+        // SSOT: Dispatch PaymentCompleted event when paid_at is set
         static::updated(function ($payment) {
-            if ($payment->wasChanged('status') && $payment->status === 'completed') {
+            // Use SSOT: paid_at timestamp determines completion
+            if ($payment->wasChanged('paid_at') && $payment->paid_at) {
                 event(new \App\Events\PaymentCompleted(
                     $payment,
                     $payment->user_id,
@@ -69,25 +71,144 @@ class Payment extends Model
 
 
     /**
+     * SSOT: Status accessor based on timestamps and business logic
+     * No status column needed - everything derived from timestamps
+     */
+    public function getStatusAttribute(): string
+    {
+        // SSOT: Derive status from timestamps and business logic
+        
+        // If payment failed
+        if ($this->failed_at) {
+            return 'failed';
+        }
+        
+        // If payment was completed (has paid_at timestamp)
+        if ($this->paid_at) {
+            return 'completed';
+        }
+        
+        // If payment is older than 24 hours without completion
+        if ($this->created_at && $this->created_at->addHours(24) < now()) {
+            return 'expired';
+        }
+        
+        // If payment method requires verification (e.g., bank_transfer)
+        if (in_array($this->payment_method, ['bank_transfer', 'manual_verification'])) {
+            return 'pending_verification';
+        }
+        
+        // Default status for new payments
+        return 'pending';
+    }
+
+    /**
+     * Check if payment is completed using SSOT
+     */
+    public function isCompleted(): bool
+    {
+        return !is_null($this->paid_at);
+    }
+
+    /**
+     * Check if payment is pending using SSOT
+     */
+    public function isPending(): bool
+    {
+        return is_null($this->paid_at) && !$this->isExpired();
+    }
+
+    /**
+     * Check if payment is expired using SSOT
+     */
+    public function isExpired(): bool
+    {
+        return is_null($this->paid_at) && is_null($this->failed_at) && $this->created_at && $this->created_at->addHours(24) < now();
+    }
+
+    /**
+     * Check if payment failed using SSOT
+     */
+    public function isFailed(): bool
+    {
+        return !is_null($this->failed_at);
+    }
+
+    /**
      * Mark a payment as completed and enroll the user in the course
+     * SSOT: Clean implementation using only timestamps
      */
     public function markAsPaid()
     {
-        $this->status = 'completed';
+        // SSOT: Set paid_at timestamp as the authoritative field
         $this->paid_at = now();
         $this->save();
 
-        // Single course enrollment
-        $this->user->courses()->syncWithoutDetaching([$this->course_id]);
+        // Single course enrollment using SSOT pattern
+        $this->user->courses()->syncWithoutDetaching([$this->course_id => [
+            'enrolled_at' => now() // SSOT: This is the authoritative field
+        ]]);
         
-        // Create notification for single course
-        app(NotificationService::class)->createPaymentSuccessNotification(
-            $this->user,
-            $this->course->name,
-            $this->amount
-        );
+        // Create notification for single course (if service exists)
+        try {
+            if (class_exists('App\Services\NotificationService')) {
+                app(\App\Services\NotificationService::class)->createPaymentSuccessNotification(
+                    $this->user,
+                    $this->course->name,
+                    $this->amount
+                );
+            }
+        } catch (\Exception $e) {
+            // Log but don't fail on notification errors
+            \Log::info('Payment notification skipped', ['error' => $e->getMessage()]);
+        }
 
         return $this;
+    }
+
+    /**
+     * Mark a payment as failed
+     * SSOT: Use failed_at timestamp
+     */
+    public function markAsFailed(string $reason = null)
+    {
+        $this->failed_at = now();
+        
+        // Store failure reason in payment_data JSON
+        $paymentData = $this->payment_data ?? [];
+        $paymentData['failure_reason'] = $reason;
+        $paymentData['failed_at'] = now()->toISOString();
+        
+        $this->payment_data = $paymentData;
+        $this->save();
+        
+        return $this;
+    }
+
+    /**
+     * Scope for completed payments using SSOT
+     */
+    public function scopeCompleted($query)
+    {
+        return $query->whereNotNull('paid_at');
+    }
+
+    /**
+     * Scope for pending payments using SSOT
+     */
+    public function scopePending($query)
+    {
+        return $query->whereNull('paid_at')
+                     ->where('created_at', '>', now()->subHours(24));
+    }
+
+    /**
+     * Scope for expired payments using SSOT
+     */
+    public function scopeExpired($query)
+    {
+        return $query->whereNull('paid_at')
+                     ->where('created_at', '<=', now()->subHours(24));
     }
 
 

@@ -28,8 +28,9 @@ class TopicLockingService
         // Validate tutor permission
         $this->validateTutorPermission($topic, $tutor);
         
-        // Check if topic is already locked
-        if ($topic->is_locked) {
+        // Check if topic is already locked using SSOT service
+        $lockService = app(\App\Support\State\TopicLockService::class);
+        if ($lockService->isTopicLocked($topic)) {
             return true; // Already locked
         }
         
@@ -76,8 +77,9 @@ class TopicLockingService
         // Validate tutor permission
         $this->validateTutorPermission($topic, $tutor);
         
-        // Check if topic is already unlocked
-        if (!$topic->is_locked) {
+        // Check if topic is already unlocked using SSOT service
+        $lockService = app(\App\Support\State\TopicLockService::class);
+        if (!$lockService->isTopicLocked($topic)) {
             return true; // Already unlocked
         }
         
@@ -224,10 +226,9 @@ class TopicLockingService
      */
     public function getLockedTopics(Course $course): Collection
     {
-        return $course->topics()
-            ->where('is_locked', true)
-            ->with('lockedByTutor')
-            ->get();
+        // Get locked topics using SSOT service
+        $lockService = app(\App\Support\State\TopicLockService::class);
+        return $lockService->getCourseLockedTopics($course->id);
     }
     
     /**
@@ -238,10 +239,9 @@ class TopicLockingService
      */
     public function getTopicsLockedByTutor(User $tutor): Collection
     {
-        return Topic::where('locked_by_tutor_id', $tutor->id)
-            ->where('is_locked', true)
-            ->with('course')
-            ->get();
+        // Get tutor locked topics using SSOT service
+        $lockService = app(\App\Support\State\TopicLockService::class);
+        return $lockService->getTutorLockedTopics($tutor->id);
     }
     
     /**
@@ -252,7 +252,8 @@ class TopicLockingService
      */
     public function isLocked(Topic $topic): bool
     {
-        return (bool) $topic->is_locked;
+        $lockService = app(\App\Support\State\TopicLockService::class);
+        return $lockService->isTopicLocked($topic);
     }
     
     /**
@@ -263,7 +264,8 @@ class TopicLockingService
      */
     public function getLockInfo(Topic $topic): ?array
     {
-        if (!$topic->is_locked) {
+        $lockService = app(\App\Support\State\TopicLockService::class);
+        if (!$lockService->isTopicLocked($topic)) {
             return null;
         }
         

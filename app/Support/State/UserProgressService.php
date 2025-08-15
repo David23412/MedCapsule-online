@@ -28,6 +28,11 @@ class UserProgressService
      */
     public function getUserProgress(int $userId): array
     {
+        \Log::debug('SSOT UserProgressService::getUserProgress called', [
+            'user_id' => $userId,
+            'called_at' => now()
+        ]);
+        
         $cacheKey = "user_progress_ssot_{$userId}";
         
         return Cache::remember($cacheKey, self::CACHE_TTL, function () use ($userId) {

@@ -20,13 +20,14 @@ class UserStatsService
     public function updateAfterQuizAttempt(User $user, int $questionsAttempted, int $correctAnswers, int $durationSeconds): void
     {
         try {
-            // Atomic increments for performance and safety
-            $user->increment('total_questions_attempted', $questionsAttempted);
-            $user->increment('correct_answers_count', $correctAnswers);
+            // Update progress through SSOT service
+            $progressService = app(\App\Support\State\UserProgressService::class);
+            $progressService->updateProgressAfterQuiz($user->id, $correctAnswers, $questionsAttempted);
             
-            // LETHAL FIX: Check for correct answers milestone (every 100 correct answers)
-            $newTotal = $user->correct_answers_count + $correctAnswers;
-            $oldTotal = $user->correct_answers_count;
+            // Check for correct answers milestone using SSOT service
+            $progressService = app(\App\Support\State\UserProgressService::class);
+            $newTotal = $progressService->getTotalCorrectAnswers($user->id);
+            $oldTotal = $newTotal - $correctAnswers;
             
             // Check if we crossed a 100-multiple milestone
             $oldMilestone = floor($oldTotal / 100);
@@ -41,9 +42,13 @@ class UserStatsService
             $lastStudyDate = $user->last_study_date ? Carbon::parse($user->last_study_date) : null;
 
             if (!$lastStudyDate || !$lastStudyDate->isSameDay($today)) {
-                // If last study was yesterday, increment streak; otherwise, reset to 1
+                // SSOT: Get current streak from UserProgressService for calculation
+                $progressService = app(\App\Support\State\UserProgressService::class);
+                $currentStreak = $progressService->getUserProgress($user->id)['study_streak_days'];
+                
+                // Update streak through user model (this will be handled by observers)
                 if ($lastStudyDate && $lastStudyDate->diffInDays($today) === 1) {
-                    $user->study_streak_days = ($user->study_streak_days ?? 0) + 1;
+                    $user->study_streak_days = $currentStreak + 1;
                 } else {
                     $user->study_streak_days = 1;
                 }
@@ -52,12 +57,16 @@ class UserStatsService
                 $user->save();
             }
 
+            // SSOT: Get updated streak for logging
+            $progressService = app(\App\Support\State\UserProgressService::class);
+            $updatedStreak = $progressService->getUserProgress($user->id)['study_streak_days'];
+
             Log::info('User stats updated successfully', [
                 'user_id' => $user->id,
                 'questionsAttempted' => $questionsAttempted,
                 'correctAnswers' => $correctAnswers,
                 'durationSeconds' => $durationSeconds,
-                'study_streak_days' => $user->study_streak_days,
+                'study_streak_days' => $updatedStreak,
                 'last_study_date' => $user->last_study_date,
             ]);
         } catch (\Exception $e) {

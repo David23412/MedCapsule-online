@@ -43,9 +43,13 @@ class UpdateStudyStreaks extends Command
                 ->orderBy('created_at', 'desc')
                 ->first();
                 
+            // SSOT: Get current streak from UserProgressService
+            $progressService = app(\App\Support\State\UserProgressService::class);
+            $currentStreak = $progressService->getUserProgress($user->id)['study_streak_days'];
+            
             // If they have no attempts, set streak to 1 (default for platform users)
             if (!$lastAttempt) {
-                if ($user->study_streak_days !== 1) {
+                if ($currentStreak !== 1) {
                     $user->study_streak_days = 1;
                     $user->save();
                     $this->line("  No quiz attempts found. Set streak to 1 (default).");
@@ -64,8 +68,8 @@ class UpdateStudyStreaks extends Command
             if ($lastAttemptDate->equalTo($today)) {
                 // They did a quiz today - check for previous days in sequence
                 $streak = $this->calculateConsecutiveDays($user);
-                if ($user->study_streak_days != $streak) {
-                    $oldStreak = $user->study_streak_days;
+                if ($currentStreak != $streak) {
+                    $oldStreak = $currentStreak;
                     $user->study_streak_days = $streak;
                     $user->save();
                     $this->line("  Updated streak: {$oldStreak} → {$streak} (active today)");
@@ -76,8 +80,8 @@ class UpdateStudyStreaks extends Command
             } else if ($lastAttemptDate->equalTo($yesterday)) {
                 // Quiz taken yesterday - check for previous days
                 $streak = $this->calculateConsecutiveDays($user);
-                if ($user->study_streak_days != $streak) {
-                    $oldStreak = $user->study_streak_days;
+                if ($currentStreak != $streak) {
+                    $oldStreak = $currentStreak;
                     $user->study_streak_days = $streak;
                     $user->save();
                     $this->line("  Updated streak: {$oldStreak} → {$streak} (active yesterday)");
@@ -87,8 +91,8 @@ class UpdateStudyStreaks extends Command
                 }
             } else {
                 // Last quiz attempt was more than 1 day ago - streak should reset to 1
-                if ($user->study_streak_days != 1) {
-                    $oldStreak = $user->study_streak_days;
+                if ($currentStreak != 1) {
+                    $oldStreak = $currentStreak;
                     $user->study_streak_days = 1;
                     $user->save();
                     $this->line("  Updated streak: {$oldStreak} → 1 (reset due to inactivity)");

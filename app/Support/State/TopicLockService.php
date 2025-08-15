@@ -29,6 +29,13 @@ class TopicLockService
      */
     public function getTopicLockStatus(Topic $topic): array
     {
+        \Log::debug('SSOT TopicLockService::getTopicLockStatus called', [
+            'topic_id' => $topic->id,
+            'topic_name' => $topic->name,
+            'course_id' => $topic->course_id,
+            'called_at' => now()
+        ]);
+        
         $cacheKey = "topic_lock_status_{$topic->id}_v" . ($topic->updated_at?->timestamp ?? 0);
         
         return Cache::remember($cacheKey, self::CACHE_TTL, function () use ($topic) {

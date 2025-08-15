@@ -1,0 +1,309 @@
+{
+  "analysis_timestamp": "2025-08-15T12:00:00Z",
+  "total_issues_found": 6,
+  "critical_issues": 3,
+  "high_issues": 2,
+  "medium_issues": 1,
+  "issues": [
+    {
+      "id": "enrollment-split-brain",
+      "concept": "enrollment",
+      "severity_score": 9,
+      "severity_label": "CRITICAL",
+      "description": "Enrollment state represented by both boolean 'is_enrolled' and timestamp 'enrolled_at' fields, creating potential inconsistency",
+      "evidence": [
+        {
+          "file": "database/migrations/2024_03_21_000009_create_course_user_table.php",
+          "line": 11,
+          "snippet": "$table->boolean('is_enrolled')->default(true);\n$table->timestamp('enrolled_at')->nullable();",
+          "type": "migration"
+        },
+        {
+          "file": "app/Models/User.php",
+          "line": 87,
+          "snippet": "->withPivot('is_enrolled', 'enrolled_at')\n->where('is_enrolled', true)",
+          "type": "model"
+        },
+        {
+          "file": "app/Console/Commands/BackfillEnrollmentData.php",
+          "line": 66,
+          "snippet": "'is_enrolled' => true,\n'enrolled_at' => $payment->paid_at,",
+          "type": "controller"
+        },
+        {
+          "file": "app/Support/State/EnrollmentService.php",
+          "line": 64,
+          "snippet": "->where('is_enrolled', true)\n->whereNotNull('enrolled_at')",
+          "type": "service"
+        }
+      ],
+      "migrations_found": [
+        {
+          "file": "database/migrations/2024_03_21_000009_create_course_user_table.php",
+          "table": "course_user",
+          "column": "is_enrolled",
+          "type": "boolean"
+        },
+        {
+          "file": "database/migrations/2024_03_21_000009_create_course_user_table.php",
+          "table": "course_user",
+          "column": "enrolled_at",
+          "type": "timestamp"
+        }
+      ],
+      "remediation_suggestions": [
+        "Use enrolled_at timestamp as single source of truth",
+        "Create accessor: getIsEnrolledAttribute() { return !is_null($this->enrolled_at); }",
+        "Remove is_enrolled column after migration",
+        "Add database constraint to prevent is_enrolled=true when enrolled_at IS NULL"
+      ],
+      "automatic_fix_possible": true,
+      "patch_file_paths": [
+        "migrations/consolidate_enrollment_fields.php",
+        "models/User_enrollment_accessor.php"
+      ]
+    },
+    {
+      "id": "payment-status-split-brain",
+      "concept": "payment_completion",
+      "severity_score": 8,
+      "severity_label": "CRITICAL",
+      "description": "Payment completion represented by both 'status' string and 'paid_at' timestamp, creating potential inconsistency",
+      "evidence": [
+        {
+          "file": "database/migrations/2025_04_12_040013_create_payments_table.php",
+          "line": 20,
+          "snippet": "$table->string('status'); // 'pending', 'completed', 'failed', 'expired'\n$table->timestamp('paid_at')->nullable();",
+          "type": "migration"
+        },
+        {
+          "file": "app/Models/Payment.php",
+          "line": 76,
+          "snippet": "$this->status = 'completed';\n$this->paid_at = now();",
+          "type": "model"
+        },
+        {
+          "file": "app/Services/PaymentService.php",
+          "line": 42,
+          "snippet": "$payment->update(['status' => 'completed', 'paid_at' => now()]);",
+          "type": "service"
+        }
+      ],
+      "migrations_found": [
+        {
+          "file": "database/migrations/2025_04_12_040013_create_payments_table.php",
+          "table": "payments",
+          "column": "status",
+          "type": "string"
+        },
+        {
+          "file": "database/migrations/2025_04_12_040013_create_payments_table.php",
+          "table": "payments",
+          "column": "paid_at",
+          "type": "timestamp"
+        }
+      ],
+      "remediation_suggestions": [
+        "Use paid_at timestamp as source of truth for completion",
+        "Derive status from timestamps: paid_at (completed), created_at + 24h (expired), etc.",
+        "Create status accessor based on timestamp logic",
+        "Remove status column or make it computed/cached only"
+      ],
+      "automatic_fix_possible": true,
+      "patch_file_paths": [
+        "migrations/consolidate_payment_status.php",
+        "models/Payment_status_accessor.php"
+      ]
+    },
+    {
+      "id": "assignment-status-removed-but-referenced",
+      "concept": "assignment_status",
+      "severity_score": 7,
+      "severity_label": "HIGH",
+      "description": "Assignment status column was removed but code still references status constants and computed status, creating confusion",
+      "evidence": [
+        {
+          "file": "app/Models/Assignment.php",
+          "line": 17,
+          "snippet": "const STATUS_ACTIVE = 'active';\nconst STATUS_OVERDUE = 'overdue';\nconst STATUS_LOCKED = 'locked';",
+          "type": "model"
+        },
+        {
+          "file": "app/Models/Assignment.php",
+          "line": 43,
+          "snippet": "public function getCurrentStatusAttribute(): string\n{\n    $statusService = app(AssignmentStatusService::class);",
+          "type": "model"
+        },
+        {
+          "file": "app/Http/Controllers/Tutor/TutorDashboardViewController.php",
+          "line": 418,
+          "snippet": "'completed_count' => $assignments->where('status', \\App\\Models\\Assignment::STATUS_COMPLETED)->count(),",
+          "type": "controller"
+        }
+      ],
+      "migrations_found": [
+        {
+          "file": "database/migrations/2025_08_15_000002_phase_a_assignment_status_cache.php",
+          "table": "assignments",
+          "column": "status_cached",
+          "type": "enum"
+        }
+      ],
+      "remediation_suggestions": [
+        "Consistently use computed status via AssignmentStatusService",
+        "Remove all direct status column references",
+        "Use status_cached column for performance where needed",
+        "Update all controllers to use getCurrentStatusAttribute()"
+      ],
+      "automatic_fix_possible": false,
+      "patch_file_paths": []
+    },
+    {
+      "id": "video-progress-completion-split",
+      "concept": "video_completion",
+      "severity_score": 6,
+      "severity_label": "HIGH",
+      "description": "Video completion represented by both 'completed' boolean and 'progress_percentage' decimal, creating potential inconsistency",
+      "evidence": [
+        {
+          "file": "database/migrations/2025_08_10_000002_create_video_progress_table.php",
+          "line": 11,
+          "snippet": "$table->decimal('progress_percentage', 5, 2)->default(0);\n$table->boolean('completed')->default(false);",
+          "type": "migration"
+        },
+        {
+          "file": "app/Support/State/VideoProgressService.php",
+          "line": 339,
+          "snippet": "->update(['completed' => $computedCompleted]);",
+          "type": "service"
+        }
+      ],
+      "migrations_found": [
+        {
+          "file": "database/migrations/2025_08_10_000002_create_video_progress_table.php",
+          "table": "video_progress",
+          "column": "progress_percentage",
+          "type": "decimal"
+        },
+        {
+          "file": "database/migrations/2025_08_10_000002_create_video_progress_table.php",
+          "table": "video_progress",
+          "column": "completed",
+          "type": "boolean"
+        }
+      ],
+      "remediation_suggestions": [
+        "Use progress_percentage as single source of truth",
+        "Create accessor: getCompletedAttribute() { return $this->progress_percentage >= 90; }",
+        "Remove completed column after migration",
+        "Add database trigger to keep fields in sync during transition"
+      ],
+      "automatic_fix_possible": true,
+      "patch_file_paths": [
+        "migrations/consolidate_video_completion.php",
+        "models/VideoProgress_completion_accessor.php"
+      ]
+    },
+    {
+      "id": "active-status-inconsistency",
+      "concept": "active_status",
+      "severity_score": 4,
+      "severity_label": "MEDIUM",
+      "description": "Active status represented inconsistently across models - some use 'is_active' boolean, others use different patterns",
+      "evidence": [
+        {
+          "file": "app/Models/MedicalDomain.php",
+          "line": 21,
+          "snippet": "'is_active',",
+          "type": "model"
+        },
+        {
+          "file": "app/Models/Video.php",
+          "line": 19,
+          "snippet": "'is_active'",
+          "type": "model"
+        },
+        {
+          "file": "app/Models/MedicalDomain.php",
+          "line": 96,
+          "snippet": "return $query->where('is_active', true);",
+          "type": "model"
+        }
+      ],
+      "migrations_found": [
+        {
+          "file": "database/migrations/0001_01_01_000000_create_users_table.php",
+          "table": "sessions",
+          "column": "is_visitor",
+          "type": "boolean"
+        }
+      ],
+      "remediation_suggestions": [
+        "Standardize on 'is_active' boolean across all models",
+        "Create trait for active/inactive behavior",
+        "Add consistent scopes: scopeActive(), scopeInactive()",
+        "Consider using deleted_at for soft deletes instead of is_active"
+      ],
+      "automatic_fix_possible": false,
+      "patch_file_paths": []
+    },
+    {
+      "id": "email-verification-split",
+      "concept": "email_verification",
+      "severity_score": 3,
+      "severity_label": "LOW",
+      "description": "Email verification only uses timestamp approach, which is good, but should be documented as the standard pattern",
+      "evidence": [
+        {
+          "file": "database/migrations/0001_01_01_000000_create_users_table.php",
+          "line": 14,
+          "snippet": "$table->timestamp('email_verified_at')->nullable();",
+          "type": "migration"
+        }
+      ],
+      "migrations_found": [
+        {
+          "file": "database/migrations/0001_01_01_000000_create_users_table.php",
+          "table": "users",
+          "column": "email_verified_at",
+          "type": "timestamp"
+        }
+      ],
+      "remediation_suggestions": [
+        "Document email_verified_at as the standard pattern for verification states",
+        "Create accessor: getEmailVerifiedAttribute() { return !is_null($this->email_verified_at); }",
+        "Use this pattern for other verification needs"
+      ],
+      "automatic_fix_possible": true,
+      "patch_file_paths": [
+        "models/User_email_verified_accessor.php"
+      ]
+    }
+  ],
+  "summary": {
+    "most_critical_issue": "enrollment-split-brain",
+    "total_migrations_affected": 8,
+    "total_models_affected": 6,
+    "total_controllers_affected": 12,
+    "estimated_fix_effort_hours": 24,
+    "data_loss_risk": "HIGH - Dual writes could cause inconsistent state"
+  },
+  "recommendations": {
+    "immediate_actions": [
+      "Add database constraints to prevent inconsistent dual writes",
+      "Implement EnrollmentService as single source of truth",
+      "Create migration to consolidate enrollment fields",
+      "Add monitoring for split-brain detection"
+    ],
+    "phase_1_fixes": [
+      "Consolidate enrollment fields (is_enrolled + enrolled_at)",
+      "Consolidate payment status fields (status + paid_at)",
+      "Fix assignment status references"
+    ],
+    "phase_2_fixes": [
+      "Consolidate video completion fields",
+      "Standardize active status patterns",
+      "Add comprehensive test coverage"
+    ]
+  }
+}

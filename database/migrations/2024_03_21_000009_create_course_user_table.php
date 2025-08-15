@@ -12,13 +12,14 @@ return new class extends Migration
             $table->id();
             $table->foreignId('user_id')->constrained()->onDelete('cascade');
             $table->foreignId('course_id')->constrained()->onDelete('cascade');
-            $table->boolean('is_enrolled')->default(true);
-            $table->timestamp('enrolled_at')->nullable();
+            // SSOT: Only enrolled_at timestamp - no boolean needed
+            $table->timestamp('enrolled_at')->nullable()->comment('SSOT: NULL = not enrolled, timestamp = enrolled');
             $table->timestamps();
 
-            // Indexes for better performance
+            // Indexes for better performance using SSOT
             $table->unique(['user_id', 'course_id']);
-            $table->index(['user_id', 'is_enrolled']);
+            $table->index(['user_id', 'enrolled_at']); // Index on SSOT field
+            $table->index(['course_id', 'enrolled_at']); // For course enrollment queries
         });
     }
 

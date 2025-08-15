@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Student;
 use App\Http\Controllers\Controller;
 use App\Models\Assignment;
 use App\Services\AssignmentService;
+use App\Support\State\TopicLockService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\View\View;
@@ -45,8 +46,12 @@ class StudentAssignmentViewController extends Controller
                     return $assignment->status === Assignment::STATUS_ACTIVE && 
                            $assignment->deadline->diffInHours(now()) > 24;
                 }),
-                'overdue' => $assignments->where('status', Assignment::STATUS_OVERDUE),
-                'completed' => $assignments->where('status', Assignment::STATUS_COMPLETED)
+                'overdue' => $assignments->filter(function($assignment) {
+                    return $assignment->getCurrentStatusAttribute() === Assignment::STATUS_OVERDUE;
+                }),
+                'completed' => $assignments->filter(function($assignment) {
+                    return $assignment->getCurrentStatusAttribute() === Assignment::STATUS_COMPLETED;
+                })
             ];
 
             $analytics = $this->assignmentService->getStudentPerformanceAnalytics(auth()->id());
@@ -97,7 +102,7 @@ class StudentAssignmentViewController extends Controller
             'assignment_status' => $assignment->status,
             'can_be_completed' => $assignment->canBeCompleted(),
             'is_locked' => $assignment->isLocked(),
-            'topic_locked' => $assignment->topic->is_locked ?? false,
+            'topic_locked' => app(TopicLockService::class)->isTopicLocked($assignment->topic),
             'timestamp' => now()
         ]);
         

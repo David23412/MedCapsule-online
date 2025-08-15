@@ -507,9 +507,10 @@ class GradingService
             return false;
         }
         
-        // Check if assignment is in an accessible state (active or overdue)
-        $status = $assignment->getCurrentStatusAttribute();
-        return in_array($status, [\App\Models\Assignment::STATUS_ACTIVE, \App\Models\Assignment::STATUS_OVERDUE]);
+        // Check if assignment is in an accessible state (active or overdue) using SSOT service
+        $statusService = app(\App\Support\State\AssignmentStatusService::class);
+        $status = $statusService->getStatus($assignment);
+        return in_array($status, [\App\Support\State\AssignmentStatusService::STATUS_ACTIVE, \App\Support\State\AssignmentStatusService::STATUS_OVERDUE]);
     }
 
 
@@ -666,17 +667,21 @@ class GradingService
     private function checkForLevelUp(User $user): array
     {
         $currentLevel = $user->getCurrentLevel();
-        $newLevel = floor($user->xp / 1000) + 1;
+        // SSOT: Use UserProgressService for level and XP calculation
+        $progressService = app(\App\Support\State\UserProgressService::class);
+        $progress = $progressService->getUserProgress($user->id);
+        $newLevel = $progress['level'];
+        $userXP = $progress['xp'];
 
         if ($newLevel > $currentLevel) {
             // Create level up notification
-            $this->notificationService->createLevelUpNotification($user, $newLevel, $user->xp);
+            $this->notificationService->createLevelUpNotification($user, $newLevel, $userXP);
 
             Log::info('User leveled up', [
                 'user_id' => $user->id,
                 'old_level' => $currentLevel,
                 'new_level' => $newLevel,
-                'xp' => $user->xp
+                'xp' => $userXP
             ]);
 
             return [
@@ -1032,8 +1037,9 @@ class GradingService
     private function updateStudyStreak(User $user): void
     {
         try {
-            // Store original streak for notification comparison
-            $originalStreak = $user->study_streak_days ?? 0;
+            // SSOT: Get original streak from UserProgressService
+            $progressService = app(\App\Support\State\UserProgressService::class);
+            $originalStreak = $progressService->getUserProgress($user->id)['study_streak_days'];
             
             // Update the streak using the User model method
             $newStreak = $user->updateStudyStreak();

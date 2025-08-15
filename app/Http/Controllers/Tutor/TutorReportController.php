@@ -141,6 +141,10 @@ class TutorReportController extends Controller
             ->orderBy('created_at', 'desc')
             ->get();
 
+        // SSOT: Get progress data from UserProgressService
+        $userProgressService = app(\App\Support\State\UserProgressService::class);
+        $progress = $userProgressService->getUserProgress($student->id);
+
         return [
             'student_name' => $student->name,
             'student_email' => $student->email,
@@ -148,8 +152,8 @@ class TutorReportController extends Controller
             'total_quizzes' => $quizAttempts->count(),
             'average_score' => round($quizAttempts->avg('score') ?? 0, 1),
             'best_score' => $quizAttempts->max('score') ?? 0,
-            'study_streak' => $student->study_streak_days ?? 0,
-            'total_xp' => $student->xp ?? 0,
+            'study_streak' => $progress['study_streak_days'],
+            'total_xp' => $progress['xp'],
             'last_active' => $student->last_active_at?->format('Y-m-d H:i:s') ?? 'Never',
             'quiz_history' => $quizAttempts->take(10)->map(function ($attempt) {
                 return [
@@ -167,6 +171,8 @@ class TutorReportController extends Controller
         $csv = "Student Name,Email,University,Quiz Average,Total Quizzes,Study Streak,Last Active\n";
 
         $students = $students->load('quizAttempts');
+        $userProgressService = app(\App\Support\State\UserProgressService::class);
+        
         foreach ($students as $student) {
             // Use eager loaded quizAttempts to avoid N+1 queries
             $quizAttempts = $student->quizAttempts;
@@ -174,8 +180,11 @@ class TutorReportController extends Controller
             $quizCount = $quizAttempts->count();
             $lastActive = $student->last_active_at ? $student->last_active_at->format('Y-m-d H:i:s') : 'Never';
             
+            // SSOT: Get study streak from UserProgressService
+            $progress = $userProgressService->getUserProgress($student->id);
+            
             $csv .= "\"{$student->name}\",\"{$student->email}\",\"{$student->university}\"," . 
-                    number_format($avgScore, 1) . ",{$quizCount},{$student->study_streak_days},\"{$lastActive}\"\n";
+                    number_format($avgScore, 1) . ",{$quizCount},{$progress['study_streak_days']},\"{$lastActive}\"\n";
         }
 
         return $csv;

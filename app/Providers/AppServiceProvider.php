@@ -199,60 +199,8 @@ class AppServiceProvider extends ServiceProvider
         \App\Models\Question::observe(app()->make(\App\Observers\QuestionObserver::class));
         \App\Models\Course::observe(\App\Observers\CourseObserver::class);
         
-        // Register SSOT Observers for dual-write synchronization
-        if (config('ssot.sync_enabled')) {
-            $this->registerSSOTObservers();
-        }
+        // SSOT-only mode: No dual-write observers needed
     }
 
-    /**
-     * Register Single Source of Truth (SSOT) Observers
-     */
-    private function registerSSOTObservers(): void
-    {
-        // Enrollment Observer - handles course_user and payments
-        if (config('ssot.observers.enrollment.enabled')) {
-            // Note: We'll use custom observer registration since course_user is a pivot table
-            \DB::listen(function ($query) {
-                if (str_contains($query->sql, 'course_user') && in_array($query->type, ['update', 'insert'])) {
-                    // Handle course_user table changes through custom logic
-                    app(\App\Observers\EnrollmentObserver::class);
-                }
-            });
-            
-            \App\Models\Payment::observe(\App\Observers\EnrollmentObserver::class);
-        }
 
-        // Assignment Status Observer
-        if (config('ssot.observers.assignment_status.enabled')) {
-            \App\Models\Assignment::observe(\App\Observers\AssignmentStatusObserver::class);
-        }
-
-        // User Progress Observer
-        if (config('ssot.observers.user_progress.enabled')) {
-            \App\Models\User::observe(\App\Observers\UserProgressObserver::class);
-            \App\Models\QuizAttempt::observe(\App\Observers\UserProgressObserver::class);
-        }
-
-        // Mistake Mastery Observer
-        if (config('ssot.observers.mistake_mastery.enabled')) {
-            \App\Models\Mistake::observe(\App\Observers\MistakeMasteryObserver::class);
-        }
-
-        // Video Progress Observer
-        if (config('ssot.observers.video_progress.enabled')) {
-            // Note: video_progress is handled via DB table, not Eloquent model
-            \DB::listen(function ($query) {
-                if (str_contains($query->sql, 'video_progress') && in_array($query->type, ['update', 'insert'])) {
-                    // Handle video_progress table changes through custom logic
-                    app(\App\Observers\VideoProgressObserver::class);
-                }
-            });
-        }
-
-        // Topic Lock Observer
-        if (config('ssot.observers.topic_lock.enabled')) {
-            \App\Models\Topic::observe(\App\Observers\TopicLockObserver::class);
-        }
-    }
 }

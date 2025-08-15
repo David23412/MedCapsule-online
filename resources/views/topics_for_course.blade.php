@@ -2591,10 +2591,9 @@
         @if($topics->count() > 0)
             @foreach($topics as $topic)
                 @php
-                    // Check if topic is locked (you can customize this logic based on your requirements)
-                    $isLocked = isset($topic->is_locked) ? $topic->is_locked : false;
-                    // Alternative: Check if topic has a locked status
-                    // $isLocked = $topic->status === 'locked';
+                    // SSOT: Use lock status from TopicLockService (passed from controller)
+                    $isLocked = $topic->ssot_is_locked ?? false;
+                    $lockStatus = $topic->ssot_lock_status ?? null;
                 @endphp
                 
                 {{-- Topic Card Container with Video Button --}}

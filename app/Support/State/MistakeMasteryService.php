@@ -34,6 +34,14 @@ class MistakeMasteryService
      */
     public function getMasteryStatus(Mistake $mistake, string $mode = 'quiz'): array
     {
+        \Log::debug('SSOT MistakeMasteryService::getMasteryStatus called', [
+            'mistake_id' => $mistake->id,
+            'user_id' => $mistake->user_id,
+            'question_id' => $mistake->question_id,
+            'mode' => $mode,
+            'called_at' => now()
+        ]);
+        
         $cacheKey = "mistake_mastery_{$mistake->id}_{$mode}";
         
         return Cache::remember($cacheKey, self::CACHE_TTL, function () use ($mistake, $mode) {

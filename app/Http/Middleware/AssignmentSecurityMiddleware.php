@@ -6,6 +6,7 @@ use Closure;
 use Illuminate\Http\Request;
 use App\Models\Assignment;
 use App\Models\User;
+use App\Support\State\TopicLockService;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Http\Response;
 
@@ -58,10 +59,12 @@ class AssignmentSecurityMiddleware
                 ], Response::HTTP_FORBIDDEN);
             }
             
-            // Check if the topic is locked
-            if ($assignment->topic->is_locked) {
+            // Check if the topic is locked using SSOT service
+            $topicLockService = app(TopicLockService::class);
+            if ($topicLockService->isTopicLocked($assignment->topic)) {
+                $lockStatus = $topicLockService->getTopicLockStatus($assignment->topic);
                 return response()->json([
-                    'error' => $assignment->topic->lock_reason ?? 'Topic is locked by tutor'
+                    'error' => $lockStatus['lock_reason'] ?? 'Topic is locked by tutor'
                 ], Response::HTTP_FORBIDDEN);
             }
             

@@ -90,7 +90,7 @@ class LearnViewController extends Controller
                     ->join('topics', 'questions.topic_id', '=', 'topics.id')
                     ->join('courses', 'topics.course_id', '=', 'courses.id')
                     ->where('mistakes.user_id', $userId)
-                    ->where('mistakes.mastered', false)
+                    ->where('mistakes.correct_streak', '<', config('mistakes.thresholds.quiz', 4))
                     ->when($courseFilter, function ($query, $courseFilter) {
                         return $query->where('courses.id', $courseFilter);
                     })

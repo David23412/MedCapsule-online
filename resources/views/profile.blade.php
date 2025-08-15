@@ -1399,7 +1399,7 @@
                         <p>
                             <i class="fas fa-trophy" style="color: #FFD700;"></i> Rank #{{ $userRank }} 
                             <span style="margin-left: 5px; font-size: 0.9rem; color: #546e7a;">
-                                <i class="fas fa-bolt" style="color: #7e57c2;"></i> {{ auth()->user()->xp ?? 0 }} XP
+                                <i class="fas fa-bolt" style="color: #7e57c2;"></i> {{ $userProgress['xp'] ?? 0 }} XP
                             </span>
                         </p>
                         @endif
@@ -1407,9 +1407,9 @@
                     <p>
                         <i class="fas fa-award" style="color: #64b5f6;"></i> 
                         <span style="margin-left: 5px; font-size: 0.9rem;">Not yet ranked</span>
-                        @if(auth()->user()->xp > 0)
+                        @if(($userProgress['xp'] ?? 0) > 0)
                         <span style="margin-left: 5px; font-size: 0.9rem; color: #546e7a;">
-                            <i class="fas fa-bolt" style="color: #7e57c2;"></i> {{ auth()->user()->xp }} XP
+                            <i class="fas fa-bolt" style="color: #7e57c2;"></i> {{ $userProgress['xp'] ?? 0 }} XP
                         </span>
                         @endif
                     </p>
@@ -1602,16 +1602,16 @@
                                         </span>
                                     </div>
                                     <div class="d-flex align-items-center gap-3">
-                                        <span class="xp-counter" style="font-size: 0.9rem; color: #7e57c2; font-weight: 600;" data-value="{{ $user->xp }}">
-                                            {{ number_format($user->xp) }} XP
+                                        <span class="xp-counter" style="font-size: 0.9rem; color: #7e57c2; font-weight: 600;" data-value="{{ $userProgress['xp'] }}">
+                                            {{ number_format($userProgress['xp']) }} XP
                                         </span>
-                                        <span style="color: #7e57c2; font-weight: 600; font-size: 0.85rem;">Level {{ $user->level }}</span>
+                                        <span style="color: #7e57c2; font-weight: 600; font-size: 0.85rem;">Level {{ $userProgress['level'] }}</span>
                                     </div>
                                 </div>
                                 <div class="progress mt-1" style="height: 2px;">
                                     <div class="progress-bar" 
                                          role="progressbar" 
-                                         style="width: {{ ($user->xp % 1000) / 10 }}%; background: linear-gradient(90deg, #7e57c2, #b388ff); box-shadow: 0 0 10px rgba(126, 87, 194, 0.3);">
+                                         style="width: {{ ($userProgress['xp'] % 1000) / 10 }}%; background: linear-gradient(90deg, #7e57c2, #b388ff); box-shadow: 0 0 10px rgba(126, 87, 194, 0.3);">
                                     </div>
                                 </div>
                             </li>
@@ -1625,7 +1625,7 @@
                                 @php
                                     // Get the XP of the 10th ranked user
                                     $tenthPlaceXp = count($leaderboard) >= 10 ? $leaderboard[9]->xp : 0;
-                                    $xpNeeded = max(0, $tenthPlaceXp - auth()->user()->xp);
+                                    $xpNeeded = max(0, $tenthPlaceXp - ($userProgress['xp'] ?? 0));
                                 @endphp
                                 You need {{ $xpNeeded }} more XP to reach the top 10!
                             </p>
@@ -1857,8 +1857,8 @@
 
         // Distribution Chart
         const distributionCtx = document.getElementById('distributionChart').getContext('2d');
-        const correctCount = {{ auth()->user()->correct_answers_count }};
-        const incorrectCount = {{ $totalQuestions - auth()->user()->correct_answers_count }};
+        const correctCount = {{ $userProgress['total_correct_answers'] ?? 0 }};
+        const incorrectCount = {{ $totalQuestions - ($userProgress['total_correct_answers'] ?? 0) }};
         const totalCount = {{ $totalQuestions }};
         
         distributionChart = new Chart(distributionCtx, {

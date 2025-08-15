@@ -13,12 +13,12 @@ return [
 
     /*
     |--------------------------------------------------------------------------
-    | Sync Configuration
+    | Sync Configuration - DUAL-WRITE DISABLED (SSOT ONLY MODE)
     |--------------------------------------------------------------------------
     */
-    'sync_enabled' => env('SSOT_SYNC_ENABLED', true),
-    'legacy_write_warnings' => env('SSOT_LEGACY_WARNINGS', true),
-    'conflict_detection' => env('SSOT_CONFLICT_DETECTION', true),
+    'sync_enabled' => false,
+    'legacy_write_warnings' => false,
+    'conflict_detection' => false,
     
     /*
     |--------------------------------------------------------------------------
@@ -38,33 +38,33 @@ return [
     
     /*
     |--------------------------------------------------------------------------
-    | Observer Configuration
+    | Observer Configuration - ALL DISABLED (SSOT ONLY MODE)
     |--------------------------------------------------------------------------
     */
     'observers' => [
         'enrollment' => [
-            'enabled' => true,
-            'sync_directions' => ['legacy_to_ssot', 'ssot_to_legacy'],
+            'enabled' => false,
+            'sync_directions' => [],
         ],
         'assignment_status' => [
-            'enabled' => true,
-            'sync_directions' => ['ssot_to_legacy'],
+            'enabled' => false,
+            'sync_directions' => [],
         ],
         'user_progress' => [
-            'enabled' => true,
-            'sync_directions' => ['legacy_to_ssot', 'ssot_to_legacy'],
+            'enabled' => false,
+            'sync_directions' => [],
         ],
         'mistake_mastery' => [
-            'enabled' => true,
-            'sync_directions' => ['legacy_to_ssot', 'ssot_to_legacy'],
+            'enabled' => false,
+            'sync_directions' => [],
         ],
         'video_progress' => [
-            'enabled' => true,
-            'sync_directions' => ['legacy_to_ssot', 'ssot_to_legacy'],
+            'enabled' => false,
+            'sync_directions' => [],
         ],
         'topic_lock' => [
-            'enabled' => true,
-            'sync_directions' => ['legacy_to_ssot', 'ssot_to_legacy'],
+            'enabled' => false,
+            'sync_directions' => [],
         ],
     ],
     

@@ -211,7 +211,9 @@ class HandleQuizCompletion implements ShouldQueue
     {
         try {
             $currentLevel = $user->getCurrentLevel();
-            $newLevel = floor($user->xp / 1000) + 1;
+            // SSOT: Use UserProgressService for level calculation
+            $progressService = app(\App\Support\State\UserProgressService::class);
+            $newLevel = $progressService->getUserLevel($user->id);
             
             if ($newLevel > $currentLevel) {
                 \App\Services\NotificationTriggerService::onLevelUp(

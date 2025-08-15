@@ -111,6 +111,13 @@ class TopicController extends Controller
             ])
             ->get();
 
+        // SSOT: Add lock status for each topic using TopicLockService
+        $topicLockService = app(\App\Support\State\TopicLockService::class);
+        foreach ($topics as $topic) {
+            $topic->ssot_is_locked = $topicLockService->isTopicLocked($topic);
+            $topic->ssot_lock_status = $topicLockService->getTopicLockStatus($topic);
+        }
+
         // 🚀 GENIUS: Load assignments using efficient pivot table filtering
         $assignments = [];
         if ($user->role === 'student') {

@@ -5,6 +5,7 @@ namespace App\Http\Controllers\TopicLocking;
 use App\Http\Controllers\Controller;
 use App\Models\Topic;
 use App\Services\TopicLockingService;
+use App\Support\State\TopicLockService;
 use Illuminate\Http\{Request, JsonResponse, Response};
 use Illuminate\Support\Facades\{Log, Auth};
 
@@ -113,9 +114,12 @@ class TopicLockingApiController extends Controller
             $topic = Topic::findOrFail($topicId);
             $lockInfo = $this->lockingService->getLockInfo($topic);
             
+            $topicLockService = app(TopicLockService::class);
+            $lockStatus = $topicLockService->getTopicLockStatus($topic);
+            
             return response()->json([
                 'success' => true,
-                'is_locked' => (bool) $topic->is_locked,
+                'is_locked' => $lockStatus['is_locked'],
                 'lock_info' => $lockInfo
             ]);
         } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {

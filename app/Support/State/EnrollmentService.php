@@ -31,6 +31,12 @@ class EnrollmentService
      */
     public function getEnrollmentStatus(int $userId, int $courseId): array
     {
+        \Log::debug('SSOT EnrollmentService::getEnrollmentStatus called', [
+            'user_id' => $userId,
+            'course_id' => $courseId,
+            'called_at' => now()
+        ]);
+        
         $cacheKey = "enrollment_status_{$userId}_{$courseId}";
         
         return Cache::remember($cacheKey, self::CACHE_TTL, function () use ($userId, $courseId) {

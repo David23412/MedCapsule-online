@@ -33,6 +33,12 @@ class AssignmentStatusService
      */
     public function getAssignmentStatus(Assignment $assignment): array
     {
+        \Log::debug('SSOT AssignmentStatusService::getAssignmentStatus called', [
+            'assignment_id' => $assignment->id,
+            'assignment_title' => $assignment->title,
+            'called_at' => now()
+        ]);
+        
         $cacheKey = "assignment_status_{$assignment->id}_v" . ($assignment->updated_at?->timestamp ?? 0);
         
         return Cache::remember($cacheKey, self::CACHE_TTL, function () use ($assignment) {

@@ -36,15 +36,16 @@ class SendMistakeReviewReminders extends Command
         $force = $this->option('force');
         $reminderCount = 0;
         
-        // Get users with unmastered mistakes
+        // Get users with unmastered mistakes using SSOT service
+        $masteryService = app(\App\Support\State\MistakeMasteryService::class);
         $usersWithMistakes = User::whereHas('mistakes', function ($query) {
-            $query->where('mastered', false)
+            $query->where('correct_streak', '<', config('mistakes.thresholds.quiz', 4))
                   ->where('skipped', false);
         })->get();
         
         foreach ($usersWithMistakes as $user) {
             $mistakeCount = $user->mistakes()
-                ->where('mastered', false)
+                ->where('correct_streak', '<', config('mistakes.thresholds.quiz', 4))
                 ->where('skipped', false)
                 ->count();
                 
@@ -52,7 +53,7 @@ class SendMistakeReviewReminders extends Command
                 try {
                     // Get the actual mistakes for the event
                     $mistakes = $user->mistakes()
-                        ->where('mastered', false)
+                        ->where('correct_streak', '<', config('mistakes.thresholds.quiz', 4))
                         ->where('skipped', false)
                         ->get();
                     

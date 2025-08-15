@@ -15,6 +15,7 @@ use Carbon\Carbon;
 use App\Models\Topic;
 use App\Models\User;
 use App\Models\QuizAttempt;
+use App\Support\State\UserProgressService;
 
 // TODO: Inject services in constructor
     // TODO: Inject services in constructor
@@ -36,12 +37,14 @@ use App\Models\QuizAttempt;
         // Optionally sync the count to ensure accuracy (can be disabled for performance)
         // $user->syncCorrectAnswersCount();
         
+        // SSOT: Use UserProgressService for all progress data
+        $progressService = app(UserProgressService::class);
+        $progress = $progressService->getUserProgress($user->id);
+        
         return response()->json([
-            'correct_answers_count' => $user->getTotalCorrectAnswers(),
-            'total_questions_attempted' => $user->total_questions_attempted ?? 0,
-            'accuracy_rate' => $user->total_questions_attempted > 0 
-                ? round(($user->getTotalCorrectAnswers() / $user->total_questions_attempted) * 100, 1) 
-                : 0
+            'correct_answers_count' => $progress['total_correct_answers'],
+            'total_questions_attempted' => $progress['total_questions_attempted'],
+            'accuracy_rate' => $progress['accuracy_percentage']
         ]);
     }
 
@@ -53,13 +56,14 @@ use App\Models\QuizAttempt;
         $cacheKey = "user_profile_optimized_{$user->id}_" . now()->format('Y-m-d-H');
         
         $profileData = Cache::remember($cacheKey, 3600, function () use ($user) {
-            // Calculate accuracy from user's total attempts and correct answers
-            $totalQuestions = $user->total_questions_attempted ?? 0;
-            $totalCorrect = $user->getTotalCorrectAnswers();
-            $accuracyRate = $totalQuestions > 0 ? round(($totalCorrect / $totalQuestions) * 100, 1) : 0;
-
-            // Get the study streak value directly from the user model
-            $studyStreak = $user->study_streak_days ?? 0;
+            // SSOT: Get progress data from UserProgressService
+            $userProgressService = app(\App\Support\State\UserProgressService::class);
+            $progress = $userProgressService->getUserProgress($user->id);
+            
+            $totalQuestions = $progress['total_questions_attempted'];
+            $totalCorrect = $progress['total_correct_answers'];
+            $accuracyRate = $progress['accuracy_percentage'];
+            $studyStreak = $progress['study_streak_days'];
 
             // OPTIMIZED: Single query for study time calculation
             $studyTimeBreakdown = $this->calculateStudyTimeBreakdown($user);
@@ -79,14 +83,17 @@ use App\Models\QuizAttempt;
         // Extract cached data
         extract($profileData);
 
-        // RUTHLESS OPTIMIZATION: Cached user rank with longer duration
+        // SSOT: Use UserProgressService for XP and ranking
+        $progressService = app(UserProgressService::class);
+        $userProgress = $progressService->getUserProgress($user->id);
+        
         $userRank = null;
-        if ($user->xp > 0) {
-            $userRank = Cache::remember("user_rank_optimized_{$user->id}", 1800, function() use ($user) { 
+        if ($userProgress['xp'] > 0) {
+            $userRank = Cache::remember("user_rank_optimized_{$user->id}", 1800, function() use ($userProgress) { 
                 return DB::table('users')
                     ->where('total_questions_attempted', '>', 0)
                     ->where('role', 'student')
-                    ->where('xp', '>', $user->xp)
+                    ->where('xp', '>', $userProgress['xp'])
                     ->count() + 1; 
             });
         }
@@ -183,9 +190,9 @@ use App\Models\QuizAttempt;
                     return (object) [
                         'id' => $user->id,
                         'name' => $user->name,
-                        'xp' => $user->xp ?? 0,
-                        'level' => $user->level,
-                        'correct_answers' => $user->correct_answers_count
+                        'xp' => $userProgress['xp'],
+                        'level' => $userProgress['level'],
+                        'correct_answers' => $userProgress['total_correct_answers']
                     ];
                 });
         });
@@ -198,7 +205,8 @@ use App\Models\QuizAttempt;
             'studyStreak',
             'chartData',
             'userRank',
-            'formattedStudyTimes'
+            'formattedStudyTimes',
+            'userProgress'
         ));
     }
 

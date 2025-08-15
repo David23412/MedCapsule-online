@@ -6,6 +6,8 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Facades\DB;
+use App\Support\State\EnrollmentService;
+use App\Support\State\UserProgressService;
 
 class User extends Authenticatable
 {
@@ -73,13 +75,13 @@ class User extends Authenticatable
 
     /**
      * Define the relationship with courses (many-to-many).
-     * Only returns enrolled courses (is_enrolled = true).
+     * SSOT: Uses enrolled_at timestamp as single source of truth
      */
     public function courses()
     {
         return $this->belongsToMany(Course::class, 'course_user')
-                    ->withPivot('is_enrolled', 'enrolled_at')
-                    ->where('is_enrolled', true)
+                    ->withPivot('enrolled_at') // Only SSOT field needed
+                    ->whereNotNull('course_user.enrolled_at') // SSOT: timestamp determines enrollment
                     ->withTimestamps();
     }
 
@@ -90,7 +92,7 @@ class User extends Authenticatable
     public function allCourseEnrollments()
     {
         return $this->belongsToMany(Course::class, 'course_user')
-                    ->withPivot('is_enrolled', 'enrolled_at')
+                    ->withPivot('enrolled_at') // Only SSOT field needed
                     ->withTimestamps();
     }
 
@@ -190,16 +192,14 @@ class User extends Authenticatable
             return true;
         }
         
-        // Check if user is enrolled (simplified logic)
-        return DB::table('course_user')
-            ->where('user_id', $this->id)
-            ->where('course_id', $courseId)
-            ->where('is_enrolled', true)
-            ->exists();
+        // SSOT: Use EnrollmentService instead of direct database query
+        $enrollmentService = app(EnrollmentService::class);
+        return $enrollmentService->isEnrolled($this->id, $courseId);
     }
 
     /**
-     * Check if user is enrolled in a course (regardless of status).
+     * Check if user is enrolled in a course using SSOT (enrolled_at timestamp).
+     * SPLIT-BRAIN FIX: Only check enrolled_at timestamp, ignore is_enrolled boolean
      */
     public function isEnrolledInCourse($courseId)
     {
@@ -208,22 +208,23 @@ class User extends Authenticatable
             return true;
         }
         
-        // Check if user has ANY enrollment (active or inactive)
+        // SSOT: Check enrolled_at timestamp only
         return DB::table('course_user')
             ->where('user_id', $this->id)
             ->where('course_id', $courseId)
+            ->whereNotNull('enrolled_at') // SSOT: timestamp determines enrollment
             ->exists();
     }
 
     /**
-     * Enroll a user in a course.
+     * Enroll a user in a course using SSOT pattern.
+     * SSOT: Only set enrolled_at timestamp - clean and simple
      */
     public function enrollInCourse($courseId)
     {
-        // Use syncWithoutDetaching to ensure proper pivot data and avoid duplicates
+        // SSOT: Only set enrolled_at timestamp
         $this->courses()->syncWithoutDetaching([$courseId => [
-            'is_enrolled' => true,
-            'enrolled_at' => now()
+            'enrolled_at' => now() // SSOT: This is the authoritative field
         ]]);
     }
 
@@ -266,11 +267,15 @@ class User extends Authenticatable
     }
 
     /**
-     * Unenroll a user from a course.
+     * Unenroll a user from a course using SSOT pattern.
+     * SSOT: Set enrolled_at to NULL instead of deleting record (preserves history)
      */
     public function unenrollFromCourse($courseId)
     {
-        $this->courses()->detach($courseId);
+        DB::table('course_user')
+            ->where('user_id', $this->id)
+            ->where('course_id', $courseId)
+            ->update(['enrolled_at' => null, 'updated_at' => now()]);
     }
 
     /**
@@ -378,22 +383,9 @@ class User extends Authenticatable
      */
     public function calculateXP(): int
     {
-        // Formula: (correct_answers × 5) + (accuracy_bonus × 2) + (streak_bonus × 10)
-        $correctAnswers = $this->correct_answers_count ?? 0;
-        $totalQuestions = $this->total_questions_attempted ?? 0;
-        
-        // Calculate accuracy bonus (0-100% accuracy converted to 0-2 points)
-        $accuracyBonus = ($totalQuestions > 0) 
-            ? floor(($correctAnswers * 100.0 / $totalQuestions) * 0.02) 
-            : 0;
-            
-        // Calculate streak bonus (each day is worth 10 points)
-        $streakBonus = ($this->study_streak_days ?? 0) * 10;
-        
-        // Final XP calculation with reduced values
-        return ($correctAnswers * 5) + 
-               floor(($correctAnswers * 100.0 / ($totalQuestions ?: 1)) * 2) + 
-               ($this->study_streak_days ?? 0) * 10;
+        // SSOT: Use UserProgressService for XP calculation
+        $progressService = app(UserProgressService::class);
+        return $progressService->getUserXP($this->id);
     }
 
     /**
@@ -424,9 +416,9 @@ class User extends Authenticatable
      */
     public function getCurrentLevel(): int
     {
-        $xp = $this->xp ?? 0;
-        // Every 1000 XP is a new level, starting at level 1
-        return floor($xp / 1000) + 1;
+        // SSOT: Use UserProgressService for level calculation
+        $progressService = app(UserProgressService::class);
+        return $progressService->getUserLevel($this->id);
     }
     
     /**
@@ -436,9 +428,9 @@ class User extends Authenticatable
      */
     public function getXPForNextLevel(): int
     {
-        $currentXP = $this->xp ?? 0;
-        $nextLevelTotalXP = ceil($currentXP / 1000) * 1000;
-        return $nextLevelTotalXP - $currentXP;
+        // SSOT: Use UserProgressService for XP calculation
+        $progressService = app(UserProgressService::class);
+        return $progressService->getXPForNextLevel($this->id);
     }
     
     /**
@@ -449,24 +441,15 @@ class User extends Authenticatable
      */
     public function updateStudyStreak($lastQuizDate = null)
     {
-        // Store original streak for tracking reset
-        $originalStreak = $this->study_streak_days ?? 1;
+        // SSOT: Use UserProgressService for streak calculation
+        $progressService = app(UserProgressService::class);
+        $streakInfo = $progressService->calculateStudyStreak($this->id);
         
-        // Get the user's latest quiz attempt
-        $lastAttempt = \App\Models\QuizAttempt::where('user_id', $this->id)
-            ->orderBy('created_at', 'desc')
-            ->first();
-            
-        // If they have no attempts, set streak to 1 (default for platform users)
-        if (!$lastAttempt) {
-            $this->study_streak_days = 1;
-            $this->save();
-            return 1;
-        }
+        // Update cached field
+        $this->study_streak_days = $streakInfo['streak_days'];
+        $this->save();
         
-        $lastAttemptDate = $lastAttempt->created_at->startOfDay();
-        $today = now()->startOfDay();
-        $yesterday = now()->subDay()->startOfDay();
+        return $streakInfo['streak_days'];
         
         // Handle different cases
         if ($lastAttemptDate->equalTo($today)) {
@@ -596,9 +579,9 @@ class User extends Authenticatable
      */
     public function getTotalCorrectAnswers(): int
     {
-        // Use the cached correct_answers_count field which is updated by UserStatsService
-        // This field is incremented for ALL quiz types in the GradingService
-        return $this->correct_answers_count ?? 0;
+        // SSOT: Use UserProgressService for correct answers count
+        $progressService = app(UserProgressService::class);
+        return $progressService->getTotalCorrectAnswers($this->id);
     }
 
     /**
@@ -622,8 +605,10 @@ class User extends Authenticatable
      */
     public function syncCorrectAnswersCount(): bool
     {
+        // SSOT: Use UserProgressService for both cached and computed values
+        $progressService = app(UserProgressService::class);
         $cachedCount = $this->correct_answers_count ?? 0;
-        $actualCount = $this->getCorrectAnswersFromDatabase();
+        $actualCount = $progressService->getTotalCorrectAnswers($this->id);
         
         if ($cachedCount !== $actualCount) {
             $this->update(['correct_answers_count' => $actualCount]);

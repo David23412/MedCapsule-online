@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use App\Events\CourseUpdated;
+use App\Support\State\EnrollmentService;
 
 class Course extends Model
 {
@@ -87,9 +88,25 @@ class Course extends Model
     public function getEnrolledStudents($limit = null)
     {
         return Cache::remember("course_{$this->id}_enrolled_students" . ($limit ? "_limit_{$limit}" : ""), self::CACHE_TTL, function () use ($limit) {
-            $query = $this->users()
-                         ->where('is_enrolled', true)
-                         ->whereNotNull('email');
+            // SSOT: Get enrolled users via EnrollmentService
+            $enrollmentService = app(EnrollmentService::class);
+            
+            // Get all users who have enrollment records for this course
+            $enrolledUserIds = DB::table('course_user')
+                ->where('course_id', $this->id)
+                ->pluck('user_id')
+                ->toArray();
+            
+            // Filter to only truly enrolled users via SSOT
+            $actuallyEnrolledIds = [];
+            foreach ($enrolledUserIds as $userId) {
+                if ($enrollmentService->isEnrolled($userId, $this->id)) {
+                    $actuallyEnrolledIds[] = $userId;
+                }
+            }
+            
+            $query = User::whereIn('id', $actuallyEnrolledIds)
+                        ->whereNotNull('email');
             
             if ($limit) {
                 $query->limit($limit);
@@ -104,10 +121,24 @@ class Course extends Model
     public function getEnrolledStudentsCountAttribute()
     {
         return Cache::remember("course_{$this->id}_enrolled_count", self::CACHE_TTL, function () {
-            return $this->users()
-                       ->where('is_enrolled', true)
-                       ->whereNotNull('email')
-                       ->count();
+            // SSOT: Count enrolled users via EnrollmentService
+            $enrollmentService = app(EnrollmentService::class);
+            
+            // Get all users who have enrollment records for this course
+            $enrolledUserIds = DB::table('course_user')
+                ->where('course_id', $this->id)
+                ->pluck('user_id')
+                ->toArray();
+            
+            // Count only truly enrolled users via SSOT
+            $count = 0;
+            foreach ($enrolledUserIds as $userId) {
+                if ($enrollmentService->isEnrolled($userId, $this->id)) {
+                    $count++;
+                }
+            }
+            
+            return $count;
         });
     }
 
@@ -162,10 +193,9 @@ class Course extends Model
         if (!$userId) return false;
 
         return Cache::remember("course_{$this->id}_user_{$userId}_enrolled", self::CACHE_TTL, function () use ($userId) {
-            return $this->users()
-                       ->where('user_id', $userId)
-                       ->where('is_enrolled', true)
-                       ->exists();
+            // SSOT: Use EnrollmentService instead of direct database query
+            $enrollmentService = app(EnrollmentService::class);
+            return $enrollmentService->isEnrolled($userId, $this->id);
         });
     }
 
@@ -315,6 +345,7 @@ class Course extends Model
                     ]);
                     
                     // Remove all enrollments for this course
+                    // @todo Replace with EnrollmentService->unenrollAllFromCourse($course->id) in Phase D
                     DB::table('course_user')
                         ->where('course_id', $course->id)
                         ->where('is_enrolled', true)
@@ -336,6 +367,7 @@ class Course extends Model
                     ]);
                     
                     // Get all users who are NOT already enrolled
+                    // @todo Replace with EnrollmentService->getEnrolledUserIds($course->id) in Phase D
                     $allUsers = \App\Models\User::all();
                     $enrolledUserIds = DB::table('course_user')
                         ->where('course_id', $course->id)

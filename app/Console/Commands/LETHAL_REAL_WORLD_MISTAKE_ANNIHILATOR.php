@@ -1152,14 +1152,19 @@ class LETHAL_REAL_WORLD_MISTAKE_ANNIHILATOR extends Command
             // Test query performance with indexes
             $startTime = microtime(true);
             
-            // Complex query that should use indexes
-            $mistakes = Mistake::where('user_id', $this->realUsers->random()->id)
-                ->where('mastered', false)
+            // Complex query that should use indexes - using SSOT service for mastery filtering
+            $mistakeMasteryService = app(\App\Support\State\MistakeMasteryService::class);
+            $allMistakes = Mistake::where('user_id', $this->realUsers->random()->id)
                 ->where('last_attempt_date', '>', now()->subDays(30))
                 ->with(['question.topic.course'])
                 ->orderBy('last_attempt_date', 'desc')
-                ->limit(100)
+                ->limit(200) // Get more to filter
                 ->get();
+            
+            // Filter using SSOT service
+            $mistakes = $allMistakes->filter(function($mistake) use ($mistakeMasteryService) {
+                return !$mistakeMasteryService->isMastered($mistake);
+            })->take(100);
             
             $endTime = microtime(true);
             $executionTime = ($endTime - $startTime) * 1000;

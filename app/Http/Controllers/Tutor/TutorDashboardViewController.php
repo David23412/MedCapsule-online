@@ -110,12 +110,19 @@ class TutorDashboardViewController extends Controller
         
         $trend = $this->calculatePerformanceTrend($recentAttempts);
         
+        // SSOT: Get progress data from UserProgressService for dashboard display
+        $userProgressService = app(\App\Support\State\UserProgressService::class);
+        $progress = $userProgressService->getUserProgress($student->id);
+        
         $student->enhanced_metrics = [
             'average_score' => round($averageScore, 1),
             'total_quizzes' => $quizAttempts->count(),
             'performance_trend' => $trend,
             'last_quiz_date' => $recentAttempts->first()?->created_at,
             'is_active' => $student->last_active_at && $student->last_active_at->gte(now()->subDays(3))];
+
+        // SSOT: Populate SSOT data for view compatibility
+        $student->study_streak_days = $progress['study_streak_days'];
 
         return $student;
     }
@@ -208,10 +215,13 @@ class TutorDashboardViewController extends Controller
             ->orderBy('created_at', 'desc')
             ->get();
 
-        // REAL-TIME CALCULATIONS
-        $totalQuestions = $student->total_questions_attempted ?? 0;
-        $totalCorrect = $student->correct_answers_count ?? 0;
-        $accuracyRate = $totalQuestions > 0 ? round(($totalCorrect / $totalQuestions) * 100, 1) : 0;
+        // SSOT: Get real-time progress data from UserProgressService
+        $userProgressService = app(\App\Support\State\UserProgressService::class);
+        $progress = $userProgressService->getUserProgress($student->id);
+        
+        $totalQuestions = $progress['total_questions_attempted'];
+        $totalCorrect = $progress['total_correct_answers'];
+        $accuracyRate = $progress['accuracy_percentage'];
         
         // Calculate real-time averages
         $averageScore = $quizAttempts->count() > 0 ? round($quizAttempts->avg('score'), 1) : 0;
@@ -220,8 +230,8 @@ class TutorDashboardViewController extends Controller
         // Recent activity (last 30 days)
         $recentActivity = $quizAttempts->where('created_at', '>=', now()->subDays(30))->count();
         
-        // Study streak calculation
-        $studyStreak = $student->study_streak_days ?? 0;
+        // Study streak calculation - SSOT
+        $studyStreak = $progress['study_streak_days'];
         
         // Last active calculation
         $lastActive = $student->last_active_at;
@@ -234,7 +244,7 @@ class TutorDashboardViewController extends Controller
                 'best_score' => $bestScore,
                 'accuracy_rate' => $accuracyRate,
                 'study_streak' => $studyStreak,
-                'total_xp' => $student->xp ?? 0,
+                'total_xp' => $progress['xp'],
                 'member_since' => $student->created_at ?? now(),
                 'last_active' => $lastActive,
                 'is_currently_active' => $isCurrentlyActive,
@@ -405,11 +415,17 @@ class TutorDashboardViewController extends Controller
                     'progress_percentage' => $assignment->getProgressPercentage()
                 ];
             })->toArray(),
-            'completed_count' => $assignments->where('status', \App\Models\Assignment::STATUS_COMPLETED)->count(),
-            'active_count' => $assignments->where('status', \App\Models\Assignment::STATUS_ACTIVE)->count(),
-            'overdue_count' => $assignments->where('status', \App\Models\Assignment::STATUS_OVERDUE)->count(),
+            'completed_count' => $assignments->filter(function($assignment) {
+                return $assignment->getCurrentStatusAttribute() === \App\Models\Assignment::STATUS_COMPLETED;
+            })->count(),
+            'active_count' => $assignments->filter(function($assignment) {
+                return $assignment->getCurrentStatusAttribute() === \App\Models\Assignment::STATUS_ACTIVE;
+            })->count(),
+            'overdue_count' => $assignments->filter(function($assignment) {
+                return $assignment->getCurrentStatusAttribute() === \App\Models\Assignment::STATUS_OVERDUE;
+            })->count(),
             'total_count' => $assignments->count(),
-            'average_score' => $assignments->where('status', \App\Models\Assignment::STATUS_COMPLETED)->avg('score_percentage') ?? 0
+            'average_score' => 0 // TODO: Calculate from quiz_attempts table
         ];
     }
 }

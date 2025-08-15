@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Http\Controllers\Controller;
 use App\Http\Controllers\Course\CourseViewController;
 use App\Http\Controllers\Course\CourseActionController;
+use App\Support\State\EnrollmentService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
@@ -118,8 +119,17 @@ class CourseController extends Controller
         // Eager load relationships to prevent N+1 queries
         $courses->load(['users:id,name,profile_picture_url']);
         
+        $enrollmentService = app(EnrollmentService::class);
+        $userId = auth()->id();
+        
         foreach ($courses as $course) {
-            $course->is_enrolled = isset($course->is_enrolled) ? (bool)$course->is_enrolled : false;
+            // SSOT: Use EnrollmentService instead of direct field access
+            if ($userId) {
+                $course->is_enrolled = $enrollmentService->isEnrolled($userId, $course->id);
+            } else {
+                $course->is_enrolled = false;
+            }
+            
             $course->completion_percentage = 0;
             $course->mastered_topics_count = 0;
             
@@ -190,14 +200,9 @@ class CourseController extends Controller
             if ($user->role === 'admin') {
                 $isEnrolled = true;
             } else {
-                // Use efficient query instead of model method
-                $isEnrolled = Cache::remember("course_enrollment_{$id}_{$user->id}", 300, function() use ($id, $user) { 
-                    return DB::table('course_user')
-                        ->where('course_id', $id)
-                        ->where('user_id', $user->id)
-                        ->where('is_enrolled', 1)
-                        ->exists(); 
-                });
+                // SSOT: Use EnrollmentService instead of direct database query
+                $enrollmentService = app(EnrollmentService::class);
+                $isEnrolled = $enrollmentService->isEnrolled($user->id, $course->id);
             }
         }
 
@@ -214,26 +219,15 @@ class CourseController extends Controller
         $user = Auth::user();
         $course = Course::findOrFail($courseId);
         
-        // Check if user is already enrolled using efficient query
-        $alreadyEnrolled = Cache::remember("course_enrollment_check_{$courseId}_{$user->id}", 300, function() use ($courseId, $user) { 
-            return DB::table('course_user')
-                ->where('course_id', $courseId)
-                ->where('user_id', $user->id)
-                ->where('is_enrolled', 1)
-                ->exists(); 
-        });
-            
-        if ($alreadyEnrolled) {
+        // SSOT: Use EnrollmentService for enrollment check and enrollment
+        $enrollmentService = app(EnrollmentService::class);
+        
+        if ($enrollmentService->isEnrolled($user->id, $courseId)) {
             return redirect()->back()->with('error', 'You are already enrolled in this course.');
         }
         
-        // Enroll user with proper pivot data
-        $user->courses()->syncWithoutDetaching([
-            $courseId => [
-                'is_enrolled' => true,
-                'enrolled_at' => now()
-            ]
-        ]);
+        // Enroll user via SSOT service
+        $enrollmentService->enrollUser($user->id, $courseId, 'manual');
         
         // Clear ALL course caches for instant updates
         $this->clearAllCourseCaches();

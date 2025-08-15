@@ -169,12 +169,15 @@ Route::post('/test-payment-verify/{payment}', function($payment) {
 }); 
 
 Route::middleware('auth')->group(function () {
-    // User progress endpoint for milestone bar updates
+    // User progress endpoint for milestone bar updates - SSOT
     Route::get('/user/progress', function () {
+        $userProgressService = app(\App\Support\State\UserProgressService::class);
+        $progress = $userProgressService->getUserProgress(auth()->id());
+        
         return response()->json([
-            'correct_answers_count' => auth()->user()->correct_answers_count ?? 0,
-            'total_questions_attempted' => auth()->user()->total_questions_attempted ?? 0,
-            'study_streak_days' => auth()->user()->study_streak_days ?? 0
+            'correct_answers_count' => $progress['total_correct_answers'],
+            'total_questions_attempted' => $progress['total_questions_attempted'],
+            'study_streak_days' => $progress['study_streak_days']
         ]);
     });
     

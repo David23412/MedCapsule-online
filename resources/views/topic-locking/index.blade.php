@@ -1007,7 +1007,7 @@
                         @php
                             $lockedTopics = 0;
                             foreach($courses as $course) {
-                                $lockedTopics += $course->topics->where('is_locked', true)->count();
+                                $lockedTopics += $course->topics->where('ssot_is_locked', true)->count();
                             }
                         @endphp
                         {{ $lockedTopics }}
@@ -1020,7 +1020,7 @@
                         @php
                             $unlockedTopics = 0;
                             foreach($courses as $course) {
-                                $unlockedTopics += $course->topics->where('is_locked', false)->count();
+                                $unlockedTopics += $course->topics->where('ssot_is_locked', false)->count();
                             }
                         @endphp
                         {{ $unlockedTopics }}
@@ -1067,15 +1067,11 @@
                                             </span>
                                             <span class="meta-item">
                                                 <i class="fas fa-lock"></i>
-{{-- TODO: Move this query to controller --}}
-{{-- {{ $course->topics->where('is_locked', true)->count() }} locked --}}
-{{-- Use: Pass data from controller instead --}}
+                                                {{ $course->topics->where('ssot_is_locked', true)->count() }} locked
                                             </span>
-{{-- TODO: Move this query to controller --}}
-{{-- <span class="meta-item"> --}}
-{{-- Use: Pass data from controller instead --}}
+                                            <span class="meta-item">
                                                 <i class="fas fa-unlock"></i>
-                                                {{ $course->topics->where('is_locked', false)->count() }} unlocked
+                                                {{ $course->topics->where('ssot_is_locked', false)->count() }} unlocked
                                             </span>
                                         </div>
                                     </div>
@@ -1093,7 +1089,7 @@
                             
                             <div class="topics-container" id="topics{{ $course->id }}">
                                 @foreach($course->topics as $topic)
-                                    <div class="topic-item {{ $topic->is_locked ? 'locked' : 'unlocked' }}" data-topic-id="{{ $topic->id }}" data-course-id="{{ $course->id }}">
+                                    <div class="topic-item {{ $topic->ssot_is_locked ? 'locked' : 'unlocked' }}" data-topic-id="{{ $topic->id }}" data-course-id="{{ $course->id }}">
                                         <input type="checkbox" class="topic-checkbox" id="topic{{ $topic->id }}" 
                                                value="{{ $topic->id }}" data-course-id="{{ $course->id }}" onchange="updateSelection()">
                                         
@@ -1101,13 +1097,13 @@
                                             <div class="topic-name">{{ $topic->name }}</div>
                                         </div>
                                         
-                                        <div class="topic-status {{ $topic->is_locked ? 'locked' : 'unlocked' }}">
-                                            <i class="fas fa-{{ $topic->is_locked ? 'lock' : 'unlock' }}"></i>
-                                            {{ $topic->is_locked ? 'Locked' : 'Available' }}
+                                        <div class="topic-status {{ $topic->ssot_is_locked ? 'locked' : 'unlocked' }}">
+                                            <i class="fas fa-{{ $topic->ssot_is_locked ? 'lock' : 'unlock' }}"></i>
+                                            {{ $topic->ssot_is_locked ? 'Locked' : 'Available' }}
                                         </div>
                                         
                                         <div class="topic-actions">
-                                            @if($topic->is_locked)
+                                            @if($topic->ssot_is_locked)
                                                 <button class="action-btn unlock" onclick="unlockTopic({{ $topic->id }})" title="Click to unlock this topic" data-topic-id="{{ $topic->id }}">
                                                     <i class="fas fa-unlock"></i>
                                                 </button>

@@ -173,9 +173,10 @@ class NotificationService
             })
             ->get();
             
-        // Filter by computed status since status column doesn't exist
-        $assignments = $allAssignments->filter(function($assignment) {
-            return $assignment->getCurrentStatusAttribute() === \App\Models\Assignment::STATUS_ACTIVE;
+        // Filter by computed status using SSOT service
+        $statusService = app(\App\Support\State\AssignmentStatusService::class);
+        $assignments = $allAssignments->filter(function($assignment) use ($statusService) {
+            return $statusService->getStatus($assignment) === \App\Support\State\AssignmentStatusService::STATUS_ACTIVE;
         });
 
         $assignments = $assignments->load('assignedUsers');
@@ -225,9 +226,10 @@ class NotificationService
             })
             ->get();
             
-        // Filter by computed status since status column doesn't exist
-        $assignments = $allAssignments->filter(function($assignment) {
-            return $assignment->getCurrentStatusAttribute() === \App\Models\Assignment::STATUS_OVERDUE;
+        // Filter by computed status using SSOT service
+        $statusService = app(\App\Support\State\AssignmentStatusService::class);
+        $assignments = $allAssignments->filter(function($assignment) use ($statusService) {
+            return $statusService->getStatus($assignment) === \App\Support\State\AssignmentStatusService::STATUS_OVERDUE;
         });
 
         foreach ($assignments as $assignment) {
@@ -308,10 +310,8 @@ class NotificationService
                 'new_level' => $newLevel,
                 'xp_needed_for_next' => $xpNeeded,
                 'total_xp' => $user->calculateXP(),
-                'correct_answers' => $user->correct_answers_count,
-                'accuracy' => $user->total_questions_attempted > 0 
-                    ? round(($user->correct_answers_count / $user->total_questions_attempted) * 100, 1)
-                    : 0
+                'correct_answers' => app(\App\Support\State\UserProgressService::class)->getTotalCorrectAnswers($user->id),
+                'accuracy' => app(\App\Support\State\UserProgressService::class)->getAccuracyPercentage($user->id)
             ]
         );
         
@@ -701,7 +701,7 @@ class NotificationService
             'streak_reset',
             'Streak Reset',
             "Your study streak has been reset. Don't worry, today is a new opportunity to begin again!",
-            ['previous_streak' => $user->study_streak_days]
+            ['previous_streak' => app(\App\Support\State\UserProgressService::class)->getUserProgress($user->id)['study_streak_days']]
         );
         
         // Clear notification cache to ensure immediate visibility
@@ -888,13 +888,13 @@ class NotificationService
      * @param User $user
      * @param string $courseName
      * @param float $amount
-     * @return Notification
+     * @return array
      */
     public function createPaymentSuccessNotification(
         User $user,
         string $courseName,
         float $amount
-    ): Notification {
+    ): array {
         $notification = $this->createNotification(
             $user->id,
             'payment_success',

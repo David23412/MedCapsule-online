@@ -30,6 +30,12 @@ class VideoProgressService
      */
     public function getVideoProgress(int $userId, int $videoId): array
     {
+        \Log::debug('SSOT VideoProgressService::getVideoProgress called', [
+            'user_id' => $userId,
+            'video_id' => $videoId,
+            'called_at' => now()
+        ]);
+        
         $cacheKey = "video_progress_{$userId}_{$videoId}";
         
         return Cache::remember($cacheKey, self::CACHE_TTL, function () use ($userId, $videoId) {

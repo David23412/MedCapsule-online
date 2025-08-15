@@ -350,13 +350,14 @@ class AssignmentService
         
         $totalAssignments = $assignments->count();
         
-        // Filter by computed status since status column doesn't exist
-        $completedAssignments = $assignments->filter(function($assignment) {
-            return $assignment->getCurrentStatusAttribute() === Assignment::STATUS_COMPLETED;
+        // Filter by computed status using SSOT service
+        $statusService = app(\App\Support\State\AssignmentStatusService::class);
+        $completedAssignments = $assignments->filter(function($assignment) use ($statusService) {
+            return $statusService->getStatus($assignment) === \App\Support\State\AssignmentStatusService::STATUS_ACTIVE;
         })->count();
         
-        $overdueAssignments = $assignments->filter(function($assignment) {
-            return $assignment->getCurrentStatusAttribute() === Assignment::STATUS_OVERDUE;
+        $overdueAssignments = $assignments->filter(function($assignment) use ($statusService) {
+            return $statusService->getStatus($assignment) === \App\Support\State\AssignmentStatusService::STATUS_OVERDUE;
         })->count();
         
         $averageScore = $assignments->whereNotNull('score')->avg('score') ?? 0;
@@ -421,8 +422,9 @@ class AssignmentService
      */
     public function handleAssignmentExpiry(Assignment $assignment): void
     {
-        // Since status column was removed, expiry is computed dynamically
-        if (!$assignment->isExpired()) {
+        // Check expiry using SSOT service
+        $statusService = app(\App\Support\State\AssignmentStatusService::class);
+        if (!$statusService->isExpired($assignment)) {
             return;
         }
         
@@ -446,7 +448,8 @@ class AssignmentService
      */
     public function autoSubmitAssignment(Assignment $assignment, array $answers = []): bool
     {
-        if (!$assignment->isActive()) {
+        $statusService = app(\App\Support\State\AssignmentStatusService::class);
+        if (!$statusService->isActive($assignment)) {
             return false;
         }
         
@@ -858,7 +861,7 @@ class AssignmentService
                     'name' => $assignment->course->name,
                 ],
                 'deadline' => $assignment->deadline->format('Y-m-d H:i:s'),
-                'status' => $assignment->getCurrentStatusAttribute(),
+                'status' => app(\App\Support\State\AssignmentStatusService::class)->getStatus($assignment),
                 'assignment_mode' => $assignment->assignment_mode,
                 'duration_minutes' => $assignment->duration_minutes,
                 'created_at' => $assignment->created_at->format('Y-m-d H:i:s'),

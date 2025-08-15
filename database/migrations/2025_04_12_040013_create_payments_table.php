@@ -18,17 +18,18 @@ return new class extends Migration
             $table->string('reference_number')->unique();
             $table->decimal('amount', 10, 2);
             $table->string('payment_method'); // 'fawry', 'vodafone_cash', etc.
-            $table->string('status'); // 'pending', 'completed', 'failed', 'expired'
+            // SSOT: No status column - derive from timestamps and business logic
             $table->json('payment_data')->nullable(); // Store gateway-specific data
-            $table->timestamp('paid_at')->nullable(); // When payment was submitted/created
+            $table->timestamp('paid_at')->nullable()->comment('SSOT: NULL = not paid, timestamp = payment completed');
+            $table->timestamp('failed_at')->nullable()->comment('When payment failed (if applicable)');
             
             $table->timestamps();
 
-            // 🚀 LEAN INDEXES: Only essential ones (detailed indexes in nuclear_performance_indexing)
-            $table->index('user_id');
-            $table->index('course_id');
+            // 🚀 LEAN INDEXES using SSOT fields
+            $table->index(['user_id', 'paid_at']); // For user payment history
+            $table->index(['course_id', 'paid_at']); // For course revenue queries
             $table->index('reference_number');
-            $table->index('status');
+            $table->index('paid_at'); // For completed payments queries
         });
     }
 
