@@ -737,15 +737,18 @@ class NotificationService
             ];
         }
 
-        // OPTIMIZED: Single query with subquery for unread count
+        // OPTIMIZED: Single query with subquery for unread count - SQL injection safe
         $notifications = $user->notifications()
             ->select([
-                'notifications.*',
-                DB::raw('(SELECT COUNT(*) FROM notifications AS unread_count WHERE unread_count.user_id = notifications.user_id AND unread_count.is_read = false) as unread_count')
+                'notifications.*'
             ])
-            ->orderByRaw('is_read ASC, created_at DESC') // Prioritize unread notifications and show newest first
+            ->orderBy('is_read', 'ASC')
+            ->orderBy('created_at', 'DESC') // Prioritize unread notifications and show newest first
             ->limit($limit)
             ->get();
+            
+        // Get unread count separately to avoid raw SQL
+        $unreadCount = $user->notifications()->where('is_read', false)->count();
             
         // Extract unread count from first notification (all will have same count)
         $unreadCount = $notifications->first() ? $notifications->first()->unread_count : 0;

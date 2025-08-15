@@ -6,7 +6,10 @@ use App\Models\Question;
 use App\Services\PatternMatcherService;
 use App\Services\TextProcessingService;
 use App\Services\WrittenAnswerEvaluationService;
-use App\Services\MedicalKnowledgeService;
+use App\Services\MedicalDomainService;
+use App\Services\AnswerSimilarityService;
+use App\Services\MedicalPatternService;
+use App\Services\AnswerFeedbackService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
 use Mockery;
@@ -16,7 +19,10 @@ class WrittenAnswerEvaluationServiceTest extends TestCase
 {
     protected $textProcessingService;
     protected $patternMatcherService;
-    protected $medicalKnowledgeService;
+    protected $medicalDomainService;
+    protected $answerSimilarityService;
+    protected $medicalPatternService;
+    protected $answerFeedbackService;
     protected $evaluationService;
 
     protected function setUp(): void
@@ -26,18 +32,29 @@ class WrittenAnswerEvaluationServiceTest extends TestCase
         // Create real instances of dependencies
         $this->textProcessingService = new TextProcessingService();
         $this->patternMatcherService = new PatternMatcherService();
-        $this->medicalKnowledgeService = new MedicalKnowledgeService();
+        $this->medicalDomainService = new MedicalDomainService();
+        $this->answerSimilarityService = new AnswerSimilarityService(
+            $this->textProcessingService,
+            $this->patternMatcherService
+        );
+        $this->medicalPatternService = new MedicalPatternService();
+        $this->answerFeedbackService = new AnswerFeedbackService(
+            $this->medicalDomainService,
+            $this->medicalPatternService
+        );
         
         // Turn off caching for tests
-        $this->textProcessingService->setCacheConfig(false);
-        $this->patternMatcherService->setCacheConfig(false);
-        $this->medicalKnowledgeService->setCacheConfig(false);
+        $this->medicalDomainService->setCacheConfig(false);
+        $this->answerSimilarityService->setCacheConfig(false);
+        $this->medicalPatternService->setCacheConfig(false);
         
-        // Create the service with real dependencies
+        // Create the service with new dependencies
         $this->evaluationService = new WrittenAnswerEvaluationService(
             $this->textProcessingService,
-            $this->patternMatcherService,
-            $this->medicalKnowledgeService
+            $this->medicalDomainService,
+            $this->answerSimilarityService,
+            $this->medicalPatternService,
+            $this->answerFeedbackService
         );
         $this->evaluationService->setCacheConfig(false);
     }

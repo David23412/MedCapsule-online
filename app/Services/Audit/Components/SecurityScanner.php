@@ -2,7 +2,7 @@
 
 namespace App\Services\Audit\Components;
 
-use App\Services\Audit\Models\Finding;
+use App\Services\Audit\Models\ConcreteFinding;
 use App\Services\Audit\Reports\PhaseResult;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\File;
@@ -138,7 +138,7 @@ class SecurityScanner
                     if (preg_match($pattern, $line)) {
                         $vulnerabilityCount++;
                         
-                        $finding = new Finding(
+                        $finding = new ConcreteFinding(
                             'ISSUE-' . str_pad($this->findingCounter++, 3, '0', STR_PAD_LEFT),
                             'critical',
                             'Potential SQL injection vulnerability detected',
@@ -192,7 +192,7 @@ class SecurityScanner
                     if (preg_match($pattern, $line)) {
                         $vulnerabilityCount++;
                         
-                        $finding = new Finding(
+                        $finding = new ConcreteFinding(
                             'ISSUE-' . str_pad($this->findingCounter++, 3, '0', STR_PAD_LEFT),
                             'high',
                             'XSS vulnerability detected - unescaped output',
@@ -249,7 +249,7 @@ class SecurityScanner
                     if (!preg_match('/@csrf|csrf_token\(\)|_token/', $formContent)) {
                         $vulnerabilityCount++;
                         
-                        $finding = new Finding(
+                        $finding = new ConcreteFinding(
                             'ISSUE-' . str_pad($this->findingCounter++, 3, '0', STR_PAD_LEFT),
                             'high',
                             'CSRF protection missing on POST form',
@@ -310,7 +310,7 @@ class SecurityScanner
                     if (!preg_match('/validate\s*\(|FormRequest|rules\s*\(/', $context)) {
                         $validationIssues++;
                         
-                        $finding = new Finding(
+                        $finding = new ConcreteFinding(
                             'ISSUE-' . str_pad($this->findingCounter++, 3, '0', STR_PAD_LEFT),
                             'medium',
                             "Input parameter '{$paramName}' used without validation",
@@ -362,7 +362,7 @@ class SecurityScanner
                 if (preg_match('/password\s*=\s*["\'][^"\']{1,20}["\']|api_key\s*=\s*["\'][^"\']+["\']/', $line)) {
                     $authIssues++;
                     
-                    $finding = new Finding(
+                    $finding = new ConcreteFinding(
                         'ISSUE-' . str_pad($this->findingCounter++, 3, '0', STR_PAD_LEFT),
                         'critical',
                         'Hardcoded credentials detected in source code',
@@ -418,7 +418,7 @@ class SecurityScanner
                 if ($this->isSensitiveRoute($uri) && !$this->hasAuthMiddleware($middleware)) {
                     $accessControlIssues++;
                     
-                    $finding = new Finding(
+                    $finding = new ConcreteFinding(
                         'ISSUE-' . str_pad($this->findingCounter++, 3, '0', STR_PAD_LEFT),
                         'high',
                         "Sensitive route '{$uri}' missing authentication middleware",
@@ -471,7 +471,7 @@ class SecurityScanner
             if (preg_match('/APP_DEBUG\s*=\s*true/i', $envContent)) {
                 $configIssues++;
                 
-                $finding = new Finding(
+                $finding = new ConcreteFinding(
                     'ISSUE-' . str_pad($this->findingCounter++, 3, '0', STR_PAD_LEFT),
                     'high',
                     'Debug mode enabled - potential information disclosure',
@@ -520,7 +520,7 @@ class SecurityScanner
                 if (strpos($filePath, '/public/') !== false) {
                     $fileSecurityIssues++;
                     
-                    $finding = new Finding(
+                    $finding = new ConcreteFinding(
                         'ISSUE-' . str_pad($this->findingCounter++, 3, '0', STR_PAD_LEFT),
                         'critical',
                         "Sensitive file '{$sensitiveFile}' in publicly accessible directory",

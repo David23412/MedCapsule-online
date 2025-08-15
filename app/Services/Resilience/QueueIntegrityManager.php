@@ -173,8 +173,8 @@ class QueueIntegrityManager
                         Artisan::call('horizon:terminate');
                         break;
                     case 'queue':
-                        // Send SIGTERM to queue workers
-                        exec('pkill -TERM -f "queue:work"');
+                        // Send SIGTERM to queue workers using Laravel's safer approach
+                        Artisan::call('queue:restart');
                         break;
                     case 'scheduler':
                         // Scheduler will stop naturally, just wait
@@ -489,9 +489,9 @@ class QueueIntegrityManager
     private function isHorizonRunning(): bool
     {
         try {
-            // Check if horizon process exists
-            $output = shell_exec('ps aux | grep horizon | grep -v grep');
-            return !empty($output);
+            // Use Laravel's Horizon status check instead of shell commands
+            $status = Artisan::call('horizon:status');
+            return $status === 0; // 0 means running
         } catch (Exception $e) {
             return false;
         }

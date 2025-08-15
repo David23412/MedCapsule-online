@@ -339,10 +339,11 @@ class MasterStressTestOrchestrator extends Command
             }
         }
         
-        $cmd .= " > /dev/null 2>&1 &";
-        
         $this->info("   Starting background process: {$command}");
-        exec($cmd, $output, $returnCode);
+        
+        // Use Laravel's Process facade for safer command execution
+        $process = Process::start($cmd);
+        $returnCode = $process->running() ? 0 : 1;
         
         return [
             'command' => $command,

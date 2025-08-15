@@ -279,6 +279,26 @@ class AuditState
     }
 
     /**
+     * Set current phase number (for tracking purposes)
+     */
+    public function setPhaseNumber(int $phaseNumber): void
+    {
+        $this->auditMetadata['current_phase_number'] = $phaseNumber;
+        $this->saveStateToCache();
+    }
+
+    /**
+     * Update progress tracking
+     */
+    public function updateProgress(int $currentPhase, int $totalPhases): void
+    {
+        $this->auditMetadata['current_phase_number'] = $currentPhase;
+        $this->auditMetadata['total_phases'] = $totalPhases;
+        $this->auditMetadata['progress_percentage'] = ($currentPhase / $totalPhases) * 100;
+        $this->saveStateToCache();
+    }
+
+    /**
      * Get progress percentage
      */
     public function getProgressPercentage(): float

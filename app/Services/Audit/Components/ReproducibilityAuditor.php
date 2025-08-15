@@ -2,7 +2,7 @@
 
 namespace App\Services\Audit\Components;
 
-use App\Services\Audit\Models\Finding;
+use App\Services\Audit\Models\ConcreteFinding;
 use App\Services\Audit\Reports\ReproducibilityReport;
 use Illuminate\Support\Facades\Log;
 use Exception;

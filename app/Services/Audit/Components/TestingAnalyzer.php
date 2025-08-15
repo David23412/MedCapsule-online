@@ -2,7 +2,7 @@
 
 namespace App\Services\Audit\Components;
 
-use App\Services\Audit\Models\Finding;
+use App\Services\Audit\Models\ConcreteFinding;
 use App\Services\Audit\Reports\PhaseResult;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Log;
@@ -129,7 +129,7 @@ class TestingAnalyzer
                 if (!$sourceFile) {
                     $coverageIssues++;
                     
-                    $finding = new Finding(
+                    $finding = new ConcreteFinding(
                         'ISSUE-' . str_pad($this->findingCounter++, 3, '0', STR_PAD_LEFT),
                         'medium',
                         "Test class '{$testClassName}' has no corresponding source class",
@@ -163,7 +163,7 @@ class TestingAnalyzer
         if ($coverageRatio < 0.5) { // Less than 50% coverage
             $coverageIssues++;
             
-            $finding = new Finding(
+            $finding = new ConcreteFinding(
                 'ISSUE-' . str_pad($this->findingCounter++, 3, '0', STR_PAD_LEFT),
                 'high',
                 "Low test coverage ratio: {$totalTests} tests for {$totalSources} source files",
@@ -222,7 +222,7 @@ class TestingAnalyzer
                     if (!preg_match('/assert|expect|should/', $methodContent)) {
                         $qualityIssues++;
                         
-                        $finding = new Finding(
+                        $finding = new ConcreteFinding(
                             'ISSUE-' . str_pad($this->findingCounter++, 3, '0', STR_PAD_LEFT),
                             'medium',
                             'Test method without assertions detected',
@@ -251,7 +251,7 @@ class TestingAnalyzer
                 if (preg_match('/["\']test@example\.com["\']|["\']password123["\']|["\']John Doe["\']/', $line)) {
                     $qualityIssues++;
                     
-                    $finding = new Finding(
+                    $finding = new ConcreteFinding(
                         'ISSUE-' . str_pad($this->findingCounter++, 3, '0', STR_PAD_LEFT),
                         'low',
                         'Hard-coded test data detected - use factories instead',
@@ -279,7 +279,7 @@ class TestingAnalyzer
                 if (preg_match('/sleep\s*\(|usleep\s*\(/', $line)) {
                     $qualityIssues++;
                     
-                    $finding = new Finding(
+                    $finding = new ConcreteFinding(
                         'ISSUE-' . str_pad($this->findingCounter++, 3, '0', STR_PAD_LEFT),
                         'high',
                         'Sleep statement in test - indicates timing dependency',
@@ -339,7 +339,7 @@ class TestingAnalyzer
         if (empty($cicdFiles)) {
             $cicdIssues++;
             
-            $finding = new Finding(
+            $finding = new ConcreteFinding(
                 'ISSUE-' . str_pad($this->findingCounter++, 3, '0', STR_PAD_LEFT),
                 'high',
                 'No CI/CD pipeline configuration found',
@@ -373,7 +373,7 @@ class TestingAnalyzer
                     if (!preg_match('/phpunit|pest|test|spec/', $content)) {
                         $cicdIssues++;
                         
-                        $finding = new Finding(
+                        $finding = new ConcreteFinding(
                             'ISSUE-' . str_pad($this->findingCounter++, 3, '0', STR_PAD_LEFT),
                             'medium',
                             "CI/CD pipeline missing test execution: {$ciFile}",
@@ -427,7 +427,7 @@ class TestingAnalyzer
                 if (preg_match('/rand\s*\(|random|shuffle/', $line) && !preg_match('/seed|srand/', $content)) {
                     $flakyIssues++;
                     
-                    $finding = new Finding(
+                    $finding = new ConcreteFinding(
                         'ISSUE-' . str_pad($this->findingCounter++, 3, '0', STR_PAD_LEFT),
                         'medium',
                         'Unseeded random values in test - potential flaky test',
@@ -459,7 +459,7 @@ class TestingAnalyzer
                     if (!preg_match('/freeze|travel|mock|fake/', $context)) {
                         $flakyIssues++;
                         
-                        $finding = new Finding(
+                        $finding = new ConcreteFinding(
                             'ISSUE-' . str_pad($this->findingCounter++, 3, '0', STR_PAD_LEFT),
                             'medium',
                             'Time-dependent test without time mocking',
@@ -535,7 +535,7 @@ class TestingAnalyzer
                     if (!$factoryExists && !in_array($modelName, ['User', 'Model'])) {
                         $dataIssues++;
                         
-                        $finding = new Finding(
+                        $finding = new ConcreteFinding(
                             'ISSUE-' . str_pad($this->findingCounter++, 3, '0', STR_PAD_LEFT),
                             'medium',
                             "Model creation without factory: {$modelName}",
@@ -567,7 +567,7 @@ class TestingAnalyzer
             if (preg_match('/truncate|delete.*from|drop.*table/i', $content)) {
                 $dataIssues++;
                 
-                $finding = new Finding(
+                $finding = new ConcreteFinding(
                     'ISSUE-' . str_pad($this->findingCounter++, 3, '0', STR_PAD_LEFT),
                     'high',
                     'Direct database manipulation in test - use transactions instead',
@@ -622,7 +622,7 @@ class TestingAnalyzer
                     if (!preg_match('/mock|fake|stub|Http::fake/', $context)) {
                         $mockIssues++;
                         
-                        $finding = new Finding(
+                        $finding = new ConcreteFinding(
                             'ISSUE-' . str_pad($this->findingCounter++, 3, '0', STR_PAD_LEFT),
                             'high',
                             'External HTTP call in test without mocking',
@@ -655,7 +655,7 @@ class TestingAnalyzer
                     if (!preg_match('/mock|fake|stub/', $context)) {
                         $mockIssues++;
                         
-                        $finding = new Finding(
+                        $finding = new ConcreteFinding(
                             'ISSUE-' . str_pad($this->findingCounter++, 3, '0', STR_PAD_LEFT),
                             'medium',
                             'Database access in unit test without mocking',
@@ -712,7 +712,7 @@ class TestingAnalyzer
                     
                     $isolationIssues++;
                     
-                    $finding = new Finding(
+                    $finding = new ConcreteFinding(
                         'ISSUE-' . str_pad($this->findingCounter++, 3, '0', STR_PAD_LEFT),
                         'medium',
                         'Static variable in test class - potential isolation issue',
@@ -742,7 +742,7 @@ class TestingAnalyzer
                     
                     $isolationIssues++;
                     
-                    $finding = new Finding(
+                    $finding = new ConcreteFinding(
                         'ISSUE-' . str_pad($this->findingCounter++, 3, '0', STR_PAD_LEFT),
                         'high',
                         'Global variable usage in test - breaks isolation',
@@ -774,7 +774,7 @@ class TestingAnalyzer
                     if (!preg_match('/tearDown|unlink|rmdir|Storage::fake/', $context)) {
                         $isolationIssues++;
                         
-                        $finding = new Finding(
+                        $finding = new ConcreteFinding(
                             'ISSUE-' . str_pad($this->findingCounter++, 3, '0', STR_PAD_LEFT),
                             'medium',
                             'File system operation without cleanup in test',

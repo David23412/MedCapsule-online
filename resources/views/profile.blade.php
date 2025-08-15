@@ -1536,18 +1536,18 @@
                                     $grade <= 74 => 'btn-outline-info',
                                     default => 'btn-outline-success'
                                 };
-                                $icon = match(true) {
-                                    $grade <= 25 => '<i class="fas fa-exclamation-circle text-danger me-1"></i>',
-                                    $grade <= 49 => '<i class="fas fa-exclamation-triangle text-warning me-1"></i>',
-                                    $grade <= 74 => '<i class="fas fa-info-circle text-info me-1"></i>',
-                                    default => '<i class="fas fa-check-circle text-success me-1"></i>'
+                                $iconClass = match(true) {
+                                    $grade <= 25 => 'fas fa-exclamation-circle text-danger',
+                                    $grade <= 49 => 'fas fa-exclamation-triangle text-warning',
+                                    $grade <= 74 => 'fas fa-info-circle text-info',
+                                    default => 'fas fa-check-circle text-success'
                                 };
                             @endphp
                             <li class="list-group-item topic-review-item {{ $urgencyClass }}">
                                 <div class="d-flex justify-content-between align-items-center">
                                     <div>
                                         <h6 class="mb-1">
-                                            {!! $icon !!}
+                                            <i class="{{ $iconClass }} me-1"></i>
                                             {{ $topic->name }}
                                         </h6>
                                         <small class="text-muted">Course: {{ $topic->course->name }}</small>

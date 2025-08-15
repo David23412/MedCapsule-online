@@ -2,7 +2,7 @@
 
 namespace App\Services\Audit\Components;
 
-use App\Services\Audit\Models\Finding;
+use App\Services\Audit\Models\ConcreteFinding;
 use App\Services\Audit\Reports\PhaseResult;
 use App\Services\Audit\Models\ComplexityMetrics;
 use Illuminate\Support\Facades\Log;
@@ -43,9 +43,25 @@ class CodeAnalyzer
 
         Log::info('Analyzing PHP files', ['count' => count($phpFiles)]);
 
+        $totalFiles = count($phpFiles);
+        $currentFile = 0;
+        
         foreach ($phpFiles as $fileInfo) {
+            $currentFile++;
+            $percentage = round(($currentFile / $totalFiles) * 100, 1);
+            
+            // Show real-time progress
+            echo "\r🔍 Analyzing: [{$currentFile}/{$totalFiles}] {$percentage}% - " . basename($fileInfo['path']);
+            
             $this->analyzeFile($fileInfo);
+            
+            // Show findings count every 10 files
+            if ($currentFile % 10 == 0) {
+                echo " (Found: " . count($this->findings) . " issues)";
+            }
         }
+        
+        echo "\n"; // New line after progress
 
         // Detect architectural violations
         $this->detectArchitecturalViolations($phpFiles);
@@ -178,7 +194,7 @@ class CodeAnalyzer
 
         // Fat controller detection (>200 lines)
         if (strpos($relativePath, 'Controller') !== false && $complexity->getLinesOfCode() > 200) {
-            $finding = new Finding(
+            $finding = new ConcreteFinding(
                 'ISSUE-' . str_pad($this->findingCounter++, 3, '0', STR_PAD_LEFT),
                 'high',
                 'Fat controller detected - exceeds 200 lines',
@@ -203,7 +219,7 @@ class CodeAnalyzer
 
         // Fat model detection (>500 lines)
         if (strpos($relativePath, 'Models/') !== false && $complexity->getLinesOfCode() > 500) {
-            $finding = new Finding(
+            $finding = new ConcreteFinding(
                 'ISSUE-' . str_pad($this->findingCounter++, 3, '0', STR_PAD_LEFT),
                 'medium',
                 'Fat model detected - exceeds 500 lines',
@@ -225,7 +241,7 @@ class CodeAnalyzer
         if ($complexity->getCyclomaticComplexity() > 10) {
             $severity = $complexity->getCyclomaticComplexity() > 20 ? 'high' : 'medium';
             
-            $finding = new Finding(
+            $finding = new ConcreteFinding(
                 'ISSUE-' . str_pad($this->findingCounter++, 3, '0', STR_PAD_LEFT),
                 $severity,
                 'High cyclomatic complexity detected',
@@ -246,7 +262,7 @@ class CodeAnalyzer
 
         // Low maintainability index (<20)
         if ($complexity->getMaintainabilityIndex() < 20) {
-            $finding = new Finding(
+            $finding = new ConcreteFinding(
                 'ISSUE-' . str_pad($this->findingCounter++, 3, '0', STR_PAD_LEFT),
                 'medium',
                 'Low maintainability index detected',
@@ -281,7 +297,7 @@ class CodeAnalyzer
             if ($fileInfo['line_count'] > 1000) {
                 $methodCount = substr_count($code, 'function ');
                 if ($methodCount > 50) {
-                    $finding = new Finding(
+                    $finding = new ConcreteFinding(
                         'ISSUE-' . str_pad($this->findingCounter++, 3, '0', STR_PAD_LEFT),
                         'critical',
                         'God class anti-pattern detected',
@@ -309,7 +325,7 @@ class CodeAnalyzer
             // Static facade overuse detection
             $staticCalls = preg_match_all('/[A-Z][a-zA-Z]*::[a-zA-Z]/', $code);
             if ($staticCalls > 20) {
-                $finding = new Finding(
+                $finding = new ConcreteFinding(
                     'ISSUE-' . str_pad($this->findingCounter++, 3, '0', STR_PAD_LEFT),
                     'medium',
                     'Excessive static facade usage detected',
@@ -335,7 +351,7 @@ class CodeAnalyzer
             $duplicateBlocks = $this->detectCodeDuplication($lines);
             if (!empty($duplicateBlocks)) {
                 foreach ($duplicateBlocks as $block) {
-                    $finding = new Finding(
+                    $finding = new ConcreteFinding(
                         'ISSUE-' . str_pad($this->findingCounter++, 3, '0', STR_PAD_LEFT),
                         'medium',
                         'Code duplication detected',
@@ -418,7 +434,7 @@ class CodeAnalyzer
             
             // Check namespace declaration
             if (!preg_match('/namespace\s+([^;]+);/', $code, $namespaceMatch)) {
-                $finding = new Finding(
+                $finding = new ConcreteFinding(
                     'ISSUE-' . str_pad($this->findingCounter++, 3, '0', STR_PAD_LEFT),
                     'medium',
                     'Missing namespace declaration',
@@ -442,7 +458,7 @@ class CodeAnalyzer
             $actualNamespace = trim($namespaceMatch[1]);
             
             if ($actualNamespace !== $expectedNamespace) {
-                $finding = new Finding(
+                $finding = new ConcreteFinding(
                     'ISSUE-' . str_pad($this->findingCounter++, 3, '0', STR_PAD_LEFT),
                     'medium',
                     'Incorrect namespace for PSR-4 compliance',
@@ -521,7 +537,7 @@ class CodeAnalyzer
                 if (preg_match('/Route::[a-z]+.*function.*\{/', $line) && 
                     (strpos($code, 'if (') !== false || strpos($code, 'foreach') !== false)) {
                     
-                    $finding = new Finding(
+                    $finding = new ConcreteFinding(
                         'ISSUE-' . str_pad($this->findingCounter++, 3, '0', STR_PAD_LEFT),
                         'medium',
                         'Business logic detected in route file',
@@ -561,7 +577,7 @@ class CodeAnalyzer
             foreach ($lines as $lineNumber => $line) {
                 // Look for direct DB facade usage
                 if (preg_match('/DB::(select|insert|update|delete|raw)/', $line)) {
-                    $finding = new Finding(
+                    $finding = new ConcreteFinding(
                         'ISSUE-' . str_pad($this->findingCounter++, 3, '0', STR_PAD_LEFT),
                         'medium',
                         'Direct database call in controller',
@@ -600,7 +616,7 @@ class CodeAnalyzer
                 if (preg_match('/\$[a-zA-Z_]+->(?:where|find|get|all|first)\(/', $line) ||
                     preg_match('/[A-Z][a-zA-Z]*::(?:where|find|get|all|first)\(/', $line)) {
                     
-                    $finding = new Finding(
+                    $finding = new ConcreteFinding(
                         'ISSUE-' . str_pad($this->findingCounter++, 3, '0', STR_PAD_LEFT),
                         'high',
                         'Database query in Blade template',
@@ -667,7 +683,7 @@ class CodeAnalyzer
             $hasDirectModelUsage = preg_match('/[A-Z][a-zA-Z]*::(find|where|get|all|create|update)/', $code);
             
             if ($hasDirectModelUsage && !$hasRepositoryInjection && $fileInfo['line_count'] > 50) {
-                $finding = new Finding(
+                $finding = new ConcreteFinding(
                     'ISSUE-' . str_pad($this->findingCounter++, 3, '0', STR_PAD_LEFT),
                     'medium',
                     'Controller uses direct model access instead of repository pattern',
@@ -693,7 +709,7 @@ class CodeAnalyzer
         
         // Report on repository pattern adoption
         if (count($repositoryFiles) === 0) {
-            $finding = new Finding(
+            $finding = new ConcreteFinding(
                 'ISSUE-' . str_pad($this->findingCounter++, 3, '0', STR_PAD_LEFT),
                 'low',
                 'No repository pattern implementation found',
@@ -748,7 +764,7 @@ class CodeAnalyzer
                                  preg_match('/use.*Service;/', $code);
             
             if ($hasComplexLogic && !$hasServiceInjection && $fileInfo['line_count'] > 100) {
-                $finding = new Finding(
+                $finding = new ConcreteFinding(
                     'ISSUE-' . str_pad($this->findingCounter++, 3, '0', STR_PAD_LEFT),
                     'medium',
                     'Controller contains business logic that should be in service layer',
@@ -777,7 +793,7 @@ class CodeAnalyzer
         $serviceAdoptionRatio = $controllerCount > 0 ? count($serviceFiles) / $controllerCount : 0;
         
         if ($serviceAdoptionRatio < 0.3 && $controllerCount > 5) {
-            $finding = new Finding(
+            $finding = new ConcreteFinding(
                 'ISSUE-' . str_pad($this->findingCounter++, 3, '0', STR_PAD_LEFT),
                 'medium',
                 'Low service layer adoption - business logic may be scattered',
@@ -819,7 +835,7 @@ class CodeAnalyzer
                 $bootLines = count(explode("\n", $bootMatch[1]));
                 
                 if ($bootLines > 50) {
-                    $finding = new Finding(
+                    $finding = new ConcreteFinding(
                         'ISSUE-' . str_pad($this->findingCounter++, 3, '0', STR_PAD_LEFT),
                         'medium',
                         'Bloated service provider boot method',
@@ -876,7 +892,7 @@ class CodeAnalyzer
                 strpos($code, 'progressBar') === false && 
                 $fileInfo['line_count'] > 100) {
                 
-                $finding = new Finding(
+                $finding = new ConcreteFinding(
                     'ISSUE-' . str_pad($this->findingCounter++, 3, '0', STR_PAD_LEFT),
                     'low',
                     'Long-running command without progress indication',

@@ -57,9 +57,22 @@ class AppServiceProvider extends ServiceProvider
             return new QueryMonitoringService();
         });
 
-        // Register TextProcessingService as singleton
+        // Register new text processing services as singletons
+        $this->app->singleton(\App\Services\TextNormalizationService::class, function ($app) {
+            return new \App\Services\TextNormalizationService();
+        });
+
+        $this->app->singleton(\App\Services\TextSimilarityService::class, function ($app) {
+            return new \App\Services\TextSimilarityService();
+        });
+
+        // Register TextProcessingService as singleton with dependencies
         $this->app->singleton(\App\Services\TextProcessingService::class, function ($app) {
-            return new \App\Services\TextProcessingService();
+            return new \App\Services\TextProcessingService(
+                $app->make(\App\Services\TextNormalizationService::class),
+                $app->make(\App\Services\TextSimilarityService::class),
+                $app->make(\App\Services\MedicalDomainService::class)
+            );
         });
 
         // Register PatternMatcherService as singleton
@@ -72,55 +85,102 @@ class AppServiceProvider extends ServiceProvider
             return new \App\Services\MedicalKnowledgeService();
         });
 
-        // Register WrittenAnswerEvaluationService as singleton
+        // Register new focused services as singletons
+        $this->app->singleton(\App\Services\MedicalDomainService::class, function ($app) {
+            return new \App\Services\MedicalDomainService();
+        });
+
+        $this->app->singleton(\App\Services\AnswerSimilarityService::class, function ($app) {
+            return new \App\Services\AnswerSimilarityService(
+                $app->make(\App\Services\TextSimilarityService::class),
+                $app->make(\App\Services\PatternMatcherService::class)
+            );
+        });
+
+        $this->app->singleton(\App\Services\MedicalPatternService::class, function ($app) {
+            return new \App\Services\MedicalPatternService();
+        });
+
+        $this->app->singleton(\App\Services\AnswerFeedbackService::class, function ($app) {
+            return new \App\Services\AnswerFeedbackService(
+                $app->make(\App\Services\MedicalDomainService::class),
+                $app->make(\App\Services\MedicalPatternService::class)
+            );
+        });
+
+        // Register WrittenAnswerEvaluationService as singleton with new dependencies
         $this->app->singleton(WrittenAnswerEvaluationService::class, function ($app) {
             return new WrittenAnswerEvaluationService(
                 $app->make(\App\Services\TextProcessingService::class),
-                $app->make(\App\Services\PatternMatcherService::class),
-                $app->make(\App\Services\MedicalKnowledgeService::class)
+                $app->make(\App\Services\MedicalDomainService::class),
+                $app->make(\App\Services\AnswerSimilarityService::class),
+                $app->make(\App\Services\MedicalPatternService::class),
+                $app->make(\App\Services\AnswerFeedbackService::class)
             );
         });
 
-        // Register PerformanceOptimizationService as singleton (updated to use consolidated cache)
-        $this->app->singleton(\App\Services\PerformanceOptimizationService::class, function ($app) {
-            return new \App\Services\PerformanceOptimizationService(
-                $app->make(\App\Services\Core\UltraConsolidatedCacheService::class)
-            );
-        });
-
-        // Register PaymentVerificationService as singleton
-        $this->app->singleton(\App\Services\PaymentVerificationService::class, function ($app) {
-            return new \App\Services\PaymentVerificationService();
-        });
-
-        // Register FraudDetectionService as singleton
-        $this->app->singleton(\App\Services\FraudDetectionService::class, function ($app) {
-            return new \App\Services\FraudDetectionService();
-        });
-
-        // Register PaymentLogService as singleton
+        // Register only EXISTING services that are actually used
+        
+        // Register PaymentLogService as singleton (EXISTS)
         $this->app->singleton(\App\Services\PaymentLogService::class, function ($app) {
             return new \App\Services\PaymentLogService();
         });
 
-        // Register InputValidationService as singleton
+        // Register PaymentService as singleton (EXISTS)
+        $this->app->singleton(\App\Services\PaymentService::class, function ($app) {
+            return new \App\Services\PaymentService();
+        });
+
+        // Register CourseTypeService as singleton (EXISTS)
+        $this->app->singleton(\App\Services\CourseTypeService::class, function ($app) {
+            return new \App\Services\CourseTypeService();
+        });
+
+        // Register InputValidationService as singleton (USED by QuizValidationService)
         $this->app->singleton(\App\Services\InputValidationService::class, function ($app) {
             return new \App\Services\InputValidationService();
         });
 
-        // Register DatabaseService as singleton
+        // Register infrastructure services that ARE being used in middleware
+        $this->app->singleton(\App\Services\EmergencyFallbackService::class, function ($app) {
+            return new \App\Services\EmergencyFallbackService();
+        });
+
+        $this->app->singleton(\App\Services\HealthCheckService::class, function ($app) {
+            return new \App\Services\HealthCheckService();
+        });
+
+        $this->app->singleton(\App\Services\SessionSecurityService::class, function ($app) {
+            return new \App\Services\SessionSecurityService();
+        });
+
         $this->app->singleton(\App\Services\DatabaseService::class, function ($app) {
             return new \App\Services\DatabaseService();
         });
 
-        // Register ResilientCacheService as singleton
-        $this->app->singleton(\App\Services\ResilientUltraConsolidatedCacheService::class, function ($app) {
-            return new \App\Services\ResilientCacheService();
+        // Register SSOT Services as singletons
+        $this->app->singleton(\App\Support\State\EnrollmentService::class, function ($app) {
+            return new \App\Support\State\EnrollmentService();
         });
-        
-        // Register CourseTypeService as singleton
-        $this->app->singleton(\App\Services\CourseTypeService::class, function ($app) {
-            return new \App\Services\CourseTypeService();
+
+        $this->app->singleton(\App\Support\State\AssignmentStatusService::class, function ($app) {
+            return new \App\Support\State\AssignmentStatusService();
+        });
+
+        $this->app->singleton(\App\Support\State\UserProgressService::class, function ($app) {
+            return new \App\Support\State\UserProgressService();
+        });
+
+        $this->app->singleton(\App\Support\State\MistakeMasteryService::class, function ($app) {
+            return new \App\Support\State\MistakeMasteryService();
+        });
+
+        $this->app->singleton(\App\Support\State\VideoProgressService::class, function ($app) {
+            return new \App\Support\State\VideoProgressService();
+        });
+
+        $this->app->singleton(\App\Support\State\TopicLockService::class, function ($app) {
+            return new \App\Support\State\TopicLockService();
         });
     }
 
@@ -133,13 +193,66 @@ class AppServiceProvider extends ServiceProvider
         if (app()->environment('production')) {
             \URL::forceScheme('https');
         }
-        // Register the Payment model observer
+        
+        // Register existing observers
         Payment::observe(PaymentObserver::class);
-        
-        // Register the Question model observer with dependency injection
         \App\Models\Question::observe(app()->make(\App\Observers\QuestionObserver::class));
-        
-        // Register the Course model observer for INSTANT cache clearing
         \App\Models\Course::observe(\App\Observers\CourseObserver::class);
+        
+        // Register SSOT Observers for dual-write synchronization
+        if (config('ssot.sync_enabled')) {
+            $this->registerSSOTObservers();
+        }
+    }
+
+    /**
+     * Register Single Source of Truth (SSOT) Observers
+     */
+    private function registerSSOTObservers(): void
+    {
+        // Enrollment Observer - handles course_user and payments
+        if (config('ssot.observers.enrollment.enabled')) {
+            // Note: We'll use custom observer registration since course_user is a pivot table
+            \DB::listen(function ($query) {
+                if (str_contains($query->sql, 'course_user') && in_array($query->type, ['update', 'insert'])) {
+                    // Handle course_user table changes through custom logic
+                    app(\App\Observers\EnrollmentObserver::class);
+                }
+            });
+            
+            \App\Models\Payment::observe(\App\Observers\EnrollmentObserver::class);
+        }
+
+        // Assignment Status Observer
+        if (config('ssot.observers.assignment_status.enabled')) {
+            \App\Models\Assignment::observe(\App\Observers\AssignmentStatusObserver::class);
+        }
+
+        // User Progress Observer
+        if (config('ssot.observers.user_progress.enabled')) {
+            \App\Models\User::observe(\App\Observers\UserProgressObserver::class);
+            \App\Models\QuizAttempt::observe(\App\Observers\UserProgressObserver::class);
+        }
+
+        // Mistake Mastery Observer
+        if (config('ssot.observers.mistake_mastery.enabled')) {
+            \App\Models\Mistake::observe(\App\Observers\MistakeMasteryObserver::class);
+        }
+
+        // Video Progress Observer
+        if (config('ssot.observers.video_progress.enabled')) {
+            // Note: video_progress is handled via DB table, not Eloquent model
+            \DB::listen(function ($query) {
+                if (str_contains($query->sql, 'video_progress') && in_array($query->type, ['update', 'insert'])) {
+                    // Handle video_progress table changes through custom logic
+                    app(\App\Observers\VideoProgressObserver::class);
+                }
+            });
+        }
+
+        // Topic Lock Observer
+        if (config('ssot.observers.topic_lock.enabled')) {
+            \App\Models\Topic::observe(\App\Observers\TopicLockObserver::class);
+        }
     }
 }

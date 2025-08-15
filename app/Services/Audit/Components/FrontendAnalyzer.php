@@ -3,6 +3,7 @@
 namespace App\Services\Audit\Components;
 
 use App\Services\Audit\Models\Finding;
+use App\Services\Audit\Models\ConcreteFinding;
 use App\Services\Audit\Reports\PhaseResult;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Log;
@@ -40,8 +41,14 @@ class FrontendAnalyzer
             // Scan directory first to populate file lists
             $this->fileScanner->scanDirectory($projectPath);
             
-            // 1. Blade Template Analysis
-            $this->analyzeBladeTemplates();
+            // Initialize progress tracking
+            $totalTasks = 8;
+            $currentTask = 0;
+            
+            // 1. Blade Template Analysis with Progress
+            $this->displayTaskProgress(++$currentTask, $totalTasks, "Blade Template Analysis");
+            $this->analyzeBladeTemplatesWithProgress();
+            $this->displayTaskCompletion($currentTask, "Blade Template Analysis", count($this->findings));
             
             // 2. Asset Optimization Measurement
             $this->measureAssetOptimization();
@@ -457,5 +464,157 @@ class FrontendAnalyzer
                 return $finding->getSeverity() === 'medium';
             }))
         ];
+    }
+
+    /**
+
+     * Display real-time task progress with visual progress bar
+     */
+    private function displayTaskProgress(int $currentTask, int $totalTasks, string $taskName): void
+    {
+        $percentage = round((($currentTask - 1) / $totalTasks) * 100);
+        $progressBar = $this->generateProgressBar($percentage);
+        
+        echo "\n🚀 NUCLEAR FRONTEND TASK {$currentTask}/{$totalTasks}: {$taskName}\n";
+        echo "📊 Overall Progress: {$progressBar} {$percentage}%\n";
+        echo "⚡ Status: STARTING - Initializing {$taskName}...\n";
+        
+        // Show what we're about to analyze
+        $this->showTaskPreview($taskName);
+    }
+
+    /**
+     * Display task completion with results
+     */
+    private function displayTaskCompletion(int $taskNumber, string $taskName, int $totalFindings): void
+    {
+        echo "✅ TASK {$taskNumber} COMPLETED: {$taskName}\n";
+        echo "🎯 Findings: {$totalFindings} total issues discovered\n";
+        echo "⚡ Status: READY - Moving to next task...\n";
+        echo str_repeat("-", 60) . "\n";
+    }
+
+    /**
+     * Generate visual progress bar
+     */
+    private function generateProgressBar(int $percentage): string
+    {
+        $barLength = 20;
+        $filledLength = max(0, round(($percentage / 100) * $barLength));
+        $emptyLength = max(0, $barLength - $filledLength);
+        
+        $bar = '[' . str_repeat('█', $filledLength) . str_repeat('░', $emptyLength) . ']';
+        return $bar;
+    }
+
+    /**
+     * Show real-time file processing progress within each task
+     */
+    private function showRealTimeFileProgress(array $files, string $taskName, callable $processor): void
+    {
+        $totalFiles = count($files);
+        if ($totalFiles === 0) {
+            echo "📁 No files found for {$taskName}\n";
+            return;
+        }
+
+        echo "📁 Processing {$totalFiles} files for {$taskName}...\n";
+        
+        foreach ($files as $index => $file) {
+            $fileProgress = round((($index + 1) / $totalFiles) * 100);
+            $fileProgressBar = $this->generateProgressBar($fileProgress);
+            
+            // Show current file being processed
+            $fileName = basename($file['path'] ?? 'unknown');
+            echo "\r🔍 [{$fileProgressBar}] {$fileProgress}% - Analyzing: {$fileName}";
+            
+            // Process the file
+            $processor($file, $index);
+            
+            // Small delay to make progress visible
+            usleep(50000); // 0.05 second
+        }
+        
+        echo "\n✅ Completed processing {$totalFiles} files\n";
+    }
+
+    /**
+     * Show what files/components will be analyzed in this task
+     */
+    private function showTaskPreview(string $taskName): void
+    {
+        switch ($taskName) {
+            case 'Blade Template Analysis':
+                $bladeFiles = $this->fileScanner->getBladeFiles();
+                echo "📋 Will analyze " . count($bladeFiles) . " Blade template files\n";
+                break;
+            case 'XSS Vulnerability Scanning':
+                $bladeFiles = $this->fileScanner->getBladeFiles();
+                echo "📋 Will scan " . count($bladeFiles) . " templates for XSS vulnerabilities\n";
+                break;
+            case 'Asset Bundle Analysis':
+                $jsFiles = $this->fileScanner->getJavaScriptFiles();
+                $cssFiles = $this->fileScanner->getCSSFiles();
+                echo "📋 Will analyze " . count($jsFiles) . " JS files and " . count($cssFiles) . " CSS files\n";
+                break;
+            case 'JavaScript Error Detection':
+                $jsFiles = $this->fileScanner->getJavaScriptFiles();
+                echo "📋 Will detect errors in " . count($jsFiles) . " JavaScript files\n";
+                break;
+            case 'CSS Unused Style Analysis':
+                $cssFiles = $this->fileScanner->getCSSFiles();
+                echo "📋 Will analyze unused styles in " . count($cssFiles) . " CSS files\n";
+                break;
+            default:
+                echo "📋 Preparing to analyze files...\n";
+                break;
+        }
+    }
+
+    /**
+     * Analyze Blade templates with real-time progress
+     */
+    private function analyzeBladeTemplatesWithProgress(): void
+    {
+        $bladeFiles = $this->fileScanner->getBladeFiles();
+        
+        $this->showRealTimeFileProgress($bladeFiles, "Blade Template Analysis", function($file, $index) {
+            if (!isset($file['absolute_path']) || !file_exists($file['absolute_path'])) {
+                return;
+            }
+            
+            $content = file_get_contents($file['absolute_path']);
+            $issues = 0;
+            
+            // Check for embedded queries
+            if (preg_match('/\$[a-zA-Z_][a-zA-Z0-9_]*->/', $content)) {
+                $issues++;
+            }
+            
+            // Check for logic in templates
+            if (preg_match('/@if|@foreach|@for|@while/', $content)) {
+                $issues++;
+            }
+            
+            // Check for raw output
+            if (preg_match('/\{\!\!.*\!\!\}/', $content)) {
+                $issues++;
+            }
+            
+            if ($issues > 2) {
+                $finding = new ConcreteFinding(
+                    'ISSUE-' . str_pad($this->findingCounter++, 3, '0', STR_PAD_LEFT),
+                    'medium',
+                    "Blade template has embedded logic: {$file['path']}",
+                    'frontend',
+                    'blade_logic'
+                );
+                
+                $finding->addFileReference($file['path'], 1, "Issues found: {$issues}");
+                $finding->addMetric('logic_complexity', $issues, 'count');
+                
+                $this->findings[] = $finding;
+            }
+        });
     }
 }

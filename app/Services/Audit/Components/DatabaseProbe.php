@@ -2,7 +2,7 @@
 
 namespace App\Services\Audit\Components;
 
-use App\Services\Audit\Models\Finding;
+use App\Services\Audit\Models\ConcreteFinding;
 use App\Services\Audit\Reports\PhaseResult;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
@@ -42,23 +42,33 @@ class DatabaseProbe
             // Scan directory first to populate file lists
             $this->fileScanner->scanDirectory($projectPath);
             
+            echo "🔍 Database Analysis Progress:\n";
+            
             // 1. CONCRETE EVIDENCE: Migration Chronology Analysis
+            echo "⏳ [1/6] Analyzing migration chronology...\n";
             $this->analyzeMigrationChronology($projectPath);
             
             // 2. CONCRETE EVIDENCE: Eloquent Relationship Validation
+            echo "⏳ [2/6] Validating Eloquent relationships...\n";
             $this->analyzeEloquentRelationships($projectPath);
             
             // 3. CONCRETE EVIDENCE: N+1 Query Detection with Runtime Trace
+            echo "⏳ [3/6] Detecting N+1 query patterns...\n";
             $this->detectN1QueriesWithRuntimeTrace($projectPath);
             
             // 4. CONCRETE EVIDENCE: Index Optimization Analysis
+            echo "⏳ [4/6] Analyzing index optimization...\n";
             $this->analyzeIndexOptimization();
             
             // 5. CONCRETE EVIDENCE: Schema Integrity Validation
+            echo "⏳ [5/6] Validating schema integrity...\n";
             $this->validateSchemaIntegrity();
             
             // 6. CONCRETE EVIDENCE: ER Diagram Generation from Migrations
+            echo "⏳ [6/6] Generating ER diagram from migrations...\n";
             $this->generateERDiagramFromMigrations($projectPath);
+            
+            echo "✅ Database analysis completed!\n";
             
             $executionTime = microtime(true) - $startTime;
             
@@ -95,7 +105,7 @@ class DatabaseProbe
         $migrationFiles = $this->fileScanner->getMigrationFiles();
         
         if (empty($migrationFiles)) {
-            $finding = new Finding(
+            $finding = new ConcreteFinding(
                 'ISSUE-' . str_pad($this->findingCounter++, 3, '0', STR_PAD_LEFT),
                 'critical',
                 'No migration files found - database schema unmanaged',
@@ -189,7 +199,7 @@ class DatabaseProbe
             if (!isset($createdTables[$referencedTable]) || 
                 $createdTables[$referencedTable] > $fkRef['timestamp']) {
                 
-                $finding = new Finding(
+                $finding = new ConcreteFinding(
                     'ISSUE-' . str_pad($this->findingCounter++, 3, '0', STR_PAD_LEFT),
                     'high',
                     'Foreign key references table created later in migration sequence',
@@ -689,7 +699,7 @@ class DatabaseProbe
      */
     private function createN1Finding($controllerFile, $loopLine, $accessLine, $loopCode, $accessCode, $foreachMatch, $accessMatch, $patternType = 'foreach_with_model_access'): void
     {
-        $finding = new Finding(
+        $finding = new ConcreteFinding(
             'ISSUE-' . str_pad($this->findingCounter++, 3, '0', STR_PAD_LEFT),
             'critical',
             'N+1 query pattern detected with exact location - potential performance bottleneck',
@@ -775,7 +785,7 @@ class DatabaseProbe
      */
     private function createBladeN1Finding($bladeFile, $loopLine, $accessLine, $loopCode, $accessCode, $foreachMatch, $accessMatch): void
     {
-        $finding = new Finding(
+        $finding = new ConcreteFinding(
             'ISSUE-' . str_pad($this->findingCounter++, 3, '0', STR_PAD_LEFT),
             'high',
             'N+1 query pattern detected in Blade template - frontend performance bottleneck',
@@ -824,7 +834,7 @@ class DatabaseProbe
      */
     private function createRelationshipConfigurationFinding($modelFile, $lineNumber, $line, $relationshipName, $relationType): void
     {
-        $finding = new Finding(
+        $finding = new ConcreteFinding(
             'ISSUE-' . str_pad($this->findingCounter++, 3, '0', STR_PAD_LEFT),
             'medium',
             'Relationship lacks explicit foreign key configuration - potential N+1 risk',
@@ -859,7 +869,7 @@ class DatabaseProbe
      */
     private function createRuntimeN1Finding(string $pattern, array $data): void
     {
-        $finding = new Finding(
+        $finding = new ConcreteFinding(
             'ISSUE-' . str_pad($this->findingCounter++, 3, '0', STR_PAD_LEFT),
             'critical',
             'Runtime N+1 query pattern detected - ' . $data['count'] . ' identical queries executed',
@@ -1015,7 +1025,7 @@ class DatabaseProbe
      */
     private function createMissingIndexFinding(string $tableName, string $columnName, string $reason): void
     {
-        $finding = new Finding(
+        $finding = new ConcreteFinding(
             'ISSUE-' . str_pad($this->findingCounter++, 3, '0', STR_PAD_LEFT),
             'medium',
             "Missing database index on {$reason} column",
@@ -1106,7 +1116,7 @@ class DatabaseProbe
                 ", [$databaseName, $fk->REFERENCED_TABLE_NAME]);
                 
                 if ($tableExists[0]->count == 0) {
-                    $finding = new Finding(
+                    $finding = new ConcreteFinding(
                         'ISSUE-' . str_pad($this->findingCounter++, 3, '0', STR_PAD_LEFT),
                         'high',
                         'Orphaned foreign key constraint - referenced table does not exist',
@@ -1261,7 +1271,7 @@ class DatabaseProbe
             file_put_contents($diagramPath, $mermaidDiagram);
             
             // Create finding for ER diagram generation
-            $finding = new Finding(
+            $finding = new ConcreteFinding(
                 'ISSUE-' . str_pad($this->findingCounter++, 3, '0', STR_PAD_LEFT),
                 'info',
                 'ER diagram generated from migration analysis',

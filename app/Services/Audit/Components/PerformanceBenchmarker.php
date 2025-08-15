@@ -2,7 +2,7 @@
 
 namespace App\Services\Audit\Components;
 
-use App\Services\Audit\Models\Finding;
+use App\Services\Audit\Models\ConcreteFinding;
 use App\Services\Audit\Reports\PhaseResult;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Cache;
@@ -111,7 +111,6 @@ class PerformanceBenchmarker
     {
         $criticalRoutes = [];
         
-        $routes = $routes->load('uri');
         foreach ($routes as $route) {
             $uri = $route->uri();
             $methods = $route->methods();
@@ -236,7 +235,7 @@ class PerformanceBenchmarker
         
         if (empty($successfulResults)) {
             // Route completely failed
-            $finding = new Finding(
+            $finding = new ConcreteFinding(
                 'ISSUE-' . str_pad($this->findingCounter++, 3, '0', STR_PAD_LEFT),
                 'critical',
                 'Route completely inaccessible during performance testing',
@@ -269,7 +268,7 @@ class PerformanceBenchmarker
         
         // Check for slow routes (>2000ms average)
         if ($avgResponseTime > 2000) {
-            $finding = new Finding(
+            $finding = new ConcreteFinding(
                 'ISSUE-' . str_pad($this->findingCounter++, 3, '0', STR_PAD_LEFT),
                 'high',
                 'Slow route performance detected - exceeds acceptable response time',
@@ -306,7 +305,7 @@ class PerformanceBenchmarker
         // Check for high response time variance (inconsistent performance)
         $variance = max($responseTimes) - min($responseTimes);
         if ($variance > 1000) { // More than 1 second variance
-            $finding = new Finding(
+            $finding = new ConcreteFinding(
                 'ISSUE-' . str_pad($this->findingCounter++, 3, '0', STR_PAD_LEFT),
                 'medium',
                 'Inconsistent route performance - high response time variance',
@@ -365,7 +364,7 @@ class PerformanceBenchmarker
         $memoryUsagePercentage = ($peakMemory / $memoryLimit) * 100;
         
         if ($memoryUsagePercentage > 80) {
-            $finding = new Finding(
+            $finding = new ConcreteFinding(
                 'ISSUE-' . str_pad($this->findingCounter++, 3, '0', STR_PAD_LEFT),
                 'high',
                 'High memory usage detected - approaching memory limit',
@@ -421,7 +420,7 @@ class PerformanceBenchmarker
         
         // Analyze cache performance
         if ($writeTime > 100 || $readTime > 50) { // Slow cache operations
-            $finding = new Finding(
+            $finding = new ConcreteFinding(
                 'ISSUE-' . str_pad($this->findingCounter++, 3, '0', STR_PAD_LEFT),
                 'medium',
                 'Slow cache operations detected - performance impact',
@@ -476,7 +475,7 @@ class PerformanceBenchmarker
             // Analyze query performance
             foreach ($queries as $query) {
                 if ($query['time'] > 1000) { // Queries taking more than 1 second
-                    $finding = new Finding(
+                    $finding = new ConcreteFinding(
                         'ISSUE-' . str_pad($this->findingCounter++, 3, '0', STR_PAD_LEFT),
                         'high',
                         'Slow database query detected - performance bottleneck',
@@ -559,7 +558,7 @@ class PerformanceBenchmarker
         
         // Analyze concurrent load results
         if ($successRate < 80) {
-            $finding = new Finding(
+            $finding = new ConcreteFinding(
                 'ISSUE-' . str_pad($this->findingCounter++, 3, '0', STR_PAD_LEFT),
                 'high',
                 'Poor concurrent load handling - high failure rate under load',

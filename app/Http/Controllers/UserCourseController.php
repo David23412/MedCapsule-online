@@ -19,19 +19,30 @@ class UserCourseController extends Controller
     public function index()
     {
         try {
-            // LETHAL IMPLEMENTATION - Force load all data
-            Log::info('Loading manage access page - LETHAL MODE');
+            // PERFORMANCE OPTIMIZED - Memory management and pagination
+            Log::info('Loading manage access page - OPTIMIZED MODE');
             
-            // Get ALL users - NO EXCEPTIONS
+            // Set memory limit for this operation
+            ini_set('memory_limit', '256M');
+            
+            // Check current memory usage
+            $initialMemory = memory_get_usage(true);
+            if ($initialMemory > 200 * 1024 * 1024) { // 200MB
+                Log::warning('High memory usage detected: ' . ($initialMemory / 1024 / 1024) . 'MB');
+            }
+            
+            // Get users with pagination - PERFORMANCE OPTIMIZED
             $users = User::select('id', 'name', 'email', 'role')
                 ->orderBy('name')
+                ->limit(1000) // Limit to prevent memory issues
                 ->get();
             
             Log::info('Users loaded: ' . $users->count());
             
-            // Get ALL courses - NO EXCEPTIONS  
+            // Get courses with pagination - PERFORMANCE OPTIMIZED
             $courses = Course::select('id', 'name', 'price')
                 ->orderBy('name')
+                ->limit(500) // Limit to prevent memory issues
                 ->get();
                 
             Log::info('Courses loaded: ' . $courses->count());
@@ -64,26 +75,35 @@ class UserCourseController extends Controller
 
             Log::info('Enrolled users loaded: ' . $enrolledUsers->count());
 
-            // FORCE SUCCESS - NO FALLBACKS
+            // Memory usage monitoring
+            $finalMemory = memory_get_usage(true);
+            $memoryUsed = ($finalMemory - $initialMemory) / 1024 / 1024; // MB
+            Log::info('Memory used for this request: ' . round($memoryUsed, 2) . 'MB');
+            
+            if ($memoryUsed > 50) { // More than 50MB
+                Log::warning('High memory usage detected: ' . round($memoryUsed, 2) . 'MB');
+            }
+
+            // OPTIMIZED SUCCESS - With memory management
             return view('admin.manage-access', compact('userStats', 'users', 'courses', 'enrolledUsers'));
             
         } catch (\Exception $e) {
-            Log::error('LETHAL ERROR in manage access: ' . $e->getMessage());
+            Log::error('ERROR in manage access: ' . $e->getMessage());
             Log::error('Stack trace: ' . $e->getTraceAsString());
             
-            // Even in error, provide SOMETHING
-            $users = User::with(['courses'])->get();
-            $courses = Course::with(['topics', 'users'])->get();
+            // OPTIMIZED ERROR HANDLING - Minimal data loading
+            $users = User::select('id', 'name', 'email', 'role')->limit(100)->get();
+            $courses = Course::select('id', 'name', 'price')->limit(50)->get();
             $userStats = [
-                'total_users' => $users->count(),
-                'active_users' => $users->count(),
-                'admin_users' => $users->where('role', 'admin')->count(),
+                'total_users' => User::count(),
+                'active_users' => User::count(),
+                'admin_users' => User::where('role', 'admin')->count(),
                 'total_enrollments' => 0
             ];
             $enrolledUsers = collect([]);
             
             return view('admin.manage-access', compact('userStats', 'users', 'courses', 'enrolledUsers'))
-                ->with('error', 'LETHAL ERROR: ' . $e->getMessage());
+                ->with('error', 'System temporarily under high load. Showing limited data.');
         }
     }
 

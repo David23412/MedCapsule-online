@@ -1,6 +1,6 @@
 # Database ER Diagram
 
-Generated from migration analysis on 2025-08-06 13:46:10
+Generated from migration analysis on 2025-08-15 03:08:57
 
 ```mermaid
 erDiagram
@@ -157,16 +157,6 @@ erDiagram
         TIMESTAMP id
     }
 
-    notifications {
-        BIGINT id PK
-        STRING title
-        STRING type
-        TEXT message
-        BOOLEAN is_read
-        TIMESTAMP read_at
-        TIMESTAMP id
-    }
-
     assignments {
         BIGINT id PK
         STRING title
@@ -180,13 +170,13 @@ erDiagram
         STRING reference_number
         STRING payment_method
         STRING status
-        BOOLEAN is_bundle
         TIMESTAMP paid_at
         TIMESTAMP id
     }
 
     assignment_users {
         BIGINT id PK
+        TIMESTAMP extended_deadline
         TIMESTAMP id
     }
 
@@ -200,15 +190,34 @@ erDiagram
         TIMESTAMP id
     }
 
+    videos {
+        BIGINT id PK
+        STRING youtube_video_id
+        STRING title
+        INTEGER duration
+        TEXT description
+        BOOLEAN is_active
+        TIMESTAMP id
+    }
+
+    video_progress {
+        BIGINT id PK
+        INTEGER watch_time_seconds
+        INTEGER total_duration_seconds
+        BOOLEAN completed
+        TIMESTAMP last_watched_at
+        TIMESTAMP id
+    }
+
 
 ```
 
 ## Metadata
 
-- **Tables**: 21
+- **Tables**: 22
 - **Relationships**: 0
-- **Migration Files Analyzed**: 19
-- **Generated**: 2025-08-06 13:46:10
+- **Migration Files Analyzed**: 20
+- **Generated**: 2025-08-15 03:08:57
 
 ## Table Details
 
@@ -276,23 +285,27 @@ erDiagram
 - **Migration**: `database/migrations/2024_03_22_000001_create_user_topic_progress_table.php`
 - **Columns**: 3
 
-### notifications
-- **Migration**: `database/migrations/2024_04_21_000001_create_notifications_table.php`
-- **Columns**: 7
-
 ### assignments
 - **Migration**: `database/migrations/2025_01_19_000001_create_assignments_table.php`
 - **Columns**: 5
 
 ### payments
 - **Migration**: `database/migrations/2025_04_12_040013_create_payments_table.php`
-- **Columns**: 7
+- **Columns**: 6
 
 ### assignment_users
 - **Migration**: `database/migrations/2025_08_03_034733_create_assignment_users_table.php`
-- **Columns**: 2
+- **Columns**: 3
 
 ### session_security_logs
 - **Migration**: `database/migrations/2025_08_05_000001_add_comprehensive_session_security.php`
 - **Columns**: 7
+
+### videos
+- **Migration**: `database/migrations/2025_08_10_000001_create_videos_table.php`
+- **Columns**: 7
+
+### video_progress
+- **Migration**: `database/migrations/2025_08_10_000002_create_video_progress_table.php`
+- **Columns**: 6
 

@@ -2,7 +2,7 @@
 
 namespace App\Services\Audit\Components;
 
-use App\Services\Audit\Models\Finding;
+use App\Services\Audit\Models\ConcreteFinding;
 use App\Services\Audit\Reports\PhaseResult;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Log;
@@ -58,6 +58,9 @@ class BusinessLogicValidator
             
             // 6. CONCRETE EVIDENCE: State Management Analysis
             $this->analyzeStateManagement();
+            
+            // 7. CONCRETE EVIDENCE: Edge Case Handling Assessment
+            $this->assessEdgeCaseHandling();
             
             $executionTime = microtime(true) - $startTime;
             
@@ -115,7 +118,7 @@ class BusinessLogicValidator
                     if (!preg_match('/validate|check|verify|min|max/', $context)) {
                         $quizIssues++;
                         
-                        $finding = new Finding(
+                        $finding = new ConcreteFinding(
                             'ISSUE-' . str_pad($this->findingCounter++, 3, '0', STR_PAD_LEFT),
                             'high',
                             'Quiz scoring logic without validation detected',
@@ -146,7 +149,7 @@ class BusinessLogicValidator
                     if (!preg_match('/seed|srand|mt_srand/', $content)) {
                         $quizIssues++;
                         
-                        $finding = new Finding(
+                        $finding = new ConcreteFinding(
                             'ISSUE-' . str_pad($this->findingCounter++, 3, '0', STR_PAD_LEFT),
                             'medium',
                             'Question randomization without proper seeding',
@@ -180,7 +183,7 @@ class BusinessLogicValidator
                     if (!preg_match('/Carbon|DateTime|time\(\)|now\(\)/', $context)) {
                         $quizIssues++;
                         
-                        $finding = new Finding(
+                        $finding = new ConcreteFinding(
                             'ISSUE-' . str_pad($this->findingCounter++, 3, '0', STR_PAD_LEFT),
                             'high',
                             'Quiz time limit without proper time validation',
@@ -242,7 +245,7 @@ class BusinessLogicValidator
                     if (preg_match('/\/|\bdiv\b/', $context) && !preg_match('/!==?\s*0|>\s*0|if.*0/', $context)) {
                         $gradingIssues++;
                         
-                        $finding = new Finding(
+                        $finding = new ConcreteFinding(
                             'ISSUE-' . str_pad($this->findingCounter++, 3, '0', STR_PAD_LEFT),
                             'critical',
                             'Grade calculation without division by zero protection',
@@ -273,7 +276,7 @@ class BusinessLogicValidator
                     if (!preg_match('/100|0\.0|1\.0/', $line)) {
                         $gradingIssues++;
                         
-                        $finding = new Finding(
+                        $finding = new ConcreteFinding(
                             'ISSUE-' . str_pad($this->findingCounter++, 3, '0', STR_PAD_LEFT),
                             'medium',
                             'Grade boundary without clear limits',
@@ -307,7 +310,7 @@ class BusinessLogicValidator
                     if (!preg_match('/sum.*weight|total.*weight|array_sum/', $context)) {
                         $gradingIssues++;
                         
-                        $finding = new Finding(
+                        $finding = new ConcreteFinding(
                             'ISSUE-' . str_pad($this->findingCounter++, 3, '0', STR_PAD_LEFT),
                             'high',
                             'Weighted grading without weight validation',
@@ -368,7 +371,7 @@ class BusinessLogicValidator
                     if (!preg_match('/validate|rules|required/', $context)) {
                         $userMgmtIssues++;
                         
-                        $finding = new Finding(
+                        $finding = new ConcreteFinding(
                             'ISSUE-' . str_pad($this->findingCounter++, 3, '0', STR_PAD_LEFT),
                             'high',
                             'User creation without proper validation',
@@ -401,7 +404,7 @@ class BusinessLogicValidator
                     if (!preg_match('/auth.*check|can\(|authorize/', $context)) {
                         $userMgmtIssues++;
                         
-                        $finding = new Finding(
+                        $finding = new ConcreteFinding(
                             'ISSUE-' . str_pad($this->findingCounter++, 3, '0', STR_PAD_LEFT),
                             'critical',
                             'Role assignment without authorization check',
@@ -434,7 +437,7 @@ class BusinessLogicValidator
                     if (!preg_match('/token|verify|expire/', $context)) {
                         $userMgmtIssues++;
                         
-                        $finding = new Finding(
+                        $finding = new ConcreteFinding(
                             'ISSUE-' . str_pad($this->findingCounter++, 3, '0', STR_PAD_LEFT),
                             'critical',
                             'Password reset without proper token validation',
@@ -492,7 +495,7 @@ class BusinessLogicValidator
                     if (!preg_match('/queue|dispatch|job/', $line)) {
                         $notificationIssues++;
                         
-                        $finding = new Finding(
+                        $finding = new ConcreteFinding(
                             'ISSUE-' . str_pad($this->findingCounter++, 3, '0', STR_PAD_LEFT),
                             'medium',
                             'Email sending without queue - performance impact',
@@ -525,7 +528,7 @@ class BusinessLogicValidator
                     if (!preg_match('/try.*catch|rescue|fail|error/', $context)) {
                         $notificationIssues++;
                         
-                        $finding = new Finding(
+                        $finding = new ConcreteFinding(
                             'ISSUE-' . str_pad($this->findingCounter++, 3, '0', STR_PAD_LEFT),
                             'medium',
                             'Notification without failure handling',
@@ -588,7 +591,7 @@ class BusinessLogicValidator
                     if (!preg_match('/DB::transaction|beginTransaction|commit|rollback/', $context)) {
                         $paymentIssues++;
                         
-                        $finding = new Finding(
+                        $finding = new ConcreteFinding(
                             'ISSUE-' . str_pad($this->findingCounter++, 3, '0', STR_PAD_LEFT),
                             'critical',
                             'Payment processing without database transaction',
@@ -621,7 +624,7 @@ class BusinessLogicValidator
                     if (!preg_match('/validate|is_numeric|floatval|intval|>.*0/', $context)) {
                         $paymentIssues++;
                         
-                        $finding = new Finding(
+                        $finding = new ConcreteFinding(
                             'ISSUE-' . str_pad($this->findingCounter++, 3, '0', STR_PAD_LEFT),
                             'critical',
                             'Payment amount without validation',
@@ -654,7 +657,7 @@ class BusinessLogicValidator
                     if (!preg_match('/log|audit|record|history/', $context)) {
                         $paymentIssues++;
                         
-                        $finding = new Finding(
+                        $finding = new ConcreteFinding(
                             'ISSUE-' . str_pad($this->findingCounter++, 3, '0', STR_PAD_LEFT),
                             'high',
                             'Refund processing without audit trail',
@@ -708,7 +711,7 @@ class BusinessLogicValidator
                     if (!preg_match('/validate|check|verify|can.*transition/', $context)) {
                         $stateIssues++;
                         
-                        $finding = new Finding(
+                        $finding = new ConcreteFinding(
                             'ISSUE-' . str_pad($this->findingCounter++, 3, '0', STR_PAD_LEFT),
                             'high',
                             'State transition without validation',
@@ -741,7 +744,7 @@ class BusinessLogicValidator
                     if (!preg_match('/lockForUpdate|version|updated_at/', $context)) {
                         $stateIssues++;
                         
-                        $finding = new Finding(
+                        $finding = new ConcreteFinding(
                             'ISSUE-' . str_pad($this->findingCounter++, 3, '0', STR_PAD_LEFT),
                             'medium',
                             'State modification without concurrency protection',
@@ -773,6 +776,230 @@ class BusinessLogicValidator
     }
 
     /**
+     * Assess edge case handling with CONCRETE EVIDENCE
+     */
+    public function assessEdgeCaseHandling(): void
+    {
+        Log::info('🔍 Assessing Edge Case Handling');
+        
+        $phpFiles = $this->fileScanner->getPHPFiles();
+        $edgeCaseIssues = 0;
+        
+        foreach ($phpFiles as $file) {
+            $content = file_get_contents($file['absolute_path']);
+            $lines = explode("\n", $content);
+            
+            foreach ($lines as $lineNumber => $line) {
+                // 1. Check for array access without bounds checking
+                if (preg_match('/\$\w+\[\d+\]|\$\w+\[\$\w+\]/', $line)) {
+                    $contextLines = array_slice($lines, max(0, $lineNumber - 3), 7);
+                    $context = implode("\n", $contextLines);
+                    
+                    if (!preg_match('/isset|array_key_exists|count|empty|!empty/', $context)) {
+                        $edgeCaseIssues++;
+                        
+                        $finding = new ConcreteFinding(
+                            'ISSUE-' . str_pad($this->findingCounter++, 3, '0', STR_PAD_LEFT),
+                            'medium',
+                            'Array access without bounds checking',
+                            'business_logic',
+                            'array_bounds'
+                        );
+                        
+                        $finding->addFileReference($file['path'], $lineNumber + 1, trim($line));
+                        $finding->addMetric('issue_type', 'Array Bounds Risk', 'reliability');
+                        $finding->addMetric('risk_score', 6.0, 'score_out_of_10');
+                        
+                        $finding->addEvidence('static_analysis', [
+                            'array_access_line' => trim($line),
+                            'file_path' => $file['path'],
+                            'bounds_check' => false
+                        ], 'Array access without bounds checking detected');
+                        
+                        $finding->setRecommendation('Add isset() or array_key_exists() check before array access');
+                        $finding->setEstimatedHours(1);
+                        
+                        $this->findings[] = $finding;
+                    }
+                }
+                
+                // 2. Check for null pointer dereference risk
+                if (preg_match('/\$\w+->\w+|\$\w+\[\w+\]->\w+/', $line)) {
+                    $contextLines = array_slice($lines, max(0, $lineNumber - 3), 7);
+                    $context = implode("\n", $contextLines);
+                    
+                    if (!preg_match('/!is_null|!== null|is_null.*return|if.*null/', $context)) {
+                        $edgeCaseIssues++;
+                        
+                        $finding = new ConcreteFinding(
+                            'ISSUE-' . str_pad($this->findingCounter++, 3, '0', STR_PAD_LEFT),
+                            'high',
+                            'Potential null pointer dereference',
+                            'business_logic',
+                            'null_dereference'
+                        );
+                        
+                        $finding->addFileReference($file['path'], $lineNumber + 1, trim($line));
+                        $finding->addMetric('issue_type', 'Null Dereference Risk', 'reliability');
+                        $finding->addMetric('risk_score', 7.5, 'score_out_of_10');
+                        
+                        $finding->addEvidence('static_analysis', [
+                            'dereference_line' => trim($line),
+                            'file_path' => $file['path'],
+                            'null_check' => false
+                        ], 'Potential null pointer dereference detected');
+                        
+                        $finding->setRecommendation('Add null check before object method calls');
+                        $finding->setEstimatedHours(1);
+                        
+                        $this->findings[] = $finding;
+                    }
+                }
+                
+                // 3. Check for empty string/collection handling
+                if (preg_match('/foreach\s*\(\s*\$\w+/', $line)) {
+                    $contextLines = array_slice($lines, max(0, $lineNumber - 3), 7);
+                    $context = implode("\n", $contextLines);
+                    
+                    if (!preg_match('/empty|count|is_array/', $context)) {
+                        $edgeCaseIssues++;
+                        
+                        $finding = new ConcreteFinding(
+                            'ISSUE-' . str_pad($this->findingCounter++, 3, '0', STR_PAD_LEFT),
+                            'low',
+                            'Foreach loop without empty collection check',
+                            'business_logic',
+                            'empty_collection'
+                        );
+                        
+                        $finding->addFileReference($file['path'], $lineNumber + 1, trim($line));
+                        $finding->addMetric('issue_type', 'Empty Collection Risk', 'reliability');
+                        $finding->addMetric('risk_score', 4.0, 'score_out_of_10');
+                        
+                        $finding->addEvidence('static_analysis', [
+                            'foreach_line' => trim($line),
+                            'file_path' => $file['path'],
+                            'empty_check' => false
+                        ], 'Foreach without empty collection check detected');
+                        
+                        $finding->setRecommendation('Add empty() check before foreach loops');
+                        $finding->setEstimatedHours(1);
+                        
+                        $this->findings[] = $finding;
+                    }
+                }
+                
+                // 4. Check for integer overflow in calculations
+                if (preg_match('/\*|\+|\-|\//', $line) && preg_match('/\$\w+.*\$\w+/', $line)) {
+                    $contextLines = array_slice($lines, max(0, $lineNumber - 5), 10);
+                    $context = implode("\n", $contextLines);
+                    
+                    if (preg_match('/PHP_INT_MAX|bcmath|gmp/', $context) === false && 
+                        preg_match('/price|amount|total|sum|count/', $line)) {
+                        $edgeCaseIssues++;
+                        
+                        $finding = new ConcreteFinding(
+                            'ISSUE-' . str_pad($this->findingCounter++, 3, '0', STR_PAD_LEFT),
+                            'medium',
+                            'Arithmetic operation without overflow protection',
+                            'business_logic',
+                            'integer_overflow'
+                        );
+                        
+                        $finding->addFileReference($file['path'], $lineNumber + 1, trim($line));
+                        $finding->addMetric('issue_type', 'Overflow Risk', 'reliability');
+                        $finding->addMetric('risk_score', 5.5, 'score_out_of_10');
+                        
+                        $finding->addEvidence('static_analysis', [
+                            'calculation_line' => trim($line),
+                            'file_path' => $file['path'],
+                            'overflow_protection' => false
+                        ], 'Arithmetic operation without overflow protection detected');
+                        
+                        $finding->setRecommendation('Consider using bcmath for large number calculations');
+                        $finding->setEstimatedHours(2);
+                        
+                        $this->findings[] = $finding;
+                    }
+                }
+                
+                // 5. Check for unhandled exceptions in critical paths
+                if (preg_match('/throw new|throw \$/', $line)) {
+                    $contextLines = array_slice($lines, $lineNumber, 20);
+                    $context = implode("\n", $contextLines);
+                    
+                    // Look for the calling context
+                    $callingContext = array_slice($lines, max(0, $lineNumber - 20), 20);
+                    $callingContextStr = implode("\n", $callingContext);
+                    
+                    if (!preg_match('/try.*catch|rescue/', $callingContextStr)) {
+                        $edgeCaseIssues++;
+                        
+                        $finding = new ConcreteFinding(
+                            'ISSUE-' . str_pad($this->findingCounter++, 3, '0', STR_PAD_LEFT),
+                            'medium',
+                            'Exception thrown without surrounding try-catch',
+                            'business_logic',
+                            'unhandled_exception'
+                        );
+                        
+                        $finding->addFileReference($file['path'], $lineNumber + 1, trim($line));
+                        $finding->addMetric('issue_type', 'Unhandled Exception', 'reliability');
+                        $finding->addMetric('risk_score', 6.5, 'score_out_of_10');
+                        
+                        $finding->addEvidence('static_analysis', [
+                            'exception_line' => trim($line),
+                            'file_path' => $file['path'],
+                            'try_catch_present' => false
+                        ], 'Exception without try-catch context detected');
+                        
+                        $finding->setRecommendation('Ensure exceptions are properly caught and handled');
+                        $finding->setEstimatedHours(2);
+                        
+                        $this->findings[] = $finding;
+                    }
+                }
+                
+                // 6. Check for timezone handling in date operations
+                if (preg_match('/date\(|strtotime|DateTime|Carbon/', $line)) {
+                    $contextLines = array_slice($lines, max(0, $lineNumber - 5), 10);
+                    $context = implode("\n", $contextLines);
+                    
+                    if (!preg_match('/timezone|UTC|setTimezone/', $context)) {
+                        $edgeCaseIssues++;
+                        
+                        $finding = new ConcreteFinding(
+                            'ISSUE-' . str_pad($this->findingCounter++, 3, '0', STR_PAD_LEFT),
+                            'low',
+                            'Date operation without explicit timezone handling',
+                            'business_logic',
+                            'timezone_handling'
+                        );
+                        
+                        $finding->addFileReference($file['path'], $lineNumber + 1, trim($line));
+                        $finding->addMetric('issue_type', 'Timezone Risk', 'reliability');
+                        $finding->addMetric('risk_score', 4.5, 'score_out_of_10');
+                        
+                        $finding->addEvidence('static_analysis', [
+                            'date_line' => trim($line),
+                            'file_path' => $file['path'],
+                            'timezone_explicit' => false
+                        ], 'Date operation without timezone handling detected');
+                        
+                        $finding->setRecommendation('Explicitly handle timezones in date operations');
+                        $finding->setEstimatedHours(1);
+                        
+                        $this->findings[] = $finding;
+                    }
+                }
+            }
+        }
+        
+        $this->businessMetrics['edge_case_issues'] = $edgeCaseIssues;
+        Log::info("Found {$edgeCaseIssues} edge case handling issues");
+    }
+
+    /**
      * Generate business logic metrics
      */
     private function generateBusinessMetrics(): array
@@ -785,12 +1012,22 @@ class BusinessLogicValidator
             'notification_issues' => $this->businessMetrics['notification_issues'] ?? 0,
             'payment_processing_issues' => $this->businessMetrics['payment_processing_issues'] ?? 0,
             'state_management_issues' => $this->businessMetrics['state_management_issues'] ?? 0,
+            'edge_case_issues' => $this->businessMetrics['edge_case_issues'] ?? 0,
             'critical_business_risks' => count(array_filter($this->findings, function($finding) {
                 return $finding->getSeverity() === 'critical';
             })),
             'high_business_risks' => count(array_filter($this->findings, function($finding) {
                 return $finding->getSeverity() === 'high';
-            }))
+            })),
+            'business_logic_coverage' => [
+                'quiz_system' => true,
+                'grading_mechanics' => true,
+                'user_management' => true,
+                'notifications' => true,
+                'payments' => true,
+                'state_management' => true,
+                'edge_cases' => true
+            ]
         ];
     }
 }
