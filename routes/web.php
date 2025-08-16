@@ -40,14 +40,16 @@ Route::prefix('api/progress')->middleware('auth')->group(function () {
     Route::post('/store-assignment', [App\Http\Controllers\ProgressUpdateController::class, 'storeAssignmentCompletion'])->name('progress.store-assignment');
 });
 
-// Real-time enrollment status check
-Route::post('/api/check-enrollment-status', function(Request $request) {
-    $courseIds = $request->input('course_ids', []);
-    $userId = auth()->id();
+// ✅ SECURITY FIX: Real-time enrollment status check with authentication
+Route::middleware('auth')->post('/api/check-enrollment-status', function(Request $request) {
+    // ✅ SECURITY FIX: Add input validation
+    $validated = $request->validate([
+        'course_ids' => 'required|array',
+        'course_ids.*' => 'integer|exists:courses,id'
+    ]);
     
-    if (!$userId || empty($courseIds)) {
-        return response()->json(['success' => false]);
-    }
+    $courseIds = $validated['course_ids'];
+    $userId = auth()->id();
     
     // Get current enrollment status for all courses
     $enrollments = DB::table('course_user')
@@ -139,9 +141,9 @@ Route::get('/api/active-users', function() {
 Route::middleware(['auth', 'admin'])->group(function () {
     Route::get('/manage-access', [UserCourseController::class, 'index'])->name('admin.user-course');
     
-    // Manage Access Routes - NO CSRF but with admin protection
-    Route::post('/manage-access/enroll', [UserCourseController::class, 'enroll'])->name('admin.user-course.enroll')->withoutMiddleware([\App\Http\Middleware\VerifyCsrfToken::class]);
-    Route::post('/manage-access/revoke', [UserCourseController::class, 'revoke'])->name('admin.user-course.revoke')->withoutMiddleware([\App\Http\Middleware\VerifyCsrfToken::class]);
+    // ✅ SECURITY FIX: Manage Access Routes - RESTORED CSRF PROTECTION
+    Route::post('/manage-access/enroll', [UserCourseController::class, 'enroll'])->name('admin.user-course.enroll');
+    Route::post('/manage-access/revoke', [UserCourseController::class, 'revoke'])->name('admin.user-course.revoke');
 });
 // Route removed - restore functionality is handled by revoke method (toggle)
 

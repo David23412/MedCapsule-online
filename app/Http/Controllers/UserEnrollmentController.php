@@ -170,4 +170,35 @@ class UserEnrollmentController extends Controller
             ], 500);
         }
     }
+
+    /**
+     * ✅ MOVED FROM FAT CONTROLLER: Enroll current user in a course
+     */
+    public function enrollSelf(Request $request, $courseId)
+    {
+        try {
+            $user = auth()->user();
+            
+            if (!$user) {
+                return redirect()->route('login')->with('error', 'Please log in to enroll in courses.');
+            }
+
+            $result = $this->enrollmentService->enrollUser($user->id, $courseId);
+            
+            if ($result['success']) {
+                return redirect()->back()->with('success', $result['message']);
+            } else {
+                return redirect()->back()->with('error', $result['message']);
+            }
+
+        } catch (\Exception $e) {
+            Log::error('❌ Self enrollment error:', [
+                'user_id' => auth()->id(),
+                'course_id' => $courseId,
+                'message' => $e->getMessage()
+            ]);
+
+            return redirect()->back()->with('error', 'An error occurred while enrolling. Please try again.');
+        }
+    }
 }

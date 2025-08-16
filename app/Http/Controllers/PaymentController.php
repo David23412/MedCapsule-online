@@ -8,6 +8,12 @@ use Illuminate\Support\Facades\Log;
 
 class PaymentController extends Controller
 {
+    public function __construct()
+    {
+        // ✅ SECURITY FIX: Add authentication and admin authorization
+        $this->middleware(['auth', 'admin']);
+    }
+
     public function adminPaymentHistory(Request $request)
     {
         $query = Payment::with('user', 'course');
@@ -26,10 +32,16 @@ class PaymentController extends Controller
                 ->orWhere('reference_number', 'like', "%{$search}%")
                 ->orWhere('payment_data->transaction_id', 'like', "%{$search}%");
             });
-        }// Transform data for frontend
+        }
+        
+        // ✅ BUG FIX: Get paginated payments (was missing)
+        $payments = $query->latest()->paginate(20);
+        
+        // Transform data for frontend
         $transformedPayments = $payments->getCollection()->map(function($payment) {
             return [
-                'id' => $payment->id,'user_email' => $payment->user->email ?? 'No Email',
+                'id' => $payment->id,
+                'user_email' => $payment->user->email ?? 'No Email',
                 'course_name' => $payment->course->name ?? 'Unknown Course',
                 'amount' => $payment->amount,
                 'currency' => 'EGP',

@@ -30,7 +30,23 @@ class EnrollmentService
                 'course_name' => $course->name
             ]);
 
-            // Check if enrollment already exists
+            // Check if user is already enrolled using efficient cache
+            $alreadyEnrolled = Cache::remember("course_enrollment_check_{$courseId}_{$userId}", 300, function() use ($courseId, $userId) { 
+                return DB::table('course_user')
+                    ->where('course_id', $courseId)
+                    ->where('user_id', $userId)
+                    ->where('is_enrolled', 1)
+                    ->exists(); 
+            });
+            
+            if ($alreadyEnrolled) {
+                return [
+                    'success' => false,
+                    'message' => "User '{$user->name}' is already enrolled in course '{$course->name}'"
+                ];
+            }
+
+            // Check if enrollment record exists but is disabled
             $existingEnrollment = DB::table('course_user')
                 ->where('user_id', $user->id)
                 ->where('course_id', $course->id)
@@ -53,21 +69,22 @@ class EnrollmentService
             } else {
                 Log::info('➕ Creating new enrollment');
                 
-                // Create new enrollment
-                DB::table('course_user')->insert([
-                    'user_id' => $user->id,
-                    'course_id' => $course->id,
-                    'is_enrolled' => true,
-                    'enrolled_at' => now(),
-                    'created_at' => now(),
-                    'updated_at' => now()
+                // Create new enrollment using sync method for better relationship handling
+                $user->courses()->syncWithoutDetaching([
+                    $courseId => [
+                        'is_enrolled' => true,
+                        'enrolled_at' => now()
+                    ]
                 ]);
 
-                $message = "User '{$user->name}' enrolled in course '{$course->name}'";
+                $message = "User '{$user->name}' enrolled in course '{$course->name}' successfully!";
             }
 
             // Clear relevant cache
             $this->clearEnrollmentCache($userId, $courseId);
+
+            // Send welcome notification
+            $this->sendWelcomeNotification($user, $course);
 
             Log::info('🎉 ENROLLMENT SUCCESS', [
                 'user_id' => $user->id,
@@ -214,6 +231,7 @@ class EnrollmentService
         $patterns = [
             "user_enrollments_{$userId}",
             "course_enrollments_{$courseId}",
+            "course_enrollment_check_{$courseId}_{$userId}",
             "courses_cache_version",
             "enrollment_stats"
         ];
@@ -225,5 +243,32 @@ class EnrollmentService
         // Increment cache version to invalidate pattern-based caches
         $cacheVersion = Cache::get('courses_cache_version', 1);
         Cache::put('courses_cache_version', $cacheVersion + 1, 86400);
+    }
+
+    /**
+     * Send welcome notification to newly enrolled user
+     */
+    private function sendWelcomeNotification(User $user, Course $course): void
+    {
+        try {
+            if (class_exists('\App\Services\NotificationService')) {
+                app(\App\Services\NotificationService::class)->createCourseWelcomeNotification(
+                    $user,
+                    $course->name
+                );
+                
+                Log::info('Welcome notification sent', [
+                    'user_id' => $user->id,
+                    'course_id' => $course->id
+                ]);
+            }
+        } catch (\Exception $e) {
+            // Don't fail enrollment if notification fails
+            Log::warning('Failed to send welcome notification', [
+                'user_id' => $user->id,
+                'course_id' => $course->id,
+                'error' => $e->getMessage()
+            ]);
+        }
     }
 }

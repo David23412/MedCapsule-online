@@ -24,8 +24,13 @@ class MistakeController extends Controller
      */
     public function index(Request $request)
     {
+        // ✅ SECURITY FIX: Add input validation
+        $validated = $request->validate([
+            'course' => 'nullable|integer|exists:courses,id'
+        ]);
+
         $userId = auth()->id();
-        $courseFilter = $request->input('course');
+        $courseFilter = $validated['course'] ?? null;
 
         Log::info('📌 Fetching mistakes for user', ['user_id' => $userId, 'course_filter' => $courseFilter]);
 
@@ -132,9 +137,15 @@ class MistakeController extends Controller
      */
     public function store(Request $request)
     {
+        // ✅ SECURITY FIX: Add input validation
+        $validated = $request->validate([
+            'question_id' => 'required|integer|exists:questions,id',
+            'submitted_answer' => 'required|string|max:1000'
+        ]);
+
         $userId = auth()->id();
-        $questionId = $request->input('question_id');
-        $submittedAnswer = $request->input('submitted_answer');
+        $questionId = $validated['question_id'];
+        $submittedAnswer = $validated['submitted_answer'];
         
         // COMPLEXITY REDUCTION: Extract answer validation
         if ($this->isCorrectAnswer($questionId, $submittedAnswer)) {
