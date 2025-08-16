@@ -132,14 +132,13 @@ class TutorReportController extends Controller
     }
 
     /**
-     * Generate grade report data for a student - Optimized
+     * Generate grade report data for a student - 🚀 CRITICAL N+1 FIX
      */
     private function generateGradeReportData(User $student)
     {
-        $quizAttempts = $student->quizAttempts()
-            ->with('topic:id,name')
-            ->orderBy('created_at', 'desc')
-            ->get();
+        // 🚀 CRITICAL FIX: Use already loaded relationships from eager loading above
+        // No additional database queries needed since relationships are pre-loaded
+        $quizAttempts = $student->quizAttempts;
 
         // SSOT: Get progress data from UserProgressService
         $userProgressService = app(\App\Support\State\UserProgressService::class);
@@ -164,17 +163,17 @@ class TutorReportController extends Controller
     }
 
     /**
-     * Generate CSV for students - Optimized
+     * Generate CSV for students - 🚀 CRITICAL N+1 FIX
      */
     private function generateStudentsCSV($students)
     {
         $csv = "Student Name,Email,University,Quiz Average,Total Quizzes,Study Streak,Last Active\n";
 
-        $students = $students->load('quizAttempts');
+        // 🚀 CRITICAL FIX: Relationships already loaded via eager loading above
         $userProgressService = app(\App\Support\State\UserProgressService::class);
         
         foreach ($students as $student) {
-            // Use eager loaded quizAttempts to avoid N+1 queries
+            // Use already loaded quizAttempts - no N+1 queries
             $quizAttempts = $student->quizAttempts;
             $avgScore = $quizAttempts->avg('score') ?? 0;
             $quizCount = $quizAttempts->count();

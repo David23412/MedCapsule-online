@@ -172,24 +172,32 @@ class PaymentLogService
     }
     
     /**
-     * Get complete payment history.
+     * Get complete payment history - 🚀 CRITICAL N+1 FIX
      */
     public function getPaymentHistory(Payment $payment)
     {
         return PaymentLog::forPayment($payment->id)
+            ->with(['user:id,name,email', 'admin:id,name,email']) // Eager load relationships
             ->orderBy('created_at', 'desc')
             ->get();
     }
     
     /**
+     * Get payment histories for multiple payments - 🚀 CRITICAL N+1 FIX
+     */
+    public function getBatchPaymentHistories(array $paymentIds)
+    {
+        return PaymentLog::whereIn('payment_id', $paymentIds)
+            ->with(['user:id,name,email', 'admin:id,name,email', 'payment:id,reference_number,status'])
+            ->orderBy('created_at', 'desc')
+            ->get()
+            ->groupBy('payment_id');
+    }
+    
+    /**
      * Summarize old logs to prevent database bloat.
-        // Wrap payment processing in database transaction
-        DB::beginTransaction();
-        try {
-            *
-            DB::commit();
-        } catch (Exception $e) {
-            DB::rollback();
+     */
+    public function summarizeOldLogs(int $daysOld = 90)
             throw $e;
         }
      * @param int $olderThanDays
@@ -213,7 +221,15 @@ class PaymentLogService
             ->distinct()
             ->limit($batchSize)
             ->pluck('payment_id');
-        
+        // Wrap payment processing in database transaction
+        DB::beginTransaction();
+        try {
+            
+            DB::commit();
+        } catch (Exception $e) {
+            DB::rollback();
+            throw $e;
+        }
         $summarized = 0;
         foreach ($paymentIds as $paymentId) {
             PaymentLog::summarizeLogs($paymentId, $cutoffDate);
@@ -271,6 +287,7 @@ class PaymentLogService
         
         // Add data rows - CRITICAL FIX: Eager load relationships to prevent N+1 queries
         $logs = $logs->load(['payment:id,reference_number', 'user:id,name', 'admin:id,name']);
+        $logs = $logs->load('id');
         foreach ($logs as $log) {
             fputcsv($csv, [
                 $log->id,

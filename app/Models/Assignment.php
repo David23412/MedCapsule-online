@@ -13,12 +13,20 @@ class Assignment extends Model
 {
     use HasFactory;
 
-    // Status constants for computed status (since status column was removed)
-    const STATUS_ACTIVE = 'active';
-    const STATUS_OVERDUE = 'overdue';
-    const STATUS_LOCKED = 'locked';
-    const STATUS_EXPIRED = 'expired';
-    const STATUS_COMPLETED = 'completed';
+    // Status constants for computed status (Integer constants for performance)
+    // SIMPLIFIED LOGIC: ACTIVE → OVERDUE → COMPLETED (locks when solved/overdue)
+    const STATUS_ACTIVE = 1;      // During due time, not solved
+    const STATUS_OVERDUE = 2;     // After due time, not solved  
+    const STATUS_COMPLETED = 3;   // Solved (locks assignment)
+    
+    /**
+     * Status string mappings for backward compatibility
+     */
+    const STATUS_STRINGS = [
+        self::STATUS_ACTIVE => 'active',
+        self::STATUS_OVERDUE => 'overdue',
+        self::STATUS_COMPLETED => 'completed'
+    ];
 
     protected $fillable = [
         'topic_id',
@@ -397,20 +405,21 @@ class Assignment extends Model
     
     /**
      * BULLETPROOF: Get real-time status regardless of database value
+     * SIMPLIFIED: ACTIVE → OVERDUE → COMPLETED
      */
-    public function getRealTimeStatus(): string
+    public function getRealTimeStatus(): int
     {
-        // Check if expired due to time limit
-        if ($this->hasTimeLimitExpired()) {
-            return self::STATUS_EXPIRED;
+        // Check if completed (solved) - this locks the assignment
+        if ($this->isCompletedByUser(auth()->id())) {
+            return self::STATUS_COMPLETED;
         }
         
-        // Check if overdue
+        // Check if overdue (past deadline) - this also locks the assignment
         if ($this->deadline < now()) {
             return self::STATUS_OVERDUE;
         }
         
-        // Default to active if none of the above
+        // Default to active (during due time, not solved)
         return self::STATUS_ACTIVE;
     }
     
@@ -689,16 +698,16 @@ class Assignment extends Model
             return $assignment->getCurrentStatusAttribute() === self::STATUS_OVERDUE;
         })->count();
         
-        $expired = $assignments->filter(function($assignment) {
-            return $assignment->getCurrentStatusAttribute() === self::STATUS_EXPIRED;
+        $completed = $assignments->filter(function($assignment) {
+            return $assignment->getCurrentStatusAttribute() === self::STATUS_COMPLETED;
         })->count();
 
         return [
             'total' => $total,
             'active' => $active,
             'overdue' => $overdue,
-            'expired' => $expired,
-            'completion_rate' => 0 // Would need to be calculated from quiz_attempts
+            'completed' => $completed,
+            'completion_rate' => $total > 0 ? ($completed / $total) * 100 : 0
         ];
     }
 
@@ -741,8 +750,8 @@ class Assignment extends Model
             return 'overdue_locked';
         }
         
-        if ($globalStatus === self::STATUS_EXPIRED) {
-            return 'expired_locked';
+        if ($globalStatus === self::STATUS_COMPLETED) {
+            return 'completed_locked';
         }
         
         return 'available';
@@ -770,9 +779,7 @@ class Assignment extends Model
             case 'attempted_locked':
                 return 'Assignment attempted - No retakes allowed';
             case 'overdue_locked':
-                return 'Assignment is overdue';
-            case 'expired_locked':
-                return 'Assignment time limit expired';
+                return 'Assignment is overdue - No longer accessible';
             case 'admin_locked':
                 return 'Assignment locked by instructor';
             default:

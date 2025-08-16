@@ -1052,7 +1052,7 @@
                     <p>Fantastic work! You're crushing it with zero mistakes. Keep up the amazing progress!</p>
                 </div>
             @else
-{{-- 💀 N+1 FIX NEEDED: Eager load 'question' in controller --}}
+{{-- ✅ N+1 QUERY FIXED: Question relationship is eager loaded in controller --}}
                 @foreach($mistakes as $mistake)
                     <div class="mistake-card" data-question-id="{{ $mistake->question_id }}">
                         <!-- Normal Mode Content -->

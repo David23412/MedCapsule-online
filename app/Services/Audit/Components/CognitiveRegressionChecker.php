@@ -615,6 +615,7 @@ class CognitiveRegressionChecker
     {
         $processed = [];
         
+
         foreach ($currentFindings as $finding) {
             if ($finding instanceof Finding) {
                 $processed[] = [

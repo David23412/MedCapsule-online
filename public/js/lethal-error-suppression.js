@@ -27,9 +27,9 @@
         'Request failed'
     ];
 
-// // Override console.error to filter out noise // Removed for production
-// const originalConsoleError = console.error; // Removed for production
-// console.error = function(...args) { // Removed for production
+// // // Override console.error to filter out noise // Removed for production // Removed for production
+// // const originalConsoleError = console.error; // Removed for production // Removed for production
+// // console.error = function(...args) { // Removed for production // Removed for production
         const message = args.join(' ');
         
         // Check if this is a suppressed error
@@ -39,7 +39,7 @@
         
         if (shouldSuppress) {
             // Convert error to info log
-// console.log('ℹ️ Network issue handled gracefully:', args[0]); // Removed for production
+// // console.log('ℹ️ Network issue handled gracefully:', args[0]); // Removed for production // Removed for production
             return;
         }
         
@@ -47,9 +47,9 @@
         originalConsoleError.apply(console, args);
     };
 
-// // Override console.warn to filter out noise // Removed for production
-// const originalConsoleWarn = console.warn; // Removed for production
-// console.warn = function(...args) { // Removed for production
+// // // Override console.warn to filter out noise // Removed for production // Removed for production
+// // const originalConsoleWarn = console.warn; // Removed for production // Removed for production
+// // console.warn = function(...args) { // Removed for production // Removed for production
         const message = args.join(' ');
         
         // Check if this is a suppressed warning
@@ -59,7 +59,7 @@
         
         if (shouldSuppress) {
             // Convert warning to info log
-// console.log('ℹ️ Minor issue handled:', args[0]); // Removed for production
+// // console.log('ℹ️ Minor issue handled:', args[0]); // Removed for production // Removed for production
             return;
         }
         
@@ -77,14 +77,14 @@
         );
         
         if (shouldSuppress) {
-// console.log('ℹ️ Global error handled gracefully'); // Removed for production
+// // console.log('ℹ️ Global error handled gracefully'); // Removed for production // Removed for production
             event.preventDefault();
             return true;
         }
         
         // Log other errors normally but don't spam
         if (errorMessage && !errorMessage.includes('Script error')) {
-// console.log('ℹ️ Application error:', errorMessage); // Removed for production
+// // console.log('ℹ️ Application error:', errorMessage); // Removed for production // Removed for production
         }
         
         event.preventDefault();
@@ -102,13 +102,13 @@
         );
         
         if (shouldSuppress) {
-// console.log('ℹ️ Promise rejection handled gracefully'); // Removed for production
+// // console.log('ℹ️ Promise rejection handled gracefully'); // Removed for production // Removed for production
             event.preventDefault();
             return;
         }
         
         // Log other rejections as info
-// console.log('ℹ️ Promise rejection handled:', reasonMessage); // Removed for production
+// // console.log('ℹ️ Promise rejection handled:', reasonMessage); // Removed for production // Removed for production
         event.preventDefault();
     });
 
@@ -118,7 +118,7 @@
         return originalFetch.apply(this, args)
             .catch(error => {
                 // Convert fetch errors to graceful responses
-// console.log('ℹ️ Fetch request handled gracefully'); // Removed for production
+// // console.log('ℹ️ Fetch request handled gracefully'); // Removed for production // Removed for production
                 
                 // Return a default response instead of throwing
                 return {
@@ -134,5 +134,5 @@
             });
     };
 
-// console.log('✅ Lethal Error Suppression System activated'); // Removed for production
+// // console.log('✅ Lethal Error Suppression System activated'); // Removed for production // Removed for production
 })();

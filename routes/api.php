@@ -3,8 +3,12 @@
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Models\Question;
-use Illuminate\Support\Facades\Log;
+use App\Models\Payment;
+use App\Models\User;
+use App\Models\Topic;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Contracts\Routing\ResponseFactory;
+use Psr\Log\LoggerInterface;
 use App\Http\Controllers\VideoController;
 use App\Http\Controllers\VideoProxyController;
 
@@ -19,7 +23,7 @@ use App\Http\Controllers\VideoProxyController;
 |
 */
 
-Route::middleware('auth')->get('/user', function (Request $request) {
+Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
     return $request->user();
 });
 
@@ -91,94 +95,41 @@ Route::middleware(['auth', 'role:admin,tutor'])->group(function () {
     Route::get('/my-locked-topics', 'App\Http\Controllers\TopicLockingController@getMyLockedTopics');
     
     // Get lock information for a topic
-    Route::get('/topic/{topic}/lock-info', 'App\Http\Controllers\TopicLockingController@getLockInfo');
+    Route::get('/topic/{topic}/lock-info', 'App\Http\Controllers\TopicLockingController@getLockInfo')
+        ->where('topic', '[0-9]+');
 });
 
-// Get question counts by source for a topic
-Route::get('/topic/{topic}/question-counts', function($topicId) {
-    try {
-        // Get all questions for this topic
-        $questions = Question::where('topic_id', $topicId)->get();
-        
-        // Count questions by source
-        $counts = [
-            'total' => $questions->count(),
-            'sources' => $questions->groupBy('source')->map(function($group) {
-                return $group->count();
-            })
-        ];
-        
-        return response()->json($counts);
-    } catch (\Exception $e) {
-        return response()->json(['error' => 'Failed to get question counts'], 500);
-    }
-});
+// FIXED: Replaced vulnerable route with safe controller method
+Route::get('/topic/{topic}/question-counts', 'App\Http\Controllers\Api\QuestionCountController@getQuestionCounts')
+    ->where('topic', '[0-9]+');
 
-// Get available sources for a topic (for assignment creation)
-Route::get('/topics/{topicId}/sources', function($topicId) {
-    try {
-        $sources = \DB::table('questions')
-            ->where('topic_id', $topicId)
-            ->select('source')
-            ->distinct()
-            ->whereNotNull('source')
-            ->where('source', '!=', '')
-            ->pluck('source')
-            ->toArray();
-        
-        return response()->json($sources);
-    } catch (\Exception $e) {
-        return response()->json(['error' => 'Failed to get sources'], 500);
-    }
-});
+// FIXED: Replaced vulnerable route with safe controller method  
+Route::get('/topics/{topicId}/sources', 'App\Http\Controllers\Api\QuestionSourceController@getSources')
+    ->where('topicId', '[0-9]+');
 
-// Test payment verification route (no auth, no CSRF)
-Route::post('/test-payment-verify/{payment}', function($payment) {
-    try {
-        $payment = \App\Models\Payment::findOrFail($payment);
-        
-        // Update payment status
-        $payment->update([
-            'status' => 'completed',
-            'paid_at' => now(),
-            'payment_data' => array_merge($payment->payment_data ?? [], [
-                'verified_by' => 'api_test',
-                'verified_at' => now()->toDateTimeString(),
-                'admin_notes' => 'API test verification'
-            ])
-        ]);
-        
-        // Enroll user in course
-        $user = \App\Models\User::find($payment->user_id);
-        if ($user) {
-            $user->courses()->syncWithoutDetaching([$payment->course_id]);
-        }
-        
-        return response()->json([
-            'success' => true,
-            'message' => 'Payment verified successfully via API',
-            'payment_id' => $payment->id,
-            'status' => $payment->status
-        ]);
-    } catch (\Exception $e) {
-        return response()->json([
-            'success' => false,
-            'message' => 'Error: ' . $e->getMessage()
-        ], 500);
-    }
-}); 
+// FIXED: Replaced vulnerable route with safe controller method
+Route::post('/test-payment-verify/{payment}', 'App\Http\Controllers\Api\PaymentVerificationController@verifyPayment')
+    ->where('payment', '[0-9]+');
 
 Route::middleware('auth')->group(function () {
     // User progress endpoint for milestone bar updates - SSOT
-    Route::get('/user/progress', function () {
-        $userProgressService = app(\App\Support\State\UserProgressService::class);
-        $progress = $userProgressService->getUserProgress(auth()->id());
-        
-        return response()->json([
-            'correct_answers_count' => $progress['total_correct_answers'],
-            'total_questions_attempted' => $progress['total_questions_attempted'],
-            'study_streak_days' => $progress['study_streak_days']
-        ]);
+    Route::get('/user/progress', function (Request $request, ResponseFactory $responseFactory, LoggerInterface $logger) {
+        try {
+            $userProgressService = app(\App\Support\State\UserProgressService::class);
+            $progress = $userProgressService->getUserProgress(auth()->id());
+            
+            return $responseFactory->json([
+                'correct_answers_count' => $progress['total_correct_answers'],
+                'total_questions_attempted' => $progress['total_questions_attempted'],
+                'study_streak_days' => $progress['study_streak_days']
+            ]);
+        } catch (\Exception $e) {
+            $logger->error('Failed to get user progress', [
+                'user_id' => auth()->id(),
+                'error' => $e->getMessage()
+            ]);
+            return $responseFactory->json(['error' => 'Failed to get progress'], 500);
+        }
     });
     
     // Video management routes

@@ -27,11 +27,10 @@ class Course extends Model
     ];
 
     protected $appends = [
-        'enrolled_students_count',
-        'completion_percentage',
-        'mastered_topics_count',
         'formatted_price',
         'image_url'
+        // REMOVED: 'enrolled_students_count', 'completion_percentage', 'mastered_topics_count' 
+        // These are now explicit methods to prevent N+1 queries
     ];
 
     protected $casts = [
@@ -59,14 +58,15 @@ class Course extends Model
     public function users()
     {
         return $this->belongsToMany(User::class, 'course_user')
-                    ->withPivot('is_enrolled', 'enrolled_at')
+                    ->withPivot('enrolled_at') // Only SSOT field needed
+                    ->whereNotNull('course_user.enrolled_at') // SSOT: timestamp determines enrollment
                     ->withTimestamps();
     }
 
     public function enrolledUsers()
     {
         return $this->belongsToMany(User::class, 'payments', 'course_id', 'user_id')
-                    ->where('payments.status', 'completed')
+                    ->where('payments.status', Payment::STATUS_COMPLETED)
                     ->distinct();
     }
 
@@ -116,29 +116,18 @@ class Course extends Model
         });
     }
 
-    // Get enrolled students count
-    // 💀 N+1 WARNING: This accessor accesses 'id' - consider eager loading
-    public function getEnrolledStudentsCountAttribute()
+    /**
+     * Get enrolled students count - OPTIMIZED: No longer an accessor to prevent N+1
+     * Call explicitly: $course->getEnrolledStudentsCount()
+     */
+    public function getEnrolledStudentsCount(): int
     {
         return Cache::remember("course_{$this->id}_enrolled_count", self::CACHE_TTL, function () {
-            // SSOT: Count enrolled users via EnrollmentService
-            $enrollmentService = app(EnrollmentService::class);
-            
-            // Get all users who have enrollment records for this course
-            $enrolledUserIds = DB::table('course_user')
+            // OPTIMIZED: Single query using SSOT logic
+            return DB::table('course_user')
                 ->where('course_id', $this->id)
-                ->pluck('user_id')
-                ->toArray();
-            
-            // Count only truly enrolled users via SSOT
-            $count = 0;
-            foreach ($enrolledUserIds as $userId) {
-                if ($enrollmentService->isEnrolled($userId, $this->id)) {
-                    $count++;
-                }
-            }
-            
-            return $count;
+                ->whereNotNull('enrolled_at') // SSOT: enrolled_at determines enrollment
+                ->count();
         });
     }
 
@@ -146,14 +135,12 @@ class Course extends Model
      * COMPLETION AND MASTERED TOPICS
      * ------------------- */
 
-    // Get completion percentage for the current user
-    public function getCompletionPercentageAttribute()
+    /**
+     * Get completion percentage for a specific user - OPTIMIZED: No longer an accessor
+     * Call explicitly: $course->getCompletionPercentage($userId)
+     */
+    public function getCompletionPercentage(int $userId): float
     {
-        if (!auth()->check()) {
-            return 0;
-        }
-
-        $userId = auth()->id();
         // OPTIMIZED: Use cache versioning for better invalidation
         $cacheVersion = $this->cache_version ?? 1;
         $cacheKey = "course_{$this->id}_user_{$userId}_completion_v{$cacheVersion}";
@@ -498,7 +485,23 @@ class Course extends Model
 
     public function getImageUrlAttribute()
     {
-        return $this->image;
+        // If image is already a full URL, return it
+        if ($this->image && (str_starts_with($this->image, 'http://') || str_starts_with($this->image, 'https://'))) {
+            return $this->image;
+        }
+        
+        // If image is a relative path, make it absolute
+        if ($this->image && str_starts_with($this->image, '/')) {
+            return url($this->image);
+        }
+        
+        // If image is stored in storage, generate the URL
+        if ($this->image && !str_starts_with($this->image, 'http')) {
+            return asset('storage/' . $this->image);
+        }
+        
+        // Default fallback image - use a reliable placeholder service
+        return 'https://picsum.photos/420/580?random=' . $this->id;
     }
 
     /** -------------------

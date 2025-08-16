@@ -164,7 +164,20 @@ class EnhancedReportBuilder
         $this->findings = [];
         
         foreach ($this->auditResults as $phase => $result) {
-            if (isset($result['findings']) && is_array($result['findings'])) {
+            // Handle PhaseResult objects
+            if (is_object($result) && method_exists($result, 'getFindings')) {
+                $findings = $result->getFindings();
+                if (is_array($findings)) {
+                    foreach ($findings as $finding) {
+                        if ($finding instanceof Finding) {
+                            $this->findings[] = $finding;
+                            $this->addToIssueIndex($finding);
+                        }
+                    }
+                }
+            }
+            // Handle array format (legacy)
+            elseif (isset($result['findings']) && is_array($result['findings'])) {
                 foreach ($result['findings'] as $finding) {
                     if ($finding instanceof Finding) {
                         $this->findings[] = $finding;
@@ -183,7 +196,15 @@ class EnhancedReportBuilder
         $this->metrics = [];
         
         foreach ($this->auditResults as $phase => $result) {
-            if (isset($result['metrics']) && is_array($result['metrics'])) {
+            // Handle PhaseResult objects
+            if (is_object($result) && method_exists($result, 'getMetrics')) {
+                $metrics = $result->getMetrics();
+                if (is_array($metrics)) {
+                    $this->metrics[$phase] = $metrics;
+                }
+            }
+            // Handle array format (legacy)
+            elseif (isset($result['metrics']) && is_array($result['metrics'])) {
                 $this->metrics[$phase] = $result['metrics'];
             }
         }
@@ -1596,6 +1617,7 @@ Common root causes identified across multiple findings:
         $criticalFindings = array_filter($this->findings, fn($f) => $f->getSeverity() === 'critical');
         $content = "";
         
+
         foreach ($criticalFindings as $finding) {
             $content .= "##### 🔴 CRITICAL: " . $finding->getDescription() . "\n\n";
             $content .= "**Impact Assessment**: This critical issue poses immediate risk to system security and stability.\n";

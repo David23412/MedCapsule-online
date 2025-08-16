@@ -2,157 +2,90 @@
 
 namespace App\Http\Controllers;
 
-use Illuminate\Http\Request;
 use App\Http\Requests\QuestionRequest;
-use Illuminate\Http\JsonResponse;
-use Illuminate\Support\Facades\Log;
-use App\Services\QuizPerformanceService;
-use Illuminate\Support\Facades\Cache;
-use App\Services\QuizCacheService;
-use App\Models\Question;
-use App\Models\Topic;
+use App\Services\QuestionService;
+use App\Services\TopicService;
+use Illuminate\Http\Request;
+use Psr\Log\LoggerInterface;
+use Illuminate\Contracts\Routing\ResponseFactory;
+use Illuminate\Contracts\View\Factory as ViewFactory;
 
 class QuestionController extends Controller
 {
-    public function __construct()
-    {
+    private QuestionService $questionService;
+    private TopicService $topicService;
+    private LoggerInterface $logger;
+    private ResponseFactory $responseFactory;
+    private ViewFactory $viewFactory;
+
+    public function __construct(
+        QuestionService $questionService,
+        TopicService $topicService,
+        LoggerInterface $logger,
+        ResponseFactory $responseFactory,
+        ViewFactory $viewFactory
+    ) {
         $this->middleware(['auth', 'admin']);
+        $this->questionService = $questionService;
+        $this->topicService = $topicService;
+        $this->logger = $logger;
+        $this->responseFactory = $responseFactory;
+        $this->viewFactory = $viewFactory;
     }
 
     public function showAddQuestionForm()
     {
-        // Ultra-aggressive caching for topics
-        $cacheKey = QuizUltraConsolidatedCacheService::generateCacheKey('admin_topics_all', ['timestamp' => now()->format('Y-m-d-H')]);
-        $topics = Cache::remember($cacheKey, 3600, function () {
-            return Topic::select('id', 'name', 'course_id')->with('course:id,name')->get();
-        });
-        
-        return view('add_question', compact('topics'));
+        try {
+            $topics = $this->topicService->getAllTopicsWithCourses();
+            return $this->viewFactory->make('add_question', compact('topics'));
+        } catch (\Exception $e) {
+            $this->logger->error('Failed to show add question form', ['error' => $e->getMessage()]);
+            return $this->responseFactory->redirectToRoute('admin.dashboard')->with('error', 'Could not load the form.');
+        }
     }
 
     public function storeQuestion(QuestionRequest $request)
     {
         try {
-            if (auth()->user()->role !== 'admin') {
-                abort(403);
-            }
-
-        // Validate basic fields first
-        // TODO: Create FormRequest class for validation
-
-        // Handle image upload
-        $imageUrl = null;
-        if ($request->hasFile('question_image')) {
-            $file = $request->file('question_image');
-            $filename = time() . '_' . $file->getClientOriginalName();
-            $path = $file->storeAs('questions', $filename, 'public');
-            $imageUrl = 'storage/' . $path;
-        } elseif ($request->filled('image_url')) {
-            $imageUrl = $request->image_url;
-        }
-
-        // Validate based on question type
-        if ($request->question_type === 'multiple_choice') {
-            // TODO: Create FormRequest class for validation
-            
-            $correctAnswer = $request->correct_answer;
-            $alternativeAnswers = null;
-            
-        } else { // written question
-            // TODO: Create FormRequest class for validation
-            
-            $correctAnswer = $request->written_correct_answer;
-            
-            // Process alternative answers if provided
-            if ($request->filled('alternative_answers')) {
-                // Split by new lines and filter out empty lines
-                $alternativeAnswers = array_filter(
-                    explode("\n", $request->alternative_answers),
-                    function($line) {
-                        return trim($line) !== '';
-                    }
-                );
-            } else {
-                $alternativeAnswers = null;
-            }
-        }
-
-        // Set empty values for options if it's a written question
-        $optionA = $request->question_type === 'multiple_choice' ? $request->option_a : '';
-        $optionB = $request->question_type === 'multiple_choice' ? $request->option_b : '';
-        $optionC = $request->question_type === 'multiple_choice' ? $request->option_c : '';
-        $optionD = $request->question_type === 'multiple_choice' ? $request->option_d : '';
-
-        // Create the question
-        Question::create([
-            'topic_id' => $request->topic_id,
-            'question' => $request->question,
-            'explanation' => $request->explanation,
-            'question_type' => $request->question_type,
-            'option_a' => $optionA,
-            'option_b' => $optionB,
-            'option_c' => $optionC,
-            'option_d' => $optionD,
-            'correct_answer' => $correctAnswer,
-            'alternative_answers' => $alternativeAnswers,
-            'image_url' => $imageUrl,
-            'source' => $request->source
-        ]);
-
-        return redirect()->back()->with('success', 'Question added successfully!');
-        
+            $this->questionService->createQuestion($request->validated());
+            return $this->responseFactory->redirectToRoute('questions.add')->with('success', 'Question added successfully!');
         } catch (\Exception $e) {
-            \Log::error('Method execution failed', ['error' => $e->getMessage()]);
-            return redirect()->back()->with('error', 'Operation failed: ' . $e->getMessage());
+            $this->logger->error('Failed to store question', ['error' => $e->getMessage()]);
+            return back()->withInput()->with('error', 'Failed to add question. Please try again.');
         }
     }
 
     public function editQuestion($id)
     {
         try {
-            $question = Question::findOrFail($id);
-            $topics = Topic::with(['course', 'questions'])->get();
-            return view('edit_question', compact('question', 'topics'));
+            $question = $this->questionService->getQuestionById($id);
+            $topics = $this->topicService->getAllTopicsWithCourses();
+            return $this->viewFactory->make('edit_question', compact('question', 'topics'));
         } catch (\Exception $e) {
-            \Log::error('Method execution failed', ['error' => $e->getMessage()]);
-            return response()->json(['success' => false, 'message' => 'Operation failed'], 500);
+            $this->logger->error('Failed to show edit question form', ['error' => $e->getMessage()]);
+            return $this->responseFactory->redirectToRoute('admin.questions')->with('error', 'Could not load the form.');
         }
     }
 
-    public function updateQuestion(Request $request, $id)
+    public function updateQuestion(QuestionRequest $request, $id)
     {
         try {
-
-        // TODO: Create FormRequest class for validation
-
-        $question = Question::findOrFail($id);
-        $question->update([
-            'topic_id' => $request->topic_id,
-            'question' => $request->question_text,
-            'option_a' => $request->option_a ?? '',
-            'option_b' => $request->option_b ?? '',
-            'option_c' => $request->option_c ?? '',
-            'option_d' => $request->option_d ?? '',
-            'correct_answer' => $request->correct_answer]);
-
-        return redirect()->back()->with('success', 'Question updated successfully!');
-    
+            $this->questionService->updateQuestion($id, $request->validated());
+            return $this->responseFactory->redirectToRoute('questions.edit', $id)->with('success', 'Question updated successfully!');
         } catch (\Exception $e) {
-            \Log::error('Method execution failed', ['error' => $e->getMessage()]);
-            return response()->json(['success' => false, 'message' => 'Operation failed'], 500);
+            $this->logger->error('Failed to update question', ['error' => $e->getMessage()]);
+            return back()->withInput()->with('error', 'Failed to update question. Please try again.');
         }
-}
+    }
 
     public function deleteQuestion($id)
     {
         try {
-
-        Question::findOrFail($id)->delete();
-        return redirect()->back()->with('success', 'Question deleted successfully!');
-    
+            $this->questionService->deleteQuestion($id);
+            return $this->responseFactory->redirectToRoute('admin.questions')->with('success', 'Question deleted successfully!');
         } catch (\Exception $e) {
-            \Log::error('Method execution failed', ['error' => $e->getMessage()]);
-            return response()->json(['success' => false, 'message' => 'Operation failed'], 500);
+            $this->logger->error('Failed to delete question', ['error' => $e->getMessage()]);
+            return back()->with('error', 'Failed to delete question. Please try again.');
         }
-}
+    }
 }

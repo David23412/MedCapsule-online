@@ -44,12 +44,12 @@ class Topic extends Model
 
     // Append dynamic properties to the model
     protected $appends = [
-        'completion_percentage',
-        'last_attempt_date',
         'questions_count',
         'total_duration',
         'formatted_duration',
         'all_sources_mastered'
+        // REMOVED: 'completion_percentage', 'last_attempt_date' 
+        // These are now explicit methods to prevent N+1 queries
     ];
 
     // Relationships
@@ -93,60 +93,55 @@ class Topic extends Model
         return $this->video()->exists();
     }
 
-    // 💀 N+1 WARNING: This accessor accesses 'userProgress' - consider eager loading
-    public function getCurrentUserProgressAttribute()
+    /**
+     * 🚀 PERFORMANCE BEAST: Get current user progress - NO N+1 QUERIES
+     * Call explicitly: $topic->getCurrentUserProgress()
+     */
+    public function getCurrentUserProgress()
     {
         if (!auth()->check()) return null;
         return $this->userProgress()->where('user_id', auth()->id())->first();
     }
-    // 💀 N+1 WARNING: This accessor accesses 'current_user_progress' - consider eager loading
 
-    public function getPercentageGradeAttribute()
+    /**
+     * 🚀 PERFORMANCE BEAST: Get percentage grade - NO N+1 QUERIES
+     * Call explicitly: $topic->getPercentageGrade()
+     */
+    public function getPercentageGrade()
     {
         if (!auth()->check()) return null;
-        $progress = $this->current_user_progress;
+        $progress = $this->getCurrentUserProgress();
         return $progress ? $progress->percentage_grade : null;
-    // 💀 N+1 WARNING: This accessor accesses 'current_user_progress' - consider eager loading
     }
 
-    public function getLastAttemptDateAttribute()
+    /**
+     * 🚀 PERFORMANCE BEAST: Get last attempt date - NO N+1 QUERIES
+     * Call explicitly: $topic->getLastAttemptDate()
+     */
+    public function getLastAttemptDate()
     {
         if (!auth()->check()) return null;
-        $progress = $this->current_user_progress;
+        $progress = $this->getCurrentUserProgress();
         return $progress ? $progress->last_attempt_date : null;
     }
 
     // Dynamic Attributes for the model
 
     /**
-     * Completion percentage of the topic based on the user's progress.
-    // 💀 N+1 WARNING: This accessor accesses 'id' - consider eager loading
-     *
-     * @return float
+     * Get completion percentage for a specific user - OPTIMIZED: No longer an accessor
+     * Call explicitly: $topic->getCompletionPercentage($userId)
      */
-    public function getCompletionPercentageAttribute(): float
+    public function getCompletionPercentage(int $userId): float
     {
-        if (!auth()->check()) return 0;
+        $cacheKey = $this->getCacheKey($userId, 'completion');
 
-        $cacheKey = $this->getCacheKey(auth()->id(), 'completion');
-
-        return Cache::remember($cacheKey, 3600, function () {
-            // Get total questions in topic
-            $totalQuestions = $this->questions()->count();
-            if ($totalQuestions === 0) return 0;
-
-            // Get the latest quiz attempt for this topic
-            $latestAttempt = QuizAttempt::where([
-                'user_id' => auth()->id(),
-                'topic_id' => $this->id,
-            ])
-            ->orderBy('created_at', 'desc')
-            ->first();
-
-            if (!$latestAttempt) return 0;
-
-            // Calculate percentage based on the latest attempt
-            return min(100, round(($latestAttempt->score / $totalQuestions) * 100, 2));
+        return Cache::remember($cacheKey, 3600, function () use ($userId) {
+            // OPTIMIZED: Single query to get user's topic progress
+            $progress = $this->userProgress()
+                ->where('user_id', $userId)
+                ->first();
+                
+            return $progress ? $progress->percentage_grade : 0;
         });
     }
 

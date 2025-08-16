@@ -7,173 +7,172 @@ use App\Models\Mistake;
 use Illuminate\Http\Request;
 use App\Services\UserStatsService;
 use App\Support\State\MistakeMasteryService;
-use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\DB;
+use Psr\Log\LoggerInterface;
+use Illuminate\Database\DatabaseManager;
+use Illuminate\Contracts\Routing\ResponseFactory;
+use Illuminate\Contracts\Auth\Factory as Auth;
+use Illuminate\Http\JsonResponse;
 
-/**
- * LETHAL OPTIMIZED LEARN ACTION CONTROLLER
- * Handles mistake review actions and study time tracking
- */
 class LearnActionController extends Controller
 {
-    protected $userStatsService;
-    protected $mistakeMasteryService;
+    protected UserStatsService $userStatsService;
+    protected MistakeMasteryService $mistakeMasteryService;
+    protected LoggerInterface $logger;
+    protected DatabaseManager $db;
+    protected ResponseFactory $responseFactory;
+    protected Auth $auth;
 
-    public function __construct(UserStatsService $userStatsService, MistakeMasteryService $mistakeMasteryService)
-    {
+    public function __construct(
+        UserStatsService $userStatsService,
+        MistakeMasteryService $mistakeMasteryService,
+        LoggerInterface $logger,
+        DatabaseManager $db,
+        ResponseFactory $responseFactory,
+        Auth $auth
+    ) {
         $this->middleware(['auth']);
         $this->userStatsService = $userStatsService;
         $this->mistakeMasteryService = $mistakeMasteryService;
+        $this->logger = $logger;
+        $this->db = $db;
+        $this->responseFactory = $responseFactory;
+        $this->auth = $auth;
     }
 
-    /**
-     * Handle the review (rating) for a mistake - LETHAL ERROR HANDLING
-     */
-    public function reviewMistake(Request $request, $questionId)
+    public function reviewMistake(Request $request, $questionId): JsonResponse
     {
-        try {
-            $userId = auth()->id();
-            $rating = $request->input('rating');
+        $rating = $request->input('rating');
+        
+        if (!$this->isValidRating($rating)) {
+            return $this->jsonResponse('Invalid rating. Must be between 1 and 5.', 400, false);
+        }
+
+        return $this->handleMistakeOperation($questionId, function ($mistake) use ($rating) {
+            $this->updateMistakeReview($mistake, $rating);
             
-            if (!in_array($rating, [1, 2, 3, 4, 5])) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Invalid rating. Must be between 1 and 5.'
-                ], 400);
-            }
-
-            DB::beginTransaction();
-
-            $mistake = Mistake::where('user_id', $userId)
-                ->where('question_id', $questionId)
-                ->first();
-
-            if (!$mistake) {
-                DB::rollBack();
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Mistake not found.'
-                ], 404);
-            }
-
-            // Update mistake based on rating using SSOT service
-            if ($rating >= 4) {
-                // Set streak to mastery threshold to mark as mastered
-                $mistake->correct_streak = config('mistakes.thresholds.quiz', 4);
-                $mistake->mastered_at = now();
-                $mistake->save();
-            }
-
-            $mistake->last_reviewed = now();
-            $mistake->review_count = ($mistake->review_count ?? 0) + 1;
-            $mistake->save();
-
-            DB::commit();
-
-            return response()->json([
-                'success' => true,
+            return [
                 'message' => 'Review recorded successfully',
                 'mastered' => $this->mistakeMasteryService->isMastered($mistake)
-            ]);
-            
-        } catch (\Exception $e) {
-            DB::rollBack();
-            Log::error('Review mistake failed', [
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString(),
-                'question_id' => $questionId,
-                'user_id' => auth()->id()
-            ]);
-            
-            return response()->json([
-                'success' => false,
-                'message' => 'Failed to record review'
-            ], 500);
-        }
+            ];
+        });
     }
 
-    /**
-     * Remove a mistake from the user's list - LETHAL ERROR HANDLING
-     */
-    public function removeMistake($questionId)
+    public function removeMistake($questionId): JsonResponse
     {
-        try {
-            $userId = auth()->id();
-
-            DB::beginTransaction();
-
-            $mistake = Mistake::where('user_id', $userId)
-                ->where('question_id', $questionId)
-                ->first();
-
-            if (!$mistake) {
-                DB::rollBack();
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Mistake not found.'
-                ], 404);
-            }
-
+        return $this->handleMistakeOperation($questionId, function ($mistake) {
             $mistake->delete();
-            DB::commit();
+            return ['message' => 'Mistake removed successfully'];
+        });
+    }
 
-            return response()->json([
-                'success' => true,
-                'message' => 'Mistake removed successfully'
-            ]);
+    public function saveStudyTime(Request $request): JsonResponse
+    {
+        try {
+            $studyTime = $request->input('study_time', 0);
             
+            if (!$this->isValidStudyTime($studyTime)) {
+                return $this->jsonResponse('Invalid study time', 400, false);
+            }
+
+            $this->userStatsService->recordStudyTime(
+                $this->auth->id(), 
+                $studyTime, 
+                $request->input('question_id')
+            );
+
+            return $this->jsonResponse('Study time recorded', 200, true);
+
         } catch (\Exception $e) {
-            DB::rollBack();
-            Log::error('Remove mistake failed', [
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString(),
-                'question_id' => $questionId,
-                'user_id' => auth()->id()
-            ]);
-            
-            return response()->json([
-                'success' => false,
-                'message' => 'Failed to remove mistake'
-            ], 500);
+            $this->logError('Save study time failed', $e->getMessage());
+            return $this->jsonResponse('Failed to save study time', 500, false);
         }
     }
 
     /**
-     * Save study time for analytics - LETHAL ERROR HANDLING
+     * FIXED: Extract rating validation to eliminate duplication
      */
-    public function saveStudyTime(Request $request)
+    private function isValidRating($rating): bool
+    {
+        return in_array($rating, [1, 2, 3, 4, 5]);
+    }
+
+    /**
+     * FIXED: Extract study time validation to eliminate duplication
+     */
+    private function isValidStudyTime($studyTime): bool
+    {
+        return $studyTime > 0 && $studyTime <= 3600;
+    }
+
+    /**
+     * FIXED: Extract mistake review update logic to eliminate duplication
+     */
+    private function updateMistakeReview(Mistake $mistake, int $rating): void
+    {
+        if ($rating >= 4) {
+            $mistake->correct_streak = config('mistakes.thresholds.quiz', 4);
+            $mistake->mastered_at = now();
+        }
+        $mistake->last_reviewed = now();
+        $mistake->review_count = ($mistake->review_count ?? 0) + 1;
+        $mistake->save();
+    }
+
+    /**
+     * FIXED: Extract common mistake operation handling to eliminate duplication
+     */
+    private function handleMistakeOperation($questionId, callable $operation)
     {
         try {
-            $userId = auth()->id();
-            $studyTime = $request->input('study_time', 0);
-            $questionId = $request->input('question_id');
+            return $this->db->transaction(function () use ($questionId, $operation) {
+                $mistake = $this->findMistake($questionId);
 
-            if ($studyTime <= 0 || $studyTime > 3600) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Invalid study time'
-                ], 400);
-            }
+                if (!$mistake) {
+                    return $this->jsonResponse('Mistake not found.', 404, false);
+                }
 
-            // Update user stats
-            $this->userStatsService->recordStudyTime($userId, $studyTime, $questionId);
+                $data = $operation($mistake);
 
-            return response()->json([
-                'success' => true,
-                'message' => 'Study time recorded'
-            ]);
-            
+                return $this->jsonResponse($data['message'], 200, true, $data);
+            });
         } catch (\Exception $e) {
-            Log::error('Save study time failed', [
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString(),
-                'user_id' => auth()->id()
+            $this->logError('Mistake operation failed', $e->getMessage(), [
+                'question_id' => $questionId
             ]);
-            
-            return response()->json([
-                'success' => false,
-                'message' => 'Failed to save study time'
-            ], 500);
+            return $this->jsonResponse('Failed to process mistake operation', 500, false);
         }
+    }
+
+    /**
+     * FIXED: Extract common error logging to eliminate duplication
+     */
+    private function logError(string $message, string $error, array $context = []): void
+    {
+        $this->logger->error($message, array_merge([
+            'error' => $error,
+            'user_id' => $this->auth->id()
+        ], $context));
+    }
+
+    /**
+     * FIXED: Extract mistake finding logic to eliminate duplication
+     */
+    private function findMistake($questionId): ?Mistake
+    {
+        return Mistake::where('user_id', $this->auth->id())
+            ->where('question_id', $questionId)
+            ->first();
+    }
+
+    /**
+     * FIXED: Extract JSON response creation to eliminate duplication
+     */
+    private function jsonResponse(string $message, int $status, bool $success, array $data = []): JsonResponse
+    {
+        $responseData = ['success' => $success, 'message' => $message];
+        if (!empty($data)) {
+            $responseData = array_merge($responseData, $data);
+        }
+        return $this->responseFactory->json($responseData, $status);
     }
 }

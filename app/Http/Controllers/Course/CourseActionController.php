@@ -6,176 +6,91 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\CourseRequest;
 use App\Models\Course;
 use App\Services\NotificationService;
+use App\Services\CourseEnrollmentService;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\Log;
+use Psr\Log\LoggerInterface;
+use Illuminate\Contracts\Routing\ResponseFactory;
+use Illuminate\Contracts\Auth\Factory as Auth;
+use Illuminate\Contracts\Cache\Repository as Cache;
 
-/**
- * LETHAL OPTIMIZED COURSE ACTION CONTROLLER
- * Handles course enrollment and management operations
- */
 class CourseActionController extends Controller
 {
-    public function __construct()
-    {
+    private NotificationService $notificationService;
+    private CourseEnrollmentService $enrollmentService;
+    private LoggerInterface $logger;
+    private ResponseFactory $responseFactory;
+    private Auth $auth;
+    private Cache $cache;
+
+    public function __construct(
+        NotificationService $notificationService,
+        CourseEnrollmentService $enrollmentService,
+        LoggerInterface $logger,
+        ResponseFactory $responseFactory,
+        Auth $auth,
+        Cache $cache
+    ) {
         $this->middleware(['auth']);
-        
-        // Admin-only routes
-        $this->middleware(function ($request, $next) {
-            if (!auth()->user() || auth()->user()->role !== 'admin') {
-                return redirect()->route('home')->with('error', 'Unauthorized access.');
-            }
-            return $next($request);
-        })
+        $this->middleware('admin')->only('addCourse');
+        $this->notificationService = $notificationService;
+        $this->enrollmentService = $enrollmentService;
+        $this->logger = $logger;
+        $this->responseFactory = $responseFactory;
+        $this->auth = $auth;
+        $this->cache = $cache;
     }
 
-    /**
-     * Enroll the current user in the selected course
-     */
     public function enroll(Request $request, $courseId)
     {
-        // TODO: Create FormRequest class for validation
-        $user = Auth::user();
-        $course = Course::findOrFail($courseId);
-
-        // Check if user is already enrolled
-        $existingEnrollment = $user->courses()
-            ->where('course_id', $courseId)
-            ->where('is_enrolled', true)
-            ->exists();
-
-        if ($existingEnrollment) {
-            return redirect()->route('topics.forCourse', $courseId)
-                ->with('info', 'You are already enrolled in this course.');
-        }
-
-        // Check if course requires payment
-        if ($course->price > 0) {
-            // Check for completed payment
-            $hasValidPayment = $user->payments()
-                ->where('course_id', $courseId)
-                ->where('status', 'completed')
-                ->exists();
-
-            if (!$hasValidPayment) {
-                return redirect()->route('payment.options', $courseId)
-                    ->with('info', 'Payment is required to enroll in this course.');
-            }
-        }
-
-        // Enroll the user
-        $user->courses()->attach($courseId, [
-            'is_enrolled' => true,
-            'enrolled_at' => now()
-        ]);
-
-        // Clear relevant caches
-        $this->clearEnrollmentCaches($user->id, $courseId);
-        
-        // Send welcome notification
         try {
-            app(NotificationService::class)->createCourseWelcomeNotification(
-                $user,
-                $course->name
-            );
+            $this->enrollmentService->enroll($this->auth->user(), $courseId);
+            $course = Course::findOrFail($courseId);
+            return $this->responseFactory->redirectToRoute('topics.forCourse', $courseId)
+                ->with('success', "Successfully enrolled in {$course->name}!");
         } catch (\Exception $e) {
-            // Don't fail enrollment if notification fails
-            \Log::warning('Failed to send welcome notification', [
-                'user_id' => $user->id,
+            $this->logger->error('Failed to enroll in course', [
+                'error' => $e->getMessage(),
                 'course_id' => $courseId,
-                'error' => $e->getMessage()
+                'user_id' => $this->auth->id()
             ]);
+            return back()->with('error', $e->getMessage());
         }
-
-        return redirect()->route('topics.forCourse', $courseId)
-            ->with('success', "Successfully enrolled in {$course->name}!");
     }
 
-    /**
-     * Add a new course (admin only)
-     */
     public function addCourse(CourseRequest $request)
     {
-        $validated = $request->validate([
-            'name' => 'required|string|max:255',
-            'description' => 'nullable|string',
-            'price' => 'required|numeric|min:0',
-            'is_active' => 'boolean'
-        ]);
-
         try {
-            $course = Course::create([
-                'name' => $validated['name'],
-                'description' => $validated['description'],
-                'price' => $validated['price'],
-                'is_active' => $validated['is_active'] ?? true,
-                'created_by' => auth()->id()
-            ]);
-
-            // Clear course-related caches
+            $course = $this->createCourse($request->validated());
             $this->clearCourseCaches();
-
-            Log::info('New course created', [
+            $this->logger->info('New course created', [
                 'course_id' => $course->id,
                 'course_name' => $course->name,
-                'created_by' => auth()->id()
+                'created_by' => $this->auth->id()
             ]);
-
-            return redirect()->route('admin.courses')
+            return $this->responseFactory->redirectToRoute('admin.courses')
                 ->with('success', 'Course "' . $course->name . '" created successfully!');
-                
         } catch (\Exception $e) {
-            \Log::error('Failed to create course', [
+            $this->logger->error('Failed to create course', [
                 'error' => $e->getMessage(),
-                'validated_data' => $validated,
-                'user_id' => auth()->id()
+                'validated_data' => $request->validated(),
+                'user_id' => $this->auth->id()
             ]);
-
-            return back()->withInput()
-                ->with('error', 'Failed to create course. Please try again.');
+            return back()->withInput()->with('error', 'Failed to create course. Please try again.');
         }
     }
 
-    /**
-     * Clear enrollment-related caches
-     */
-    private function clearEnrollmentCaches($userId, $courseId): void
+    private function createCourse(array $validatedData): Course
     {
-        $patterns = [
-            "courses_metadata_{$userId}_*",
-            "user_courses_{$userId}",
-            "course_enrollment_{$courseId}_*"
-        ];
-        
-        // For Laravel cache stores that support pattern deletion
-        try {
-            foreach ($patterns as $pattern) {
-                Cache::forget($pattern);
-            }
-        } catch (\Exception $e) {
-            // Fallback: clear entire cache if pattern deletion fails
-            Cache::flush();
-        }
+        return Course::create(array_merge($validatedData, [
+            'created_by' => $this->auth->id(),
+            'is_active' => $validatedData['is_active'] ?? true,
+        ]));
     }
 
-    /**
-     * Clear course-related caches
-     */
     private function clearCourseCaches(): void
     {
-        Cache::forget('courses_cache_version');
-        Cache::increment('courses_cache_version');
-        
-        // Clear specific course caches
-        $patterns = [
-            'courses_metadata_*',
-            'course_preview_*',
-            'admin_courses_*'
-        ];
-        
-        foreach ($patterns as $pattern) {
-            Cache::forget($pattern);
-        }
+        $this->cache->forget('courses_cache_version');
+        $this->cache->increment('courses_cache_version');
+        $this->cache->tags(['courses'])->flush();
     }
 }

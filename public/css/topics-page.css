@@ -13,31 +13,31 @@ body {
 
 /* Universal modal backdrop fix - force consistent rendering */
 .modal-backdrop {
-    background: rgba(0, 0, 0, 0.5); /* TODO: Refactor CSS specificity instead of !important */
-    backdrop-filter: none; /* TODO: Refactor CSS specificity instead of !important */
-    position: fixed; /* TODO: Refactor CSS specificity instead of !important */
-    top: 0; /* TODO: Refactor CSS specificity instead of !important */
-    left: 0; /* TODO: Refactor CSS specificity instead of !important */
-    width: 100%; /* TODO: Refactor CSS specificity instead of !important */
-    height: 100%; /* TODO: Refactor CSS specificity instead of !important */
-    z-index: 1040; /* TODO: Refactor CSS specificity instead of !important */
-    transform: none; /* TODO: Refactor CSS specificity instead of !important */
-    will-change: auto; /* TODO: Refactor CSS specificity instead of !important */
-    transition: none; /* TODO: Refactor CSS specificity instead of !important */
+    background: rgba(0, 0, 0, 0.5); /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
+    backdrop-filter: none; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
+    position: fixed; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
+    top: 0; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
+    left: 0; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
+    width: 100%; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
+    height: 100%; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
+    z-index: 1040; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
+    transform: none; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
+    will-change: auto; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
+    transition: none; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
 }
 
 .modal-backdrop.show {
-    opacity: 1; /* TODO: Refactor CSS specificity instead of !important */
+    opacity: 1; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
 }
 
 .modal-backdrop.fade {
-    opacity: 0; /* TODO: Refactor CSS specificity instead of !important */
-    transition: none; /* TODO: Refactor CSS specificity instead of !important */
+    opacity: 0; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
+    transition: none; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
 }
 
 .modal-backdrop.fade.show {
-    opacity: 1; /* TODO: Refactor CSS specificity instead of !important */
-    transition: none; /* TODO: Refactor CSS specificity instead of !important */
+    opacity: 1; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
+    transition: none; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
 }
 
 /* Edge-specific modal backdrop override */
@@ -45,20 +45,20 @@ body {
     .modal-backdrop,
     .modal-backdrop.show,
     .modal-backdrop.fade.show {
-        background: rgba(0, 0, 0, 0.5); /* TODO: Refactor CSS specificity instead of !important */
-        opacity: 1; /* TODO: Refactor CSS specificity instead of !important */
-        position: fixed; /* TODO: Refactor CSS specificity instead of !important */
-        top: 0; /* TODO: Refactor CSS specificity instead of !important */
-        left: 0; /* TODO: Refactor CSS specificity instead of !important */
-        right: 0; /* TODO: Refactor CSS specificity instead of !important */
-        bottom: 0; /* TODO: Refactor CSS specificity instead of !important */
-        width: 100%; /* TODO: Refactor CSS specificity instead of !important */
-        height: 100%; /* TODO: Refactor CSS specificity instead of !important */
-        z-index: 1040; /* TODO: Refactor CSS specificity instead of !important */
-        backdrop-filter: none; /* TODO: Refactor CSS specificity instead of !important */
-        filter: none; /* TODO: Refactor CSS specificity instead of !important */
-        transform: none; /* TODO: Refactor CSS specificity instead of !important */
-        transition: none; /* TODO: Refactor CSS specificity instead of !important */
+        background: rgba(0, 0, 0, 0.5); /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
+        opacity: 1; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
+        position: fixed; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
+        top: 0; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
+        left: 0; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
+        right: 0; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
+        bottom: 0; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
+        width: 100%; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
+        height: 100%; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
+        z-index: 1040; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
+        backdrop-filter: none; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
+        filter: none; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
+        transform: none; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
+        transition: none; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
     }
 }
 
@@ -316,7 +316,7 @@ body {
 
 /* Topics Container */
 .topics-container {
-    max-width: 1100px;
+    max-width: 1200px;
     margin: 0 auto;
     padding: 2rem;
 }

@@ -1,0 +1,148 @@
+{
+  "critical_string_comparisons": [
+    {
+      "file": "app/Models/TutorStudentRelationship.php",
+      "line": 37,
+      "snippet": "return $this->belongsTo(User::class, 'tutor_id')->where('role', 'tutor');",
+      "type": "role_comparison",
+      "fix": "->where('role', User::ROLE_TUTOR)"
+    },
+    {
+      "file": "app/Models/TutorStudentRelationship.php", 
+      "line": 45,
+      "snippet": "return $this->belongsTo(User::class, 'student_id')->where('role', 'student');",
+      "type": "role_comparison",
+      "fix": "->where('role', User::ROLE_STUDENT)"
+    },
+    {
+      "file": "app/Models/TutorStudentRelationship.php",
+      "line": 120,
+      "snippet": "if (!$tutor || $tutor->role !== 'tutor') {",
+      "type": "role_comparison", 
+      "fix": "$tutor->role !== User::ROLE_TUTOR"
+    },
+    {
+      "file": "app/Models/TutorStudentRelationship.php",
+      "line": 124,
+      "snippet": "if (!$student || $student->role !== 'student') {",
+      "type": "role_comparison",
+      "fix": "$student->role !== User::ROLE_STUDENT"
+    },
+    {
+      "file": "app/Services/NotificationService.php",
+      "line": 928,
+      "snippet": "$admins = User::where('role', 'admin')->with(['markAsRead'])->get();",
+      "type": "role_query",
+      "fix": "User::where('role', User::ROLE_ADMIN)"
+    },
+    {
+      "file": "app/Services/NotificationService.php",
+      "line": 1029,
+      "snippet": "$admins = User::where('role', 'admin')->with(['notify'])->get();",
+      "type": "role_query",
+      "fix": "User::where('role', User::ROLE_ADMIN)"
+    },
+    {
+      "file": "app/Services/StudentProgressService.php",
+      "line": 399,
+      "snippet": "WHERE u.role = 'student'",
+      "type": "role_query",
+      "fix": "WHERE u.role = " + User::ROLE_STUDENT
+    },
+    {
+      "file": "app/Services/QuizService.php",
+      "line": 42,
+      "snippet": "'is_admin' => $user->role === 'admin',",
+      "type": "role_comparison",
+      "fix": "$user->role === User::ROLE_ADMIN"
+    },
+    {
+      "file": "app/Services/QuizService.php",
+      "line": 127,
+      "snippet": "if ($user->role !== 'admin' && !$user->hasAccessToCourse($course->id) && $course->price && $course->price > 0) {",
+      "type": "role_comparison",
+      "fix": "$user->role !== User::ROLE_ADMIN"
+    },
+    {
+      "file": "app/Services/QuizService.php",
+      "line": 131,
+      "snippet": "'is_admin' => $user->role === 'admin',",
+      "type": "role_comparison",
+      "fix": "$user->role === User::ROLE_ADMIN"
+    },
+    {
+      "file": "app/Services/TopicLockingService.php",
+      "line": 289,
+      "snippet": "if ($tutor->role === 'admin') {",
+      "type": "role_comparison",
+      "fix": "$tutor->role === User::ROLE_ADMIN"
+    },
+    {
+      "file": "app/Services/TopicLockingService.php",
+      "line": 294,
+      "snippet": "if ($tutor->role !== 'tutor') {",
+      "type": "role_comparison",
+      "fix": "$tutor->role !== User::ROLE_TUTOR"
+    },
+    {
+      "file": "app/Services/TopicLockingService.php",
+      "line": 316,
+      "snippet": "if ($tutor->role === 'admin') {",
+      "type": "role_comparison",
+      "fix": "$tutor->role === User::ROLE_ADMIN"
+    },
+    {
+      "file": "app/Http/Middleware/TutorMiddleware.php",
+      "line": 45,
+      "snippet": "if ($user->role === 'tutor') {",
+      "type": "role_comparison",
+      "fix": "$user->role === User::ROLE_TUTOR"
+    },
+    {
+      "file": "app/Http/Middleware/AssignmentSecurityMiddleware.php",
+      "line": 82,
+      "snippet": "if ($user->role === 'tutor') {",
+      "type": "role_comparison",
+      "fix": "$user->role === User::ROLE_TUTOR"
+    }
+  ],
+  "mode_comparisons": [
+    {
+      "file": "app/Services/NotificationTriggerService.php",
+      "line": 25,
+      "snippet": "if ($mode === 'tutor') {",
+      "type": "mode_comparison",
+      "fix": "Define StudyMode constants"
+    },
+    {
+      "file": "app/Models/QuizAttempt.php",
+      "line": 137,
+      "snippet": "if ($model->study_mode === 'tutor' && $model->quiz_type === null) {",
+      "type": "mode_comparison", 
+      "fix": "Define StudyMode constants"
+    }
+  ],
+  "status_comparisons": [
+    {
+      "file": "app/Services/TransactionPatternMatcher.php",
+      "line": 184,
+      "snippet": "$existingPayment = Payment::where('status', 'completed')",
+      "type": "status_query",
+      "fix": "Payment::where('status', Payment::STATUS_COMPLETED)"
+    },
+    {
+      "file": "app/Models/Course.php",
+      "line": 69,
+      "snippet": "->where('payments.status', 'completed')",
+      "type": "status_query",
+      "fix": "->where('payments.status', Payment::STATUS_COMPLETED)"
+    }
+  ],
+  "summary": {
+    "total_critical_hits": 17,
+    "role_comparisons": 12,
+    "mode_comparisons": 2,
+    "status_comparisons": 3,
+    "files_affected": 8
+  }
+}

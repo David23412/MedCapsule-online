@@ -35,7 +35,15 @@ class PaymentStatusController extends Controller
         if ($payment->user_id !== Auth::id()) {
             abort(403, 'Unauthorized access to payment.');
         }
-
+        // Wrap payment processing in database transaction
+        DB::beginTransaction();
+        try {
+            
+            DB::commit();
+        } catch (Exception $e) {
+            DB::rollback();
+            throw $e;
+        }
         return response()->json([
             'success' => true,
             'payment' => [

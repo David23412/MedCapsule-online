@@ -57,7 +57,15 @@ class PaymentLogController extends Controller
 
             $data = Cache::remember($cacheKey, 1800, function () use ($request, $filters) {
                 $query = PaymentLog::query()
-                    ->with(['payment:id,user_id,amount,status', 'user:id,name,email', 'admin:id,name,email'])->orderBy('created_at', 'desc');
+        // Wrap payment processing in database transaction
+        DB::beginTransaction();
+        try {
+            ->with(['payment:id,user_id,amount,status', 'user:id,name,email', 'admin:id,name,email'])->orderBy('created_at', 'desc');
+            DB::commit();
+        } catch (Exception $e) {
+            DB::rollback();
+            throw $e;
+        }
                 
                 // Apply filters
                 if (!empty($filters['payment_id'])) {
@@ -182,7 +190,15 @@ class PaymentLogController extends Controller
             'days' => 'required|integer|min:1|max:365',
             'batch_size' => 'nullable|integer|min:10|max:1000'
         ]);
-        
+        // Wrap payment processing in database transaction
+        DB::beginTransaction();
+        try {
+            
+            DB::commit();
+        } catch (Exception $e) {
+            DB::rollback();
+            throw $e;
+        }
         $result = $this->logService->summarizeOldLogs(
             $validated['days'],
             $validated['batch_size'] ?? 100

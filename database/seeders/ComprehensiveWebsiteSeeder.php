@@ -44,7 +44,7 @@ class ComprehensiveWebsiteSeeder extends Seeder
             'name' => 'Dr. Ahmed Hassan',
             'email' => 'admin@medcapsule.com',
             'password' => Hash::make('password'),
-            'role' => 'admin',
+            'role' => 1, // admin
             'university' => 'Cairo University Faculty of Medicine',
             'profile_picture_url' => 'https://images.pexels.com/photos/5327585/pexels-photo-5327585.jpeg?auto=compress&cs=tinysrgb&w=200&h=200&fit=crop&crop=face',
             'xp' => 15000,
@@ -63,7 +63,7 @@ class ComprehensiveWebsiteSeeder extends Seeder
             'name' => 'David George',
             'email' => 'geodavid627@gmail.com',
             'password' => Hash::make('Einstein234'),
-            'role' => 'admin',
+            'role' => 1, // admin
             'university' => 'Alexandria University Faculty of Medicine',
             'profile_picture_url' => 'https://images.pexels.com/photos/2182970/pexels-photo-2182970.jpeg?auto=compress&cs=tinysrgb&w=200&h=200&fit=crop&crop=face',
             'xp' => 25000,
@@ -82,7 +82,7 @@ class ComprehensiveWebsiteSeeder extends Seeder
             'name' => 'Dr. Sarah Johnson',
             'email' => 'tutor@medcapsule.com',
             'password' => Hash::make('password'),
-            'role' => 'tutor',
+            'role' => 2, // tutor
             'university' => 'Ain Shams University Faculty of Medicine',
             'profile_picture_url' => 'https://images.pexels.com/photos/1239291/pexels-photo-1239291.jpeg?auto=compress&cs=tinysrgb&w=200&h=200&fit=crop&crop=face',
             'xp' => 8500,
@@ -122,7 +122,7 @@ class ComprehensiveWebsiteSeeder extends Seeder
                 'name' => $profile['name'],
                 'email' => "student" . ($i + 1) . "@medcapsule.com",
                 'password' => Hash::make('password'),
-                'role' => 'student',
+                'role' => 3, // student
                 'university' => $profile['university'],
                 'profile_picture_url' => $profile['profile_picture_url'],
                 'xp' => $xp,
@@ -142,7 +142,7 @@ class ComprehensiveWebsiteSeeder extends Seeder
             'name' => 'Test Student',
             'email' => 'test@test.com',
             'password' => Hash::make('password'),
-            'role' => 'student',
+            'role' => 3, // student
             'university' => 'Cairo University Faculty of Medicine',
             'profile_picture_url' => 'https://images.pexels.com/photos/1681010/pexels-photo-1681010.jpeg?auto=compress&cs=tinysrgb&w=200&h=200&fit=crop&crop=face',
             'xp' => 3200,
@@ -161,7 +161,7 @@ class ComprehensiveWebsiteSeeder extends Seeder
             'name' => 'Dr.David',
             'email' => 'tuna@gmail.com',
             'password' => Hash::make('Einstein234'),
-            'role' => 'student',
+            'role' => 3, // student
             'university' => 'Alexandria University Faculty of Medicine',
             'profile_picture_url' => 'https://images.pexels.com/photos/1043471/pexels-photo-1043471.jpeg?auto=compress&cs=tinysrgb&w=200&h=200&fit=crop&crop=face',
             'xp' => 4500,
@@ -266,7 +266,6 @@ class ComprehensiveWebsiteSeeder extends Seeder
                 DB::table('course_user')->insert([
                     'user_id' => $student->id,
                     'course_id' => $course->id,
-                    'is_enrolled' => true,
                     'enrolled_at' => now()->subDays(rand(1, 30)),
                     'created_at' => now(),
                     'updated_at' => now(),
@@ -519,7 +518,8 @@ class ComprehensiveWebsiteSeeder extends Seeder
             // Create 1-3 payments per student
             for ($i = 1; $i <= rand(1, 3); $i++) {
                 $course = collect($createdCourses)->random();
-                $status = ['pending', 'completed', 'failed'][rand(0, 2)];
+                $statusOptions = [1, 2, 3]; // pending, completed, failed
+                $status = $statusOptions[rand(0, 2)];
                 Payment::create([
                     'user_id' => $student->id,
                     'course_id' => $course->id,
@@ -531,7 +531,7 @@ class ComprehensiveWebsiteSeeder extends Seeder
                         'transaction_id' => 'TXN_' . strtoupper(uniqid()),
                         'reference' => 'REF_' . rand(100000, 999999),
                     ]),
-                    'paid_at' => $status === 'completed' ? now()->subDays(rand(1, 30)) : null,
+                    'paid_at' => $status === 2 ? now()->subDays(rand(1, 30)) : null, // 2 = completed
                     'created_at' => now()->subDays(rand(1, 30)),
                     'updated_at' => now()->subDays(rand(1, 30)),
                 ]);

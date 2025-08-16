@@ -234,25 +234,25 @@ button.start-quiz-btn.assignment-start-btn.locked[disabled],
 button[class*="start-quiz-btn"][class*="assignment-start-btn"][class*="locked"][disabled],
 button[class*="start-quiz-btn"][class*="locked"][disabled],
 .start-quiz-btn.assignment-start-btn.locked[disabled] {
-    background: #f1f3f4; /* TODO: Refactor CSS specificity instead of !important */
-    background-color: #f1f3f4; /* TODO: Refactor CSS specificity instead of !important */
-    background-image: none; /* TODO: Refactor CSS specificity instead of !important */
-    color: #9ca3af; /* TODO: Refactor CSS specificity instead of !important */
-    border: 2px solid #e5e7eb; /* TODO: Refactor CSS specificity instead of !important */
-    border-color: #e5e7eb; /* TODO: Refactor CSS specificity instead of !important */
-    box-shadow: none; /* TODO: Refactor CSS specificity instead of !important */
-    opacity: 0.6; /* TODO: Refactor CSS specificity instead of !important */
-    cursor: not-allowed; /* TODO: Refactor CSS specificity instead of !important */
-    pointer-events: none; /* TODO: Refactor CSS specificity instead of !important */
-    display: flex; /* TODO: Refactor CSS specificity instead of !important */
-    align-items: center; /* TODO: Refactor CSS specificity instead of !important */
-    justify-content: center; /* TODO: Refactor CSS specificity instead of !important */
-    min-height: 48px; /* TODO: Refactor CSS specificity instead of !important */
-    min-width: 180px; /* TODO: Refactor CSS specificity instead of !important */
-    padding: 12px 20px; /* TODO: Refactor CSS specificity instead of !important */
-    font-weight: 600; /* TODO: Refactor CSS specificity instead of !important */
-    border-radius: 8px; /* TODO: Refactor CSS specificity instead of !important */
-    transition: none; /* TODO: Refactor CSS specificity instead of !important */
+    background: #f1f3f4; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
+    background-color: #f1f3f4; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
+    background-image: none; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
+    color: #9ca3af; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
+    border: 2px solid #e5e7eb; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
+    border-color: #e5e7eb; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
+    box-shadow: none; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
+    opacity: 0.6; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
+    cursor: not-allowed; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
+    pointer-events: none; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
+    display: flex; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
+    align-items: center; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
+    justify-content: center; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
+    min-height: 48px; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
+    min-width: 180px; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
+    padding: 12px 20px; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
+    font-weight: 600; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
+    border-radius: 8px; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
+    transition: none; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
 }
 
 /* Override Bootstrap and any other button styling for locked assignments */
@@ -261,14 +261,14 @@ button[class*="start-quiz-btn"][class*="locked"][disabled],
 .btn-primary.locked,
 button.btn.locked,
 button.btn-primary.locked {
-    background: #f1f3f4; /* TODO: Refactor CSS specificity instead of !important */
-    background-color: #f1f3f4; /* TODO: Refactor CSS specificity instead of !important */
-    background-image: none; /* TODO: Refactor CSS specificity instead of !important */
-    color: #9ca3af; /* TODO: Refactor CSS specificity instead of !important */
-    border: 2px solid #e5e7eb; /* TODO: Refactor CSS specificity instead of !important */
-    border-color: #e5e7eb; /* TODO: Refactor CSS specificity instead of !important */
-    box-shadow: none; /* TODO: Refactor CSS specificity instead of !important */
-    opacity: 0.6; /* TODO: Refactor CSS specificity instead of !important */
+    background: #f1f3f4; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
+    background-color: #f1f3f4; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
+    background-image: none; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
+    color: #9ca3af; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
+    border: 2px solid #e5e7eb; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
+    border-color: #e5e7eb; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
+    box-shadow: none; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
+    opacity: 0.6; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
 }
 
 /* ULTIMATE NUCLEAR OPTION - Target exact button structure */
@@ -276,19 +276,19 @@ button[class="start-quiz-btn assignment-start-btn locked"][disabled],
 button[class*="start-quiz-btn"][class*="assignment-start-btn"][class*="locked"][disabled][data-topic-id][data-course-id],
 button[disabled][title*="Assignment"][class*="locked"],
 button[disabled][class*="start-quiz-btn"][class*="locked"] {
-    background: #f1f3f4; /* TODO: Refactor CSS specificity instead of !important */
-    background-color: #f1f3f4; /* TODO: Refactor CSS specificity instead of !important */
-    background-image: none; /* TODO: Refactor CSS specificity instead of !important */
-    color: #9ca3af; /* TODO: Refactor CSS specificity instead of !important */
-    border: 2px solid #e5e7eb; /* TODO: Refactor CSS specificity instead of !important */
-    border-color: #e5e7eb; /* TODO: Refactor CSS specificity instead of !important */
-    box-shadow: none; /* TODO: Refactor CSS specificity instead of !important */
-    opacity: 0.6; /* TODO: Refactor CSS specificity instead of !important */
-    cursor: not-allowed; /* TODO: Refactor CSS specificity instead of !important */
-    pointer-events: none; /* TODO: Refactor CSS specificity instead of !important */
-    display: flex; /* TODO: Refactor CSS specificity instead of !important */
-    align-items: center; /* TODO: Refactor CSS specificity instead of !important */
-    justify-content: center; /* TODO: Refactor CSS specificity instead of !important */
+    background: #f1f3f4; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
+    background-color: #f1f3f4; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
+    background-image: none; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
+    color: #9ca3af; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
+    border: 2px solid #e5e7eb; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
+    border-color: #e5e7eb; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
+    box-shadow: none; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
+    opacity: 0.6; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
+    cursor: not-allowed; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
+    pointer-events: none; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
+    display: flex; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
+    align-items: center; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
+    justify-content: center; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
 }
 
 /* NUCLEAR OPTION - Override any blue button styling for locked assignments */
@@ -296,79 +296,79 @@ button[disabled].start-quiz-btn,
 button.locked.start-quiz-btn,
 .locked.start-quiz-btn,
 [disabled].start-quiz-btn {
-    background: #f1f3f4; /* TODO: Refactor CSS specificity instead of !important */
-    background-color: #f1f3f4; /* TODO: Refactor CSS specificity instead of !important */
-    background-image: none; /* TODO: Refactor CSS specificity instead of !important */
-    color: #9ca3af; /* TODO: Refactor CSS specificity instead of !important */
-    border: 2px solid #e5e7eb; /* TODO: Refactor CSS specificity instead of !important */
-    border-color: #e5e7eb; /* TODO: Refactor CSS specificity instead of !important */
-    box-shadow: none; /* TODO: Refactor CSS specificity instead of !important */
-    opacity: 0.6; /* TODO: Refactor CSS specificity instead of !important */
-    cursor: not-allowed; /* TODO: Refactor CSS specificity instead of !important */
-    pointer-events: none; /* TODO: Refactor CSS specificity instead of !important */
+    background: #f1f3f4; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
+    background-color: #f1f3f4; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
+    background-image: none; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
+    color: #9ca3af; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
+    border: 2px solid #e5e7eb; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
+    border-color: #e5e7eb; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
+    box-shadow: none; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
+    opacity: 0.6; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
+    cursor: not-allowed; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
+    pointer-events: none; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
 }
 
 button[disabled].start-quiz-btn:hover,
 button.locked.start-quiz-btn:hover,
 .locked.start-quiz-btn:hover,
 [disabled].start-quiz-btn:hover {
-    background: #f1f3f4; /* TODO: Refactor CSS specificity instead of !important */
-    background-color: #f1f3f4; /* TODO: Refactor CSS specificity instead of !important */
-    background-image: none; /* TODO: Refactor CSS specificity instead of !important */
-    color: #9ca3af; /* TODO: Refactor CSS specificity instead of !important */
-    transform: none; /* TODO: Refactor CSS specificity instead of !important */
-    box-shadow: none; /* TODO: Refactor CSS specificity instead of !important */
+    background: #f1f3f4; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
+    background-color: #f1f3f4; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
+    background-image: none; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
+    color: #9ca3af; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
+    transform: none; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
+    box-shadow: none; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
 }
 
 /* SUPER AGENT ULTIMATE FIX - Override inline styles and any possible conflicts */
 button.start-quiz-btn.assignment-start-btn.locked[disabled][style*="cursor: pointer"] {
-    cursor: not-allowed; /* TODO: Refactor CSS specificity instead of !important */
-    pointer-events: none; /* TODO: Refactor CSS specificity instead of !important */
-    background: #f8f9fa; /* TODO: Refactor CSS specificity instead of !important */
-    background-color: #f8f9fa; /* TODO: Refactor CSS specificity instead of !important */
-    background-image: none; /* TODO: Refactor CSS specificity instead of !important */
-    color: #6c757d; /* TODO: Refactor CSS specificity instead of !important */
-    border: 2px solid #dee2e6; /* TODO: Refactor CSS specificity instead of !important */
-    border-color: #dee2e6; /* TODO: Refactor CSS specificity instead of !important */
-    box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.1); /* TODO: Refactor CSS specificity instead of !important */
-    opacity: 0.7; /* TODO: Refactor CSS specificity instead of !important */
-    display: flex; /* TODO: Refactor CSS specificity instead of !important */
-    align-items: center; /* TODO: Refactor CSS specificity instead of !important */
-    justify-content: center; /* TODO: Refactor CSS specificity instead of !important */
-    min-height: 48px; /* TODO: Refactor CSS specificity instead of !important */
-    min-width: 180px; /* TODO: Refactor CSS specificity instead of !important */
-    padding: 12px 20px; /* TODO: Refactor CSS specificity instead of !important */
-    font-weight: 600; /* TODO: Refactor CSS specificity instead of !important */
-    border-radius: 8px; /* TODO: Refactor CSS specificity instead of !important */
-    transition: none; /* TODO: Refactor CSS specificity instead of !important */
-    text-decoration: none; /* TODO: Refactor CSS specificity instead of !important */
+    cursor: not-allowed; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
+    pointer-events: none; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
+    background: #f8f9fa; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
+    background-color: #f8f9fa; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
+    background-image: none; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
+    color: #6c757d; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
+    border: 2px solid #dee2e6; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
+    border-color: #dee2e6; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
+    box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.1); /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
+    opacity: 0.7; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
+    display: flex; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
+    align-items: center; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
+    justify-content: center; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
+    min-height: 48px; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
+    min-width: 180px; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
+    padding: 12px 20px; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
+    font-weight: 600; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
+    border-radius: 8px; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
+    transition: none; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
+    text-decoration: none; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
 }
 
 /* Force override any hover effects on locked buttons */
 button.start-quiz-btn.assignment-start-btn.locked[disabled]:hover,
 button.start-quiz-btn.assignment-start-btn.locked[disabled]:focus,
 button.start-quiz-btn.assignment-start-btn.locked[disabled]:active {
-    background: #f8f9fa; /* TODO: Refactor CSS specificity instead of !important */
-    background-color: #f8f9fa; /* TODO: Refactor CSS specificity instead of !important */
-    background-image: none; /* TODO: Refactor CSS specificity instead of !important */
-    color: #6c757d; /* TODO: Refactor CSS specificity instead of !important */
-    border: 2px solid #dee2e6; /* TODO: Refactor CSS specificity instead of !important */
-    border-color: #dee2e6; /* TODO: Refactor CSS specificity instead of !important */
-    box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.1); /* TODO: Refactor CSS specificity instead of !important */
-    opacity: 0.7; /* TODO: Refactor CSS specificity instead of !important */
-    transform: none; /* TODO: Refactor CSS specificity instead of !important */
-    cursor: not-allowed; /* TODO: Refactor CSS specificity instead of !important */
-    pointer-events: none; /* TODO: Refactor CSS specificity instead of !important */
+    background: #f8f9fa; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
+    background-color: #f8f9fa; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
+    background-image: none; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
+    color: #6c757d; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
+    border: 2px solid #dee2e6; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
+    border-color: #dee2e6; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
+    box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.1); /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
+    opacity: 0.7; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
+    transform: none; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
+    cursor: not-allowed; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
+    pointer-events: none; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
 }
 
 /* Lock icon specific styling for better visibility */
 button.start-quiz-btn.assignment-start-btn.locked .fa-lock,
 button.start-quiz-btn.assignment-start-btn.locked .lock-icon {
-    color: #6c757d; /* TODO: Refactor CSS specificity instead of !important */
-    font-size: 1.1em; /* TODO: Refactor CSS specificity instead of !important */
-    margin: 0; /* TODO: Refactor CSS specificity instead of !important */
-    text-shadow: none; /* TODO: Refactor CSS specificity instead of !important */
-    opacity: 0.8; /* TODO: Refactor CSS specificity instead of !important */
+    color: #6c757d; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
+    font-size: 1.1em; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
+    margin: 0; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
+    text-shadow: none; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
+    opacity: 0.8; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
 }
 
 /* Clean locked button appearance */
@@ -424,69 +424,69 @@ button.start-quiz-btn.assignment-start-btn.locked::before {
 ER AGENT MODE - FINAL OVERRIDE FOR INLINE STYLES */
 /* This targets the exact button structure you provided */
 button[class="start-quiz-btn assignment-start-btn locked"][disabled][data-topic-id][data-course-id][title][style] {
-    cursor: not-allowed; /* TODO: Refactor CSS specificity instead of !important */
-    pointer-events: none; /* TODO: Refactor CSS specificity instead of !important */
-    background: #f8f9fa; /* TODO: Refactor CSS specificity instead of !important */
-    background-color: #f8f9fa; /* TODO: Refactor CSS specificity instead of !important */
-    background-image: none; /* TODO: Refactor CSS specificity instead of !important */
-    color: #6c757d; /* TODO: Refactor CSS specificity instead of !important */
-    border: 2px solid #dee2e6; /* TODO: Refactor CSS specificity instead of !important */
-    border-color: #dee2e6; /* TODO: Refactor CSS specificity instead of !important */
-    box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.1); /* TODO: Refactor CSS specificity instead of !important */
-    opacity: 0.7; /* TODO: Refactor CSS specificity instead of !important */
-    display: flex; /* TODO: Refactor CSS specificity instead of !important */
-    align-items: center; /* TODO: Refactor CSS specificity instead of !important */
-    justify-content: center; /* TODO: Refactor CSS specificity instead of !important */
-    min-height: 48px; /* TODO: Refactor CSS specificity instead of !important */
-    min-width: 180px; /* TODO: Refactor CSS specificity instead of !important */
-    padding: 12px 20px; /* TODO: Refactor CSS specificity instead of !important */
-    font-weight: 600; /* TODO: Refactor CSS specificity instead of !important */
-    border-radius: 8px; /* TODO: Refactor CSS specificity instead of !important */
-    transition: none; /* TODO: Refactor CSS specificity instead of !important */
-    text-decoration: none; /* TODO: Refactor CSS specificity instead of !important */
-    font-family: 'Poppins', sans-serif; /* TODO: Refactor CSS specificity instead of !important */
+    cursor: not-allowed; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
+    pointer-events: none; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
+    background: #f8f9fa; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
+    background-color: #f8f9fa; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
+    background-image: none; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
+    color: #6c757d; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
+    border: 2px solid #dee2e6; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
+    border-color: #dee2e6; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
+    box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.1); /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
+    opacity: 0.7; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
+    display: flex; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
+    align-items: center; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
+    justify-content: center; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
+    min-height: 48px; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
+    min-width: 180px; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
+    padding: 12px 20px; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
+    font-weight: 600; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
+    border-radius: 8px; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
+    transition: none; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
+    text-decoration: none; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
+    font-family: 'Poppins', sans-serif; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
 }
 
 /* Override any possible cursor pointer inline style */
 button[style*="cursor: pointer"].start-quiz-btn.locked,
 button[style*="cursor: pointer"].assignment-start-btn.locked,
 button[style*="cursor: pointer"][class*="locked"][disabled] {
-    cursor: not-allowed; /* TODO: Refactor CSS specificity instead of !important */
-    pointer-events: none; /* TODO: Refactor CSS specificity instead of !important */
+    cursor: not-allowed; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
+    pointer-events: none; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
 }
 
 /* Ensure proper styling regardless of inline styles */
 button.start-quiz-btn.assignment-start-btn.locked[disabled][style*="cursor"] {
-    cursor: not-allowed; /* TODO: Refactor CSS specificity instead of !important */
-    pointer-events: none; /* TODO: Refactor CSS specificity instead of !important */
-    background: #f8f9fa; /* TODO: Refactor CSS specificity instead of !important */
-    background-color: #f8f9fa; /* TODO: Refactor CSS specificity instead of !important */
-    color: #6c757d; /* TODO: Refactor CSS specificity instead of !important */
-    border: 2px solid #dee2e6; /* TODO: Refactor CSS specificity instead of !important */
-    opacity: 0.7; /* TODO: Refactor CSS specificity instead of !important */
+    cursor: not-allowed; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
+    pointer-events: none; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
+    background: #f8f9fa; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
+    background-color: #f8f9fa; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
+    color: #6c757d; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
+    border: 2px solid #dee2e6; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
+    opacity: 0.7; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
 }
 
 /* Additional specificity for stubborn inline styles */
 button[disabled=""][class*="start-quiz-btn"][class*="locked"][style] {
-    cursor: not-allowed; /* TODO: Refactor CSS specificity instead of !important */
-    pointer-events: none; /* TODO: Refactor CSS specificity instead of !important */
-    background: #f8f9fa; /* TODO: Refactor CSS specificity instead of !important */
-    background-color: #f8f9fa; /* TODO: Refactor CSS specificity instead of !important */
-    background-image: none; /* TODO: Refactor CSS specificity instead of !important */
-    color: #6c757d; /* TODO: Refactor CSS specificity instead of !important */
-    border: 2px solid #dee2e6; /* TODO: Refactor CSS specificity instead of !important */
-    border-color: #dee2e6; /* TODO: Refactor CSS specificity instead of !important */
-    box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.1); /* TODO: Refactor CSS specificity instead of !important */
-    opacity: 0.7; /* TODO: Refactor CSS specificity instead of !important */
+    cursor: not-allowed; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
+    pointer-events: none; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
+    background: #f8f9fa; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
+    background-color: #f8f9fa; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
+    background-image: none; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
+    color: #6c757d; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
+    border: 2px solid #dee2e6; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
+    border-color: #dee2e6; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
+    box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.1); /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
+    opacity: 0.7; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
 }
 
 /* Clean professional locked state with subtle pattern */
 button.start-quiz-btn.assignment-start-btn.locked[disabled] {
-    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%); /* TODO: Refactor CSS specificity instead of !important */
-    border: 2px solid #dee2e6; /* TODO: Refactor CSS specificity instead of !important */
-    color: #6c757d; /* TODO: Refactor CSS specificity instead of !important */
-    position: relative; /* TODO: Refactor CSS specificity instead of !important */
-    overflow: hidden; /* TODO: Refactor CSS specificity instead of !important */
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%); /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
+    border: 2px solid #dee2e6; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
+    color: #6c757d; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
+    position: relative; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
+    overflow: hidden; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
 }
 
 button.start-quiz-btn.assignment-start-btn.locked[disabled]::after {
@@ -555,27 +555,27 @@ button[disabled][class*="locked"],
 button[disabled][title*="Assignment"],
 button[disabled][title*="completed"],
 button[disabled][title*="accessible"] {
-    background: #6c757d; /* TODO: Refactor CSS specificity instead of !important */
-    background-color: #6c757d; /* TODO: Refactor CSS specificity instead of !important */
-    background-image: none; /* TODO: Refactor CSS specificity instead of !important */
-    color: #ffffff; /* TODO: Refactor CSS specificity instead of !important */
-    border: 2px solid #5a6268; /* TODO: Refactor CSS specificity instead of !important */
-    border-color: #5a6268; /* TODO: Refactor CSS specificity instead of !important */
-    box-shadow: none; /* TODO: Refactor CSS specificity instead of !important */
-    opacity: 0.8; /* TODO: Refactor CSS specificity instead of !important */
-    cursor: not-allowed; /* TODO: Refactor CSS specificity instead of !important */
-    pointer-events: none; /* TODO: Refactor CSS specificity instead of !important */
-    display: flex; /* TODO: Refactor CSS specificity instead of !important */
-    align-items: center; /* TODO: Refactor CSS specificity instead of !important */
-    justify-content: center; /* TODO: Refactor CSS specificity instead of !important */
-    min-height: 48px; /* TODO: Refactor CSS specificity instead of !important */
-    min-width: 180px; /* TODO: Refactor CSS specificity instead of !important */
-    padding: 12px 20px; /* TODO: Refactor CSS specificity instead of !important */
-    font-weight: 600; /* TODO: Refactor CSS specificity instead of !important */
-    border-radius: 8px; /* TODO: Refactor CSS specificity instead of !important */
-    transition: none; /* TODO: Refactor CSS specificity instead of !important */
-    text-decoration: none; /* TODO: Refactor CSS specificity instead of !important */
-    font-family: inherit; /* TODO: Refactor CSS specificity instead of !important */
+    background: #6c757d; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
+    background-color: #6c757d; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
+    background-image: none; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
+    color: #ffffff; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
+    border: 2px solid #5a6268; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
+    border-color: #5a6268; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
+    box-shadow: none; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
+    opacity: 0.8; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
+    cursor: not-allowed; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
+    pointer-events: none; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
+    display: flex; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
+    align-items: center; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
+    justify-content: center; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
+    min-height: 48px; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
+    min-width: 180px; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
+    padding: 12px 20px; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
+    font-weight: 600; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
+    border-radius: 8px; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
+    transition: none; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
+    text-decoration: none; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
+    font-family: inherit; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
 }
 
 /* Override hover states */
@@ -591,18 +591,18 @@ button[disabled][class*="locked"]:hover,
 button[disabled][title*="Assignment"]:hover,
 button[disabled][title*="completed"]:hover,
 button[disabled][title*="accessible"]:hover {
-    background: #6c757d; /* TODO: Refactor CSS specificity instead of !important */
-    background-color: #6c757d; /* TODO: Refactor CSS specificity instead of !important */
-    background-image: none; /* TODO: Refactor CSS specificity instead of !important */
-    color: #ffffff; /* TODO: Refactor CSS specificity instead of !important */
-    border: 2px solid #5a6268; /* TODO: Refactor CSS specificity instead of !important */
-    border-color: #5a6268; /* TODO: Refactor CSS specificity instead of !important */
-    box-shadow: none; /* TODO: Refactor CSS specificity instead of !important */
-    opacity: 0.8; /* TODO: Refactor CSS specificity instead of !important */
-    cursor: not-allowed; /* TODO: Refactor CSS specificity instead of !important */
-    pointer-events: none; /* TODO: Refactor CSS specificity instead of !important */
-    transform: none; /* TODO: Refactor CSS specificity instead of !important */
-    text-decoration: none; /* TODO: Refactor CSS specificity instead of !important */
+    background: #6c757d; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
+    background-color: #6c757d; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
+    background-image: none; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
+    color: #ffffff; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
+    border: 2px solid #5a6268; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
+    border-color: #5a6268; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
+    box-shadow: none; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
+    opacity: 0.8; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
+    cursor: not-allowed; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
+    pointer-events: none; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
+    transform: none; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
+    text-decoration: none; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
 }
 
 /* Override focus and active states */
@@ -612,12 +612,12 @@ button[class*="assignment-start-btn"][class*="locked"]:focus,
 button[class*="assignment-start-btn"][class*="locked"]:active,
 button[disabled][class*="locked"]:focus,
 button[disabled][class*="locked"]:active {
-    background: #6c757d; /* TODO: Refactor CSS specificity instead of !important */
-    background-color: #6c757d; /* TODO: Refactor CSS specificity instead of !important */
-    color: #ffffff; /* TODO: Refactor CSS specificity instead of !important */
-    border: 2px solid #5a6268; /* TODO: Refactor CSS specificity instead of !important */
-    box-shadow: none; /* TODO: Refactor CSS specificity instead of !important */
-    outline: none; /* TODO: Refactor CSS specificity instead of !important */
+    background: #6c757d; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
+    background-color: #6c757d; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
+    color: #ffffff; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
+    border: 2px solid #5a6268; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
+    box-shadow: none; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
+    outline: none; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
 }
 
 /* Override Bootstrap button classes specifically */
@@ -627,32 +627,32 @@ button[disabled][class*="locked"]:active {
 .btn.locked,
 button.btn.locked,
 button.btn-primary.locked {
-    background: #6c757d; /* TODO: Refactor CSS specificity instead of !important */
-    background-color: #6c757d; /* TODO: Refactor CSS specificity instead of !important */
-    background-image: none; /* TODO: Refactor CSS specificity instead of !important */
-    color: #ffffff; /* TODO: Refactor CSS specificity instead of !important */
-    border: 2px solid #5a6268; /* TODO: Refactor CSS specificity instead of !important */
-    border-color: #5a6268; /* TODO: Refactor CSS specificity instead of !important */
-    box-shadow: none; /* TODO: Refactor CSS specificity instead of !important */
-    opacity: 0.8; /* TODO: Refactor CSS specificity instead of !important */
-    cursor: not-allowed; /* TODO: Refactor CSS specificity instead of !important */
-    pointer-events: none; /* TODO: Refactor CSS specificity instead of !important */
+    background: #6c757d; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
+    background-color: #6c757d; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
+    background-image: none; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
+    color: #ffffff; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
+    border: 2px solid #5a6268; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
+    border-color: #5a6268; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
+    box-shadow: none; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
+    opacity: 0.8; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
+    cursor: not-allowed; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
+    pointer-events: none; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
 }
 
 /* Target inline styles specifically */
 button[style*="cursor: pointer"][class*="locked"],
 button[style][class*="locked"][disabled],
 button[style][disabled][title*="Assignment"] {
-    cursor: not-allowed; /* TODO: Refactor CSS specificity instead of !important */
-    pointer-events: none; /* TODO: Refactor CSS specificity instead of !important */
-    background: #6c757d; /* TODO: Refactor CSS specificity instead of !important */
-    background-color: #6c757d; /* TODO: Refactor CSS specificity instead of !important */
-    background-image: none; /* TODO: Refactor CSS specificity instead of !important */
-    color: #ffffff; /* TODO: Refactor CSS specificity instead of !important */
-    border: 2px solid #5a6268; /* TODO: Refactor CSS specificity instead of !important */
-    border-color: #5a6268; /* TODO: Refactor CSS specificity instead of !important */
-    box-shadow: none; /* TODO: Refactor CSS specificity instead of !important */
-    opacity: 0.8; /* TODO: Refactor CSS specificity instead of !important */
+    cursor: not-allowed; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
+    pointer-events: none; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
+    background: #6c757d; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
+    background-color: #6c757d; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
+    background-image: none; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
+    color: #ffffff; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
+    border: 2px solid #5a6268; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
+    border-color: #5a6268; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
+    box-shadow: none; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
+    opacity: 0.8; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
 }
 
 /* Lock icon styling */
@@ -660,47 +660,47 @@ button[class*="locked"] .fa-lock,
 button[class*="locked"] .lock-icon,
 button[disabled] .fa-lock,
 button[disabled] .lock-icon {
-    color: #ffffff; /* TODO: Refactor CSS specificity instead of !important */
-    font-size: 1.2em; /* TODO: Refactor CSS specificity instead of !important */
-    margin: 0; /* TODO: Refactor CSS specificity instead of !important */
-    text-shadow: none; /* TODO: Refactor CSS specificity instead of !important */
-    opacity: 1; /* TODO: Refactor CSS specificity instead of !important */
+    color: #ffffff; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
+    font-size: 1.2em; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
+    margin: 0; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
+    text-shadow: none; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
+    opacity: 1; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
 }
 
 /* Ultimate nuclear option - target exact structure from your HTML */
 button[class="start-quiz-btn assignment-start-btn locked"][disabled=""][data-topic-id][data-course-id][title][style] {
-    cursor: not-allowed; /* TODO: Refactor CSS specificity instead of !important */
-    pointer-events: none; /* TODO: Refactor CSS specificity instead of !important */
-    background: #6c757d; /* TODO: Refactor CSS specificity instead of !important */
-    background-color: #6c757d; /* TODO: Refactor CSS specificity instead of !important */
-    background-image: none; /* TODO: Refactor CSS specificity instead of !important */
-    color: #ffffff; /* TODO: Refactor CSS specificity instead of !important */
-    border: 2px solid #5a6268; /* TODO: Refactor CSS specificity instead of !important */
-    border-color: #5a6268; /* TODO: Refactor CSS specificity instead of !important */
-    box-shadow: none; /* TODO: Refactor CSS specificity instead of !important */
-    opacity: 0.8; /* TODO: Refactor CSS specificity instead of !important */
-    display: flex; /* TODO: Refactor CSS specificity instead of !important */
-    align-items: center; /* TODO: Refactor CSS specificity instead of !important */
-    justify-content: center; /* TODO: Refactor CSS specificity instead of !important */
-    min-height: 48px; /* TODO: Refactor CSS specificity instead of !important */
-    min-width: 180px; /* TODO: Refactor CSS specificity instead of !important */
-    padding: 12px 20px; /* TODO: Refactor CSS specificity instead of !important */
-    font-weight: 600; /* TODO: Refactor CSS specificity instead of !important */
-    border-radius: 8px; /* TODO: Refactor CSS specificity instead of !important */
-    transition: none; /* TODO: Refactor CSS specificity instead of !important */
-    text-decoration: none; /* TODO: Refactor CSS specificity instead of !important */
+    cursor: not-allowed; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
+    pointer-events: none; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
+    background: #6c757d; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
+    background-color: #6c757d; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
+    background-image: none; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
+    color: #ffffff; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
+    border: 2px solid #5a6268; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
+    border-color: #5a6268; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
+    box-shadow: none; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
+    opacity: 0.8; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
+    display: flex; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
+    align-items: center; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
+    justify-content: center; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
+    min-height: 48px; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
+    min-width: 180px; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
+    padding: 12px 20px; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
+    font-weight: 600; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
+    border-radius: 8px; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
+    transition: none; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
+    text-decoration: none; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
 }
 
 /* Force override any possible conflicting styles */
 * button[disabled][class*="start-quiz-btn"],
 * button[disabled][class*="assignment"],
 * button[disabled][class*="locked"] {
-    background: #6c757d; /* TODO: Refactor CSS specificity instead of !important */
-    background-color: #6c757d; /* TODO: Refactor CSS specificity instead of !important */
-    color: #ffffff; /* TODO: Refactor CSS specificity instead of !important */
-    border-color: #5a6268; /* TODO: Refactor CSS specificity instead of !important */
-    cursor: not-allowed; /* TODO: Refactor CSS specificity instead of !important */
-    pointer-events: none; /* TODO: Refactor CSS specificity instead of !important */
+    background: #6c757d; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
+    background-color: #6c757d; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
+    color: #ffffff; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
+    border-color: #5a6268; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
+    cursor: not-allowed; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
+    pointer-events: none; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
 }
 
 /* Add visual indicator for locked state */
@@ -726,8 +726,8 @@ button[disabled][title*="Assignment"]::before {
 /* Ensure button is positioned relative for pseudo-element */
 button[class*="locked"],
 button[disabled][title*="Assignment"] {
-    position: relative; /* TODO: Refactor CSS specificity instead of !important */
-    overflow: hidden; /* TODO: Refactor CSS specificity instead of !important */
+    position: relative; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
+    overflow: hidden; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
 }/*
  ========================================
    LOCKED ASSIGNMENT BUTTON - FINAL FIX
@@ -735,51 +735,51 @@ button[disabled][title*="Assignment"] {
 
 /* Clean, professional locked button styling */
 button.start-quiz-btn.assignment-start-btn.locked[disabled] {
-    background: #6c757d; /* TODO: Refactor CSS specificity instead of !important */
-    background-color: #6c757d; /* TODO: Refactor CSS specificity instead of !important */
-    background-image: none; /* TODO: Refactor CSS specificity instead of !important */
-    color: #ffffff; /* TODO: Refactor CSS specificity instead of !important */
-    border: 2px solid #5a6268; /* TODO: Refactor CSS specificity instead of !important */
-    border-color: #5a6268; /* TODO: Refactor CSS specificity instead of !important */
-    box-shadow: none; /* TODO: Refactor CSS specificity instead of !important */
-    opacity: 0.8; /* TODO: Refactor CSS specificity instead of !important */
-    cursor: not-allowed; /* TODO: Refactor CSS specificity instead of !important */
-    pointer-events: none; /* TODO: Refactor CSS specificity instead of !important */
-    display: flex; /* TODO: Refactor CSS specificity instead of !important */
-    align-items: center; /* TODO: Refactor CSS specificity instead of !important */
-    justify-content: center; /* TODO: Refactor CSS specificity instead of !important */
-    min-height: 48px; /* TODO: Refactor CSS specificity instead of !important */
-    min-width: 180px; /* TODO: Refactor CSS specificity instead of !important */
-    padding: 12px 20px; /* TODO: Refactor CSS specificity instead of !important */
-    font-weight: 600; /* TODO: Refactor CSS specificity instead of !important */
-    border-radius: 8px; /* TODO: Refactor CSS specificity instead of !important */
-    transition: none; /* TODO: Refactor CSS specificity instead of !important */
-    text-decoration: none; /* TODO: Refactor CSS specificity instead of !important */
-    font-family: inherit; /* TODO: Refactor CSS specificity instead of !important */
+    background: #6c757d; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
+    background-color: #6c757d; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
+    background-image: none; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
+    color: #ffffff; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
+    border: 2px solid #5a6268; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
+    border-color: #5a6268; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
+    box-shadow: none; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
+    opacity: 0.8; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
+    cursor: not-allowed; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
+    pointer-events: none; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
+    display: flex; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
+    align-items: center; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
+    justify-content: center; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
+    min-height: 48px; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
+    min-width: 180px; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
+    padding: 12px 20px; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
+    font-weight: 600; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
+    border-radius: 8px; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
+    transition: none; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
+    text-decoration: none; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
+    font-family: inherit; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
 }
 
 /* Hover state override */
 button.start-quiz-btn.assignment-start-btn.locked[disabled]:hover {
-    background: #6c757d; /* TODO: Refactor CSS specificity instead of !important */
-    background-color: #6c757d; /* TODO: Refactor CSS specificity instead of !important */
-    color: #ffffff; /* TODO: Refactor CSS specificity instead of !important */
-    border-color: #5a6268; /* TODO: Refactor CSS specificity instead of !important */
-    transform: none; /* TODO: Refactor CSS specificity instead of !important */
-    box-shadow: none; /* TODO: Refactor CSS specificity instead of !important */
-    cursor: not-allowed; /* TODO: Refactor CSS specificity instead of !important */
+    background: #6c757d; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
+    background-color: #6c757d; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
+    color: #ffffff; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
+    border-color: #5a6268; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
+    transform: none; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
+    box-shadow: none; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
+    cursor: not-allowed; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
 }
 
 /* Lock icon styling */
 button.start-quiz-btn.assignment-start-btn.locked .fa-lock {
-    color: #ffffff; /* TODO: Refactor CSS specificity instead of !important */
-    font-size: 1.1em; /* TODO: Refactor CSS specificity instead of !important */
-    margin-right: 8px; /* TODO: Refactor CSS specificity instead of !important */
+    color: #ffffff; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
+    font-size: 1.1em; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
+    margin-right: 8px; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
 }
 
 /* Text styling */
 button.start-quiz-btn.assignment-start-btn.locked span {
-    color: #ffffff; /* TODO: Refactor CSS specificity instead of !important */
-    font-weight: 600; /* TODO: Refactor CSS specificity instead of !important */
+    color: #ffffff; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
+    font-weight: 600; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
 }
 
 /* Topic Locked Icon Styling */

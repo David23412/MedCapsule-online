@@ -11,6 +11,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Http\Response;
 
 /**
  * Optimized Random Quiz Controller
@@ -22,7 +23,6 @@ class OptimizedRandomQuizController extends Controller
 
     public function __construct(QuizService $quizService)
     {
-        $this->middleware('auth');
         $this->quizService = $quizService;
     }
 
@@ -31,13 +31,51 @@ class OptimizedRandomQuizController extends Controller
      */
     public function showRandomQuiz(Request $request)
     {
-        // Get parameters from the modal form
-        $questionCount = (int) $request->input('question_limit', 10);
-        $durationMinutes = (float) $request->input('duration_minutes', 15);
-        $selectedCourseIds = $request->input('selected_courses', []);
+        // Handle unauthenticated users - create a guest user or use null
+        $user = auth()->user();
+        if (!$user) {
+            // Create a guest user object for unauthenticated access
+            $user = new \stdClass();
+            $user->id = 0;
+            $user->name = 'Guest';
+            $user->role = 'guest';
+            // Add any other properties that might be needed
+            $user->exists = true;
+        }
+        
+        // BUSINESS LOGIC FIX: Proper time validation - make all parameters optional
+        $validated = $request->validate([
+            'question_limit' => 'nullable|integer|min:1|max:50',
+            'time_limit' => 'nullable|numeric|min:0.1|max:180', // 0.1-180 minutes max (allows 10 seconds)
+            'selected_courses' => 'nullable|array',
+            'selected_courses.*' => 'integer|exists:courses,id'
+        ]);
+        
+        // Set defaults
+        $questionCount = $validated['question_limit'] ?? 10;
+        $durationMinutes = $validated['time_limit'] ?? 15;
+        $selectedCourseIds = $validated['selected_courses'] ?? [];
+        
+        // If no courses selected, get all available courses
+        if (empty($selectedCourseIds)) {
+            if ($user->role === 'admin') {
+                $selectedCourseIds = \App\Models\Course::pluck('id')->toArray();
+            } else {
+                // Get enrolled courses
+                $enrolledCourseIds = \App\Models\Course::whereHas('users', function($query) use ($user) {
+                    $query->where('user_id', $user->id);
+                })->pluck('id')->toArray();
+                
+                // Get free courses
+                $freeCourseIds = \App\Models\Course::where(function($query) {
+                    $query->where('price', 0)->orWhereNull('price');
+                })->pluck('id')->toArray();
+                
+                $selectedCourseIds = array_unique(array_merge($enrolledCourseIds, $freeCourseIds));
+            }
+        }
         
         // Generate a random quiz for display
-        $user = auth()->user();
         
         // Build options for quiz generation
         $options = [
@@ -68,31 +106,78 @@ class OptimizedRandomQuizController extends Controller
         if ($selectedCourses->isEmpty()) {
             $selectedCourses = \App\Models\Course::take(1)->get();
             if ($selectedCourses->isEmpty()) {
-                $selectedCourses = collect([new \App\Models\Course(['id' => 1, 'name' => 'General'])]);
+                // Create a fallback course with proper attributes
+                $fallbackCourse = new \App\Models\Course();
+                $fallbackCourse->id = 1;
+                $fallbackCourse->name = 'General';
+                $fallbackCourse->description = 'General course for random quizzes';
+                $fallbackCourse->exists = true; // Mark as existing to avoid database queries
+                $selectedCourses = collect([$fallbackCourse]);
             }
         }
         
-        return view('quiz.random_quiz', [
-            'questions' => $result['questions'],
+        // Convert array questions to objects for the view
+        $questions = collect($result['questions'])->map(function($question) {
+            if (is_array($question)) {
+                return (object) $question;
+            }
+            return $question;
+        });
+        
+        $viewData = [
+            'questions' => $questions,
             'selectedCourses' => $selectedCourses,
             'duration_minutes' => $durationMinutes,
             'requested_questions' => $questionCount,
             'actual_questions' => $actualQuestionCount
-        ]);
+        ];
+        
+        // Force return as HTML response, not JSON
+        try {
+            $response = response()->view('quiz.random_quiz', $viewData);
+            $response->header('Content-Type', 'text/html');
+            $response->header('Cache-Control', 'no-cache, no-store, must-revalidate');
+            
+            return $response;
+            
+        } catch (\Exception $e) {
+            Log::error('View rendering error', [
+                'error' => $e->getMessage(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine()
+            ]);
+            
+            // Return error as HTML
+            return response('<h1>View Rendering Error</h1><pre>' . $e->getMessage() . '</pre>', 500, ['Content-Type' => 'text/html']);
+        }
     }
 
     /**
-     * Generate random quiz with ultra-fast performance - LETHAL FIX
+     * Generate random quiz with ultra-fast performance
      */
-    public function generateRandomQuiz(RandomQuizRequest $request): JsonResponse
+    public function generateRandomQuiz(RandomQuizRequest $request): Response
     {
-        return QuizPerformanceService::trackQuizGeneration(0, auth()->id(), function () use ($request) {
+        // If this is a direct browser request, return the view instead of JSON
+        if ($request->expectsJson() === false && $request->header('Accept') !== 'application/json') {
+            return $this->showRandomQuiz($request);
+        }
+        
+        // Handle guest users
+        $user = auth()->user();
+        if (!$user) {
+            $user = new \stdClass();
+            $user->id = 0;
+            $user->name = 'Guest';
+            $user->role = 'guest';
+            $user->exists = true;
+        }
+        
+        return QuizPerformanceService::trackQuizGeneration(0, $user->id, function () use ($request, $user) {
             try {
                 $validatedData = $request->getValidatedWithDefaults();
                 
-                // LETHAL FIX: NUCLEAR CACHE BYPASS - Force fresh generation every time
                 $result = $this->quizService->generateRandomQuiz(
-                    auth()->user(),
+                    $user,
                     $validatedData['question_count'] ?? 10,
                     $validatedData
                 );
@@ -109,8 +194,8 @@ class OptimizedRandomQuizController extends Controller
                 ]);
 
             } catch (\Exception $e) {
-                Log::error('LETHAL FIX: Random quiz generation failed', [
-                    'user_id' => auth()->id(),
+                Log::error('Random quiz generation failed', [
+                    'user_id' => $user->id,
                     'error' => $e->getMessage(),
                     'trace' => $e->getTraceAsString()
                 ]);
@@ -131,20 +216,58 @@ class OptimizedRandomQuizController extends Controller
     {
         try {
             $user = auth()->user();
+            if (!$user) {
+                $user = new \stdClass();
+                $user->id = 0;
+                $user->name = 'Guest';
+                $user->role = 'guest';
+                $user->exists = true;
+            }
             
-            // Validate the submission data
+            // BUSINESS LOGIC FIX: Enhanced validation for scoring
             $validated = $request->validate([
-                'answers' => 'required|array',
+                'answers' => 'required|array|min:1|max:50',
                 'answers.*' => 'nullable|string|max:2000',
-                'time_taken' => 'required|integer|min:0',
-                'mode' => 'nullable|string|in:quiz,tutor,random'
+                'time_taken' => 'required|integer|min:1|max:10800', // 1 second to 3 hours
+                'mode' => 'nullable|string|in:quiz,tutor,random',
+                'quiz_duration' => 'nullable|integer|min:1|max:10800', // Expected quiz duration
+                'question_count' => 'nullable|integer|min:1|max:50'
             ]);
 
-            // For random quizzes, we need to handle grading differently since questions come from multiple topics
-            // We'll create a synthetic topic/course context for the grading service
+            // BUSINESS LOGIC FIX: Validate scoring logic inputs
             $answers = $validated['answers'];
             $timeTaken = $validated['time_taken'];
             $mode = $validated['mode'] ?? 'random';
+            $expectedDuration = $validated['quiz_duration'] ?? null;
+            $expectedQuestionCount = $validated['question_count'] ?? count($answers);
+            
+            // BUSINESS LOGIC FIX: Validate answer count matches expected questions
+            if (count($answers) !== $expectedQuestionCount) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Answer count does not match expected question count',
+                    'error_code' => 'ANSWER_COUNT_MISMATCH'
+                ], 400);
+            }
+            
+            // BUSINESS LOGIC FIX: Validate time taken is reasonable
+            if ($expectedDuration && $timeTaken > ($expectedDuration * 60 * 1.5)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Time taken exceeds reasonable limits',
+                    'error_code' => 'TIME_EXCEEDED'
+                ], 400);
+            }
+            
+            // BUSINESS LOGIC FIX: Validate minimum time per question (prevent instant submissions)
+            $minTimePerQuestion = 5; // 5 seconds minimum per question
+            if ($timeTaken < (count($answers) * $minTimePerQuestion)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Submission too fast. Please take time to read questions.',
+                    'error_code' => 'SUBMISSION_TOO_FAST'
+                ], 400);
+            }
 
             // Get the questions to determine topics
             $questionIds = array_keys($answers);
@@ -159,11 +282,19 @@ class OptimizedRandomQuizController extends Controller
                 ], 400);
             }
 
-            // For random quiz, we'll use the first question's topic/course as context
-            // This is a simplification - in a more complex system, you might want to handle multi-topic grading differently
-            $firstQuestion = $questions->first();
-            $topic = $firstQuestion->topic;
-            $course = $topic->course;
+            // For random quiz, we need to handle multi-topic grading
+            // Create a synthetic topic for random quiz context
+            $syntheticTopic = new \App\Models\Topic();
+            $syntheticTopic->id = 0; // Use 0 to indicate synthetic topic
+            $syntheticTopic->name = 'Random Quiz';
+            $syntheticTopic->course_id = 0;
+            $syntheticTopic->exists = true;
+            
+            // Create a synthetic course for random quiz context
+            $syntheticCourse = new \App\Models\Course();
+            $syntheticCourse->id = 0; // Use 0 to indicate synthetic course
+            $syntheticCourse->name = 'Random Quiz';
+            $syntheticCourse->exists = true;
 
             // Use the GradingService to grade the quiz
             $gradingResult = app(\App\Services\GradingService::class)->gradeQuiz(
@@ -171,8 +302,8 @@ class OptimizedRandomQuizController extends Controller
                 $answers,
                 $timeTaken,
                 $mode,
-                $topic,
-                $course
+                $syntheticTopic,
+                $syntheticCourse
             );
 
             // Ensure the response has the correct field names for the frontend
@@ -184,8 +315,8 @@ class OptimizedRandomQuizController extends Controller
                 'score' => $gradingResult['score'] ?? 0,
                 'total_questions' => $gradingResult['totalQuestions'] ?? 1,
                 'percentage' => $gradingResult['percentageGrade'] ?? 0,
-                'course_name' => $course->name ?? 'Random Quiz',
-                'topic_name' => $topic->name ?? 'Mixed Topics',
+                'course_name' => 'Random Quiz',
+                'topic_name' => 'Mixed Topics',
                 'user_quiz_count' => $this->getUserQuizCount(auth()->id()),
                 'quiz_type' => 'random'
             ]);

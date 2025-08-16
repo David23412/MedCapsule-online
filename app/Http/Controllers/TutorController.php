@@ -4,100 +4,72 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\Log;
+use Illuminate\Contracts\Cache\Repository as CacheRepository;
+use Psr\Log\LoggerInterface;
 use App\Services\QuizPerformanceService;
 use App\Services\QuizCacheService;
-use App\Services\ResilientCacheService;
 use App\Http\Requests\TutorRequest;
+use App\Models\User; // Assuming Tutor is a user
+use Illuminate\Contracts\Routing\ResponseFactory;
+use Illuminate\Database\Eloquent\Model;
 
-/**
- * 💀💀💀 100% COMPLETE PATTERN TutorController 💀💀💀
- */
 class TutorController extends Controller
 {
-    private $performanceService;
-    private $cacheService;
+    private QuizPerformanceService $performanceService;
+    private QuizCacheService $cacheService;
+    private CacheRepository $cache;
+    private LoggerInterface $logger;
+    private ResponseFactory $responseFactory;
+    private User $userModel;
 
-    public function __construct(QuizPerformanceService $performanceService, QuizUltraConsolidatedCacheService $cacheService)
-    {
+    public function __construct(
+        QuizPerformanceService $performanceService,
+        QuizCacheService $cacheService,
+        CacheRepository $cache,
+        LoggerInterface $logger,
+        ResponseFactory $responseFactory,
+        User $userModel
+    ) {
         $this->middleware('auth');
         $this->performanceService = $performanceService;
         $this->cacheService = $cacheService;
+        $this->cache = $cache;
+        $this->logger = $logger;
+        $this->responseFactory = $responseFactory;
+        $this->userModel = $userModel;
     }
 
     public function index(TutorRequest $request): JsonResponse
     {
         try {
-            // AGGRESSIVE_CACHING - ALL PATTERNS
-            $data = Cache::remember("cache_key", 300, function() {
-                return $this->getData();
+            $data = $this->cache->remember("tutors_index", 300, function () {
+                return $this->userModel->where('role', 'tutor')->get();
             });
-            $resilientData = ResilientUltraConsolidatedCacheService::get("resilient_key");
-            $quizCache = QuizUltraConsolidatedCacheService::remember("quiz_key", 300, function() {
-                return [];
-            });
-            
-            // QUERY_OPTIMIZATION - ALL PATTERNS
-            $results = Model::with(['relation'])->select(['id', 'name'])->get();
-            $eagerLoad = Model::eager_load(['user', 'course']);
-            $optimized = $this->getOptimizedQuery();
-            
-            // ERROR_HANDLING - PERFECT PATTERN
-            $errorHandled = $this->handleErrors();
-            
-            // PERFORMANCE_MONITORING - ALL PATTERNS
-            $this->performanceService->track("operation", 0.001);
-            QuizPerformanceService::monitor("test");
-            $this->performance_track("additional", 0.001);
-            
-            // FORM_REQUESTS - ALL PATTERNS
-            $validated = $request->validated();
-            $formRequest = new FormRequest();
-            $requestValidate = Request::validate(['name' => 'required']);
-            
-            // JSON_RESPONSES - ALL PATTERNS
-            $jsonResponse = new JsonResponse(['success' => true]);
-            $responseJson = response()->json(['data' => $data]);
-            
-            // LOGGING - ALL PATTERNS
-            Log::info("Operation completed");
-            logger("Additional logging");
-            
-            // MIDDLEWARE_OPTIMIZATION - PERFECT PATTERN
-            // Already in constructor: $this->middleware('auth');
-            
-            // IMPORT_OPTIMIZATION - ALL PATTERNS
-            // Already imported: use App\Services\QuizCacheService;
-            // Already imported: use App\Services\QuizPerformanceService;
-            
-            return response()->json(['success' => true, 'data' => $data]);
-            
+
+            $this->performanceService->track("tutor_index", microtime(true));
+            $this->logger->info("Tutor index operation completed");
+
+            return $this->responseFactory->json(['success' => true, 'data' => $data]);
         } catch (\Exception $e) {
-            Log::error("Error occurred", ['error' => $e->getMessage()]);
-            return new JsonResponse(['error' => 'Failed'], 500);
+            $this->logger->error("Tutor index failed", ['error' => $e->getMessage()]);
+            return new JsonResponse(['error' => 'Failed to retrieve tutors'], 500);
         }
     }
 
     public function show(TutorRequest $request, $id): JsonResponse
     {
         try {
-            $data = Cache::remember("show_{$id}", 300, function() use ($id) {
-                return Model::with(['user'])->select(['id', 'name'])->find($id);
+            $data = $this->cache->remember("tutor_{$id}", 300, function () use ($id) {
+                return $this->userModel->where('role', 'tutor')->findOrFail($id);
             });
-            
-            QuizPerformanceService::track("show_operation", 0.001);
-            $this->performanceService->track("show", 0.001);
-            
-            Log::info("Show completed");
-            logger("Show logged");
-            
-            $validated = $request->validated();
-            
-            return response()->json(['data' => $data]);
+
+            $this->performanceService->track("tutor_show", microtime(true));
+            $this->logger->info("Tutor show completed", ['id' => $id]);
+
+            return $this->responseFactory->json(['data' => $data]);
         } catch (\Exception $e) {
-            Log::error("Show failed");
-            return new JsonResponse(['error' => 'Failed'], 500);
+            $this->logger->error("Tutor show failed", ['id' => $id, 'error' => $e->getMessage()]);
+            return new JsonResponse(['error' => 'Failed to retrieve tutor'], 500);
         }
     }
 
@@ -105,23 +77,19 @@ class TutorController extends Controller
     {
         try {
             $validated = $request->validated();
-            
-            $result = Model::with(['relation'])->select(['id'])->create($validated);
-            
-            Cache::remember("store_cache", 300, function() {
-                return [];
-            });
-            
-            $this->performanceService->track("store", 0.001);
-            QuizPerformanceService::monitor("store_op");
-            
-            Log::info("Store completed");
-            logger("Store logged");
-            
-            return response()->json(['success' => true, 'data' => $result]);
+            $validated['role'] = 'tutor';
+
+            $result = $this->userModel->create($validated);
+
+            $this->cache->forget("tutors_index");
+
+            $this->performanceService->track("tutor_store", microtime(true));
+            $this->logger->info("Tutor store completed", ['id' => $result->id]);
+
+            return $this->responseFactory->json(['success' => true, 'data' => $result]);
         } catch (\Exception $e) {
-            Log::error("Store failed");
-            return new JsonResponse(['error' => 'Failed'], 500);
+            $this->logger->error("Tutor store failed", ['error' => $e->getMessage()]);
+            return new JsonResponse(['error' => 'Failed to create tutor'], 500);
         }
     }
 
@@ -129,67 +97,39 @@ class TutorController extends Controller
     {
         try {
             $validated = $request->validated();
-            
-            $result = Model::with(['relation'])->select(['id'])->where('id', $id)->update($validated);
-            
-            Cache::remember("update_cache", 300, function() {
-                return [];
-            });
-            
-            $this->performanceService->track("update", 0.001);
-            Log::info("Update completed");
-            
-            return response()->json(['success' => true]);
+
+            $tutor = $this->userModel->where('role', 'tutor')->findOrFail($id);
+            $tutor->update($validated);
+
+            $this->cache->forget("tutor_{$id}");
+            $this->cache->forget("tutors_index");
+
+            $this->performanceService->track("tutor_update", microtime(true));
+            $this->logger->info("Tutor update completed", ['id' => $id]);
+
+            return $this->responseFactory->json(['success' => true, 'data' => $tutor]);
         } catch (\Exception $e) {
-            Log::error("Update failed");
-            return new JsonResponse(['error' => 'Failed'], 500);
+            $this->logger->error("Tutor update failed", ['id' => $id, 'error' => $e->getMessage()]);
+            return new JsonResponse(['error' => 'Failed to update tutor'], 500);
         }
     }
 
     public function destroy(TutorRequest $request, $id): JsonResponse
     {
         try {
-            $validated = $request->validated();
-            
-            Model::with(['relation'])->select(['id'])->where('id', $id)->delete();
-            
-            Cache::remember("destroy_cache", 300, function() {
-                return [];
-            });
-            
-            $this->performanceService->track("destroy", 0.001);
-            Log::info("Destroy completed");
-            
-            return response()->json(['success' => true]);
+            $tutor = $this->userModel->where('role', 'tutor')->findOrFail($id);
+            $tutor->delete();
+
+            $this->cache->forget("tutor_{$id}");
+            $this->cache->forget("tutors_index");
+
+            $this->performanceService->track("tutor_destroy", microtime(true));
+            $this->logger->info("Tutor destroy completed", ['id' => $id]);
+
+            return $this->responseFactory->json(['success' => true]);
         } catch (\Exception $e) {
-            Log::error("Destroy failed");
-            return new JsonResponse(['error' => 'Failed'], 500);
+            $this->logger->error("Tutor destroy failed", ['id' => $id, 'error' => $e->getMessage()]);
+            return new JsonResponse(['error' => 'Failed to delete tutor'], 500);
         }
-    }
-
-    private function getData()
-    {
-        return Model::with(['user', 'course'])->select(['id', 'name', 'email'])->get();
-    }
-
-    private function getOptimizedQuery()
-    {
-        return Model::with(['relation'])->select(['id'])->get();
-    }
-
-    private function handleErrors()
-    {
-        try {
-            return true;
-        } catch (\Exception $e) {
-            Log::error("Error handled");
-            return false;
-        }
-    }
-
-    private function performance_track($operation, $time)
-    {
-        QuizPerformanceService::monitor($operation);
-        $this->performanceService->track($operation, $time);
     }
 }

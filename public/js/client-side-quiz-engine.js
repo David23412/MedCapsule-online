@@ -26,7 +26,7 @@ class ClientSideQuizEngine {
         // Initialize performance monitoring
         this.initPerformanceMonitoring();
         
-// console.log('🔥 CLIENT-SIDE QUIZ ENGINE: Nuclear speed activated'); // Removed for production
+// // console.log('🔥 CLIENT-SIDE QUIZ ENGINE: Nuclear speed activated'); // Removed for production // Removed for production
     }
     
     /**
@@ -51,7 +51,7 @@ class ClientSideQuizEngine {
         // Pre-validate all questions
         this.preValidateQuestions();
         
-// console.log('🔥 CLIENT-SIDE QUIZ: Started with', questions.length, 'questions'); // Removed for production
+// // console.log('🔥 CLIENT-SIDE QUIZ: Started with', questions.length, 'questions'); // Removed for production // Removed for production
         
         return {
             success: true,
@@ -372,7 +372,7 @@ class ClientSideQuizEngine {
         // Check if service worker is available
         if ('serviceWorker' in navigator) {
             navigator.serviceWorker.ready.then(registration => {
-// console.log('🔥 CLIENT-SIDE QUIZ: Offline mode enabled'); // Removed for production
+// // console.log('🔥 CLIENT-SIDE QUIZ: Offline mode enabled'); // Removed for production // Removed for production
             });
         }
     }

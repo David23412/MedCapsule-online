@@ -120,13 +120,20 @@ class NotificationSystem {
             const data = await response.json();
             
             if (data.success) {
-                this.notifications = data.notifications;
-                this.unreadCount = data.unread_count;
+                this.notifications = Array.isArray(data.notifications) ? data.notifications : [];
+                this.unreadCount = parseInt(data.unread_count) || 0;
                 this.renderNotifications();
                 this.updateBadge();
+            } else {
+                // Handle case where response doesn't have expected structure
+                this.notifications = [];
+                this.unreadCount = 0;
             }
         } catch (error) {
-// console.warn('Failed to load notifications:', error); // Removed for production
+            console.error('❌ Failed to load notifications:', error);
+            // Set default values on error
+            this.notifications = [];
+            this.unreadCount = 0;
             this.showError('Failed to load notifications');
         } finally {
             this.isLoading = false;
@@ -140,7 +147,8 @@ class NotificationSystem {
         
         if (!notificationList) return;
         
-        if (this.notifications.length === 0) {
+        // Ensure notifications is an array
+        if (!Array.isArray(this.notifications) || this.notifications.length === 0) {
             notificationList.innerHTML = this.getEmptyNotificationHTML();
             return;
         }
@@ -235,7 +243,7 @@ class NotificationSystem {
                 this.updateMarkAllReadButton();
             }
         } catch (error) {
-// console.warn('Failed to mark notification as read:', error); // Removed for production
+// // console.warn('Failed to mark notification as read:', error); // Removed for production // Removed for production
         }
     }
 
@@ -274,7 +282,7 @@ class NotificationSystem {
                 this.updateMarkAllReadButton();
             }
         } catch (error) {
-// console.warn('Failed to mark all notifications as read:', error); // Removed for production
+// // console.warn('Failed to mark all notifications as read:', error); // Removed for production // Removed for production
         }
     }
 

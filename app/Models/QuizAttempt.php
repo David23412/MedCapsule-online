@@ -39,6 +39,19 @@ class QuizAttempt extends Model
         'assignment_id' => 'integer'
     ];
 
+    /**
+     * Custom cast for assignment_id to handle null values
+     */
+    public function setAssignmentIdAttribute($value)
+    {
+        $this->attributes['assignment_id'] = $value === null ? null : (int) $value;
+    }
+
+    public function getAssignmentIdAttribute($value)
+    {
+        return $value === null ? null : (int) $value;
+    }
+
     protected $attributes = [
         'study_mode' => null,
         'source' => null,
@@ -134,17 +147,17 @@ class QuizAttempt extends Model
             }
             
             // CRITICAL FIX: Ensure study_mode is set for tutor mode
-            if ($model->study_mode === 'tutor' && $model->quiz_type === null) {
+            if ($model->study_mode === \App\Enums\StudyMode::TUTOR && $model->quiz_type === null) {
                 $model->quiz_type = 'normal'; // Tutor mode uses normal quiz_type
             }
             
             // CRITICAL FIX: Ensure source is set for tutor mode
-            if ($model->source === null && $model->study_mode === 'tutor') {
+            if ($model->source === null && $model->study_mode === \App\Enums\StudyMode::TUTOR) {
                 $model->source = 'General';
             }
             
             // CRITICAL FIX: Ensure correct quiz_type for tutor mode
-            if ($model->study_mode === 'tutor' && $model->quiz_type !== 'normal') {
+            if ($model->study_mode === \App\Enums\StudyMode::TUTOR && $model->quiz_type !== 'normal') {
                 $model->quiz_type = 'normal';
             }
             
@@ -158,14 +171,20 @@ class QuizAttempt extends Model
                 if ($validator->fails()) {
                     \Log::error('QuizAttempt validation failed', [
                         'errors' => $validator->errors()->toArray(),
-                        'data' => $model->toArray()
+                        'data' => $model->toArray(),
+                        'score_value' => $model->score,
+                        'score_type' => gettype($model->score),
+                        'total_questions_value' => $model->total_questions,
+                        'total_questions_type' => gettype($model->total_questions)
                     ]);
                     throw new \Illuminate\Validation\ValidationException($validator);
                 }
             } catch (\Exception $e) {
                 \Log::error('QuizAttempt validation error', [
                     'error' => $e->getMessage(),
-                    'data' => $model->toArray()
+                    'data' => $model->toArray(),
+                    'score_value' => $model->score ?? 'NULL',
+                    'score_type' => gettype($model->score ?? 'NULL')
                 ]);                throw $e;
             }
 
@@ -568,7 +587,8 @@ class QuizAttempt extends Model
     }
 
     /**
-     * Create a new quiz attempt with progress tracking     */
+     * Create a new quiz attempt with progress tracking
+     */
     public static function createWithProgress($data)
     {
         try {

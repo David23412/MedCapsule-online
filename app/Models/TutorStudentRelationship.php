@@ -34,7 +34,7 @@ class TutorStudentRelationship extends Model
      */
     public function tutor(): BelongsTo
     {
-        return $this->belongsTo(User::class, 'tutor_id')->where('role', 'tutor');
+        return $this->belongsTo(User::class, 'tutor_id')->where('role', User::ROLE_TUTOR);
     }
 
     /**
@@ -42,7 +42,7 @@ class TutorStudentRelationship extends Model
      */
     public function student(): BelongsTo
     {
-        return $this->belongsTo(User::class, 'student_id')->where('role', 'student');
+        return $this->belongsTo(User::class, 'student_id')->where('role', User::ROLE_STUDENT);
     }
 
     /**
@@ -117,11 +117,11 @@ class TutorStudentRelationship extends Model
             $tutor = User::find($relationship->tutor_id);
             $student = User::find($relationship->student_id);
 
-            if (!$tutor || $tutor->role !== 'tutor') {
+            if (!$tutor || $tutor->role !== User::ROLE_TUTOR) {
                 throw new \InvalidArgumentException('Invalid tutor ID or role');
             }
 
-            if (!$student || $student->role !== 'student') {
+            if (!$student || $student->role !== User::ROLE_STUDENT) {
                 throw new \InvalidArgumentException('Invalid student ID or role');
             }
         });

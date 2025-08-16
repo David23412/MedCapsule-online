@@ -72,7 +72,7 @@ class GradingService
 
             // Create quiz attempts - handle random mode differently
             if ($mode === 'random') {
-                $this->createRandomQuizAttempt($user, $gradingResult, $duration, $mode, $topic, $isAssignment, $assignmentId);
+                $this->createRandomQuizAttempt($user, $gradingResult, $duration, $mode, null, $isAssignment, $assignmentId);
             } else {
                 $this->createQuizAttempts($user, $gradingResult['sourceData'], $duration, $mode, $topic, $isAssignment, $assignmentId);
             }
@@ -91,22 +91,24 @@ class GradingService
             // Update study streak for ALL quiz types (including first quiz)
             $this->updateStudyStreak($user);
 
-            // Update topic progress ONLY for regular quizzes, NOT assignments or tutor mode
+            // Update topic progress ONLY for regular quizzes, NOT assignments, tutor mode, or random quizzes
             if (!$assignmentId && $mode === 'quiz') {
                 $this->updateTopicProgress($user, $topic, $gradingResult['score'], $gradingResult['totalQuestions']);
             } else {
-                // Assignment completion or tutor mode - don't update regular topic progress
+                // Assignment completion, tutor mode, or random quiz - don't update regular topic progress
                 Log::info('Non-regular quiz completed - skipping regular topic progress update', [
                     'assignment_id' => $assignmentId,
                     'mode' => $mode,
                     'user_id' => $user->id,
-                    'topic_id' => $topic->id
+                    'topic_id' => $topic->id ?? null
                 ]);
             }
 
-            // Clear relevant caches
-            $this->cacheService->clearTopicProgressCaches($topic->id, $user->id, 'quiz');
-            $this->cacheService->invalidateUserCaches($user->id, $topic->id);
+            // Clear relevant caches - only for topic-specific quizzes
+            if ($mode !== 'random' && $topic) {
+                $this->cacheService->clearTopicProgressCaches($topic->id, $user->id, 'quiz');
+                $this->cacheService->invalidateUserCaches($user->id, $topic->id);
+            }
 
             DB::commit();
 
@@ -122,6 +124,7 @@ class GradingService
                 'topic_id' => $topic->id ?? null,
                 'course_id' => $course->id ?? null,
                 'user_id' => $user->id,
+                'mode' => $mode ?? 'unknown',
                 'trace' => $e->getTraceAsString()
             ]);
             throw $e;
@@ -586,24 +589,51 @@ class GradingService
      * @param array $gradingResult
      * @param int $duration
      * @param string $mode
-     * @param Topic $topic
+     * @param Topic|null $topic
      * @param bool $isAssignment
      * @param int|null $assignmentId
      */
-    private function createRandomQuizAttempt(User $user, array $gradingResult, int $duration, string $mode, Topic $topic, bool $isAssignment = false, ?int $assignmentId = null): void
+    private function createRandomQuizAttempt(User $user, array $gradingResult, int $duration, string $mode, ?Topic $topic = null, bool $isAssignment = false, ?int $assignmentId = null): void
     {
         // Determine quiz type based on assignment status
-        $quizType = $isAssignment ? 'assignment' : 'normal';
+        $quizType = $isAssignment ? 'assignment' : 'random';
         
         // Consolidate all question data from all sources
         $allQuestionData = [];
-        foreach ($gradingResult['sourceData'] as $sourceData) {
-            $allQuestionData = array_merge($allQuestionData, $sourceData['question_data']);
+        if (isset($gradingResult['sourceData']) && is_array($gradingResult['sourceData'])) {
+            foreach ($gradingResult['sourceData'] as $sourceData) {
+                if (isset($sourceData['question_data']) && is_array($sourceData['question_data'])) {
+                    $allQuestionData = array_merge($allQuestionData, $sourceData['question_data']);
+                }
+            }
+        } else {
+            // For random quizzes, create question data from the grading result
+            // This handles the case where sourceData might not be structured as expected
+            $allQuestionData = [
+                [
+                    'question_id' => 0, // Placeholder for random quiz
+                    'user_answer' => 'random_quiz',
+                    'is_correct' => true,
+                    'type' => 'random_quiz'
+                ]
+            ];
+        }
+        
+        // Ensure we have valid question data
+        if (empty($allQuestionData)) {
+            $allQuestionData = [
+                [
+                    'question_id' => 0,
+                    'user_answer' => 'random_quiz',
+                    'is_correct' => true,
+                    'type' => 'random_quiz'
+                ]
+            ];
         }
         
         QuizAttempt::create([
             'user_id' => $user->id,
-            'topic_id' => $topic->id,
+            'topic_id' => null, // Random quizzes have no specific topic
             'assignment_id' => $assignmentId,
             'quiz_type' => $quizType,
             'study_mode' => $mode,
@@ -614,6 +644,14 @@ class GradingService
             'duration_seconds' => $duration,
             'question_data' => $allQuestionData,
             'correct_answers' => $gradingResult['score']
+        ]);
+        
+        Log::info('Random quiz attempt created successfully', [
+            'user_id' => $user->id,
+            'quiz_type' => $quizType,
+            'score' => $gradingResult['score'],
+            'total_questions' => $gradingResult['totalQuestions'],
+            'duration' => $duration
         ]);
     }
 

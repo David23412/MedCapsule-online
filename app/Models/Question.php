@@ -86,11 +86,10 @@ class Question extends Model
     }
 
     /**
-     * Get the success rate for this question.
-     * Returns 0 if no attempts have been made.
+     * 🚀 PERFORMANCE BEAST: Get success rate - NO N+1 QUERIES
+     * Call explicitly: $question->getSuccessRate()
      */
-    // 💀 N+1 WARNING: This accessor accesses 'total_attempts' - consider eager loading
-    public function getSuccessRateAttribute(): float
+    public function getSuccessRate(): float
     {
         return $this->total_attempts > 0 
             ? ($this->correct_attempts / $this->total_attempts) * 100 
@@ -277,7 +276,9 @@ class Question extends Model
             }
             
             // 7. Calculate similarity
-            $similarityScore = $this->calculateTextSimilarity($normalizedSubmitted, $normalizedCorrect);            Log::info('Similarity calculation complete', [
+            $similarityScore = $this->calculateTextSimilarity($normalizedSubmitted, $normalizedCorrect);
+            
+            Log::info('Similarity calculation complete', [
                 'question_id' => $this->id,
                 'score' => $similarityScore,
                 'threshold' => $adjustedThreshold,

@@ -28,6 +28,14 @@ class BusinessLogicValidator
     }
 
     /**
+     * Execute comprehensive business logic validation (alias for orchestrator compatibility)
+     */
+    public function validateBusinessLogic(string $projectPath): PhaseResult
+    {
+        return $this->executeBusinessLogicValidation($projectPath);
+    }
+
+    /**
      * Execute comprehensive business logic validation
      */
     public function executeBusinessLogicValidation(string $projectPath): PhaseResult

@@ -377,4 +377,4 @@ class DynamicCategorization {
 
 // DISABLED - This was interfering with Blade template logic
 // The categorization is now handled directly in the Blade template
-// console.log('Dynamic categorization JavaScript disabled - using Blade template logic instead'); // Removed for production
+// // console.log('Dynamic categorization JavaScript disabled - using Blade template logic instead'); // Removed for production // Removed for production

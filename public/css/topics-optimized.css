@@ -241,12 +241,12 @@ body {
 
 .case-filter.active i,
 .case-filter.active span {
-    color: white; /* TODO: Refactor CSS specificity instead of !important */
+    color: white; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
 }
 
 /* ========== TOPIC CARD STYLES ========== */
 .topics-container {
-    max-width: 1100px;
+    max-width: 1200px;
     margin: 0 auto;
     padding: 2rem;
 }
@@ -474,22 +474,22 @@ body {
 
 /* Assignment filter styling */
 .assignment-filter {
-    background: #fff5f5; /* TODO: Refactor CSS specificity instead of !important */
-    border-color: #fed7d7; /* TODO: Refactor CSS specificity instead of !important */
-    color: #c53030; /* TODO: Refactor CSS specificity instead of !important */
+    background: #fff5f5; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
+    border-color: #fed7d7; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
+    color: #c53030; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
     animation: assignmentPulse 3s infinite;
 }
 
 .assignment-filter:hover {
-    background: #fed7d7; /* TODO: Refactor CSS specificity instead of !important */
-    border-color: #fc8181; /* TODO: Refactor CSS specificity instead of !important */
-    color: #9b2c2c; /* TODO: Refactor CSS specificity instead of !important */
+    background: #fed7d7; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
+    border-color: #fc8181; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
+    color: #9b2c2c; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
 }
 
 .assignment-filter.active {
-    background: #c53030; /* TODO: Refactor CSS specificity instead of !important */
-    border-color: #c53030; /* TODO: Refactor CSS specificity instead of !important */
-    color: white; /* TODO: Refactor CSS specificity instead of !important */
+    background: #c53030; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
+    border-color: #c53030; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
+    color: white; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
 }
 
 /* Assignment Icon Circle */
@@ -498,15 +498,15 @@ body {
     align-items: center;
     cursor: pointer;
     transition: all 0.3s ease;
-    order: 100; /* TODO: Refactor CSS specificity instead of !important */
+    order: 100; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
 }
 
 .assignment-circle {
     position: relative;
     width: 40px;
     height: 40px;
-    background: #fff5f5; /* TODO: Refactor CSS specificity instead of !important */
-    border: 1px solid #fed7d7; /* TODO: Refactor CSS specificity instead of !important */
+    background: #fff5f5; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
+    border: 1px solid #fed7d7; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
     border-radius: 50%;
     display: flex;
     align-items: center;
@@ -517,14 +517,14 @@ body {
 }
 
 .assignment-circle:hover {
-    background: #fed7d7; /* TODO: Refactor CSS specificity instead of !important */
-    border-color: #fc8181; /* TODO: Refactor CSS specificity instead of !important */
+    background: #fed7d7; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
+    border-color: #fc8181; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
     transform: translateY(-1px);
     box-shadow: 0 3px 6px rgba(0, 0, 0, 0.08);
 }
 
 .assignment-circle i {
-    color: #c53030; /* TODO: Refactor CSS specificity instead of !important */
+    color: #c53030; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
     font-size: 1rem;
     z-index: 1;
 }
@@ -533,8 +533,8 @@ body {
     position: absolute;
     top: -8px;
     right: -8px;
-    background: rgba(197, 48, 48, 0.1); /* TODO: Refactor CSS specificity instead of !important */
-    color: #c53030; /* TODO: Refactor CSS specificity instead of !important */
+    background: rgba(197, 48, 48, 0.1); /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
+    color: #c53030; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
     font-size: 0.7rem;
     font-weight: 700;
     min-width: 20px;
@@ -596,21 +596,21 @@ body {
 
 /* ========== MODAL STYLES ========== */
 .modal-backdrop {
-    background: rgba(0, 0, 0, 0.5); /* TODO: Refactor CSS specificity instead of !important */
-    backdrop-filter: none; /* TODO: Refactor CSS specificity instead of !important */
-    position: fixed; /* TODO: Refactor CSS specificity instead of !important */
-    top: 0; /* TODO: Refactor CSS specificity instead of !important */
-    left: 0; /* TODO: Refactor CSS specificity instead of !important */
-    width: 100%; /* TODO: Refactor CSS specificity instead of !important */
-    height: 100%; /* TODO: Refactor CSS specificity instead of !important */
-    z-index: 1040; /* TODO: Refactor CSS specificity instead of !important */
-    transform: none; /* TODO: Refactor CSS specificity instead of !important */
-    will-change: auto; /* TODO: Refactor CSS specificity instead of !important */
-    transition: none; /* TODO: Refactor CSS specificity instead of !important */
+    background: rgba(0, 0, 0, 0.5); /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
+    backdrop-filter: none; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
+    position: fixed; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
+    top: 0; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
+    left: 0; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
+    width: 100%; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
+    height: 100%; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
+    z-index: 1040; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
+    transform: none; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
+    will-change: auto; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
+    transition: none; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
 }
 
 .modal-backdrop.show {
-    opacity: 1; /* TODO: Refactor CSS specificity instead of !important */
+    opacity: 1; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
 }
 
 /* ========== UTILITY LINKS ========== */
@@ -626,7 +626,7 @@ body {
     background: #fff8e1;
     border: 1px solid #ffd54f;
     transition: all 0.3s ease;
-    order: 98; /* TODO: Refactor CSS specificity instead of !important */
+    order: 98; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
 }
 
 .random-link:hover {
@@ -648,7 +648,7 @@ body {
     background: #ffebee;
     border: 1px solid #ef9a9a;
     transition: all 0.3s ease;
-    order: 99; /* TODO: Refactor CSS specificity instead of !important */
+    order: 99; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
 }
 
 .mistakes-link:hover {
@@ -770,13 +770,13 @@ body {
 
 /* ========== ASSIGNMENT VISIBILITY RULES ========== */
 .topic-card[data-has-assignment="true"] {
-    display: none; /* TODO: Refactor CSS specificity instead of !important */
+    display: none; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
 }
 
 .assignments-filter-active .topic-card[data-has-assignment="true"] {
-    display: block; /* TODO: Refactor CSS specificity instead of !important */
-    opacity: 1; /* TODO: Refactor CSS specificity instead of !important */
-    transform: translateY(0); /* TODO: Refactor CSS specificity instead of !important */
+    display: block; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
+    opacity: 1; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
+    transform: translateY(0); /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
 }
 
 /* ========== TOPIC LOCKING STYLES ========== */
@@ -800,11 +800,11 @@ body {
 }
 
 .topic-locked .start-quiz-btn {
-    background: #f1f3f4; /* TODO: Refactor CSS specificity instead of !important */
-    color: #9ca3af; /* TODO: Refactor CSS specificity instead of !important */
+    background: #f1f3f4; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
+    color: #9ca3af; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
     cursor: not-allowed;
     pointer-events: none;
-    border: 2px solid #e5e7eb; /* TODO: Refactor CSS specificity instead of !important */
+    border: 2px solid #e5e7eb; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
 }
 
 /* ========== STAGGERED ANIMATION DELAYS ========== */

@@ -39,7 +39,7 @@ class QuizService
             Log::info('📌 Quiz Initialization Attempt', [
                 'user_id' => $user->id,
                 'user_name' => $user->name,
-                'is_admin' => $user->role === 'admin',
+                'is_admin' => $user->role === User::ROLE_ADMIN,
                 'course_id' => $course->id,
                 'topic_id' => $topic->id,
                 'mode' => $mode,
@@ -124,11 +124,11 @@ class QuizService
      */
     private function validateUserAccess(User $user, Course $course): void
     {
-        if ($user->role !== 'admin' && !$user->hasAccessToCourse($course->id) && $course->price && $course->price > 0) {
+        if ($user->role !== User::ROLE_ADMIN && !$user->hasAccessToCourse($course->id) && $course->price && $course->price > 0) {
             Log::error('Access denied: User does not have access to course', [
                 'user_id' => $user->id,
                 'course_id' => $course->id,
-                'is_admin' => $user->role === 'admin',
+                'is_admin' => $user->role === User::ROLE_ADMIN,
                 'course_price' => $course->price
             ]);
             throw new \InvalidArgumentException('You must be granted access to this course to take quizzes. Please contact an administrator.');
@@ -164,7 +164,7 @@ class QuizService
     }
 
     /**
-     * OPTIMIZED LETHAL FIX: Retrieve questions with SMART caching and deletion validation
+     * OPTIMIZED: Retrieve questions with SMART caching and deletion validation
      * Fast AND safe - best of both worlds
      *
      * @param Topic $topic
@@ -208,7 +208,7 @@ class QuizService
                 $questions = $this->getQuestionsFromDatabase($topic, $sources);
                 $this->cacheService->put($cacheKey, $questions, 1800);
                 
-                Log::info('OPTIMIZED LETHAL FIX: Deletion detected, cache refreshed', [
+                Log::info('OPTIMIZED: Deletion detected, cache refreshed', [
                     'topic_id' => $topic->id,
                     'old_count' => $questionCount,
                     'new_count' => $currentCount
@@ -216,7 +216,7 @@ class QuizService
             }
         }
 
-        Log::info('OPTIMIZED LETHAL FIX: Questions retrieved with smart caching', [
+                    Log::info('OPTIMIZED: Questions retrieved with smart caching', [
             'topic_id' => $topic->id,
             'questions_count' => $questions->count(),
             'sources' => $sources,
@@ -265,7 +265,7 @@ class QuizService
         });
         
         if ($validQuestions->count() !== $questions->count()) {
-            Log::warning('OPTIMIZED LETHAL FIX: Deleted questions filtered out', [
+            Log::warning('OPTIMIZED: Deleted questions filtered out', [
                 'original_count' => $questions->count(),
                 'valid_count' => $validQuestions->count(),
                 'filtered_count' => $questions->count() - $validQuestions->count()
@@ -570,7 +570,7 @@ class QuizService
             }
             
             $questions = $questionsQuery->get();
-            Log::info('DEBUG: generateQuizQuestions', [
+            Log::info('Generating quiz questions', [
                 'topic_id' => $topic->id,
                 'sources' => $sources,
                 'questions_found' => $questions->count(),
@@ -638,7 +638,7 @@ class QuizService
             $excludeTopics = $options['exclude_topics'] ?? [];
             $courseIds = $options['course_ids'] ?? [];
 
-            Log::info('OPTIMIZED LETHAL FIX: Generating random quiz with smart validation', [
+            Log::info('Generating random quiz with smart validation', [
                 'user_id' => $user->id,
                 'question_count' => $questionCount,
                 'difficulty' => $difficulty,
@@ -679,8 +679,12 @@ class QuizService
                 $questionsQuery->where('difficulty', $difficulty);
             }
 
-            // SMART VALIDATION: Get questions and verify efficiently
-            $questions = $questionsQuery->inRandomOrder()->limit($questionCount * 1.5)->get(); // Get extra to account for deletions
+            // BUSINESS LOGIC FIX: Proper randomization with seeding
+            // Create a deterministic but unique seed based on user and timestamp
+            $seed = crc32($user->id . date('Y-m-d-H') . microtime(true));
+            
+            // SMART VALIDATION: Get questions with proper seeded randomization
+            $questions = $questionsQuery->inRandomOrder($seed)->limit($questionCount * 1.5)->get(); // Get extra to account for deletions
             
             // OPTIMIZED VERIFICATION: Batch check for existence
             $questionIds = $questions->pluck('id')->toArray();
@@ -690,9 +694,17 @@ class QuizService
                 ->pluck('id')
                 ->toArray();
                 
+            // BUSINESS LOGIC FIX: Additional randomization for final selection
             $validQuestions = $questions->filter(function ($question) use ($existingIds) {
                 return in_array($question->id, $existingIds);
-            })->take($questionCount);
+            });
+            
+            // Apply additional shuffle with proper seeding for final selection
+            $validQuestionsArray = $validQuestions->toArray();
+            mt_srand($seed); // Use the same seed for consistency
+            shuffle($validQuestionsArray);
+            
+            $validQuestions = collect($validQuestionsArray)->take($questionCount);
 
             if ($validQuestions->isEmpty()) {
                 return [
@@ -705,7 +717,7 @@ class QuizService
             // Group questions by topic for better organization
             $questionsByTopic = $validQuestions->groupBy('topic_id');
 
-            Log::info('OPTIMIZED LETHAL FIX: Random quiz generated with smart validation', [
+            Log::info('Random quiz generated with smart validation', [
                 'user_id' => $user->id,
                 'questions_count' => $validQuestions->count(),
                 'topics_count' => $questionsByTopic->count(),
@@ -721,7 +733,7 @@ class QuizService
             ];
 
         } catch (\Exception $e) {
-            Log::error('OPTIMIZED LETHAL FIX: Error generating random quiz', [
+            Log::error('Error generating random quiz', [
                 'user_id' => $user->id,
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString()
@@ -745,7 +757,7 @@ class QuizService
      */
     public function generateTutorQuiz(Topic $topic, array $sources = ['all'], User $user = null): array
     {
-        Log::info('DEBUG: generateTutorQuiz called', [
+        Log::info('Generating tutor quiz', [
             'topic_id' => $topic->id,
             'sources' => $sources,
             'user_id' => $user?->id
@@ -896,7 +908,7 @@ class QuizService
                     ->exists();
                     
                 if (!$exists) {
-                    Log::warning('LETHAL FIX: Deleted question detected in getQuestionsForQuiz', [
+                    Log::warning('Deleted question detected in getQuestionsForQuiz', [
                         'question_id' => $question->id,
                         'topic_id' => $question->topic_id
                     ]);
@@ -958,7 +970,6 @@ class QuizService
 
             return [
                 'total_attempts' => $totalAttempts,
-
                 'average_score' => round($averageScore, 1),
                 'best_score' => round($bestScore, 1),
                 'last_attempt' => $lastAttempt,

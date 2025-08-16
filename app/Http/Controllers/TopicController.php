@@ -111,11 +111,19 @@ class TopicController extends Controller
             ])
             ->get();
 
-        // SSOT: Add lock status for each topic using TopicLockService
+        // 🚀 CRITICAL N+1 FIX: Batch process lock status to eliminate service call N+1
         $topicLockService = app(\App\Support\State\TopicLockService::class);
+        
+        // Get all topic IDs for batch processing
+        $topicIds = $topics->pluck('id')->toArray();
+        
+        // Batch get lock statuses to avoid N+1 queries
+        $lockStatuses = $topicLockService->getBatchTopicLockStatuses($topicIds, $user->id);
+        
         foreach ($topics as $topic) {
-            $topic->ssot_is_locked = $topicLockService->isTopicLocked($topic);
-            $topic->ssot_lock_status = $topicLockService->getTopicLockStatus($topic);
+            $lockStatus = $lockStatuses[$topic->id] ?? ['is_locked' => false];
+            $topic->ssot_is_locked = $lockStatus['is_locked'] ?? false;
+            $topic->ssot_lock_status = $lockStatus;
         }
 
         // 🚀 GENIUS: Load assignments using efficient pivot table filtering

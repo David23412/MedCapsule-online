@@ -1,0 +1,128 @@
+{
+  "task": "TASK 2: N+1 Query Detection",
+  "timestamp": "2025-01-15T18:35:00Z",
+  "branch": "fix/task1-string-enums-20250815_181120",
+  "detection_method": "Static code analysis + accessor pattern analysis",
+  "critical_n1_patterns": [
+    {
+      "file": "app/Models/User.php",
+      "line": 156,
+      "pattern": "getCourseProgressAttribute()",
+      "evidence": "💀 N+1 WARNING: This accessor accesses 'courses' - consider eager loading",
+      "impact": "CRITICAL - Called in loops, triggers 1 query per user",
+      "fix_strategy": "Remove accessor, use explicit method with eager loading"
+    },
+    {
+      "file": "app/Models/Course.php", 
+      "line": 91,
+      "pattern": "getEnrolledStudentsCountAttribute()",
+      "evidence": "💀 N+1 WARNING: This accessor accesses 'id' - consider eager loading",
+      "impact": "CRITICAL - Called in course lists, triggers 1 query per course",
+      "fix_strategy": "Remove accessor, use explicit method or precomputed field"
+    },
+    {
+      "file": "app/Models/Topic.php",
+      "line": 85,
+      "pattern": "getCompletionPercentageAttribute()",
+      "evidence": "💀 N+1 WARNING: This accessor accesses 'id' - consider eager loading", 
+      "impact": "HIGH - Called in topic lists, triggers 1 query per topic",
+      "fix_strategy": "Remove accessor, use explicit method with eager loading"
+    },
+    {
+      "file": "app/Models/Question.php",
+      "line": 89,
+      "pattern": "getSuccessRateAttribute()",
+      "evidence": "💀 N+1 WARNING: This accessor accesses 'total_attempts' - consider eager loading",
+      "impact": "MEDIUM - Called in question lists, triggers calculation per question",
+      "fix_strategy": "Remove accessor, use explicit method"
+    },
+    {
+      "file": "app/Http/Controllers/CourseController.php",
+      "line": 120,
+      "pattern": "$courses->load(['users:id,name,profile_picture_url'])",
+      "evidence": "Eager loading after initial query - should be done in initial query",
+      "impact": "MEDIUM - Extra query after main query",
+      "fix_strategy": "Move eager loading to initial query"
+    }
+  ],
+  "controller_n1_patterns": [
+    {
+      "file": "app/Http/Controllers/CourseController.php",
+      "method": "index",
+      "pattern": "Course list without eager loading enrolled students",
+      "estimated_queries": "1 + N courses * 2 (enrolled count + completion)",
+      "fix": "Eager load with subqueries"
+    },
+    {
+      "file": "app/Http/Controllers/TopicController.php", 
+      "method": "show",
+      "pattern": "Topic with questions without eager loading",
+      "estimated_queries": "1 + N questions",
+      "fix": "Eager load questions relationship"
+    }
+  ],
+  "service_n1_patterns": [
+    {
+      "file": "app/Services/QuizService.php",
+      "line": 485,
+      "pattern": "Complex JSON parsing in application layer",
+      "impact": "Multiple separate queries instead of JOINs",
+      "fix": "Use JOINs instead of whereHas()"
+    }
+  ],
+  "baseline_estimates": {
+    "courses.index": {
+      "current_queries": "1 + (N courses * 3) = ~31 queries for 10 courses",
+      "target_queries": "3-5 queries total",
+      "improvement": "85% reduction"
+    },
+    "dashboard.home": {
+      "current_queries": "1 + (N courses * 2) = ~21 queries for 10 courses", 
+      "target_queries": "2-3 queries total",
+      "improvement": "90% reduction"
+    },
+    "course.show": {
+      "current_queries": "1 + (N topics * 2) = ~21 queries for 10 topics",
+      "target_queries": "2-3 queries total", 
+      "improvement": "90% reduction"
+    },
+    "user.profile": {
+      "current_queries": "1 + (N courses * 1) = ~11 queries for 10 courses",
+      "target_queries": "1-2 queries total",
+      "improvement": "80% reduction"
+    },
+    "topic.show": {
+      "current_queries": "1 + (N questions * 1) = ~51 queries for 50 questions",
+      "target_queries": "1-2 queries total",
+      "improvement": "95% reduction"
+    }
+  },
+  "total_impact": {
+    "current_total_queries": "~135 queries across 5 key endpoints",
+    "target_total_queries": "~15 queries across 5 key endpoints", 
+    "overall_improvement": "89% query reduction",
+    "performance_gain": "5-10x faster page loads"
+  },
+  "fix_priority": [
+    {
+      "priority": 1,
+      "file": "app/Models/Course.php",
+      "reason": "Most critical - affects course listings used everywhere"
+    },
+    {
+      "priority": 2, 
+      "file": "app/Models/User.php",
+      "reason": "High impact - affects user dashboards and profiles"
+    },
+    {
+      "priority": 3,
+      "file": "app/Models/Topic.php", 
+      "reason": "Medium impact - affects course detail pages"
+    },
+    {
+      "priority": 4,
+      "file": "app/Http/Controllers/CourseController.php",
+      "reason": "Controller-level optimizations"
+    }
+  ]
+}

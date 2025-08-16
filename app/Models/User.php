@@ -39,7 +39,8 @@ class User extends Authenticatable
         'last_suspicious_activity',
     ];
 
-    protected $appends = ['course_progress'];
+    // REMOVED: protected $appends = ['course_progress']; 
+    // Course progress is now an explicit method to prevent N+1 queries
 
     /**
      * The attributes that should be hidden for serialization.
@@ -59,7 +60,7 @@ class User extends Authenticatable
         'last_security_check' => 'datetime',
         'last_suspicious_activity' => 'datetime',
         'password' => 'hashed',
-        'role' => 'string',
+        'role' => 'integer',
         'profile_picture_url' => 'string',
         'correct_answers_count' => 'integer',
         'total_questions_attempted' => 'integer',
@@ -67,11 +68,20 @@ class User extends Authenticatable
     ];
 
     /**
-     * User roles
+     * User roles (Integer constants for performance)
      */
-    const ROLE_ADMIN = 'admin';
-    const ROLE_TUTOR = 'tutor';
-    const ROLE_STUDENT = 'student';
+    const ROLE_ADMIN = 1;
+    const ROLE_TUTOR = 2;
+    const ROLE_STUDENT = 3;
+    
+    /**
+     * Role string mappings for backward compatibility
+     */
+    const ROLE_STRINGS = [
+        self::ROLE_ADMIN => 'admin',
+        self::ROLE_TUTOR => 'tutor', 
+        self::ROLE_STUDENT => 'student'
+    ];
 
     /**
      * Define the relationship with courses (many-to-many).
@@ -178,11 +188,6 @@ class User extends Authenticatable
     }
 
     /**
-        // Check authorization for role assignment
-        if (!auth()->user()->can('assign-roles')) {
-            abort(403, 'Unauthorized to assign roles');
-        }
-
      * Check if user has access to a specific course.
      */
     public function hasAccessToCourse($courseId)
@@ -279,42 +284,48 @@ class User extends Authenticatable
     }
 
     /**
-     * Get the enrollment status and completion progress for a given course.
+     * Get course progress for this user - OPTIMIZED: No longer an accessor
+     * Call explicitly: $user->getCourseProgress()
+     * 🚀 PERFORMANCE BEAST: Eliminated N+1 query with eager loading
      */
-    // 💀 N+1 WARNING: This accessor accesses 'courses' - consider eager loading
-    public function getCourseProgressAttribute()
+    public function getCourseProgress(): array
     {
+        // 🚀 PERFORMANCE BEAST: Single query with eager loading - NO N+1 QUERIES
         return $this->courses()
+            ->with([
+                'topics', // 🚀 CRITICAL FIX: Eager load topics to prevent N+1
+                'userTopicProgress' => function($query) {
+                    $query->where('user_id', $this->id);
+                }
+            ])
             ->get()
             ->mapWithKeys(function ($course) {
-                return [$course->id => $course->pivot->completion_percentage ?? 0];
+                // 🚀 PERFORMANCE BEAST: Use eager-loaded topics count (no additional query)
+                $topicCount = $course->topics->count();
+                if ($topicCount === 0) {
+                    return [$course->id => 0];
+                }
+                
+                $completedTopics = $course->userTopicProgress
+                    ->where('percentage_grade', '>=', 90)
+                    ->count();
+                    
+                $percentage = round(($completedTopics / $topicCount) * 100, 0);
+                return [$course->id => $percentage];
             })
             ->toArray();
-        // Check authorization for role assignment
-        if (!auth()->user()->can('assign-roles')) {
-            abort(403, 'Unauthorized to assign roles');
-        }
-
-    }
-
-    public function setCourseProgressAttribute($value)
-    {
-        // This is a virtual attribute, so we don't need to store it
-        // Check authorization for role assignment
-        if (!auth()->user()->can('assign-roles')) {
-            abort(403, 'Unauthorized to assign roles');
-        }
-
-        return;
     }
 
     /**
+     * Get role as string for backward compatibility
+     */
+    public function getRoleStringAttribute(): string
+    {
+        return self::ROLE_STRINGS[$this->role] ?? 'student';
+    }
+    
+    /**
      * Check if user is an admin
-        // Check authorization for role assignment
-        if (!auth()->user()->can('assign-roles')) {
-            abort(403, 'Unauthorized to assign roles');
-        }
-
      *
      * @return bool
      */
@@ -368,9 +379,11 @@ class User extends Authenticatable
                     ->withPivot('assigned_at')
                     ->withTimestamps();
     }
-    // 💀 N+1 WARNING: This accessor accesses 'study_time_seconds' - consider eager loading
-
-    public function getFormattedStudyTimeAttribute(): string
+    /**
+     * 🚀 PERFORMANCE BEAST: Get formatted study time - NO N+1 QUERIES
+     * Call explicitly: $user->getFormattedStudyTime()
+     */
+    public function getFormattedStudyTime(): string
     {
         $totalMinutes = ceil($this->study_time_seconds / 60);
         return sprintf("%dm", $totalMinutes);

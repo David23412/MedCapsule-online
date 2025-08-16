@@ -2,7 +2,7 @@
 
 namespace App\Services\Audit\Reports;
 
-use App\Services\Audit\State\AuditState;
+use App\Services\Audit\Core\AuditState;
 
 /**
  * Audit Report Model

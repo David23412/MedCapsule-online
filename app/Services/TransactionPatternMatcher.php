@@ -181,7 +181,7 @@ class TransactionPatternMatcher
         // If no cached result, try to check in database
         try {
             // Use the Payment model, but with try/catch to handle DB issues
-            $existingPayment = Payment::where('status', 'completed')
+            $existingPayment = Payment::where('status', Payment::STATUS_COMPLETED)
                 ->whereRaw("JSON_EXTRACT(payment_data, '$.transaction_id') = ?", [$transactionId])
                 ->exists();
             

@@ -15,7 +15,7 @@ class AssignmentPolicy
      */
     public function viewAny(User $user): bool
     {
-        return $user->role === 'tutor' || $user->role === 'student';
+        return $user->role === User::ROLE_TUTOR || $user->role === User::ROLE_STUDENT;
     }
 
     /**
@@ -24,12 +24,12 @@ class AssignmentPolicy
     public function view(User $user, Assignment $assignment): bool
     {
         // Tutors can view their own assignments
-        if ($user->role === 'tutor' && $assignment->tutor_id === $user->id) {
+        if ($user->role === User::ROLE_TUTOR && $assignment->tutor_id === $user->id) {
             return true;
         }
 
         // Students can view assignments assigned to them
-        if ($user->role === 'student' && $assignment->user_id === $user->id) {
+        if ($user->role === User::ROLE_STUDENT && $assignment->user_id === $user->id) {
             return true;
         }
 
@@ -41,7 +41,7 @@ class AssignmentPolicy
      */
     public function create(User $user): bool
     {
-        return $user->role === 'tutor';
+        return $user->role === User::ROLE_TUTOR;
     }
 
     /**
@@ -50,7 +50,7 @@ class AssignmentPolicy
     public function update(User $user, Assignment $assignment): bool
     {
         // Only tutors can update assignments
-        if ($user->role !== 'tutor') {
+        if ($user->role !== User::ROLE_TUTOR) {
             return false;
         }
 
@@ -64,7 +64,7 @@ class AssignmentPolicy
     public function delete(User $user, Assignment $assignment): bool
     {
         // Only tutors can delete assignments
-        if ($user->role !== 'tutor') {
+        if ($user->role !== User::ROLE_TUTOR) {
             return false;
         }
 
@@ -87,12 +87,12 @@ class AssignmentPolicy
     public function complete(User $user, Assignment $assignment): bool
     {
         // Students can complete their own assignments
-        if ($user->role === 'student' && $assignment->user_id === $user->id) {
+        if ($user->role === User::ROLE_STUDENT && $assignment->user_id === $user->id) {
             return $assignment->canBeCompleted();
         }
 
         // Tutors can mark their assignments as completed
-        if ($user->role === 'tutor' && $assignment->tutor_id === $user->id) {
+        if ($user->role === User::ROLE_TUTOR && $assignment->tutor_id === $user->id) {
             return $assignment->canBeCompleted();
         }
 
@@ -105,7 +105,7 @@ class AssignmentPolicy
     public function extendDeadline(User $user, Assignment $assignment): bool
     {
         // Only tutors can extend deadlines
-        if ($user->role !== 'tutor') {
+        if ($user->role !== User::ROLE_TUTOR) {
             return false;
         }
 
@@ -127,7 +127,7 @@ class AssignmentPolicy
      */
     public function viewAnalytics(User $user): bool
     {
-        return $user->role === 'tutor';
+        return $user->role === User::ROLE_TUTOR;
     }
 
     /**
@@ -135,6 +135,6 @@ class AssignmentPolicy
      */
     public function bulkCreate(User $user): bool
     {
-        return $user->role === 'tutor';
+        return $user->role === User::ROLE_TUTOR;
     }
 }

@@ -262,7 +262,7 @@ class QualityGateEnforcer
         }
 
         // Check for critical findings without proper evidence
-        $allPhaseResults = $allPhaseResults->load('getFindings');
+
         foreach ($allPhaseResults as $phaseResult) {
             foreach ($phaseResult->getFindings() as $finding) {
                 if ($finding->getSeverity() === 'critical' && !$finding->isVerified()) {

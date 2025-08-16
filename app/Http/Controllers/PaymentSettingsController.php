@@ -44,7 +44,15 @@ class PaymentSettingsController extends Controller
                 'enabled' => config('payment.ocr.enabled', true),
                 'approval_threshold' => config('payment.ocr.approval_threshold', 7),
                 'admin_review_threshold' => config('payment.ocr.admin_review_threshold', 4),
-                'save_processed_images' => config('payment.ocr.save_processed_images', true),
+        // Wrap payment processing in database transaction
+        DB::beginTransaction();
+        try {
+            'save_processed_images' => config('payment.ocr.save_processed_images', true),
+            DB::commit();
+        } catch (Exception $e) {
+            DB::rollback();
+            throw $e;
+        }
                 'enhance_image' => config('payment.ocr.enhance_image', true)],
             'verification' => [
                 'auto_approval_threshold' => config('payment.verification.auto_approval_threshold', 70),

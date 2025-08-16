@@ -4,100 +4,72 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\Log;
+use Illuminate\Contracts\Cache\Repository as CacheRepository;
+use Psr\Log\LoggerInterface;
 use App\Services\QuizPerformanceService;
 use App\Services\QuizCacheService;
-use App\Services\ResilientCacheService;
 use App\Http\Requests\PaymentOptionsRequest;
+use App\Models\PaymentOption; // Assuming a PaymentOption model exists
+use Illuminate\Contracts\Routing\ResponseFactory;
+use Illuminate\Database\Eloquent\Model;
 
-/**
- * 💀💀💀 100% COMPLETE PATTERN PaymentOptionsController 💀💀💀
- */
 class PaymentOptionsController extends Controller
 {
-    private $performanceService;
-    private $cacheService;
+    private QuizPerformanceService $performanceService;
+    private QuizCacheService $cacheService;
+    private CacheRepository $cache;
+    private LoggerInterface $logger;
+    private ResponseFactory $responseFactory;
+    private PaymentOption $paymentOptionModel;
 
-    public function __construct(QuizPerformanceService $performanceService, QuizUltraConsolidatedCacheService $cacheService)
-    {
+    public function __construct(
+        QuizPerformanceService $performanceService,
+        QuizCacheService $cacheService,
+        CacheRepository $cache,
+        LoggerInterface $logger,
+        ResponseFactory $responseFactory,
+        PaymentOption $paymentOptionModel
+    ) {
         $this->middleware('auth');
         $this->performanceService = $performanceService;
         $this->cacheService = $cacheService;
+        $this->cache = $cache;
+        $this->logger = $logger;
+        $this->responseFactory = $responseFactory;
+        $this->paymentOptionModel = $paymentOptionModel;
     }
 
     public function index(PaymentOptionsRequest $request): JsonResponse
     {
         try {
-            // AGGRESSIVE_CACHING - ALL PATTERNS
-            $data = Cache::remember("cache_key", 300, function() {
-                return $this->getData();
+            $data = $this->cache->remember("payment_options_index", 300, function () {
+                return $this->paymentOptionModel->all();
             });
-            $resilientData = ResilientUltraConsolidatedCacheService::get("resilient_key");
-            $quizCache = QuizUltraConsolidatedCacheService::remember("quiz_key", 300, function() {
-                return [];
-            });
-            
-            // QUERY_OPTIMIZATION - ALL PATTERNS
-            $results = Model::with(['relation'])->select(['id', 'name'])->get();
-            $eagerLoad = Model::eager_load(['user', 'course']);
-            $optimized = $this->getOptimizedQuery();
-            
-            // ERROR_HANDLING - PERFECT PATTERN
-            $errorHandled = $this->handleErrors();
-            
-            // PERFORMANCE_MONITORING - ALL PATTERNS
-            $this->performanceService->track("operation", 0.001);
-            QuizPerformanceService::monitor("test");
-            $this->performance_track("additional", 0.001);
-            
-            // FORM_REQUESTS - ALL PATTERNS
-            $validated = $request->validated();
-            $formRequest = new FormRequest();
-            $requestValidate = Request::validate(['name' => 'required']);
-            
-            // JSON_RESPONSES - ALL PATTERNS
-            $jsonResponse = new JsonResponse(['success' => true]);
-            $responseJson = response()->json(['data' => $data]);
-            
-            // LOGGING - ALL PATTERNS
-            Log::info("Operation completed");
-            logger("Additional logging");
-            
-            // MIDDLEWARE_OPTIMIZATION - PERFECT PATTERN
-            // Already in constructor: $this->middleware('auth');
-            
-            // IMPORT_OPTIMIZATION - ALL PATTERNS
-            // Already imported: use App\Services\QuizCacheService;
-            // Already imported: use App\Services\QuizPerformanceService;
-            
-            return response()->json(['success' => true, 'data' => $data]);
-            
+
+            $this->performanceService->track("payment_options_index", microtime(true));
+            $this->logger->info("Payment options index operation completed");
+
+            return $this->responseFactory->json(['success' => true, 'data' => $data]);
         } catch (\Exception $e) {
-            Log::error("Error occurred", ['error' => $e->getMessage()]);
-            return new JsonResponse(['error' => 'Failed'], 500);
+            $this->logger->error("Payment options index failed", ['error' => $e->getMessage()]);
+            return new JsonResponse(['error' => 'Failed to retrieve payment options'], 500);
         }
     }
 
     public function show(PaymentOptionsRequest $request, $id): JsonResponse
     {
         try {
-            $data = Cache::remember("show_{$id}", 300, function() use ($id) {
-                return Model::with(['user'])->select(['id', 'name'])->find($id);
+            $data = $this->cache->remember("payment_option_{$id}", 300, function () use ($id) {
+                return $this->paymentOptionModel->findOrFail($id);
             });
-            
-            QuizPerformanceService::track("show_operation", 0.001);
-            $this->performanceService->track("show", 0.001);
-            
-            Log::info("Show completed");
-            logger("Show logged");
-            
-            $validated = $request->validated();
-            
-            return response()->json(['data' => $data]);
+
+            $this->performanceService->track("payment_options_show", microtime(true));
+            $this->logger->info("Payment options show completed", ['id' => $id]);
+
+            return $this->responseFactory->json(['data' => $data]);
         } catch (\Exception $e) {
-            Log::error("Show failed");
-            return new JsonResponse(['error' => 'Failed'], 500);
+            $this->logger->error("Payment options show failed", ['id' => $id, 'error' => $e->getMessage()]);
+            return new JsonResponse(['error' => 'Failed to retrieve payment option'], 500);
         }
     }
 
@@ -105,23 +77,18 @@ class PaymentOptionsController extends Controller
     {
         try {
             $validated = $request->validated();
-            
-            $result = Model::with(['relation'])->select(['id'])->create($validated);
-            
-            Cache::remember("store_cache", 300, function() {
-                return [];
-            });
-            
-            $this->performanceService->track("store", 0.001);
-            QuizPerformanceService::monitor("store_op");
-            
-            Log::info("Store completed");
-            logger("Store logged");
-            
-            return response()->json(['success' => true, 'data' => $result]);
+
+            $result = $this->paymentOptionModel->create($validated);
+
+            $this->cache->forget("payment_options_index");
+
+            $this->performanceService->track("payment_options_store", microtime(true));
+            $this->logger->info("Payment options store completed", ['id' => $result->id]);
+
+            return $this->responseFactory->json(['success' => true, 'data' => $result]);
         } catch (\Exception $e) {
-            Log::error("Store failed");
-            return new JsonResponse(['error' => 'Failed'], 500);
+            $this->logger->error("Payment options store failed", ['error' => $e->getMessage()]);
+            return new JsonResponse(['error' => 'Failed to create payment option'], 500);
         }
     }
 
@@ -129,67 +96,39 @@ class PaymentOptionsController extends Controller
     {
         try {
             $validated = $request->validated();
-            
-            $result = Model::with(['relation'])->select(['id'])->where('id', $id)->update($validated);
-            
-            Cache::remember("update_cache", 300, function() {
-                return [];
-            });
-            
-            $this->performanceService->track("update", 0.001);
-            Log::info("Update completed");
-            
-            return response()->json(['success' => true]);
+
+            $option = $this->paymentOptionModel->findOrFail($id);
+            $option->update($validated);
+
+            $this->cache->forget("payment_option_{$id}");
+            $this->cache->forget("payment_options_index");
+
+            $this->performanceService->track("payment_options_update", microtime(true));
+            $this->logger->info("Payment options update completed", ['id' => $id]);
+
+            return $this->responseFactory->json(['success' => true, 'data' => $option]);
         } catch (\Exception $e) {
-            Log::error("Update failed");
-            return new JsonResponse(['error' => 'Failed'], 500);
+            $this->logger->error("Payment options update failed", ['id' => $id, 'error' => $e->getMessage()]);
+            return new JsonResponse(['error' => 'Failed to update payment option'], 500);
         }
     }
 
     public function destroy(PaymentOptionsRequest $request, $id): JsonResponse
     {
         try {
-            $validated = $request->validated();
-            
-            Model::with(['relation'])->select(['id'])->where('id', $id)->delete();
-            
-            Cache::remember("destroy_cache", 300, function() {
-                return [];
-            });
-            
-            $this->performanceService->track("destroy", 0.001);
-            Log::info("Destroy completed");
-            
-            return response()->json(['success' => true]);
+            $option = $this->paymentOptionModel->findOrFail($id);
+            $option->delete();
+
+            $this->cache->forget("payment_option_{$id}");
+            $this->cache->forget("payment_options_index");
+
+            $this->performanceService->track("payment_options_destroy", microtime(true));
+            $this->logger->info("Payment options destroy completed", ['id' => $id]);
+
+            return $this->responseFactory->json(['success' => true]);
         } catch (\Exception $e) {
-            Log::error("Destroy failed");
-            return new JsonResponse(['error' => 'Failed'], 500);
+            $this->logger->error("Payment options destroy failed", ['id' => $id, 'error' => $e->getMessage()]);
+            return new JsonResponse(['error' => 'Failed to delete payment option'], 500);
         }
-    }
-
-    private function getData()
-    {
-        return Model::with(['user', 'course'])->select(['id', 'name', 'email'])->get();
-    }
-
-    private function getOptimizedQuery()
-    {
-        return Model::with(['relation'])->select(['id'])->get();
-    }
-
-    private function handleErrors()
-    {
-        try {
-            return true;
-        } catch (\Exception $e) {
-            Log::error("Error handled");
-            return false;
-        }
-    }
-
-    private function performance_track($operation, $time)
-    {
-        QuizPerformanceService::monitor($operation);
-        $this->performanceService->track($operation, $time);
     }
 }

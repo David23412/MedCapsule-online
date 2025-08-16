@@ -6,173 +6,122 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Services\UniversalNotificationService;
 use Illuminate\Http\JsonResponse;
+use Psr\Log\LoggerInterface;
+use Illuminate\Contracts\Routing\ResponseFactory;
+use Illuminate\Contracts\Auth\Factory as Auth;
+use Illuminate\Contracts\Cache\Repository as Cache;
 
 class NotificationViewController extends Controller
 {
-    public function __construct()
-    {
+    private UniversalNotificationService $notificationService;
+    private LoggerInterface $logger;
+    private ResponseFactory $responseFactory;
+    private Auth $auth;
+    private Cache $cache;
+
+    public function __construct(
+        UniversalNotificationService $notificationService,
+        LoggerInterface $logger,
+        ResponseFactory $responseFactory,
+        Auth $auth,
+        Cache $cache
+    ) {
         $this->middleware(['auth']);
+        $this->notificationService = $notificationService;
+        $this->logger = $logger;
+        $this->responseFactory = $responseFactory;
+        $this->auth = $auth;
+        $this->cache = $cache;
     }
 
-    /**
-     * Get notifications for the authenticated user - LETHAL CACHED
-     */
     public function index(Request $request): JsonResponse
     {
-        try {
-            $user = auth()->user();
+        return $this->handleNotificationOperation(function ($user) use ($request) {
             $limit = $request->get('limit', 100);
-            
-            // LETHAL CACHING: Ultra-aggressive caching for notifications
             $cacheKey = "notifications_{$user->id}_{$limit}_" . now()->format('Y-m-d-H-i');
-            
-            $data = \Illuminate\Support\Facades\Cache::remember($cacheKey, 300, function () use ($user, $limit) {
+            $data = $this->cache->remember($cacheKey, 300, function () use ($user, $limit) {
                 return [
-                    'notifications' => UniversalNotificationService::getNotifications($user, $limit),
-                    'unread_count' => UniversalNotificationService::getUnreadCount($user)
+                    'notifications' => $this->notificationService->getNotifications($user, $limit),
+                    'unread_count' => $this->notificationService->getUnreadCount($user)
                 ];
             });
-            
-            return response()->json([
-                'success' => true,
-                'notifications' => $data['notifications'],
-                'unread_count' => $data['unread_count']
-            ]);
-        } catch (\Exception $e) {
-            \Illuminate\Support\Facades\Log::error('Notification index failed', [
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString(),
-                'user_id' => auth()->id()
-            ]);
-            return response()->json(['success' => false, 'message' => 'Operation failed'], 500);
-        }
+            return ['notifications' => $data['notifications'], 'unread_count' => $data['unread_count']];
+        }, 'get notifications');
     }
 
-    /**
-     * Get notification statistics - LETHAL CACHED
-     */
     public function stats(): JsonResponse
     {
-        try {
-            $user = auth()->user();
-            
-            // LETHAL CACHING: Ultra-aggressive caching for notification stats
+        return $this->handleNotificationOperation(function ($user) {
             $cacheKey = "notification_stats_{$user->id}_" . now()->format('Y-m-d-H');
-            
-            $stats = \Illuminate\Support\Facades\Cache::remember($cacheKey, 1800, function () use ($user) {
-                return UniversalNotificationService::getStats($user);
+            $stats = $this->cache->remember($cacheKey, 1800, function () use ($user) {
+                return $this->notificationService->getStats($user);
             });
-            
-            return response()->json([
-                'success' => true,
-                'stats' => $stats
-            ]);
-        } catch (\Exception $e) {
-            \Log::error('Method execution failed', ['error' => $e->getMessage()]);
-            return response()->json(['success' => false, 'message' => 'Operation failed'], 500);
-        }
+            return ['stats' => $stats];
+        }, 'get notification stats');
     }
 
-    /**
-     * Mark all notifications as read
-     */
     public function markAllAsRead(): JsonResponse
     {
-        try {
-            $user = auth()->user();
-            $success = UniversalNotificationService::markAllAsRead($user);
-            
-            return response()->json([
-                'success' => $success,
-                'message' => $success ? 'All notifications marked as read' : 'Failed to mark notifications as read'
-            ]);
-        } catch (\Exception $e) {
-            \Illuminate\Support\Facades\Log::error('Mark all as read failed', [
-                'error' => $e->getMessage(),
-                'user_id' => auth()->id()
-            ]);
-            return response()->json(['success' => false, 'message' => 'Operation failed'], 500);
-        }
+        return $this->handleNotificationOperation(function ($user) {
+            $success = $this->notificationService->markAllAsRead($user);
+            return ['message' => $success ? 'All notifications marked as read' : 'Failed to mark notifications as read'];
+        }, 'mark all notifications as read');
     }
 
-    /**
-     * Mark a specific notification as read
-     */
     public function markAsRead(Request $request): JsonResponse
     {
-        try {
-            $user = auth()->user();
+        return $this->handleNotificationOperation(function ($user) use ($request) {
             $notificationId = $request->input('notification_id');
-            
             if (!$notificationId) {
-                return response()->json(['success' => false, 'message' => 'Notification ID is required'], 400);
+                return $this->jsonResponse(false, 'Notification ID is required', [], 400);
             }
-            
-            $success = UniversalNotificationService::markAsRead($user, $notificationId);
-            
-            return response()->json([
-                'success' => $success,
-                'message' => $success ? 'Notification marked as read' : 'Failed to mark notification as read'
-            ]);
-        } catch (\Exception $e) {
-            \Illuminate\Support\Facades\Log::error('Mark as read failed', [
-                'error' => $e->getMessage(),
-                'user_id' => auth()->id(),
-                'notification_id' => $request->input('notification_id')
-            ]);
-            return response()->json(['success' => false, 'message' => 'Operation failed'], 500);
-        }
+            $success = $this->notificationService->markAsRead($user, $notificationId);
+            return ['message' => $success ? 'Notification marked as read' : 'Failed to mark notification as read'];
+        }, 'mark notification as read');
     }
 
-    /**
-     * Delete a specific notification
-     */
     public function deleteNotification(Request $request): JsonResponse
     {
-        try {
-            $user = auth()->user();
+        return $this->handleNotificationOperation(function ($user) use ($request) {
             $notificationId = $request->input('notification_id');
-            
             if (!$notificationId) {
-                return response()->json(['success' => false, 'message' => 'Notification ID is required'], 400);
+                return $this->jsonResponse(false, 'Notification ID is required', [], 400);
             }
-            
-            $success = UniversalNotificationService::deleteNotification($user, $notificationId);
-            
-            return response()->json([
-                'success' => $success,
-                'message' => $success ? 'Notification deleted' : 'Failed to delete notification'
-            ]);
+            $success = $this->notificationService->deleteNotification($user, $notificationId);
+            return ['message' => $success ? 'Notification deleted' : 'Failed to delete notification'];
+        }, 'delete notification');
+    }
+
+    public function cleanup(): JsonResponse
+    {
+        return $this->handleNotificationOperation(function ($user) {
+            $deletedCount = $this->notificationService->cleanupExpiredNotifications($user);
+            return ['deleted_count' => $deletedCount, 'message' => "Cleaned up {$deletedCount} expired notifications"];
+        }, 'cleanup notifications');
+    }
+
+    private function handleNotificationOperation(callable $operation, string $operationName): JsonResponse
+    {
+        try {
+            $user = $this->auth->user();
+            $result = $operation($user);
+            return $this->jsonResponse(true, $result['message'] ?? 'Operation successful', $result);
         } catch (\Exception $e) {
-            \Illuminate\Support\Facades\Log::error('Delete notification failed', [
+            $this->logger->error("{$operationName} failed", [
                 'error' => $e->getMessage(),
-                'user_id' => auth()->id(),
-                'notification_id' => $request->input('notification_id')
+                'user_id' => $this->auth->id(),
             ]);
-            return response()->json(['success' => false, 'message' => 'Operation failed'], 500);
+            return $this->jsonResponse(false, "Failed to {$operationName}", [], 500);
         }
     }
 
-    /**
-     * Cleanup expired notifications
-     */
-    public function cleanup(): JsonResponse
+    protected function jsonResponse(bool $success, string $message, array $data = [], int $status = 200): JsonResponse
     {
-        try {
-            $user = auth()->user();
-            $deletedCount = UniversalNotificationService::cleanupExpiredNotifications($user);
-            
-            return response()->json([
-                'success' => true,
-                'message' => "Cleaned up {$deletedCount} expired notifications",
-                'deleted_count' => $deletedCount
-            ]);
-        } catch (\Exception $e) {
-            \Illuminate\Support\Facades\Log::error('Cleanup failed', [
-                'error' => $e->getMessage(),
-                'user_id' => auth()->id()
-            ]);
-            return response()->json(['success' => false, 'message' => 'Operation failed'], 500);
-        }
+        return $this->responseFactory->json([
+            'success' => $success,
+            'message' => $message,
+            'data' => $data,
+            'timestamp' => now()->toISOString()
+        ], $status);
     }
 }

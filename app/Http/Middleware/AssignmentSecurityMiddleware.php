@@ -79,7 +79,7 @@ class AssignmentSecurityMiddleware
         }
         
         // Check if user is a tutor with a relationship to the student
-        if ($user->role === 'tutor') {
+        if ($user->role === User::ROLE_TUTOR) {
             $hasRelationship = $this->verifyTutorStudentRelationship($user->id, $assignment->user_id);
             
             if ($hasRelationship) {

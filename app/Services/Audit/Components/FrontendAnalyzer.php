@@ -109,7 +109,7 @@ class FrontendAnalyzer
                 if (preg_match('/\{\{\s*\$[^}]*->(?:where|find|get|all|first)\s*\([^}]*\}\}/', $line)) {
                     $templateIssues++;
                     
-                    $finding = new Finding(
+                    $finding = new ConcreteFinding(
                         'ISSUE-' . str_pad($this->findingCounter++, 3, '0', STR_PAD_LEFT),
                         'high',
                         'Database query embedded in Blade template - performance issue',
@@ -162,7 +162,7 @@ class FrontendAnalyzer
             if ($fileSize > 100000 && !strpos($file['filename'], '.min.')) { // > 100KB
                 $assetIssues++;
                 
-                $finding = new Finding(
+                $finding = new ConcreteFinding(
                     'ISSUE-' . str_pad($this->findingCounter++, 3, '0', STR_PAD_LEFT),
                     'medium',
                     "Large JavaScript file ({$file['size_human']}) should be minified",
@@ -197,7 +197,7 @@ class FrontendAnalyzer
             if ($fileSize > 50000 && !strpos($file['filename'], '.min.')) { // > 50KB
                 $assetIssues++;
                 
-                $finding = new Finding(
+                $finding = new ConcreteFinding(
                     'ISSUE-' . str_pad($this->findingCounter++, 3, '0', STR_PAD_LEFT),
                     'medium',
                     "Large CSS file ({$file['size_human']}) should be minified",
@@ -254,7 +254,7 @@ class FrontendAnalyzer
                 if (preg_match('/console\.(log|debug|info|warn|error)/', $line)) {
                     $jsIssues++;
                     
-                    $finding = new Finding(
+                    $finding = new ConcreteFinding(
                         'ISSUE-' . str_pad($this->findingCounter++, 3, '0', STR_PAD_LEFT),
                         'low',
                         'Console statement found - should be removed in production',
@@ -311,7 +311,7 @@ class FrontendAnalyzer
                 if (preg_match('/!important/', $line)) {
                     $cssIssues++;
                     
-                    $finding = new Finding(
+                    $finding = new ConcreteFinding(
                         'ISSUE-' . str_pad($this->findingCounter++, 3, '0', STR_PAD_LEFT),
                         'low',
                         '!important usage detected - CSS architecture issue',
@@ -360,7 +360,7 @@ class FrontendAnalyzer
                 if (preg_match('/eval\s*\(/', $line)) {
                     $securityIssues++;
                     
-                    $finding = new Finding(
+                    $finding = new ConcreteFinding(
                         'ISSUE-' . str_pad($this->findingCounter++, 3, '0', STR_PAD_LEFT),
                         'high',
                         'eval() usage detected - security and performance risk',
@@ -410,7 +410,7 @@ class FrontendAnalyzer
                 if ($stylesheetCount > 5) {
                     $performanceIssues++;
                     
-                    $finding = new Finding(
+                    $finding = new ConcreteFinding(
                         'ISSUE-' . str_pad($this->findingCounter++, 3, '0', STR_PAD_LEFT),
                         'medium',
                         "Too many stylesheets ({$stylesheetCount}) - render-blocking issue",
@@ -500,8 +500,10 @@ class FrontendAnalyzer
     private function generateProgressBar(int $percentage): string
     {
         $barLength = 20;
-        $filledLength = max(0, round(($percentage / 100) * $barLength));
-        $emptyLength = max(0, $barLength - $filledLength);
+        // Cap percentage at 100% to prevent bar overflow
+        $cappedPercentage = min(100, max(0, $percentage));
+        $filledLength = round(($cappedPercentage / 100) * $barLength);
+        $emptyLength = $barLength - $filledLength;
         
         $bar = '[' . str_repeat('█', $filledLength) . str_repeat('░', $emptyLength) . ']';
         return $bar;

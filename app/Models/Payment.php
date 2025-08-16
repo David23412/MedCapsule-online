@@ -10,6 +10,24 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 class Payment extends Model
 {
     use HasFactory;
+    
+    /**
+     * Payment status constants (Integer constants for performance)
+     */
+    const STATUS_PENDING = 1;
+    const STATUS_COMPLETED = 2;
+    const STATUS_FAILED = 3;
+    const STATUS_EXPIRED = 4;
+    
+    /**
+     * Status string mappings for backward compatibility
+     */
+    const STATUS_STRINGS = [
+        self::STATUS_PENDING => 'pending',
+        self::STATUS_COMPLETED => 'completed',
+        self::STATUS_FAILED => 'failed',
+        self::STATUS_EXPIRED => 'expired'
+    ];
 
     protected $fillable = [
         'user_id',
@@ -72,34 +90,37 @@ class Payment extends Model
 
     /**
      * SSOT: Status accessor based on timestamps and business logic
-     * No status column needed - everything derived from timestamps
+     * Returns integer status for performance
      */
-    public function getStatusAttribute(): string
+    public function getStatusAttribute(): int
     {
         // SSOT: Derive status from timestamps and business logic
         
         // If payment failed
         if ($this->failed_at) {
-            return 'failed';
+            return self::STATUS_FAILED;
         }
         
         // If payment was completed (has paid_at timestamp)
         if ($this->paid_at) {
-            return 'completed';
+            return self::STATUS_COMPLETED;
         }
         
         // If payment is older than 24 hours without completion
         if ($this->created_at && $this->created_at->addHours(24) < now()) {
-            return 'expired';
-        }
-        
-        // If payment method requires verification (e.g., bank_transfer)
-        if (in_array($this->payment_method, ['bank_transfer', 'manual_verification'])) {
-            return 'pending_verification';
+            return self::STATUS_EXPIRED;
         }
         
         // Default status for new payments
-        return 'pending';
+        return self::STATUS_PENDING;
+    }
+    
+    /**
+     * Get status as string for backward compatibility
+     */
+    public function getStatusStringAttribute(): string
+    {
+        return self::STATUS_STRINGS[$this->getStatusAttribute()] ?? 'pending';
     }
 
     /**

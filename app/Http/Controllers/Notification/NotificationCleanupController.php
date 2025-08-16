@@ -3,141 +3,93 @@
 namespace App\Http\Controllers\Notification;
 
 use App\Http\Controllers\Controller;
-use Illuminate\Http\Request;
 use App\Services\UniversalNotificationService;
 use Illuminate\Http\JsonResponse;
+use Psr\Log\LoggerInterface;
+use Illuminate\Contracts\Routing\ResponseFactory;
+use Illuminate\Contracts\Auth\Factory as Auth;
+use Illuminate\Contracts\Cache\Repository as Cache;
 
 class NotificationCleanupController extends Controller
 {
-    public function __construct()
-    {
+    private UniversalNotificationService $notificationService;
+    private LoggerInterface $logger;
+    private ResponseFactory $responseFactory;
+    private Auth $auth;
+    private Cache $cache;
+
+    public function __construct(
+        UniversalNotificationService $notificationService,
+        LoggerInterface $logger,
+        ResponseFactory $responseFactory,
+        Auth $auth,
+        Cache $cache
+    ) {
         $this->middleware(['auth']);
+        $this->notificationService = $notificationService;
+        $this->logger = $logger;
+        $this->responseFactory = $responseFactory;
+        $this->auth = $auth;
+        $this->cache = $cache;
     }
 
-    /**
-     * Clean up expired notifications - LETHAL ERROR HANDLING
-     */
     public function cleanup(): JsonResponse
     {
-        try {
-            $user = auth()->user();
-            
-            if (!$user) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'User not authenticated'
-                ], 401);
-            }
-            
-            $removedCount = UniversalNotificationService::cleanupExpiredNotifications($user);
-            
-            \Illuminate\Support\Facades\Log::info('Notification cleanup completed', [
-                'user_id' => $user->id,
-                'removed_count' => $removedCount
-            ]);
-            
-            return response()->json([
-                'success' => true,
-                'removed_count' => $removedCount,
-                'message' => "Successfully cleaned up {$removedCount} expired notifications"
-            ]);
-            
-        } catch (\Exception $e) {
-            \Illuminate\Support\Facades\Log::error('Notification cleanup failed', [
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString(),
-                'user_id' => auth()->id(),
-                'ip' => request()->ip()
-            ]);
-            
-            return response()->json([
-                'success' => false, 
-                'message' => 'Failed to cleanup notifications'
-            ], 500);
-        }
+        return $this->handleCleanupOperation(function ($user) {
+            $removedCount = $this->notificationService->cleanupExpiredNotifications($user);
+            return ['removed_count' => $removedCount, 'message' => "Successfully cleaned up {$removedCount} expired notifications"];
+        }, 'Notification cleanup');
     }
 
-    /**
-     * AGGRESSIVE CLEANUP - Delete all viewed notifications immediately - LETHAL ERROR HANDLING
-     */
     public function aggressiveCleanup(): JsonResponse
     {
-        try {
-            $user = auth()->user();
-            
-            if (!$user) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'User not authenticated'
-                ], 401);
-            }
-            
-            $deletedCount = UniversalNotificationService::aggressiveDeleteViewed($user);
-            
-            \Illuminate\Support\Facades\Log::info('Aggressive notification cleanup completed', [
-                'user_id' => $user->id,
-                'deleted_count' => $deletedCount
-            ]);
-            
-            return response()->json([
-                'success' => true,
-                'deleted_count' => $deletedCount,
-                'message' => 'All viewed notifications deleted for database optimization'
-            ]);
-        } catch (\Exception $e) {
-            \Log::error('Method execution failed', ['error' => $e->getMessage()]);
-            return response()->json(['success' => false, 'message' => 'Operation failed'], 500);
-        }
+        return $this->handleCleanupOperation(function ($user) {
+            $deletedCount = $this->notificationService->aggressiveDeleteViewed($user);
+            return ['deleted_count' => $deletedCount, 'message' => 'All viewed notifications deleted for database optimization'];
+        }, 'Aggressive notification cleanup');
     }
 
-    /**
-     * ULTRA AGGRESSIVE CLEANUP - Delete old read notifications
-     */
     public function ultraCleanup(): JsonResponse
     {
+        return $this->handleCleanupOperation(function ($user) {
+            $deletedCount = $this->notificationService->ultraAggressiveCleanup($user, 1);
+            return ['deleted_count' => $deletedCount, 'message' => 'Ultra aggressive cleanup completed for maximum database optimization'];
+        }, 'Ultra aggressive notification cleanup');
+    }
+
+    public function clearTestNotifications(): JsonResponse
+    {
+        return $this->handleCleanupOperation(function ($user) {
+            $this->cache->forget("user_notifications_{$user->id}");
+            $this->cache->put("user_unread_count_{$user->id}", 0, 86400);
+            return ['message' => 'All test notifications cleared'];
+        }, 'Clear test notifications');
+    }
+
+    private function handleCleanupOperation(callable $cleanupLogic, string $operationName): JsonResponse
+    {
         try {
-            $user = auth()->user();
-            
-            if (!$user) {
-                return response()->json(['error' => 'Unauthorized'], 401);
-            }
-            
-            $deletedCount = UniversalNotificationService::ultraAggressiveCleanup($user, 1);
-            
-            return response()->json([
-                'success' => true,
-                'deleted_count' => $deletedCount,
-                'message' => 'Ultra aggressive cleanup completed for maximum database optimization'
-            ]);
+            $user = $this->auth->user();
+            $result = $cleanupLogic($user);
+
+            $this->logger->info("{$operationName} completed", array_merge(['user_id' => $user->id], $result));
+
+            return $this->jsonResponse($result['message'], 200, true, $result);
         } catch (\Exception $e) {
-            \Log::error('Method execution failed', ['error' => $e->getMessage()]);
-            return response()->json(['success' => false, 'message' => 'Operation failed'], 500);
+            $this->logger->error("{$operationName} failed", [
+                'error' => $e->getMessage(),
+                'user_id' => $this->auth->id(),
+            ]);
+            return $this->jsonResponse("Failed to {$operationName}", 500, false);
         }
     }
 
-    /**
-     * Clear all test notifications
-     */
-    public function clearTestNotifications(): JsonResponse
+    private function jsonResponse(string $message, int $status, bool $success, array $data = []): JsonResponse
     {
-        try {
-            $user = auth()->user();
-            
-            if (!$user) {
-                return response()->json(['error' => 'Unauthorized'], 401);
-            }
-
-            $cacheKey = "user_notifications_{$user->id}";
-            \Illuminate\Support\Facades\Cache::forget($cacheKey);
-            \Illuminate\Support\Facades\Cache::put("user_unread_count_{$user->id}", 0, 86400);
-
-            return response()->json([
-                'success' => true,
-                'message' => 'All test notifications cleared'
-            ]);
-        } catch (\Exception $e) {
-            \Log::error('Method execution failed', ['error' => $e->getMessage()]);
-            return response()->json(['success' => false, 'message' => 'Operation failed'], 500);
+        $responseData = ['success' => $success, 'message' => $message];
+        if (!empty($data)) {
+            $responseData = array_merge($responseData, $data);
         }
+        return $this->responseFactory->json($responseData, $status);
     }
 }

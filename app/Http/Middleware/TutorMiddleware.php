@@ -42,7 +42,7 @@ class TutorMiddleware
         }
         
         // 🎓 TUTOR ACCESS - Standard tutor permissions
-        if ($user->role === 'tutor') {
+        if ($user->role === User::ROLE_TUTOR) {
             return $next($request);
         }
         

@@ -1,0 +1,59 @@
+# TASK 1 STRING ENUM DETECTION FINDINGS
+
+## DATABASE SCHEMA ISSUES
+database/migrations/0001_01_01_000000_create_users_table.php:18 - $table->string('role')->default('student'); // admin, tutor, student
+database/migrations/2025_08_15_090000_enforce_ssot_data_cleanup.php:149 - $table->string('status')->default('pending');
+
+## MODEL CONSTANTS (String-based)
+app/Models/User.php:72 - const ROLE_ADMIN = 'admin';
+app/Models/User.php:73 - const ROLE_TUTOR = 'tutor';
+app/Models/User.php:74 - const ROLE_STUDENT = 'student';
+app/Models/Assignment.php:17 - const STATUS_ACTIVE = 'active';
+app/Models/Assignment.php:19 - const STATUS_OVERDUE = 'overdue';
+app/Models/Assignment.php:20 - const STATUS_LOCKED = 'locked';
+app/Models/Assignment.php:21 - const STATUS_EXPIRED = 'expired';
+app/Models/Assignment.php:21 - const STATUS_COMPLETED = 'completed';
+
+## HARDCODED STRING COMPARISONS (High Risk)
+app/Policies/AssignmentPolicy.php:18 - return $user->role === 'tutor' || $user->role === 'student';
+app/Policies/AssignmentPolicy.php:27 - if ($user->role === 'tutor' && $assignment->tutor_id === $user->id) {
+app/Policies/AssignmentPolicy.php:32 - if ($user->role === 'student' && $assignment->user_id === $user->id) {
+app/Policies/AssignmentPolicy.php:44 - return $user->role === 'tutor';
+app/Policies/AssignmentPolicy.php:53 - if ($user->role !== 'tutor') {
+app/Policies/AssignmentPolicy.php:67 - if ($user->role !== 'tutor') {
+app/Policies/AssignmentPolicy.php:90 - if ($user->role === 'student' && $assignment->user_id === $user->id) {
+app/Policies/AssignmentPolicy.php:95 - if ($user->role === 'tutor' && $assignment->tutor_id === $user->id) {
+app/Policies/AssignmentPolicy.php:108 - if ($user->role !== 'tutor') {
+app/Policies/AssignmentPolicy.php:130 - return $user->role === 'tutor';
+app/Policies/AssignmentPolicy.php:138 - return $user->role === 'tutor';
+app/Helpers/AdminPrivileges.php:15 - return auth()->check() && auth()->user()->role === 'admin';
+app/Helpers/AdminPrivileges.php:68 - if ($user->role === 'admin') {
+app/Helpers/AdminPrivileges.php:73 - if ($user->role === 'tutor') {
+app/Services/QuizService.php:42 - 'is_admin' => $user->role === 'admin',
+app/Services/QuizService.php:127 - if ($user->role !== 'admin' && !$user->hasAccessToCourse($course->id) && $course->price && $course->price > 0) {
+app/Services/QuizService.php:131 - 'is_admin' => $user->role === 'admin',
+app/Services/TopicLockingService.php:289 - if ($tutor->role === 'admin') {
+app/Services/TopicLockingService.php:294 - if ($tutor->role !== 'tutor') {
+app/Services/TopicLockingService.php:316 - if ($tutor->role === 'admin') {
+app/Http/Middleware/AdminMiddleware.php:29 - if ($user->role !== 'admin') {
+app/Http/Middleware/TutorMiddleware.php:31 - if ($user->role === 'admin') {
+app/Http/Middleware/TutorMiddleware.php:45 - if ($user->role === 'tutor') {
+app/Http/Controllers/CourseController.php:36 - if (!auth()->user() || auth()->user()->role !== 'admin') {
+app/Http/Controllers/CourseController.php:200 - if ($user->role === 'admin') {
+app/Http/Middleware/RoleMiddleware.php:26 - if ($user->role === 'admin') {
+app/Http/Controllers/TopicController.php:43 - if (auth()->user()->role !== 'admin') {
+
+## MODE/STATUS STRING COMPARISONS
+app/Services/GradingService.php:64 - if ($mode === 'tutor') {
+app/Services/NotificationTriggerService.php:25 - if ($mode === 'tutor') {
+app/Services/Quiz/QuizValidationService.php:105 - if ($validated['mode'] === 'tutor' && (!isset($validated['duration_seconds']) || $validated['duration_seconds'] < 1)) {
+app/Console/Commands/SendAssignmentReminders.php:50 - if ($assignment->status === 'completed') {
+app/Services/Core/AsyncOperationManager.php:106 - if ($operation['status'] === 'pending') {
+app/Services/Core/AsyncOperationManager.php:131 - if ($operation['status'] === 'pending') {
+app/Jobs/BackgroundFileProcessingJob.php:161 - if ($status === 'completed') {
+
+## TOTAL FINDINGS
+- Database string columns: 2
+- Model string constants: 8  
+- Hardcoded string comparisons: 45+
+- High-risk files: 15+

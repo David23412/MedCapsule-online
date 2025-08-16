@@ -33,18 +33,24 @@ class InvalidateQuizCache implements ShouldQueue
             $topicId = $quizAttempt->topic_id;
             $isRandomQuiz = $quizAttempt->quiz_type === 'random';
 
-            // Clear quiz-specific caches
-            $this->cacheService->clearQuizCaches($topicId, $userId);
+            // For random quizzes, only clear user-specific caches
+            if ($isRandomQuiz) {
+                Log::info('Random quiz completed - clearing only user-specific caches', [
+                    'quiz_attempt_id' => $quizAttempt->id,
+                    'user_id' => $userId
+                ]);
+                
+                // Use smart invalidation for random quizzes
+                $this->cacheService->smartInvalidate('user_progress', $userId);
+                return;
+            }
 
-            // Clear user progress caches
-            $this->cacheService->invalidateUserCaches($userId, $topicId);
-
-            // Clear user stats cache
-            $this->cacheService->clearUserMasteryStats($userId);
-
-            // Clear topic progress caches only for regular quizzes
-            if (!$isRandomQuiz && $topicId) {
-                $this->cacheService->clearTopicProgressCaches($topicId, $userId, 'quiz');
+            // For regular quizzes, clear topic-specific caches
+            if ($topicId) {
+                // Use smart invalidation for topic-specific caches
+                $this->cacheService->smartInvalidate('topic', $topicId, ['user_id' => $userId]);
+                $this->cacheService->smartInvalidate('user_progress', $userId);
+                
                 // Clear course completion cache to reflect updated progress
                 $this->clearCourseCompletionCache($userId, $topicId);
             }

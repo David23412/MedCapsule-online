@@ -844,6 +844,7 @@ class AssignmentService
         $reports = [];
         
         $assignments = $assignments->load('id');
+        $assignments = $assignments->load('id');
         foreach ($assignments as $assignment) {
             $report = [
                 'id' => $assignment->id,

@@ -35,28 +35,32 @@ function notificationBell() {
             this.websocket = new WebSocket(`ws://${window.location.host}/notifications/stream`);
             
             this.websocket.onopen = () => {
-// console.log('🔥 NUCLEAR SPEED: WebSocket connected for instant notifications'); // Removed for production
+// // console.log('🔥 NUCLEAR SPEED: WebSocket connected for instant notifications'); // Removed for production // Removed for production
             };
             
             this.websocket.onmessage = (event) => {
-                const data = JSON.parse(event.data);
-                
-                // INSTANT UPDATE - No polling delay
-                if (data.type === 'notification') {
-                    this.unreadCount = data.unread_count;
-                    this.notifications = data.notifications || [];
-                    this.updateBadge();
+                try {
+                    const data = JSON.parse(event.data);
                     
-                    // Play sound instantly if new notification
-                    if (data.unread_count > this.prevUnreadCount) {
+                    // INSTANT UPDATE - No polling delay
+                    if (data && data.type === 'notification') {
+                        this.unreadCount = parseInt(data.unread_count) || 0;
+                        this.notifications = Array.isArray(data.notifications) ? data.notifications : [];
+                        this.updateBadge();
+                        
+                        // Play sound instantly if new notification
+                        if (this.unreadCount > this.prevUnreadCount) {
                             this.playNotificationSound();
                         }
-                    this.prevUnreadCount = data.unread_count;
+                        this.prevUnreadCount = this.unreadCount;
+                    }
+                } catch (error) {
+                    console.error('Error parsing WebSocket message:', error);
                 }
             };
             
             this.websocket.onerror = (error) => {
-// console.error('WebSocket error:', error); // Removed for production
+// // console.error('WebSocket error:', error); // Removed for production // Removed for production
                 // Fallback to immediate fetch (still faster than polling)
                 this.fetchNotifications();
             };
@@ -96,7 +100,7 @@ function notificationBell() {
             if (window.hasUserInteraction && this.notificationSound) {
                 this.notificationSound.currentTime = 0;
                 this.notificationSound.play().catch(error => {
-// console.warn('Audio playback failed:', error); // Removed for production
+// // console.warn('Audio playback failed:', error); // Removed for production // Removed for production
                 });
             }
         },
@@ -110,19 +114,31 @@ function notificationBell() {
                     headers: {
                         'X-Requested-With': 'XMLHttpRequest',
                         'Accept': 'application/json',
-                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || ''
                     },
                     credentials: 'same-origin'
                 });
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
                 const data = await response.json();
                 
-                if (data.success) {
-                    this.notifications = data.notifications || [];
-                    this.unreadCount = data.unread_count || 0;
+                if (data && data.success) {
+                    this.notifications = Array.isArray(data.notifications) ? data.notifications : [];
+                    this.unreadCount = parseInt(data.unread_count) || 0;
                     this.lastFetched = Date.now();
+                } else {
+                    // Handle case where response doesn't have expected structure
+                    this.notifications = [];
+                    this.unreadCount = 0;
                 }
             } catch (error) {
-// console.error('Error fetching notifications:', error); // Removed for production
+                console.error('❌ Failed to load notifications:', error);
+                // Set default values on error
+                this.notifications = [];
+                this.unreadCount = 0;
             } finally {
                 this.loading = false;
             }

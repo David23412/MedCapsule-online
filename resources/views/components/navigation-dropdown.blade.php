@@ -54,7 +54,7 @@
                         </a>
                     </li>
                     <li>
-                        <a class="dropdown-item" href="{{ route('quiz.random') }}">
+                        <a class="dropdown-item" href="{{ route('quiz.random.show') }}">
                             <i class="fas fa-random me-2"></i>Random Quiz
                         </a>
                     </li>
@@ -163,7 +163,7 @@
             </a>
         </li>
         <li>
-            <a class="dropdown-item" href="{{ route('quiz.random') }}">
+            <a class="dropdown-item" href="{{ route('quiz.random.show') }}">
                 <i class="fas fa-random me-2"></i>Random Quiz
             </a>
         </li>

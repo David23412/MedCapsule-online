@@ -1,6 +1,6 @@
 # Database ER Diagram
 
-Generated from migration analysis on 2025-08-15 03:08:57
+Generated from migration analysis on 2025-08-16 06:16:57
 
 ```mermaid
 erDiagram
@@ -137,7 +137,6 @@ erDiagram
 
     course_user {
         BIGINT id PK
-        BOOLEAN is_enrolled
         TIMESTAMP enrolled_at
         TIMESTAMP id
     }
@@ -169,8 +168,8 @@ erDiagram
         BIGINT id PK
         STRING reference_number
         STRING payment_method
-        STRING status
         TIMESTAMP paid_at
+        TIMESTAMP failed_at
         TIMESTAMP id
     }
 
@@ -204,8 +203,8 @@ erDiagram
         BIGINT id PK
         INTEGER watch_time_seconds
         INTEGER total_duration_seconds
-        BOOLEAN completed
         TIMESTAMP last_watched_at
+        TIMESTAMP completed_at
         TIMESTAMP id
     }
 
@@ -216,8 +215,8 @@ erDiagram
 
 - **Tables**: 22
 - **Relationships**: 0
-- **Migration Files Analyzed**: 20
-- **Generated**: 2025-08-15 03:08:57
+- **Migration Files Analyzed**: 23
+- **Generated**: 2025-08-16 06:16:57
 
 ## Table Details
 
@@ -275,7 +274,7 @@ erDiagram
 
 ### course_user
 - **Migration**: `database/migrations/2024_03_21_000009_create_course_user_table.php`
-- **Columns**: 4
+- **Columns**: 3
 
 ### quiz_attempts
 - **Migration**: `database/migrations/2024_03_21_000009_create_quiz_attempts_table.php`

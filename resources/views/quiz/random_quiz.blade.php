@@ -744,9 +744,9 @@
                     <i class="fas fa-search"></i>
                     Review Answers
                 </button>
-                <a href="{{ route('topics.forCourse', $selectedCourses->first()->id) }}" class="popup-btn view-progress-btn">
+                <a href="{{ $selectedCourses->isNotEmpty() ? route('topics.forCourse', $selectedCourses->first()->id) : route('courses.index') }}" class="popup-btn view-progress-btn">
                     <i class="fas fa-chart-line"></i>
-                    Back to Topics
+                    {{ $selectedCourses->isNotEmpty() ? 'Back to Topics' : 'Back to Courses' }}
                 </a>
             </div>
         </div>
@@ -870,7 +870,36 @@
                 // Timer expiration logic - ELIMINATE setTimeout
                     if (timeRemaining === 0) {
                         clearInterval(timerInterval);
-                    // Submit quiz automatically without delay
+                        
+                        // Mark all unanswered questions as empty answers when time runs out
+                        document.querySelectorAll('[data-question-id]').forEach(questionBox => {
+                            const questionId = questionBox.getAttribute('data-question-id');
+                            if (!selectedAnswers.hasOwnProperty(questionId)) {
+                                selectedAnswers[questionId] = '';
+                            }
+                        });
+                        
+                        // Also ensure all form inputs have values (even if empty)
+                        document.querySelectorAll('.form-check-input').forEach(input => {
+                            const nameMatch = input.getAttribute('name').match(/answers\[(\d+)\]/);
+                            if (nameMatch) {
+                                const questionId = nameMatch[1];
+                                if (!selectedAnswers.hasOwnProperty(questionId)) {
+                                    selectedAnswers[questionId] = '';
+                                }
+                            }
+                        });
+                        
+                        document.querySelectorAll('.written-answer').forEach(textarea => {
+                            const questionId = textarea.getAttribute('data-question-id');
+                            if (!selectedAnswers.hasOwnProperty(questionId)) {
+                                selectedAnswers[questionId] = '';
+                            }
+                        });
+                        
+                        console.log('Time is up! All unanswered questions marked as empty. Submitting quiz...');
+                        
+                        // Submit quiz automatically without delay
                         submitQuiz();
                     }
             }
@@ -897,6 +926,9 @@
                 const formDataObj = {};
                 formDataObj.answers = {};
                 formDataObj.time_taken = document.getElementById('time-taken').value;
+                formDataObj.mode = 'random';
+                formDataObj.quiz_duration = Math.floor({{ $duration_minutes * 60 }});
+                formDataObj.question_count = {{ $questions->count() }};
 
                 // Collect answers from multiple choice questions
                 document.querySelectorAll('.form-check-input').forEach(input => {
@@ -936,6 +968,24 @@
                     }
                 });
 
+                // Validate that we have answers for all questions
+                const totalQuestions = {{ $questions->count() }};
+                const answeredQuestions = Object.keys(formDataObj.answers).length;
+                
+                if (answeredQuestions !== totalQuestions) {
+                    console.warn(`Warning: Expected ${totalQuestions} questions but found ${answeredQuestions} answers. Adding missing questions...`);
+                    
+                    // Add any missing questions with empty answers
+                    for (let i = 0; i < totalQuestions; i++) {
+                        const questionId = {{ $questions->first()->id }};
+                        if (!formDataObj.answers.hasOwnProperty(questionId)) {
+                            formDataObj.answers[questionId] = '';
+                        }
+                    }
+                }
+
+                console.log('Submitting quiz with data:', formDataObj);
+
                 fetch(gradeUrl, {
                             method: 'POST',
                             headers: {
@@ -948,7 +998,7 @@
                 .then(response => {
                         if (!response.ok) {
                         return response.json().then(data => {
-                            throw new Error(data.error || 'An error occurred while grading the quiz');
+                            throw new Error(data.message || data.error || `HTTP ${response.status}: ${response.statusText}`);
                         });
                     }
                     return response.json();
@@ -1060,11 +1110,12 @@
                             }
                         }));
                     } else {
-                        throw new Error(data.error || 'An error occurred while grading the quiz');
+                        throw new Error(data.message || data.error || 'An error occurred while grading the quiz');
                     }
                 })
                 .catch(error => {
-                    console.error('Error:', error);
+                    console.error('Error submitting quiz:', error);
+                    
                     // Show error message in a popup
                     popupTitle.textContent = 'Error';
                     popupScore.textContent = '';
@@ -1074,6 +1125,13 @@
                     
                     // Re-enable form elements on error
                     document.querySelectorAll('input, textarea, button[type="submit"]').forEach(input => input.disabled = false);
+                    
+                    // Log detailed error information
+                    console.error('Quiz submission failed:', {
+                        error: error.message,
+                        stack: error.stack,
+                        formData: formDataObj
+                    });
                 });
             }
 

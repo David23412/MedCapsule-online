@@ -3,24 +3,46 @@
 use Illuminate\Support\Facades\Route;
 use Illuminate\Http\Request;
 use App\Http\Controllers\{
-    CourseController,
+    // CourseController split into focused controllers
     TopicController,
     QuestionController,
     QuizController,
-    MistakeController,
+    // MistakeController split into focused controllers
     LearnController,
     HomeController,
-    UserCourseController,
-    ProfileController,
+    UserCourseDataController,
     StudySessionController,
     NotificationController,
     PaymentController,
     PaymentSettingsController,
     PaymentLogController,
     DeleteController,
-    AssignmentController,
+
     StudentAssignmentController,
     TopicLockingController
+};
+use App\Http\Controllers\Admin\{
+    UserManagementController,
+    EnrollmentManagementController,
+    PaymentManagementController
+};
+use App\Http\Controllers\Mistake\{
+    MistakeDisplayController,
+    MistakeCreationController,
+    MistakeManagementController
+};
+use App\Http\Controllers\Tutor\{
+    TutorDashboardController,
+    StudentProfileController
+};
+use App\Http\Controllers\Course\{
+    CourseDisplayController,
+    CourseEnrollmentController,
+    CourseManagementController
+};
+use App\Http\Controllers\Profile\{
+    ProfileDisplayController,
+    ProfileUpdateController
 };
 use App\Http\Controllers\Notification\NotificationViewController;
 use Illuminate\Support\Facades\DB;
@@ -97,7 +119,7 @@ Route::post('/api/check-payment-status', function(Request $request) {
 
 // Assignment progress API
 Route::prefix('api/assignments')->middleware('auth')->group(function () {
-    Route::get('/{assignment}/progress', [App\Http\Controllers\AssignmentController::class, 'getProgress'])->name('assignment.progress');
+    Route::get('/{assignment}/progress', [App\Http\Controllers\Assignment\AssignmentDisplayController::class, 'getProgress'])->name('assignment.progress');
 });
 
 // Active users count API - Public endpoint for all users
@@ -135,13 +157,13 @@ Route::get('/api/active-users', function() {
     }
 })->name('api.active-users');
 
-// ADMIN ROUTES - Protected with admin middleware
+// 🚀 PERFORMANCE BEAST: ADMIN ROUTES - Focused Controllers
 Route::middleware(['auth', 'admin'])->group(function () {
-    Route::get('/manage-access', [UserCourseController::class, 'index'])->name('admin.user-course');
+    Route::get('/manage-access', [UserManagementController::class, 'index'])->name('admin.user-course');
     
-    // Manage Access Routes - NO CSRF but with admin protection
-    Route::post('/manage-access/enroll', [UserCourseController::class, 'enroll'])->name('admin.user-course.enroll')->withoutMiddleware([\App\Http\Middleware\VerifyCsrfToken::class]);
-    Route::post('/manage-access/revoke', [UserCourseController::class, 'revoke'])->name('admin.user-course.revoke')->withoutMiddleware([\App\Http\Middleware\VerifyCsrfToken::class]);
+    // Enrollment Management - NO CSRF but with admin protection
+    Route::post('/manage-access/enroll', [EnrollmentManagementController::class, 'enroll'])->name('admin.user-course.enroll')->withoutMiddleware([\App\Http\Middleware\VerifyCsrfToken::class]);
+    Route::post('/manage-access/revoke', [EnrollmentManagementController::class, 'revoke'])->name('admin.user-course.revoke')->withoutMiddleware([\App\Http\Middleware\VerifyCsrfToken::class]);
 });
 // Route removed - restore functionality is handled by revoke method (toggle)
 
@@ -151,12 +173,12 @@ require __DIR__.'/debug.php';
 
 // Protected routes
 Route::middleware('auth')->group(function () {
-    // User progress route
-    Route::get('/profile/progress', [ProfileController::class, 'getProgress'])->name('user.progress');
+    // User progress route - Updated to use ProfileDisplayController
+    Route::get('/profile/progress', [App\Http\Controllers\Profile\ProfileDisplayController::class, 'getProgress'])->name('user.progress');
     
-    // Course routes
-    Route::get('/courses', [CourseController::class, 'index'])->name('courses.index');
-    Route::get('/courses/{course}', [CourseController::class, 'show'])->name('courses.show');
+    // 🚀 PERFORMANCE BEAST: Focused Course Routes
+    Route::get('/courses', [CourseDisplayController::class, 'index'])->name('courses.index');
+    Route::get('/courses/{course}', [CourseDisplayController::class, 'show'])->name('courses.show');
     
     // Notification routes
     Route::prefix('notifications')->group(function () {
@@ -171,9 +193,10 @@ Route::middleware('auth')->group(function () {
     // Review routes with CSRF and rate limiting
     Route::get('/review', [App\Http\Controllers\Quiz\QuizMistakeController::class, 'showMistakes'])->name('review.index')->withoutMiddleware('auth');
     Route::get('/review/learn', [LearnController::class, 'learnMistakes'])->name('review.learn');
-    Route::post('/review/remove/{question_id}', [MistakeController::class, 'removeMistake'])
+    // 🚀 PERFORMANCE BEAST: Focused Mistake Management Routes
+    Route::post('/review/remove/{question_id}', [MistakeManagementController::class, 'removeMistake'])
         ->name('review.remove');
-    Route::post('/review/skip/{question_id}', [MistakeController::class, 'skipMistake'])
+    Route::post('/review/skip/{question_id}', [MistakeManagementController::class, 'skipMistake'])
         ->name('review.skip');
     Route::post('/learn/review/{question_id}', [LearnController::class, 'reviewMistake'])
         ->name('learn.review');
@@ -184,8 +207,8 @@ Route::middleware('auth')->group(function () {
     Route::middleware('admin')->group(function () {
         Route::get('/add-topic', [TopicController::class, 'showAddTopicForm'])->name('add-topic.form');
         Route::post('/add-topic', [TopicController::class, 'addTopic'])->name('add-topic');
-        Route::get('/add-course', [CourseController::class, 'showAddCourseForm'])->name('add-course.form');
-        Route::post('/add-course', [CourseController::class, 'addCourse'])->name('add-course');
+        Route::get('/add-course', [CourseManagementController::class, 'showAddCourseForm'])->name('add-course.form');
+        Route::post('/add-course', [CourseManagementController::class, 'addCourse'])->name('add-course');
         Route::get('/add-question', [QuestionController::class, 'showAddQuestionForm'])->name('add-question.form');
         Route::post('/add-question', [QuestionController::class, 'storeQuestion'])->name('add-question');
     });
@@ -247,7 +270,7 @@ Route::middleware('auth')->group(function () {
     });
     // Manage Access Routes - Admin only
     Route::middleware('admin')->group(function () {
-        Route::get('/manage-access/search-users', [UserCourseController::class, 'searchUsers'])->name('admin.user-course.search');
+        Route::get('/manage-access/search-users', [UserManagementController::class, 'searchUsers'])->name('admin.user-course.search');
         
         // Video Management Routes
         Route::get('/admin/videos', [App\Http\Controllers\VideoController::class, 'index'])->name('admin.videos.index');
@@ -263,12 +286,13 @@ Route::middleware('auth')->group(function () {
                 ->get();
             return response()->json($topics);
         });
-        Route::get('/manage-access/user-courses/{userId}', [UserCourseController::class, 'userCourses'])->name('admin.user-course.user-courses');
-        Route::post('/manage-access/toggle-admin', [UserCourseController::class, 'toggleAdmin'])->name('admin.user-course.toggle-admin');
-        Route::get('/manage-access/payments', [UserCourseController::class, 'payments'])->name('admin.user-course.payments');
-        Route::get('/manage-access/enrollments', [UserCourseController::class, 'getEnrollments'])->name('admin.user-course.enrollments');
-        Route::get('/manage-access/user-enrollments', [UserCourseController::class, 'getUserEnrollments'])->name('admin.user-course.user-enrollments');
-        Route::post('/manage-access/payment-settings', [UserCourseController::class, 'updatePaymentSettings'])->name('admin.payment-settings.update');
+        // 🚀 PERFORMANCE BEAST: Focused Controller Routes
+        Route::get('/manage-access/user-courses/{userId}', [UserCourseDataController::class, 'userCourses'])->name('admin.user-course.user-courses');
+        Route::post('/manage-access/toggle-admin', [UserManagementController::class, 'toggleAdmin'])->name('admin.user-course.toggle-admin');
+        Route::get('/manage-access/payments', [PaymentManagementController::class, 'payments'])->name('admin.user-course.payments');
+        Route::get('/manage-access/enrollments', [EnrollmentManagementController::class, 'getEnrollments'])->name('admin.user-course.enrollments');
+        Route::get('/manage-access/user-enrollments', [EnrollmentManagementController::class, 'getUserEnrollments'])->name('admin.user-course.user-enrollments');
+        Route::post('/manage-access/payment-settings', [PaymentManagementController::class, 'updatePaymentSettings'])->name('admin.payment-settings.update');
     });
     
     // Delete Management Routes
@@ -278,18 +302,18 @@ Route::middleware('auth')->group(function () {
     Route::get('/admin/delete/questions', [DeleteController::class, 'showQuestions'])->name('admin.delete.questions');
     Route::get('/admin/delete/users', [DeleteController::class, 'showUsers'])->name('admin.delete.users');
     
-    // Delete Action Routes
-    Route::delete('/admin/delete/course/{id}', [DeleteController::class, 'deleteCourse'])->name('admin.delete.course');
-    Route::delete('/admin/delete/topic/{id}', [DeleteController::class, 'deleteTopic'])->name('admin.delete.topic');
-    Route::delete('/admin/delete/question/{id}', [DeleteController::class, 'deleteQuestion'])->name('admin.delete.question');
-    Route::delete('/admin/delete/user/{id}', [DeleteController::class, 'deleteUser'])->name('admin.delete.user');
-    Route::post('/admin/delete/questions/bulk', [DeleteController::class, 'bulkDeleteQuestions'])->name('admin.delete.questions.bulk');
+    // Delete Action Routes - Updated to use split controllers
+    Route::delete('/admin/delete/course/{id}', [App\Http\Controllers\Admin\Delete\CourseDeleteController::class, 'deleteCourse'])->name('admin.delete.course');
+    Route::delete('/admin/delete/topic/{id}', [App\Http\Controllers\Admin\Delete\TopicDeleteController::class, 'deleteTopic'])->name('admin.delete.topic');
+    Route::delete('/admin/delete/question/{id}', [App\Http\Controllers\Admin\Delete\QuestionDeleteController::class, 'deleteQuestion'])->name('admin.delete.question');
+    Route::delete('/admin/delete/user/{id}', [App\Http\Controllers\Admin\Delete\UserDeleteController::class, 'deleteUser'])->name('admin.delete.user');
+    Route::post('/admin/delete/questions/bulk', [App\Http\Controllers\Admin\Delete\QuestionDeleteController::class, 'bulkDeleteQuestions'])->name('admin.delete.questions.bulk');
     
     // Delete Preview API
     Route::get('/admin/delete/preview', [DeleteController::class, 'getDeletionPreview'])->name('admin.delete.preview');
     
-    // Course enrollment and topic routes
-    Route::post('/courses/{course}/enroll', [CourseController::class, 'enroll'])->name('courses.enroll');
+    // 🚀 PERFORMANCE BEAST: Course enrollment routes
+    Route::post('/courses/{course}/enroll', [CourseEnrollmentController::class, 'enroll'])->name('courses.enroll');
     
     // Handle legacy/invalid course IDs by redirecting to available course
     Route::get('/topics/{courseId}', function($courseId) {
@@ -332,6 +356,15 @@ Route::middleware('auth')->group(function () {
     Route::get('/courses/{course}/cases-count', [TopicController::class, 'casesCount'])->name('cases.count');
 
     // 💀 NUCLEAR OPTIMIZED QUIZ ROUTES - SPLIT ARCHITECTURE 💀
+    
+    // Random Quiz Routes - MUST COME FIRST to avoid parameter conflicts
+    Route::get('/quiz/random', [App\Http\Controllers\Quiz\OptimizedRandomQuizController::class, 'showRandomQuiz'])
+        ->name('quiz.random.show');
+    Route::post('/quiz/random', [App\Http\Controllers\Quiz\OptimizedRandomQuizController::class, 'generateRandomQuiz'])
+        ->name('quiz.random');
+    Route::post('/quiz/grade-random', [App\Http\Controllers\Quiz\OptimizedRandomQuizController::class, 'gradeRandomQuiz'])
+        ->name('quiz.grade-random');
+    
     Route::prefix('quiz')->name('quiz.')->group(function () {
         // Quiz Execution
         Route::get('/{course}/{topic}', [App\Http\Controllers\Quiz\QuizExecutionController::class, 'startQuiz'])
@@ -355,17 +388,44 @@ Route::middleware('auth')->group(function () {
             ->name('tutor.complete-session');
     });
 
-    // Random Quiz Routes with CSRF and rate limiting - OPTIMIZED VERSION
-    Route::get('/quiz/random', [App\Http\Controllers\Quiz\OptimizedRandomQuizController::class, 'showRandomQuiz'])
-        ->name('quiz.random.show');
-    Route::post('/quiz/random', [App\Http\Controllers\Quiz\OptimizedRandomQuizController::class, 'generateRandomQuiz'])
-        ->name('quiz.random');
-    Route::post('/quiz/grade-random', [App\Http\Controllers\Quiz\OptimizedRandomQuizController::class, 'gradeRandomQuiz'])
-        ->name('quiz.grade-random');
+    // Test route for debugging
+    Route::get('/test-random-quiz', [App\Http\Controllers\TestController::class, 'testRandomQuiz'])
+        ->name('test.random.quiz');
 
+    // Debug route for random quiz
+    Route::get('/debug-random-quiz', function() {
+        return view('quiz.random_quiz', [
+            'questions' => collect([
+                (object)[
+                    'id' => 1,
+                    'question' => 'Test Question 1',
+                    'question_type' => 'multiple_choice',
+                    'option_a' => 'Option A',
+                    'option_b' => 'Option B',
+                    'option_c' => 'Option C',
+                    'option_d' => 'Option D',
+                    'correct_answer' => 'A',
+                    'image_url' => null
+                ],
+                (object)[
+                    'id' => 2,
+                    'question' => 'Test Question 2',
+                    'question_type' => 'written',
+                    'image_url' => null
+                ]
+            ]),
+            'selectedCourses' => collect([(object)['id' => 1, 'name' => 'Test Course']]),
+            'duration_minutes' => 15,
+            'requested_questions' => 2,
+            'actual_questions' => 2
+        ]);
+    })->name('debug.random.quiz');
 
-
-
+    // 🔥 NUCLEAR DEBUG ROUTE - TEST IF ROUTING WORKS AT ALL 🔥
+    Route::get('/nuclear-debug', function() {
+        dump('🔥 NUCLEAR DEBUG ROUTE WORKING');
+        return response('<h1>🔥 NUCLEAR DEBUG ROUTE WORKING</h1>', 200, ['Content-Type' => 'text/html']);
+    })->name('nuclear.debug');
 
     // Optimized Random Quiz Routes - CRITICAL OPTIMIZATION
     Route::prefix('random-quiz')->name('random-quiz.')->group(function () {
@@ -390,10 +450,10 @@ Route::middleware('auth')->group(function () {
             ->middleware(['throttle:30,1']); // 30 option requests per minute
     });
 
-    // Profile routes
+    // Profile routes - Updated to use split controllers
     Route::middleware('auth')->group(function () {
-        Route::get('/profile', [ProfileController::class, 'show'])->name('profile');
-        Route::post('/profile/update-picture', [ProfileController::class, 'updateProfilePicture'])->name('profile.update-picture');
+        Route::get('/profile', [App\Http\Controllers\Profile\ProfileDisplayController::class, 'show'])->name('profile');
+        Route::post('/profile/update-picture', [App\Http\Controllers\Profile\ProfileUpdateController::class, 'updateProfilePicture'])->name('profile.update-picture');
     });
 
     // Dashboard redirect
@@ -429,6 +489,10 @@ Route::middleware('auth')->group(function () {
     
     // 💀 LEGACY PAYMENT ROUTES FOR FRONTEND COMPATIBILITY 💀
     Route::prefix('payments')->name('payments.')->group(function () {
+        // Course Payment Route - Legacy route for frontend compatibility
+        Route::get('/course/{course}', [App\Http\Controllers\Payment\PaymentOptionsController::class, 'getPaymentOptions'])
+            ->name('course');
+            
         // Payment Options - Legacy route for frontend compatibility
         Route::get('/{course}/options', [App\Http\Controllers\Payment\PaymentOptionsController::class, 'getPaymentOptions'])
             ->name('options');
@@ -512,18 +576,18 @@ Route::middleware('auth')->group(function () {
 
     // Assignment Management Routes (Admin & Tutor)
     Route::middleware(['auth', 'tutor'])->prefix('assignments')->name('assignments.')->group(function () {
-        Route::get('/', [AssignmentController::class, 'index'])->name('index');
+        Route::get('/', [App\Http\Controllers\Assignment\AssignmentDisplayController::class, 'index'])->name('index');
 
-        Route::get('/create', [AssignmentController::class, 'bulkCreate'])->name('create');
-        Route::post('/store', [AssignmentController::class, 'bulkStore'])->name('store');
-        Route::get('/{assignment}', [AssignmentController::class, 'show'])->name('show');
-        Route::get('/{assignment}/edit', [AssignmentController::class, 'edit'])->name('edit');
-        Route::put('/{assignment}', [AssignmentController::class, 'update'])->name('update');
-        Route::delete('/{assignment}', [AssignmentController::class, 'destroy'])->name('destroy');
+        Route::get('/create', [App\Http\Controllers\Assignment\AssignmentManagementController::class, 'bulkCreate'])->name('create');
+        Route::post('/store', [App\Http\Controllers\Assignment\AssignmentManagementController::class, 'bulkStore'])->name('store');
+        Route::get('/{assignment}', [App\Http\Controllers\Assignment\AssignmentDisplayController::class, 'show'])->name('show');
+        Route::get('/{assignment}/edit', [App\Http\Controllers\Assignment\AssignmentManagementController::class, 'edit'])->name('edit');
+        Route::put('/{assignment}', [App\Http\Controllers\Assignment\AssignmentManagementController::class, 'update'])->name('update');
+        Route::delete('/{assignment}', [App\Http\Controllers\Assignment\AssignmentManagementController::class, 'destroy'])->name('destroy');
         
         // AJAX endpoints for assignment creation
-        Route::get('/courses/{course}/topics', [AssignmentController::class, 'getTopicsForCourse'])->name('course.topics');
-        Route::get('/courses/{course}/students', [AssignmentController::class, 'getStudentsForCourse'])->name('course.students');
+        Route::get('/courses/{course}/topics', [App\Http\Controllers\Assignment\AssignmentApiController::class, 'getTopicsForCourse'])->name('course.topics');
+        Route::get('/courses/{course}/students', [App\Http\Controllers\Assignment\AssignmentApiController::class, 'getStudentsForCourse'])->name('course.students');
         Route::get('/topics/{topicId}/sources', function($topicId) {
             try {
                 \Log::info('Loading sources for topic ID: ' . $topicId);
@@ -550,22 +614,22 @@ Route::middleware('auth')->group(function () {
 
         
         // AJAX endpoints
-        Route::post('/{assignment}/extend-deadline', [AssignmentController::class, 'extendDeadline'])
+        Route::post('/{assignment}/extend-deadline', [App\Http\Controllers\Assignment\AssignmentActionController::class, 'extendDeadline'])
             ->name('extend-deadline')
             ->middleware(['throttle:10,1']);
-        Route::post('/{assignment}/mark-completed', [AssignmentController::class, 'markCompleted'])
+        Route::post('/{assignment}/mark-completed', [App\Http\Controllers\Assignment\AssignmentActionController::class, 'markCompleted'])
             ->name('mark-completed')
             ->middleware(['throttle:30,1']);
-        Route::get('/counter/data', [AssignmentController::class, 'getCounterData'])
+        Route::get('/counter/data', [App\Http\Controllers\Assignment\AssignmentDisplayController::class, 'getCounterData'])
             ->name('counter.data');
-        Route::get('/courses/{course}/topics', [AssignmentController::class, 'getTopicsForCourse'])
+        Route::get('/courses/{course}/topics', [App\Http\Controllers\Assignment\AssignmentApiController::class, 'getTopicsForCourse'])
             ->name('course.topics');
-        Route::get('/courses/{course}/students', [AssignmentController::class, 'getStudentsForCourse'])
+        Route::get('/courses/{course}/students', [App\Http\Controllers\Assignment\AssignmentApiController::class, 'getStudentsForCourse'])
             ->name('course.students');
-        Route::post('/update-overdue', [AssignmentController::class, 'updateOverdue'])
+        Route::post('/update-overdue', [App\Http\Controllers\Assignment\AssignmentActionController::class, 'updateOverdue'])
             ->name('update-overdue')
             ->middleware(['throttle:5,1']);
-        Route::post('/enforce-real-time-status', [AssignmentController::class, 'enforceRealTimeStatus'])
+        Route::post('/enforce-real-time-status', [App\Http\Controllers\Assignment\AssignmentActionController::class, 'enforceRealTimeStatus'])
             ->name('enforce-real-time-status')
             ->middleware(['throttle:60,1']); // Allow more frequent calls for real-time updates
     });
@@ -732,10 +796,11 @@ Route::middleware(['auth', 'tutor'])->prefix('admin/tutors')->name('admin.tutors
 
 // Tutor Routes (Admin & Tutor Access)
 Route::middleware(['auth', 'tutor'])->prefix('tutor')->name('tutor.')->group(function () {
-    Route::get('/dashboard', [App\Http\Controllers\Tutor\TutorDashboardViewController::class, 'index'])->name('dashboard');
-    Route::get('/student/{student_id}/profile', [App\Http\Controllers\Tutor\TutorDashboardViewController::class, 'showStudentProfile'])->name('student.profile');
-    Route::get('/student/{student_id}/progress', [App\Http\Controllers\Tutor\StudentProgressController::class, 'show'])->name('student.progress');
-    Route::get('/student/{student_id}/updates', [App\Http\Controllers\Tutor\StudentProgressController::class, 'getRealtimeUpdates'])->name('student.updates');
+    // 🚀 PERFORMANCE BEAST: Focused Tutor Controllers
+    Route::get('/dashboard', [TutorDashboardController::class, 'index'])->name('dashboard');
+    Route::get('/student/{student_id}/profile', [StudentProfileController::class, 'showStudentProfile'])->name('student.profile');
+    Route::get('/student/{student_id}/progress', [App\Http\Controllers\Tutor\Student\StudentProgressDisplayController::class, 'show'])->name('student.progress');
+    Route::get('/student/{student_id}/updates', [App\Http\Controllers\Tutor\Student\StudentProgressDisplayController::class, 'getRealtimeUpdates'])->name('student.updates');
     Route::post('/student/{student_id}/report', [App\Http\Controllers\Tutor\TutorReportController::class, 'generateStudentReport'])->name('student.report');
     Route::post('/reports/export', [App\Http\Controllers\Tutor\TutorReportController::class, 'exportAllReports'])->name('reports.export');
 });

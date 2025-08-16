@@ -184,6 +184,11 @@ class HandleQuizCompletion implements ShouldQueue
     private function calculateAndAwardXP(QuizCompleted $event): void
     {
         try {
+        // Validate scoring inputs
+        if (!$score || $score < 0 || $score > 100) {
+            throw new InvalidArgumentException('Invalid score value');
+        }
+
             $score = $event->gradingResult['score'];            $duration = $event->quizAttempt->duration_seconds;
             $percentage = $event->gradingResult['percentage_grade'];
             

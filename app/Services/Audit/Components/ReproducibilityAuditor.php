@@ -23,7 +23,7 @@ class ReproducibilityAuditor
     /**
      * Confirm finding can be reproduced consistently
      */
-    public function confirmRepeatability(Finding $finding): bool
+    public function confirmRepeatability($finding): bool
     {
         Log::info('Testing finding reproducibility', [
             'finding_id' => $finding->getId(),
@@ -61,7 +61,7 @@ class ReproducibilityAuditor
     /**
      * Execute multiple test runs for a finding
      */
-    private function executeMultipleRuns(Finding $finding, int $iterations): array
+    private function executeMultipleRuns($finding, int $iterations): array
     {
         // Enforce exactly 5 iterations for reproducibility testing
         if ($iterations !== 5) {
@@ -107,7 +107,7 @@ class ReproducibilityAuditor
     /**
      * Execute single reproduction test for a finding
      */
-    private function executeSingleReproductionTest(Finding $finding, int $iteration): array
+    private function executeSingleReproductionTest($finding, int $iteration): array
     {
         $startTime = microtime(true);
         
@@ -133,7 +133,7 @@ class ReproducibilityAuditor
     /**
      * Reproduce performance-related issues
      */
-    private function reproducePerformanceIssue(Finding $finding): array
+    private function reproducePerformanceIssue($finding): array
     {
         $fileReferences = $finding->getFileReferences();
         $metrics = $finding->getMetrics();
@@ -171,7 +171,7 @@ class ReproducibilityAuditor
     /**
      * Reproduce security-related issues
      */
-    private function reproduceSecurityIssue(Finding $finding): array
+    private function reproduceSecurityIssue($finding): array
     {
         $fileReferences = $finding->getFileReferences();
         
@@ -214,7 +214,7 @@ class ReproducibilityAuditor
     /**
      * Reproduce database-related issues
      */
-    private function reproduceDatabaseIssue(Finding $finding): array
+    private function reproduceDatabaseIssue($finding): array
     {
         $fileReferences = $finding->getFileReferences();
         
@@ -264,7 +264,7 @@ class ReproducibilityAuditor
     /**
      * Reproduce code quality issues
      */
-    private function reproduceCodeQualityIssue(Finding $finding): array
+    private function reproduceCodeQualityIssue($finding): array
     {
         $fileReferences = $finding->getFileReferences();
         
@@ -290,7 +290,7 @@ class ReproducibilityAuditor
     /**
      * Reproduce generic issues
      */
-    private function reproduceGenericIssue(Finding $finding): array
+    private function reproduceGenericIssue($finding): array
     {
         // For generic issues, check if file references are still valid
         $fileReferences = $finding->getFileReferences();
@@ -340,7 +340,7 @@ class ReproducibilityAuditor
     /**
      * Downgrade finding severity for non-reproducible issues
      */
-    private function downgradeFindingSeverity(Finding $finding): void
+    private function downgradeFindingSeverity($finding): void
     {
         $currentSeverity = $finding->getSeverity();
         
@@ -400,7 +400,7 @@ class ReproducibilityAuditor
     /**
      * Validate across different environments
      */
-    public function validateAcrossEnvironments(Finding $finding): array
+    public function validateAcrossEnvironments($finding): array
     {
         // Placeholder for cross-environment validation
         // In real implementation, this would test across different PHP versions, 

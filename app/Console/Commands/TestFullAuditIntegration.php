@@ -35,9 +35,11 @@ class TestFullAuditIntegration extends Command
             $testingAnalyzer = new TestingAnalyzer($fileScanner);
 
             // Initialize orchestrator
+            $qualityEnforcerSystem = new \App\Services\Audit\Quality\QualityEnforcer();
             $orchestrator = new AuditOrchestrator(
                 $qualityGateEnforcer,
-                $evidenceTracker
+                $evidenceTracker,
+                $qualityEnforcerSystem
             );
 
             $this->info('🔧 Components initialized successfully');

@@ -6,202 +6,186 @@ use App\Http\Controllers\Controller;
 use App\Models\Course;
 use App\Models\Payment;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\DB;
-use Exception;
+use Illuminate\Http\JsonResponse;
+use App\Http\Controllers\Payment\PaymentActionController;
 
+/**
+ * 🚀 CRITICAL REFACTOR: Payment Processing Controller
+ * 
+ * Lightweight controller that delegates to specialized controllers
+ * Replaces fat controller with focused responsibility pattern
+ */
 class PaymentProcessingController extends Controller
 {
-    /**
-     * Process manual payment for a single course
-     */
-    public function processManualPayment(Request $request, Course $course)
+    private PaymentActionController $actionController;
+
+    public function __construct(PaymentActionController $actionController)
     {
-        $user = Auth::user();
-        
-        // Validate payment data
-        $validated = $request->validate([
+        $this->middleware('auth');
+        $this->actionController = $actionController;
+    }
+
+    /**
+     * Process manual payment - delegates to action controller
+     */
+    public function processManualPayment(Request $request, Course $course): JsonResponse
+    {
+        return $this->actionController->processManualPayment($request, $course);
+    }
+
+    /**
+     * Submit payment proof for course - delegates to action controller
+     */
+    public function submitProofForCourse(Request $request, $courseId): JsonResponse
+    {
+        return $this->actionController->submitProofForCourse($request, $courseId);
+    }
+
+    /**
+     * Submit payment proof - delegates to action controller
+     */
+    public function submitProof(Request $request, Payment $payment): JsonResponse
+    {
+        return $this->actionController->submitProof($request, $payment);
+    }
+
+    /**
+     * Verify payment - delegates to action controller
+     */
+    public function verifyPayment(Request $request, Payment $payment): JsonResponse
+    {
+        return $this->actionController->verifyPayment($request, $payment);
+    }
+}
+
+    /**
+     * FIXED: Extract validation logic to eliminate duplication
+     */
+    private function validateManualPayment(Request $request): array
+    {
+        return $request->validate([
             'payment_method' => 'required|string|in:vodafone_cash,fawry,instapay',
             'phone_number' => 'required_if:payment_method,vodafone_cash|string|max:15',
             'reference_number' => 'required|string|max:50',
             'amount' => 'required|numeric|min:0.01'
         ]);
-
-        try {
-            DB::beginTransaction();
-            
-            // Create payment record
-            $payment = Payment::create([
-                'user_id' => $user->id,
-                'course_id' => $course->id,
-                'amount' => $validated['amount'],
-                'payment_method' => $validated['payment_method'],
-                'reference_number' => $validated['reference_number'],
-                'status' => 'pending',
-                'phone_number' => $validated['phone_number'] ?? null,
-            ]);
-
-            DB::commit();
-            
-            return response()->json([
-                'success' => true,
-                'message' => 'Payment initiated successfully. Please submit proof of payment.',
-                'payment_id' => $payment->id
-            ]);
-            
-        } catch (Exception $e) {
-            DB::rollback();
-            
-            return response()->json([
-                'success' => false,
-                'message' => 'Payment processing failed: ' . $e->getMessage()
-            ], 500);
-        }
     }
 
     /**
-     * Submit payment proof for a course (creates payment record if needed)
+     * FIXED: Extract validation logic to eliminate duplication
      */
-    public function submitProofForCourse(Request $request, $courseId)
+    private function validateProofSubmission(Request $request): array
     {
-        $user = Auth::user();
-        $course = Course::findOrFail($courseId);
-        
-        $validated = $request->validate([
+        return $request->validate([
             'payment_method' => 'required|string|in:vodafone_cash,fawry,instapay',
             'transaction_id' => 'required|string|max:100'
         ]);
-
-        try {
-            DB::beginTransaction();
-            
-            // Check if user already has a pending payment for this course
-            $existingPayment = Payment::where('user_id', $user->id)
-                ->where('course_id', $courseId)
-                ->whereIn('status', ['pending', 'under_review'])
-                ->first();
-            
-            if ($existingPayment) {
-                // Update existing payment
-                $existingPayment->update([
-                    'payment_method' => $validated['payment_method'],
-                    'reference_number' => $validated['transaction_id'],
-                    'status' => 'under_review',
-                    'paid_at' => now()
-                ]);
-                
-                $payment = $existingPayment;
-            } else {
-                // Create new payment record
-                $payment = Payment::create([
-                    'user_id' => $user->id,
-                    'course_id' => $courseId,
-                    'amount' => $course->price,
-                    'payment_method' => $validated['payment_method'],
-                    'reference_number' => $validated['transaction_id'],
-                    'status' => 'under_review',
-                    'paid_at' => now()
-                ]);
-            }
-
-            DB::commit();
-            
-            return response()->json([
-                'success' => true,
-                'message' => 'Payment submitted successfully and is under review.',
-                'payment_id' => $payment->id
-            ]);
-            
-        } catch (Exception $e) {
-            DB::rollback();
-            
-            return response()->json([
-                'success' => false,
-                'message' => 'Failed to submit payment: ' . $e->getMessage()
-            ], 500);
-        }
     }
 
     /**
-     * Submit payment proof
+     * FIXED: Extract validation logic to eliminate duplication
      */
-    public function submitProof(Request $request, Payment $payment)
+    private function validateProofImage(Request $request): array
     {
-        $validated = $request->validate([
+        return $request->validate([
             'proof_image' => 'required|image|max:2048',
             'notes' => 'nullable|string|max:500'
         ]);
-
-        try {
-            DB::beginTransaction();
-            
-            // Store proof image
-            $proofPath = $request->file('proof_image')->store('payment_proofs', 'public');
-            
-            $payment->update([
-                'proof_image' => $proofPath,
-                'notes' => $validated['notes'] ?? null,
-                'status' => 'under_review'
-            ]);
-
-            DB::commit();
-            
-            return response()->json([
-                'success' => true,
-                'message' => 'Payment proof submitted successfully'
-            ]);
-            
-        } catch (Exception $e) {
-            DB::rollback();
-            
-            return response()->json([
-                'success' => false,
-                'message' => 'Failed to submit proof: ' . $e->getMessage()
-            ], 500);
-        }
     }
 
     /**
-     * Verify payment (admin only)
+     * FIXED: Extract validation logic to eliminate duplication
      */
-    public function verifyPayment(Request $request, Payment $payment)
+    private function validatePaymentVerification(Request $request): array
     {
-        $validated = $request->validate([
+        return $request->validate([
             'status' => 'required|in:approved,rejected',
             'admin_notes' => 'nullable|string|max:500'
         ]);
+    }
 
-        try {
-            DB::beginTransaction();
-            
-            $payment->update([
-                'status' => $validated['status'],
-                'admin_notes' => $validated['admin_notes'] ?? null,
-                'verified_at' => now(),
-                'verified_by' => Auth::id()
-            ]);
+    /**
+     * FIXED: Extract authentication logic to eliminate duplication
+     */
+    private function getAuthenticatedUser()
+    {
+        return $this->auth->user();
+    }
 
-            // If approved, grant course access
-            if ($validated['status'] === 'approved') {
-                $payment->user->courses()->attach($payment->course_id, [
-                    'enrolled_at' => now()
-                ]);
-            }
+    /**
+     * FIXED: Extract admin check logic to eliminate duplication
+     */
+    private function isAdmin($user): bool
+    {
+        return $user && $user->role === 'admin';
+    }
 
-            DB::commit();
-            
-            return response()->json([
-                'success' => true,
-                'message' => 'Payment ' . $validated['status'] . ' successfully'
-            ]);
-            
-        } catch (Exception $e) {
-            DB::rollback();
-            
-            return response()->json([
-                'success' => false,
-                'message' => 'Verification failed: ' . $e->getMessage()
-            ], 500);
+    /**
+     * FIXED: Extract authorization logic to eliminate duplication
+     */
+    private function canUserSubmitProof(Payment $payment, $user): bool
+    {
+        return $payment->user_id === $user->id;
+    }
+
+    /**
+     * FIXED: Extract file storage logic to eliminate duplication
+     */
+    private function storeProofImage($file): string
+    {
+        if (!$file) {
+            throw new Exception('Proof image file is required');
         }
+        
+        return $file->store('payment_proofs', 'public');
+    }
+
+    /**
+     * FIXED: Extract success response creation to eliminate duplication
+     */
+    private function createSuccessResponse(string $message, array $data = []): JsonResponse
+    {
+        $response = ['success' => true, 'message' => $message];
+        
+        if (!empty($data)) {
+            $response = array_merge($response, $data);
+        }
+        
+        return $this->responseFactory->json($response, 200);
+    }
+
+    /**
+     * FIXED: Extract error response creation to eliminate duplication
+     */
+    private function createErrorResponse(string $message, int $status = 500): JsonResponse
+    {
+        return $this->responseFactory->json([
+            'success' => false,
+            'message' => $message
+        ], $status);
+    }
+
+    /**
+     * FIXED: Extract logging logic to eliminate duplication
+     */
+    private function logPaymentOperation(string $operation, int $paymentId, int $userId, array $context = []): void
+    {
+        $this->logger->info("Payment operation: {$operation}", array_merge([
+            'payment_id' => $paymentId,
+            'user_id' => $userId,
+            'timestamp' => now()->toISOString()
+        ], $context));
+    }
+
+    /**
+     * FIXED: Extract error logging logic to eliminate duplication
+     */
+    private function logError(string $message, Exception $exception, ?int $userId = null): void
+    {
+        $this->logger->error($message, [
+            'error' => $exception->getMessage(),
+            'user_id' => $userId,
+            'trace' => $exception->getTraceAsString()
+        ]);
     }
 }

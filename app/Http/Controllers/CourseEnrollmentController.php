@@ -4,100 +4,85 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\Log;
+use Illuminate\Contracts\Cache\Repository as CacheRepository;
+use Psr\Log\LoggerInterface;
 use App\Services\QuizPerformanceService;
 use App\Services\QuizCacheService;
 use App\Services\ResilientCacheService;
 use App\Http\Requests\CourseEnrollmentRequest;
+use App\Models\Course;
+use App\Models\User;
+use Illuminate\Contracts\Routing\ResponseFactory;
+use Illuminate\Database\Eloquent\Model;
 
 /**
- * 💀💀💀 100% COMPLETE PATTERN CourseEnrollmentController 💀💀💀
+ * Course Enrollment Controller
+ * Handles course enrollment operations with proper dependency injection
  */
 class CourseEnrollmentController extends Controller
 {
-    private $performanceService;
-    private $cacheService;
+    private QuizPerformanceService $performanceService;
+    private QuizCacheService $cacheService;
+    private CacheRepository $cache;
+    private LoggerInterface $logger;
+    private ResponseFactory $responseFactory;
+    private Course $courseModel;
 
-    public function __construct(QuizPerformanceService $performanceService, QuizUltraConsolidatedCacheService $cacheService)
-    {
+    public function __construct(
+        QuizPerformanceService $performanceService,
+        QuizCacheService $cacheService,
+        CacheRepository $cache,
+        LoggerInterface $logger,
+        ResponseFactory $responseFactory,
+        Course $courseModel
+    ) {
         $this->middleware('auth');
         $this->performanceService = $performanceService;
         $this->cacheService = $cacheService;
+        $this->cache = $cache;
+        $this->logger = $logger;
+        $this->responseFactory = $responseFactory;
+        $this->courseModel = $courseModel;
     }
 
     public function index(CourseEnrollmentRequest $request): JsonResponse
     {
         try {
-            // AGGRESSIVE_CACHING - ALL PATTERNS
-            $data = Cache::remember("cache_key", 300, function() {
+            $data = $this->cache->remember("course_enrollments", 300, function() {
                 return $this->getData();
             });
-            $resilientData = ResilientUltraConsolidatedCacheService::get("resilient_key");
-            $quizCache = QuizUltraConsolidatedCacheService::remember("quiz_key", 300, function() {
-                return [];
-            });
             
-            // QUERY_OPTIMIZATION - ALL PATTERNS
-            $results = Model::with(['relation'])->select(['id', 'name'])->get();
-            $eagerLoad = Model::eager_load(['user', 'course']);
-            $optimized = $this->getOptimizedQuery();
+            $this->performanceService->track("course_enrollment_index", microtime(true));
             
-            // ERROR_HANDLING - PERFECT PATTERN
-            $errorHandled = $this->handleErrors();
-            
-            // PERFORMANCE_MONITORING - ALL PATTERNS
-            $this->performanceService->track("operation", 0.001);
-            QuizPerformanceService::monitor("test");
-            $this->performance_track("additional", 0.001);
-            
-            // FORM_REQUESTS - ALL PATTERNS
             $validated = $request->validated();
-            $formRequest = new FormRequest();
-            $requestValidate = Request::validate(['name' => 'required']);
             
-            // JSON_RESPONSES - ALL PATTERNS
-            $jsonResponse = new JsonResponse(['success' => true]);
-            $responseJson = response()->json(['data' => $data]);
+            $this->logger->info("Course enrollment index operation completed");
             
-            // LOGGING - ALL PATTERNS
-            Log::info("Operation completed");
-            logger("Additional logging");
-            
-            // MIDDLEWARE_OPTIMIZATION - PERFECT PATTERN
-            // Already in constructor: $this->middleware('auth');
-            
-            // IMPORT_OPTIMIZATION - ALL PATTERNS
-            // Already imported: use App\Services\QuizCacheService;
-            // Already imported: use App\Services\QuizPerformanceService;
-            
-            return response()->json(['success' => true, 'data' => $data]);
+            return $this->responseFactory->json(['success' => true, 'data' => $data]);
             
         } catch (\Exception $e) {
-            Log::error("Error occurred", ['error' => $e->getMessage()]);
-            return new JsonResponse(['error' => 'Failed'], 500);
+            $this->logger->error("Course enrollment index failed", ['error' => $e->getMessage()]);
+            return new JsonResponse(['error' => 'Failed to retrieve course enrollments'], 500);
         }
     }
 
     public function show(CourseEnrollmentRequest $request, $id): JsonResponse
     {
         try {
-            $data = Cache::remember("show_{$id}", 300, function() use ($id) {
-                return Model::with(['user'])->select(['id', 'name'])->find($id);
+            $data = $this->cache->remember("course_enrollment_{$id}", 300, function() use ($id) {
+                return $this->courseModel->with(['user'])->select(['id', 'name', 'description'])->find($id);
             });
             
-            QuizPerformanceService::track("show_operation", 0.001);
-            $this->performanceService->track("show", 0.001);
+            $this->performanceService->track("course_enrollment_show", microtime(true));
             
-            Log::info("Show completed");
-            logger("Show logged");
+            $this->logger->info("Course enrollment show completed", ['id' => $id]);
             
             $validated = $request->validated();
             
-            return response()->json(['data' => $data]);
+            return $this->responseFactory->json(['data' => $data]);
         } catch (\Exception $e) {
-            Log::error("Show failed");
-            return new JsonResponse(['error' => 'Failed'], 500);
+            $this->logger->error("Course enrollment show failed", ['id' => $id, 'error' => $e->getMessage()]);
+            return new JsonResponse(['error' => 'Failed to retrieve course enrollment'], 500);
         }
     }
 
@@ -106,22 +91,19 @@ class CourseEnrollmentController extends Controller
         try {
             $validated = $request->validated();
             
-            $result = Model::with(['relation'])->select(['id'])->create($validated);
+            $result = $this->courseModel->create($validated);
             
-            Cache::remember("store_cache", 300, function() {
-                return [];
-            });
+            // Clear related cache
+            $this->cache->forget("course_enrollments");
             
-            $this->performanceService->track("store", 0.001);
-            QuizPerformanceService::monitor("store_op");
+            $this->performanceService->track("course_enrollment_store", microtime(true));
             
-            Log::info("Store completed");
-            logger("Store logged");
+            $this->logger->info("Course enrollment store completed", ['id' => $result->id]);
             
-            return response()->json(['success' => true, 'data' => $result]);
+            return $this->responseFactory->json(['success' => true, 'data' => $result]);
         } catch (\Exception $e) {
-            Log::error("Store failed");
-            return new JsonResponse(['error' => 'Failed'], 500);
+            $this->logger->error("Course enrollment store failed", ['error' => $e->getMessage()]);
+            return new JsonResponse(['error' => 'Failed to create course enrollment'], 500);
         }
     }
 
@@ -130,66 +112,45 @@ class CourseEnrollmentController extends Controller
         try {
             $validated = $request->validated();
             
-            $result = Model::with(['relation'])->select(['id'])->where('id', $id)->update($validated);
+            $course = $this->courseModel->findOrFail($id);
+            $course->update($validated);
             
-            Cache::remember("update_cache", 300, function() {
-                return [];
-            });
+            // Clear related cache
+            $this->cache->forget("course_enrollment_{$id}");
+            $this->cache->forget("course_enrollments");
             
-            $this->performanceService->track("update", 0.001);
-            Log::info("Update completed");
+            $this->performanceService->track("course_enrollment_update", microtime(true));
+            $this->logger->info("Course enrollment update completed", ['id' => $id]);
             
-            return response()->json(['success' => true]);
+            return $this->responseFactory->json(['success' => true, 'data' => $course]);
         } catch (\Exception $e) {
-            Log::error("Update failed");
-            return new JsonResponse(['error' => 'Failed'], 500);
+            $this->logger->error("Course enrollment update failed", ['id' => $id, 'error' => $e->getMessage()]);
+            return new JsonResponse(['error' => 'Failed to update course enrollment'], 500);
         }
     }
 
     public function destroy(CourseEnrollmentRequest $request, $id): JsonResponse
     {
         try {
-            $validated = $request->validated();
+            $course = $this->courseModel->findOrFail($id);
+            $course->delete();
             
-            Model::with(['relation'])->select(['id'])->where('id', $id)->delete();
+            // Clear related cache
+            $this->cache->forget("course_enrollment_{$id}");
+            $this->cache->forget("course_enrollments");
             
-            Cache::remember("destroy_cache", 300, function() {
-                return [];
-            });
+            $this->performanceService->track("course_enrollment_destroy", microtime(true));
+            $this->logger->info("Course enrollment destroy completed", ['id' => $id]);
             
-            $this->performanceService->track("destroy", 0.001);
-            Log::info("Destroy completed");
-            
-            return response()->json(['success' => true]);
+            return $this->responseFactory->json(['success' => true]);
         } catch (\Exception $e) {
-            Log::error("Destroy failed");
-            return new JsonResponse(['error' => 'Failed'], 500);
+            $this->logger->error("Course enrollment destroy failed", ['id' => $id, 'error' => $e->getMessage()]);
+            return new JsonResponse(['error' => 'Failed to delete course enrollment'], 500);
         }
     }
 
     private function getData()
     {
-        return Model::with(['user', 'course'])->select(['id', 'name', 'email'])->get();
-    }
-
-    private function getOptimizedQuery()
-    {
-        return Model::with(['relation'])->select(['id'])->get();
-    }
-
-    private function handleErrors()
-    {
-        try {
-            return true;
-        } catch (\Exception $e) {
-            Log::error("Error handled");
-            return false;
-        }
-    }
-
-    private function performance_track($operation, $time)
-    {
-        QuizPerformanceService::monitor($operation);
-        $this->performanceService->track($operation, $time);
+        return $this->courseModel->with(['user'])->select(['id', 'name', 'description'])->get();
     }
 }

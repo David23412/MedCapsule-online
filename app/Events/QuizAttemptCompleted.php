@@ -33,6 +33,11 @@ class QuizAttemptCompleted
             throw new InvalidArgumentException('Invalid score value');
         }
 
+        // Validate percentage inputs
+        if ($percentage < 0 || $percentage > 100) {
+            throw new InvalidArgumentException('Invalid percentage value');
+        }
+
         $this->score = $score;
         $this->totalQuestions = $totalQuestions;
         $this->percentage = $percentage;

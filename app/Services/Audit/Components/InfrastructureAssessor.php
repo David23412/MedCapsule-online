@@ -37,6 +37,14 @@ class InfrastructureAssessor
     }
 
     /**
+     * Execute comprehensive infrastructure assessment (alias for orchestrator compatibility)
+     */
+    public function assessInfrastructure(string $projectPath): PhaseResult
+    {
+        return $this->executeInfrastructureAssessment($projectPath);
+    }
+
+    /**
      * Execute comprehensive infrastructure assessment with LETHAL PRECISION
      */
     public function executeInfrastructureAssessment(string $projectPath): PhaseResult

@@ -57,11 +57,10 @@ class EnrollmentService
                 ];
             }
 
-            // Priority 2: Check course_user enrollment record
+            // Priority 2: Check course_user enrollment record (SSOT: only enrolled_at)
             $enrollment = DB::table('course_user')
                 ->where('user_id', $userId)
                 ->where('course_id', $courseId)
-                ->where('is_enrolled', true)
                 ->whereNotNull('enrolled_at')
                 ->first();
 
@@ -117,11 +116,10 @@ class EnrollmentService
     public function enrollUser(int $userId, int $courseId, string $method = 'manual'): bool
     {
         return DB::transaction(function () use ($userId, $courseId, $method) {
-            // Insert or update enrollment record
+            // Insert or update enrollment record (SSOT: only enrolled_at)
             DB::table('course_user')->updateOrInsert(
                 ['user_id' => $userId, 'course_id' => $courseId],
                 [
-                    'is_enrolled' => true,
                     'enrolled_at' => now(),
                     'updated_at' => now(),
                     'created_at' => now()
@@ -152,7 +150,7 @@ class EnrollmentService
                 ->where('user_id', $userId)
                 ->where('course_id', $courseId)
                 ->update([
-                    'is_enrolled' => false,
+                    'enrolled_at' => null,
                     'updated_at' => now()
                 ]);
 
@@ -200,10 +198,10 @@ class EnrollmentService
                 ->pluck('course_id');
             $courseIds = $courseIds->merge($paidCourses);
             
-            // From direct enrollments
+            // From direct enrollments (SSOT: only enrolled_at)
             $enrolledCourses = DB::table('course_user')
                 ->where('user_id', $userId)
-                ->where('is_enrolled', true)
+                ->whereNotNull('enrolled_at')
                 ->pluck('course_id');
             $courseIds = $courseIds->merge($enrolledCourses);
             

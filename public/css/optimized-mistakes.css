@@ -342,15 +342,15 @@ h1 {
 }
 
 .form-check label.correct {
-    background-color: #e3fcef; /* TODO: Refactor CSS specificity instead of !important */
-    border-color: #00a854; /* TODO: Refactor CSS specificity instead of !important */
-    color: #000000; /* TODO: Refactor CSS specificity instead of !important */
+    background-color: #e3fcef; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
+    border-color: #00a854; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
+    color: #000000; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
 }
 
 .form-check label.incorrect {
-    background-color: #fff1f0; /* TODO: Refactor CSS specificity instead of !important */
-    border-color: #f5222d; /* TODO: Refactor CSS specificity instead of !important */
-    color: #000000; /* TODO: Refactor CSS specificity instead of !important */
+    background-color: #fff1f0; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
+    border-color: #f5222d; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
+    color: #000000; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
 }
 
 /* PERFORMANCE: Info boxes */
@@ -601,10 +601,10 @@ h1 {
     *,
     *::before,
     *::after {
-        animation-duration: 0.01ms; /* TODO: Refactor CSS specificity instead of !important */
-        animation-iteration-count: 1; /* TODO: Refactor CSS specificity instead of !important */
-        transition-duration: 0.01ms; /* TODO: Refactor CSS specificity instead of !important */
-        scroll-behavior: auto; /* TODO: Refactor CSS specificity instead of !important */
+        animation-duration: 0.01ms; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
+        animation-iteration-count: 1; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
+        transition-duration: 0.01ms; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
+        scroll-behavior: auto; /* TODO: Refactor CSS specificity instead of */ /* TODO: Refactor CSS specificity instead of !important */
     }
     
     .loading-skeleton {

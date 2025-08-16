@@ -179,9 +179,9 @@ class NotificationService
             return $statusService->getStatus($assignment) === \App\Support\State\AssignmentStatusService::STATUS_ACTIVE;
         });
 
-        $assignments = $assignments->load('assignedUsers');
+        // 🚀 CRITICAL N+1 FIX: Relationships already loaded via eager loading above
         foreach ($assignments as $assignment) {
-            // Send notification to each assigned user
+            // Send notification to each assigned user using already loaded relationship
             foreach ($assignment->assignedUsers as $user) {
                 try {
                     $this->createAssignmentNotification(
@@ -925,7 +925,7 @@ class NotificationService
     {
         try {
             // Get all admin users
-            $admins = User::where('role', 'admin')->with(['markAsRead'])->get();
+            $admins = User::where('role', User::ROLE_ADMIN)->with(['markAsRead'])->get();
             
             if ($admins->isEmpty()) {
                 Log::warning('No admin users found to notify about payment', [
@@ -1026,7 +1026,7 @@ class NotificationService
         
         try {
             // Get all admin users
-            $admins = User::where('role', 'admin')->with(['notify'])->get();
+            $admins = User::where('role', User::ROLE_ADMIN)->with(['notify'])->get();
             
             if ($admins->isEmpty()) {
                 Log::warning('No admin users found for daily payment digest');

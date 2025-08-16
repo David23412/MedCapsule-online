@@ -104,9 +104,14 @@ class ConcreteFinding implements Finding
         return $this->component;
     }
 
-    public function addEvidence(string $type, array $evidenceData): self
+    public function addEvidence(string $type, array $evidenceData, string $description = ''): self
     {
-        $this->evidence[$type] = $evidenceData;
+        // 🚀 PERFORMANCE BEAST: Store evidence in format expected by validator
+        $this->evidence[] = [
+            'type' => $type,
+            'data' => $evidenceData,
+            'description' => $description ?: "Evidence of type: {$type}"
+        ];
         return $this;
     }
 
@@ -140,5 +145,33 @@ class ConcreteFinding implements Finding
     {
         $this->addEvidence('verification', ['verified' => $verified]);
         return $this;
+    }
+
+    public function setReproducible(bool $reproducible): self
+    {
+        $this->addEvidence('reproducibility', ['reproducible' => $reproducible]);
+        return $this;
+    }
+
+    public function getReproducibilityIcon(): string
+    {
+        // Check if reproducibility evidence exists
+        foreach ($this->evidence as $evidence) {
+            if ($evidence['type'] === 'reproducibility' && isset($evidence['data']['reproducible'])) {
+                return $evidence['data']['reproducible'] ? '✅' : '❌';
+            }
+        }
+        return '❓'; // Unknown reproducibility
+    }
+
+    public function getEstimatedHours(): float
+    {
+        // Look for estimated_hours metric
+        foreach ($this->metrics as $metric) {
+            if ($metric['name'] === 'estimated_hours') {
+                return (float) $metric['value'];
+            }
+        }
+        return 0.0; // Default if no estimate
     }
 }

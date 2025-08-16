@@ -171,22 +171,34 @@
     <!-- PERFORMANCE: Load fonts with display=swap for instant text -->
     <link rel="preload" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" as="style" onload="this.onload=null;this.rel='stylesheet'">
 <link rel="preload" as="style" onload="this.onload=null;this.rel='stylesheet'"  rel="preload" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" as="style" onload="this.onload=null;this.rel='stylesheet'">
+<link rel="preload" as="style" onload="this.onload=null;this.rel='stylesheet'"  rel="preload" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" as="style" onload="this.onload=null;this.rel='stylesheet'">
+<link rel="preload" as="style" onload="this.onload=null;this.rel='stylesheet'"  rel="preload" as="style" onload="this.onload=null;this.rel='stylesheet'"  rel="preload" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" as="style" onload="this.onload=null;this.rel='stylesheet'">
     <noscript>
         <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <link rel="preload" as="style" onload="this.onload=null;this.rel='stylesheet'"  href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<link rel="preload" as="style" onload="this.onload=null;this.rel='stylesheet'"  href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<link rel="preload" as="style" onload="this.onload=null;this.rel='stylesheet'"  rel="preload" as="style" onload="this.onload=null;this.rel='stylesheet'"  href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     </noscript>
 
     <!-- PERFORMANCE: Load CSS asynchronously -->
     <link rel="preload" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" as="style" onload="this.onload=null;this.rel='stylesheet'">
 <link rel="preload" as="style" onload="this.onload=null;this.rel='stylesheet'"  rel="preload" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" as="style" onload="this.onload=null;this.rel='stylesheet'">
+<link rel="preload" as="style" onload="this.onload=null;this.rel='stylesheet'"  rel="preload" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" as="style" onload="this.onload=null;this.rel='stylesheet'">
+<link rel="preload" as="style" onload="this.onload=null;this.rel='stylesheet'"  rel="preload" as="style" onload="this.onload=null;this.rel='stylesheet'"  rel="preload" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" as="style" onload="this.onload=null;this.rel='stylesheet'">
     <link rel="preload" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" as="style" onload="this.onload=null;this.rel='stylesheet'">
 <link rel="preload" as="style" onload="this.onload=null;this.rel='stylesheet'"  rel="preload" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" as="style" onload="this.onload=null;this.rel='stylesheet'">
+<link rel="preload" as="style" onload="this.onload=null;this.rel='stylesheet'"  rel="preload" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" as="style" onload="this.onload=null;this.rel='stylesheet'">
+<link rel="preload" as="style" onload="this.onload=null;this.rel='stylesheet'"  rel="preload" as="style" onload="this.onload=null;this.rel='stylesheet'"  rel="preload" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" as="style" onload="this.onload=null;this.rel='stylesheet'">
     
     <noscript>
         <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
 <link rel="preload" as="style" onload="this.onload=null;this.rel='stylesheet'"  href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+<link rel="preload" as="style" onload="this.onload=null;this.rel='stylesheet'"  href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+<link rel="preload" as="style" onload="this.onload=null;this.rel='stylesheet'"  rel="preload" as="style" onload="this.onload=null;this.rel='stylesheet'"  href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
         <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
 <link rel="preload" as="style" onload="this.onload=null;this.rel='stylesheet'"  href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+<link rel="preload" as="style" onload="this.onload=null;this.rel='stylesheet'"  href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+<link rel="preload" as="style" onload="this.onload=null;this.rel='stylesheet'"  rel="preload" as="style" onload="this.onload=null;this.rel='stylesheet'"  href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     </noscript>
 
     <!-- PERFORMANCE: Load custom CSS asynchronously -->
@@ -236,9 +248,9 @@
     </div>
 
     <!-- PERFORMANCE: Load JavaScript asynchronously -->
-    <script src="https://code.jquery.com/jquery-3.7.0.min.js" defer defer></script>
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js" defer defer></script>
-    <script src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js" defer defer></script>
+    <script src="https://code.jquery.com/jquery-3.7.0.min.js" defer defer defer></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js" defer defer defer></script>
+    <script src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js" defer defer defer></script>
     
     <!-- PERFORMANCE: Load custom JavaScript -->
     @vite(['resources/js/app.js'])
@@ -317,7 +329,7 @@
     @stack('scripts')
     
     <!-- PERFORMANCE: Analytics and monitoring (load asynchronously) -->
-    <script async src="https://www.googletagmanager.com/gtag/js?id=GA_MEASUREMENT_ID" defer></script>
+    <script async src="https://www.googletagmanager.com/gtag/js?id=GA_MEASUREMENT_ID" defer defer></script>
     <script>
         window.dataLayer = window.dataLayer || [];
         function gtag(){dataLayer.push(arguments);}

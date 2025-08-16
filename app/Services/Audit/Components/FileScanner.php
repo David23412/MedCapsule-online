@@ -23,6 +23,22 @@ class FileScanner
         'storage/framework/cache',
         'storage/framework/sessions',
         'storage/framework/views',
+        'tests/',                    // EXCLUDE ALL TEST FILES
+        'Audit.md/',                 // EXCLUDE AUDIT DOCUMENTATION  
+        'storage/reports/',          // EXCLUDE AUDIT REPORTS
+        'storage/app/audit/',        // EXCLUDE AUDIT STORAGE
+        'database/seeders/',         // EXCLUDE SEEDERS - NOT PRODUCTION CODE
+        'database/factories/',       // EXCLUDE FACTORIES - NOT PRODUCTION CODE
+        '*.md',                     // EXCLUDE MARKDOWN FILES
+        '*Test.php',                // EXCLUDE TEST FILES
+        '*Seeder.php',              // EXCLUDE SEEDERS
+        '*Factory.php',             // EXCLUDE FACTORIES
+        'run_*.php',                // EXCLUDE AUDIT SCRIPTS
+        'test_*.php',               // EXCLUDE TEST SCRIPTS
+        'artisan_*.php',            // EXCLUDE AUDIT SCRIPTS
+        'fixed_*.php',              // EXCLUDE AUDIT SCRIPTS
+        'COMPREHENSIVE_*.php',      // EXCLUDE AUDIT ENGINES
+        'ULTIMATE_*.php',           // EXCLUDE AUDIT ENGINES
         '.DS_Store',
         'Thumbs.db',
         '*.log',
@@ -46,7 +62,30 @@ class FileScanner
     private array $fileStatistics = [];
 
     /**
-     * Scan project directory recursively
+     * Get ONLY production code directories (requirements.md compliant)
+     */
+    private function getProductionDirectories(string $basePath): array
+    {
+        return [
+            $basePath . '/app/Http/Controllers',     // Controllers ONLY
+            $basePath . '/app/Models',               // Models ONLY  
+            $basePath . '/app/Services',             // Services ONLY
+            $basePath . '/app/Http/Middleware',      // Middleware ONLY
+            $basePath . '/app/Jobs',                 // Jobs ONLY
+            $basePath . '/app/Events',               // Events ONLY
+            $basePath . '/app/Listeners',            // Listeners ONLY
+            $basePath . '/app/Providers',            // Service Providers ONLY
+            $basePath . '/app/Console/Commands',     // Artisan Commands ONLY (production ones)
+            $basePath . '/resources/views',          // Blade Templates ONLY
+            $basePath . '/public/css',               // Production CSS ONLY
+            $basePath . '/public/js',                // Production JS ONLY
+            $basePath . '/database/migrations',      // Migrations ONLY
+            $basePath . '/routes',                   // Routes ONLY
+        ];
+    }
+
+    /**
+     * Scan project directory recursively - PRODUCTION CODE ONLY
      */
     public function scanDirectory(string $basePath): array
     {
@@ -58,22 +97,31 @@ class FileScanner
         $this->fileStatistics = [];
 
         try {
-            $iterator = new RecursiveIteratorIterator(
-                new RecursiveDirectoryIterator($basePath, RecursiveDirectoryIterator::SKIP_DOTS),
-                RecursiveIteratorIterator::SELF_FIRST
-            );
-
-            foreach ($iterator as $file) {
-                if ($this->shouldExcludeFile($file)) {
-                    continue;
+            // SCAN ONLY PRODUCTION DIRECTORIES - NO TESTS, NO SEEDERS, NO AUDIT FILES
+            $productionDirs = $this->getProductionDirectories($basePath);
+            
+            foreach ($productionDirs as $dir) {
+                if (!is_dir($dir)) {
+                    continue; // Skip if directory doesn't exist
                 }
+                
+                $iterator = new RecursiveIteratorIterator(
+                    new RecursiveDirectoryIterator($dir, RecursiveDirectoryIterator::SKIP_DOTS),
+                    RecursiveIteratorIterator::SELF_FIRST
+                );
 
-                if ($file->isFile()) {
+                foreach ($iterator as $file) {
+                    if ($this->shouldExcludeFile($file)) {
+                        continue;
+                    }
+
+                    if ($file->isFile()) {
                     $fileInfo = $this->extractFileMetadata($file);
                     $this->scannedFiles[] = $fileInfo;
                     $this->updateStatistics($fileInfo);
                 } elseif ($file->isDir()) {
                     $this->directoryStructure[] = $this->extractDirectoryInfo($file);
+                }
                 }
             }
 
@@ -280,6 +328,21 @@ class FileScanner
     {
         $path = $file->getPathname();
         $filename = $file->getFilename();
+
+        // EXCLUDE AUDIT-RELATED ARTISAN COMMANDS - NOT PRODUCTION CODE
+        if (strpos($path, 'Console/Commands') !== false) {
+            $auditCommands = [
+                'RunComprehensiveAudit', 'ExecuteAuditPhase', 'TestAudit', 'AuditCompletion',
+                'TestNewAuditComponents', 'TestFullAuditIntegration', 'ServiceAuditEngine',
+                'ExecuteFrontendAnalysis'
+            ];
+            
+            foreach ($auditCommands as $auditCmd) {
+                if (strpos($filename, $auditCmd) !== false) {
+                    return true;
+                }
+            }
+        }
 
         foreach ($this->excludePatterns as $pattern) {
             // Handle wildcard patterns

@@ -154,8 +154,8 @@ if (typeof module !== 'undefined' && module.exports) {
 }
 
 // Log successful loading and environment info
-console.log('🔒 Secure video component loaded successfully');
-console.log('🌐 Environment check:', {
+// console.log('🔒 Secure video component loaded successfully'); // Removed for production
+// console.log('🌐 Environment check:', { // Removed for production
     protocol: window.location.protocol,
     hostname: window.location.hostname,
     isCrossOrigin: isCrossOriginEnvironment()

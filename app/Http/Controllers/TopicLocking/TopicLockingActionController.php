@@ -3,51 +3,49 @@
 namespace App\Http\Controllers\TopicLocking;
 
 use App\Http\Controllers\Controller;
-use App\Models\Topic;
-use App\Services\TopicLockingService;
-use Illuminate\Http\{Request, JsonResponse, Response};
-use Illuminate\Support\Facades\{Log, Auth, Validator};
+use Illuminate\Http\{Request, JsonResponse};
+use Illuminate\Support\Facades\{Log, Auth};
 
+/**
+ * 🚀 CRITICAL REFACTOR: Topic Locking Action Controller
+ * 
+ * Lightweight controller that delegates to TopicLockActionService
+ * Replaces fat controller with clean separation of concerns
+ */
 class TopicLockingActionController extends Controller
 {
-    protected $lockingService;
+    private TopicLockActionService $actionService;
     
-    public function __construct(TopicLockingService $lockingService)
+    public function __construct(TopicLockActionService $actionService)
     {
         $this->middleware(['auth']);
-        $this->lockingService = $lockingService;
+        $this->actionService = $actionService;
     }
     
     /**
-     * Check if user has permission for topic management
+     * Check permissions and get user
      */
-    private function checkPermission()
+    private function requirePermissions()
     {
         $user = Auth::user();
-        if (!$user || (!$user->isAdmin() && !$user->isTutor())) {
+        if (!$user || !$this->actionService->checkPermissions($user)) {
             abort(403, 'You do not have permission to manage topics.');
         }
         return $user;
     }
     
     /**
-     * Lock a topic - LETHAL ERROR HANDLING
+     * Lock a topic
      */
     public function lock(Request $request, int $topicId): JsonResponse
     {
         try {
-            Log::info('Method lock called', ['user_id' => auth()->id(), 'timestamp' => now()]);
-            $user = $this->checkPermission();
+            Log::info('Topic lock requested', ['user_id' => auth()->id(), 'topic_id' => $topicId]);
             
-            $validator = Validator::make($request->all(), [
-                'reason' => 'nullable|string|max:500'
-            ]);
+            $user = $this->requirePermissions();
+            $result = $this->actionService->lockTopic($topicId, $user, $request->all());
             
-            if ($validator->fails()) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Validation failed',
-                    'errors' => $validator->errors()
+            return response()->json($result, $result['success'] ? 200 : 400);
                 ], Response::HTTP_BAD_REQUEST);
             }
             

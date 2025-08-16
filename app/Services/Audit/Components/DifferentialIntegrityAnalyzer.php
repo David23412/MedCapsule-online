@@ -3131,6 +3131,7 @@ class DifferentialIntegrityAnalyzer
         
         if (!empty($performanceFindings)) {
             $totalPerformanceRisks = 0;
+
             foreach ($performanceFindings as $finding) {
                 $metrics = $finding->getMetrics();
                 $totalPerformanceRisks += $metrics['performance_risk_files'] ?? 0;

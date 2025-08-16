@@ -22,7 +22,7 @@ class NotificationTriggerService
         $mode = $quizData['mode'] ?? 'quiz'; // Default to regular quiz mode
 
         // Different notifications based on quiz mode
-        if ($mode === 'tutor') {
+        if ($mode === \App\Enums\StudyMode::TUTOR) {
             // LETHAL FIX: Perfect tutor score gets ONLY purple star notification (no duplicate)
             if ($percentage == 100) {
                 UniversalNotificationService::create(

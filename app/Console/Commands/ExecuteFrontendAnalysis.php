@@ -54,7 +54,7 @@ class ExecuteFrontendAnalysis extends Command
                 $this->line("   ✅ {$finding->getId()}: {$severityIcon} EVIDENCE APPROVED");
             }
             
-            $this->info("📊 Evidence Quality Score: {$evidenceStats['evidence_quality_score']}%");
+            $this->info("📊 Evidence Quality Score: " . (is_array($evidenceStats) ? $evidenceStats['evidence_quality_score'] : 0) . "%");
             
             // Apply Reproducibility Testing
             $this->info('');
@@ -72,7 +72,13 @@ class ExecuteFrontendAnalysis extends Command
             $this->info('');
             $this->info('📋 GENERATING FRONTEND TECHNICAL REPORT');
             
-            $reportContent = $this->generateFrontendReport($validatedResult, $evidenceStats, $reproStats);
+            try {
+                $reportContent = $this->generateFrontendReport($validatedResult, $evidenceStats, $reproStats);
+            } catch (Exception $e) {
+                $this->error("Report generation failed: " . $e->getMessage());
+                $this->error("Line: " . $e->getLine());
+                throw $e;
+            }
             $outputPath = $this->option('output');
             
             // Ensure directory exists
@@ -90,7 +96,7 @@ class ExecuteFrontendAnalysis extends Command
             $this->info("📄 Report Generated: {$outputPath}");
             $this->info("⏱️  Total Execution Time: " . round($executionTime, 2) . 's');
             $this->info("🔥 EVIDENCE-BACKED FINDINGS: " . count($validFindings));
-            $this->info("🧬 REPRODUCIBILITY RATE: {$reproStats['reproducibility_rate']}%");
+            $this->info("🧬 REPRODUCIBILITY RATE: " . (is_array($reproStats) ? $reproStats['reproducibility_rate'] : 0) . "%");
             $this->info("🎨 FRONTEND STATUS: " . $this->getFrontendStatus($validFindings));
             
         } catch (\Exception $e) {
@@ -119,8 +125,8 @@ class ExecuteFrontendAnalysis extends Command
         
         $report .= "## 🎨 Executive Summary\n\n";
         $report .= "- **Total Frontend Findings**: " . count($findings) . "\n";
-        $report .= "- **Evidence Quality Score**: {$evidenceStats['evidence_quality_score']}%\n";
-        $report .= "- **Reproducibility Score**: {$reproStats['reproducibility_rate']}%\n";
+        $report .= "- **Evidence Quality Score**: " . (is_array($evidenceStats) ? $evidenceStats['evidence_quality_score'] : 0) . "%\n";
+        $report .= "- **Reproducibility Score**: " . (is_array($reproStats) ? $reproStats['reproducibility_rate'] : 0) . "%\n";
         $report .= "- **Frontend Status**: " . $this->getFrontendStatus($findings) . "\n\n";
         
         // Group findings by category
@@ -150,30 +156,36 @@ class ExecuteFrontendAnalysis extends Command
             
             // File references
             $fileRefs = $finding->getFileReferences();
-            if (!empty($fileRefs)) {
+            if (!empty($fileRefs) && is_array($fileRefs)) {
                 $report .= "**📁 Frontend Location:**\n";
                 foreach ($fileRefs as $ref) {
-                    $report .= "- `{$ref['file']}:{$ref['line']}` - {$ref['context']}\n";
+                    if (is_array($ref)) {
+                        $report .= "- `{$ref['file']}:{$ref['line']}` - {$ref['context']}\n";
+                    }
                 }
                 $report .= "\n";
             }
             
             // Metrics
             $metrics = $finding->getMetrics();
-            if (!empty($metrics)) {
+            if (!empty($metrics) && is_array($metrics)) {
                 $report .= "**🎨 Frontend Metrics:**\n";
                 foreach ($metrics as $metric) {
-                    $report .= "- {$metric['name']}: `{$metric['value']} {$metric['unit']}`\n";
+                    if (is_array($metric)) {
+                        $report .= "- {$metric['name']}: `{$metric['value']} {$metric['unit']}`\n";
+                    }
                 }
                 $report .= "\n";
             }
             
             // Evidence
             $evidence = $finding->getEvidence();
-            if (!empty($evidence)) {
+            if (!empty($evidence) && is_array($evidence)) {
                 $report .= "**🧬 Frontend Evidence:**\n";
                 foreach ($evidence as $evidenceItem) {
-                    $report .= "- **{$evidenceItem['type']}**: {$evidenceItem['description']}\n";
+                    if (is_array($evidenceItem)) {
+                        $report .= "- **{$evidenceItem['type']}**: {$evidenceItem['description']}\n";
+                    }
                 }
                 $report .= "\n";
             }
@@ -186,21 +198,35 @@ class ExecuteFrontendAnalysis extends Command
         
         // Metrics summary
         $report .= "## 📊 Frontend Metrics Summary\n\n";
-        foreach ($metrics as $metric) {
-            $report .= "- **{$metric['name']}**: {$metric['value']} {$metric['unit']}\n";
+        if (is_array($metrics)) {
+            foreach ($metrics as $metric) {
+                if (is_array($metric)) {
+                    $report .= "- **{$metric['name']}**: {$metric['value']} {$metric['unit']}\n";
+                }
+            }
         }
         
         $report .= "\n## 🧬 Frontend Evidence Quality Report\n\n";
-        $report .= "- **Total Frontend Findings Processed**: {$evidenceStats['total_findings']}\n";
-        $report .= "- **Valid Frontend Findings**: {$evidenceStats['valid_findings']}\n";
-        $report .= "- **Rejected Frontend Findings**: {$evidenceStats['rejected_findings']}\n";
-        $report .= "- **Frontend Evidence Quality Score**: {$evidenceStats['evidence_quality_score']}%\n";
+        
+        // Ensure evidenceStats is an array
+        if (is_array($evidenceStats)) {
+            $report .= "- **Total Frontend Findings Processed**: {$evidenceStats['total_findings']}\n";
+            $report .= "- **Valid Frontend Findings**: {$evidenceStats['valid_findings']}\n";
+        } else {
+            $report .= "- **Evidence Stats Error**: Invalid data format\n";
+        }
+        if (is_array($evidenceStats)) {
+            $report .= "- **Rejected Frontend Findings**: {$evidenceStats['rejected_findings']}\n";
+            $report .= "- **Frontend Evidence Quality Score**: {$evidenceStats['evidence_quality_score']}%\n";
+        }
         $report .= "- **False Positive Accountability**: ✅ ENFORCED\n\n";
         
         $report .= "## 🔄 Frontend Reproducibility Report\n\n";
-        $report .= "- **Total Frontend Tests**: {$reproStats['total_tests']}\n";
-        $report .= "- **Reproducible Frontend Tests**: {$reproStats['reproducible_tests']}\n";
-        $report .= "- **Frontend Reproducibility Rate**: {$reproStats['reproducibility_rate']}%\n";
+        if (is_array($reproStats)) {
+            $report .= "- **Total Frontend Tests**: {$reproStats['total_tests']}\n";
+            $report .= "- **Reproducible Frontend Tests**: {$reproStats['reproducible_tests']}\n";
+            $report .= "- **Frontend Reproducibility Rate**: {$reproStats['reproducibility_rate']}%\n";
+        }
         $report .= "- **Frontend Analysis Standard**: ✅ MILITARY-GRADE\n\n";
         
         $report .= "---\n";

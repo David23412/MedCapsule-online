@@ -14,12 +14,12 @@ class ConfettiManager {
         
         // Check if confetti library is available
         if (typeof confetti === 'undefined') {
-// console.warn('Confetti library not loaded - confetti animations will be disabled'); // Removed for production
+// // console.warn('Confetti library not loaded - confetti animations will be disabled'); // Removed for production // Removed for production
             return;
         }
 
         this.isInitialized = true;
-// console.log('ConfettiManager initialized'); // Removed for production
+// // console.log('ConfettiManager initialized'); // Removed for production // Removed for production
     }
 
     /**
@@ -40,7 +40,7 @@ class ConfettiManager {
                 element.remove();
             });
         } catch (error) {
-// console.warn('Error clearing confetti:', error); // Removed for production
+// // console.warn('Error clearing confetti:', error); // Removed for production // Removed for production
         }
     }
 
@@ -56,7 +56,7 @@ class ConfettiManager {
         }
 
         if (typeof confetti === 'undefined') {
-// console.warn('Confetti library not available'); // Removed for production
+// // console.warn('Confetti library not available'); // Removed for production // Removed for production
             return;
         }
 
@@ -102,10 +102,10 @@ class ConfettiManager {
                 this.clearConfetti();
             }, 3000);
 
-// console.log(`Confetti triggered with ${intensity} intensity`); // Removed for production
+// // console.log(`Confetti triggered with ${intensity} intensity`); // Removed for production // Removed for production
             
         } catch (error) {
-// console.warn('Error triggering confetti:', error); // Removed for production
+// // console.warn('Error triggering confetti:', error); // Removed for production // Removed for production
         }
     }
 

@@ -54,6 +54,13 @@ class UserStatsService
                 }
                 $user->last_study_date = $today;
 
+        // Validate user creation data
+        $request->validate([
+            'name' => 'required|string|max:255',
+            'email' => 'required|email|unique:users',
+            'password' => 'required|string|min:8'
+        ]);
+
                 $user->save();
             }
 

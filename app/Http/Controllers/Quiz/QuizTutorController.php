@@ -124,15 +124,52 @@ class QuizTutorController extends Controller
     {
         try {
             $user = auth()->user();
-            $sessionData = $request->all();
             
-            $correctAnswers = $sessionData['correct_answers'] ?? 0;
-            $totalQuestions = $sessionData['total_questions'] ?? 1;
-            $courseId = $sessionData['course_id'] ?? null;
-            $topicId = $sessionData['topic_id'] ?? null;
-            $source = $sessionData['source'] ?? 'General';
-            $questionData = $sessionData['question_data'] ?? [];
-            $durationSeconds = $sessionData['duration_seconds'] ?? 0;
+            // BUSINESS LOGIC FIX: Proper validation for tutor session completion
+            $validated = $request->validate([
+                'correct_answers' => 'required|integer|min:0|max:100',
+                'total_questions' => 'required|integer|min:1|max:100',
+                'course_id' => 'nullable|integer|exists:courses,id',
+                'topic_id' => 'nullable|integer|exists:topics,id',
+                'source' => 'nullable|string|max:255',
+                'question_data' => 'nullable|array',
+                'duration_seconds' => 'required|integer|min:1|max:10800' // 1 second to 3 hours
+            ]);
+            
+            $correctAnswers = $validated['correct_answers'];
+            $totalQuestions = $validated['total_questions'];
+            $courseId = $validated['course_id'];
+            $topicId = $validated['topic_id'];
+            $source = $validated['source'] ?? 'General';
+            $questionData = $validated['question_data'] ?? [];
+            $durationSeconds = $validated['duration_seconds'];
+            
+            // BUSINESS LOGIC FIX: Additional time validation
+            if ($correctAnswers > $totalQuestions) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Correct answers cannot exceed total questions'
+                ], 400);
+            }
+            
+            // BUSINESS LOGIC FIX: Validate reasonable time per question
+            $minTimePerQuestion = 3; // 3 seconds minimum per question in tutor mode
+            $maxTimePerQuestion = 600; // 10 minutes maximum per question
+            $timePerQuestion = $durationSeconds / $totalQuestions;
+            
+            if ($timePerQuestion < $minTimePerQuestion) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Session completed too quickly. Please take time to learn.'
+                ], 400);
+            }
+            
+            if ($timePerQuestion > $maxTimePerQuestion) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Session took too long. Please try again.'
+                ], 400);
+            }
             
             // Get course and topic names
             $course = $courseId ? Course::find($courseId) : null;
@@ -153,7 +190,6 @@ class QuizTutorController extends Controller
                     'percentage_grade' => round($percentage, 2),
                     'duration_seconds' => $durationSeconds,
                     'question_data' => $questionData,
-                    'correct_answers' => $correctAnswers
                 ];
                 
                 // Create the quiz attempt using the optimized method
