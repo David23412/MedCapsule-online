@@ -71,7 +71,8 @@ class MistakeController extends Controller
             }
         }
 
-        $mistakes = $mistakesQuery->orderBy('last_attempt_date', 'desc')->get();
+        // ✅ FIXED N+1 QUERY: Add eager loading for question relationship
+        $mistakes = $mistakesQuery->with('question')->orderBy('last_attempt_date', 'desc')->get();
 
         // LETHAL FIX: Batch update null skipped values to eliminate N+1 queries
         $mistakesToUpdate = [];
