@@ -254,8 +254,8 @@ class AssignmentController extends Controller
             // Load assignment with necessary relationships
             $assignment->load(['course:id,name', 'topic:id,name']);
             
-            // Get all users assigned to this assignment with their progress
-            $assignmentUsers = $assignment->usersWithProgress()->get();
+            // ✅ FIXED N+1 QUERY: Get all users assigned to this assignment with their progress and eager load quizAttempts
+            $assignmentUsers = $assignment->usersWithProgress()->with('quizAttempts')->get();
             
             $students = [];
             $completedCount = 0;
