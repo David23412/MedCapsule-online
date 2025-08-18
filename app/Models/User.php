@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Facades\DB;
+use App\Models\QuizAttempt;
 
 class User extends Authenticatable
 {
@@ -453,7 +454,7 @@ class User extends Authenticatable
         $originalStreak = $this->study_streak_days ?? 1;
         
         // Get the user's latest quiz attempt
-        $lastAttempt = \App\Models\QuizAttempt::where('user_id', $this->id)
+        $lastAttempt = QuizAttempt::where('user_id', $this->id)
             ->orderBy('created_at', 'desc')
             ->first();
             
@@ -527,7 +528,7 @@ class User extends Authenticatable
         
         while (true) {
             // Check if the user had quiz activity on this day
-            $hadActivity = \App\Models\QuizAttempt::where('user_id', $this->id)
+            $hadActivity = QuizAttempt::where('user_id', $this->id)
                 ->whereDate('created_at', $currentDate)
                 ->exists();
                 

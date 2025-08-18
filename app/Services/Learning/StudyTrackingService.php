@@ -3,6 +3,7 @@
 namespace App\Services\Learning;
 
 use Illuminate\Support\Facades\Log;
+use App\Models\QuizAttempt;
 
 class StudyTrackingService
 {
@@ -16,7 +17,7 @@ class StudyTrackingService
             $user->increment('study_time_seconds', $studyTime);
 
             // Create quiz attempt record for mistake review session
-            \App\Models\QuizAttempt::create([
+            QuizAttempt::create([
                 'user_id' => $userId,
                 'quiz_type' => 'mistake_review',
                 'study_mode' => 'mistake_review',

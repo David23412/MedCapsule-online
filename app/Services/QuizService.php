@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\Question;
 use App\Models\Topic;
 use App\Models\Course;
+use App\Models\QuizAttempt;
 use Illuminate\Support\Facades\Schema;
 use App\Models\User;
 use Illuminate\Support\Facades\Log;
@@ -448,7 +449,7 @@ class QuizService
      */
     public function getUserQuizHistory(User $user, Topic $topic, int $limit = 10): \Illuminate\Database\Eloquent\Collection
     {
-        return \App\Models\QuizAttempt::where('user_id', $user->id)
+        return QuizAttempt::where('user_id', $user->id)
             ->where('topic_id', $topic->id)
             ->orderBy('created_at', 'desc')
             ->limit($limit)

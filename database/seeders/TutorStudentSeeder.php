@@ -4,6 +4,9 @@ namespace Database\Seeders;
 
 use Illuminate\Database\Seeder;
 use App\Models\User;
+use App\Models\QuizAttempt;
+use App\Models\Topic;
+use App\Models\Question;
 use Illuminate\Support\Facades\DB;
 
 class TutorStudentSeeder extends Seeder
@@ -190,7 +193,7 @@ class TutorStudentSeeder extends Seeder
     private function createQuizAttempts($students)
     {
         // Get existing topics (assuming they exist)
-        $topics = \App\Models\Topic::take(5)->get();
+        $topics = Topic::take(5)->get();
         
         if ($topics->isEmpty()) {
             $this->command->warn("No topics found. Skipping quiz attempts creation.");
@@ -210,7 +213,7 @@ class TutorStudentSeeder extends Seeder
                 $totalQuestions = rand(10, 20);
                 $correctAnswers = round(($score / 100) * $totalQuestions);
                 
-                \App\Models\QuizAttempt::create([
+                QuizAttempt::create([
                     'user_id' => $student->id,
                     'topic_id' => $topic->id,
                     'quiz_type' => 'normal',
@@ -249,7 +252,7 @@ class TutorStudentSeeder extends Seeder
     private function generateQuestionData($totalQuestions, $correctAnswers)
     {
         // Get actual question IDs from the database
-        $questionIds = \App\Models\Question::pluck('id')->toArray();
+        $questionIds = Question::pluck('id')->toArray();
         
         if (empty($questionIds)) {
             // If no questions exist, create simple mock data
