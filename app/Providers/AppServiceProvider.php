@@ -3,6 +3,7 @@
 namespace App\Providers;
 
 use App\Models\Payment;
+use App\Models\QuizAttempt;
 use App\Observers\PaymentObserver;
 use App\Services\GradingService;
 use App\Services\QuizService;
@@ -231,7 +232,7 @@ class AppServiceProvider extends ServiceProvider
         // User Progress Observer
         if (config('ssot.observers.user_progress.enabled')) {
             \App\Models\User::observe(\App\Observers\UserProgressObserver::class);
-            \App\Models\QuizAttempt::observe(\App\Observers\UserProgressObserver::class);
+            QuizAttempt::observe(\App\Observers\UserProgressObserver::class);
         }
 
         // Mistake Mastery Observer

@@ -5,6 +5,8 @@ namespace App\Http\Controllers\Topic;
 use App\Http\Controllers\Controller;
 use App\Models\Topic;
 use App\Models\Course;
+use App\Models\QuizAttempt;
+use App\Models\Question;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
@@ -150,7 +152,7 @@ class TopicViewController extends Controller
     private function calculateSourceProgress($topic, $userId, $mode): array
     {
         // Get all available sources for this topic
-        $availableSources = \App\Models\Question::where('topic_id', $topic->id)
+        $availableSources = Question::where('topic_id', $topic->id)
             ->whereNotNull('source')
             ->distinct('source')
             ->pluck('source')
@@ -159,14 +161,14 @@ class TopicViewController extends Controller
             ->toArray();
 
         // LETHAL FIX: Batch load all data to eliminate N+1 queries
-        $questionCounts = \App\Models\Question::where('topic_id', $topic->id)
+        $questionCounts = Question::where('topic_id', $topic->id)
             ->whereIn('source', $availableSources)
             ->groupBy('source')
             ->selectRaw('source, COUNT(*) as count')
             ->pluck('count', 'source')
             ->toArray();
             
-        $latestAttempts = \App\Models\QuizAttempt::where([
+        $latestAttempts = QuizAttempt::where([
             'user_id' => $userId,
             'topic_id' => $topic->id,
             'study_mode' => $mode

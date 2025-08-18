@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Course;
 use App\Models\Topic;
 use App\Models\Assignment;
+use App\Models\QuizAttempt;
 use App\Services\QuizService;
 use App\Services\GradingService;
 use App\Services\Quiz\QuizValidationService;
@@ -262,7 +263,7 @@ class QuizExecutionController extends Controller
             }
             
             // Get user quiz count for notifications
-            $userQuizCount = \App\Models\QuizAttempt::where('user_id', $userId)->count();
+            $userQuizCount = QuizAttempt::where('user_id', $userId)->count();
             
             // 🔔 CRITICAL NOTIFICATION INTEGRATION - Quiz Completion
             \App\Services\NotificationTriggerService::onQuizCompleted(auth()->user(), [

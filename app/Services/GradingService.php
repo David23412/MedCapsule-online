@@ -9,6 +9,7 @@ use App\Models\Course;
 use App\Models\QuizAttempt;
 use App\Models\Mistake;
 use App\Models\UserTopicProgress;
+use App\Models\Assignment;
 use App\Services\Core\UltraConsolidatedCacheService;
 use App\Services\UserStatsService;
 use App\Services\NotificationService;
@@ -267,7 +268,7 @@ class GradingService
                 
 
                     
-                \App\Models\Mistake::updateOrCreate(
+                Mistake::updateOrCreate(
                     [
                         'user_id' => $user->id,
                         'question_id' => $question->id
@@ -398,7 +399,7 @@ class GradingService
                         : 'unanswered';
                     
                     // Use updateOrCreate for efficiency
-                    \App\Models\Mistake::updateOrCreate(
+                    Mistake::updateOrCreate(
                         [
                             'user_id' => $user->id,
                             'question_id' => $question->id
@@ -498,7 +499,7 @@ class GradingService
             return false;
         }
         
-        $assignment = \App\Models\Assignment::where('id', $assignmentId)
+        $assignment = Assignment::where('id', $assignmentId)
             ->where('topic_id', $topic->id)
             ->where('course_id', $course->id)
             ->first();
@@ -509,7 +510,7 @@ class GradingService
         
         // Check if assignment is in an accessible state (active or overdue)
         $status = $assignment->getCurrentStatusAttribute();
-        return in_array($status, [\App\Models\Assignment::STATUS_ACTIVE, \App\Models\Assignment::STATUS_OVERDUE]);
+        return in_array($status, [Assignment::STATUS_ACTIVE, Assignment::STATUS_OVERDUE]);
     }
 
 
@@ -706,10 +707,10 @@ class GradingService
         \Illuminate\Support\Facades\Cache::forget($cacheKey);
         
         // Use QuizAttempt::getTopicProgress to get the true overall progress
-        $progress = \App\Models\QuizAttempt::getTopicProgress($user->id, $topic->id, 'quiz');
+        $progress = QuizAttempt::getTopicProgress($user->id, $topic->id, 'quiz');
         $overallPercentage = $progress['overall']['percentage'] ?? 0;
 
-        \App\Models\UserTopicProgress::updateOrCreate(
+        UserTopicProgress::updateOrCreate(
             [
                 'user_id' => $user->id,
                 'topic_id' => $topic->id
@@ -811,7 +812,7 @@ class GradingService
             $isCorrect = $this->evaluateAnswer($question, $answer);
             if (!$isCorrect) {
 
-                \App\Models\Mistake::updateOrCreate(
+                Mistake::updateOrCreate(
                     [
                         'user_id' => $user->id,
                         'question_id' => $question->id

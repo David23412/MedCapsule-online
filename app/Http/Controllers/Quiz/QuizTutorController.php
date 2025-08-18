@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Course;
 use App\Models\Topic;
 use App\Models\Question;
+use App\Models\QuizAttempt;
 use App\Services\QuizService;
 use App\Services\Core\UltraConsolidatedCacheService;
 use Illuminate\Http\Request;
@@ -157,7 +158,7 @@ class QuizTutorController extends Controller
                 ];
                 
                 // Create the quiz attempt using the optimized method
-                $result = \App\Models\QuizAttempt::createWithProgress($quizAttemptData);
+                $result = QuizAttempt::createWithProgress($quizAttemptData);
                 
                 Log::info('🔥 TUTOR MODE: Quiz attempt created successfully', [
                     'user_id' => $user->id,
