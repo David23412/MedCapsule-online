@@ -1832,30 +1832,10 @@
                         }
                     }
                     
-                    fetch('{{ route("quiz.tutor.complete-session") }}', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
-                            'X-Requested-With': 'XMLHttpRequest'
-                        },
-                        body: JSON.stringify({
-                            correct_answers: correctAnswers,
-                            total_questions: totalQuestions,
-                            course_id: {{ $course->id }},
-                            topic_id: {{ $topic->id }},
-                            source: primarySource,
-                            duration_seconds: Math.max(1, duration),
-                            question_data: questionDataForDb
-                        })
-                    })
-                    .then(response => response.json())
-                    .then(notificationData => {
-                        console.log('🔔 Tutor mode completion notifications triggered:', notificationData);
-                    })
-                    .catch(error => {
-                        console.log('ℹ️ Notification trigger encountered an issue, continuing normally');
-                    });
+                    // Removed redundant call to quiz.tutor.complete-session as quiz.grade already saves the attempt.
+                    // The quiz.grade route (QuizExecutionController::grade) now handles the saving of the quiz attempt.
+                    // This prevents duplicate quiz attempt records in tutor mode.
+                    // The notification trigger is now handled directly by the quiz.grade backend.
                     
                     // Fetch updated source progress for tutor mode with LETHAL ERROR HANDLING
                     fetch(`/topics/{{ $topic->id }}/source-progress?mode=tutor`, {

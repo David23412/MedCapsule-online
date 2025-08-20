@@ -3345,8 +3345,8 @@
                     }
                     
                     // Validate time limit
-                    const timeLimitValue = parseInt(timeLimit?.value || 30);
-                    if (timeLimitValue < 1 || timeLimitValue > 180) {
+                    const timeLimitValue = parseFloat(timeLimit?.value || 30);
+                    if (timeLimitValue < 0.1 || timeLimitValue > 180) {
                         e.preventDefault();
                         alert('Please enter a valid time limit (1-180 minutes).');
                         return false;

@@ -70,10 +70,14 @@ class GradingService
             // Check if this is an assignment quiz
             $isAssignment = $this->isAssignmentQuiz($user, $topic, $course, $assignmentId);
 
-            // Create quiz attempts - handle random mode differently
+            // Create quiz attempts - handle random and tutor mode differently
             if ($mode === 'random') {
                 $this->createRandomQuizAttempt($user, $gradingResult, $duration, $mode, $topic, $isAssignment, $assignmentId);
-            } else {
+            } elseif ($mode === 'tutor') { // Explicitly handle tutor mode
+                // For tutor mode, we need to create an attempt based on the overall session data
+                // The sourceData from processTutorAnswers contains the breakdown
+                $this->createQuizAttempts($user, $gradingResult['sourceData'], $duration, $mode, $topic, $isAssignment, $assignmentId);
+            } else { // This covers 'quiz' mode (normal quizzes)
                 $this->createQuizAttempts($user, $gradingResult['sourceData'], $duration, $mode, $topic, $isAssignment, $assignmentId);
             }
 

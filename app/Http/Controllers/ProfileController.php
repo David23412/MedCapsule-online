@@ -163,32 +163,30 @@ use App\Models\QuizAttempt;
             ];
         });
         
-        // RUTHLESS OPTIMIZATION: Extended leaderboard caching
-        $leaderboard = Cache::remember('leaderboard_students_optimized', 1800, function() { 
-            return DB::table('users')
-                ->select(
-                    'users.id',
-                    'users.name',
-                    'users.total_questions_attempted',
-                    'users.correct_answers_count',
-                    'users.xp',
-                    DB::raw('FLOOR(COALESCE(users.xp, 0) / 1000) + 1 as level')
-                )
-                ->where('users.total_questions_attempted', '>', 0)
-                ->where('users.role', 'student')
-                ->orderBy('xp', 'desc')
-                ->limit(10)
-                ->get()
-                ->map(function($user) {
-                    return (object) [
-                        'id' => $user->id,
-                        'name' => $user->name,
-                        'xp' => $user->xp ?? 0,
-                        'level' => $user->level,
-                        'correct_answers' => $user->correct_answers_count
-                    ];
-                });
-        });
+        // RUTHLESS OPTIMIZATION: Extended leaderboard caching - TEMPORARILY DISABLED FOR DEBUGGING
+        $leaderboard = DB::table('users')
+            ->select(
+                'users.id',
+                'users.name',
+                'users.total_questions_attempted',
+                'users.correct_answers_count',
+                'users.xp',
+                DB::raw('FLOOR(COALESCE(users.xp, 0) / 1000) + 1 as level')
+            )
+            ->where('users.total_questions_attempted', '>', 0)
+                            ->where('users.role', 3)
+            ->orderBy('xp', 'desc')
+            ->limit(10)
+            ->get()
+            ->map(function($user) {
+                return (object) [
+                    'id' => $user->id,
+                    'name' => $user->name,
+                    'xp' => $user->xp ?? 0,
+                    'level' => $user->level,
+                    'correct_answers' => $user->correct_answers_count
+                ];
+            });
 
         return view('profile', compact(
             'accuracyRate',
