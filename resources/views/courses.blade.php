@@ -1782,9 +1782,9 @@
                         <li class="nav-item dropdown me-1">
                             <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-bs-toggle="dropdown">
                                 {{ Auth::user()->name }}
-                                @if(Auth::user()->role === 'admin')
+                                @if(Auth::user()->isAdmin())
                                     <span class="badge bg-warning ms-1">Admin</span>
-                                @elseif(Auth::user()->role === 'tutor')
+                                @elseif(Auth::user()->isTutor())
                                     <span class="badge bg-info ms-1">Tutor</span>
                                 @else
                                     <span class="badge bg-primary ms-1">Student</span>
@@ -1821,7 +1821,7 @@
                                         <i class="fas fa-exclamation-circle me-2"></i>My Mistakes
                                     </a>
                                 </li>
-                                @if(Auth::user()->role === 'admin')
+                                @if(Auth::user()->isAdmin())
                                     <li><hr class="dropdown-divider"></li>
                                     <li class="dropdown-header">
                                         <i class="fas fa-crown me-2 text-warning"></i>Admin Controls
@@ -1868,7 +1868,7 @@
                                         </a>
                                     </li>
                                 @endif
-                                @if(Auth::user()->role === 'tutor')
+                                @if(Auth::user()->isTutor())
                                     <li><hr class="dropdown-divider"></li>
                                     <li>
                                         <a class="dropdown-item" href="{{ route('tutor.dashboard') }}">
@@ -2046,7 +2046,7 @@
                             </div>
                         </div>
                         @if (auth()->check())
-                            @if (Auth::user()->role === 'admin')
+                            @if (Auth::user()->isAdmin())
                                 <a href="{{ route('topics.forCourse', $course->id) }}" class="action-btn continue">
                                     <i class="fas fa-play"></i>
                                     Continue Learning
@@ -3260,8 +3260,6 @@
         });
     </script>
 
-    <!-- Notification System JavaScript -->
-    <script src="/js/notification-system.js"></script>
     
     <!-- PERFORMANCE MONITORING & BOTTLENECK DETECTION -->
     <script>

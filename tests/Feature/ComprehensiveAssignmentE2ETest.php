@@ -1,5 +1,7 @@
 <?php
 
+namespace Tests\Feature;
+
 /**
  * 🚀 COMPREHENSIVE ASSIGNMENT E2E TEST
  * 

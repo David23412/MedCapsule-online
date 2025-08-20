@@ -25,6 +25,12 @@ return new class extends Migration {
 
     public function down(): void
     {
+        Schema::disableForeignKeyConstraints();
+        // Some environments may have a legacy table referencing videos
+        if (Schema::hasTable('video_user_progress')) {
+            Schema::drop('video_user_progress');
+        }
         Schema::dropIfExists('videos');
+        Schema::enableForeignKeyConstraints();
     }
 };

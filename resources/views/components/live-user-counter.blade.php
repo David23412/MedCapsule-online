@@ -158,128 +158,69 @@
 }
 </style>
 
+<!-- Load libraries from CDN -->
+<script src="https://cdn.jsdelivr.net/npm/pusher-js@8.4.0-rc2/dist/web/pusher.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/laravel-echo@1.16.1/dist/echo.iife.js"></script>
+
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    const userCount = document.querySelector('.user-count');
-    const liveUsers = document.querySelector('.live-users');
-    let currentCount = parseInt(userCount.textContent);
-    let websocket = null;
+    const userCountEl = document.querySelector('.user-count');
+    let currentCount = parseInt(userCountEl.textContent);
 
-    // Add hover effect for the ripple
-    liveUsers.addEventListener('mouseenter', function() {
-        const ripple = this.querySelector('.ripple');
-        ripple.style.animationDuration = '1s';
-    });
-
-    liveUsers.addEventListener('mouseleave', function() {
-        const ripple = this.querySelector('.ripple');
-        ripple.style.animationDuration = '2s';
-    });
-
-    // Smooth counting animation function
     function animateValue(start, end, duration) {
         if (start === end) return;
-        
         const range = end - start;
         const increment = end > start ? 1 : -1;
-        const stepTime = Math.abs(Math.floor(duration / range));
+        const stepTime = Math.abs(Math.floor(duration / range)) || 1;
         let current = start;
-        
-        const timer = setInterval(function() {
+
+        const timer = setInterval(() => {
             current += increment;
-            userCount.textContent = current;
-            
+            userCountEl.textContent = current;
             if (current === end) {
                 clearInterval(timer);
-                userCount.classList.remove('updating');
+                userCountEl.classList.remove('updating');
             }
         }, stepTime);
     }
 
-    // Update counter with smooth animation
     function updateCounter(newCount) {
-        if (newCount !== currentCount) {
-            userCount.classList.add('updating');
-            animateValue(currentCount, newCount, 500); // 500ms duration
-            currentCount = newCount;
+        const numericCount = parseInt(newCount);
+        if (numericCount !== currentCount) {
+            userCountEl.classList.add('updating');
+            animateValue(currentCount, numericCount, 500);
+            currentCount = numericCount;
         }
     }
 
-    // NUCLEAR SPEED: WebSocket for instant user count updates
-    // Performance gain: 95% faster updates, 90% less server load
-    function initializeWebSocket() {
-        // Auto-detect correct protocol (ws:// for HTTP, wss:// for HTTPS)
-        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-        const wsUrl = `${protocol}//${window.location.host}/live-users/stream`;
-        
-        websocket = new WebSocket(wsUrl);
-        
-        websocket.onopen = () => {
-            console.log('🔥 NUCLEAR SPEED: Live users WebSocket connected');
-        };
-        
-        websocket.onmessage = (event) => {
-            const data = JSON.parse(event.data);
-            
-            // INSTANT UPDATE - No polling delay
-            if (data.type === 'user_count_update') {
-                updateCounter(data.count);
-            }
-        };
-        
-        websocket.onerror = (error) => {
-            console.warn('⚠️ Live users WebSocket failed, using fallback');
-            // Graceful degradation - fetch immediately and set up minimal polling
-            fetchLiveUserCount();
-            
-            // Set up minimal polling as fallback (every 30 seconds)
-            if (!window.liveUserFallbackInterval) {
-                window.liveUserFallbackInterval = setInterval(fetchLiveUserCount, 30000);
-            }
-        };
-        
-        websocket.onclose = (event) => {
-            console.log('🔌 Live users WebSocket closed, attempting reconnect...');
-            // Auto-reconnect after 5 seconds
-            setTimeout(() => {
-                if (!websocket || websocket.readyState === WebSocket.CLOSED) {
-                    initializeWebSocket();
-                }
-            }, 5000);
-        };
-    }
+    if (typeof Echo !== 'undefined') {
+        const echo = new Echo({
+            broadcaster: 'reverb',
+            key: '{{ env('REVERB_APP_KEY') }}',
+            wsHost: '{{ env('REVERB_HOST') }}',
+            wsPort: '{{ env('REVERB_PORT') }}',
+            wssPort: '{{ env('REVERB_PORT') }}',
+            forceTLS: '{{ env('REVERB_SCHEME') }}' === 'https',
+            enabledTransports: ['ws', 'wss'],
+        });
 
-    // ELIMINATE POLLING - Use WebSocket instead of setInterval
-    // Fetch live user count immediately
-    function fetchLiveUserCount() {
-        fetch('/api/active-users')
-            .then(response => {
-                if (!response.ok) {
-                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-                }
-                return response.json();
+        echo.channel('live-users')
+            .listen('UserCountUpdated', (e) => {
+                updateCounter(e.count);
             })
-            .then(data => {
-                if (data.success && data.count !== undefined) {
-                    updateCounter(data.count);
-                }
-            })
-            .catch(error => {
-                console.error('Failed to fetch live user count:', error);
+            .error((error) => {
+                console.error('Echo channel error:', error);
             });
+    } else {
+        console.error('Laravel Echo is not loaded.');
     }
 
-    // Initialize WebSocket for real-time updates
-    initializeWebSocket();
-    
-    // ELIMINATE setInterval - No more polling delays
-    // WebSocket handles all real-time updates
-});
-
-// Auto-cleanup on page unload
-window.addEventListener('beforeunload', () => {
-    if (window.liveUserWebSocket) {
-        window.liveUserWebSocket.close();
-    }
+    // Initial fetch to get the count on page load
+    fetch('/api/active-users')
+        .then(response => response.json())
+        .then(data => {
+            updateCounter(data.count);
+        })
+        .catch(error => console.error('Failed to fetch initial user count:', error));
 });
 </script> 

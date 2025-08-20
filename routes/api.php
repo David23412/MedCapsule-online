@@ -7,6 +7,7 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\DB;
 use App\Http\Controllers\VideoController;
 use App\Http\Controllers\VideoProxyController;
+use App\Events\LiveUserCountUpdated;
 
 /*
 |--------------------------------------------------------------------------
@@ -42,9 +43,14 @@ Route::get('/active-users', function() {
             ->whereNotNull('user_id')
             ->distinct('user_id')
             ->count();
+        
+        $totalCount = $visitorCount + $loggedInCount;
+
+        // Broadcast the event with the total count
+        LiveUserCountUpdated::dispatch($totalCount);
 
         return response()->json([
-            'count' => $visitorCount + $loggedInCount,
+            'count' => $totalCount,
             'visitors' => $visitorCount,
             'users' => $loggedInCount
         ]);

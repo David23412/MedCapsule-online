@@ -245,7 +245,7 @@ class Migrator
             : true;
 
         if (! $shouldRunMigration) {
-            $this->write(Task::class, $name, fn () => MigrationResult::Skipped);
+            $this->write(Task::class, $name, fn () => MigrationResult::Skipped->value);
         } else {
             $this->write(Task::class, $name, fn () => $this->runMigration($migration, 'up'));
 
@@ -662,7 +662,11 @@ class Migrator
 
         $this->setConnection($name);
 
-        return tap($callback(), fn () => $this->setConnection($previousConnection));
+        try {
+            return $callback();
+        } finally {
+            $this->setConnection($previousConnection);
+        }
     }
 
     /**

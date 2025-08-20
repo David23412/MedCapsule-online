@@ -1,11 +1,23 @@
 {
+  "_ui-l0sNRNKZ.js": {
+    "file": "assets/js/ui-l0sNRNKZ.js",
+    "name": "ui"
+  },
+  "_utils-l0sNRNKZ.js": {
+    "file": "assets/js/utils-l0sNRNKZ.js",
+    "name": "utils"
+  },
+  "_vendor-l0sNRNKZ.js": {
+    "file": "assets/js/vendor-l0sNRNKZ.js",
+    "name": "vendor"
+  },
   "resources/css/app.css": {
-    "file": "assets/app-Dhj7ZWq_.css",
+    "file": "assets/css/app-CSJLG5t-.css",
     "src": "resources/css/app.css",
     "isEntry": true
   },
   "resources/js/app.js": {
-    "file": "assets/app-DNxiirP_.js",
+    "file": "assets/js/app-CGH2CpdC.js",
     "name": "app",
     "src": "resources/js/app.js",
     "isEntry": true

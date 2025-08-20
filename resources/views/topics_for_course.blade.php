@@ -1,3 +1,6 @@
+@php
+use App\Models\Assignment;
+@endphp
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -78,10 +81,9 @@
             cursor: not-allowed;
         }
 
-        /* REGULAR TOPIC LOCK STYLING - WHITE BUTTON WITH WHITE OUTLINE */
+        /* REGULAR TOPIC LOCK STYLING - WHITE BUTTON WITH BLACK LOCK */
         .topic-locked-btn {
             background: white !important;
-            color: #dc3545 !important;
             padding: 0.8rem 1.5rem;
             border-radius: 8px;
             font-weight: 500;
@@ -100,20 +102,26 @@
         }
 
         .topic-locked-btn i {
-            color: #dc3545 !important;
+            color: #000000 !important; /* Black lock icon */
             font-size: 1.2rem !important;
         }
 
         .topic-locked-btn:hover {
             background: white !important;
-            color: #dc3545 !important;
             transform: none !important;
         }
 
-        /* TOPIC WITH VIDEO CONTAINER */
+        /* Hide video button for locked topics */
+        .topic-locked + .video-play-btn,
+        .topic-card.topic-locked ~ .video-play-btn {
+            display: none !important;
+        }
+
+        /* TOPIC WITH VIDEO CONTAINER - NATURAL EXPANSION */
         .topic-with-video-container {
             position: relative;
             margin-bottom: 1.25rem;
+            /* REMOVED: No padding restriction - let cards expand naturally */
         }
 
         .topic-with-video-container .topic-card {
@@ -121,7 +129,13 @@
             margin-bottom: 0;
         }
 
-        /* VIDEO PLAY BUTTON STYLES - MINIMAL SLEEK DESIGN */
+        /* FIXED: Hide video buttons when parent topic card is filtered out */
+        .topic-with-video-container .topic-card[style*="display: none"] + .video-play-btn,
+        .topic-card[style*="display: none"] ~ .video-play-btn {
+            display: none !important;
+        }
+
+        /* VIDEO PLAY BUTTON STYLES - FIXED POSITIONING TO PREVENT SHIFTS */
         .video-play-btn {
             position: absolute;
             right: -90px;
@@ -139,6 +153,9 @@
             transition: all 0.2s ease;
             box-shadow: 0 2px 8px rgba(0, 123, 255, 0.15);
             z-index: 10;
+            /* FIXED: Maintain position even when parent is hidden */
+            visibility: visible !important;
+            opacity: 1 !important;
         }
 
         .video-play-btn:hover {
@@ -158,199 +175,9 @@
             color: white;
         }
 
-        /* VIDEO MODAL STYLES - OPTIMIZED FOR HORIZONTAL LAYOUT */
-        .video-modal .modal-dialog {
-            max-width: 90vw;
-            width: 90vw;
-            margin: 1rem auto;
-        }
+        /* Video functionality now handled by secure-video-overlay component */
 
-        .video-modal .modal-content {
-            border: none;
-            border-radius: 16px;
-            overflow: hidden;
-            background: #000;
-        }
-
-        .video-modal .modal-header {
-            background: #ffffff;
-            color: #333;
-            border: none;
-            border-bottom: 1px solid #e9ecef;
-            padding: 0.5rem 1rem;
-            box-shadow: none;
-            min-height: 40px;
-        }
-
-        .video-modal .modal-title {
-            font-weight: 400;
-            font-size: 0.95rem;
-            color: #2563eb;
-            margin: 0;
-        }
-
-        .video-modal .btn-close {
-            color: #6c757d;
-            opacity: 0.7;
-            transition: opacity 0.2s ease;
-        }
-
-        .video-modal .btn-close:hover {
-            opacity: 1;
-            color: #495057;
-        }
-
-        .video-modal .header-actions {
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-        }
-
-        .video-modal .modal-header .btn {
-            padding: 0.25rem 0.5rem;
-            font-size: 0.8rem;
-            line-height: 1;
-        }
-
-        .video-modal .btn-outline-secondary {
-            border-color: #dee2e6;
-            color: #6c757d;
-            background: transparent;
-            transition: all 0.2s ease;
-        }
-
-        .video-modal .btn-outline-secondary:hover {
-            border-color: #adb5bd;
-            color: #495057;
-            background-color: #f8f9fa;
-        }
-
-        /* Video size toggle states */
-        .video-modal.video-expanded .modal-dialog {
-            max-width: 100vw !important;
-            width: 100vw !important;
-            margin: 0 !important;
-            height: 100vh !important;
-        }
-
-        .video-modal.video-expanded .modal-content {
-            height: 100vh !important;
-            border-radius: 0 !important;
-        }
-
-        .video-modal.video-expanded .video-container {
-            height: calc(100vh - 40px) !important;
-        }
-
-        /* Smooth transitions for resize */
-        .video-modal .modal-dialog,
-        .video-modal .video-container {
-            transition: all 0.3s ease-out;
-        }
-
-        /* Play overlay hover effects */
-        .play-overlay:hover {
-            background: rgba(0,0,0,0.8) !important;
-            border-color: #3b82f6 !important;
-            transform: scale(1.05);
-        }
-
-        .video-modal .modal-body {
-            padding: 0;
-            background: #000;
-        }
-
-        .video-container {
-            position: relative;
-            width: 100%;
-            height: 500px; /* Fixed height for now to ensure visibility */
-            background: #000;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-
-        .video-loading {
-            color: white;
-            font-size: 1.1rem;
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-        }
-
-        .video-container iframe {
-            width: 100%;
-            height: 100%;
-            border: none;
-            display: block; /* Ensure iframe is visible */
-        }
-
-        /* Responsive video sizing */
-        @media (max-width: 768px) {
-            .video-modal .modal-dialog {
-                max-width: 98vw;
-                width: 98vw;
-                margin: 0.5rem auto;
-            }
-        }
-
-        @media (min-width: 1200px) {
-            .video-modal .modal-dialog {
-                max-width: 90vw;
-                width: 90vw;
-            }
-        }
-
-        /* Ensure modal opens with proper dimensions */
-        .video-modal.show .modal-dialog {
-            transform: none !important;
-        }
-
-        /* Smooth modal transitions */
-        .video-modal .modal-dialog {
-            transition: all 0.3s ease-out;
-        }
-
-        /* Prevent modal from jumping during open */
-        .video-modal .modal-content {
-            transform: none !important;
-        }
-
-        /* Fullscreen modal on smaller screens */
-        @media (max-width: 991.98px) {
-            .video-modal .modal-dialog {
-                max-width: 100vw;
-                width: 100vw;
-                height: 100vh;
-                margin: 0;
-            }
-            
-            .video-modal .modal-content {
-                height: 100vh;
-                border-radius: 0;
-            }
-            
-            .video-modal .modal-body {
-                flex: 1;
-                display: flex;
-                flex-direction: column;
-            }
-            
-            .video-container {
-                flex: 1;
-                padding-bottom: 0;
-                height: 100%;
-            }
-        }
-
-        /* Disable text selection globally on video modal */
-        .video-modal * {
-            -webkit-user-select: none;
-            -moz-user-select: none;
-            -ms-user-select: none;
-            user-select: none;
-        }
+        /* Secure video overlay styles now handled by component */
     </style>
     <style>
         body{font-family:'Poppins',sans-serif;background-color:#f8f9fa;zoom:.72;margin:0;padding:0;line-height:1.6;-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale}
@@ -426,8 +253,10 @@
             }
             
             .topics-container {
-                max-width: 1400px;
-                padding: 1.5rem 3rem;
+                max-width: 1580px; /* Increased width for Safari */
+                padding: 1.5rem 4rem;
+                width: 95%;
+                margin: 0 auto;
             }
             
             .topic-info {
@@ -2318,27 +2147,7 @@
 
 
 
-    <!-- Video Modal - FULL WIDTH FOR HORIZONTAL LAYOUT -->
-    <div class="modal fade video-modal" id="videoModal" tabindex="-1">
-        <div class="modal-dialog modal-dialog-centered modal-fullscreen-lg-down">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title" id="videoModalTitle">Video Lecture</h5>
-                    <div class="header-actions">
-                        <button type="button" class="btn btn-sm btn-outline-secondary me-2" id="resizeVideoBtn" title="Toggle video size">
-                            <i class="fas fa-expand"></i>
-                        </button>
-                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                    </div>
-                </div>
-                <div class="modal-body">
-                    <div class="video-container" id="videoContainer">
-                        <div class="video-loading">Loading video...</div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
+    <!-- Video functionality now handled by secure-video-overlay component -->
 
     <!-- Course Header -->
     <header class="course-header">
@@ -2480,11 +2289,11 @@
         </a>
         
         {{-- Assignment Icon in Red Circle - Only show if there are assignments --}}
-        @if(isset($assignments) && (is_array($assignments) ? count($assignments) : $assignments->count()) > 0)
+        @if(isset($assignments) && $assignments->count() > 0)
             <div class="assignment-icon-circle" data-filter="assignments" style="order: 100;">
                 <div class="assignment-circle">
                     <i class="fas fa-tasks"></i>
-                    <span class="assignment-glow-count">{{ is_array($assignments) ? count($assignments) : $assignments->count() }}</span>
+                    <span class="assignment-glow-count">{{ $assignments->count() }}</span>
                 </div>
             </div>
         @endif
@@ -2495,18 +2304,20 @@
         {{-- 🚀 LETHAL ASSIGNMENT OPTIMIZATION: Pre-calculated data --}}
         @if(isset($assignments) && count($assignments) > 0)
             @php
-                // 🚀 SURGICAL OPTIMIZATION: Pre-calculate ALL data ONCE
+                                // 🚀 SURGICAL OPTIMIZATION: Pre-calculate ALL data ONCE
                 $assignmentData = $assignments->mapWithKeys(function($assignment) use ($topics) {
                     $topic = $topics->firstWhere('id', $assignment->topic_id);
                     if (!$topic) return [];
-                    
+
+                    $userStatus = $assignment->getStatusForUser(auth()->user());
+
                     return [$assignment->id => [
                         'topic' => $topic,
-                        'progress' => $assignment->user_progress['percentage'] ?? 0,
-                        'status' => $assignment->display_status ?? $assignment->getCurrentStatusAttribute(),
+                        'progress' => $assignment->getUserProgressWithStatus(auth()->user())['percentage'] ?? 0,
+                        'status' => $userStatus,
                         'quizUrl' => secure_url(route('quiz.start', ['course' => $topic->course_id, 'topic' => $topic->id, 'assignment_id' => $assignment->id], false)),
-                        'isLocked' => in_array($assignment->status, ['locked', 'expired', 'completed']) || ($assignment->status === 'overdue'),
-                        'lockReason' => $assignment->getLockReason() ?? 'Assignment is locked'
+                        'isLocked' => !$assignment->canUserStart(auth()->user()),
+                        'lockReason' => $assignment->getLockReasonForUser(auth()->user()) ?? 'Assignment is locked'
                     ]];
                 });
             @endphp
@@ -2517,10 +2328,17 @@
                     if (!$data) continue;
                     
                     // SIMPLE: Just check if user has attempted this assignment
-                    $isLocked = $assignment->isLockedForUser(auth()->id());
+                    $isLocked = $assignment->isLockedForUser(auth()->user());
                 @endphp
                 
-                <div class="topic-card assignment-{{ $assignment->isCompletedByUser(auth()->id()) ? 'completed' : ($assignment->isLockedForUser(auth()->id()) || $data['status'] === 'overdue' ? 'overdue' : $data['status']) }}" 
+                <div class="topic-card assignment-{{
+                        match($data['status']) {
+                            Assignment::STATUS_COMPLETED => 'completed',
+                            Assignment::STATUS_ACTIVE => 'active',
+                            Assignment::STATUS_LOCKED => 'overdue',
+                            default => 'locked'
+                        }
+                    }}" 
                      data-case-type="assignment" 
                      data-topic-id="{{ $data['topic']->id }}"
                      data-assignment-id="{{ $assignment->id }}"
@@ -2529,13 +2347,26 @@
                      data-assignment-status="{{ $data['status'] }}">
                     
                     {{-- Assignment Status Bar --}}
-                    <div class="assignment-status-bar assignment-{{ $assignment->isCompletedByUser(auth()->id()) ? 'completed' : ($assignment->isLockedForUser(auth()->id()) || $data['status'] === 'overdue' ? 'overdue' : $data['status']) }}">
+                    <div class="assignment-status-bar assignment-{{
+                            match($data['status']) {
+                                Assignment::STATUS_COMPLETED => 'completed',
+                                Assignment::STATUS_ACTIVE => 'active',
+                                Assignment::STATUS_LOCKED => 'overdue',
+                                default => 'locked'
+                            }
+                        }}">
                         <div class="assignment-info-minimal">
-                            @if($data['status'] === 'active' && !$assignment->isLockedForUser(auth()->id()))
+                            @if($data['status'] === Assignment::STATUS_ACTIVE)
                                 <span>Assignment Due:</span>
                                 <div class="assignment-countdown-minimal" data-deadline="{{ $assignment->deadline }}">
                                     <span class="countdown-display">{{ \Carbon\Carbon::parse($assignment->deadline)->diffForHumans() }}</span>
                                 </div>
+                            @elseif($data['status'] === Assignment::STATUS_COMPLETED)
+                                <i class="fas fa-check-circle"></i> <span>Completed</span>
+                            @elseif($data['status'] === Assignment::STATUS_LOCKED)
+                                <i class="fas fa-exclamation-triangle"></i> <span>Overdue</span>
+                            @else
+                                <i class="fas fa-lock"></i> <span>Locked</span>
                             @endif
                         </div>
                     </div>
@@ -2561,16 +2392,16 @@
 
                     <div class="topic-actions">
                         <div class="stat-item">
-                            @if($assignment->isCompletedByUser(auth()->id()))
+                            @if($data['status'] === Assignment::STATUS_COMPLETED)
                                 <i class="fas fa-check-circle text-success"></i>Assignment Completed
-                            @elseif($assignment->isLockedForUser(auth()->id()) || $data['status'] === 'overdue')
-                                <i class="fas fa-times text-danger"></i>Assignment Overdue
-                            @else
+                            @elseif($data['status'] === Assignment::STATUS_ACTIVE)
                                 <i class="fas fa-play text-primary"></i>Start Assignment
+                            @else
+                                <i class="fas fa-times text-danger"></i>Assignment Locked
                             @endif
                         </div>
                         
-                        @if($isLocked || $data['status'] === 'overdue')
+                        @if($data['isLocked'])
                             {{-- RED LOCK for locked/overdue assignments --}}
                             <div class="assignment-locked-icon" title="Assignment not available">
                                 <i class="fas fa-lock"></i>
@@ -2721,9 +2552,15 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js" crossorigin="anonymous"></script>
     <script src="https://cdn.jsdelivr.net/npm/alpinejs@2.8.2/dist/alpine.min.js" defer crossorigin="anonymous"></script>
     
-    <!-- Topic-specific JavaScript files -->
-    <!-- Removed asset URL -->
-    <script src="/js/secure-video-component.js" onload="console.log('✅ Secure video component script loaded')" onerror="console.error('❌ Failed to load secure video component script')"></script>
+    <!-- Include the secure video overlay component -->
+    <x-secure-video-overlay />
+    
+    <script>
+        // Video functionality now handled by secure-video-overlay component
+        // The playVideo function is defined in the component with blue watch bar
+        console.log('✅ Using secure video component for all video playback');
+    </script>
+    
     <script>
         // Debug asset loading
         console.log('🔍 Current location:', window.location.href);
@@ -2830,101 +2667,53 @@
     
 
     <script>
-        // SIMPLE Video play function - directly plays videos
-        function playVideo(videoId, videoTitle) {
-            console.log('🎬 Starting video playback for:', videoId, videoTitle);
-            
-            const modal = document.getElementById('videoModal');
-            const modalTitle = document.getElementById('videoModalTitle');
-            const videoContainer = document.getElementById('videoContainer');
-            
-            // Set modal title
-            modalTitle.textContent = videoTitle;
-            
-            // Show loading state
-            videoContainer.innerHTML = '<div class="video-loading">🎬 Loading video...</div>';
-            
-            // Show modal with proper sizing
-            const bsModal = new bootstrap.Modal(modal, {
-                backdrop: 'static',
-                keyboard: false
-            });
-            bsModal.show();
-            
-            // Ensure modal opens with proper dimensions
-            setTimeout(() => {
-                modal.classList.add('show');
-            }, 150);
-            
-            // Initialize resize functionality
-            const resizeBtn = document.getElementById('resizeVideoBtn');
-            if (resizeBtn) {
-                resizeBtn.addEventListener('click', function() {
-                    const isExpanded = modal.classList.contains('video-expanded');
-                    if (isExpanded) {
-                        modal.classList.remove('video-expanded');
-                        this.innerHTML = '<i class="fas fa-expand"></i>';
-                        this.title = 'Expand video';
-                    } else {
-                        modal.classList.add('video-expanded');
-                        this.innerHTML = '<i class="fas fa-compress"></i>';
-                        this.title = 'Compress video';
-                    }
-                });
-            }
-            
-            // Get the YouTube video ID from the database
-            console.log('🎥 Creating YouTube video player for video ID:', videoId);
-            
-            // Fetch the video details to get the YouTube video ID
-            fetch(`/api/video/${videoId}`, {
-                method: 'GET',
-                headers: {
-                    'X-CSRF-TOKEN': '{{ csrf_token() }}',
-                    'Accept': 'application/json',
-                    'X-Requested-With': 'XMLHttpRequest'
-                },
-                credentials: 'same-origin'
-            })
-            .then(response => response.json())
-            .then(videoData => {
-                if (videoData.success && videoData.video.youtube_video_id) {
-                    const youtubeId = videoData.video.youtube_video_id;
-                    console.log('✅ YouTube video ID found:', youtubeId);
+        // Video functionality now handled by secure-video-overlay component
+        // The playVideo function is defined in the component with blue watch bar
+        console.log('✅ Using secure video component for all video playback');
+        
+        // Ensure playVideo function is available immediately
+        if (typeof window.playVideo === 'undefined') {
+            console.log('⚠️ Component not loaded yet, creating temporary playVideo function...');
+            window.playVideo = function(videoId, videoTitle) {
+                console.log('🎬 Temporary playVideo called for:', videoId, videoTitle);
+                
+                // Show a loading message
+                const modal = document.getElementById('videoModal');
+                if (modal) {
+                    const modalTitle = document.getElementById('videoModalTitle');
+                    const videoContainer = document.getElementById('videoContainer');
                     
-                    // Create SECURE YouTube custom player using component function
-                    if (typeof generateSecureVideoOverlay === 'function') {
-                        videoContainer.innerHTML = generateSecureVideoOverlay(youtubeId, videoTitle, true, true);
-                        
-                        // Initialize secure YouTube player functionality
-                        initializeSecureYouTubePlayer(videoContainer, youtubeId);
-                    } else {
-                        console.error('❌ generateSecureVideoOverlay function not found. Loading fallback...');
-                        // Fallback to direct YouTube iframe with origin parameter
-                        videoContainer.innerHTML = `
-                            <div class="secure-video-wrapper" style="width: 100%; height: 100%; background: #000; position: relative; overflow: hidden;">
-                                <iframe 
-                                    src="https://www.youtube-nocookie.com/embed/${youtubeId}?autoplay=1&rel=0&modestbranding=1&showinfo=0&controls=1&disablekb=1&fs=0&iv_load_policy=3&playsinline=1&origin=${encodeURIComponent(window.location.origin)}"
-                                    style="width: 100%; height: 100%; border: none; display: block;"
-                                    frameborder="0"
-                                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                                    sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-popups-to-escape-sandbox"
-                                    title="${videoTitle}">
-                                </iframe>
-                            </div>
-                        `;
-                    }
+                    if (modalTitle) modalTitle.textContent = videoTitle;
+                    if (videoContainer) videoContainer.innerHTML = '<div class="video-loading">🔄 Loading secure video component...</div>';
                     
-                    console.log('✅ Secure YouTube custom player created successfully');
-                } else {
-                    throw new Error('Video not found or no YouTube ID available');
+                    const bsModal = new bootstrap.Modal(modal, {
+                        backdrop: 'static',
+                        keyboard: false
+                    });
+                    bsModal.show();
+                    
+                    // Wait for component to load and then retry
+                    setTimeout(() => {
+                        if (typeof window.playVideo !== 'undefined' && window.playVideo.toString().includes('secure-video-overlay')) {
+                            console.log('✅ Component loaded, retrying with real playVideo function...');
+                            window.playVideo(videoId, videoTitle);
+                        }
+                    }, 1000);
                 }
-            })
-            .catch(error => {
-                console.error('❌ Failed to load video details:', error);
-                videoContainer.innerHTML = '<div class="video-loading text-danger">❌ Failed to load video. Please check the video configuration.</div>';
-            });
+            };
         }
+        
+        // Wait for component to load and replace the temporary function
+        document.addEventListener('DOMContentLoaded', function() {
+            setTimeout(() => {
+                if (typeof window.playVideo !== 'undefined' && window.playVideo.toString().includes('secure-video-overlay')) {
+                    console.log('✅ Secure video component loaded successfully');
+                } else {
+                    console.warn('⚠️ Secure video component may not be loaded properly');
+                }
+            }, 500);
+        });
+    </script>
 
 
 
@@ -3210,8 +2999,8 @@
             }
         }
 
-        // 🔒 SECURE YOUTUBE PLAYER: Custom player with YouTube API control
-        function initializeSecureYouTubePlayer(container, youtubeId) {
+        // 🔒 SECURE VIDEO PLAYER: Now handled by initializeSecureVideoPlayer in secure-video-component.js
+        // function initializeSecureYouTubePlayer(container, youtubeId) {
             // Load YouTube API if not already loaded
             if (!window.YT) {
                 const tag = document.createElement('script');
@@ -3293,7 +3082,7 @@
                 // Player error event
                 function onPlayerError(event) {
                     console.error('❌ YouTube player error:', event.data);
-                    container.innerHTML = '<div class="video-loading text-danger">❌ Video playback error. Please try again.</div>';
+                    container.innerHTML = '';
                 }
 
                 // Progress update timer
@@ -3369,38 +3158,39 @@
                 }
             }
         }
+        // } // End of old initializeSecureYouTubePlayer function
 
-        // 🔒 YOUTUBE SECURITY: Apply additional security measures
-        function applyYouTubeSecurityMeasures(iframe) {
-            if (!iframe) return;
-            
-            // Disable right-click on iframe
-            iframe.addEventListener('contextmenu', function(e) {
-                e.preventDefault();
-                e.stopPropagation();
-                return false;
-            }, true);
-            
-            // Prevent iframe inspection
-            iframe.addEventListener('load', function() {
-                try {
-                    // Remove any YouTube branding elements that might be accessible
-                    const iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
-                    if (iframeDoc) {
-                        // This is a security measure - YouTube iframes are cross-origin
-                        // so we can't directly manipulate their content, but we can
-                        // ensure our overlay prevents interaction
-                    }
-                } catch (e) {
-                    // Cross-origin restrictions - this is expected and good for security
-                }
-            });
-            
-            // Additional security: prevent iframe focus for keyboard shortcuts
-            iframe.addEventListener('focus', function() {
-                this.blur();
-            });
-        }
+        // 🔒 YOUTUBE SECURITY: Now handled by initializeSecureVideoPlayer in secure-video-component.js
+        // function applyYouTubeSecurityMeasures(iframe) {
+        //     if (!iframe) return;
+        //     
+        //     // Disable right-click on iframe
+        //     iframe.addEventListener('contextmenu', function(e) {
+        //         e.preventDefault();
+        //         e.stopPropagation();
+        //         return false;
+        //     }, true);
+        //     
+        //     // Prevent iframe inspection
+        //     iframe.addEventListener('load', function() {
+        //         try {
+        //             // Remove any YouTube branding elements that might be accessible
+        //             const iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
+        //             if (iframeDoc) {
+        //                 // This is a security measure - YouTube iframes are cross-origin
+        //                 // so we can't directly manipulate their content, but we can
+        //                 // ensure our overlay prevents interaction
+        //             }
+        //         } catch (e) {
+        //             // Cross-origin restrictions - this is expected and good for security
+        //         }
+        //     });
+        //     
+        //     // Additional security: prevent iframe focus for keyboard shortcuts
+        //     iframe.addEventListener('focus', function() {
+        //         this.blur();
+        //     });
+        // }
 
         document.addEventListener('DOMContentLoaded', function() {
             // 🔒 ENHANCED SECURITY: Prevent developer tools access

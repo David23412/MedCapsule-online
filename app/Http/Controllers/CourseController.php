@@ -69,29 +69,18 @@ class CourseController extends Controller
         $cacheTTL = $isLoggedIn ? 0 : 30; // 0 seconds for logged-in users = no cache
         
         $courses = Cache::remember($cacheKey, $cacheTTL, function () use ($userId, $isLoggedIn, $selectedYear) {
-            $subqueries = [
-                'topics_count' => Topic::selectRaw('COUNT(*)')
-                    ->whereColumn('course_id', 'courses.id')
-                    ->where('name', 'NOT LIKE', '%cases%'),
-                'cases_count' => Topic::selectRaw('COUNT(*)')
-                    ->whereColumn('course_id', 'courses.id')
-                    ->where('name', 'LIKE', '%cases%'),
-                DB::raw('(
-                    SELECT COUNT(*)
-                    FROM course_user
-                    WHERE course_user.course_id = courses.id
-                    AND course_user.is_enrolled = 1
-                ) as enrolled_users_count')
-            ];
-
-            // Note: Enrollment and payment status will be checked via relationships instead of raw SQL
-
-            $query = Course::select(array_merge(['courses.*'], $subqueries))
-                ->with(['users' => function($query) {
-                    $query->select('users.id', 'users.name', 'users.email', 'users.profile_picture_url')
-                        ->where('course_user.is_enrolled', true)
-                        ->take(6); // Increased to show more users
-                }]);
+            $query = Course::withCount([
+                'topics as topics_count' => function ($query) {
+                    $query->where('name', 'NOT LIKE', '%cases%');
+                },
+                'topics as cases_count' => function ($query) {
+                    $query->where('name', 'LIKE', '%cases%');
+                },
+                'enrolledUsers as enrolled_users_count'
+            ])->with(['enrolledUsers' => function($query) {
+                $query->select('users.id', 'users.name', 'users.email', 'users.profile_picture_url')
+                    ->take(6); // Increased to show more users
+            }]);
 
             // Apply academic year filter if provided
             if ($selectedYear) {
@@ -116,7 +105,7 @@ class CourseController extends Controller
     private function formatCoursesForDisplay($courses): void
     {
         // Eager load relationships to prevent N+1 queries
-        $courses->load(['users:id,name,profile_picture_url']);
+        $courses->load(['enrolledUsers:id,name,profile_picture_url']);
         
         foreach ($courses as $course) {
             $course->is_enrolled = isset($course->is_enrolled) ? (bool)$course->is_enrolled : false;
@@ -124,7 +113,7 @@ class CourseController extends Controller
             $course->mastered_topics_count = 0;
             
             // Format enrolled users for display - show up to 5 users (using eager loaded data)
-            $enrolledUsers = $course->users ?? collect();
+            $enrolledUsers = $course->enrolledUsers ?? collect();
             $course->enrolled_preview = $enrolledUsers->take(5)->map(function($user) {
                 return [
                     'name' => $user->name,
@@ -144,29 +133,18 @@ class CourseController extends Controller
      */
     private function buildCourseQuery($userId, $isLoggedIn): \Illuminate\Database\Eloquent\Builder
     {
-        $subqueries = [
-            'topics_count' => Topic::selectRaw('COUNT(*)')
-                ->whereColumn('course_id', 'courses.id')
-                ->where('name', 'NOT LIKE', '%cases%'),
-            'cases_count' => Topic::selectRaw('COUNT(*)')
-                ->whereColumn('course_id', 'courses.id')
-                ->where('name', 'LIKE', '%cases%'),
-            DB::raw('(
-                SELECT COUNT(*)
-                FROM course_user
-                WHERE course_user.course_id = courses.id
-                AND course_user.is_enrolled = 1
-            ) as enrolled_users_count')
-        ];
-
-        // Note: Enrollment and payment status will be checked via relationships instead of raw SQL
-
-        return Course::select(array_merge(['courses.*'], $subqueries))
-            ->with(['users' => function($query) {
-                $query->select('users.id', 'users.name', 'users.email', 'users.profile_picture_url')
-                    ->where('course_user.is_enrolled', 1)
-                    ->take(6); // Increased to show more users
-            }]);
+        return Course::withCount([
+            'topics as topics_count' => function ($query) {
+                $query->where('name', 'NOT LIKE', '%cases%');
+            },
+            'topics as cases_count' => function ($query) {
+                $query->where('name', 'LIKE', '%cases%');
+            },
+            'enrolledUsers as enrolled_users_count'
+        ])->with(['enrolledUsers' => function($query) {
+            $query->select('users.id', 'users.name', 'users.email', 'users.profile_picture_url')
+                ->take(6); // Increased to show more users
+        }]);
     }
 
     /**
@@ -191,12 +169,8 @@ class CourseController extends Controller
                 $isEnrolled = true;
             } else {
                 // Use efficient query instead of model method
-                $isEnrolled = Cache::remember("course_enrollment_{$id}_{$user->id}", 300, function() use ($id, $user) { 
-                    return DB::table('course_user')
-                        ->where('course_id', $id)
-                        ->where('user_id', $user->id)
-                        ->where('is_enrolled', 1)
-                        ->exists(); 
+                $isEnrolled = Cache::remember("course_enrollment_{$id}_{$user->id}", 300, function() use ($course, $user) { 
+                    return $course->enrolledUsers()->where('user_id', $user->id)->exists();
                 });
             }
         }
@@ -215,12 +189,8 @@ class CourseController extends Controller
         $course = Course::findOrFail($courseId);
         
         // Check if user is already enrolled using efficient query
-        $alreadyEnrolled = Cache::remember("course_enrollment_check_{$courseId}_{$user->id}", 300, function() use ($courseId, $user) { 
-            return DB::table('course_user')
-                ->where('course_id', $courseId)
-                ->where('user_id', $user->id)
-                ->where('is_enrolled', 1)
-                ->exists(); 
+        $alreadyEnrolled = Cache::remember("course_enrollment_check_{$courseId}_{$user->id}", 300, function() use ($course, $user) { 
+            return $course->enrolledUsers()->where('user_id', $user->id)->exists();
         });
             
         if ($alreadyEnrolled) {

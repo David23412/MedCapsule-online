@@ -89,7 +89,6 @@ class AssignmentController extends Controller
             'title' => 'nullable|string|max:255',
             'deadline' => 'nullable|date',
             'duration_minutes' => 'nullable|numeric|min:0|max:1440',
-            'status' => 'nullable|in:active,overdue',
             'user_extensions' => 'nullable|array',
             'user_extensions.*' => 'date',
         ]);
@@ -205,8 +204,6 @@ class AssignmentController extends Controller
         return $this->assignmentService->getStudentsForCourse($courseId);
     }
 
-
-
     public function extendDeadline(Request $request, Assignment $assignment)
     {
         $validated = $request->validate([
@@ -259,30 +256,22 @@ class AssignmentController extends Controller
             
             $students = [];
             $completedCount = 0;
-            
+
             foreach ($assignmentUsers as $user) {
-                $latestAttempt = $user->quizAttempts->first();
-                $status = 'not_started';
-                $score = null;
-                
-                if ($latestAttempt) {
-                    if ($latestAttempt->completed_at) {
-                        $status = 'completed';
-                        $score = $latestAttempt->percentage;
-                        $completedCount++;
-                    } else {
-                        $status = $assignment->isOverdue() ? 'overdue' : 'in_progress';
-                    }
-                } else {
-                    $status = $assignment->isOverdue() ? 'overdue' : 'not_started';
+                $progress = $assignment->getUserProgressWithStatus($user);
+
+                if ($progress['status'] === Assignment::STATUS_COMPLETED) {
+                    $completedCount++;
                 }
-                
+
                 $students[] = [
                     'id' => $user->id,
                     'name' => $user->name,
                     'email' => $user->email,
-                    'status' => $status,
-                    'score' => $score
+                    'status' => $progress['status'],
+                    'status_string' => $progress['status_string'],
+                    'score' => $progress['score'],
+                    'completed_at' => $progress['completed_at']
                 ];
             }
             
@@ -294,7 +283,6 @@ class AssignmentController extends Controller
                     'course' => $assignment->course->name ?? 'Unknown Course',
                     'topic' => $assignment->topic->name ?? 'Unknown Topic',
                     'deadline' => $assignment->deadline->format('M j, Y g:i A'),
-                    'is_overdue' => $assignment->isOverdue()
                 ],
                 'students' => $students,
                 'stats' => [

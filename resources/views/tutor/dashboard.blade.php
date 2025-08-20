@@ -697,24 +697,18 @@
                     </div>
 
                     <div class="student-progress">
-                        @php
-                            $recentAttempts = $student->quizAttempts->take(5);
-                            $trend = 0;
-                            if ($recentAttempts->count() >= 2) {
-                                $recent = $recentAttempts->take(2)->avg('score');
-                                $older = $recentAttempts->skip(2)->avg('score');
-                                $trend = $recent - $older;
-                            }
-                        @endphp
                         <div class="progress-indicator">
                             <span class="progress-label">Recent Performance</span>
-                            @if($trend > 5)
-                                <span class="trend improving"><i class="fas fa-arrow-up"></i> Improving</span>
-                            @elseif($trend < -5)
-                                <span class="trend declining"><i class="fas fa-arrow-down"></i> Declining</span>
-                            @else
-                                <span class="trend stable"><i class="fas fa-minus"></i> Stable</span>
-                            @endif
+                            @switch($student->enhanced_metrics['performance_trend'])
+                                @case('improving')
+                                    <span class="trend improving"><i class="fas fa-arrow-up"></i> Improving</span>
+                                    @break
+                                @case('declining')
+                                    <span class="trend declining"><i class="fas fa-arrow-down"></i> Declining</span>
+                                    @break
+                                @default
+                                    <span class="trend stable"><i class="fas fa-minus"></i> Stable</span>
+                            @endswitch
                         </div>
                     </div>
 

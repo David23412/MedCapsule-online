@@ -15,7 +15,7 @@ return new class extends Migration
                 $table->string('email')->unique();
                 $table->timestamp('email_verified_at')->nullable();
                 $table->string('password');
-                $table->string('role')->default('student'); // admin, tutor, student
+                $table->unsignedTinyInteger('role')->default(3); // 1=admin,2=tutor,3=student (SSOT)
                 $table->rememberToken();
                 $table->string('university')->nullable();
                 $table->string('profile_picture_url')->nullable();
@@ -57,8 +57,17 @@ return new class extends Migration
 
     public function down(): void
     {
+        Schema::disableForeignKeyConstraints();
+        // Drop dependent pivot tables that may reference users
+        if (Schema::hasTable('assignment_users')) {
+            Schema::drop('assignment_users');
+        }
+        if (Schema::hasTable('assignment_user')) {
+            Schema::drop('assignment_user');
+        }
         Schema::dropIfExists('sessions');
         Schema::dropIfExists('password_reset_tokens');
         Schema::dropIfExists('users');
+        Schema::enableForeignKeyConstraints();
     }
 };

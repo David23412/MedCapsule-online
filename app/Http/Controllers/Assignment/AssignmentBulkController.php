@@ -55,10 +55,10 @@ class AssignmentBulkController extends Controller
     public function bulkStore(BulkAssignmentRequest $request): RedirectResponse
     {
         try {
-            $result = $this->assignmentService->createBulkAssignments($request->validated());
+            $result = $this->assignmentService->createBulkAssignments($request->validated(), auth()->id());
             
             return redirect()->route('assignments.index')
-                ->with('success', "Successfully created {$result['created']} assignments.");
+                ->with('success', "Successfully created {$result} assignments.");
         } catch (\Exception $e) {
             Log::error('Bulk assignment creation failed', [
                 'error' => $e->getMessage(),

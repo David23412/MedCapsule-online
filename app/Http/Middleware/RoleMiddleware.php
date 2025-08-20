@@ -21,15 +21,15 @@ class RoleMiddleware
         }
 
         $user = auth()->user();
-        
+
         // Admin has superior privileges - can access all routes
-        if ($user->role === 'admin') {
+        if ($user->isAdmin()) {
             return $next($request);
         }
 
-        // For non-admin users, check if their role is in the allowed roles list
-        $allowedRoles = explode(',', $roles);
-        if (!in_array($user->role, $allowedRoles)) {
+        // For non-admin users, check if their role is in the allowed roles list (numbers expected)
+        $allowedRoles = array_map('intval', explode(',', $roles));
+        if (!in_array((int)$user->role, $allowedRoles, true)) {
             return response()->json(['error' => 'Unauthorized access'], 403);
         }
 

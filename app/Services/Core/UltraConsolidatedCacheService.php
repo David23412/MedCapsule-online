@@ -339,7 +339,28 @@ class UltraConsolidatedCacheService
                 // Get all keys matching pattern
                 $matchingKeys = $this->redis->keys(self::CACHE_PREFIX . $pattern);
                 if (!empty($matchingKeys)) {
-                    $pipeline->del($matchingKeys);
+                    // Properly convert Redis result to array
+                    if (is_array($matchingKeys)) {
+                        $keysArray = $matchingKeys;
+                    } elseif (is_object($matchingKeys)) {
+                        // Handle different Redis client responses
+                        if (method_exists($matchingKeys, 'toArray')) {
+                            $keysArray = $matchingKeys->toArray();
+                        } elseif ($matchingKeys instanceof \Traversable) {
+                            $keysArray = iterator_to_array($matchingKeys);
+                        } else {
+                            $keysArray = (array) $matchingKeys;
+                        }
+                    } else {
+                        $keysArray = [$matchingKeys];
+                    }
+                    
+                    if (!empty($keysArray)) {
+                        // Use individual del calls instead of spread operator to avoid unpacking issues
+                        foreach ($keysArray as $key) {
+                            $pipeline->del($key);
+                        }
+                    }
                 }
             }
             
@@ -390,7 +411,7 @@ class UltraConsolidatedCacheService
         }, 3600);
         
         // Warm topic progress for active users
-        $activeUsers = User::where('last_activity_at', '>', now()->subDays(7))->pluck('id');
+        $activeUsers = User::where('updated_at', '>', now()->subDays(7))->pluck('id');
         foreach ($activeUsers as $userId) {
             $this->getUserTopicProgress($userId, $topicId, 'quiz');
         }

@@ -43,7 +43,11 @@ return new class extends Migration
      */
     public function down(): void
     {
-
+        Schema::disableForeignKeyConstraints();
+        if (Schema::hasTable('assignment_user')) {
+            Schema::drop('assignment_user');
+        }
         Schema::dropIfExists('assignments');
+        Schema::enableForeignKeyConstraints();
     }
 };

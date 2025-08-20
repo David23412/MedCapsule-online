@@ -23,8 +23,10 @@ trait MassPrunable
 
         $total = 0;
 
+        $softDeletable = static::isSoftDeletable();
+
         do {
-            $total += $count = in_array(SoftDeletes::class, class_uses_recursive(get_class($this)))
+            $total += $count = $softDeletable
                 ? $query->forceDelete()
                 : $query->delete();
 

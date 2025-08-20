@@ -164,7 +164,7 @@ class QuizService
     }
 
     /**
-     * OPTIMIZED LETHAL FIX: Retrieve questions with SMART caching and deletion validation
+     * Retrieve questions with SMART caching and deletion validation
      * Fast AND safe - best of both worlds
      *
      * @param Topic $topic
@@ -175,53 +175,17 @@ class QuizService
     {
         // Trim all source values to avoid whitespace issues
         $sources = array_map('trim', $sources);
-        
-        // SMART CACHE KEY with question count for deletion detection
-        $questionCount = Question::where('topic_id', $topic->id)
-            ->when(!in_array('all', $sources), function ($query) use ($sources) {
-                $query->whereIn('source', $sources);
-            })
-            ->count();
-            
-        $cacheKey = "quiz_questions_{$topic->id}_" . md5(serialize($sources)) . "_count_{$questionCount}";
-        
-        // SMART CACHING: Try cache first, validate if needed
-        $questions = $this->cacheService->get($cacheKey);
-        
-        if ($questions === null) {
-            // FRESH QUERY: Get questions from database
-            $questions = $this->getQuestionsFromDatabase($topic, $sources);
-            
-            // SMART CACHE: Store with question count for deletion detection
-            $this->cacheService->put($cacheKey, $questions, 1800); // 30 minutes
-        } else {
-            // SMART VALIDATION: Quick check if question count changed (indicates deletion)
-            $currentCount = Question::where('topic_id', $topic->id)
-                ->when(!in_array('all', $sources), function ($query) use ($sources) {
-                    $query->whereIn('source', $sources);
-                })
-                ->count();
-                
-            if ($currentCount !== $questionCount) {
-                // DELETION DETECTED: Clear cache and get fresh data
-                $this->cacheService->forget($cacheKey);
-                $questions = $this->getQuestionsFromDatabase($topic, $sources);
-                $this->cacheService->put($cacheKey, $questions, 1800);
-                
-                Log::info('OPTIMIZED LETHAL FIX: Deletion detected, cache refreshed', [
-                    'topic_id' => $topic->id,
-                    'old_count' => $questionCount,
-                    'new_count' => $currentCount
-                ]);
-            }
-        }
 
-        Log::info('OPTIMIZED LETHAL FIX: Questions retrieved with smart caching', [
+        $cacheKey = "topic:{$topic->id}:questions:" . md5(serialize($sources));
+
+        $questions = $this->cacheService->remember($cacheKey, function () use ($topic, $sources) {
+            return $this->getQuestionsFromDatabase($topic, $sources);
+        }, 1800); // 30 minutes
+
+        Log::info('OPTIMIZED: Questions retrieved with smart caching', [
             'topic_id' => $topic->id,
             'questions_count' => $questions->count(),
             'sources' => $sources,
-            'cache_hit' => $questions !== null,
-            'validation_type' => 'smart_count_check'
         ]);
 
         return $questions;
@@ -322,22 +286,16 @@ class QuizService
      */
     public function getAvailableSources(Topic $topic): array
     {
-        $cacheKey = "available_sources_{$topic->id}";
-        $sources = $this->cacheService->get($cacheKey);
-
-        if ($sources === null) {
-            $sources = Question::where('topic_id', $topic->id)
+        $cacheKey = "topic:{$topic->id}:available_sources";
+        
+        return $this->cacheService->remember($cacheKey, function () use ($topic) {
+            return Question::where('topic_id', $topic->id)
                 ->distinct()
                 ->pluck('source')
                 ->filter()
                 ->values()
                 ->toArray();
-
-            // Cache for 1 hour
-            $this->cacheService->put($cacheKey, $sources, 3600);
-        }
-
-        return $sources;
+        }, 3600); // Cache for 1 hour
     }
 
     /**
@@ -349,10 +307,9 @@ class QuizService
      */
     public function getQuizStatistics(Topic $topic, array $sources = ['all']): array
     {
-        $cacheKey = "quiz_stats_{$topic->id}_" . md5(serialize($sources));
-        $stats = $this->cacheService->get($cacheKey);
-
-        if ($stats === null) {
+        $cacheKey = "topic:{$topic->id}:*";
+        
+        return $this->cacheService->remember($cacheKey, function () use ($topic, $sources) {
             $questionsQuery = Question::where('topic_id', $topic->id);
             
             if (!in_array('all', $sources)) {
@@ -360,21 +317,16 @@ class QuizService
             }
 
             $totalQuestions = $questionsQuery->count();
-            $multipleChoiceQuestions = $questionsQuery->where('question_type', 'multiple_choice')->count();
-            $writtenQuestions = $questionsQuery->where('question_type', 'written')->count();
+            $multipleChoiceQuestions = (clone $questionsQuery)->where('question_type', 'multiple_choice')->count();
+            $writtenQuestions = (clone $questionsQuery)->where('question_type', 'written')->count();
 
-            $stats = [
+            return [
                 'total_questions' => $totalQuestions,
                 'multiple_choice' => $multipleChoiceQuestions,
                 'written' => $writtenQuestions,
                 'sources' => $this->getSourceBreakdown($topic, $sources)
             ];
-
-            // Cache for 30 minutes
-            $this->cacheService->put($cacheKey, $stats, 1800);
-        }
-
-        return $stats;
+        }, 1800); // Cache for 30 minutes
     }
 
     /**
@@ -507,9 +459,9 @@ class QuizService
      */
     public function clearQuizCaches(Topic $topic): void
     {
-        $this->cacheService->forget("quiz_questions_{$topic->id}_*");
-        $this->cacheService->forget("available_sources_{$topic->id}");
-        $this->cacheService->forget("quiz_stats_{$topic->id}_*");
+        $this->cacheService->forget("topic:{$topic->id}:questions:*");
+        $this->cacheService->forget("topic:{$topic->id}:available_sources");
+        $this->cacheService->forget("topic:{$topic->id}:quiz_stats_*");
     }
 
     /**
@@ -553,14 +505,15 @@ class QuizService
     public function generateQuizQuestions(Topic $topic, array $sources = ['all'], User $user = null): array
     {
         try {
-            // Trim all source values to avoid whitespace issues
-            $sources = array_map('trim', $sources);
             Log::info('Generating quiz questions', [
                 'topic_id' => $topic->id,
                 'sources' => $sources,
                 'user_id' => $user?->id
             ]);
 
+            // Trim all source values to avoid whitespace issues
+            $sources = array_map('trim', $sources);
+            
             // Get questions for the topic with source filtering
             $questionsQuery = Question::where('topic_id', $topic->id);
             
@@ -870,10 +823,9 @@ class QuizService
      */
     public function getQuestionsForQuiz(Topic $topic, array $sources = ['all']): \Illuminate\Database\Eloquent\Collection
     {
-        // LETHAL CACHE KEY with timestamp to force refresh on deletions
-        $cacheKey = "quiz_questions_{$topic->id}_" . md5(serialize($sources)) . "_" . time();
+        $cacheKey = "topic:{$topic->id}:questions_lethal:" . md5(serialize($sources));
         
-        return Cache::remember($cacheKey, 300, function () use ($topic, $sources) {
+        return $this->cacheService->remember($cacheKey, 300, function () use ($topic, $sources) {
             // LETHAL QUERY: Build with explicit deletion checks
             $query = Question::where('topic_id', $topic->id)
                 ->whereNotNull('question') // Ensure question content exists
@@ -918,7 +870,7 @@ class QuizService
      */
     public function getTopicQuizStats(Topic $topic, User $user): array
     {
-        $cacheKey = "topic_quiz_stats_{$topic->id}_{$user->id}";
+        $cacheKey = "topic:{$topic->id}:user_stats:{$user->id}";
         
         return $this->cacheService->remember($cacheKey, 300, function () use ($topic, $user) {
             $attempts = $user->quizAttempts()

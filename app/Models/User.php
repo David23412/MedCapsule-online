@@ -57,7 +57,7 @@ class User extends Authenticatable
         'last_security_check' => 'datetime',
         'last_suspicious_activity' => 'datetime',
         'password' => 'hashed',
-        'role' => 'string',
+        'role' => 'integer',
         'profile_picture_url' => 'string',
         'correct_answers_count' => 'integer',
         'total_questions_attempted' => 'integer',
@@ -67,9 +67,10 @@ class User extends Authenticatable
     /**
      * User roles
      */
-    const ROLE_ADMIN = 'admin';
-    const ROLE_TUTOR = 'tutor';
-    const ROLE_STUDENT = 'student';
+    // Integer role enums (SSOT)
+    const ROLE_ADMIN = 1;
+    const ROLE_TUTOR = 2;
+    const ROLE_STUDENT = 3;
 
     /**
      * Define the relationship with courses (many-to-many).
@@ -77,9 +78,10 @@ class User extends Authenticatable
      */
     public function courses()
     {
+        // SSOT: enrolled_at not null means enrolled
         return $this->belongsToMany(Course::class, 'course_user')
-                    ->withPivot('is_enrolled', 'enrolled_at')
-                    ->where('is_enrolled', true)
+                    ->withPivot('enrolled_at')
+                    ->whereNotNull('course_user.enrolled_at')
                     ->withTimestamps();
     }
 
@@ -90,7 +92,7 @@ class User extends Authenticatable
     public function allCourseEnrollments()
     {
         return $this->belongsToMany(Course::class, 'course_user')
-                    ->withPivot('is_enrolled', 'enrolled_at')
+                    ->withPivot('enrolled_at')
                     ->withTimestamps();
     }
 
@@ -147,7 +149,7 @@ class User extends Authenticatable
      */
     public function assignments()
     {
-        return $this->belongsToMany(Assignment::class, 'assignment_users', 'user_id', 'assignment_id')
+        return $this->belongsToMany(Assignment::class, 'assignment_user', 'user_id', 'assignment_id')
                    ->withTimestamps();
     }
 
@@ -186,7 +188,7 @@ class User extends Authenticatable
     public function hasAccessToCourse($courseId)
     {
         // Admins always have access
-        if ($this->role === self::ROLE_ADMIN) {
+        if ($this->isAdmin()) {
             return true;
         }
         
@@ -194,7 +196,7 @@ class User extends Authenticatable
         return DB::table('course_user')
             ->where('user_id', $this->id)
             ->where('course_id', $courseId)
-            ->where('is_enrolled', true)
+            ->whereNotNull('enrolled_at')
             ->exists();
     }
 
@@ -204,7 +206,7 @@ class User extends Authenticatable
     public function isEnrolledInCourse($courseId)
     {
         // Admins are considered enrolled in all courses
-        if ($this->role === self::ROLE_ADMIN) {
+        if ($this->isAdmin()) {
             return true;
         }
         
@@ -222,7 +224,6 @@ class User extends Authenticatable
     {
         // Use syncWithoutDetaching to ensure proper pivot data and avoid duplicates
         $this->courses()->syncWithoutDetaching([$courseId => [
-            'is_enrolled' => true,
             'enrolled_at' => now()
         ]]);
     }
@@ -270,7 +271,11 @@ class User extends Authenticatable
      */
     public function unenrollFromCourse($courseId)
     {
-        $this->courses()->detach($courseId);
+        // Preserve row but mark as not enrolled by clearing timestamp
+        DB::table('course_user')
+            ->where('user_id', $this->id)
+            ->where('course_id', $courseId)
+            ->update(['enrolled_at' => null, 'updated_at' => now()]);
     }
 
     /**
@@ -315,7 +320,7 @@ class User extends Authenticatable
      */
     public function isAdmin(): bool
     {
-        return $this->role === self::ROLE_ADMIN;
+        return (int)($this->role ?? 0) === self::ROLE_ADMIN;
     }
 
     /**
@@ -325,7 +330,7 @@ class User extends Authenticatable
      */
     public function isTutor(): bool
     {
-        return $this->role === self::ROLE_TUTOR;
+        return (int)($this->role ?? 0) === self::ROLE_TUTOR;
     }
 
     /**
@@ -335,7 +340,7 @@ class User extends Authenticatable
      */
     public function isStudent(): bool
     {
-        return $this->role === self::ROLE_STUDENT;
+        return (int)($this->role ?? 0) === self::ROLE_STUDENT;
     }
 
     /**

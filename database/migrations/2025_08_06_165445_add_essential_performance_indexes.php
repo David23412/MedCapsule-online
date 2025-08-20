@@ -29,7 +29,6 @@ return new class extends Migration
         $this->addIndexSafely('questions', 'question_type', 'idx_questions_type');
         $this->addIndexSafely('questions', 'source', 'idx_questions_source');
         
-        $this->addIndexSafely('quiz_attempts', 'mode', 'idx_attempts_mode');
         $this->addIndexSafely('quiz_attempts', 'assignment_id', 'idx_attempts_assignment');
         $this->addIndexSafely('quiz_attempts', 'source', 'idx_attempts_source');
         
@@ -47,29 +46,8 @@ return new class extends Migration
      */
     public function down(): void
     {
-        $indexes = [
-            'users' => ['idx_users_role', 'idx_users_xp', 'idx_users_streak'],
-            'courses' => ['idx_courses_type', 'idx_courses_year', 'idx_courses_active'],
-            'topics' => ['idx_topics_locked', 'idx_topics_case_type'],
-            'questions' => ['idx_questions_type', 'idx_questions_source'],
-            'quiz_attempts' => ['idx_attempts_mode', 'idx_attempts_assignment', 'idx_attempts_source'],
-            'assignments' => ['idx_assignments_mode', 'idx_assignments_source'],
-            'payments' => ['idx_payments_status', 'idx_payments_method']
-        ];
-
-        foreach ($indexes as $table => $tableIndexes) {
-            if (Schema::hasTable($table)) {
-                Schema::table($table, function (Blueprint $tableSchema) use ($tableIndexes) {
-                    foreach ($tableIndexes as $index) {
-                        try {
-                            $tableSchema->dropIndex($index);
-                        } catch (\Exception $e) {
-                            // Index might not exist, continue
-                        }
-                    }
-                });
-            }
-        }
+        // No-op: indexes are harmless to keep on rollback and may be required by FKs
+        return;
     }
 
     /**

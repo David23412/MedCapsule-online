@@ -87,7 +87,7 @@ class QuizExecutionController extends Controller
             if ($assignment) {
                 Log::info('Assignment found', [
                     'assignment_id' => $assignment->id,
-                    'status' => $assignment->getCurrentStatusAttribute(),
+                    'status' => $assignment->getStatusForUser($user),
                     'current_user_id' => $user->id
                 ]);
             } else {
@@ -247,8 +247,8 @@ class QuizExecutionController extends Controller
             );
             
             // LETHAL CACHE INVALIDATION
-            app(UltraConsolidatedCacheService::class)->forget("user_progress_{$userId}_{$topic->id}");
-            app(UltraConsolidatedCacheService::class)->forget("quiz_cache_{$userId}_{$topic->id}");
+            app(UltraConsolidatedCacheService::class)->smartInvalidate('user_progress', $userId, ['topic_id' => $topic->id]);
+            app(UltraConsolidatedCacheService::class)->smartInvalidate('quiz', $topic->id);
             
             // LETHAL DEBUG: Log assignment completion
             $assignmentCompleted = $assignmentId ? true : false;

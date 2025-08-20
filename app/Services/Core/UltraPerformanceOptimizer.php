@@ -20,8 +20,10 @@ class UltraPerformanceOptimizer
             return;
         }
 
-        // Warm up cache with common queries
-        self::warmupCache();
+        // Warm up cache with common queries (skip if running in console during migrate/seed/tests)
+        if (!self::shouldSkipDbInteractionsForConsole()) {
+            self::warmupCache();
+        }
 
         // Start performance monitoring
         self::startPerformanceMonitoring();
@@ -31,32 +33,56 @@ class UltraPerformanceOptimizer
         Log::info('UltraPerformanceOptimizer: All systems initialized for MAXIMUM PERFORMANCE!');
     }
 
+    private static function shouldSkipDbInteractionsForConsole(): bool
+    {
+        if (!app()->runningInConsole()) {
+            return false;
+        }
+
+        $argv = $_SERVER['argv'] ?? [];
+        $cmd = implode(' ', $argv);
+
+        return str_contains($cmd, 'migrate')
+            || str_contains($cmd, 'db:')
+            || str_contains($cmd, 'seed')
+            || str_contains($cmd, 'test');
+    }
+
     private static function warmupCache(): void
     {
         $cacheService = app(UltraConsolidatedCacheService::class);
         
         $warmupQueries = [
             'total_users' => function() {
-                return DB::table('users')->count();
+                return self::safeCount('users');
             },
             'total_courses' => function() {
-                return DB::table('courses')->count();
+                return self::safeCount('courses');
             },
             'total_questions' => function() {
-                return DB::table('questions')->count();
+                return self::safeCount('questions');
             },
             'system_stats' => function() {
                 return [
-                    'users' => DB::table('users')->count(),
-                    'courses' => DB::table('courses')->count(),
-                    'questions' => DB::table('questions')->count(),
-                    'topics' => DB::table('topics')->count(),
+                    'users' => self::safeCount('users'),
+                    'courses' => self::safeCount('courses'),
+                    'questions' => self::safeCount('questions'),
+                    'topics' => self::safeCount('topics'),
                 ];
             }
         ];
 
         foreach ($warmupQueries as $key => $query) {
             $cacheService->remember($key, $query, 1800); // 30 minutes
+        }
+    }
+
+    private static function safeCount(string $table): int
+    {
+        try {
+            return DB::table($table)->count();
+        } catch (\Throwable $e) {
+            return 0;
         }
     }
 

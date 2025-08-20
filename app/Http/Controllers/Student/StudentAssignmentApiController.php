@@ -8,6 +8,7 @@ use App\Services\AssignmentService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Facades\Auth;
 
 class StudentAssignmentApiController extends Controller
 {
@@ -78,7 +79,7 @@ class StudentAssignmentApiController extends Controller
                                 ->get()
                                 ->filter(function($assignment) {
                                     // Filter by computed status since status column doesn't exist
-                                    $status = $assignment->getCurrentStatusAttribute();
+                                    $status = $assignment->getStatusForUser(Auth::user());
                                     return in_array($status, [Assignment::STATUS_ACTIVE, Assignment::STATUS_OVERDUE]);
                                 })
                                 ->map(function($assignment) {

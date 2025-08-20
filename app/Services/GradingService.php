@@ -105,8 +105,7 @@ class GradingService
             }
 
             // Clear relevant caches
-            $this->cacheService->clearTopicProgressCaches($topic->id, $user->id, 'quiz');
-            $this->cacheService->invalidateUserCaches($user->id, $topic->id);
+            $this->cacheService->smartInvalidate('user_progress', $user->id, ['topic_id' => $topic->id]);
 
             DB::commit();
 
@@ -507,9 +506,10 @@ class GradingService
             return false;
         }
         
-        // Check if assignment is in an accessible state (active or overdue)
-        $status = $assignment->getCurrentStatusAttribute();
-        return in_array($status, [\App\Models\Assignment::STATUS_ACTIVE, \App\Models\Assignment::STATUS_OVERDUE]);
+        // Check if the assignment is currently active for this specific user.
+        // The status is computed dynamically, so we don't need to check for overdue/expired here.
+        $status = $assignment->getStatusForUser($user);
+        return $status === \App\Models\Assignment::STATUS_ACTIVE;
     }
 
 

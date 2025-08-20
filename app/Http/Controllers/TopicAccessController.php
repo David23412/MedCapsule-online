@@ -103,7 +103,7 @@ use Illuminate\Http\Response;
                 
                 // Check for active assignments
                 $activeAssignment = $this->getActiveAssignment($topic, $user);
-                
+
                 if ($activeAssignment) {
                     // User has an active assignment for this topic
                     return [
@@ -117,16 +117,16 @@ use Illuminate\Http\Response;
                         'status_code' => Response::HTTP_OK
                     ];
                 }
-                
-                // Check for expired assignments that still allow practice mode
-                $expiredAssignment = $this->getExpiredAssignment($topic, $user);
-                
-                if ($expiredAssignment) {
-                    // User has an expired assignment but can still access in practice mode
+
+                // Check for inactive (locked or completed) assignments to allow practice mode
+                $inactiveAssignment = $this->getInactiveAssignment($topic, $user);
+
+                if ($inactiveAssignment) {
+                    // User has an inactive assignment but can still access in practice mode
                     return [
                         'can_access' => true,
-                        'has_expired_assignment' => true,
-                        'assignment_id' => $expiredAssignment->id,
+                        'has_inactive_assignment' => true,
+                        'assignment_id' => $inactiveAssignment->id,
                         'practice_mode' => true,
                         'sources' => $this->getAllTopicSources($topic),
                         'status_code' => Response::HTTP_OK
@@ -227,35 +227,37 @@ use Illuminate\Http\Response;
      */
     private function getActiveAssignment(Topic $topic, User $user): ?Assignment
     {
-        $assignments = Assignment::select('id', 'topic_id', 'user_id', 'deadline', 'created_at')
-            ->where('topic_id', $topic->id)
-            ->where('user_id', $user->id)
+        $assignments = Assignment::where('topic_id', $topic->id)
+            ->whereHas('assignedUsers', function ($query) use ($user) {
+                $query->where('user_id', $user->id);
+            })
             ->get();
-            
-        // Filter by computed status since status column doesn't exist
-        return $assignments->first(function($assignment) {
-            return $assignment->getCurrentStatusAttribute() === Assignment::STATUS_ACTIVE;
+
+        // Filter by the dynamically computed status for the user
+        return $assignments->first(function ($assignment) use ($user) {
+            return $assignment->getStatusForUser($user) === Assignment::STATUS_ACTIVE;
         });
     }
     
     /**
-     * Get expired assignment for a topic and user
+     * Get inactive (locked or completed) assignment for a topic and user.
      *
      * @param Topic $topic The topic to check
      * @param User $user The user to check
-     * @return Assignment|null The expired assignment or null
+     * @return Assignment|null The inactive assignment or null
      */
-    private function getExpiredAssignment(Topic $topic, User $user): ?Assignment
+    private function getInactiveAssignment(Topic $topic, User $user): ?Assignment
     {
-        $assignments = Assignment::select('id', 'topic_id', 'user_id', 'deadline', 'created_at')
-            ->where('topic_id', $topic->id)
-            ->where('user_id', $user->id)
+        $assignments = Assignment::where('topic_id', $topic->id)
+            ->whereHas('assignedUsers', function ($query) use ($user) {
+                $query->where('user_id', $user->id);
+            })
             ->get();
-            
-        // Filter by computed status since status column doesn't exist
-        return $assignments->first(function($assignment) {
-            $status = $assignment->getCurrentStatusAttribute();
-            return in_array($status, [Assignment::STATUS_EXPIRED, Assignment::STATUS_COMPLETED, Assignment::STATUS_OVERDUE]);
+
+        // Filter for assignments that are locked or completed for the user
+        return $assignments->first(function ($assignment) use ($user) {
+            $status = $assignment->getStatusForUser($user);
+            return in_array($status, [Assignment::STATUS_LOCKED, Assignment::STATUS_COMPLETED]);
         });
     }
     

@@ -62,11 +62,13 @@ class Course extends Model
                     ->withTimestamps();
     }
 
+    /**
+     * Relationship for users who are marked as enrolled in the pivot table.
+     */
     public function enrolledUsers()
     {
-        return $this->belongsToMany(User::class, 'payments', 'course_id', 'user_id')
-                    ->where('payments.status', 'completed')
-                    ->distinct();
+        return $this->belongsToMany(User::class, 'course_user')
+            ->wherePivotNotNull('enrolled_at');
     }
 
     public function payments()
@@ -87,9 +89,7 @@ class Course extends Model
     public function getEnrolledStudents($limit = null)
     {
         return Cache::remember("course_{$this->id}_enrolled_students" . ($limit ? "_limit_{$limit}" : ""), self::CACHE_TTL, function () use ($limit) {
-            $query = $this->users()
-                         ->where('is_enrolled', true)
-                         ->whereNotNull('email');
+            $query = $this->enrolledUsers();
             
             if ($limit) {
                 $query->limit($limit);
@@ -104,9 +104,7 @@ class Course extends Model
     public function getEnrolledStudentsCountAttribute()
     {
         return Cache::remember("course_{$this->id}_enrolled_count", self::CACHE_TTL, function () {
-            return $this->users()
-                       ->where('is_enrolled', true)
-                       ->whereNotNull('email')
+            return $this->enrolledUsers()
                        ->count();
         });
     }

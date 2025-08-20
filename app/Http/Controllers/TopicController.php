@@ -16,6 +16,7 @@ use Illuminate\Support\Facades\Cache;
 use App\Services\QuizCacheService;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Collection;
 use App\Models\Mistake;
 use App\Http\Controllers\Topic\TopicViewController;
@@ -111,9 +112,9 @@ class TopicController extends Controller
             ])
             ->get();
 
-        // 🚀 GENIUS: Load assignments using efficient pivot table filtering
-        $assignments = [];
-        if ($user->role === 'student') {
+        // Load assignments only for students, using integer role constants.
+        $assignments = collect();
+        if ($user->role === \App\Models\User::ROLE_STUDENT) {
             // Students only see assignments specifically assigned to them via pivot table
             $assignments = \App\Models\Assignment::where('course_id', $course->id)
                 ->whereHas('assignedUsers', function($query) use ($user) {
@@ -154,11 +155,8 @@ class TopicController extends Controller
                     ];
                 }
                 
-                $assignment->display_status = $assignment->getCurrentStatusAttribute();
+                $assignment->display_status = $assignment->getStatusForUser(Auth::user());
             }
-        } elseif ($user->role === 'admin') {
-            // Admins don't see assignments in the student view - they manage them separately
-            $assignments = collect();
         }
 
         return view('topics_for_course', [

@@ -33,7 +33,8 @@ class LearnController extends Controller
         try {
             $userId = auth()->id();
             $mode = session('learn_mode', 'quiz');
-            $courseFilter = $request->validate(['course' => 'nullable|integer|exists:courses,id'])['course'] ?? null;
+            $validated = $request->validate(['course' => 'nullable|string']);
+            $courseFilter = $validated['course'] ?? null;
             
             $cachedData = $this->mistakeService->getMistakesForLearning($userId, $mode, $courseFilter);
 

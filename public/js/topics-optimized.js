@@ -275,18 +275,32 @@ class OptimizedTopicsPage {
      * 🚀 QUIZ START: Optimized quiz start handling
      */
     handleQuizStart(button, topicCard) {
-        const topicId = topicCard.dataset.topicId;
-        const courseId = topicCard.dataset.courseId || button.dataset.courseId;
-        const quizUrl = button.dataset.quizUrl;
+        try {
+            // Get the closest parent with data attributes if button doesn't have them
+            const container = button.closest('[data-topic-id]') || topicCard;
+            const topicId = container.dataset.topicId || button.dataset.topicId;
+            const courseId = container.dataset.courseId || button.dataset.courseId;
+            let quizUrl = button.dataset.quizUrl || button.getAttribute('href');
 
-        if (quizUrl) {
-            // Direct URL navigation (fastest)
-            window.location.href = quizUrl;
-        } else if (topicId && courseId) {
-            // Construct URL
-            window.location.href = `/quiz/${courseId}/${topicId}`;
-        } else {
-// console.error('Missing quiz URL or topic/course IDs'); // Removed for production
+            // If href is javascript:void(0), use data attributes to construct URL
+            if ((!quizUrl || quizUrl === 'javascript:void(0)') && topicId && courseId) {
+                quizUrl = `/quiz/${courseId}/${topicId}`;
+            }
+
+            // Only navigate if we have a valid URL
+            if (quizUrl && quizUrl !== 'javascript:void(0)') {
+                window.location.href = quizUrl;
+            } else {
+                console.error('Missing required quiz URL or topic/course IDs');
+                // Fallback to showing the source selection modal if available
+                const sourceModal = document.getElementById('sourceSelectionModal');
+                if (sourceModal) {
+                    const bsModal = new bootstrap.Modal(sourceModal);
+                    bsModal.show();
+                }
+            }
+        } catch (error) {
+            console.error('Error starting quiz:', error);
         }
     }
 

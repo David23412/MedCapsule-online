@@ -36,7 +36,7 @@ class PaymentOptionsController extends Controller
             // Check if user already has access
             $hasAccess = $user->courses()
                 ->where('course_id', $course->id)
-                ->where('is_enrolled', true)
+                ->whereNotNull('enrolled_at')
                 ->exists();
 
             if ($hasAccess) {

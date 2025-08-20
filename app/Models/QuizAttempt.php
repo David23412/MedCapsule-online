@@ -58,7 +58,7 @@ class QuizAttempt extends Model
         'total_questions' => 'required|integer|min:1',
         'percentage_grade' => 'required|numeric|min:0|max:100',
         'duration_seconds' => 'required|integer|min:0',
-        'question_data' => 'required|array',
+        'question_data' => 'nullable|array',
         'correct_answers' => 'nullable|integer|min:0',
         'assignment_id' => 'nullable|exists:assignments,id'
     ];

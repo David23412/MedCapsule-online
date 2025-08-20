@@ -28,7 +28,7 @@ class TutorMiddleware
         $user = auth()->user();
         
         // 👑 ADMIN SUPERIOR PRIVILEGES - Admins can access EVERYTHING
-        if ($user->role === 'admin') {
+        if ($user->isAdmin()) {
             // Log admin access for security tracking
             \Log::info('👑 Admin superior access granted', [
                 'user_id' => $user->id,
@@ -42,7 +42,7 @@ class TutorMiddleware
         }
         
         // 🎓 TUTOR ACCESS - Standard tutor permissions
-        if ($user->role === 'tutor') {
+        if ($user->isTutor()) {
             return $next($request);
         }
         

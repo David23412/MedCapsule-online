@@ -100,7 +100,6 @@ class PaymentLogController extends Controller
             'actions' => PaymentLog::select('action')->distinct()->pluck('action')
         ];
     }
-    }
 
     /**
      * Display logs for a specific payment.

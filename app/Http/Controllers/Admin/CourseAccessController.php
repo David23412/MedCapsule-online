@@ -18,7 +18,7 @@ class CourseAccessController extends Controller
     {
         $this->middleware(['auth']);
         $this->middleware(function ($request, $next) {
-            if (auth()->user()->role !== 'admin') {
+            if (!auth()->user()->isAdmin()) {
                 abort(403, 'Unauthorized access.');
             }
             return $next($request);
@@ -59,7 +59,6 @@ class CourseAccessController extends Controller
             // Enroll user in course
             $accessRequest->user->courses()->syncWithoutDetaching([
                 $accessRequest->course_id => [
-                    'is_enrolled' => true,
                     'enrolled_at' => now()
                 ]
             ]);

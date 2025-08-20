@@ -38,7 +38,8 @@ class PaymentSettingsController extends Controller
             // Load user with payment-related relationships
             $user = auth()->user()->load(['payments.course:id,name,price',
                 'courses:id,name,price',
-                'courses.payments:id,course_id,user_id,status'// Get current settings from config
+                'courses.payments:id,course_id,user_id,status']);
+            // Get current settings from config
             $settings = [
             'ocr' => [
                 'enabled' => config('payment.ocr.enabled', true),
@@ -75,6 +76,7 @@ class PaymentSettingsController extends Controller
         ]);
     }
 
+
     /**
      * Update payment settings.
      *
@@ -85,7 +87,12 @@ class PaymentSettingsController extends Controller
     {
         // Validate the request
         $validated = $request->validate([
-            // TODO: Add validation rules
+            'ocr_enabled' => 'nullable|boolean',
+            'auto_verification_enabled' => 'nullable|boolean',
+            'ocr_approval_threshold' => 'required|integer|min:0|max:10',
+            'ocr_admin_review_threshold' => 'required|integer|min:0|max:10',
+            'auto_approval_threshold' => 'required|integer|min:0|max:100',
+            'expedited_review_threshold' => 'required|integer|min:0|max:100',
         ]);
 
         try {
@@ -96,7 +103,8 @@ class PaymentSettingsController extends Controller
                 'PAYMENT_OCR_APPROVAL_THRESHOLD' => $request->ocr_approval_threshold,
                 'PAYMENT_OCR_ADMIN_REVIEW_THRESHOLD' => $request->ocr_admin_review_threshold,
                 'PAYMENT_VERIFICATION_THRESHOLD' => $request->auto_approval_threshold,
-                'PAYMENT_EXPEDITED_REVIEW_THRESHOLD' => $request->expedited_review_threshold]);
+                'PAYMENT_EXPEDITED_REVIEW_THRESHOLD' => $request->expedited_review_threshold
+            ]);
 
             // Clear config cache to apply changes
             Artisan::call('config:clear');
@@ -109,7 +117,12 @@ class PaymentSettingsController extends Controller
             ]);
 
             return redirect()->route('payment-settings.form')
-                ->with('success', 'Payment settings updated successfully');}
+                ->with('success', 'Payment settings updated successfully');
+        } catch (\Exception $e) {
+            Log::error('Failed to update payment settings: ' . $e->getMessage());
+            return redirect()->back()->with('error', 'Failed to update settings: ' . $e->getMessage());
+        }
+    }
 
     /**
      * Check if OCR is available on the system.
@@ -140,7 +153,12 @@ class PaymentSettingsController extends Controller
                 }
             }
 
-            return $isAvailable;}
+            return $isAvailable;
+        } catch (\Exception $e) {
+            Log::error('OCR availability check failed: ' . $e->getMessage());
+            return false;
+        }
+    }
 
     /**
      * Update the environment file with new values.

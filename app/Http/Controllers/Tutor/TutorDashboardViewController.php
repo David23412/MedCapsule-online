@@ -168,8 +168,8 @@ class TutorDashboardViewController extends Controller
             return 'stable';
         }
 
-        $recent = $recentAttempts->take(2)->avg('score');
-        $older = $recentAttempts->skip(2)->avg('score');
+        $recent = $recentAttempts->take(2)->avg('percentage_grade');
+        $older = $recentAttempts->skip(2)->avg('percentage_grade');
         $difference = $recent - $older;
 
         if ($difference > 5) return 'improving';
@@ -205,6 +205,7 @@ class TutorDashboardViewController extends Controller
         // FRESH DATA: Get real-time quiz attempts without caching
         $quizAttempts = $student->quizAttempts()
             ->with('topic:id,name')
+            ->select('id', 'user_id', 'topic_id', 'percentage_grade', 'created_at', 'duration_seconds')
             ->orderBy('created_at', 'desc')
             ->get();
 
@@ -214,37 +215,32 @@ class TutorDashboardViewController extends Controller
         $accuracyRate = $totalQuestions > 0 ? round(($totalCorrect / $totalQuestions) * 100, 1) : 0;
         
         // Calculate real-time averages
-        $averageScore = $quizAttempts->count() > 0 ? round($quizAttempts->avg('score'), 1) : 0;
-        $bestScore = $quizAttempts->count() > 0 ? $quizAttempts->max('score') : 0;
+        $averageScore = $quizAttempts->count() > 0 ? round($quizAttempts->avg('percentage_grade'), 1) : 0;
+        $bestScore = $quizAttempts->count() > 0 ? $quizAttempts->max('percentage_grade') : 0;
         
         // Recent activity (last 30 days)
         $recentActivity = $quizAttempts->where('created_at', '>=', now()->subDays(30))->count();
         
         // Study streak calculation
         $studyStreak = $student->study_streak_days ?? 0;
-        
-        // Last active calculation
-        $lastActive = $student->last_active_at;
-        $isCurrentlyActive = $lastActive && $lastActive->gte(now()->subMinutes(15));
 
         return [
             'overview' => [
-                'total_quizzes' => $quizAttempts->count(),
                 'average_score' => $averageScore,
                 'best_score' => $bestScore,
                 'accuracy_rate' => $accuracyRate,
+                'total_quizzes' => $quizAttempts->count(),
+                'recent_activity_count' => $recentActivity,
                 'study_streak' => $studyStreak,
-                'total_xp' => $student->xp ?? 0,
-                'member_since' => $student->created_at ?? now(),
-                'last_active' => $lastActive,
-                'is_currently_active' => $isCurrentlyActive,
                 'total_questions_attempted' => $totalQuestions,
-                'total_correct_answers' => $totalCorrect
+                'total_correct_answers' => $totalCorrect,
+                'member_since' => $student->created_at,
+                'last_active' => $student->last_active_at
             ],
             'recent_quizzes' => $quizAttempts->take(10)->map(function ($attempt) {
                 return [
                     'topic' => $attempt->topic->name ?? 'Unknown Topic',
-                    'score' => $attempt->score,
+                    'score' => $attempt->percentage_grade,
                     'date' => $attempt->created_at,
                     'duration' => $attempt->duration_seconds ?? 0,
                     'questions_attempted' => $attempt->questions_attempted ?? 0,
@@ -274,8 +270,8 @@ class TutorDashboardViewController extends Controller
                 return [
                     'topic' => $topicName ?: 'Unknown Topic',
                     'attempts' => $attempts->count(),
-                    'average_score' => round($attempts->avg('score'), 1),
-                    'best_score' => $attempts->max('score'),
+                    'average_score' => round($attempts->avg('percentage_grade'), 1),
+                    'best_score' => $attempts->max('percentage_grade'),
                     'last_attempt' => $attempts->first()->created_at];
             })
             ->sortByDesc('attempts')
@@ -321,8 +317,12 @@ class TutorDashboardViewController extends Controller
         
         if ($olderAttempts->count() == 0) return 0;
         
-        $recentAverage = $recentAttempts->avg('score');
-        $olderAverage = $olderAttempts->avg('score');
+        $recentAverage = $recentAttempts->avg('percentage_grade');
+        $olderAverage = $olderAttempts->avg('percentage_grade');
+
+        if ($olderAverage == 0) {
+            return $recentAverage > 0 ? 100.0 : 0; // Avoid division by zero
+        }
         
         return round((($recentAverage - $olderAverage) / $olderAverage) * 100, 1);
     }
@@ -334,7 +334,7 @@ class TutorDashboardViewController extends Controller
     {
         return $quizAttempts->groupBy('topic.name')
             ->map(function ($attempts, $topicName) {
-                $avgScore = $attempts->avg('score');
+                $avgScore = $attempts->avg('percentage_grade');
                 return [
                     'topic' => $topicName ?: 'Unknown Topic',
                     'average_score' => round($avgScore, 1),
@@ -357,7 +357,7 @@ class TutorDashboardViewController extends Controller
     {
         return $quizAttempts->groupBy('topic.name')
             ->map(function ($attempts, $topicName) {
-                $avgScore = $attempts->avg('score');
+                $avgScore = $attempts->avg('percentage_grade');
                 return [
                     'topic' => $topicName ?: 'Unknown Topic',
                     'average_score' => round($avgScore, 1),
@@ -378,7 +378,7 @@ class TutorDashboardViewController extends Controller
      */
     private function getStudentAssignments(User $student): array
     {
-        $assignments = \App\Models\Assignment::where('user_id', $student->id)
+        $assignments = $student->assignments()
             ->with(['topic:id,name', 'course:id,name', 'tutor:id,name'])
             ->orderBy('created_at', 'desc')
             ->get();
@@ -407,7 +407,7 @@ class TutorDashboardViewController extends Controller
             })->toArray(),
             'completed_count' => $assignments->where('status', \App\Models\Assignment::STATUS_COMPLETED)->count(),
             'active_count' => $assignments->where('status', \App\Models\Assignment::STATUS_ACTIVE)->count(),
-            'overdue_count' => $assignments->where('status', \App\Models\Assignment::STATUS_OVERDUE)->count(),
+            'overdue_count' => $assignments->where('status_string', 'overdue')->count(),
             'total_count' => $assignments->count(),
             'average_score' => $assignments->where('status', \App\Models\Assignment::STATUS_COMPLETED)->avg('score_percentage') ?? 0
         ];

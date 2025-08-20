@@ -42,6 +42,11 @@ class UltraPerformanceServiceProvider extends ServiceProvider
 
     public function boot(): void
     {
+        // Skip heavy boot logic during console operations that manipulate the database or run tests
+        if ($this->shouldSkipBootForConsole()) {
+            return;
+        }
+
         // Initialize ultra-performance systems
         UltraPerformanceOptimizer::initialize();
 
@@ -73,6 +78,21 @@ class UltraPerformanceServiceProvider extends ServiceProvider
         $this->app['events']->listen('Illuminate\Cache\Events\CacheMissed', function ($event) {
             \Cache::increment('cache_misses_total');
         });
+    }
+
+    private function shouldSkipBootForConsole(): bool
+    {
+        if (!$this->app->runningInConsole()) {
+            return false;
+        }
+
+        $argv = $_SERVER['argv'] ?? [];
+        $cmd = implode(' ', $argv);
+
+        return str_contains($cmd, 'migrate')
+            || str_contains($cmd, 'db:')
+            || str_contains($cmd, 'seed')
+            || str_contains($cmd, 'test');
     }
 
     public function provides(): array

@@ -1118,11 +1118,7 @@
                                         <option value="{{ $i }}" {{ $i == 12 ? 'selected' : '' }}>{{ $i }}</option>
                                     @endfor
                                 </select>
-                                <select class="form-select" id="deadline_minute" name="deadline_minute" required>
-                                    @for($i = 0; $i < 60; $i += 15)
-                                        <option value="{{ $i }}" {{ $i == 0 ? 'selected' : '' }}>{{ str_pad($i, 2, '0', STR_PAD_LEFT) }}</option>
-                                    @endfor
-                                </select>
+                                <input type="number" class="form-control" id="deadline_minute" name="deadline_minute" min="0" max="59" value="0" required>
                             </div>
                             <div class="deadline-ampm">
                                 <select class="form-select" id="deadline_ampm" name="deadline_ampm" required>

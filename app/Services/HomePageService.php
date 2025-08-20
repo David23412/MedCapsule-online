@@ -62,7 +62,7 @@ class HomePageService
             $enrolledCount = DB::selectOne("
                 SELECT COUNT(DISTINCT user_id) as total 
                 FROM course_user 
-                WHERE is_enrolled = 1
+                WHERE enrolled_at IS NOT NULL
             ")->total;
 
             return [
@@ -124,7 +124,7 @@ class HomePageService
             $enrollmentStats = DB::select("
                 SELECT course_id, COUNT(DISTINCT user_id) as enrolled_count
                 FROM course_user 
-                WHERE course_id IN (" . implode(',', $courseIds) . ") AND is_enrolled = 1
+                WHERE course_id IN (" . implode(',', $courseIds) . ") AND enrolled_at IS NOT NULL
                 GROUP BY course_id
             ");
 

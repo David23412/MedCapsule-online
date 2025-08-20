@@ -91,11 +91,7 @@
                             @endfor
                         </select>
                         
-                        <select class="form-input time-input" id="edit_deadline_minute" name="deadline_minute">
-                            @for($i = 0; $i < 60; $i += 15)
-                                <option value="{{ $i }}" {{ $assignment->deadline && $assignment->deadline->format('i') == str_pad($i, 2, '0', STR_PAD_LEFT) ? 'selected' : '' }}>{{ str_pad($i, 2, '0', STR_PAD_LEFT) }}</option>
-                            @endfor
-                        </select>
+                        <input type="number" class="form-input time-input" id="edit_deadline_minute" name="deadline_minute" value="{{ $assignment->deadline ? $assignment->deadline->format('i') : '0' }}" min="0" max="59" required>
                         
                         <select class="form-input time-input" id="edit_deadline_ampm" name="deadline_ampm">
                             <option value="AM" {{ $assignment->deadline && $assignment->deadline->format('A') == 'AM' ? 'selected' : '' }}>AM</option>

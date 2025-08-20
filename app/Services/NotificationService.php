@@ -17,6 +17,13 @@ use App\Services\UniversalNotificationService;
 
 class NotificationService
 {
+    // Notification Types
+    const ASSIGNMENT_COMPLETED = 'assignment_completed';
+    const STUDENT_COMPLETED_ASSIGNMENT = 'student_completed_assignment';
+    const ASSIGNMENT_OVERDUE = 'assignment_overdue';
+    const ASSIGNMENT_OVERDUE_TUTOR = 'assignment_overdue_tutor';
+    const ASSIGNMENT_REMINDER = 'assignment_reminder';
+
     /**
      * Create a new notification.
      */
@@ -121,37 +128,39 @@ class NotificationService
     /**
      * Notify about assignment completion
      */
-    public function notifyAssignmentCompleted(\App\Models\Assignment $assignment): array
+    public function notifyAssignmentCompleted(\App\Models\Assignment $assignment, User $user, $attempt): array
     {
         $notifications = [];
 
         // Notify student
         $notifications['student'] = $this->createAssignmentNotification(
-            $assignment->user_id,
-            'assignment_completed',
+            $user->id,
+            self::ASSIGNMENT_COMPLETED,
             'Assignment Completed!',
-            "Great job! You've completed '{$assignment->title}'" . ($assignment->score ? " with a score of {$assignment->score}%" : ""),
+            "Great job! You've completed '{$assignment->title}'" . ($attempt->percentage_grade ? " with a score of {$attempt->percentage_grade}%" : ""),
             [
                 'assignment_id' => $assignment->id,
-                'score' => $assignment->score,
-                'completed_at' => $assignment->completed_at->toISOString()
+                'score' => $attempt->percentage_grade,
+                'completed_at' => $attempt->completed_at->toISOString()
             ]
         );
 
-        // Notify tutor
-        $notifications['tutor'] = $this->createAssignmentNotification(
-            $assignment->tutor_id,
-            'student_completed_assignment',
-            'Student Completed Assignment',
-            "{$assignment->student->name} has completed '{$assignment->title}'" . ($assignment->score ? " with a score of {$assignment->score}%" : ""),
-            [
-                'assignment_id' => $assignment->id,
-                'student_name' => $assignment->student->name,
-                'score' => $assignment->score,
-                'completed_at' => $assignment->completed_at->toISOString(),
-                'action_url' => route('assignments.show', $assignment->id)
-            ]
-        );
+        // Notify tutor if one is assigned to the course
+        if ($assignment->course && $assignment->course->tutor) {
+            $notifications['tutor'] = $this->createAssignmentNotification(
+                $assignment->course->tutor->id,
+                self::STUDENT_COMPLETED_ASSIGNMENT,
+                'Student Completed Assignment',
+                "{$user->name} has completed '{$assignment->title}'" . ($attempt->percentage_grade ? " with a score of {$attempt->percentage_grade}%" : ""),
+                [
+                    'assignment_id' => $assignment->id,
+                    'student_name' => $user->name,
+                    'score' => $attempt->percentage_grade,
+                    'completed_at' => $attempt->completed_at->toISOString(),
+                    'action_url' => route('assignments.show', $assignment->id)
+                ]
+            );
+        }
 
         return $notifications;
     }
@@ -173,19 +182,17 @@ class NotificationService
             })
             ->get();
             
-        // Filter by computed status since status column doesn't exist
-        $assignments = $allAssignments->filter(function($assignment) {
-            return $assignment->getCurrentStatusAttribute() === \App\Models\Assignment::STATUS_ACTIVE;
-        });
-
-        $assignments = $assignments->load('assignedUsers');
-        foreach ($assignments as $assignment) {
-            // Send notification to each assigned user
+        foreach ($allAssignments as $assignment) {
+            // Send notification to each assigned user if their status is active
             foreach ($assignment->assignedUsers as $user) {
+                if ($assignment->getStatusForUser($user) !== \App\Models\Assignment::STATUS_ACTIVE) {
+                    continue;
+                }
+
                 try {
                     $this->createAssignmentNotification(
                         $user->id,
-                        'assignment_reminder',
+                        self::ASSIGNMENT_REMINDER,
                         'Assignment Due Soon!',
                         "Reminder: '{$assignment->title}' is due {$assignment->deadline->diffForHumans()}",
                         [
@@ -215,67 +222,42 @@ class NotificationService
     public function sendOverdueNotifications(): int
     {
         $sentCount = 0;
-        
-        // Get assignments that just became overdue
-        $allAssignments = \App\Models\Assignment::with(['assignedUsers', 'topic', 'course'])
-            ->where('deadline', '>=', now()->subHours(1))
-            ->whereDoesntHave('notifications', function($query) {
-                $query->where('type', 'assignment_overdue')
-                      ->where('created_at', '>=', now()->subHours(2));
-            })
+
+        $assignments = \App\Models\Assignment::where('deadline', '<', now())
+            ->where('deadline', '>', now()->subDays(7)) // Only check for recently overdue
+            ->with(['assignedUsers', 'course.tutor'])
             ->get();
-            
-        // Filter by computed status since status column doesn't exist
-        $assignments = $allAssignments->filter(function($assignment) {
-            return $assignment->getCurrentStatusAttribute() === \App\Models\Assignment::STATUS_OVERDUE;
-        });
 
         foreach ($assignments as $assignment) {
-            // Send notification to each assigned user
             foreach ($assignment->assignedUsers as $user) {
-                try {
-                    // Notify student
-                    $this->createAssignmentNotification(
-                        $user->id,
-                        'assignment_overdue',
-                        'Assignment Overdue',
-                        "'{$assignment->title}' is now overdue. Please complete it as soon as possible or request an extension.",
-                        [
-                            'assignment_id' => $assignment->id,
-                            'overdue_by' => $assignment->deadline->diffForHumans(),
-                            'action_url' => route('student.assignments.show', $assignment->id)
-                        ]
-                    );
-                    $sentCount++;
-                } catch (\Exception $e) {
-                    Log::error('Failed to send overdue assignment notification', [
-                        'assignment_id' => $assignment->id,
-                        'user_id' => $user->id,
-                        'error' => $e->getMessage()
-                    ]);
-                }
-            }
-            
-            // Notify tutor (if assignment has a tutor relationship)
-            if (method_exists($assignment, 'tutor') && $assignment->tutor) {
-                try {
-                    $this->createAssignmentNotification(
-                        $assignment->tutor->id,
-                        'assignment_overdue_tutor',
-                        'Student Assignment Overdue',
-                        "Assignment '{$assignment->title}' is now overdue.",
-                        [
-                            'assignment_id' => $assignment->id,
-                            'overdue_by' => $assignment->deadline->diffForHumans(),
-                            'action_url' => route('assignments.show', $assignment->id)
-                        ]
-                    );
-                    $sentCount++;
-                } catch (\Exception $e) {
-                    Log::error('Failed to send tutor overdue notification', [
-                        'assignment_id' => $assignment->id,
-                        'error' => $e->getMessage()
-                    ]);
+                // Check if the assignment is locked because it's overdue for this specific user
+                $isOverdue = $assignment->getStatusForUser($user) === \App\Models\Assignment::STATUS_LOCKED && 
+                             $assignment->getLockReasonForUser($user) === 'overdue';
+
+                if ($isOverdue) {
+                    // Check if a notification was sent recently using the UniversalNotificationService's logic
+                    $notifications = UniversalNotificationService::getNotifications($user, 100); // Check recent notifications
+                    $recentNotification = $notifications->first(function ($notification) use ($assignment) {
+                        return $notification['type'] === self::ASSIGNMENT_OVERDUE &&
+                               isset($notification['data']['assignment_id']) &&
+                               $notification['data']['assignment_id'] === $assignment->id &&
+                               Carbon::parse($notification['timestamp'])->gte(now()->subHours(24));
+                    });
+
+                    if (!$recentNotification) {
+                        $this->createAssignmentNotification(
+                            $user->id,
+                            self::ASSIGNMENT_OVERDUE,
+                            'Assignment Overdue',
+                            "'{$assignment->title}' is now overdue. Please complete it as soon as possible or request an extension.",
+                            [
+                                'assignment_id' => $assignment->id,
+                                'overdue_by' => $assignment->deadline->diffForHumans(),
+                                'action_url' => route('student.assignments.show', $assignment->id)
+                            ]
+                        );
+                        $sentCount++;
+                    }
                 }
             }
         }

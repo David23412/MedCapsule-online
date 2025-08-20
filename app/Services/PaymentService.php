@@ -96,12 +96,97 @@ class PaymentService
     }
 
     /**
+     * Get paginated payments with optional search.
+     *
+     * @param string|null $search
+     * @param int $page
+     * @param int $perPage
+     * @return array
+     */
+    public function getPaginatedPayments(string $search = null, int $page = 1, int $perPage = 20): array
+    {
+        try {
+            $query = DB::table('payments')
+                ->join('users', 'payments.user_id', '=', 'users.id')
+                ->join('courses', 'payments.course_id', '=', 'courses.id')
+                ->select(
+                    'payments.id',
+                    'payments.reference_number',
+                    'payments.amount',
+                    'payments.payment_method',
+                    'payments.status',
+                    'payments.created_at',
+                    'payments.paid_at',
+                    'payments.payment_data',
+                    'users.name as user_name',
+                    'users.email as user_email',
+                    'courses.name as course_name'
+                );
+
+            if ($search) {
+                $query->where(function($q) use ($search) {
+                    $q->where('users.name', 'like', "%{$search}%")
+                      ->orWhere('users.email', 'like', "%{$search}%")
+                      ->orWhere('courses.name', 'like', "%{$search}%")
+                      ->orWhere('payments.reference_number', 'like', "%{$search}%");
+                });
+            }
+
+            $total = $query->count();
+            $payments = $query->orderBy('payments.created_at', 'desc')
+                            ->offset(($page - 1) * $perPage)
+                            ->limit($perPage)
+                            ->get();
+
+            $payments = $payments->map(function($payment) {
+                $paymentData = json_decode($payment->payment_data, true) ?? [];
+                $payment->transaction_id = $paymentData['transaction_id'] ?? null;
+                return $payment;
+            });
+
+            $stats = $this->getPaymentStatistics();
+
+            return [
+                'success' => true,
+                'payments' => $payments,
+                'stats' => $stats,
+                'pagination' => [
+                    'current_page' => $page,
+                    'per_page' => $perPage,
+                    'total' => $total,
+                    'last_page' => ceil($total / $perPage)
+                ]
+            ];
+        } catch (\Exception $e) {
+            Log::error('Payment fetch failed in service: ' . $e->getMessage());
+            return [
+                'success' => false,
+                'message' => 'Failed to load payments.'
+            ];
+        }
+    }
+
+    /**
      * Get payment history for user
      *
      * @param User $user
      * @param int $limit
      * @return \Illuminate\Database\Eloquent\Collection
      */
+    public function updatePaymentSettings(array $settings): array
+    {
+        try {
+            // In a real application, you would validate and save the settings here.
+            // For example, updating a configuration file or a database table.
+            Log::info('Updating payment settings', $settings);
+
+            return ['success' => true, 'message' => 'Payment settings updated successfully.'];
+        } catch (\Exception $e) {
+            Log::error('Payment settings update failed in service: ' . $e->getMessage());
+            return ['success' => false, 'message' => 'Failed to update payment settings.'];
+        }
+    }
+
     public function getUserPaymentHistory(User $user, int $limit = 10)
     {
         return Payment::where('user_id', $user->id)

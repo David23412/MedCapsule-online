@@ -128,7 +128,6 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link rel="preload" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" as="style">
     <link rel="preload" href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" as="style">
-    <link rel="preload" href="/js/notification-system.js" as="script">
 
     <!-- NUCLEAR: Load critical CSS immediately -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
@@ -140,10 +139,7 @@
     <link rel="preload" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" as="style" onload="this.onload=null;this.rel='stylesheet'">
     <noscript><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css"></noscript>
 
-    <!-- NUCLEAR: Load notification system with defer for faster page load -->
-    <script src="/js/notification-system.js" defer></script>
-    
-    <!-- CSRF Token - for notification system -->
+    <!-- CSRF Token -->
     <meta name="csrf-token" content="{{ csrf_token() }}">
 
     <!-- NUCLEAR: Instant page loading optimization -->
@@ -2279,9 +2275,9 @@
                         <li class="nav-item dropdown">
                             <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
                                 {{ Auth::user()->name }}
-                                @if(Auth::user()->role === 'admin')
+                                @if(Auth::user()->isAdmin())
                                     <span class="badge bg-warning ms-1">Admin</span>
-                                @elseif(Auth::user()->role === 'tutor')
+                                @elseif(Auth::user()->isTutor())
                                     <span class="badge bg-info ms-1">Tutor</span>
                                 @else
                                     <span class="badge bg-primary ms-1">Student</span>
@@ -2317,7 +2313,7 @@
                                         <i class="fas fa-exclamation-circle me-2"></i>My Mistakes
                                     </a>
                                 </li>
-                                @if(Auth::user()->role === 'admin')
+                                @if(Auth::user()->isAdmin())
                                     <li><hr class="dropdown-divider"></li>
                                     <li class="dropdown-header">
                                         <i class="fas fa-crown me-2 text-warning"></i>Admin Controls
@@ -2364,7 +2360,7 @@
                                         </a>
                                     </li>
                                 @endif
-                                @if(Auth::user()->role === 'tutor')
+                                @if(Auth::user()->isTutor())
                                     <li><hr class="dropdown-divider"></li>
                                     <li>
                                         <a class="dropdown-item" href="{{ route('tutor.dashboard') }}">

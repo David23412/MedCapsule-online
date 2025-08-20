@@ -668,7 +668,7 @@
         border-radius: 6px;
         border-left: none;
         min-width: 200px;
-        max-width: 300px;
+        max-width: 900px;
     }
     
 
@@ -1772,12 +1772,20 @@
     .modal-overlay.show .modal-container {
         transform: scale(1) translateY(0);
     }
+
+    /* Wider container for the edit modal */
+    #editAssignmentModal .modal-container {
+        max-width: 900px; /* Increased width */
+    }
     
     .modal-content-wrapper {
         background: white;
         border-radius: 8px;
         box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
-        overflow: hidden;
+        max-width: 1100px;
+        width: 95%;
+        position: relative;
+        animation: modalEnter 0.3s cubic-bezier(0.4, 0, 0.2, 1) forwards;
     }
     
     .modal-header-custom {
@@ -1820,7 +1828,7 @@
     }
     
     .modal-body-custom {
-        padding: 1.25rem;
+        padding: 2rem 2.5rem;
     }
     
     /* Modal Form Styles */
@@ -2055,9 +2063,6 @@
                 <span id="viewText">Grid</span>
             </button>
             
-            <button type="button" class="btn btn-outline btn-sm" onclick="updateOverdueAssignments()" title="Refresh Assignment Status">
-                <i class="fas fa-refresh"></i>
-            </button>
 
             <a href="{{ route('assignments.create') }}" class="btn btn-success btn-sm">
                 <i class="fas fa-plus"></i>
@@ -2136,7 +2141,7 @@
     <!-- Assignments -->
     <div class="assignment-grid assignments-container">
         @forelse($assignments as $assignment)
-            <div class="assignment-card" data-status="{{ $assignment->getCurrentStatusAttribute() }}" data-assignment-id="{{ $assignment->id }}">
+            <div class="assignment-card" data-status="{{ $assignment->status_string }}" data-assignment-id="{{ $assignment->id }}">
                 <div class="card-content">
                     <!-- Clean Minimal Header -->
                     <div class="card-header">
@@ -2146,7 +2151,7 @@
                                 <span class="course-topic">{{ $assignment->course->name }} • {{ $assignment->topic->name }}</span>
                             </div>
                         </div>
-                        <span class="status-indicator status-{{ $assignment->getCurrentStatusAttribute() }}"></span>
+                        <span class="status-indicator status-{{ $assignment->status_string }}"></span>
                     </div>
 
                     <!-- Clean Card Body -->
@@ -2169,8 +2174,8 @@
                                 <span class="deadline-label">Due</span>
                                 <span class="deadline-date">{{ $assignment->deadline->format('M j, g:i A') }}</span>
                             </div>
-                            @if($assignment->getCurrentStatusAttribute() !== 'completed')
-                                <div class="time-remaining {{ $assignment->isOverdue() ? 'overdue' : '' }}">
+                            @if($assignment->status_string !== 'completed')
+                                <div class="time-remaining {{ $assignment->status_string === 'overdue' ? 'overdue' : '' }}">
                                     {{ $assignment->getTimeRemainingHuman() }}
                                 </div>
                             @endif
@@ -2274,6 +2279,22 @@ window.openEditModal = function(assignmentId) {
         .then(response => response.text())
         .then(html => {
             modalContent.innerHTML = html;
+
+            // Convert hour dropdown to a number input
+            const hourSelect = document.getElementById('deadline_hour');
+            if (hourSelect) {
+                const hourInput = document.createElement('input');
+                hourInput.type = 'number';
+                hourInput.id = 'deadline_hour';
+                hourInput.name = 'deadline_hour';
+                hourInput.className = 'form-control modal-form-control';
+                hourInput.value = hourSelect.value;
+                hourInput.min = '1';
+                hourInput.max = '12';
+                hourInput.required = true;
+                hourSelect.parentNode.replaceChild(hourInput, hourSelect);
+            }
+
             initializeEditForm(assignmentId);
         })
         .catch(error => {
