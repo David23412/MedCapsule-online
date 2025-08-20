@@ -32,18 +32,4 @@ document.addEventListener('contextmenu', function(e) {
     }
 }, true);
 
-// Test skip functionality
-if (typeof window.skipBackward === 'function') {
-    console.log('✅ skipBackward function found');
-} else {
-    console.log('⚠️ skipBackward function not found (will be available when video is loaded)');
-}
-
-if (typeof window.skipForward === 'function') {
-    console.log('✅ skipForward function found');
-} else {
-    console.log('⚠️ skipForward function not found (will be available when video is loaded)');
-}
-
 console.log('🧪 Secure video test completed');
-console.log('🎨 Blue watch bar with skip controls ready!');

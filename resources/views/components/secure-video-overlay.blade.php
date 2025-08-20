@@ -400,52 +400,19 @@
         }
     }
     
-    /* TRUE FULLSCREEN MODE - COMPLETE OVERHAUL */
-    .video-modal.video-expanded {
-        position: fixed !important;
-        top: 0 !important;
-        left: 0 !important;
-        width: 100vw !important;
-        height: 100vh !important;
-        margin: 0 !important;
-        padding: 0 !important;
-        z-index: 99999 !important;
-        background: transparent !important;
-        border: none !important;
-        box-shadow: none !important;
-    }
-    
-    /* Override Bootstrap modal constraints */
+    /* SMART ZOOM - Modal expansion (not iframe) */
     .video-modal.video-expanded .modal-dialog {
-        max-width: none !important;
+        max-width: 100vw !important;
         width: 100vw !important;
         height: 100vh !important;
         margin: 0 !important;
         padding: 0 !important;
-        position: fixed !important;
-        top: 0 !important;
-        left: 0 !important;
-        right: 0 !important;
-        bottom: 0 !important;
-        transform: none !important;
-        border: none !important;
-        box-shadow: none !important;
     }
     
     .video-modal.video-expanded .modal-content {
-        width: 100vw !important;
         height: 100vh !important;
         border-radius: 0 !important;
-        background: transparent !important;
-        position: fixed !important;
-        top: 0 !important;
-        left: 0 !important;
-        right: 0 !important;
-        bottom: 0 !important;
-        border: none !important;
-        box-shadow: none !important;
-        margin: 0 !important;
-        padding: 0 !important;
+        background: #000 !important;
     }
     
     .video-modal.video-expanded .modal-header {
@@ -454,11 +421,10 @@
         left: 0 !important;
         right: 0 !important;
         z-index: 1055 !important;
-        background: rgba(0, 0, 0, 0.8) !important;
+        background: rgba(255, 255, 255, 0.95) !important;
         opacity: 0 !important;
         transition: opacity 0.3s !important;
-        border: none !important;
-        color: white !important;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.1) !important;
     }
     
     .video-modal.video-expanded .modal-header:hover {
@@ -466,80 +432,21 @@
     }
     
     .video-modal.video-expanded .modal-body {
-        width: 100vw !important;
-        height: 100vh !important;
         padding: 0 !important;
-        background: transparent !important;
-        position: fixed !important;
-        top: 0 !important;
-        left: 0 !important;
-        right: 0 !important;
-        bottom: 0 !important;
-        margin: 0 !important;
-        border: none !important;
+        height: 100vh !important;
+        background: #000 !important;
     }
     
     .video-modal.video-expanded .video-container {
-        width: 100vw !important;
         height: 100vh !important;
-        background: transparent !important;
-        position: fixed !important;
-        top: 0 !important;
-        left: 0 !important;
-        right: 0 !important;
-        bottom: 0 !important;
-        margin: 0 !important;
-        padding: 0 !important;
-    }
-    
-    /* Force iframe to full dimensions */
-    .video-modal.video-expanded iframe {
-        width: 100vw !important;
-        height: 100vh !important;
-        position: fixed !important;
-        top: 0 !important;
-        left: 0 !important;
-        right: 0 !important;
-        bottom: 0 !important;
-        margin: 0 !important;
-        padding: 0 !important;
-        border: none !important;
+        background: #000 !important;
     }
     
     /* Ensure security overlay covers entire expanded modal */
     .video-modal.video-expanded .secure-overlay {
-        width: 100vw !important;
-        height: 100vh !important;
+        width: 100% !important;
+        height: 100% !important;
         z-index: 10 !important;
-        position: fixed !important;
-        top: 0 !important;
-        left: 0 !important;
-        right: 0 !important;
-        bottom: 0 !important;
-    }
-    
-    /* Hide ALL other page elements when modal is expanded */
-    .video-modal.video-expanded ~ *,
-    .video-modal.video-expanded + *,
-    body:has(.video-modal.video-expanded) > *:not(.video-modal),
-    body:has(.video-modal.video-expanded) .sidebar,
-    body:has(.video-modal.video-expanded) .col-md-3,
-    body:has(.video-modal.video-expanded) .col-md-4,
-    body:has(.video-modal.video-expanded) .col-lg-3,
-    body:has(.video-modal.video-expanded) .col-lg-4 {
-        display: none !important;
-        visibility: hidden !important;
-    }
-    
-    /* Force body and html to fullscreen */
-    body:has(.video-modal.video-expanded) {
-        overflow: hidden !important;
-        background: transparent !important;
-    }
-    
-    html:has(.video-modal.video-expanded) {
-        overflow: hidden !important;
-        background: transparent !important;
     }
     
     /* Smooth transitions for zoom */
@@ -548,179 +455,6 @@
     .video-modal .video-container {
         transition: all 0.3s ease-out !important;
     }
-    
-    /* EDGE BROWSER SPECIFIC FIXES - ULTRA AGGRESSIVE FULLSCREEN */
-    @supports (-ms-ime-align: auto) {
-        .video-modal.video-expanded {
-            position: fixed !important;
-            top: 0 !important;
-            left: 0 !important;
-            width: 100vw !important;
-            height: 100vh !important;
-            margin: 0 !important;
-            padding: 0 !important;
-            z-index: 99999 !important;
-            background: #000 !important;
-            border: none !important;
-            box-shadow: none !important;
-        }
-        
-        .video-modal.video-expanded .modal-dialog {
-            max-width: none !important;
-            width: 100vw !important;
-            height: 100vh !important;
-            margin: 0 !important;
-            padding: 0 !important;
-            position: fixed !important;
-            top: 0 !important;
-            left: 0 !important;
-            right: 0 !important;
-            bottom: 0 !important;
-            transform: none !important;
-            border: none !important;
-            box-shadow: none !important;
-        }
-        
-        .video-modal.video-expanded .modal-content {
-            width: 100vw !important;
-            height: 100vh !important;
-            border-radius: 0 !important;
-            background: #000 !important;
-            position: fixed !important;
-            top: 0 !important;
-            left: 0 !important;
-            right: 0 !important;
-            bottom: 0 !important;
-            border: none !important;
-            box-shadow: none !important;
-            margin: 0 !important;
-            padding: 0 !important;
-        }
-        
-        .video-modal.video-expanded .modal-body {
-            width: 100vw !important;
-            height: 100vh !important;
-            padding: 0 !important;
-            background: #000 !important;
-            position: fixed !important;
-            top: 0 !important;
-            left: 0 !important;
-            right: 0 !important;
-            bottom: 0 !important;
-            margin: 0 !important;
-            border: none !important;
-        }
-        
-        .video-modal.video-expanded .video-container {
-            width: 100vw !important;
-            height: 100vh !important;
-            background: #000 !important;
-            position: fixed !important;
-            top: 0 !important;
-            left: 0 !important;
-            right: 0 !important;
-            bottom: 0 !important;
-            margin: 0 !important;
-            padding: 0 !important;
-        }
-        
-        /* Force iframe to full dimensions in Edge */
-        .video-modal.video-expanded iframe {
-            width: 100vw !important;
-            height: 100vh !important;
-            position: fixed !important;
-            top: 0 !important;
-            left: 0 !important;
-            right: 0 !important;
-            bottom: 0 !important;
-            margin: 0 !important;
-            padding: 0 !important;
-            border: none !important;
-        }
-        
-        /* Remove black shadow in Edge */
-        .video-modal.video-expanded .modal-backdrop {
-            background: #000 !important;
-            opacity: 1 !important;
-        }
-        
-        /* Force Edge to hide ALL other elements */
-        .video-modal.video-expanded ~ *,
-        .video-modal.video-expanded + *,
-        body:has(.video-modal.video-expanded) > *:not(.video-modal) {
-            display: none !important;
-            visibility: hidden !important;
-        }
-        
-        /* Force body and html to fullscreen in Edge */
-        body:has(.video-modal.video-expanded) {
-            overflow: hidden !important;
-            background: #000 !important;
-        }
-        
-        html:has(.video-modal.video-expanded) {
-            overflow: hidden !important;
-            background: #000 !important;
-        }
-    }
-    
-    /* MICROSOFT EDGE SPECIFIC DETECTION */
-    @media all and (-ms-high-contrast: none), (-ms-high-contrast: active) {
-        .video-modal.video-expanded .modal-dialog {
-            max-width: 100vw !important;
-            width: 100vw !important;
-            height: 100vh !important;
-            margin: 0 !important;
-            padding: 0 !important;
-            position: fixed !important;
-            top: 0 !important;
-            left: 0 !important;
-            right: 0 !important;
-            bottom: 0 !important;
-        }
-        
-        .video-modal.video-expanded .modal-content {
-            height: 100vh !important;
-            border-radius: 0 !important;
-            background: #000 !important;
-            position: absolute !important;
-            top: 0 !important;
-            left: 0 !important;
-            right: 0 !important;
-            bottom: 0 !important;
-        }
-        
-        .video-modal.video-expanded .modal-body {
-            padding: 0 !important;
-            height: 100vh !important;
-            background: #000 !important;
-            position: absolute !important;
-            top: 0 !important;
-            left: 0 !important;
-            right: 0 !important;
-            bottom: 0 !important;
-        }
-        
-        .video-modal.video-expanded .video-container {
-            height: 100vh !important;
-            background: #000 !important;
-            position: absolute !important;
-            top: 0 !important;
-            left: 0 !important;
-            right: 0 !important;
-            bottom: 0 !important;
-        }
-        
-        /* Remove black shadow in Edge */
-        .video-modal.video-expanded {
-            background: #000 !important;
-        }
-        
-        .video-modal.video-expanded .modal-backdrop {
-            background: #000 !important;
-            opacity: 1 !important;
-        }
-    }
 
     /* Disable text selection globally on video modal */
     .video-modal * {
@@ -728,37 +462,6 @@
         -moz-user-select: none;
         -ms-user-select: none;
         user-select: none;
-    }
-    
-    /* Hover effects for skip buttons */
-    .skip-backward-btn:hover,
-    .skip-forward-btn:hover {
-        background: rgba(37, 99, 235, 1) !important;
-        transform: scale(1.1);
-        box-shadow: 0 4px 15px rgba(37, 99, 235, 0.5) !important;
-    }
-    
-    /* Hover effects for play/pause button */
-    .custom-play-pause-btn:hover {
-        background: rgba(37, 99, 235, 1) !important;
-        transform: scale(1.05);
-        box-shadow: 0 5px 20px rgba(37, 99, 235, 0.6) !important;
-    }
-    
-    /* Hover effects for fullscreen button */
-    .fullscreen-btn:hover {
-        background: rgba(37, 99, 235, 1) !important;
-        transform: scale(1.1);
-        box-shadow: 0 4px 15px rgba(37, 99, 235, 0.5) !important;
-    }
-    
-    /* Progress bar hover effect */
-    .progress-bar:hover {
-        background: rgba(255,255,255,0.25) !important;
-    }
-    
-    .progress-bar:hover .progress-fill {
-        box-shadow: 0 0 15px rgba(37, 99, 235, 0.7) !important;
     }
 </style>
 
@@ -811,15 +514,11 @@ window.playVideo = function(videoId, videoTitle) {
         modal.classList.add('show');
     }, 150);
     
-    // Initialize resize functionality - SMART ZOOM (modal only, not iframe) - ENHANCED FOR EDGE
+    // Initialize resize functionality - SMART ZOOM (modal only, not iframe)
     const resizeBtn = document.getElementById('resizeVideoBtn');
     if (resizeBtn) {
         resizeBtn.addEventListener('click', function() {
             const isExpanded = modal.classList.contains('video-expanded');
-            const isEdge = navigator.userAgent.includes('Edge') || navigator.userAgent.includes('Edg');
-            
-            console.log('🔍 Zoom button clicked. Is Edge:', isEdge, 'Is expanded:', isExpanded);
-            
             if (isExpanded) {
                 // Compress modal back to normal size
                 modal.classList.remove('video-expanded');
@@ -832,39 +531,6 @@ window.playVideo = function(videoId, videoTitle) {
                     overlay.style.width = '100%';
                     overlay.style.height = '100%';
                 }
-                
-                // Cleanup for TRUE fullscreen solution
-                if (isEdge) {
-                    console.log('🔧 Cleaning up TRUE fullscreen solution...');
-                    
-                    // Remove the fullscreen container if it exists
-                    const fullscreenContainer = document.getElementById('true-fullscreen-container');
-                    if (fullscreenContainer) {
-                        document.body.removeChild(fullscreenContainer);
-                    }
-                    
-                    // Show the original modal
-                    modal.style.display = '';
-                    
-                    // Show all hidden elements
-                    const allElements = document.querySelectorAll('*');
-                    allElements.forEach(element => {
-                        if ((element.style.display === 'none' || element.style.visibility === 'hidden') && 
-                            element !== modal &&
-                            !element.closest('.video-modal')) {
-                            element.style.display = '';
-                            element.style.visibility = '';
-                        }
-                    });
-                    
-                    // Reset body and html
-                    document.body.style.overflow = '';
-                    document.body.style.background = '';
-                    document.documentElement.style.overflow = '';
-                    document.documentElement.style.background = '';
-                    
-                    console.log('✅ TRUE fullscreen cleanup finished');
-                }
             } else {
                 // Expand modal to full screen (NOT the iframe)
                 modal.classList.add('video-expanded');
@@ -876,155 +542,6 @@ window.playVideo = function(videoId, videoTitle) {
                 if (overlay) {
                     overlay.style.width = '100%';
                     overlay.style.height = '100%';
-                }
-                
-                // TRUE FULLSCREEN SOLUTION - BYPASS BOOTSTRAP ENTIRELY
-                if (isEdge) {
-                    console.log('🔧 Applying TRUE fullscreen solution...');
-                    
-                    // Create a new fullscreen container that bypasses Bootstrap
-                    const fullscreenContainer = document.createElement('div');
-                    fullscreenContainer.id = 'true-fullscreen-container';
-                    fullscreenContainer.style.cssText = `
-                        position: fixed !important;
-                        top: 0 !important;
-                        left: 0 !important;
-                        width: 100vw !important;
-                        height: 100vh !important;
-                        z-index: 99999 !important;
-                        background: transparent !important;
-                        margin: 0 !important;
-                        padding: 0 !important;
-                        border: none !important;
-                        box-shadow: none !important;
-                    `;
-                    
-                    // Move the video container to the fullscreen container
-                    const videoContainer = modal.querySelector('.video-container');
-                    if (videoContainer) {
-                        // Clone the video container
-                        const clonedVideoContainer = videoContainer.cloneNode(true);
-                        fullscreenContainer.appendChild(clonedVideoContainer);
-                        
-                        // Style the cloned container for fullscreen
-                        clonedVideoContainer.style.cssText = `
-                            width: 100vw !important;
-                            height: 100vh !important;
-                            background: transparent !important;
-                            position: absolute !important;
-                            top: 0 !important;
-                            left: 0 !important;
-                            right: 0 !important;
-                            bottom: 0 !important;
-                            margin: 0 !important;
-                            padding: 0 !important;
-                            border: none !important;
-                        `;
-                        
-                        // Style the iframe for fullscreen
-                        const iframe = clonedVideoContainer.querySelector('iframe');
-                        if (iframe) {
-                            iframe.style.cssText = `
-                                width: 100vw !important;
-                                height: 100vh !important;
-                                position: absolute !important;
-                                top: 0 !important;
-                                left: 0 !important;
-                                right: 0 !important;
-                                bottom: 0 !important;
-                                margin: 0 !important;
-                                padding: 0 !important;
-                                border: none !important;
-                            `;
-                        }
-                        
-                        // Style the secure overlay for fullscreen
-                        const overlay = clonedVideoContainer.querySelector('.secure-overlay');
-                        if (overlay) {
-                            overlay.style.cssText = `
-                                width: 100vw !important;
-                                height: 100vh !important;
-                                position: absolute !important;
-                                top: 0 !important;
-                                left: 0 !important;
-                                right: 0 !important;
-                                bottom: 0 !important;
-                                z-index: 10 !important;
-                            `;
-                        }
-                        
-                        // Style the custom controls for fullscreen
-                        const controls = clonedVideoContainer.querySelector('.custom-youtube-controls');
-                        if (controls) {
-                            controls.style.cssText = `
-                                position: absolute !important;
-                                bottom: 0 !important;
-                                left: 0 !important;
-                                right: 0 !important;
-                                background: linear-gradient(transparent, rgba(0,0,0,0.9)) !important;
-                                padding: 1.5rem !important;
-                                display: flex !important;
-                                align-items: center !important;
-                                gap: 1rem !important;
-                                opacity: 0 !important;
-                                transition: opacity 0.3s ease !important;
-                                z-index: 30 !important;
-                                pointer-events: auto !important;
-                            `;
-                        }
-                    }
-                    
-                    // Add close button to fullscreen container
-                    const closeButton = document.createElement('button');
-                    closeButton.innerHTML = '<i class="fas fa-times"></i>';
-                    closeButton.style.cssText = `
-                        position: fixed !important;
-                        top: 20px !important;
-                        right: 20px !important;
-                        z-index: 100000 !important;
-                        background: rgba(0, 0, 0, 0.8) !important;
-                        color: white !important;
-                        border: none !important;
-                        border-radius: 50% !important;
-                        width: 50px !important;
-                        height: 50px !important;
-                        cursor: pointer !important;
-                        font-size: 1.5rem !important;
-                    `;
-                    closeButton.onclick = function() {
-                        document.body.removeChild(fullscreenContainer);
-                        modal.classList.remove('video-expanded');
-                        resizeBtn.innerHTML = '<i class="fas fa-expand"></i>';
-                        resizeBtn.title = 'Expand video';
-                    };
-                    fullscreenContainer.appendChild(closeButton);
-                    
-                    // Add the fullscreen container to the body
-                    document.body.appendChild(fullscreenContainer);
-                    
-                    // Hide the original modal
-                    modal.style.display = 'none';
-                    
-                    // Hide all other page elements
-                    const allElements = document.querySelectorAll('*');
-                    allElements.forEach(element => {
-                        if (element !== fullscreenContainer && 
-                            !fullscreenContainer.contains(element) &&
-                            element !== document.body &&
-                            element !== document.documentElement &&
-                            element !== document.head) {
-                            element.style.display = 'none';
-                            element.style.visibility = 'hidden';
-                        }
-                    });
-                    
-                    // Force body and html to fullscreen
-                    document.body.style.overflow = 'hidden';
-                    document.body.style.background = 'transparent';
-                    document.documentElement.style.overflow = 'hidden';
-                    document.documentElement.style.background = 'transparent';
-                    
-                    console.log('✅ TRUE fullscreen solution applied');
                 }
             }
         });
@@ -1044,55 +561,27 @@ window.playVideo = function(videoId, videoTitle) {
         stopVideoAndCleanup();
     });
     
-    // Function to stop video and cleanup - ENHANCED FOR EDGE COMPATIBILITY
+    // Function to stop video and cleanup
     function stopVideoAndCleanup() {
         console.log('🛑 Stopping video and cleaning up...');
-        console.log('🌐 Browser detected:', navigator.userAgent);
         
         // Use global cleanup function if available
         if (typeof window.stopAllVideos === 'function') {
             window.stopAllVideos();
         } else {
-            // Enhanced fallback cleanup for Edge compatibility
+            // Fallback cleanup
             const iframe = videoContainer.querySelector('iframe[id^="hidden-youtube-player"]');
             if (iframe && iframe.id) {
                 try {
-                    // Try multiple methods to stop the video
                     if (window.YT && window.YT.get) {
                         const player = window.YT.get(iframe.id);
                         if (player && typeof player.stopVideo === 'function') {
                             player.stopVideo();
-                            console.log('✅ YouTube player stopped via YT.get');
+                            console.log('✅ YouTube player stopped');
                         }
                     }
-                    
-                    // Alternative method for Edge
-                    if (window.YT && window.YT.Player) {
-                        const player = new window.YT.Player(iframe.id);
-                        if (player && typeof player.stopVideo === 'function') {
-                            player.stopVideo();
-                            console.log('✅ YouTube player stopped via YT.Player');
-                        }
-                    }
-                    
-                    // Force iframe reload as last resort
-                    if (iframe.src) {
-                        const currentSrc = iframe.src;
-                        iframe.src = '';
-                        setTimeout(() => {
-                            iframe.src = currentSrc.replace('autoplay=1', 'autoplay=0');
-                        }, 100);
-                        console.log('✅ Iframe reloaded to stop video');
-                    }
-                    
                 } catch (error) {
                     console.log('⚠️ Could not stop YouTube player directly:', error);
-                    
-                    // Force stop by removing iframe
-                    if (iframe.parentNode) {
-                        iframe.parentNode.removeChild(iframe);
-                        console.log('✅ Iframe removed to force stop');
-                    }
                 }
             }
             
@@ -1101,12 +590,6 @@ window.playVideo = function(videoId, videoTitle) {
                 clearInterval(window.videoProgressInterval);
                 window.videoProgressInterval = null;
             }
-            
-            // Clear any other video-related intervals
-            const intervals = window.videoProgressInterval ? [window.videoProgressInterval] : [];
-            intervals.forEach(interval => {
-                if (interval) clearInterval(interval);
-            });
         }
         
         // Reset video container
@@ -1134,50 +617,44 @@ window.playVideo = function(videoId, videoTitle) {
             const youtubeId = videoData.video.youtube_video_id;
             console.log('✅ YouTube video ID found:', youtubeId);
             
-                            // Create SECURE YouTube custom player using component function
-            console.log('🎬 Creating secure video overlay...');
-            console.log('🔍 generateSecureVideoOverlay function available:', typeof window.generateSecureVideoOverlay);
-            
-            if (typeof window.generateSecureVideoOverlay === 'function') {
-                const overlayHTML = window.generateSecureVideoOverlay(youtubeId, videoTitle, true, true);
-                console.log('✅ Generated overlay HTML:', overlayHTML.substring(0, 200) + '...');
-                videoContainer.innerHTML = overlayHTML;
-                
-                // Initialize secure video player with maximum security
-                if (typeof window.initializeSecureVideoPlayer === 'function') {
-                    console.log('✅ Initializing secure video player...');
-                    window.initializeSecureVideoPlayer(videoContainer, youtubeId);
-                } else {
-                    console.error('❌ initializeSecureVideoPlayer function not found');
-                }
-            } else {
-                console.error('❌ generateSecureVideoOverlay function not found. Loading fallback...');
-                // Fallback to secure iframe with maximum security
-                videoContainer.innerHTML = `
-                    <div class="secure-video-wrapper" style="width: 100%; height: 100%; background: #000; position: relative; overflow: hidden; user-select: none;">
-                        <iframe 
-                            src="https://www.youtube-nocookie.com/embed/${youtubeId}?autoplay=1&rel=0&modestbranding=1&showinfo=0&controls=0&disablekb=1&fs=0&iv_load_policy=3&playsinline=1&origin=${encodeURIComponent(window.location.origin)}"
-                            style="width: 100%; height: 100%; border: none; display: block; pointer-events: none;"
-                            frameborder="0"
-                            allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture"
-                            title="${videoTitle}"
-                            oncontextmenu="return false;"
-                            onmousedown="return false;"
-                            onselectstart="return false;"
-                            oncopy="return false;"
-                            oncut="return false;"
-                            onpaste="return false;"
-                            ondragstart="return false;"
-                            ondrop="return false;"
-                            onkeydown="return false;"
-                            onkeyup="return false;"
-                            onkeypress="return false;"
-                        ></iframe>
-                        <!-- Security overlay to block all interactions -->
-                        <div class="secure-overlay" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 10; background: transparent; pointer-events: auto; cursor: pointer;" oncontextmenu="return false;" onmousedown="return false;" onselectstart="return false;" oncopy="return false;" oncut="return false;" onpaste="return false;" ondragstart="return false;" ondrop="return false;" onkeydown="return false;" onkeyup="return false;" onkeypress="return false;"></div>
-                    </div>
-                `;
-            }
+                // Create SECURE YouTube custom player using component function
+    if (typeof window.generateSecureVideoOverlay === 'function') {
+        videoContainer.innerHTML = window.generateSecureVideoOverlay(youtubeId, videoTitle, true, true);
+        
+        // Initialize secure video player with maximum security
+        if (typeof window.initializeSecureVideoPlayer === 'function') {
+            window.initializeSecureVideoPlayer(videoContainer, youtubeId);
+        } else {
+            console.error('❌ initializeSecureVideoPlayer function not found');
+        }
+    } else {
+        console.error('❌ generateSecureVideoOverlay function not found. Loading fallback...');
+        // Fallback to secure iframe with maximum security
+        videoContainer.innerHTML = `
+            <div class="secure-video-wrapper" style="width: 100%; height: 100%; background: #000; position: relative; overflow: hidden; user-select: none;">
+                <iframe 
+                    src="https://www.youtube-nocookie.com/embed/${youtubeId}?autoplay=1&rel=0&modestbranding=1&showinfo=0&controls=0&disablekb=1&fs=0&iv_load_policy=3&playsinline=1&origin=${encodeURIComponent(window.location.origin)}"
+                    style="width: 100%; height: 100%; border: none; display: block; pointer-events: none;"
+                    frameborder="0"
+                    allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture"
+                    title="${videoTitle}"
+                    oncontextmenu="return false;"
+                    onmousedown="return false;"
+                    onselectstart="return false;"
+                    oncopy="return false;"
+                    oncut="return false;"
+                    onpaste="return false;"
+                    ondragstart="return false;"
+                    ondrop="return false;"
+                    onkeydown="return false;"
+                    onkeyup="return false;"
+                    onkeypress="return false;"
+                ></iframe>
+                <!-- Security overlay to block all interactions -->
+                <div class="secure-overlay" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 10; background: transparent; pointer-events: auto; cursor: pointer;" oncontextmenu="return false;" onmousedown="return false;" onselectstart="return false;" oncopy="return false;" oncut="return false;" onpaste="return false;" ondragstart="return false;" ondrop="return false;" onkeydown="return false;" onkeyup="return false;" onkeypress="return false;"></div>
+            </div>
+        `;
+    }
             
             console.log('✅ Secure YouTube custom player created successfully');
         } else {
@@ -1307,6 +784,3 @@ document.addEventListener('DOMContentLoaded', function() {
 
 <!-- Test script to verify implementation -->
 <script src="/js/test-secure-video.js"></script>
-
-<!-- Debug script to identify issues -->
-<script src="/js/debug-video-player.js"></script>

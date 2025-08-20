@@ -14,9 +14,6 @@ function isCrossOriginEnvironment() {
 
 // Generate secure video overlay HTML
 window.generateSecureVideoOverlay = function(youtubeId, videoTitle, autoplay = true, showControls = true) {
-    console.log('🎬 Generating secure video overlay...');
-    console.log('📊 Parameters:', { youtubeId, videoTitle, autoplay, showControls });
-    
     const autoplayParam = autoplay ? '1' : '0';
     
     // Generate unique IDs for this instance
@@ -24,8 +21,6 @@ window.generateSecureVideoOverlay = function(youtubeId, videoTitle, autoplay = t
     const iframeId = `hidden-youtube-player-${Date.now()}`;
     const overlayId = `secure-overlay-${Date.now()}`;
     const controlsId = `custom-controls-${Date.now()}`;
-    
-    console.log('🆔 Generated IDs:', { wrapperId, iframeId, overlayId, controlsId });
     
     return `
         <div id="${wrapperId}" class="secure-video-wrapper" style="
@@ -98,13 +93,13 @@ window.generateSecureVideoOverlay = function(youtubeId, videoTitle, autoplay = t
             ></div>
             
             ${showControls ? `
-            <!-- CUSTOM CONTROLS OVERLAY - Minimal, clean interface with blue watch bar -->
+            <!-- CUSTOM CONTROLS OVERLAY - Minimal, clean interface -->
             <div id="${controlsId}" class="custom-youtube-controls" style="
                 position: absolute;
                 bottom: 0;
                 left: 0;
                 right: 0;
-                background: linear-gradient(transparent, rgba(0,0,0,0.9));
+                background: linear-gradient(transparent, rgba(0,0,0,0.8));
                 padding: 1.5rem;
                 display: flex;
                 align-items: center;
@@ -124,52 +119,22 @@ window.generateSecureVideoOverlay = function(youtubeId, videoTitle, autoplay = t
             ondrop="return false;"
             >
 
-                <!-- Skip Backward 10s Button -->
-                <button class="skip-backward-btn" style="
-                    background: rgba(37, 99, 235, 0.8);
-                    color: white;
-                    border: none;
-                    border-radius: 50%;
-                    width: 40px;
-                    height: 40px;
-                    cursor: pointer;
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
-                    font-size: 1.2rem;
-                    transition: all 0.2s ease;
-                    backdrop-filter: blur(10px);
-                    box-shadow: 0 2px 8px rgba(37, 99, 235, 0.3);
-                " 
-                oncontextmenu="return false;"
-                onmousedown="return false;"
-                onselectstart="return false;"
-                oncopy="return false;"
-                oncut="return false;"
-                onpaste="return false;"
-                ondragstart="return false;"
-                ondrop="return false;"
-                aria-label="Skip backward 10 seconds"
-                >
-                    <i class="fas fa-backward" style="font-size: 0.9rem;"></i>
-                </button>
-
                 <!-- Play/Pause Button -->
                 <button class="custom-play-pause-btn" style="
-                    background: rgba(37, 99, 235, 0.9);
+                    background: rgba(255,255,255,0.1);
                     color: white;
-                    border: none;
-                    border-radius: 50%;
-                    width: 45px;
-                    height: 45px;
+                    border: 1px solid rgba(255,255,255,0.2);
+                    border-radius: 4px;
+                    padding: 0.5rem;
                     cursor: pointer;
+                    transition: all 0.2s ease;
+                    font-size: 1rem;
+                    min-width: 40px;
+                    height: 40px;
                     display: flex;
                     align-items: center;
                     justify-content: center;
-                    font-size: 1.3rem;
-                    transition: all 0.2s ease;
                     backdrop-filter: blur(10px);
-                    box-shadow: 0 3px 12px rgba(37, 99, 235, 0.4);
                 " 
                 oncontextmenu="return false;"
                 onmousedown="return false;"
@@ -183,47 +148,15 @@ window.generateSecureVideoOverlay = function(youtubeId, videoTitle, autoplay = t
                 >
                     <i class="fas fa-play"></i>
                 </button>
-
-                <!-- Skip Forward 10s Button -->
-                <button class="skip-forward-btn" style="
-                    background: rgba(37, 99, 235, 0.8);
-                    color: white;
-                    border: none;
-                    border-radius: 50%;
-                    width: 40px;
-                    height: 40px;
-                    cursor: pointer;
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
-                    font-size: 1.2rem;
-                    transition: all 0.2s ease;
-                    backdrop-filter: blur(10px);
-                    box-shadow: 0 2px 8px rgba(37, 99, 235, 0.3);
-                " 
-                oncontextmenu="return false;"
-                onmousedown="return false;"
-                onselectstart="return false;"
-                oncopy="return false;"
-                oncut="return false;"
-                onpaste="return false;"
-                ondragstart="return false;"
-                ondrop="return false;"
-                aria-label="Skip forward 10 seconds"
-                >
-                    <i class="fas fa-forward" style="font-size: 0.9rem;"></i>
-                </button>
                 
-                <!-- BLUE WATCH BAR - Progress bar -->
                 <div class="progress-bar" style="
                     flex: 1;
-                    height: 8px;
-                    background: rgba(255,255,255,0.15);
-                    border-radius: 4px;
+                    height: 6px;
+                    background: rgba(255,255,255,0.2);
+                    border-radius: 3px;
                     cursor: pointer;
                     position: relative;
                     overflow: hidden;
-                    box-shadow: inset 0 1px 3px rgba(0,0,0,0.3);
                 " 
                 oncontextmenu="return false;"
                 onmousedown="return false;"
@@ -236,21 +169,20 @@ window.generateSecureVideoOverlay = function(youtubeId, videoTitle, autoplay = t
                 >
                     <div class="progress-fill" style="
                         height: 100%;
-                        background: linear-gradient(90deg, #2563eb, #3b82f6, #60a5fa);
-                        border-radius: 4px;
+                        background: linear-gradient(90deg, #2563eb, #3b82f6);
+                        border-radius: 3px;
                         width: 0%;
                         transition: width 0.1s ease;
                         position: relative;
-                        box-shadow: 0 0 10px rgba(37, 99, 235, 0.5);
                     ">
                         <div class="progress-glow" style="
                             position: absolute;
                             top: 0;
                             right: 0;
-                            width: 30px;
+                            width: 20px;
                             height: 100%;
-                            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.4));
-                            border-radius: 4px;
+                            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3));
+                            border-radius: 3px;
                         "></div>
                     </div>
                 </div>
@@ -260,30 +192,26 @@ window.generateSecureVideoOverlay = function(youtubeId, videoTitle, autoplay = t
                     font-size: 0.9rem;
                     min-width: 120px;
                     text-align: center;
-                    font-weight: 600;
-                    text-shadow: 0 1px 3px rgba(0,0,0,0.8);
+                    font-weight: 500;
+                    text-shadow: 0 1px 2px rgba(0,0,0,0.8);
                     user-select: none;
-                    background: rgba(37, 99, 235, 0.2);
-                    padding: 0.3rem 0.8rem;
-                    border-radius: 4px;
-                    backdrop-filter: blur(10px);
                 ">0:00 / 0:00</div>
                 
                 <button class="fullscreen-btn" style="
-                    background: rgba(37, 99, 235, 0.8);
+                    background: rgba(255,255,255,0.1);
                     color: white;
-                    border: none;
-                    border-radius: 50%;
-                    width: 40px;
-                    height: 40px;
+                    border: 1px solid rgba(255,255,255,0.2);
+                    border-radius: 4px;
+                    padding: 0.4rem;
                     cursor: pointer;
+                    transition: all 0.2s ease;
+                    font-size: 0.9rem;
+                    min-width: 32px;
+                    height: 32px;
                     display: flex;
                     align-items: center;
                     justify-content: center;
-                    font-size: 1.1rem;
-                    transition: all 0.2s ease;
                     backdrop-filter: blur(10px);
-                    box-shadow: 0 2px 8px rgba(37, 99, 235, 0.3);
                 " 
                 oncontextmenu="return false;"
                 onmousedown="return false;"
@@ -339,325 +267,6 @@ window.generateSecureVideoOverlay = function(youtubeId, videoTitle, autoplay = t
 
         </div>
     `;
-    
-    const generatedHTML = `
-        <div id="${wrapperId}" class="secure-video-wrapper" style="
-            width: 100%; 
-            height: 100%; 
-            background: #000; 
-            position: relative; 
-            overflow: hidden;
-            user-select: none;
-            -webkit-user-select: none;
-            -moz-user-select: none;
-            -ms-user-select: none;
-        ">
-            <!-- SECURE YOUTUBE PLAYER - Completely hidden iframe -->
-            <iframe 
-                id="${iframeId}"
-                src="https://www.youtube-nocookie.com/embed/${youtubeId}?autoplay=${autoplayParam}&rel=0&modestbranding=1&showinfo=0&controls=0&disablekb=1&fs=0&iv_load_policy=3&playsinline=1&enablejsapi=1&cc_load_policy=0&color=white&hl=en&origin=${encodeURIComponent(window.location.origin)}&widget_referrer=${encodeURIComponent(window.location.href)}"
-                style="
-                    width: 100%; 
-                    height: 100%; 
-                    border: none; 
-                    display: block; 
-                    position: absolute; 
-                    top: 0; 
-                    left: 0; 
-                    z-index: 1;
-                    pointer-events: none;
-                    opacity: 0.99;
-                "
-                frameborder="0"
-                allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture"
-                sandbox="allow-scripts allow-same-origin allow-forms"
-                title="${videoTitle}"
-                oncontextmenu="return false;"
-                onmousedown="return false;"
-                onselectstart="return false;"
-                oncopy="return false;"
-                oncut="return false;"
-                onpaste="return false;"
-                ondragstart="return false;"
-                ondrop="return false;"
-                onkeydown="return false;"
-                onkeyup="return false;"
-                onkeypress="return false;"
-            ></iframe>
-            
-            <!-- INVISIBLE SECURITY OVERLAY - Blocks ALL interactions -->
-            <div id="${overlayId}" class="secure-overlay" style="
-                position: absolute;
-                top: 0;
-                left: 0;
-                width: 100%;
-                height: 100%;
-                z-index: 10;
-                background: transparent;
-                pointer-events: auto;
-                cursor: pointer;
-            " 
-            oncontextmenu="return false;"
-            onmousedown="return false;"
-            onselectstart="return false;"
-            oncopy="return false;"
-            oncut="return false;"
-            onpaste="return false;"
-            ondragstart="return false;"
-            ondrop="return false;"
-            onkeydown="return false;"
-            onkeyup="return false;"
-            onkeypress="return false;"
-            ></div>
-            
-            ${showControls ? `
-            <!-- CUSTOM CONTROLS OVERLAY - Minimal, clean interface with blue watch bar -->
-            <div id="${controlsId}" class="custom-youtube-controls" style="
-                position: absolute;
-                bottom: 0;
-                left: 0;
-                right: 0;
-                background: linear-gradient(transparent, rgba(0,0,0,0.9));
-                padding: 1.5rem;
-                display: flex;
-                align-items: center;
-                gap: 1rem;
-                opacity: 0;
-                transition: opacity 0.3s ease;
-                z-index: 30;
-                pointer-events: auto;
-            " 
-            oncontextmenu="return false;"
-            onmousedown="return false;"
-            onselectstart="return false;"
-            oncopy="return false;"
-            oncut="return false;"
-            onpaste="return false;"
-            ondragstart="return false;"
-            ondrop="return false;"
-            >
-
-                <!-- Skip Backward 10s Button -->
-                <button class="skip-backward-btn" style="
-                    background: rgba(37, 99, 235, 0.8);
-                    color: white;
-                    border: none;
-                    border-radius: 50%;
-                    width: 40px;
-                    height: 40px;
-                    cursor: pointer;
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
-                    font-size: 1.2rem;
-                    transition: all 0.2s ease;
-                    backdrop-filter: blur(10px);
-                    box-shadow: 0 2px 8px rgba(37, 99, 235, 0.3);
-                " 
-                oncontextmenu="return false;"
-                onmousedown="return false;"
-                onselectstart="return false;"
-                oncopy="return false;"
-                oncut="return false;"
-                onpaste="return false;"
-                ondragstart="return false;"
-                ondrop="return false;"
-                aria-label="Skip backward 10 seconds"
-                >
-                    <i class="fas fa-backward" style="font-size: 0.9rem;"></i>
-                </button>
-
-                <!-- Play/Pause Button -->
-                <button class="custom-play-pause-btn" style="
-                    background: rgba(37, 99, 235, 0.9);
-                    color: white;
-                    border: none;
-                    border-radius: 50%;
-                    width: 45px;
-                    height: 45px;
-                    cursor: pointer;
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
-                    font-size: 1.3rem;
-                    transition: all 0.2s ease;
-                    backdrop-filter: blur(10px);
-                    box-shadow: 0 3px 12px rgba(37, 99, 235, 0.4);
-                " 
-                oncontextmenu="return false;"
-                onmousedown="return false;"
-                onselectstart="return false;"
-                oncopy="return false;"
-                oncut="return false;"
-                onpaste="return false;"
-                ondragstart="return false;"
-                ondrop="return false;"
-                aria-label="Play/Pause video"
-                >
-                    <i class="fas fa-play"></i>
-                </button>
-
-                <!-- Skip Forward 10s Button -->
-                <button class="skip-forward-btn" style="
-                    background: rgba(37, 99, 235, 0.8);
-                    color: white;
-                    border: none;
-                    border-radius: 50%;
-                    width: 40px;
-                    height: 40px;
-                    cursor: pointer;
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
-                    font-size: 1.2rem;
-                    transition: all 0.2s ease;
-                    backdrop-filter: blur(10px);
-                    box-shadow: 0 2px 8px rgba(37, 99, 235, 0.3);
-                " 
-                oncontextmenu="return false;"
-                onmousedown="return false;"
-                onselectstart="return false;"
-                oncopy="return false;"
-                oncut="return false;"
-                onpaste="return false;"
-                ondragstart="return false;"
-                ondrop="return false;"
-                aria-label="Skip forward 10 seconds"
-                >
-                    <i class="fas fa-forward" style="font-size: 0.9rem;"></i>
-                </button>
-                
-                <!-- BLUE WATCH BAR - Progress bar -->
-                <div class="progress-bar" style="
-                    flex: 1;
-                    height: 8px;
-                    background: rgba(255,255,255,0.15);
-                    border-radius: 4px;
-                    cursor: pointer;
-                    position: relative;
-                    overflow: hidden;
-                    box-shadow: inset 0 1px 3px rgba(0,0,0,0.3);
-                " 
-                oncontextmenu="return false;"
-                onmousedown="return false;"
-                onselectstart="return false;"
-                oncopy="return false;"
-                oncut="return false;"
-                onpaste="return false;"
-                ondragstart="return false;"
-                ondrop="return false;"
-                >
-                    <div class="progress-fill" style="
-                        height: 100%;
-                        background: linear-gradient(90deg, #2563eb, #3b82f6, #60a5fa);
-                        border-radius: 4px;
-                        width: 0%;
-                        transition: width 0.1s ease;
-                        position: relative;
-                        box-shadow: 0 0 10px rgba(37, 99, 235, 0.5);
-                    ">
-                        <div class="progress-glow" style="
-                            position: absolute;
-                            top: 0;
-                            right: 0;
-                            width: 30px;
-                            height: 100%;
-                            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.4));
-                            border-radius: 4px;
-                        "></div>
-                    </div>
-                </div>
-                
-                <div class="time-display" style="
-                    color: white;
-                    font-size: 0.9rem;
-                    min-width: 120px;
-                    text-align: center;
-                    font-weight: 600;
-                    text-shadow: 0 1px 3px rgba(0,0,0,0.8);
-                    user-select: none;
-                    background: rgba(37, 99, 235, 0.2);
-                    padding: 0.3rem 0.8rem;
-                    border-radius: 4px;
-                    backdrop-filter: blur(10px);
-                ">0:00 / 0:00</div>
-                
-                <button class="fullscreen-btn" style="
-                    background: rgba(37, 99, 235, 0.8);
-                    color: white;
-                    border: none;
-                    border-radius: 50%;
-                    width: 40px;
-                    height: 40px;
-                    cursor: pointer;
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
-                    font-size: 1.1rem;
-                    transition: all 0.2s ease;
-                    backdrop-filter: blur(10px);
-                    box-shadow: 0 2px 8px rgba(37, 99, 235, 0.3);
-                " 
-                oncontextmenu="return false;"
-                onmousedown="return false;"
-                onselectstart="return false;"
-                oncopy="return false;"
-                oncut="return false;"
-                onpaste="return false;"
-                ondragstart="return false;"
-                ondrop="return false;"
-                aria-label="Toggle fullscreen"
-                >⛶</button>
-            </div>
-            ` : ''}
-            
-            <!-- INVISIBLE COPY LINK BLOCKER - Blocks YouTube copy link button -->
-            <div class="copy-link-blocker" style="
-                position: absolute;
-                top: 0;
-                right: 0;
-                width: 300px;
-                height: 150px;
-                background: transparent;
-                z-index: 999;
-                pointer-events: auto;
-                cursor: not-allowed;
-            " 
-            oncontextmenu="return false;"
-            onmousedown="return false;"
-            onselectstart="return false;"
-            oncopy="return false;"
-            oncut="return false;"
-            onpaste="return false;"
-            ondragstart="return false;"
-            ondrop="return false;"
-            ></div>
-            
-            <!-- KEYBOARD BLOCKER - Prevents all keyboard shortcuts -->
-            <div class="keyboard-blocker" style="
-                position: absolute;
-                top: 0;
-                left: 0;
-                width: 100%;
-                height: 100%;
-                background: transparent;
-                z-index: 5;
-                pointer-events: none;
-            " 
-            tabindex="-1"
-            onkeydown="return false;"
-            onkeyup="return false;"
-            onkeypress="return false;"
-            ></div>
-
-        </div>
-    `;
-    
-    console.log('✅ Generated overlay HTML length:', generatedHTML.length);
-    console.log('🔍 Controls included:', showControls ? 'YES' : 'NO');
-    console.log('🎨 Blue watch bar included:', showControls ? 'YES' : 'NO');
-    
-    return generatedHTML;
 };
 
 // Initialize secure video player with maximum security
@@ -688,8 +297,6 @@ window.initializeSecureVideoPlayer = function(container, youtubeId) {
         const overlay = container.querySelector('div[id^="secure-overlay"]');
         const controls = container.querySelector('div[id^="custom-youtube-controls"]');
         const playPauseBtn = controls ? controls.querySelector('.custom-play-pause-btn') : null;
-        const skipBackwardBtn = controls ? controls.querySelector('.skip-backward-btn') : null;
-        const skipForwardBtn = controls ? controls.querySelector('.skip-forward-btn') : null;
         const progressBar = controls ? controls.querySelector('.progress-bar') : null;
         const progressFill = controls ? controls.querySelector('.progress-fill') : null;
         const timeDisplay = controls ? controls.querySelector('.time-display') : null;
@@ -788,24 +395,6 @@ window.initializeSecureVideoPlayer = function(container, youtubeId) {
                 });
             }
             
-            // Skip Backward 10s button
-            if (skipBackwardBtn) {
-                skipBackwardBtn.addEventListener('click', function(e) {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    skipBackward(10);
-                });
-            }
-            
-            // Skip Forward 10s button
-            if (skipForwardBtn) {
-                skipForwardBtn.addEventListener('click', function(e) {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    skipForward(10);
-                });
-            }
-            
             // Progress bar
             if (progressBar) {
                 progressBar.addEventListener('click', function(e) {
@@ -873,33 +462,6 @@ window.initializeSecureVideoPlayer = function(container, youtubeId) {
                 player.seekTo(seekTime, true);
             } catch (error) {
                 console.error('Error seeking video:', error);
-            }
-        }
-        
-        function skipBackward(seconds) {
-            if (!player || !player.getCurrentTime || !player.seekTo) return;
-            
-            try {
-                const currentTime = player.getCurrentTime();
-                const newTime = Math.max(0, currentTime - seconds);
-                player.seekTo(newTime, true);
-                console.log(`⏪ Skipped backward ${seconds}s`);
-            } catch (error) {
-                console.error('Error skipping backward:', error);
-            }
-        }
-        
-        function skipForward(seconds) {
-            if (!player || !player.getCurrentTime || !player.getDuration || !player.seekTo) return;
-            
-            try {
-                const currentTime = player.getCurrentTime();
-                const duration = player.getDuration();
-                const newTime = Math.min(duration, currentTime + seconds);
-                player.seekTo(newTime, true);
-                console.log(`⏩ Skipped forward ${seconds}s`);
-            } catch (error) {
-                console.error('Error skipping forward:', error);
             }
         }
         
@@ -971,39 +533,13 @@ window.initializeSecureVideoPlayer = function(container, youtubeId) {
         }
         
         function applyMaximumSecurityMeasures() {
-            // Allow specific keyboard shortcuts for video control
+            // Block ALL keyboard shortcuts globally
             document.addEventListener('keydown', function(e) {
                 const videoArea = e.target.closest('.secure-video-wrapper');
                 if (videoArea) {
-                    // Allow specific video control keys
-                    const allowedKeys = [' ', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'f', 'F'];
-                    if (allowedKeys.includes(e.key)) {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        
-                        // Handle specific key actions
-                        switch(e.key) {
-                            case ' ':
-                                togglePlayPause();
-                                break;
-                            case 'ArrowLeft':
-                                skipBackward(10);
-                                break;
-                            case 'ArrowRight':
-                                skipForward(10);
-                                break;
-                            case 'f':
-                            case 'F':
-                                toggleFullscreen();
-                                break;
-                        }
-                        return false;
-                    } else {
-                        // Block all other keys
-                        e.preventDefault();
-                        e.stopPropagation();
-                        return false;
-                    }
+                    e.preventDefault();
+                    e.stopPropagation();
+                    return false;
                 }
             }, true);
             

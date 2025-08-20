@@ -2907,52 +2907,48 @@
             // Function to initialize payment process
             function initializePaymentProcess(proceedButton, courseId, csrfToken) {
                 const paymentForm = document.getElementById('paymentMethodForm');
-                
+
                 proceedButton.addEventListener('click', function() {
+                    const formData = new FormData(paymentForm);
+                    const paymentMethod = formData.get('payment_method');
+
                     // Show loading state
                     proceedButton.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Processing...';
                     proceedButton.disabled = true;
-                    
-                    // Make AJAX request to get payment options directly
-                    fetch(`/payments/${courseId}/options`, {
-                        method: 'GET',
+
+                    fetch(`/payments/process-manual/${courseId}`, {
+                        method: 'POST',
                         headers: {
                             'Accept': 'application/json',
                             'X-CSRF-TOKEN': csrfToken,
                             'X-Requested-With': 'XMLHttpRequest'
-                        }
+                        },
+                        body: formData
                     })
-                    .then(response => {
-                        if (!response.ok) {
-                            throw new Error('Network response was not ok: ' + response.status);
-                        }
-                        return response.json();
-                    })
+                    .then(response => response.json())
                     .then(data => {
-                        console.log('Payment options response:', data);
-                        
                         if (data.success) {
-                            // Replace modal content with payment methods
-                            document.querySelector('#paymentModal .modal-content').innerHTML = data.html;
+                            const paymentModal = bootstrap.Modal.getInstance(document.getElementById('paymentModal'));
+                            paymentModal.hide();
+
+                            const button = document.getElementById(`paymentBtn_${courseId}`);
+                            if (button) {
+                                button.innerHTML = '<i class="fas fa-clock"></i><span style="color: #c2410c; margin-left: 8px; font-weight: bold;">Payment Pending</span>';
+                                button.classList.remove('btn-primary', 'show-payment-modal', 'enroll');
+                                button.classList.add('btn-warning');
+                                button.disabled = true;
+                                button.style.animation = 'successPulse 0.8s ease-in-out';
+                            }
                         } else {
-                            // Show error message
-                            console.error('Payment processing failed:', data.message);
                             alert(data.message || 'Payment processing failed. Please try again.');
-                            
                             // Reset button state
                             proceedButton.innerHTML = '<i class="fas fa-lock-open me-2"></i>Proceed to Payment';
                             proceedButton.disabled = false;
-                            
-                            // Redirect if needed
-                            if (data.redirect) {
-                                window.location.href = data.redirect;
-                            }
                         }
                     })
                     .catch(error => {
                         console.error('Error processing payment:', error);
                         alert('An error occurred while processing your payment. Please try again later.');
-                        
                         // Reset button state
                         proceedButton.innerHTML = '<i class="fas fa-lock-open me-2"></i>Proceed to Payment';
                         proceedButton.disabled = false;

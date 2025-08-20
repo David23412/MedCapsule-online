@@ -2,63 +2,105 @@
 
 namespace App\Http\Controllers;
 
-use Illuminate\Http\Request;
+use App\Models\Course;
 use App\Models\Payment;
-use Illuminate\Support\Facades\Log;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
+use Exception;
 
 class PaymentController extends Controller
 {
-    public function adminPaymentHistory(Request $request)
+    public function __construct()
     {
-        $query = Payment::with('user', 'course');
-        
-        // Handle search with validation
-        if ($request->has('search') && !empty($request->search)) {
-            $search = $request->validate(['search' => 'string|max:255'])['search'];
-            $query->where(function($q) use ($search) {
-                $q->whereHas('user', function($userQuery) use ($search) {
-                    $userQuery->where('name', 'like', "%{$search}%")
-                              ->orWhere('email', 'like', "%{$search}%");
-                })
-                ->orWhereHas('course', function($courseQuery) use ($search) {
-                    $courseQuery->where('name', 'like', "%{$search}%");
-                })
-                ->orWhere('reference_number', 'like', "%{$search}%")
-                ->orWhere('payment_data->transaction_id', 'like', "%{$search}%");
-            });
-        }// Transform data for frontend
-        $transformedPayments = $payments->getCollection()->map(function($payment) {
-            return [
-                'id' => $payment->id,'user_email' => $payment->user->email ?? 'No Email',
-                'course_name' => $payment->course->name ?? 'Unknown Course',
-                'amount' => $payment->amount,
-                'currency' => 'EGP',
-                'payment_method' => $payment->payment_method,
-                'status' => $payment->status,
-                'reference_number' => $payment->reference_number,
-                'created_at' => $payment->created_at->toISOString(),
-                'paid_at' => $payment->paid_at ? $payment->paid_at->toISOString() : null,
-                'payment_data' => $payment->payment_data,
-                'expired_at' => null // Add if you have this field
-            ];
-        });
-        
+        $this->middleware(['auth']);
+    }
+
+    /**
+     * Get payment options for a single course.
+     */
+    public function getPaymentOptions(Course $course)
+    {
+        $user = Auth::user();
+
+        // Check if user already has access
+        if ($user->courses()->where('course_id', $course->id)->exists()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'You already have access to this course.',
+                'redirect' => route('topics.forCourse', $course->id)
+            ]);
+        }
+
+        // Generate payment options HTML
+        $html = view('payments.single_course_payment_methods', compact('course'))->render();
+
         return response()->json([
             'success' => true,
-            'payments' => [
-                'data' => $transformedPayments,
-                'current_page' => $payments->currentPage(),
-                'last_page' => $payments->lastPage(),
-                'per_page' => $payments->perPage(),
-                'total' => $payments->total()
-            ]
+            'message' => 'Payment options loaded successfully.',
+            'html' => $html
         ]);
     }
 
-    public function adminPaymentDetails(Payment $payment)
+    /**
+     * Process manual payment for a single course.
+     */
+    public function processManualPayment(Request $request, Course $course)
     {
-        $payment->load('user', 'course');
-        
-        return view('admin.payment-details', compact('payment'));
+        $user = Auth::user();
+
+        $validated = $request->validate([
+            'payment_method' => 'required|string|in:vodafone_cash,fawry,instapay',
+            'transaction_id' => 'required|string|max:100',
+            'amount' => 'required|numeric|min:0.01',
+        ]);
+
+        try {
+            DB::beginTransaction();
+
+            // Check if user already has a pending payment for this course
+            $existingPayment = Payment::where('user_id', $user->id)
+                ->where('course_id', $course->id)
+                ->whereIn('status', ['pending', 'under_review'])
+                ->first();
+
+            if ($existingPayment) {
+                // Update existing payment
+                $existingPayment->update([
+                    'payment_method' => $validated['payment_method'],
+                    'reference_number' => $validated['transaction_id'],
+                    'status' => 'under_review',
+                    'paid_at' => now()
+                ]);
+                $payment = $existingPayment;
+            } else {
+                // Create new payment record
+                $payment = Payment::create([
+                    'user_id' => $user->id,
+                    'course_id' => $course->id,
+                    'amount' => $validated['amount'],
+                    'payment_method' => $validated['payment_method'],
+                    'reference_number' => $validated['transaction_id'],
+                    'status' => 'under_review',
+                    'paid_at' => now()
+                ]);
+            }
+
+            DB::commit();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Payment submitted successfully and is under review.',
+                'payment_id' => $payment->id
+            ]);
+
+        } catch (Exception $e) {
+            DB::rollback();
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to submit payment: ' . $e->getMessage()
+            ], 500);
+        }
     }
 }

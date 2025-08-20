@@ -380,17 +380,7 @@ Route::middleware('auth')->group(function () {
             ->middleware(['throttle:30,1']); // 30 stats requests per minute
     });
 
-    // Optimized Payment Processing Routes - NUCLEAR OPTIMIZATION
-    Route::prefix('payment-processing')->name('payment-processing.')->group(function () {
-        Route::post('/courses/{courseId}/process', [App\Http\Controllers\Payment\PaymentProcessingController::class, 'processManualPayment'])
-            ->name('process')
-            ->middleware(['throttle:payment-processing,5,1']); // 5 payment processing per minute
-        Route::get('/courses/{courseId}/options', [App\Http\Controllers\Payment\PaymentProcessingController::class, 'getPaymentOptions'])
-            ->name('options')
-            ->middleware(['throttle:30,1']); // 30 option requests per minute
-    });
-
-    // Profile routes
+        // Profile routes
     Route::middleware('auth')->group(function () {
         Route::get('/profile', [ProfileController::class, 'show'])->name('profile');
         Route::post('/profile/update-picture', [ProfileController::class, 'updateProfilePicture'])->name('profile.update-picture');
@@ -401,68 +391,17 @@ Route::middleware('auth')->group(function () {
         return redirect('/courses');
     })->name('dashboard');
 
-    // 💀 NUCLEAR OPTIMIZED PAYMENT ROUTES - SPLIT ARCHITECTURE 💀
-    Route::prefix('payment')->name('payment.')->group(function () {
-        // Payment Options
-        Route::get('/options/{course}', [App\Http\Controllers\Payment\PaymentOptionsController::class, 'getPaymentOptions'])
-            ->name('options');
-
-            
-        // Payment Processing
-        Route::post('/process/{course}', [App\Http\Controllers\Payment\PaymentProcessingController::class, 'processManualPayment'])
-            ->name('process')
-            ->middleware(['throttle:payment-processing,5,1']);
-        Route::post('/submit-proof/{courseId}', [App\Http\Controllers\Payment\PaymentProcessingController::class, 'submitProof'])
-            ->name('submit-proof')
-            ->middleware(['throttle:10,1']);
-            
-        // Payment Status
-        Route::get('/history', [App\Http\Controllers\Payment\PaymentStatusController::class, 'history'])
-            ->name('history');
-        Route::get('/status/{payment}', [App\Http\Controllers\Payment\PaymentStatusController::class, 'status'])
-            ->name('status');
-        Route::post('/refresh/{payment}', [App\Http\Controllers\Payment\PaymentStatusController::class, 'refreshStatus'])
-            ->name('refresh');
-        Route::post('/retry/{payment}', [App\Http\Controllers\Payment\PaymentStatusController::class, 'retry'])
-            ->name('retry');
-    });
-    
-    // 💀 LEGACY PAYMENT ROUTES FOR FRONTEND COMPATIBILITY 💀
+    // Payment Routes
     Route::prefix('payments')->name('payments.')->group(function () {
-        // Payment Options - Legacy route for frontend compatibility
-        Route::get('/{course}/options', [App\Http\Controllers\Payment\PaymentOptionsController::class, 'getPaymentOptions'])
-            ->name('options');
+        Route::get('/{course}/options', [PaymentController::class, 'getPaymentOptions'])->name('options');
+        Route::post('/{course}/process', [PaymentController::class, 'processManualPayment'])->name('process');
+    });
 
-            
-        // Streamlined Payment Processing
-        Route::post('/process-manual/{course}', [App\Http\Controllers\Payment\PaymentProcessingController::class, 'processManualPayment'])
-            ->name('process-manual')
-            ->middleware(['throttle:5,1']);
-        Route::post('/submit-proof-course/{courseId}', [App\Http\Controllers\Payment\PaymentProcessingController::class, 'submitProofForCourse'])
-            ->name('submit-proof-course')
-            ->middleware(['throttle:10,1']);
-        Route::post('/submit-proof/{payment}', [App\Http\Controllers\Payment\PaymentProcessingController::class, 'submitProof'])
-            ->name('submit-proof')
-            ->middleware(['throttle:10,1']);
-            
-        // Payment Status - Legacy routes for frontend compatibility
-        Route::get('/history', [App\Http\Controllers\Payment\PaymentStatusController::class, 'history'])
-            ->name('history');
+    // Admin Payment Routes
+    Route::prefix('admin/payments')->name('admin.payments.')->middleware(['admin'])->group(function () {
+        Route::get('/history', [App\Http\Controllers\Admin\PaymentController::class, 'adminPaymentHistory'])->name('history');
+        Route::get('/details/{payment}', [App\Http\Controllers\Admin\PaymentController::class, 'adminPaymentDetails'])->name('details');
     });
-    
-    // 💀 NUCLEAR OPTIMIZED ADMIN PAYMENT ROUTES 💀
-    Route::prefix('admin/payments')->name('admin.payments.')->middleware(['auth', 'admin'])->group(function () {
-        Route::get('/history', [App\Http\Controllers\Payment\PaymentAdminController::class, 'adminPaymentHistory'])
-            ->name('history');
-        Route::get('/details/{payment}', [App\Http\Controllers\Payment\PaymentAdminController::class, 'adminPaymentDetails'])
-            ->name('details');
-        Route::post('/verify/{payment}', [App\Http\Controllers\Payment\PaymentAdminController::class, 'adminVerifyPayment'])
-            ->name('verify');
-        Route::post('/{payment}/reject', [App\Http\Controllers\Payment\PaymentAdminController::class, 'adminRejectPayment'])
-            ->name('reject');
-    });
-    Route::get('/admin/payment-history', [PaymentController::class, 'adminPaymentHistory'])->name('admin.payment-history');
-    Route::get('/admin/payment-details/{payment}', [PaymentController::class, 'adminPaymentDetails'])->name('admin.payment-details');
 
     // Test route for payment verification (bypasses auth for testing)
     Route::post('/test-payment-verify/{payment}', function($payment) {

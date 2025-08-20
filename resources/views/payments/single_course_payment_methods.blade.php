@@ -185,6 +185,7 @@
         @csrf
         <!-- Hidden payment method field that gets updated by JavaScript -->
         <input type="hidden" id="paymentMethodField" name="payment_method" value="vodafone_cash">
+        <input type="hidden" name="amount" value="{{ $course->price }}">
         
         <!-- Transaction ID Input -->
         <div class="mb-4">

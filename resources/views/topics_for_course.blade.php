@@ -2556,9 +2556,104 @@ use App\Models\Assignment;
     <x-secure-video-overlay />
     
     <script>
-        // Video functionality now handled by secure-video-overlay component
-        // The playVideo function is defined in the component with blue watch bar
-        console.log('✅ Using secure video component for all video playback');
+        // SIMPLE Video play function - directly plays videos
+        function playVideo(videoId, videoTitle) {
+            console.log('🎬 Starting video playback for:', videoId, videoTitle);
+            
+            const modal = document.getElementById('videoModal');
+            const modalTitle = document.getElementById('videoModalTitle');
+            const videoContainer = document.getElementById('videoContainer');
+            
+            // Set modal title
+            modalTitle.textContent = videoTitle;
+            
+            // Show loading state
+            videoContainer.innerHTML = '<div class="video-loading">🎬 Loading video...</div>';
+            
+            // Show modal with proper sizing
+            const bsModal = new bootstrap.Modal(modal, {
+                backdrop: 'static',
+                keyboard: false
+            });
+            bsModal.show();
+            
+            // Ensure modal opens with proper dimensions
+            setTimeout(() => {
+                modal.classList.add('show');
+            }, 150);
+            
+            // Initialize resize functionality
+            const resizeBtn = document.getElementById('resizeVideoBtn');
+            if (resizeBtn) {
+                resizeBtn.addEventListener('click', function() {
+                    const isExpanded = modal.classList.contains('video-expanded');
+                    if (isExpanded) {
+                        modal.classList.remove('video-expanded');
+                        this.innerHTML = '<i class="fas fa-expand"></i>';
+                        this.title = 'Expand video';
+                    } else {
+                        modal.classList.add('video-expanded');
+                        this.innerHTML = '<i class="fas fa-compress"></i>';
+                        this.title = 'Compress video';
+                    }
+                });
+            }
+            
+            // Get the YouTube video ID from the database
+            console.log('🎥 Creating YouTube video player for video ID:', videoId);
+            
+            // Fetch the video details to get the YouTube video ID
+            fetch(`/api/video/${videoId}`, {
+                method: 'GET',
+                headers: {
+                    'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                    'Accept': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest'
+                },
+                credentials: 'same-origin'
+            })
+            .then(response => response.json())
+            .then(videoData => {
+                if (videoData.success && videoData.video.youtube_video_id) {
+                    const youtubeId = videoData.video.youtube_video_id;
+                    console.log('✅ YouTube video ID found:', youtubeId);
+                    
+                    // Create SECURE YouTube custom player using component function
+                    if (typeof generateSecureVideoOverlay === 'function') {
+                        videoContainer.innerHTML = generateSecureVideoOverlay(youtubeId, videoTitle, true, true);
+                        
+                        // Initialize secure video player with custom controls
+                        if (typeof initializeSecureVideoPlayer === 'function') {
+                            initializeSecureVideoPlayer(videoContainer, youtubeId);
+                        } else {
+                            console.error('❌ initializeSecureVideoPlayer function not found');
+                        }
+                    } else {
+                        console.error('❌ generateSecureVideoOverlay function not found. Loading fallback...');
+                        // Fallback to direct YouTube iframe with origin parameter
+                        videoContainer.innerHTML = `
+                            <div class="secure-video-wrapper" style="width: 100%; height: 100%; background: #000; position: relative; overflow: hidden;">
+                                <iframe 
+                                    src="https://www.youtube-nocookie.com/embed/${youtubeId}?autoplay=1&rel=0&modestbranding=1&showinfo=0&controls=1&disablekb=1&fs=0&iv_load_policy=3&playsinline=1&origin=${encodeURIComponent(window.location.origin)}"
+                                    style="width: 100%; height: 100%; border: none; display: block;"
+                                    frameborder="0"
+                                    allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture"
+                                    title="${videoTitle}">
+                                </iframe>
+                            </div>
+                        `;
+                    }
+                    
+                    console.log('✅ Secure YouTube custom player created successfully');
+                } else {
+                    throw new Error('Video not found or no YouTube ID available');
+                }
+            })
+            .catch(error => {
+                console.error('❌ Failed to load video details:', error);
+                videoContainer.innerHTML = '<div class="video-loading text-danger">❌ Failed to load video. Please check the video configuration.</div>';
+            });
+        }
     </script>
     
     <script>
@@ -2667,53 +2762,104 @@ use App\Models\Assignment;
     
 
     <script>
-        // Video functionality now handled by secure-video-overlay component
-        // The playVideo function is defined in the component with blue watch bar
-        console.log('✅ Using secure video component for all video playback');
-        
-        // Ensure playVideo function is available immediately
-        if (typeof window.playVideo === 'undefined') {
-            console.log('⚠️ Component not loaded yet, creating temporary playVideo function...');
-            window.playVideo = function(videoId, videoTitle) {
-                console.log('🎬 Temporary playVideo called for:', videoId, videoTitle);
-                
-                // Show a loading message
-                const modal = document.getElementById('videoModal');
-                if (modal) {
-                    const modalTitle = document.getElementById('videoModalTitle');
-                    const videoContainer = document.getElementById('videoContainer');
-                    
-                    if (modalTitle) modalTitle.textContent = videoTitle;
-                    if (videoContainer) videoContainer.innerHTML = '<div class="video-loading">🔄 Loading secure video component...</div>';
-                    
-                    const bsModal = new bootstrap.Modal(modal, {
-                        backdrop: 'static',
-                        keyboard: false
-                    });
-                    bsModal.show();
-                    
-                    // Wait for component to load and then retry
-                    setTimeout(() => {
-                        if (typeof window.playVideo !== 'undefined' && window.playVideo.toString().includes('secure-video-overlay')) {
-                            console.log('✅ Component loaded, retrying with real playVideo function...');
-                            window.playVideo(videoId, videoTitle);
-                        }
-                    }, 1000);
-                }
-            };
-        }
-        
-        // Wait for component to load and replace the temporary function
-        document.addEventListener('DOMContentLoaded', function() {
+        // SIMPLE Video play function - directly plays videos
+        function playVideo(videoId, videoTitle) {
+            console.log('🎬 Starting video playback for:', videoId, videoTitle);
+            
+            const modal = document.getElementById('videoModal');
+            const modalTitle = document.getElementById('videoModalTitle');
+            const videoContainer = document.getElementById('videoContainer');
+            
+            // Set modal title
+            modalTitle.textContent = videoTitle;
+            
+            // Show loading state
+            videoContainer.innerHTML = '<div class="video-loading">🎬 Loading video...</div>';
+            
+            // Show modal with proper sizing
+            const bsModal = new bootstrap.Modal(modal, {
+                backdrop: 'static',
+                keyboard: false
+            });
+            bsModal.show();
+            
+            // Ensure modal opens with proper dimensions
             setTimeout(() => {
-                if (typeof window.playVideo !== 'undefined' && window.playVideo.toString().includes('secure-video-overlay')) {
-                    console.log('✅ Secure video component loaded successfully');
+                modal.classList.add('show');
+            }, 150);
+            
+            // Initialize resize functionality
+            const resizeBtn = document.getElementById('resizeVideoBtn');
+            if (resizeBtn) {
+                resizeBtn.addEventListener('click', function() {
+                    const isExpanded = modal.classList.contains('video-expanded');
+                    if (isExpanded) {
+                        modal.classList.remove('video-expanded');
+                        this.innerHTML = '<i class="fas fa-expand"></i>';
+                        this.title = 'Expand video';
+                    } else {
+                        modal.classList.add('video-expanded');
+                        this.innerHTML = '<i class="fas fa-compress"></i>';
+                        this.title = 'Compress video';
+                    }
+                });
+            }
+            
+            // Get the YouTube video ID from the database
+            console.log('🎥 Creating YouTube video player for video ID:', videoId);
+            
+            // Fetch the video details to get the YouTube video ID
+            fetch(`/api/video/${videoId}`, {
+                method: 'GET',
+                headers: {
+                    'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                    'Accept': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest'
+                },
+                credentials: 'same-origin'
+            })
+            .then(response => response.json())
+            .then(videoData => {
+                if (videoData.success && videoData.video.youtube_video_id) {
+                    const youtubeId = videoData.video.youtube_video_id;
+                    console.log('✅ YouTube video ID found:', youtubeId);
+                    
+                    // Create SECURE YouTube custom player using component function
+                    if (typeof generateSecureVideoOverlay === 'function') {
+                        videoContainer.innerHTML = generateSecureVideoOverlay(youtubeId, videoTitle, true, true);
+                        
+                        // Initialize secure video player with custom controls
+                        if (typeof initializeSecureVideoPlayer === 'function') {
+                            initializeSecureVideoPlayer(videoContainer, youtubeId);
+                        } else {
+                            console.error('❌ initializeSecureVideoPlayer function not found');
+                        }
+                    } else {
+                        console.error('❌ generateSecureVideoOverlay function not found. Loading fallback...');
+                        // Fallback to direct YouTube iframe with origin parameter
+                        videoContainer.innerHTML = `
+                            <div class="secure-video-wrapper" style="width: 100%; height: 100%; background: #000; position: relative; overflow: hidden;">
+                                <iframe 
+                                    src="https://www.youtube-nocookie.com/embed/${youtubeId}?autoplay=1&rel=0&modestbranding=1&showinfo=0&controls=1&disablekb=1&fs=0&iv_load_policy=3&playsinline=1&origin=${encodeURIComponent(window.location.origin)}"
+                                    style="width: 100%; height: 100%; border: none; display: block;"
+                                    frameborder="0"
+                                    allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture"
+                                    title="${videoTitle}">
+                                </iframe>
+                            </div>
+                        `;
+                    }
+                    
+                    console.log('✅ Secure YouTube custom player created successfully');
                 } else {
-                    console.warn('⚠️ Secure video component may not be loaded properly');
+                    throw new Error('Video not found or no YouTube ID available');
                 }
-            }, 500);
-        });
-    </script>
+            })
+            .catch(error => {
+                console.error('❌ Failed to load video details:', error);
+                videoContainer.innerHTML = '<div class="video-loading text-danger">❌ Failed to load video. Please check the video configuration.</div>';
+            });
+        }
 
 
 
@@ -3082,7 +3228,7 @@ use App\Models\Assignment;
                 // Player error event
                 function onPlayerError(event) {
                     console.error('❌ YouTube player error:', event.data);
-                    container.innerHTML = '';
+                    container.innerHTML = '<div class="video-loading text-danger">❌ Video playback error. Please try again.</div>';
                 }
 
                 // Progress update timer
