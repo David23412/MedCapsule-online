@@ -309,4 +309,66 @@ class TopicController extends Controller
             ], 500);
         }
     }
+
+    /**
+     * ✅ Show video for a specific topic
+     */
+    public function showVideo(Topic $topic)
+    {
+        try {
+            $user = auth()->user();
+            
+            // Check if user has access to the topic's course
+            if ($user->role !== 'admin' && !$user->hasAccessToCourse($topic->course_id)) {
+                return redirect()->route('courses.show', $topic->course_id)
+                    ->with('error', 'You need to purchase this course to access its content.');
+            }
+            
+            // Load the topic with its video and course
+            $topic->load(['video' => function($query) {
+                $query->where('is_active', true);
+            }, 'course:id,name']);
+            
+            // Check if topic has an active video
+            if (!$topic->video) {
+                return redirect()->route('topics.forCourse', $topic->course_id)
+                    ->with('error', 'No video available for this topic.');
+            }
+            
+            // Get all topics for the course to show in sidebar
+            $allTopics = Topic::where('course_id', $topic->course_id)
+                ->orderBy('display_order')
+                ->with([
+                    'userProgress' => function($query) use ($user) {
+                        $query->where('user_id', $user->id);
+                    },
+                    'video' => function($query) {
+                        $query->where('is_active', true);
+                    },
+                    'videoProgress' => function($query) use ($user) {
+                        $query->where('user_id', $user->id);
+                    }
+                ])
+                ->get();
+
+            // Return video view
+            return view('video', [
+                'currentTopic' => $topic,
+                'video' => $topic->video,
+                'course' => $topic->course,
+                'topics' => $allTopics
+            ]);
+            
+        } catch (\Exception $e) {
+            Log::error('Error in showVideo:', [
+                'error' => $e->getMessage(),
+                'topic_id' => $topic->id,
+                'user_id' => auth()->id(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            
+            return redirect()->route('courses.index')
+                ->with('error', 'Unable to load video. Please try again.');
+        }
+    }
 }

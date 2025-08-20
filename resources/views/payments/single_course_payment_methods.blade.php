@@ -181,7 +181,7 @@
     </div>
     
     <!-- Payment Form -->
-                    <form id="coursePaymentForm" class="mb-0" method="POST" action="{{ secure_url(route('payments.submit-proof-course', ['courseId' => $course->id], false)) }}" data-course-id="{{ $course->id }}">
+                    <form id="coursePaymentForm" class="mb-0" method="POST" action="{{ route('payments.process', $course) }}" data-course-id="{{ $course->id }}">
         @csrf
         <!-- Hidden payment method field that gets updated by JavaScript -->
         <input type="hidden" id="paymentMethodField" name="payment_method" value="vodafone_cash">

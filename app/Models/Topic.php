@@ -93,6 +93,16 @@ class Topic extends Model
         return $this->video()->exists();
     }
 
+    public function videoProgress()
+    {
+        return $this->hasMany(VideoProgress::class);
+    }
+
+    public function userVideoProgress()
+    {
+        return $this->hasOne(VideoProgress::class)->where('user_id', auth()->id());
+    }
+
     // 💀 N+1 WARNING: This accessor accesses 'userProgress' - consider eager loading
     public function getCurrentUserProgressAttribute()
     {

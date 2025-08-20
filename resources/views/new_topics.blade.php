@@ -2564,6 +2564,7 @@
                                 <span>Assignment Due:</span>
                                 <div class="assignment-countdown-minimal" data-deadline="{{ $assignment->deadline }}">
                                     <span class="countdown-display">{{ \Carbon\Carbon::parse($assignment->deadline)->diffForHumans() }}</span>
+                                    <span class="due-time"> ({{ \Carbon\Carbon::parse($assignment->deadline)->format('h:i A') }})</span>
                                 </div>
                             @endif
                         </div>

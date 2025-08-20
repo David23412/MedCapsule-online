@@ -2064,8 +2064,8 @@
                             @else
                                 <button type="button" class="action-btn enroll show-payment-modal" id="paymentBtn_{{ $course->id }}" data-course-id="{{ $course->id }}" @if($course->has_pending_payment) disabled @endif data-debug-pending="{{ $course->has_pending_payment }}" data-debug-enrolled="{{ $course->is_enrolled }}" data-debug-price="{{ $course->price }}">
                                     @if($course->has_pending_payment)
-                                        <i class="fas fa-clock"></i>
-                                        <span style="color: #c2410c;">Payment Pending</span>
+                                        <i class="fas fa-clock" style="color: #ff8c00;"></i>
+                                        <span style="color: #ff8c00; font-weight: bold;">Payment Pending</span>
                                     @else
                                         <i class="fas fa-unlock"></i>
                                         <span>Pay to Access</span>
@@ -2796,52 +2796,14 @@
         });
         
         function initializePaymentModal() {
-            console.log('🔧 Initializing payment modal...');
-            
-            // Check if modal element exists
-            const modalElement = document.getElementById('paymentModal');
-            if (!modalElement) {
-                console.error('❌ Payment modal element not found');
-                return;
-            }
-            
-            // Initialize payment modal
-            const paymentModal = new bootstrap.Modal(modalElement);
-            console.log('✅ Payment modal initialized successfully');
-            
-            // Add click event to all payment buttons
-            const paymentButtons = document.querySelectorAll('.show-payment-modal');
-            console.log(`🔍 Found ${paymentButtons.length} payment buttons`);
-            
-            paymentButtons.forEach(button => {
-                console.log('🔧 Setting up payment button:', button.id, button.className);
-                button.addEventListener('click', function(e) {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    
-                    console.log('🎯 Payment button clicked:', this.id, this.getAttribute('data-course-id'));
-                    const courseId = this.getAttribute('data-course-id');
-                    
-                    if (!courseId) {
-                        console.error('❌ No course ID found on button');
-                        return;
-                    }
-                    
-                    // Show modal with loading state
-                    console.log('📋 Showing payment modal...');
-                    paymentModal.show();
-                    
-                    // Get CSRF token
-                    const csrfMeta = document.querySelector('meta[name="csrf-token"]');
-                    if (!csrfMeta) {
-                        console.error('❌ CSRF token meta tag not found');
-                        alert('Security token not found. Please refresh the page.');
-                        return;
-                    }
-                    const csrfToken = csrfMeta.getAttribute('content');
-                    console.log('🔐 CSRF token found:', csrfToken ? 'Yes' : 'No');
-                    
-                    // Fetch payment options
+            const paymentModal = new bootstrap.Modal(document.getElementById('paymentModal'));
+
+            document.querySelectorAll('.show-payment-modal').forEach(button => {
+                button.addEventListener('click', function() {
+                    const courseId = this.dataset.courseId;
+                    const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+
+                    // Fetch payment options and show modal
                     fetch(`/payments/${courseId}/options`, {
                         headers: {
                             'X-CSRF-TOKEN': csrfToken,
@@ -2852,109 +2814,63 @@
                     .then(response => response.json())
                     .then(data => {
                         if (data.success) {
-                            // Update modal content
                             document.querySelector('#paymentModal .modal-content').innerHTML = data.html;
-                            
-                            // Initialize the payment process button after modal content is loaded
-                            const proceedButton = document.getElementById('proceedToPayment');
-                            if (proceedButton) {
-                                initializePaymentProcess(proceedButton, courseId, csrfToken);
-                            }
+                            paymentModal.show();
+
+                            const paymentForm = document.getElementById('coursePaymentForm');
+                            paymentForm.addEventListener('submit', function(e) {
+                                e.preventDefault();
+
+                                const formData = new FormData(this);
+                                const submitBtn = this.querySelector('#submitBtn');
+                                submitBtn.disabled = true;
+                                submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Processing...';
+
+                                fetch(`/payments/${courseId}/process`, {
+                                    method: 'POST',
+                                    headers: {
+                                        'X-CSRF-TOKEN': csrfToken,
+                                        'X-Requested-With': 'XMLHttpRequest',
+                                        'Accept': 'application/json'
+                                    },
+                                    body: formData
+                                })
+                                .then(response => response.json())
+                                .then(data => {
+                                    if (data.success) {
+                                        paymentModal.hide();
+                                        const originalButton = document.getElementById(`paymentBtn_${courseId}`);
+                                        originalButton.innerHTML = '<i class="fas fa-clock" style="color: #ff8c00;"></i> <span style="color: #ff8c00; font-weight: bold;">Payment Pending</span>';
+                                        originalButton.disabled = true;
+                                        originalButton.style.animation = 'successPulse 1s ease-in-out';
+                                        originalButton.style.backgroundColor = '#fff7ed'; // Light orange background
+                                        originalButton.style.borderColor = '#fed7aa'; // Orange border
+                                        originalButton.style.color = '#ea580c'; // Darker orange text
+                                        originalButton.querySelector('i').style.color = '#ea580c'; // Darker orange icon
+                                        originalButton.querySelector('span').style.color = '#ea580c'; // Darker orange text
+                                    } else {
+                                        alert(data.message);
+                                        submitBtn.disabled = false;
+                                        submitBtn.innerHTML = 'Submit Payment';
+                                    }
+                                })
+                                .catch(error => {
+                                    console.error('Error:', error);
+                                    alert('An error occurred. Please try again.');
+                                    submitBtn.disabled = false;
+                                    submitBtn.innerHTML = 'Submit Payment';
+                                });
+                            });
                         } else {
-                            // Show error message
                             alert(data.message);
-                            
-                            // Redirect if needed
-                            if (data.redirect) {
-                                window.location.href = data.redirect;
-                            } else {
-                                paymentModal.hide();
-                            }
                         }
                     })
                     .catch(error => {
                         console.error('Error:', error);
                         alert('An error occurred. Please try again.');
-                        paymentModal.hide();
                     });
                 });
             });
-            
-            // Function to wait for a function to become available
-            function waitForFunction(functionName, maxWaitTime = 5000, interval = 100) {
-                return new Promise((resolve, reject) => {
-                    if (typeof window[functionName] === 'function') {
-                        resolve(window[functionName]);
-                        return;
-                    }
-                    
-                    const startTime = Date.now();
-                    const intervalId = setInterval(() => {
-                        if (typeof window[functionName] === 'function') {
-                            clearInterval(intervalId);
-                            resolve(window[functionName]);
-                            return;
-                        }
-                        
-                        if (Date.now() - startTime > maxWaitTime) {
-                            clearInterval(intervalId);
-                            reject(new Error(`Function ${functionName} not available after ${maxWaitTime}ms`));
-                        }
-                    }, interval);
-                });
-            }
-            
-            // Function to initialize payment process
-            function initializePaymentProcess(proceedButton, courseId, csrfToken) {
-                const paymentForm = document.getElementById('paymentMethodForm');
-
-                proceedButton.addEventListener('click', function() {
-                    const formData = new FormData(paymentForm);
-                    const paymentMethod = formData.get('payment_method');
-
-                    // Show loading state
-                    proceedButton.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Processing...';
-                    proceedButton.disabled = true;
-
-                    fetch(`/payments/process-manual/${courseId}`, {
-                        method: 'POST',
-                        headers: {
-                            'Accept': 'application/json',
-                            'X-CSRF-TOKEN': csrfToken,
-                            'X-Requested-With': 'XMLHttpRequest'
-                        },
-                        body: formData
-                    })
-                    .then(response => response.json())
-                    .then(data => {
-                        if (data.success) {
-                            const paymentModal = bootstrap.Modal.getInstance(document.getElementById('paymentModal'));
-                            paymentModal.hide();
-
-                            const button = document.getElementById(`paymentBtn_${courseId}`);
-                            if (button) {
-                                button.innerHTML = '<i class="fas fa-clock"></i><span style="color: #c2410c; margin-left: 8px; font-weight: bold;">Payment Pending</span>';
-                                button.classList.remove('btn-primary', 'show-payment-modal', 'enroll');
-                                button.classList.add('btn-warning');
-                                button.disabled = true;
-                                button.style.animation = 'successPulse 0.8s ease-in-out';
-                            }
-                        } else {
-                            alert(data.message || 'Payment processing failed. Please try again.');
-                            // Reset button state
-                            proceedButton.innerHTML = '<i class="fas fa-lock-open me-2"></i>Proceed to Payment';
-                            proceedButton.disabled = false;
-                        }
-                    })
-                    .catch(error => {
-                        console.error('Error processing payment:', error);
-                        alert('An error occurred while processing your payment. Please try again later.');
-                        // Reset button state
-                        proceedButton.innerHTML = '<i class="fas fa-lock-open me-2"></i>Proceed to Payment';
-                        proceedButton.disabled = false;
-                    });
-                });
-            }
         }
     </script>
     

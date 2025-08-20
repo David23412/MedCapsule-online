@@ -69,7 +69,7 @@ class PaymentController extends Controller
                 $existingPayment->update([
                     'payment_method' => $validated['payment_method'],
                     'reference_number' => $validated['transaction_id'],
-                    'status' => 'under_review',
+                    'status' => 'pending',
                     'paid_at' => now()
                 ]);
                 $payment = $existingPayment;
@@ -81,7 +81,7 @@ class PaymentController extends Controller
                     'amount' => $validated['amount'],
                     'payment_method' => $validated['payment_method'],
                     'reference_number' => $validated['transaction_id'],
-                    'status' => 'under_review',
+                    'status' => 'pending',
                     'paid_at' => now()
                 ]);
             }

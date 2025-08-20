@@ -344,8 +344,8 @@ window.initializeSecureVideoPlayer = function(container, youtubeId) {
             // Set up custom controls
             setupCustomControls();
             
-            // Apply maximum security measures
-            applyMaximumSecurityMeasures();
+            // Apply non-disruptive security measures
+            setupStaticSecurityMeasures();
         }
         
         function onPlayerStateChange(event) {
@@ -373,11 +373,13 @@ window.initializeSecureVideoPlayer = function(container, youtubeId) {
                 }
             }
             
-            // Start/stop progress updates
+            // Start/stop progress updates and dynamic security
             if (isPlaying) {
                 startProgressUpdates();
+                addSecurityListeners();
             } else {
                 stopProgressUpdates();
+                removeSecurityListeners();
             }
         }
         
@@ -531,78 +533,59 @@ window.initializeSecureVideoPlayer = function(container, youtubeId) {
             const secs = Math.floor(seconds % 60);
             return `${mins}:${secs.toString().padStart(2, '0')}`;
         }
+
+        // Security Event Handlers
+        const securityEventHandlers = {
+            keydown: e => {
+                if (e.target.closest('.secure-video-wrapper')) {
+                    e.preventDefault(); e.stopPropagation(); return false;
+                }
+            },
+            contextmenu: e => {
+                if (e.target.closest('.secure-video-wrapper')) {
+                    e.preventDefault(); e.stopPropagation(); return false;
+                }
+            },
+            selectstart: e => {
+                if (e.target.closest('.secure-video-wrapper')) {
+                    e.preventDefault(); e.stopPropagation(); return false;
+                }
+            },
+            dragstart: e => {
+                if (e.target.closest('.secure-video-wrapper')) {
+                    e.preventDefault(); e.stopPropagation(); return false;
+                }
+            },
+            copy: e => {
+                if (e.target.closest('.secure-video-wrapper')) {
+                    e.preventDefault(); e.stopPropagation(); return false;
+                }
+            },
+            cut: e => {
+                if (e.target.closest('.secure-video-wrapper')) {
+                    e.preventDefault(); e.stopPropagation(); return false;
+                }
+            },
+            paste: e => {
+                if (e.target.closest('.secure-video-wrapper')) {
+                    e.preventDefault(); e.stopPropagation(); return false;
+                }
+            }
+        };
+
+        function addSecurityListeners() {
+            for (const event in securityEventHandlers) {
+                document.addEventListener(event, securityEventHandlers[event], true);
+            }
+        }
+
+        function removeSecurityListeners() {
+            for (const event in securityEventHandlers) {
+                document.removeEventListener(event, securityEventHandlers[event], true);
+            }
+        }
         
-        function applyMaximumSecurityMeasures() {
-            // Block ALL keyboard shortcuts globally
-            document.addEventListener('keydown', function(e) {
-                const videoArea = e.target.closest('.secure-video-wrapper');
-                if (videoArea) {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    return false;
-                }
-            }, true);
-            
-            // Block right-click context menu globally
-            document.addEventListener('contextmenu', function(e) {
-                const videoArea = e.target.closest('.secure-video-wrapper');
-                if (videoArea) {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    return false;
-                }
-            }, true);
-            
-            // Block text selection globally
-            document.addEventListener('selectstart', function(e) {
-                const videoArea = e.target.closest('.secure-video-wrapper');
-                if (videoArea) {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    return false;
-                }
-            }, true);
-            
-            // Block drag and drop globally
-            document.addEventListener('dragstart', function(e) {
-                const videoArea = e.target.closest('.secure-video-wrapper');
-                if (videoArea) {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    return false;
-                }
-            }, true);
-            
-            // Block copy operations globally
-            document.addEventListener('copy', function(e) {
-                const videoArea = e.target.closest('.secure-video-wrapper');
-                if (videoArea) {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    return false;
-                }
-            }, true);
-            
-            // Block cut operations globally
-            document.addEventListener('cut', function(e) {
-                const videoArea = e.target.closest('.secure-video-wrapper');
-                if (videoArea) {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    return false;
-                }
-            }, true);
-            
-            // Block paste operations globally
-            document.addEventListener('paste', function(e) {
-                const videoArea = e.target.closest('.secure-video-wrapper');
-                if (videoArea) {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    return false;
-                }
-            }, true);
-            
+        function setupStaticSecurityMeasures() {
             // Block iframe focus to prevent keyboard shortcuts
             if (iframe) {
                 iframe.addEventListener('focus', function() {

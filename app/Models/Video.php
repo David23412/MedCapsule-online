@@ -14,7 +14,6 @@ class Video extends Model
         'topic_id',
         'youtube_video_id',
         'title',
-        'description',
         'duration',
         'is_active'
     ];
@@ -27,5 +26,15 @@ class Video extends Model
     public function topic(): BelongsTo
     {
         return $this->belongsTo(Topic::class);
+    }
+
+    public function userProgress()
+    {
+        return $this->hasMany(VideoProgress::class);
+    }
+
+    public function getUserProgress($userId)
+    {
+        return $this->userProgress()->where('user_id', $userId)->first();
     }
 }

@@ -1,6 +1,3 @@
-@php
-use App\Models\Assignment;
-@endphp
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -81,9 +78,10 @@ use App\Models\Assignment;
             cursor: not-allowed;
         }
 
-        /* REGULAR TOPIC LOCK STYLING - WHITE BUTTON WITH BLACK LOCK */
+        /* REGULAR TOPIC LOCK STYLING - WHITE BUTTON WITH WHITE OUTLINE */
         .topic-locked-btn {
             background: white !important;
+            color: #dc3545 !important;
             padding: 0.8rem 1.5rem;
             border-radius: 8px;
             font-weight: 500;
@@ -102,19 +100,14 @@ use App\Models\Assignment;
         }
 
         .topic-locked-btn i {
-            color: #000000 !important; /* Black lock icon */
+            color: #dc3545 !important;
             font-size: 1.2rem !important;
         }
 
         .topic-locked-btn:hover {
             background: white !important;
+            color: #dc3545 !important;
             transform: none !important;
-        }
-
-        /* Hide video button for locked topics */
-        .topic-locked + .video-play-btn,
-        .topic-card.topic-locked ~ .video-play-btn {
-            display: none !important;
         }
 
         /* TOPIC WITH VIDEO CONTAINER - NATURAL EXPANSION */
@@ -156,12 +149,14 @@ use App\Models\Assignment;
             /* FIXED: Maintain position even when parent is hidden */
             visibility: visible !important;
             opacity: 1 !important;
+            text-decoration: none;
         }
 
         .video-play-btn:hover {
             background: #007bff;
             transform: translateY(-50%) scale(1.05);
             box-shadow: 0 4px 12px rgba(0, 123, 255, 0.25);
+            text-decoration: none;
         }
 
         .video-play-btn i {
@@ -175,9 +170,227 @@ use App\Models\Assignment;
             color: white;
         }
 
-        /* Video functionality now handled by secure-video-overlay component */
+        /* Source Selection Modal Styles */
+        .sources-container {
+            max-height: 400px;
+            overflow-y: auto;
+        }
 
-        /* Secure video overlay styles now handled by component */
+        .source-card {
+            border: 1px solid #e9ecef;
+            border-radius: 8px;
+            padding: 0.75rem 1rem;
+            margin-bottom: 0.5rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            background: white;
+        }
+
+        .source-card:hover {
+            background-color: rgba(0, 0, 0, 0.02);
+        }
+
+        .source-card.selected {
+            background-color: rgba(0, 123, 255, 0.03);
+        }
+
+        /* Remove focus outline from source cards */
+        .source-card:focus,
+        .source-card:focus-visible {
+            outline: none !important;
+            box-shadow: none !important;
+        }
+
+        .source-status {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            display: inline-block;
+            margin-right: 0.5rem;
+        }
+
+        .source-status.completed {
+            background-color: #28a745;
+        }
+
+        .source-status.in-progress {
+            background-color: #ffc107;
+        }
+
+        .source-status.failed {
+            background-color: #dc3545;
+        }
+
+        .source-status.not-started {
+            background-color: #6c757d;
+        }
+
+        .source-progress-bar {
+            height: 4px;
+            background-color: #e9ecef;
+            border-radius: 2px;
+            margin: 0.5rem 0;
+            overflow: hidden;
+        }
+
+        .source-progress-value {
+            height: 100%;
+            border-radius: 2px;
+            transition: width 0.3s ease;
+        }
+
+        .source-progress-value.completed {
+            background-color: #28a745;
+        }
+
+        .source-progress-value.in-progress {
+            background-color: #ffc107;
+        }
+
+        .source-progress-value.failed {
+            background-color: #dc3545;
+        }
+
+        .source-progress-value.not-started {
+            background-color: #6c757d;
+        }
+
+        .source-stats {
+            font-size: 0.8rem;
+            color: #6c757d;
+        }
+
+        .source-status-text {
+            font-size: 0.8rem;
+            font-weight: 500;
+        }
+
+        .source-status-text.completed {
+            color: #28a745;
+        }
+
+        .source-status-text.in-progress {
+            color: #ffc107;
+        }
+
+        .source-status-text.failed {
+            color: #dc3545;
+        }
+
+        .source-status-text.not-started {
+            color: #6c757d;
+        }
+
+        /* Enhanced Source Selection Modal Styles */
+        #sourceSelectionModal .modal-content {
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+            border: none;
+            border-radius: 16px;
+            overflow: hidden;
+        }
+
+        #sourceSelectionModal .modal-header {
+            background: #f8f9fa;
+            border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+            padding: 1.5rem;
+            border-radius: 16px 16px 0 0;
+        }
+
+        #sourceSelectionModal .modal-icon-wrapper {
+            width: 40px;
+            height: 40px;
+            background: rgba(0, 123, 255, 0.1);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 1rem;
+        }
+
+        #sourceSelectionModal .modal-icon-wrapper i {
+            color: #007bff;
+            font-size: 1.2rem;
+        }
+
+        #sourceSelectionModal .modal-body {
+            padding: 1.5rem;
+        }
+
+        #sourceSelectionModal .sources-container {
+            background: #f8f9fa;
+            border-radius: 12px;
+            padding: 1rem;
+            max-height: 300px;
+            overflow-y: auto;
+            margin-bottom: 1rem;
+        }
+
+        #sourceSelectionModal .sources-container::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        #sourceSelectionModal .sources-container::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 3px;
+        }
+
+        #sourceSelectionModal .sources-container::-webkit-scrollbar-thumb {
+            background: #dee2e6;
+            border-radius: 3px;
+        }
+
+        #sourceSelectionModal .sources-container::-webkit-scrollbar-thumb:hover {
+            background: #adb5bd;
+        }
+
+        #sourceSelectionModal .form-check-input {
+            margin-top: 0.2rem;
+            width: 1.2rem;
+            height: 1.2rem;
+            border-radius: 4px;
+            border: 2px solid #dee2e6;
+        }
+
+        #sourceSelectionModal .form-check-input:checked {
+            background-color: #007bff;
+            border-color: #007bff;
+        }
+
+        /* Remove blue outline from all form elements in source modal */
+        #sourceSelectionModal .form-check-input:focus {
+            outline: none !important;
+            box-shadow: none !important;
+            border-color: #007bff !important;
+        }
+
+        #sourceSelectionModal .source-card:focus {
+            outline: none !important;
+            box-shadow: none !important;
+        }
+
+        #sourceSelectionModal input:focus,
+        #sourceSelectionModal button:focus,
+        #sourceSelectionModal .btn:focus {
+            outline: none !important;
+            box-shadow: none !important;
+        }
+
+        #sourceSelectionModal .btn-primary {
+            background-color: #007bff;
+            border-color: #007bff;
+            padding: 0.75rem 2rem;
+            font-weight: 600;
+            border-radius: 8px;
+            transition: all 0.2s ease;
+        }
+
+        #sourceSelectionModal .btn-primary:hover {
+            background-color: #0069d9;
+            border-color: #0062cc;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(0, 123, 255, 0.3);
+        }
+
     </style>
     <style>
         body{font-family:'Poppins',sans-serif;background-color:#f8f9fa;zoom:.72;margin:0;padding:0;line-height:1.6;-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale}
@@ -253,10 +466,8 @@ use App\Models\Assignment;
             }
             
             .topics-container {
-                max-width: 1580px; /* Increased width for Safari */
-                padding: 1.5rem 4rem;
-                width: 95%;
-                margin: 0 auto;
+                max-width: 1400px;
+                padding: 1.5rem 3rem;
             }
             
             .topic-info {
@@ -2147,7 +2358,7 @@ use App\Models\Assignment;
 
 
 
-    <!-- Video functionality now handled by secure-video-overlay component -->
+
 
     <!-- Course Header -->
     <header class="course-header">
@@ -2289,11 +2500,11 @@ use App\Models\Assignment;
         </a>
         
         {{-- Assignment Icon in Red Circle - Only show if there are assignments --}}
-        @if(isset($assignments) && $assignments->count() > 0)
+        @if(isset($assignments) && (is_array($assignments) ? count($assignments) : $assignments->count()) > 0)
             <div class="assignment-icon-circle" data-filter="assignments" style="order: 100;">
                 <div class="assignment-circle">
                     <i class="fas fa-tasks"></i>
-                    <span class="assignment-glow-count">{{ $assignments->count() }}</span>
+                    <span class="assignment-glow-count">{{ is_array($assignments) ? count($assignments) : $assignments->count() }}</span>
                 </div>
             </div>
         @endif
@@ -2304,20 +2515,18 @@ use App\Models\Assignment;
         {{-- 🚀 LETHAL ASSIGNMENT OPTIMIZATION: Pre-calculated data --}}
         @if(isset($assignments) && count($assignments) > 0)
             @php
-                                // 🚀 SURGICAL OPTIMIZATION: Pre-calculate ALL data ONCE
+                // 🚀 SURGICAL OPTIMIZATION: Pre-calculate ALL data ONCE
                 $assignmentData = $assignments->mapWithKeys(function($assignment) use ($topics) {
                     $topic = $topics->firstWhere('id', $assignment->topic_id);
                     if (!$topic) return [];
-
-                    $userStatus = $assignment->getStatusForUser(auth()->user());
-
+                    
                     return [$assignment->id => [
                         'topic' => $topic,
-                        'progress' => $assignment->getUserProgressWithStatus(auth()->user())['percentage'] ?? 0,
-                        'status' => $userStatus,
+                        'progress' => $assignment->user_progress['percentage'] ?? 0,
+                        'status' => $assignment->display_status ?? $assignment->getCurrentStatusAttribute(),
                         'quizUrl' => secure_url(route('quiz.start', ['course' => $topic->course_id, 'topic' => $topic->id, 'assignment_id' => $assignment->id], false)),
-                        'isLocked' => !$assignment->canUserStart(auth()->user()),
-                        'lockReason' => $assignment->getLockReasonForUser(auth()->user()) ?? 'Assignment is locked'
+                        'isLocked' => in_array($assignment->status, ['locked', 'expired', 'completed']) || ($assignment->status === 'overdue'),
+                        'lockReason' => $assignment->getLockReason() ?? 'Assignment is locked'
                     ]];
                 });
             @endphp
@@ -2328,17 +2537,10 @@ use App\Models\Assignment;
                     if (!$data) continue;
                     
                     // SIMPLE: Just check if user has attempted this assignment
-                    $isLocked = $assignment->isLockedForUser(auth()->user());
+                    $isLocked = $assignment->isLockedForUser(auth()->id());
                 @endphp
                 
-                <div class="topic-card assignment-{{
-                        match($data['status']) {
-                            Assignment::STATUS_COMPLETED => 'completed',
-                            Assignment::STATUS_ACTIVE => 'active',
-                            Assignment::STATUS_LOCKED => 'overdue',
-                            default => 'locked'
-                        }
-                    }}" 
+                <div class="topic-card assignment-{{ $assignment->isCompletedByUser(auth()->id()) ? 'completed' : ($assignment->isLockedForUser(auth()->id()) || $data['status'] === 'overdue' ? 'overdue' : $data['status']) }}" 
                      data-case-type="assignment" 
                      data-topic-id="{{ $data['topic']->id }}"
                      data-assignment-id="{{ $assignment->id }}"
@@ -2347,26 +2549,16 @@ use App\Models\Assignment;
                      data-assignment-status="{{ $data['status'] }}">
                     
                     {{-- Assignment Status Bar --}}
-                    <div class="assignment-status-bar assignment-{{
-                            match($data['status']) {
-                                Assignment::STATUS_COMPLETED => 'completed',
-                                Assignment::STATUS_ACTIVE => 'active',
-                                Assignment::STATUS_LOCKED => 'overdue',
-                                default => 'locked'
-                            }
-                        }}">
+                    <div class="assignment-status-bar assignment-{{ $assignment->isCompletedByUser(auth()->id()) ? 'completed' : ($assignment->isLockedForUser(auth()->id()) || $data['status'] === 'overdue' ? 'overdue' : $data['status']) }}">
                         <div class="assignment-info-minimal">
-                            @if($data['status'] === Assignment::STATUS_ACTIVE)
+                            @if($data['status'] === 1 && !$assignment->isLockedForUser(auth()->id()))
                                 <span>Assignment Due:</span>
-                                <div class="assignment-countdown-minimal" data-deadline="{{ $assignment->deadline }}">
-                                    <span class="countdown-display">{{ \Carbon\Carbon::parse($assignment->deadline)->diffForHumans() }}</span>
+                                <div class="assignment-countdown-minimal" 
+                                     data-deadline="{{ $assignment->deadline }}"
+                                     data-assignment-status="{{ $data['status'] }}"
+                                     data-is-locked="{{ $assignment->isLockedForUser(auth()->id()) ? 'true' : 'false' }}">
+                                    <span class="countdown-display"></span>
                                 </div>
-                            @elseif($data['status'] === Assignment::STATUS_COMPLETED)
-                                <i class="fas fa-check-circle"></i> <span>Completed</span>
-                            @elseif($data['status'] === Assignment::STATUS_LOCKED)
-                                <i class="fas fa-exclamation-triangle"></i> <span>Overdue</span>
-                            @else
-                                <i class="fas fa-lock"></i> <span>Locked</span>
                             @endif
                         </div>
                     </div>
@@ -2392,16 +2584,16 @@ use App\Models\Assignment;
 
                     <div class="topic-actions">
                         <div class="stat-item">
-                            @if($data['status'] === Assignment::STATUS_COMPLETED)
+                            @if($assignment->isCompletedByUser(auth()->id()))
                                 <i class="fas fa-check-circle text-success"></i>Assignment Completed
-                            @elseif($data['status'] === Assignment::STATUS_ACTIVE)
-                                <i class="fas fa-play text-primary"></i>Start Assignment
+                            @elseif($assignment->isLockedForUser(auth()->id()) || $data['status'] === 'overdue')
+                                <i class="fas fa-times text-danger"></i>Assignment Overdue
                             @else
-                                <i class="fas fa-times text-danger"></i>Assignment Locked
+                                <i class="fas fa-play text-primary"></i>Start Assignment
                             @endif
                         </div>
                         
-                        @if($data['isLocked'])
+                        @if($isLocked || $data['status'] === 'overdue')
                             {{-- RED LOCK for locked/overdue assignments --}}
                             <div class="assignment-locked-icon" title="Assignment not available">
                                 <i class="fas fa-lock"></i>
@@ -2529,13 +2721,10 @@ use App\Models\Assignment;
                     </div>
                     
                     {{-- Video Play Button OUTSIDE the card --}}
-                    @if($topic->video)
-                        <button class="video-play-btn" 
-                                data-video-id="{{ $topic->video->id }}" 
-                                data-video-title="{{ $topic->video->title }}"
-                                onclick="playVideo({{ $topic->video->id }}, '{{ $topic->video->title }}')">
+                    @if($topic->video && !$isLocked)
+                        <a href="{{ route('video.show', ['topic' => $topic->id]) }}" class="video-play-btn">
                             <i class="fas fa-play"></i>
-                        </button>
+                        </a>
                     @endif
                 </div>
             @endforeach
@@ -2552,862 +2741,10 @@ use App\Models\Assignment;
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js" crossorigin="anonymous"></script>
     <script src="https://cdn.jsdelivr.net/npm/alpinejs@2.8.2/dist/alpine.min.js" defer crossorigin="anonymous"></script>
     
-    <!-- Include the secure video overlay component -->
-    <x-secure-video-overlay />
-    
+    <!-- Topic-specific JavaScript files -->
     <script>
-        // SIMPLE Video play function - directly plays videos
-        function playVideo(videoId, videoTitle) {
-            console.log('🎬 Starting video playback for:', videoId, videoTitle);
-            
-            const modal = document.getElementById('videoModal');
-            const modalTitle = document.getElementById('videoModalTitle');
-            const videoContainer = document.getElementById('videoContainer');
-            
-            // Set modal title
-            modalTitle.textContent = videoTitle;
-            
-            // Show loading state
-            videoContainer.innerHTML = '<div class="video-loading">🎬 Loading video...</div>';
-            
-            // Show modal with proper sizing
-            const bsModal = new bootstrap.Modal(modal, {
-                backdrop: 'static',
-                keyboard: false
-            });
-            bsModal.show();
-            
-            // Ensure modal opens with proper dimensions
-            setTimeout(() => {
-                modal.classList.add('show');
-            }, 150);
-            
-            // Initialize resize functionality
-            const resizeBtn = document.getElementById('resizeVideoBtn');
-            if (resizeBtn) {
-                resizeBtn.addEventListener('click', function() {
-                    const isExpanded = modal.classList.contains('video-expanded');
-                    if (isExpanded) {
-                        modal.classList.remove('video-expanded');
-                        this.innerHTML = '<i class="fas fa-expand"></i>';
-                        this.title = 'Expand video';
-                    } else {
-                        modal.classList.add('video-expanded');
-                        this.innerHTML = '<i class="fas fa-compress"></i>';
-                        this.title = 'Compress video';
-                    }
-                });
-            }
-            
-            // Get the YouTube video ID from the database
-            console.log('🎥 Creating YouTube video player for video ID:', videoId);
-            
-            // Fetch the video details to get the YouTube video ID
-            fetch(`/api/video/${videoId}`, {
-                method: 'GET',
-                headers: {
-                    'X-CSRF-TOKEN': '{{ csrf_token() }}',
-                    'Accept': 'application/json',
-                    'X-Requested-With': 'XMLHttpRequest'
-                },
-                credentials: 'same-origin'
-            })
-            .then(response => response.json())
-            .then(videoData => {
-                if (videoData.success && videoData.video.youtube_video_id) {
-                    const youtubeId = videoData.video.youtube_video_id;
-                    console.log('✅ YouTube video ID found:', youtubeId);
-                    
-                    // Create SECURE YouTube custom player using component function
-                    if (typeof generateSecureVideoOverlay === 'function') {
-                        videoContainer.innerHTML = generateSecureVideoOverlay(youtubeId, videoTitle, true, true);
-                        
-                        // Initialize secure video player with custom controls
-                        if (typeof initializeSecureVideoPlayer === 'function') {
-                            initializeSecureVideoPlayer(videoContainer, youtubeId);
-                        } else {
-                            console.error('❌ initializeSecureVideoPlayer function not found');
-                        }
-                    } else {
-                        console.error('❌ generateSecureVideoOverlay function not found. Loading fallback...');
-                        // Fallback to direct YouTube iframe with origin parameter
-                        videoContainer.innerHTML = `
-                            <div class="secure-video-wrapper" style="width: 100%; height: 100%; background: #000; position: relative; overflow: hidden;">
-                                <iframe 
-                                    src="https://www.youtube-nocookie.com/embed/${youtubeId}?autoplay=1&rel=0&modestbranding=1&showinfo=0&controls=1&disablekb=1&fs=0&iv_load_policy=3&playsinline=1&origin=${encodeURIComponent(window.location.origin)}"
-                                    style="width: 100%; height: 100%; border: none; display: block;"
-                                    frameborder="0"
-                                    allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture"
-                                    title="${videoTitle}">
-                                </iframe>
-                            </div>
-                        `;
-                    }
-                    
-                    console.log('✅ Secure YouTube custom player created successfully');
-                } else {
-                    throw new Error('Video not found or no YouTube ID available');
-                }
-            })
-            .catch(error => {
-                console.error('❌ Failed to load video details:', error);
-                videoContainer.innerHTML = '<div class="video-loading text-danger">❌ Failed to load video. Please check the video configuration.</div>';
-            });
-        }
-    </script>
-    
-    <script>
-        // Debug asset loading
-        console.log('🔍 Current location:', window.location.href);
-        console.log('🔍 Script src:', document.currentScript?.src || 'unknown');
-        console.log('🔍 Base URL:', document.baseURI);
-        
-        // Check for cross-origin issues and implement workarounds
-        if (window.location.protocol === 'https:' && 
-            (window.location.hostname.includes('ngrok') || 
-             window.location.hostname.includes('localhost') ||
-             window.location.hostname.includes('127.0.0.1'))) {
-            console.warn('⚠️ Cross-origin environment detected. Implementing workarounds...');
-            
-            // Add meta tag to help with cross-origin
-            const meta = document.createElement('meta');
-            meta.httpEquiv = 'Content-Security-Policy';
-            meta.content = "frame-src 'self' https://www.youtube.com https://www.youtube-nocookie.com;";
-            document.head.appendChild(meta);
-            
-            // Force allow cross-origin for iframes
-            document.addEventListener('DOMContentLoaded', function() {
-                const iframes = document.querySelectorAll('iframe[src*="youtube"]');
-                iframes.forEach(iframe => {
-                    iframe.setAttribute('allow', 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share');
-                    iframe.setAttribute('sandbox', 'allow-scripts allow-same-origin allow-forms allow-popups allow-popups-to-escape-sandbox');
-                });
-            });
-        }
-    </script>
-    <script>
-        // Verify secure video component is loaded
-        if (typeof generateSecureVideoOverlay === 'undefined') {
-            console.warn('⚠️ Secure video component not loaded yet, retrying...');
-            // Retry loading after a short delay
-            setTimeout(() => {
-                if (typeof generateSecureVideoOverlay === 'undefined') {
-                    console.error('❌ Secure video component failed to load');
-                } else {
-                    console.log('✅ Secure video component loaded successfully');
-                }
-            }, 100);
-        } else {
-            console.log('✅ Secure video component already loaded');
-        }
-    </script>
-    
-    <script>
-        // Additional error handling for script loading
-        window.addEventListener('error', function(e) {
-            if (e.target.src && e.target.src.includes('secure-video-component.js')) {
-                console.error('❌ Failed to load secure-video-component.js:', e);
-            }
-        });
-        
-        // Test if function is available globally
-        console.log('🔍 Checking global scope for generateSecureVideoOverlay...');
-        console.log('window.generateSecureVideoOverlay:', typeof window.generateSecureVideoOverlay);
-        console.log('generateSecureVideoOverlay:', typeof generateSecureVideoOverlay);
-        
-        // Fallback: If function is not available, define it inline
-        if (typeof generateSecureVideoOverlay === 'undefined') {
-            console.log('🔄 Loading fallback generateSecureVideoOverlay function...');
-            window.generateSecureVideoOverlay = function(youtubeId, videoTitle, autoplay = true, showControls = true) {
-                const autoplayParam = autoplay ? '1' : '0';
-                return `
-                    <div class="secure-video-wrapper" style="width: 100%; height: 100%; background: #000; position: relative; overflow: hidden;">
-                        <iframe 
-                            id="hiddenYoutubePlayer"
-                            src="https://www.youtube.com/embed/${youtubeId}?autoplay=${autoplayParam}&rel=0&modestbranding=1&showinfo=0&controls=0&disablekb=1&fs=0&iv_load_policy=3&modestbranding=1&playsinline=1&enablejsapi=1"
-                            style="width: 100%; height: 100%; border: none; display: block; position: absolute; top: 0; left: 0; z-index: 1;"
-                            frameborder="0"
-                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                            allowfullscreen
-                            title="${videoTitle}">
-                        </iframe>
-                        
-                        <div class="security-overlay" style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: transparent; z-index: 10; pointer-events: none;"></div>
-                        
-                        ${showControls ? `
-                        <div class="custom-youtube-controls" style="position: absolute; bottom: 0; left: 0; right: 0; background: linear-gradient(transparent, rgba(0,0,0,0.9)); padding: 1.5rem; display: flex; align-items: center; gap: 1rem; opacity: 0; transition: opacity 0.3s ease; z-index: 100; pointer-events: auto;">
-                            <button class="play-pause-btn" style="background: #2563eb; color: white; border: none; border-radius: 50%; width: 45px; height: 45px; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 1.3rem; transition: all 0.2s ease;">⏸️</button>
-                            <div class="progress-bar" style="flex: 1; height: 6px; background: rgba(255,255,255,0.2); border-radius: 3px; cursor: pointer; position: relative; overflow: hidden;">
-                                <div class="progress-fill" style="height: 100%; background: linear-gradient(90deg, #2563eb, #3b82f6); border-radius: 3px; width: 0%; transition: width 0.1s ease; position: relative;"></div>
-                            </div>
-                            <div class="time-display" style="color: white; font-size: 0.9rem; min-width: 120px; text-align: center; font-weight: 500; text-shadow: 0 1px 2px rgba(0,0,0,0.8);">0:00 / 0:00</div>
-                            <button class="fullscreen-btn" style="background: rgba(255,255,255,0.1); color: white; border: 1px solid rgba(255,255,255,0.3); border-radius: 6px; padding: 0.6rem; cursor: pointer; transition: all 0.2s ease; font-size: 1.1rem;">⛶</button>
-                        </div>
-                        ` : ''}
-                        
-                        <div class="security-watermark" style="position: absolute; top: 20px; right: 20px; color: #2563eb; font-size: 1.5rem; font-weight: 900; z-index: 1000; pointer-events: auto; user-select: none; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; text-shadow: 0 2px 4px rgba(0,0,0,0.9), 0 4px 8px rgba(0,0,0,0.6); letter-spacing: 0.05em; text-transform: uppercase; font-stretch: expanded;">
-                            MEDCAPSULE
-                        </div>
-                        
-                        <!-- INVISIBLE SECURITY OVERLAY - Actually blocks copy link clicks -->
-                        <div class="copy-link-blocker" style="position: absolute; top: 0; right: 0; width: 300px; height: 150px; background: transparent; z-index: 999; pointer-events: auto; cursor: not-allowed;"></div>
-                        
-
-                    </div>
-                `;
-            };
-            console.log('✅ Fallback function loaded successfully');
-        }
-    </script>
-    
-
-    <script>
-        // SIMPLE Video play function - directly plays videos
-        function playVideo(videoId, videoTitle) {
-            console.log('🎬 Starting video playback for:', videoId, videoTitle);
-            
-            const modal = document.getElementById('videoModal');
-            const modalTitle = document.getElementById('videoModalTitle');
-            const videoContainer = document.getElementById('videoContainer');
-            
-            // Set modal title
-            modalTitle.textContent = videoTitle;
-            
-            // Show loading state
-            videoContainer.innerHTML = '<div class="video-loading">🎬 Loading video...</div>';
-            
-            // Show modal with proper sizing
-            const bsModal = new bootstrap.Modal(modal, {
-                backdrop: 'static',
-                keyboard: false
-            });
-            bsModal.show();
-            
-            // Ensure modal opens with proper dimensions
-            setTimeout(() => {
-                modal.classList.add('show');
-            }, 150);
-            
-            // Initialize resize functionality
-            const resizeBtn = document.getElementById('resizeVideoBtn');
-            if (resizeBtn) {
-                resizeBtn.addEventListener('click', function() {
-                    const isExpanded = modal.classList.contains('video-expanded');
-                    if (isExpanded) {
-                        modal.classList.remove('video-expanded');
-                        this.innerHTML = '<i class="fas fa-expand"></i>';
-                        this.title = 'Expand video';
-                    } else {
-                        modal.classList.add('video-expanded');
-                        this.innerHTML = '<i class="fas fa-compress"></i>';
-                        this.title = 'Compress video';
-                    }
-                });
-            }
-            
-            // Get the YouTube video ID from the database
-            console.log('🎥 Creating YouTube video player for video ID:', videoId);
-            
-            // Fetch the video details to get the YouTube video ID
-            fetch(`/api/video/${videoId}`, {
-                method: 'GET',
-                headers: {
-                    'X-CSRF-TOKEN': '{{ csrf_token() }}',
-                    'Accept': 'application/json',
-                    'X-Requested-With': 'XMLHttpRequest'
-                },
-                credentials: 'same-origin'
-            })
-            .then(response => response.json())
-            .then(videoData => {
-                if (videoData.success && videoData.video.youtube_video_id) {
-                    const youtubeId = videoData.video.youtube_video_id;
-                    console.log('✅ YouTube video ID found:', youtubeId);
-                    
-                    // Create SECURE YouTube custom player using component function
-                    if (typeof generateSecureVideoOverlay === 'function') {
-                        videoContainer.innerHTML = generateSecureVideoOverlay(youtubeId, videoTitle, true, true);
-                        
-                        // Initialize secure video player with custom controls
-                        if (typeof initializeSecureVideoPlayer === 'function') {
-                            initializeSecureVideoPlayer(videoContainer, youtubeId);
-                        } else {
-                            console.error('❌ initializeSecureVideoPlayer function not found');
-                        }
-                    } else {
-                        console.error('❌ generateSecureVideoOverlay function not found. Loading fallback...');
-                        // Fallback to direct YouTube iframe with origin parameter
-                        videoContainer.innerHTML = `
-                            <div class="secure-video-wrapper" style="width: 100%; height: 100%; background: #000; position: relative; overflow: hidden;">
-                                <iframe 
-                                    src="https://www.youtube-nocookie.com/embed/${youtubeId}?autoplay=1&rel=0&modestbranding=1&showinfo=0&controls=1&disablekb=1&fs=0&iv_load_policy=3&playsinline=1&origin=${encodeURIComponent(window.location.origin)}"
-                                    style="width: 100%; height: 100%; border: none; display: block;"
-                                    frameborder="0"
-                                    allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture"
-                                    title="${videoTitle}">
-                                </iframe>
-                            </div>
-                        `;
-                    }
-                    
-                    console.log('✅ Secure YouTube custom player created successfully');
-                } else {
-                    throw new Error('Video not found or no YouTube ID available');
-                }
-            })
-            .catch(error => {
-                console.error('❌ Failed to load video details:', error);
-                videoContainer.innerHTML = '<div class="video-loading text-danger">❌ Failed to load video. Please check the video configuration.</div>';
-            });
-        }
-
-
-
-        // 🎬 CUSTOM VIDEO PLAYER - Works with your own uploaded videos only
-        function createCustomVideoPlayer(container, videoUrl, title) {
-            container.innerHTML = `
-                <div class="custom-video-wrapper" style="width: 100%; height: 100%; background: #000; position: relative; overflow: hidden;">
-                    <!-- CUSTOM HTML5 VIDEO PLAYER - Full control -->
-                    <video 
-                        id="customVideoPlayer"
-                        src="${videoUrl}"
-                        preload="metadata"
-                        style="width: 100%; height: 100%; border: none; display: block;"
-                        oncontextmenu="return false;"
-                        onselectstart="return false;"
-                        ondragstart="return false;">
-                        Your browser does not support the video tag.
-                    </video>
-                    
-                    <!-- Custom Video Controls Overlay -->
-                    <div class="custom-video-controls" style="
-                        position: absolute;
-                        bottom: 0;
-                        left: 0;
-                        right: 0;
-                        background: linear-gradient(transparent, rgba(0,0,0,0.8));
-                        padding: 1rem;
-                        display: flex;
-                        align-items: center;
-                        gap: 1rem;
-                        opacity: 0;
-                        transition: opacity 0.3s ease;
-                        z-index: 10000;
-                        pointer-events: auto;
-                    ">
-
-                        
-                        <div class="progress-bar" style="
-                            flex: 1;
-                            height: 4px;
-                            background: rgba(255,255,255,0.3);
-                            border-radius: 2px;
-                            cursor: pointer;
-                            position: relative;
-                        ">
-                            <div class="progress-fill" style="
-                                height: 100%;
-                                background: #2563eb;
-                                border-radius: 2px;
-                                width: 0%;
-                                transition: width 0.1s ease;
-                            "></div>
-                        </div>
-                        
-                        <div class="time-display" style="
-                            color: white;
-                            font-size: 0.9rem;
-                            min-width: 100px;
-                            text-align: center;
-                        ">0:00 / 0:00</div>
-                        
-                        <button class="fullscreen-btn" style="
-                            background: transparent;
-                            color: white;
-                            border: 1px solid rgba(255,255,255,0.5);
-                            border-radius: 4px;
-                            padding: 0.5rem;
-                            cursor: pointer;
-                        ">⛶</button>
-                    </div>
-                    
-                    <!-- Play Button Overlay -->
-                    <div class="play-overlay" style="
-                        position: absolute;
-                        top: 50%;
-                        left: 50%;
-                        transform: translate(-50%, -50%);
-                        background: rgba(0,0,0,0.8);
-                        color: white;
-                        padding: 2rem 3rem;
-                        border-radius: 12px;
-                        font-size: 1.5rem;
-                        border: 3px solid #2563eb;
-                        cursor: pointer;
-                        transition: all 0.3s ease;
-                        z-index: 1000;
-                        display: flex;
-                        align-items: center;
-                        gap: 1rem;
-                    ">
-                        <span style="font-size: 2rem;">▶️</span>
-                        <span>Click to Play</span>
-                    </div>
-                </div>
-            `;
-            
-            // Initialize custom video player functionality
-            const video = container.querySelector('#customVideoPlayer');
-            const wrapper = container.querySelector('.custom-video-wrapper');
-            const customControls = container.querySelector('.custom-video-controls');
-            const playOverlay = container.querySelector('.play-overlay');
-            const progressBar = container.querySelector('.progress-bar');
-            const progressFill = container.querySelector('.progress-fill');
-            const timeDisplay = container.querySelector('.time-display');
-            const fullscreenBtn = container.querySelector('.fullscreen-btn');
-            
-            if (video) {
-                // Apply security features
-                enhanceVideoSecurity(video);
-                addVideoWatermark(video, 'Medcapsule');
-                
-                // Play overlay click handler
-                if (playOverlay) {
-                    playOverlay.addEventListener('click', function() {
-                        video.play();
-                        playOverlay.style.display = 'none';
-                        customControls.style.opacity = '1';
-                    });
-                }
-                
-                // Play/Pause button
-                if (playPauseBtn) {
-                    playPauseBtn.addEventListener('click', function() {
-                        if (video.paused) {
-                            video.play();
-                            this.innerHTML = '⏸️';
-                        } else {
-                            video.pause();
-                            this.innerHTML = '▶️';
-                        }
-                    });
-                }
-                
-                // Progress bar
-                if (progressBar && progressFill) {
-                    progressBar.addEventListener('click', function(e) {
-                        const rect = this.getBoundingClientRect();
-                        const clickX = e.clientX - rect.left;
-                        const width = rect.width;
-                        const clickPercent = clickX / width;
-                        const seekTime = clickPercent * video.duration;
-                        video.currentTime = seekTime;
-                    });
-                }
-                
-                // Fullscreen button
-                if (fullscreenBtn) {
-                    fullscreenBtn.addEventListener('click', function() {
-                        if (document.fullscreenElement) {
-                            document.exitFullscreen();
-                        } else {
-                            wrapper.requestFullscreen();
-                        }
-                    });
-                }
-                
-                // Video event listeners
-                video.addEventListener('timeupdate', function() {
-                    if (progressFill && timeDisplay) {
-                        const progress = (video.currentTime / video.duration) * 100;
-                        progressFill.style.width = progress + '%';
-                        timeDisplay.textContent = `${formatTime(video.currentTime)} / ${formatTime(video.duration)}`;
-                    }
-                });
-                
-                video.addEventListener('loadedmetadata', function() {
-                    if (timeDisplay) {
-                        timeDisplay.textContent = `0:00 / ${formatTime(video.duration)}`;
-                    }
-                });
-                
-                video.addEventListener('ended', function() {
-                    if (playPauseBtn) {
-                        playPauseBtn.innerHTML = '▶️';
-                    }
-                    if (playOverlay) {
-                        playOverlay.style.display = 'flex';
-                    }
-                });
-                
-                // Show/hide controls on hover
-                wrapper.addEventListener('mouseenter', function() {
-                    customControls.style.opacity = '1';
-                });
-                
-                wrapper.addEventListener('mouseleave', function() {
-                    customControls.style.opacity = '0';
-                });
-                
-                // Update play button state
-                video.addEventListener('play', function() {
-                    if (playPauseBtn) {
-                        playPauseBtn.innerHTML = '⏸️';
-                    }
-                });
-                
-                video.addEventListener('pause', function() {
-                    if (playPauseBtn) {
-                        playPauseBtn.innerHTML = '▶️';
-                    }
-                });
-            }
-        }
-
-        // Helper function to format time
-        function formatTime(seconds) {
-            const mins = Math.floor(seconds / 60);
-            const secs = Math.floor(seconds % 60);
-            return `${mins}:${secs.toString().padStart(2, '0')}`;
-        }
-
-        // 🔒 SECURITY: Enhanced video security features
-        function enhanceVideoSecurity(videoElement) {
-            if (!videoElement) return;
-            
-            // Disable right-click context menu
-            videoElement.addEventListener('contextmenu', function(e) {
-                e.preventDefault();
-                e.stopPropagation();
-                return false;
-            }, true);
-            
-            // Disable text selection
-            videoElement.addEventListener('selectstart', function(e) {
-                e.preventDefault();
-                return false;
-            }, true);
-            
-            // Disable drag and drop
-            videoElement.addEventListener('dragstart', function(e) {
-                e.preventDefault();
-                return false;
-            }, true);
-            
-            // Disable keyboard shortcuts
-            videoElement.addEventListener('keydown', function(e) {
-                // Allow only essential keys: space (play/pause), arrow keys (seek), f (fullscreen)
-                const allowedKeys = [' ', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'f', 'F'];
-                if (!allowedKeys.includes(e.key)) {
-                    e.preventDefault();
-                    return false;
-                }
-            }, true);
-            
-            // Prevent video download attempts
-            videoElement.addEventListener('loadstart', function() {
-                // Remove any download attributes
-                this.removeAttribute('download');
-                this.removeAttribute('controlsList');
-            });
-        }
-
-
-
-
-
-        // 🔒 VIDEO SECURITY: Domain restriction and watermarking
-        function addVideoWatermark(videoElement, text = 'Medcapsule') {
-            if (!videoElement) return;
-            
-            // Create watermark overlay
-            const watermark = document.createElement('div');
-            watermark.style.cssText = `
-                position: absolute;
-                top: 10px;
-                right: 10px;
-                background: rgba(0,0,0,0.7);
-                color: white;
-                padding: 0.5rem 1rem;
-                border-radius: 4px;
-                font-size: 0.8rem;
-                font-weight: bold;
-                z-index: 1000;
-                pointer-events: none;
-                user-select: none;
-            `;
-            watermark.textContent = text;
-            
-            // Add to video container
-            const container = videoElement.parentElement;
-            if (container && container.style.position === 'relative') {
-                container.appendChild(watermark);
-            }
-        }
-
-        // 🔒 SECURE VIDEO PLAYER: Now handled by initializeSecureVideoPlayer in secure-video-component.js
-        // function initializeSecureYouTubePlayer(container, youtubeId) {
-            // Load YouTube API if not already loaded
-            if (!window.YT) {
-                const tag = document.createElement('script');
-                tag.src = 'https://www.youtube.com/iframe_api';
-                const firstScriptTag = document.getElementsByTagName('script')[0];
-                firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
-            }
-
-            // Wait for YouTube API to be ready
-            if (window.YT && window.YT.Player) {
-                createSecurePlayer();
-            } else {
-                window.onYouTubeIframeAPIReady = createSecurePlayer;
-            }
-
-            function createSecurePlayer() {
-                const wrapper = container.querySelector('.secure-video-wrapper');
-                const iframe = container.querySelector('#hiddenYoutubePlayer');
-                const customControls = container.querySelector('.custom-youtube-controls');
-                const playOverlay = container.querySelector('.play-overlay');
-                const playPauseBtn = container.querySelector('.play-pause-btn');
-                const progressBar = container.querySelector('.progress-bar');
-                const progressFill = container.querySelector('.progress-fill');
-                const timeDisplay = container.querySelector('.time-display');
-                const fullscreenBtn = container.querySelector('.fullscreen-btn');
-
-                // Create YouTube player instance
-                const player = new YT.Player('hiddenYoutubePlayer', {
-                    height: '100%',
-                    width: '100%',
-                    videoId: youtubeId,
-                    playerVars: {
-                        'autoplay': 0,
-                        'controls': 0,
-                        'disablekb': 1,
-                        'fs': 0,
-                        'iv_load_policy': 3,
-                        'modestbranding': 1,
-                        'playsinline': 1,
-                        'rel': 0,
-                        'showinfo': 0
-                    },
-                    events: {
-                        'onReady': onPlayerReady,
-                        'onStateChange': onPlayerStateChange,
-                        'onError': onPlayerError
-                    }
-                });
-
-                // Player ready event
-                function onPlayerReady(event) {
-                    console.log('🔒 Secure YouTube player ready');
-                    
-                    // Hide play overlay and show controls
-                    if (playOverlay) playOverlay.style.display = 'none';
-                    if (customControls) customControls.style.opacity = '1';
-                    
-                    // Apply security measures
-                    applyYouTubeSecurityMeasures(iframe);
-                }
-
-                // Player state change event
-                function onPlayerStateChange(event) {
-                    const state = event.data;
-                    
-                    if (state === YT.PlayerState.PLAYING) {
-                        if (playPauseBtn) playPauseBtn.innerHTML = '⏸️';
-                        if (playOverlay) playOverlay.style.display = 'none';
-                        startProgressUpdate();
-                    } else if (state === YT.PlayerState.PAUSED) {
-                        if (playPauseBtn) playPauseBtn.innerHTML = '▶️';
-                    } else if (state === YT.PlayerState.ENDED) {
-                        if (playPauseBtn) playPauseBtn.innerHTML = '▶️';
-                        if (playOverlay) playOverlay.style.display = 'flex';
-                        stopProgressUpdate();
-                    }
-                }
-
-                // Player error event
-                function onPlayerError(event) {
-                    console.error('❌ YouTube player error:', event.data);
-                    container.innerHTML = '<div class="video-loading text-danger">❌ Video playback error. Please try again.</div>';
-                }
-
-                // Progress update timer
-                let progressInterval;
-                function startProgressUpdate() {
-                    progressInterval = setInterval(() => {
-                        if (player && player.getCurrentTime && player.getDuration) {
-                            const currentTime = player.getCurrentTime();
-                            const duration = player.getDuration();
-                            
-                            if (progressFill && timeDisplay && duration > 0) {
-                                const progress = (currentTime / duration) * 100;
-                                progressFill.style.width = progress + '%';
-                                timeDisplay.textContent = `${formatTime(currentTime)} / ${formatTime(duration)}`;
-                            }
-                        }
-                    }, 100);
-                }
-
-                function stopProgressUpdate() {
-                    if (progressInterval) {
-                        clearInterval(progressInterval);
-                        progressInterval = null;
-                    }
-                }
-
-                // Control event listeners
-                if (playPauseBtn) {
-                    playPauseBtn.addEventListener('click', function() {
-                        if (player && player.playVideo && player.pauseVideo) {
-                            const state = player.getPlayerState();
-                            if (state === YT.PlayerState.PLAYING) {
-                                player.pauseVideo();
-                            } else {
-                                player.playVideo();
-                            }
-                        }
-                    });
-                }
-
-                if (progressBar) {
-                    progressBar.addEventListener('click', function(e) {
-                        if (player && player.seekTo) {
-                            const rect = this.getBoundingClientRect();
-                            const clickX = e.clientX - rect.left;
-                            const width = rect.width;
-                            const clickPercent = clickX / width;
-                            const seekTime = clickPercent * player.getDuration();
-                            player.seekTo(seekTime, true);
-                        }
-                    });
-                }
-
-                if (fullscreenBtn) {
-                    fullscreenBtn.addEventListener('click', function() {
-                        if (document.fullscreenElement) {
-                            document.exitFullscreen();
-                        } else {
-                            wrapper.requestFullscreen();
-                        }
-                    });
-                }
-
-                // Show/hide controls on hover
-                if (wrapper) {
-                    wrapper.addEventListener('mouseenter', function() {
-                        if (customControls) customControls.style.opacity = '1';
-                    });
-                    
-                    wrapper.addEventListener('mouseleave', function() {
-                        if (customControls) customControls.style.opacity = '0';
-                    });
-                }
-            }
-        }
-        // } // End of old initializeSecureYouTubePlayer function
-
-        // 🔒 YOUTUBE SECURITY: Now handled by initializeSecureVideoPlayer in secure-video-component.js
-        // function applyYouTubeSecurityMeasures(iframe) {
-        //     if (!iframe) return;
-        //     
-        //     // Disable right-click on iframe
-        //     iframe.addEventListener('contextmenu', function(e) {
-        //         e.preventDefault();
-        //         e.stopPropagation();
-        //         return false;
-        //     }, true);
-        //     
-        //     // Prevent iframe inspection
-        //     iframe.addEventListener('load', function() {
-        //         try {
-        //             // Remove any YouTube branding elements that might be accessible
-        //             const iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
-        //             if (iframeDoc) {
-        //                 // This is a security measure - YouTube iframes are cross-origin
-        //                 // so we can't directly manipulate their content, but we can
-        //                 // ensure our overlay prevents interaction
-        //             }
-        //         } catch (e) {
-        //             // Cross-origin restrictions - this is expected and good for security
-        //         }
-        //     });
-        //     
-        //     // Additional security: prevent iframe focus for keyboard shortcuts
-        //     iframe.addEventListener('focus', function() {
-        //         this.blur();
-        //     });
-        // }
-
+        // Ensure countdown seconds are always visible and functional.
         document.addEventListener('DOMContentLoaded', function() {
-            // 🔒 ENHANCED SECURITY: Prevent developer tools access
-            let devtools = { open: false, orientation: null };
-            
-            // Detect developer tools opening
-            setInterval(() => {
-                const threshold = 160;
-                const widthThreshold = window.outerWidth - window.innerWidth > threshold;
-                const heightThreshold = window.outerHeight - window.innerHeight > threshold;
-                
-                if (widthThreshold || heightThreshold) {
-                    if (!devtools.open) {
-                        devtools.open = true;
-                        console.warn('🔒 Security: Developer tools detected');
-                        // You can add additional security measures here
-                    }
-                } else {
-                    devtools.open = false;
-                }
-            }, 500);
-
-            // 🔒 PREVENT RIGHT-CLICK ON VIDEO MODAL
-            document.addEventListener('contextmenu', function(e) {
-                if (e.target.closest('.video-modal')) {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    return false;
-                }
-            }, true);
-
-            // 🔒 PREVENT KEYBOARD SHORTCUTS FOR VIDEO
-            document.addEventListener('keydown', function(e) {
-                if (e.target.closest('.video-modal')) {
-                    // Allow only essential keys: space (play/pause), arrow keys (seek), f (fullscreen)
-                    const allowedKeys = [' ', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'f', 'F'];
-                    if (!allowedKeys.includes(e.key)) {
-                        e.preventDefault();
-                        return false;
-                    }
-                }
-            }, true);
-
-            // 🔒 PREVENT DRAG AND DROP ON VIDEO
-            document.addEventListener('dragstart', function(e) {
-                if (e.target.closest('.video-modal')) {
-                    e.preventDefault();
-                    return false;
-                }
-            }, true);
-
-            // Suppress CORS warnings from YouTube tracking (these don't affect functionality)
-            const originalError = console.error;
-            console.error = function(...args) {
-                if (args[0] && typeof args[0] === 'string' && 
-                    (args[0].includes('Cross-origin redirection') || 
-                     args[0].includes('Cross-Origin Resource Sharing') ||
-                     args[0].includes('access control checks'))) {
-                    // Suppress YouTube tracking CORS warnings
-                    return;
-                }
-                originalError.apply(console, args);
-            };
-
-
-
-            // Initialize external TopicFilters if available
-            if (typeof TopicFilters !== 'undefined') {
-                TopicFilters.init();
-            }
-            
             // 🚀 CACHED DOM ELEMENTS - DECLARE ONCE AT TOP
             const topicsContainer = document.querySelector('.topics-container');
             const caseFilters = document.querySelectorAll('.case-filter');
@@ -3547,12 +2884,7 @@ use App\Models\Assignment;
             }
             
             function getUpdateFrequency(countdown) {
-                const deadline = new Date(countdown.dataset.deadline);
-                const timeLeft = deadline - new Date();
-                
-                if (timeLeft > 3600000) return 60000; // >1 hour: update every minute
-                if (timeLeft > 300000) return 10000;  // >5 min: update every 10 seconds
-                return 1000; // <5 min: update every second
+                return 1000; // Always update every second for live countdown
             }
             
             function updateSingleCountdown(countdown) {
@@ -3566,21 +2898,40 @@ use App\Models\Assignment;
                     return;
                 }
                 
-                const days = Math.floor(timeLeft / 86400000);
-                const hours = Math.floor((timeLeft % 86400000) / 3600000);
-                const minutes = Math.floor((timeLeft % 3600000) / 60000);
-                const seconds = Math.floor((timeLeft % 60000) / 1000);
-                
                 let countdownText = '';
+                
+                // Calculate total seconds remaining
+                const totalSeconds = Math.floor(timeLeft / 1000);
+
+                // Calculate days, hours, minutes, seconds
+                const days = Math.floor(totalSeconds / (3600 * 24));
+                const hours = Math.floor((totalSeconds % (3600 * 24)) / 3600);
+                const minutes = Math.floor((totalSeconds % 3600) / 60);
+                const seconds = totalSeconds % 60;
+
+                // Format hours, minutes, seconds with leading zeros
+                let displayHours = hours;
+                let ampm = '';
+
+                // Convert hours to 12-hour format and determine AM/PM
+                ampm = displayHours >= 12 ? 'PM' : 'AM';
+                displayHours = displayHours % 12;
+                displayHours = displayHours ? displayHours : 12; // The hour '0' should be '12'
+
+                const formattedHours12 = String(displayHours).padStart(2, '0');
+                const formattedMinutes = String(minutes).padStart(2, '0');
+                const formattedSeconds = String(seconds).padStart(2, '0');
+
                 if (days > 0) {
-                    countdownText = `${days}d ${hours}h ${minutes}m`;
-                } else if (hours > 0) {
-                    countdownText = `${hours}h ${minutes}m ${seconds}s`;
-                } else if (minutes > 0) {
-                    countdownText = `${minutes}m ${seconds}s`;
+                    countdownText = `${days}d ${formattedHours12}:${formattedMinutes}:${formattedSeconds} ${ampm}`;
                 } else {
-                    countdownText = `${seconds}s`;
+                    countdownText = `${formattedHours12}:${formattedMinutes}:${formattedSeconds} ${ampm}`;
+                }
+
+                if (timeLeft < 3600000) { // Less than 1 hour
                     countdown.classList.add('countdown-urgent');
+                } else {
+                    countdown.classList.remove('countdown-urgent');
                 }
                 
                 const display = countdown.querySelector('.countdown-display');
@@ -3981,141 +3332,30 @@ use App\Models\Assignment;
                     
                     if (selectedCourses.length === 0) {
                         e.preventDefault();
-                        alert('Please select at least one course to start the random quiz.');
+                        alert('Please select at least one course for the random quiz.');
                         return false;
                     }
                     
-                    // Check if question count is selected
-                    if (!questionLimit.value) {
+                    // Validate question limit
+                    const questionLimitValue = parseInt(questionLimit?.value || 10);
+                    if (questionLimitValue < 1 || questionLimitValue > 100) {
                         e.preventDefault();
-                        alert('Please select the number of questions for your quiz.');
-                        questionLimit.focus();
+                        alert('Please enter a valid question limit (1-100).');
                         return false;
                     }
                     
-                    // Check if time limit is selected
-                    if (!timeLimit.value) {
+                    // Validate time limit
+                    const timeLimitValue = parseInt(timeLimit?.value || 30);
+                    if (timeLimitValue < 1 || timeLimitValue > 180) {
                         e.preventDefault();
-                        alert('Please select a time limit for your quiz.');
-                        timeLimit.focus();
+                        alert('Please enter a valid time limit (1-180 minutes).');
                         return false;
                     }
-                    
-                    // Show loading state on submit button
-                    const submitBtn = document.querySelector('button[form="randomQuizForm"]');
-                    if (submitBtn) {
-                        submitBtn.disabled = true;
-                        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Starting Quiz...';
-                    }
-                    
-                    return true;
                 });
             }
-
-            // Random Quiz Modal - Course Selection Handling (STABLE VERSION)
-            let isSubmitting = false; // Prevent button state changes during submission
-            
-            courseCheckboxes.forEach(checkbox => {
-                checkbox.addEventListener('change', function() {
-                    if (isSubmitting) return; // Don't change button during submission
-                    
-                    const checkedCourses = document.querySelectorAll('#randomQuizModal input[name="selected_courses[]"]:checked');
-                    const submitBtn = document.querySelector('button[form="randomQuizForm"]');
-                    
-                    if (submitBtn && !submitBtn.disabled) { // Only update if not already disabled
-                        if (checkedCourses.length === 0) {
-                            submitBtn.disabled = true;
-                            submitBtn.innerHTML = '<i class="fas fa-exclamation-triangle me-2"></i>Select Courses';
-                        } else {
-                            submitBtn.disabled = false;
-                            submitBtn.innerHTML = '<i class="fas fa-play me-2"></i>Start Quiz';
-                        }
-                    }
-                });
-            });
-            
-            // Prevent button state changes during form submission
-            if (randomQuizForm) {
-                randomQuizForm.addEventListener('submit', function() {
-                    isSubmitting = true;
-                });
-            }
-            
-            // Reset button state when modal is opened
-            if (randomQuizModal) {
-                randomQuizModal.addEventListener('shown.bs.modal', function() {
-                    isSubmitting = false; // Reset submission state
-                    const submitBtn = document.querySelector('button[form="randomQuizForm"]');
-                    const checkedCourses = document.querySelectorAll('#randomQuizModal input[name="selected_courses[]"]:checked');
-                    
-                    if (submitBtn) {
-                        if (checkedCourses.length === 0) {
-                            submitBtn.disabled = true;
-                            submitBtn.innerHTML = '<i class="fas fa-exclamation-triangle me-2"></i>Select Courses';
-                        } else {
-                            submitBtn.disabled = false;
-                            submitBtn.innerHTML = '<i class="fas fa-play me-2"></i>Start Quiz';
-                        }
-                    }
-                });
-            }
-            
-
         });
-
-        // Initialize topic filters
-        if (typeof TopicFilters !== 'undefined') {
-            TopicFilters.init();
-        }
-
-        // Microsoft Edge modal backdrop fix
-        function isEdge() {
-            return /Edge|Edg/.test(navigator.userAgent);
-        }
-
-        if (isEdge()) {
-            // Fix Edge modal backdrop rendering issue
-            document.addEventListener('shown.bs.modal', function(e) {
-                const backdrop = document.querySelector('.modal-backdrop');
-                if (backdrop) {
-                    // Force repaint in Edge
-                    backdrop.style.display = 'none';
-                    backdrop.offsetHeight; // Trigger reflow
-                    backdrop.style.display = 'block';
-                    backdrop.style.background = 'rgba(0, 0, 0, 0.5)';
-                    backdrop.style.position = 'fixed';
-                    backdrop.style.top = '0';
-                    backdrop.style.left = '0';
-                    backdrop.style.width = '100%';
-                    backdrop.style.height = '100%';
-                    backdrop.style.zIndex = '1040';
-                }
-            });
-
-            // Additional fix for modal show event
-            modals.forEach(modal => {
-                modal.addEventListener('show.bs.modal', function() {
-                    setTimeout(() => {
-                        const backdrop = document.querySelector('.modal-backdrop');
-                        if (backdrop) {
-                            backdrop.style.background = 'rgba(0, 0, 0, 0.5)';
-                            backdrop.style.opacity = '1';
-                        }
-                    }, 50);
-                });
-            });
-        }
-
-        // REMOVED: showQuizModal function - using proper event handler instead
-        // The quiz buttons now use the proper event handler that shows the source selection modal
     </script>
     
-    <!-- Topic Filters JavaScript -->
-    <!-- Removed asset URL -->
-    <!-- Duplicate DOMContentLoaded removed - functionality already handled in main script -->
-    <!-- External JavaScript file removed - all functionality consolidated inline -->
-    
-    <!-- 🚀 PERFORMANCE: Minimal inline JavaScript for critical functionality -->
     <script>
         // Critical path JavaScript only
         document.addEventListener('DOMContentLoaded', function() {

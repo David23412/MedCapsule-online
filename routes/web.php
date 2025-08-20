@@ -444,6 +444,13 @@ Route::middleware('auth')->group(function () {
         ->name('topics.source-progress')
         ->middleware('auth');
 
+    // Video page route
+    Route::get('/video/{topic}', [TopicController::class, 'showVideo'])->name('video.show')->middleware('auth');
+    
+    // Video progress routes
+    Route::post('/api/video/progress', [App\Http\Controllers\VideoProgressController::class, 'updateProgress'])->name('video.progress.update')->middleware('auth');
+    Route::get('/api/video/progress/{topic}', [App\Http\Controllers\VideoProgressController::class, 'getProgress'])->name('video.progress.get')->middleware('auth');
+
     // Video access endpoint
     Route::get('/video-access/{video}', 'App\Http\Controllers\VideoController@getVideoAccess')
         ->name('video.access')

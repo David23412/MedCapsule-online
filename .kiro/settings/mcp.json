@@ -1,0 +1,36 @@
+{
+  "mcpServers": {
+    "filesystem": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-filesystem", "/Users/davidgeorge/Documents/Medcapsule-online"]
+    },
+    "fetch": {
+      "command": "npx",
+      "args": ["-y", "@kazuph/mcp-fetch"]
+    },
+    "git": {
+      "command": "npx",
+      "args": ["-y", "@cyanheads/git-mcp-server"]
+    },
+    "github": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-github"]
+    },
+    "playwright": {
+      "command": "npx",
+      "args": ["-y", "@executeautomation/playwright-mcp-server"]
+    },
+    "puppeteer": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-puppeteer"]
+    },
+    "memory": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-memory"]
+    },
+    "macShell": {
+      "command": "npx",
+      "args": ["-y", "@mseep/mac-shell-mcp"]
+    }
+  }
+}

@@ -336,7 +336,7 @@ class ComprehensiveWebsiteSeeder extends Seeder
                 'topic_id' => $topic->id,
                 'youtube_video_id' => $sampleYouTubeIds[$index % count($sampleYouTubeIds)],
                 'title' => $topic->name . ' - Introduction',
-                'description' => 'Securely proxied educational video for ' . $topic->name,
+                
                 'duration' => rand(300, 1200),
                 'is_active' => true,
             ]);

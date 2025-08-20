@@ -475,7 +475,7 @@
                     <button type="button" class="btn btn-sm btn-outline-secondary me-2" id="resizeVideoBtn" title="Toggle video size">
                         <i class="fas fa-expand"></i>
                     </button>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" id="videoModalCloseBtn"></button>
                 </div>
             </div>
             <div class="modal-body">
@@ -488,88 +488,11 @@
 </div>
 
 <script>
-// Global video player functions
-window.playVideo = function(videoId, videoTitle) {
-    console.log('🎬 Starting video playback for:', videoId, videoTitle);
-    
-    const modal = document.getElementById('videoModal');
-    const modalTitle = document.getElementById('videoModalTitle');
-    const videoContainer = document.getElementById('videoContainer');
-    
-    // Set modal title
-    modalTitle.textContent = videoTitle;
-    
-    // Show loading state
-    videoContainer.innerHTML = '<div class="video-loading">🎬 Loading video...</div>';
-    
-    // Show modal with proper sizing
-    const bsModal = new bootstrap.Modal(modal, {
-        backdrop: 'static',
-        keyboard: false
-    });
-    bsModal.show();
-    
-    // Ensure modal opens with proper dimensions
-    setTimeout(() => {
-        modal.classList.add('show');
-    }, 150);
-    
-    // Initialize resize functionality - SMART ZOOM (modal only, not iframe)
-    const resizeBtn = document.getElementById('resizeVideoBtn');
-    if (resizeBtn) {
-        resizeBtn.addEventListener('click', function() {
-            const isExpanded = modal.classList.contains('video-expanded');
-            if (isExpanded) {
-                // Compress modal back to normal size
-                modal.classList.remove('video-expanded');
-                this.innerHTML = '<i class="fas fa-expand"></i>';
-                this.title = 'Expand video';
-                
-                // Ensure security overlay covers the entire modal area
-                const overlay = videoContainer.querySelector('.secure-overlay');
-                if (overlay) {
-                    overlay.style.width = '100%';
-                    overlay.style.height = '100%';
-                }
-            } else {
-                // Expand modal to full screen (NOT the iframe)
-                modal.classList.add('video-expanded');
-                this.innerHTML = '<i class="fas fa-compress"></i>';
-                this.title = 'Compress video';
-                
-                // Ensure security overlay covers the entire expanded modal
-                const overlay = videoContainer.querySelector('.secure-overlay');
-                if (overlay) {
-                    overlay.style.width = '100%';
-                    overlay.style.height = '100%';
-                }
-            }
-        });
-    }
-    
-    // AUTO-STOP VIDEO ON CLOSE - Enhanced close button functionality
-    const closeBtn = modal.querySelector('.btn-close');
-    if (closeBtn) {
-        closeBtn.addEventListener('click', function() {
-            // Stop any running video
-            stopVideoAndCleanup();
-        });
-    }
-    
-    // Also handle modal hidden event for additional cleanup
-    modal.addEventListener('hidden.bs.modal', function() {
-        stopVideoAndCleanup();
-    });
-    
-    // Function to stop video and cleanup
+    // Function to stop video and cleanup - MORE ROBUST
     function stopVideoAndCleanup() {
-        console.log('🛑 Stopping video and cleaning up...');
-        
-        // Use global cleanup function if available
-        if (typeof window.stopAllVideos === 'function') {
-            window.stopAllVideos();
-        } else {
-            // Fallback cleanup
+        console.log(' Stopping video and cleaning up...');
+        const videoContainer = document.getElementById('videoContainer');
+        if (videoContainer) {
             const iframe = videoContainer.querySelector('iframe[id^="hidden-youtube-player"]');
             if (iframe && iframe.id) {
                 try {
@@ -577,205 +500,149 @@ window.playVideo = function(videoId, videoTitle) {
                         const player = window.YT.get(iframe.id);
                         if (player && typeof player.stopVideo === 'function') {
                             player.stopVideo();
-                            console.log('✅ YouTube player stopped');
+                            console.log(' YouTube player stopped via YT.get');
+                            // Also destroy the player to free up resources
+                            player.destroy();
                         }
                     }
                 } catch (error) {
-                    console.log('⚠️ Could not stop YouTube player directly:', error);
+                    console.log(' Could not stop YouTube player directly, trying fallback:', error);
+                    // Fallback: reload the iframe to stop the video
+                    if (iframe.src) {
+                        iframe.src = '';
+                    }
                 }
             }
-            
-            // Clear any running intervals
-            if (window.videoProgressInterval) {
-                clearInterval(window.videoProgressInterval);
-                window.videoProgressInterval = null;
-            }
-        }
-        
-        // Reset video container
-        videoContainer.innerHTML = '<div class="video-loading">🎬 Loading video...</div>';
-        
-        console.log('✅ Video cleanup completed');
-    }
-    
-    // Get the YouTube video ID from the database
-    console.log('🎥 Creating YouTube video player for video ID:', videoId);
-    
-    // Fetch the video details to get the YouTube video ID
-    fetch(`/api/video/${videoId}`, {
-        method: 'GET',
-        headers: {
-            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
-            'Accept': 'application/json',
-            'X-Requested-With': 'XMLHttpRequest'
-        },
-        credentials: 'same-origin'
-    })
-    .then(response => response.json())
-    .then(videoData => {
-        if (videoData.success && videoData.video.youtube_video_id) {
-            const youtubeId = videoData.video.youtube_video_id;
-            console.log('✅ YouTube video ID found:', youtubeId);
-            
-                // Create SECURE YouTube custom player using component function
-    if (typeof window.generateSecureVideoOverlay === 'function') {
-        videoContainer.innerHTML = window.generateSecureVideoOverlay(youtubeId, videoTitle, true, true);
-        
-        // Initialize secure video player with maximum security
-        if (typeof window.initializeSecureVideoPlayer === 'function') {
-            window.initializeSecureVideoPlayer(videoContainer, youtubeId);
-        } else {
-            console.error('❌ initializeSecureVideoPlayer function not found');
-        }
-    } else {
-        console.error('❌ generateSecureVideoOverlay function not found. Loading fallback...');
-        // Fallback to secure iframe with maximum security
-        videoContainer.innerHTML = `
-            <div class="secure-video-wrapper" style="width: 100%; height: 100%; background: #000; position: relative; overflow: hidden; user-select: none;">
-                <iframe 
-                    src="https://www.youtube-nocookie.com/embed/${youtubeId}?autoplay=1&rel=0&modestbranding=1&showinfo=0&controls=0&disablekb=1&fs=0&iv_load_policy=3&playsinline=1&origin=${encodeURIComponent(window.location.origin)}"
-                    style="width: 100%; height: 100%; border: none; display: block; pointer-events: none;"
-                    frameborder="0"
-                    allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture"
-                    title="${videoTitle}"
-                    oncontextmenu="return false;"
-                    onmousedown="return false;"
-                    onselectstart="return false;"
-                    oncopy="return false;"
-                    oncut="return false;"
-                    onpaste="return false;"
-                    ondragstart="return false;"
-                    ondrop="return false;"
-                    onkeydown="return false;"
-                    onkeyup="return false;"
-                    onkeypress="return false;"
-                ></iframe>
-                <!-- Security overlay to block all interactions -->
-                <div class="secure-overlay" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 10; background: transparent; pointer-events: auto; cursor: pointer;" oncontextmenu="return false;" onmousedown="return false;" onselectstart="return false;" oncopy="return false;" oncut="return false;" onpaste="return false;" ondragstart="return false;" ondrop="return false;" onkeydown="return false;" onkeyup="return false;" onkeypress="return false;"></div>
-            </div>
-        `;
-    }
-            
-            console.log('✅ Secure YouTube custom player created successfully');
-        } else {
-            throw new Error('Video not found or no YouTube ID available');
-        }
-    })
-    .catch(error => {
-        console.error('❌ Failed to load video details:', error);
-        videoContainer.innerHTML = '<div class="video-loading text-danger">❌ Failed to load video. Please check the video configuration.</div>';
-    });
-};
+            // Reset video container
+            videoContainer.innerHTML = '<div class="video-loading"> Loading video...</div>';
 
-// Ensure secure video component is loaded
-document.addEventListener('DOMContentLoaded', function() {
-    // Load secure video component if not already loaded
+            // Explicitly remove any lingering security overlays
+            const lingeringOverlays = document.querySelectorAll('.security-overlay');
+            lingeringOverlays.forEach(overlay => {
+                if (overlay.parentNode) {
+                    overlay.parentNode.removeChild(overlay);
+                    console.log(' Removed lingering security overlay');
+                }
+            });
+        }
+
+        // Clear any running intervals
+        if (window.videoProgressInterval) {
+            clearInterval(window.videoProgressInterval);
+            window.videoProgressInterval = null;
+        }
+        
+        console.log(' Video cleanup completed');
+        // Disable click blocking when video stops
+        if (typeof updateClickBlocking === 'function') {
+            updateClickBlocking(false);
+        }
+        isVideoPlaying = false;
+    }
+
+let isSecureVideoInitialized = false;
+
+function initializeSecureVideo() {
+    if (isSecureVideoInitialized) {
+        return;
+    }
+    isSecureVideoInitialized = true;
+
+    console.log('🚀 Initializing Secure Video Component for the first time...');
+
+    const modal = document.getElementById('videoModal');
+    if (modal) {
+        const closeBtn = document.getElementById('videoModalCloseBtn');
+        if (closeBtn) {
+            closeBtn.addEventListener('click', () => stopVideoAndCleanup());
+        }
+        modal.addEventListener('hidden.bs.modal', () => stopVideoAndCleanup());
+    }
+
     if (typeof window.generateSecureVideoOverlay === 'undefined') {
         const script = document.createElement('script');
         script.src = '/js/secure-video-component.js';
-        script.onload = function() {
-            console.log('✅ Secure video component loaded successfully');
-        };
-        script.onerror = function() {
-            console.error('❌ Failed to load secure video component');
-        };
+        script.onload = () => console.log('Secure video component loaded successfully');
+        script.onerror = () => console.error('Failed to load secure video component');
         document.head.appendChild(script);
     }
-    
-    // 🔒 ENHANCED SECURITY: Prevent developer tools access
-    let devtools = { open: false, orientation: null };
-    
-    // Detect developer tools opening
-    setInterval(() => {
-        const threshold = 160;
-        const widthThreshold = window.outerWidth - window.innerWidth > threshold;
-        const heightThreshold = window.outerHeight - window.innerHeight > threshold;
-        
-        if (widthThreshold || heightThreshold) {
-            if (!devtools.open) {
-                devtools.open = true;
-                console.warn('🔒 Security: Developer tools detected');
-            }
-        } else {
-            devtools.open = false;
-        }
-    }, 500);
 
-            // 🔒 MAXIMUM SECURITY: Block ALL interactions on video modal
-        document.addEventListener('contextmenu', function(e) {
+    const securityEvents = ['contextmenu', 'keydown', 'dragstart', 'copy', 'cut', 'paste', 'selectstart'];
+    securityEvents.forEach(eventName => {
+        document.addEventListener(eventName, function(e) {
             if (e.target.closest('.video-modal') || e.target.closest('.secure-video-wrapper')) {
                 e.preventDefault();
                 e.stopPropagation();
                 return false;
             }
         }, true);
+    });
 
-        // 🔒 BLOCK ALL KEYBOARD SHORTCUTS
-        document.addEventListener('keydown', function(e) {
-            if (e.target.closest('.video-modal') || e.target.closest('.secure-video-wrapper')) {
-                e.preventDefault();
-                e.stopPropagation();
-                return false;
-            }
-        }, true);
-
-        // 🔒 BLOCK DRAG AND DROP
-        document.addEventListener('dragstart', function(e) {
-            if (e.target.closest('.video-modal') || e.target.closest('.secure-video-wrapper')) {
-                e.preventDefault();
-                e.stopPropagation();
-                return false;
-            }
-        }, true);
-
-        // 🔒 BLOCK COPY OPERATIONS
-        document.addEventListener('copy', function(e) {
-            if (e.target.closest('.video-modal') || e.target.closest('.secure-video-wrapper')) {
-                e.preventDefault();
-                e.stopPropagation();
-                return false;
-            }
-        }, true);
-
-        // 🔒 BLOCK CUT OPERATIONS
-        document.addEventListener('cut', function(e) {
-            if (e.target.closest('.video-modal') || e.target.closest('.secure-video-wrapper')) {
-                e.preventDefault();
-                e.stopPropagation();
-                return false;
-            }
-        }, true);
-
-        // 🔒 BLOCK PASTE OPERATIONS
-        document.addEventListener('paste', function(e) {
-            if (e.target.closest('.video-modal') || e.target.closest('.secure-video-wrapper')) {
-                e.preventDefault();
-                e.stopPropagation();
-                return false;
-            }
-        }, true);
-
-        // 🔒 BLOCK TEXT SELECTION
-        document.addEventListener('selectstart', function(e) {
-            if (e.target.closest('.video-modal') || e.target.closest('.secure-video-wrapper')) {
-                e.preventDefault();
-                e.stopPropagation();
-                return false;
-            }
-        }, true);
-
-    // Suppress CORS warnings from YouTube tracking (these don't affect functionality)
     const originalError = console.error;
     console.error = function(...args) {
-        if (args[0] && typeof args[0] === 'string' && 
-            (args[0].includes('Cross-origin redirection') || 
-             args[0].includes('Cross-Origin Resource Sharing') ||
-             args[0].includes('access control checks'))) {
-            // Suppress YouTube tracking CORS warnings
+        if (args[0] && typeof args[0] === 'string' && (args[0].includes('Cross-origin redirection') || args[0].includes('Cross-Origin Resource Sharing'))) {
             return;
         }
         originalError.apply(console, args);
     };
+}
+
+window.playVideo = function(videoId, videoTitle) {
+    initializeSecureVideo();
+
+    if (window.isVideoPlaying) {
+        console.log('Video is already playing. Ignoring request.');
+        return;
+    }
+    window.isVideoPlaying = true;
+    console.log('Starting video playback for:', videoId, videoTitle);
+
+    const modal = document.getElementById('videoModal');
+    const modalTitle = document.getElementById('videoModalTitle');
+    const videoContainer = document.getElementById('videoContainer');
+
+    modalTitle.textContent = videoTitle;
+    videoContainer.innerHTML = '<div class="video-loading">Loading video...</div>';
+
+    const bsModal = new bootstrap.Modal(modal, { backdrop: 'static', keyboard: false });
+    bsModal.show();
+
+    const resizeBtn = document.getElementById('resizeVideoBtn');
+    if (resizeBtn && !resizeBtn.hasAttribute('data-event-attached')) {
+        resizeBtn.addEventListener('click', function() {
+            modal.classList.toggle('video-expanded');
+            this.innerHTML = modal.classList.contains('video-expanded') ? '<i class="fas fa-compress"></i>' : '<i class="fas fa-expand"></i>';
+        });
+        resizeBtn.setAttribute('data-event-attached', 'true');
+    }
+
+    fetch(`/api/video/${videoId}`)
+        .then(response => response.json())
+        .then(videoData => {
+            if (videoData.success && videoData.video.youtube_video_id) {
+                const youtubeId = videoData.video.youtube_video_id;
+                if (typeof window.generateSecureVideoOverlay === 'function') {
+                    videoContainer.innerHTML = window.generateSecureVideoOverlay(youtubeId, videoTitle, true, true);
+                    if (typeof window.initializeSecureVideoPlayer === 'function') {
+                        window.initializeSecureVideoPlayer(videoContainer, youtubeId);
+                    } else {
+                        console.error('initializeSecureVideoPlayer function not found');
+                    }
+                } else {
+                    console.error('generateSecureVideoOverlay function not found.');
+                }
+            } else {
+                throw new Error('Video not found or no YouTube ID available');
+            }
+        })
+        .catch(error => {
+            console.error('Failed to load video details:', error);
+            videoContainer.innerHTML = '<div class="video-loading text-danger">Failed to load video.</div>';
+        });
+};
+
+document.addEventListener('DOMContentLoaded', function() {
+    // Initialization is deferred until playVideo() is called.
 });
 </script>
 

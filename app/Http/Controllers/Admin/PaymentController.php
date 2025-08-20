@@ -65,4 +65,51 @@ class PaymentController extends Controller
 
         return view('admin.payment-details', compact('payment'));
     }
-}
+
+    public function adminVerifyPayment(Request $request, Payment $payment)
+    {
+        $validated = $request->validate([
+            'status' => 'required|in:approved,rejected',
+            'admin_notes' => 'nullable|string|max:500'
+        ]);
+
+        try {
+            DB::beginTransaction();
+            
+            $payment->update([
+                'status' => $validated['status'],
+                'admin_notes' => $validated['admin_notes'] ?? null,
+                'verified_at' => now(),
+                'verified_by' => Auth::id()
+            ]);
+
+            // If approved, grant course access and dispatch notification
+            if ($validated['status'] === 'approved') {
+                $payment->user->courses()->attach($payment->course_id, [
+                    'enrolled_at' => now()
+                ]);
+
+                // Dispatch payment success notification
+                \App\Services\NotificationService::createPaymentSuccessNotification(
+                    $payment->user,
+                    $payment->course->name,
+                    $payment->amount
+                );
+            }
+
+            DB::commit();
+            
+            return response()->json([
+                'success' => true,
+                'message' => 'Payment ' . $validated['status'] . ' successfully'
+            ]);
+            
+        } catch (Exception $e) {
+            DB::rollback();
+            
+            return response()->json([
+                'success' => false,
+                'message' => 'Verification failed: ' . $e->getMessage()
+            ], 500);
+        }
+    }

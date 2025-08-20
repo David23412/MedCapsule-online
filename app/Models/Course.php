@@ -35,7 +35,6 @@ class Course extends Model
 
     protected $casts = [
         'type' => 'string',
-        'price' => 'decimal:2',
         'cache_version' => 'integer'
     ];
 
