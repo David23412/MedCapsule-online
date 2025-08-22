@@ -335,42 +335,106 @@
             border: 2px solid transparent;
         }
 
+        /* Enhanced Data Pills - More Vibrant & Professional */
+        .data-pill {
+            display: inline-block;
+            padding: 0.25rem 0.75rem;
+            border-radius: 12px;
+            font-size: 0.75rem;
+            font-weight: 500;
+            text-transform: none;
+            letter-spacing: 0.025em;
+            border: 1px solid;
+            backdrop-filter: blur(4px);
+            max-width: 100%;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        /* Course Pill - Vibrant Blue */
+        .data-pill.course {
+            background: rgba(13, 110, 253, 0.12) !important;
+            color: #1d4ed8 !important;
+            border-color: rgba(13, 110, 253, 0.25);
+        }
+
+        /* Method Pill - Vibrant Teal */
+        .data-pill.method {
+            background: rgba(13, 202, 240, 0.12) !important;
+            color: #0f766e !important;
+            border-color: rgba(13, 202, 240, 0.25);
+        }
+
+        /* Status Pills - More Vibrant Colors */
+        .data-pill.status-completed {
+            background: rgba(34, 197, 94, 0.12) !important;
+            color: #166534 !important;
+            border-color: rgba(34, 197, 94, 0.25);
+        }
+
+        .data-pill.status-pending {
+            background: rgba(251, 191, 36, 0.15) !important;
+            color: #92400e !important;
+            border-color: rgba(251, 191, 36, 0.30);
+        }
+
+        .data-pill.status-rejected {
+            background: rgba(239, 68, 68, 0.12) !important;
+            color: #991b1b !important;
+            border-color: rgba(239, 68, 68, 0.25);
+        }
+
+        .data-pill.status-default {
+            background: rgba(107, 114, 128, 0.12) !important;
+            color: #374151 !important;
+            border-color: rgba(107, 114, 128, 0.25);
+        }
+
+        /* Hover Effects - Subtle Enhancement */
+        .data-pill:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            transition: all 0.2s ease;
+        }
+
+        /* Legacy Badge Support - Updated for Consistency */
         .badge.bg-primary {
-            background: linear-gradient(135deg, #0d6efd 0%, #0056b3 100%) !important;
-            color: white !important;
-            border-color: #0d6efd;
+            background: rgba(13, 110, 253, 0.08) !important;
+            color: #1e40af !important;
+            border: 1px solid rgba(13, 110, 253, 0.15);
         }
 
         .badge.bg-success {
-            background: linear-gradient(135deg, #198754 0%, #146c43 100%) !important;
-            color: white !important;
-            border-color: #198754;
+            background: rgba(25, 135, 84, 0.08) !important;
+            color: #14532d !important;
+            border: 1px solid rgba(25, 135, 84, 0.15);
         }
 
         .badge.bg-warning {
-            background: linear-gradient(135deg, #ffc107 0%, #ffb300 100%) !important;
-            color: #000 !important;
-            border-color: #ffc107;
-            font-weight: 700;
+            background: rgba(251, 191, 36, 0.08) !important;
+            color: #78350f !important;
+            border: 1px solid rgba(251, 191, 36, 0.15);
+            font-weight: 600;
         }
 
         .badge.bg-danger {
-            background: linear-gradient(135deg, #dc3545 0%, #c82333 100%) !important;
-            color: white !important;
-            border-color: #dc3545;
+            background: rgba(220, 53, 69, 0.08) !important;
+            color: #7f1d1d !important;
+            border: 1px solid rgba(220, 53, 69, 0.15);
         }
 
         .badge.bg-info {
-            background: linear-gradient(135deg, #0dcaf0 0%, #0aa2c0 100%) !important;
-            color: #000 !important;
-            border-color: #0dcaf0;
-            font-weight: 700;
+            background: rgba(13, 202, 240, 0.08) !important;
+            color: #0c4a6e !important;
+            border: 1px solid rgba(13, 202, 240, 0.15);
+            font-weight: 600;
         }
 
         .badge.bg-secondary {
-            background: linear-gradient(135deg, #6c757d 0%, #5a6268 100%) !important;
-            color: white !important;
-            border-color: #6c757d;
+            background: rgba(108, 117, 125, 0.08) !important;
+            color: #374151 !important;
+            border: 1px solid rgba(108, 117, 125, 0.15);
         }
 
         .stats-row {
@@ -881,7 +945,7 @@
         <div class="row stats-row g-3">
             <div class="col-lg-3 col-md-6">
                 <div class="stat-card">
-                    <div class="stat-number text-primary">{{ $userStats['total_users'] ?? 0 }}</div>
+                    <div class="stat-number text-primary">{{ isset($userStats) ? ($userStats['total_users'] ?? 0) : 0 }}</div>
                     <div class="stat-label">Total Users</div>
                     <div class="stat-change">
                         <i class="fas fa-users"></i> Total registered users
@@ -890,28 +954,28 @@
             </div>
             <div class="col-lg-3 col-md-6">
                 <div class="stat-card">
-                    <div class="stat-number text-success">{{ $userStats['active_users'] ?? 0 }}</div>
+                    <div class="stat-number text-success">{{ isset($userStats) ? ($userStats['active_users'] ?? 0) : 0 }}</div>
                     <div class="stat-label">Active Users</div>
                     <div class="stat-change positive">
-                        <i class="fas fa-arrow-up"></i> {{ $userStats['total_users'] > 0 ? round(($userStats['active_users'] / $userStats['total_users']) * 100) : 0 }}% active
+                        <i class="fas fa-arrow-up"></i> {{ isset($userStats) && isset($userStats['total_users']) && $userStats['total_users'] > 0 ? round(($userStats['active_users'] / $userStats['total_users']) * 100) : 0 }}% active
                     </div>
                 </div>
             </div>
             <div class="col-lg-3 col-md-6">
                 <div class="stat-card">
-                    <div class="stat-number text-warning">{{ $userStats['admin_users'] ?? 0 }}</div>
+                    <div class="stat-number text-warning">{{ isset($userStats) ? ($userStats['admin_users'] ?? 0) : 0 }}</div>
                     <div class="stat-label">Administrators</div>
                     <div class="stat-change">
-                        <i class="fas fa-shield-alt"></i> {{ $userStats['total_users'] > 0 ? round(($userStats['admin_users'] / $userStats['total_users']) * 100, 1) : 0 }}% of users
+                        <i class="fas fa-shield-alt"></i> {{ isset($userStats) && isset($userStats['total_users']) && $userStats['total_users'] > 0 ? round(($userStats['admin_users'] / $userStats['total_users']) * 100, 1) : 0 }}% of users
                     </div>
                 </div>
             </div>
             <div class="col-lg-3 col-md-6">
                 <div class="stat-card">
-                    <div class="stat-number text-info">{{ $userStats['total_enrollments'] ?? 0 }}</div>
+                    <div class="stat-number text-info">{{ isset($userStats) ? ($userStats['total_enrollments'] ?? 0) : 0 }}</div>
                     <div class="stat-label">Total Enrollments</div>
                     <div class="stat-change positive">
-                        <i class="fas fa-graduation-cap"></i> {{ $userStats['total_users'] > 0 ? round($userStats['total_enrollments'] / $userStats['total_users'], 1) : 0 }} avg per user
+                        <i class="fas fa-graduation-cap"></i> {{ isset($userStats) && isset($userStats['total_users']) && $userStats['total_users'] > 0 ? round($userStats['total_enrollments'] / $userStats['total_users'], 1) : 0 }} avg per user
                     </div>
                 </div>
             </div>
@@ -945,7 +1009,7 @@
                             <div class="col-md-3 col-6">
                                 <div class="d-flex align-items-center justify-content-center">
                                     <i class="fas fa-users text-info me-2"></i>
-                                    <span class="small">Active Users: <strong>{{ $userStats['active_users'] ?? 0 }}</strong></span>
+                                    <span class="small">Active Users: <strong>{{ isset($userStats) ? ($userStats['active_users'] ?? 0) : 0 }}</strong></span>
                                 </div>
                             </div>
                             <div class="col-md-3 col-6">
@@ -1003,10 +1067,9 @@
                                     <select class="form-control user-select" id="user_id" name="user_id">
                                         <option value="">Type to search for user...</option>
                                         @if(isset($users) && $users->count() > 0)
-{{-- 💀 N+1 FIX NEEDED: Eager load 'email' in controller --}}
                                             @foreach($users as $user)
-                                                <option value="{{ $user->id }}" data-email="{{ $user->email }}" data-role="{{ $user->role }}">
-                                                    {{ $user->name }} ({{ $user->email }})
+                                                <option value="{{ $user->id }}" {{ old('user_id') == $user->id ? 'selected' : '' }} data-email="{{ $user->email ?? '' }}" data-role="{{ $user->role ?? 0 }}" data-name="{{ $user->name ?? '' }}">
+                                                    {{ $user->name ?? 'Unknown' }} ({{ $user->email ?? 'No Email' }})
                                                 </option>
                                             @endforeach
                                         @else
@@ -1018,20 +1081,21 @@
                                         Start typing name or email to find users quickly
                                     </div>
                                 </div>
-                                
+
                                 <div class="mb-3">
                                     <label class="form-label">
                                         <i class="fas fa-graduation-cap me-1"></i>Search Courses
                                     </label>
                                     <select class="form-select" id="course_id" name="course_id">
                                         <option value="">Choose course...</option>
-{{-- 💀 N+1 FIX NEEDED: Eager load 'name' in controller --}}
                                         @if(isset($courses) && $courses->count() > 0)
                                             @foreach($courses as $course)
-                                                <option value="{{ $course->id }}" data-price="{{ $course->price }}">
-                                                    {{ $course->name }} @if($course->price > 0)({{ $course->price }} EGP)@else(Free)@endif
+                                                <option value="{{ isset($course->id) ? $course->id : '' }}" {{ old('course_id') == $course->id ? 'selected' : '' }} data-price="{{ isset($course->price) ? $course->price : 0 }}">
+                                                    {{ isset($course->name) ? $course->name : 'Unknown Course' }} @if(isset($course->price) && $course->price > 0)({{ $course->price }} EGP)@else(Free)@endif
                                                 </option>
                                             @endforeach
+                                        @else
+                                            <option value="" disabled>NO COURSES FOUND</option>
                                         @endif
                                     </select>
                                     <div class="form-text">
@@ -1052,8 +1116,11 @@
                                 <!-- User Info Display -->
                                 <div class="mt-3" id="userInfoSection" style="display: none;">
                                     <div class="d-flex align-items-center p-2 bg-light rounded">
-                                        <div class="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center me-3" style="width: 40px; height: 40px; font-size: 16px; font-weight: 600;">
-                                            <span id="userInitial">U</span>
+                                        <div class="profile-picture-container me-3" style="width: 40px; height: 40px;">
+                                            <img id="userProfileImage" src="" alt="Profile" class="rounded-circle" style="width: 100%; height: 100%; object-fit: cover; display: none;">
+                                            <div id="userInitialFallback" class="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center" style="width: 100%; height: 100%; font-size: 16px; font-weight: 600;">
+                                                <span id="userInitial">U</span>
+                                            </div>
                                         </div>
                                         <div class="flex-grow-1">
                                             <div class="fw-bold" id="selectedUserName"></div>
@@ -1074,7 +1141,7 @@
                                     <i class="fas fa-user-shield me-2"></i>Admin Management
                                 </div>
                                 <span class="badge bg-warning text-dark" data-tooltip="Manage administrator privileges">
-                                    <i class="fas fa-crown"></i> {{ $userStats['admin_users'] }}
+                                    <i class="fas fa-crown"></i> {{ isset($userStats) ? ($userStats['admin_users'] ?? 0) : 0 }}
                                 </span>
                             </div>
                             <div class="card-body">
@@ -1083,14 +1150,15 @@
                                         <i class="fas fa-search me-1"></i>Find User to Manage
                                     </label>
                                     <select class="form-select admin-user-select" id="admin_user_id">
-{{-- 💀 N+1 FIX NEEDED: Eager load 'role' in controller --}}
                                         <option value="">Type to search for user...</option>
                                         @if(isset($users) && $users->count() > 0)
                                             @foreach($users as $user)
-                                                <option value="{{ $user->id }}" data-email="{{ $user->email }}" data-role="{{ $user->role }}" data-name="{{ $user->name }}">
-                                                    {{ $user->name }} ({{ $user->email }}) {{ $user->role === 'admin' ? '- ADMIN' : '' }}
+                                                <option value="{{ isset($user->id) ? $user->id : '' }}" data-email="{{ isset($user->email) ? $user->email : '' }}" data-role="{{ isset($user->role) ? $user->role : 0 }}" data-name="{{ isset($user->name) ? $user->name : '' }}">
+                                                    {{ isset($user->name) ? $user->name : 'Unknown' }} ({{ isset($user->email) ? $user->email : 'No Email' }}) {{ (isset($user->role) && $user->role === \App\Models\User::ROLE_ADMIN) ? '- ADMIN' : '' }}
                                                 </option>
                                             @endforeach
+                                        @else
+                                            <option value="" disabled>NO USERS FOUND</option>
                                         @endif
                                     </select>
                                     <div class="form-text">
@@ -1223,13 +1291,13 @@
                                 @foreach($courses ?? [] as $course)
                                     @php
                                         $enrolledCount = isset($enrolledUsers) ? $enrolledUsers->where('course_id', $course->id)->where('is_enrolled', true)->count() : 0;
-                                        $percentage = $userStats['total_users'] > 0 ? round(($enrolledCount / $userStats['total_users']) * 100) : 0;
+                                        $percentage = (isset($userStats) && isset($userStats['total_users']) && $userStats['total_users'] > 0) ? round(($enrolledCount / $userStats['total_users']) * 100) : 0;
                                     @endphp
-                                    <div class="d-flex justify-content-between align-items-center mb-2">
-                                        <div>
-                                            <span class="badge bg-primary me-2">{{ $course->name }}</span>
+                                    <div class="d-flex justify-content-between align-items-center mb-2" style="overflow: hidden;">
+                                        <div style="flex: 1; min-width: 0;">
+                                            <span class="data-pill course" style="max-width: 100%; display: inline-block; margin-bottom: 2px;">{{ $course->name }}</span>
                                         </div>
-                                        <div class="text-end">
+                                        <div class="text-end flex-shrink-0" style="margin-left: 8px;">
                                             <div class="fw-bold">{{ $enrolledCount }}</div>
                                             <small class="text-muted">enrolled</small>
                                         </div>
@@ -1249,15 +1317,15 @@
                             <div class="card-body">
                                 <div class="d-flex justify-content-between align-items-center mb-2">
                                     <span class="small">Total Enrollments</span>
-                                    <span class="badge bg-success">{{ $userStats['total_enrollments'] ?? 0 }}</span>
+                                    <span class="badge bg-success">{{ isset($userStats) ? ($userStats['total_enrollments'] ?? 0) : 0 }}</span>
                                 </div>
                                 <div class="d-flex justify-content-between align-items-center mb-2">
                                     <span class="small">Active Users</span>
-                                    <span class="badge bg-info">{{ $userStats['active_users'] ?? 0 }}</span>
+                                    <span class="badge bg-info">{{ isset($userStats) ? ($userStats['active_users'] ?? 0) : 0 }}</span>
                                 </div>
                                 <div class="d-flex justify-content-between align-items-center mb-2">
                                     <span class="small">Admin Users</span>
-                                    <span class="badge bg-warning">{{ $userStats['admin_users'] ?? 0 }}</span>
+                                    <span class="badge bg-warning">{{ isset($userStats) ? ($userStats['admin_users'] ?? 0) : 0 }}</span>
                                 </div>
                                 <div class="d-flex justify-content-between align-items-center">
                                     <span class="small">Total Courses</span>
@@ -1311,25 +1379,40 @@
                         </div>
                     </div>
                     <div class="card-body p-0">
-                        <div class="table-responsive">
-                            <table class="table table-hover mb-0">
+                        <!-- Enhanced table with horizontal scroll -->
+                        <div class="table-responsive" style="overflow-x: auto; max-width: 100%;">
+                            <table class="table table-hover mb-0" style="min-width: 1200px;">
                                 <thead>
                                     <tr>
-                                        <th>ID</th>
-                                        <th>User</th>
-                                        <th>Course</th>
-                                        <th>Amount</th>
-                                        <th>Method</th>
-                                        <th>Status</th>
-                                        <th>Reference</th>
-                                        <th>Date</th>
-                                        <th>Actions</th>
+                                        <th style="width: 80px; min-width: 80px;">ID</th>
+                                        <th style="width: 200px; min-width: 200px;">User</th>
+                                        <th style="width: 150px; min-width: 150px;">Course</th>
+                                        <th style="width: 100px; min-width: 100px;">Amount</th>
+                                        <th style="width: 120px; min-width: 120px;">Method</th>
+                                        <th style="width: 100px; min-width: 100px;">Status</th>
+                                        <th style="width: 180px; min-width: 180px;">Reference</th>
+                                        <th style="width: 220px; min-width: 220px;">
+                                            <strong style="color: #dc3545; font-size: 0.9rem;">
+                                                <i class="fas fa-exchange-alt me-1"></i>
+                                                Provider Transaction
+                                            </strong>
+                                        </th>
+                                        <th style="width: 120px; min-width: 120px;">Date</th>
+                                        <th style="width: 120px; min-width: 120px;">Actions</th>
                                     </tr>
                                 </thead>
                                 <tbody id="payments-table-body">
                                     <!-- Payments will be loaded here -->
                                 </tbody>
                             </table>
+                        </div>
+
+                        <!-- Scroll indicator -->
+                        <div class="px-3 py-2 bg-light border-top" id="scroll-indicator" style="display: none;">
+                            <small class="text-muted">
+                                <i class="fas fa-arrows-alt-h me-1"></i>
+                                Scroll horizontally to view all columns
+                            </small>
                         </div>
                     </div>
                     <div class="card-footer bg-white">
@@ -1352,8 +1435,6 @@
 
     <!-- jQuery -->
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-    <!-- Bootstrap JS -->
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <!-- Select2 JS -->
     <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
 
@@ -1512,29 +1593,45 @@
             
             // User selection handler
             $('#user_id').on('change', function() {
-                const userId = $(this).val();
-                const userOption = $(this).find('option:selected');
-                
-                if (userId) {
-                    const userName = userOption.text();
-                    const userEmail = userOption.data('email');
-                    const userRole = userOption.data('role');
-                    
-                    // Set user initial (first letter of name)
-                    const userInitial = userName.charAt(0).toUpperCase();
-                    $('#userInitial').text(userInitial);
-                    
-                    $('#selectedUserName').text(userName);
-                    $('#selectedUserEmail').text(userEmail);
-                    $('#selectedUserRole').removeClass().addClass('badge').addClass(userRole === 'admin' ? 'bg-danger' : 'bg-secondary').text(userRole.toUpperCase());
-                    $('#userInfoSection').show();
-                    
-                    // Update course dropdown with enrollment status
-                    updateCourseDropdown(userId);
-                } else {
+                try {
+                    console.log('=== USER SELECTION DEBUG ===');
+                    const userId = $(this).val();
+                    const userOption = $(this).find('option:selected');
+
+                    console.log('User selection:', {userId, userOption});
+
+                    if (userId) {
+                        const userName = userOption.text();
+                        const userEmail = userOption.data('email');
+                        const userRole = userOption.data('role');
+
+                        console.log('User data:', {userName, userEmail, userRole, userRoleType: typeof userRole});
+
+                        // Safe integer handling for role
+                        const safeUserRole = (userRole && typeof userRole === 'number') ? userRole : 0;
+                        const displayRole = safeUserRole === 1 ? 'ADMIN' : safeUserRole === 2 ? 'TUTOR' : 'STUDENT';
+
+                        // Set user initial (first letter of name) - safe handling
+                        const userInitial = (userName && userName.length > 0) ? userName.charAt(0).toUpperCase() : 'U';
+                        $('#userInitial').text(userInitial);
+
+                        // Update UI with safe fallbacks
+                        $('#selectedUserName').text(userName || 'Unknown');
+                        $('#selectedUserEmail').text(userEmail || 'No Email');
+                        $('#selectedUserRole').removeClass().addClass('badge').addClass(safeUserRole === 1 ? 'bg-danger' : 'bg-secondary').text(displayRole);
+                        $('#userInfoSection').show();
+
+                        // Update course dropdown with enrollment status
+                        updateCourseDropdown(userId);
+                    } else {
+                        $('#userInfoSection').hide();
+                        // Reset course dropdown
+                        resetCourseDropdown();
+                    }
+                } catch (error) {
+                    console.error('Error in user selection handler:', error);
+                    // Fallback behavior
                     $('#userInfoSection').hide();
-                    // Reset course dropdown
-                    resetCourseDropdown();
                 }
             });
             
@@ -1607,40 +1704,56 @@
             
             // Admin user selection handler
             $('#admin_user_id').on('change', function() {
-                const userId = $(this).val();
-                const userOption = $(this).find('option:selected');
-                
-                if (userId) {
-                    const userName = userOption.data('name');
-                    const userEmail = userOption.data('email');
-                    const userRole = userOption.data('role');
-                    
-                    selectedAdminUserId = userId;
-                    selectedAdminIsAdmin = userRole === 'admin';
-                    
-                    // Update UI
-                    $('#selectedAdminUserName').text(userName);
-                    $('#selectedAdminUserEmail').text(userEmail);
-                    $('#selectedAdminUserStatus').removeClass().addClass('badge').addClass(userRole === 'admin' ? 'bg-danger' : 'bg-secondary').text(userRole.toUpperCase());
-                    $('#selectedUserInfo').show();
-                    
-                    // Update buttons
-                    if (selectedAdminIsAdmin) {
-                        $('#promoteToAdminBtn').prop('disabled', true).html('<i class="fas fa-check me-2"></i>Already Admin');
-                        $('#removeAdminBtn').prop('disabled', false).html('<i class="fas fa-user-times me-2"></i>Revoke Admin');
-                        $('#adminActionHint').text('This user is currently an administrator');
+                try {
+                    const userId = $(this).val();
+                    const userOption = $(this).find('option:selected');
+
+                    console.log('Admin user selection:', {userId, userOption});
+
+                    if (userId) {
+                        const userName = userOption.data('name');
+                        const userEmail = userOption.data('email');
+                        const userRole = userOption.data('role');
+
+                        console.log('User data:', {userName, userEmail, userRole});
+
+                        selectedAdminUserId = userId;
+                        selectedAdminIsAdmin = userRole === 1;
+
+                        // Safe string handling
+                        const safeUserRole = (userRole && typeof userRole === 'string') ? userRole : 'user';
+                        const displayRole = safeUserRole.toUpperCase();
+
+                        // Update UI
+                        $('#selectedAdminUserName').text(userName || 'Unknown');
+                        $('#selectedAdminUserEmail').text(userEmail || 'No Email');
+                        $('#selectedAdminUserStatus').removeClass().addClass('badge').addClass(safeUserRole === 'admin' ? 'bg-danger' : 'bg-secondary').text(displayRole);
+                        $('#selectedUserInfo').show();
+
+                        // Update buttons
+                        if (selectedAdminIsAdmin === 1) {
+                            $('#promoteToAdminBtn').prop('disabled', true).html('<i class="fas fa-check me-2"></i>Already Admin');
+                            $('#removeAdminBtn').prop('disabled', false).html('<i class="fas fa-user-times me-2"></i>Revoke Admin');
+                            $('#adminActionHint').text('This user is currently an administrator');
+                        } else {
+                            $('#promoteToAdminBtn').prop('disabled', false).html('<i class="fas fa-user-shield me-2"></i>Promote to Admin');
+                            $('#removeAdminBtn').prop('disabled', true).html('<i class="fas fa-user-times me-2"></i>Not Admin');
+                            $('#adminActionHint').text('This user is not an administrator');
+                        }
                     } else {
-                        $('#promoteToAdminBtn').prop('disabled', false).html('<i class="fas fa-user-shield me-2"></i>Promote to Admin');
-                        $('#removeAdminBtn').prop('disabled', true).html('<i class="fas fa-user-times me-2"></i>Not Admin');
-                        $('#adminActionHint').text('This user is not an administrator');
+                        $('#selectedUserInfo').hide();
+                        $('#promoteToAdminBtn').prop('disabled', true).html('<i class="fas fa-user-shield me-2"></i>Promote to Admin');
+                        $('#removeAdminBtn').prop('disabled', true).html('<i class="fas fa-user-times me-2"></i>Revoke Admin');
+                        $('#adminActionHint').text('Select a user above to manage their admin privileges');
+                        selectedAdminUserId = null;
+                        selectedAdminIsAdmin = false;
                     }
-                } else {
+                } catch (error) {
+                    console.error('Error in admin user selection handler:', error);
+                    // Fallback behavior
                     $('#selectedUserInfo').hide();
-                    $('#promoteToAdminBtn').prop('disabled', true).html('<i class="fas fa-user-shield me-2"></i>Promote to Admin');
-                    $('#removeAdminBtn').prop('disabled', true).html('<i class="fas fa-user-times me-2"></i>Revoke Admin');
-                    $('#adminActionHint').text('Select a user above to manage their admin privileges');
-                    selectedAdminUserId = null;
-                    selectedAdminIsAdmin = false;
+                    $('#promoteToAdminBtn').prop('disabled', true);
+                    $('#removeAdminBtn').prop('disabled', true);
                 }
             });
             
@@ -1826,11 +1939,39 @@
                 }
             }
             
-            // Payment History Tab Handler
-            $('#payment-tab').on('click', function() {
-                console.log('Payment tab clicked, loading payments...');
-                loadPayments();
-            });
+    // Payment History Tab Handler
+    $('#payment-tab').on('click', function() {
+        console.log('Payment tab clicked, loading payments...');
+
+        // 🔍 DEBUG: First check admin status before loading payments
+        checkAdminStatusBeforeLoadingPayments();
+    });
+
+    // 🔍 DEBUG: Function to check admin status before loading payments
+    function checkAdminStatusBeforeLoadingPayments() {
+        console.log('🔍 Checking admin status before loading payments...');
+
+        // Check admin status via debug endpoint
+        $.ajax({
+            url: '/debug/admin-status',
+            method: 'GET',
+            success: function(response) {
+                console.log('🔍 Admin status response:', response);
+
+                if (response.is_admin_method) {
+                    console.log('✅ User is admin, proceeding to load payments...');
+                    loadPayments();
+                } else {
+                    console.error('❌ User is not admin according to system:', response);
+                    alert('Access denied: You do not have administrator privileges. Please contact support if you believe this is an error.');
+                }
+            },
+            error: function(xhr) {
+                console.error('❌ Error checking admin status:', xhr.responseText);
+                alert('Error checking admin status. Please try refreshing the page.');
+            }
+        });
+    }
             
             // Auto-load payments when page loads (for admin users)
             @if(Auth::user()->role === 'admin')
@@ -1851,6 +1992,61 @@
                     loadPayments(1, search);
                 }
             });
+
+            // Check if table needs horizontal scrolling and show indicator
+            function checkTableScroll() {
+                const tableWrapper = $('.table-responsive')[1]; // Payment table is the second table-responsive
+                const scrollIndicator = $('#scroll-indicator');
+
+                if (tableWrapper) {
+                    const hasHorizontalScroll = tableWrapper.scrollWidth > tableWrapper.clientWidth;
+
+                    if (hasHorizontalScroll) {
+                        scrollIndicator.show();
+                        console.log('Table needs horizontal scrolling - indicator shown');
+                    } else {
+                        scrollIndicator.hide();
+                        console.log('Table fits in container - indicator hidden');
+                    }
+                }
+            }
+
+            // Check scroll on page load and window resize
+            $(window).on('load resize', function() {
+                // Small delay to ensure table is fully rendered
+                setTimeout(checkTableScroll, 100);
+            });
+
+            // Check scroll when payment data is loaded
+            // We'll use a different approach since loadPayments doesn't return a promise
+            let scrollCheckTimeout;
+            const originalLoadPayments = loadPayments;
+            loadPayments = function(page = 1, search = '') {
+                if (scrollCheckTimeout) {
+                    clearTimeout(scrollCheckTimeout);
+                }
+                originalLoadPayments.call(this, page, search);
+                // Check scroll after a delay to allow table to render
+                scrollCheckTimeout = setTimeout(checkTableScroll, 1000);
+            };
+
+            // Monitor table content changes
+            const observer = new MutationObserver(function(mutations) {
+                mutations.forEach(function(mutation) {
+                    if (mutation.type === 'childList' && mutation.target.id === 'payments-table-body') {
+                        setTimeout(checkTableScroll, 100);
+                    }
+                });
+            });
+
+            // Start observing
+            const targetNode = document.getElementById('payments-table-body');
+            if (targetNode) {
+                observer.observe(targetNode, { childList: true });
+            }
+
+            // Initial check
+            setTimeout(checkTableScroll, 500);
 
         });
         
@@ -1920,10 +2116,23 @@
                                 // Create price display
                                 const priceDisplay = `<div class="fw-bold">${payment.amount} EGP</div>`;
                                 
-                                const transactionInfo = payment.transaction_id ? 
+                                const transactionInfo = payment.transaction_id ?
                                     `<div><code class="small">${payment.reference_number || 'N/A'}</code></div>
                                      <small class="text-muted">TX: ${payment.transaction_id}</small>` :
                                     `<code class="small">${payment.reference_number || 'N/A'}</code>`;
+
+                                const providerTransaction = payment.transaction_id ?
+                                    `<div class="d-flex align-items-center">
+                                        <span class="badge bg-danger me-2" style="font-size: 0.75rem; font-weight: 600;">
+                                            <i class="fas fa-exchange-alt me-1"></i>PROVIDER
+                                        </span>
+                                        <code class="small text-danger fw-bold" style="font-size: 0.8rem;">
+                                            ${payment.transaction_id}
+                                        </code>
+                                     </div>` :
+                                    `<span class="text-muted small">
+                                        <i class="fas fa-clock me-1"></i>Pending
+                                     </span>`;
 
                                 tbody.append(`
                                     <tr data-payment-id="${payment.id}">
@@ -1933,12 +2142,13 @@
                                             <small class="text-muted">${payment.user_email}</small>
                                         </td>
                                         <td>
-                                            <span class="badge bg-primary">${payment.course_name}</span>
+                                            <span class="data-pill course">${payment.course_name}</span>
                                         </td>
                                         <td>${priceDisplay}</td>
-                                        <td><span class="badge bg-info">${payment.payment_method}</span></td>
+                                        <td><span class="data-pill method">${payment.payment_method}</span></td>
                                         <td>${statusBadge}</td>
                                         <td>${transactionInfo}</td>
+                                        <td>${providerTransaction}</td>
                                         <td>${date}</td>
                                         <td>${actions}</td>
                                     </tr>
@@ -2009,13 +2219,13 @@
         function getStatusBadge(status) {
             switch(status) {
                 case 'completed':
-                    return '<span class="badge payment-status bg-success">Completed</span>';
+                    return '<span class="data-pill status-completed">Completed</span>';
                 case 'pending':
-                    return '<span class="badge payment-status bg-warning">Pending</span>';
+                    return '<span class="data-pill status-pending">Pending</span>';
                 case 'rejected':
-                    return '<span class="badge payment-status bg-danger">Rejected</span>';
+                    return '<span class="data-pill status-rejected">Rejected</span>';
                 default:
-                    return '<span class="badge payment-status bg-secondary">' + status + '</span>';
+                    return '<span class="data-pill status-default">' + status + '</span>';
             }
         }
         
@@ -2388,9 +2598,7 @@
                         $('#video-count').html(`<i class="fas fa-video"></i> ${response.videos.length}`);
                         
                         response.videos.forEach(video => {
-                            const statusBadge = video.is_active ? 
-                                '<span class="badge bg-success">Active</span>' : 
-                                '<span class="badge bg-secondary">Inactive</span>';
+                            const statusBadge = '<span class="badge bg-success">Active</span>';
                                 
                             tbody.append(`
                                 <tr>
@@ -2408,9 +2616,6 @@
                                     <td>${statusBadge}</td>
                                     <td>
                                         <div class="btn-group btn-group-sm">
-                                            <button class="btn btn-outline-primary btn-sm" onclick="toggleVideoStatus(${video.id})">
-                                                <i class="fas fa-toggle-${video.is_active ? 'on' : 'off'}"></i>
-                                            </button>
                                             <button class="btn btn-outline-danger btn-sm" onclick="deleteVideo(${video.id})">
                                                 <i class="fas fa-trash"></i>
                                             </button>
@@ -2438,25 +2643,7 @@
             });
         }
         
-        // Toggle video status
-        function toggleVideoStatus(videoId) {
-            $.ajax({
-                url: `/admin/videos/${videoId}/toggle`,
-                method: 'POST',
-                data: { _token: '{{ csrf_token() }}' },
-                success: function(response) {
-                    if (response.success) {
-                        showNotification('Video status updated!', 'success');
-                        loadVideos();
-                    } else {
-                        showNotification('Failed to update video status', 'error');
-                    }
-                },
-                error: function() {
-                    showNotification('Failed to update video status', 'error');
-                }
-            });
-        }
+
         
         // Delete video
         function deleteVideo(videoId) {
@@ -2486,9 +2673,5 @@
 
     <!-- Bootstrap JS -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <!-- Select2 JS -->
-    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
-    <!-- jQuery -->
-    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 </body>
 </html>

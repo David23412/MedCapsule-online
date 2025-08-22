@@ -76,7 +76,7 @@ class CourseViewController extends Controller
         if ($user) {
             $isEnrolled = $user->courses()
                 ->where('course_id', $course->id)
-                ->where('is_enrolled', true)
+                ->whereNotNull('enrolled_at')
                 ->exists();
         }
 
@@ -88,11 +88,40 @@ class CourseViewController extends Controller
      */
     private function formatCoursesForDisplay($courses): void
     {
-        // Eager load all relationships at once to prevent N+1 queries
+        $user = auth()->user();
+        
+        // ✅ FIXED: Eager load all relationships at once to prevent N+1 queries
         $courses->load(['enrolledUsers:id,name,avatar', 'topics:id,course_id']);
         
+        // ✅ FIXED: Pre-calculate user access and payment status in bulk to prevent N+1 queries
+        $userAccessMap = [];
+        $userPaymentMap = [];
+        
+        if ($user) {
+            // Get all course IDs for bulk access checking
+            $courseIds = $courses->pluck('id');
+            
+            // Bulk check course access
+            if ($user->role === 'admin') {
+                $userAccessMap = array_fill_keys($courseIds->toArray(), true);
+            } else {
+                $userAccessMap = $user->hasAccessToCourses($courseIds);
+            }
+            
+            // Bulk check pending payments
+            $userPaymentMap = $user->hasPendingPaymentsForCourses($courseIds);
+        }
+        
         foreach ($courses as $course) {
-            $course->is_enrolled = isset($course->is_enrolled) ? (bool)$course->is_enrolled : false;
+            // Check if current user is enrolled in this course using pre-calculated map
+            if ($user) {
+                $course->is_enrolled = $userAccessMap[$course->id] ?? false;
+                $course->has_pending_payment = $userPaymentMap[$course->id] ?? false;
+            } else {
+                $course->is_enrolled = false;
+                $course->has_pending_payment = false;
+            }
+            
             $course->completion_percentage = 0;
             $course->mastered_topics_count = 0;
             

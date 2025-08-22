@@ -13,8 +13,8 @@ class RevokeRequest extends FormRequest
      */
     public function authorize()
     {
-        // Assuming only admins can revoke access.
-        return auth()->check() && auth()->user()->role === 'admin';
+        // Only admins can revoke access - using integer role constants
+        return auth()->check() && auth()->user()->isAdmin();
     }
 
     /**

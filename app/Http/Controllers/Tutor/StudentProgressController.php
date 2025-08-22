@@ -166,7 +166,7 @@ class StudentProgressController extends Controller
                     $tutorCourseIds = auth()->user()->courses()->pluck('courses.id');
                     $hasAccess = $student->courses()
                         ->whereIn('courses.id', $tutorCourseIds)
-                        ->where('course_user.is_enrolled', true)
+                        ->whereNotNull('course_user.enrolled_at')
                         ->exists();
                     
                     if (!$hasAccess) {

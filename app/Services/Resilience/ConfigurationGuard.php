@@ -53,6 +53,7 @@ class ConfigurationGuard
     
     /**
      * Apply configuration change with rollback capability
+     * ✅ SECURITY: Replaced unsafe putenv() with proper Laravel config methods
      */
     public function applyConfigChange(string $key, $value): bool
     {
@@ -61,14 +62,14 @@ class ConfigurationGuard
         }
         
         // Store current value for rollback
-        $this->configSnapshots[$key] = env($key);
+        $this->configSnapshots[$key] = config($key) ?? env($key);
         
         try {
-            // Apply the change (in real implementation, this would update .env)
-            putenv("{$key}={$value}");
+            // Use Laravel's configuration system instead of putenv()
+            config([$key => $value]);
             
             // Verify the change was applied correctly
-            if (env($key) !== $value) {
+            if (config($key) !== $value) {
                 $this->rollbackConfigChange($key);
                 return false;
             }
@@ -104,10 +105,11 @@ class ConfigurationGuard
         
         try {
             $originalValue = $this->configSnapshots[$key];
-            putenv("{$key}={$originalValue}");
+            // Use Laravel's configuration system instead of putenv()
+            config([$key => $originalValue]);
             
             // Verify rollback was successful
-            if (env($key) === $originalValue) {
+            if (config($key) === $originalValue) {
                 Log::info("Configuration rollback successful for {$key}");
                 unset($this->configSnapshots[$key]);
                 return true;

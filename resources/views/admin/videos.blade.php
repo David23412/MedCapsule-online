@@ -61,9 +61,7 @@
                                     <td>{{ $video->title }}</td>
                                     <td>{{ $video->youtube_video_id }}</td>
                                     <td>
-                                        <span class="badge badge-{{ $video->is_active ? 'success' : 'secondary' }}">
-                                            {{ $video->is_active ? 'Active' : 'Inactive' }}
-                                        </span>
+                                        <span class="badge badge-success">Active</span>
                                     </td>
                                     <td>
                                         <form action="{{ route('admin.videos.destroy', $video) }}" method="POST" style="display: inline;">

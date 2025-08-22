@@ -17,87 +17,124 @@ class CourseFactory extends Factory
      */
     public function definition(): array
     {
-        $courseNames = [
-            'Cardiovascular System',
-            'Respiratory System', 
-            'Nervous System',
-            'Endocrine System',
-            'Digestive System',
-            'Musculoskeletal System',
-            'Renal System',
-            'Hematology',
-            'Immunology',
-            'Pharmacology',
-            'Emergency Medicine',
+        $courseName = fake()->randomElement([
+            'Anatomy & Physiology',
+            'Pathology Fundamentals',
+            'Clinical Medicine',
+            'Pharmacology Basics',
+            'Medical Biochemistry',
+            'Microbiology Essentials',
+            'Cardiology Principles',
+            'Neurology Fundamentals',
+            'Surgery Basics',
             'Internal Medicine',
-            'Surgery',
-            'Pediatrics',
-            'Obstetrics & Gynecology'
-        ];
+            'Pediatrics Essentials',
+            'Obstetrics & Gynecology',
+            'Emergency Medicine',
+            'Radiology Interpretation',
+            'Laboratory Medicine'
+        ]);
 
-        $courseName = $this->faker->randomElement($courseNames);
-        
         return [
             'name' => $courseName,
-            'type' => 'medical', // Default to medical for backward compatibility
-            'academic_year' => '2024-1', // Required field
-            'image' => 'courses/' . Str::slug($courseName) . '.jpg',
-            'color' => $this->faker->randomElement(['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#06B6D4']),
-            'price' => $this->faker->boolean(70) ? $this->faker->randomFloat(2, 50, 500) : null, // 70% chance of being paid
-            'is_active' => true, // Required field
-            'created_at' => $this->faker->dateTimeBetween('-1 year', 'now'),
-            'updated_at' => $this->faker->dateTimeBetween('-1 month', 'now'),
+            'description' => fake()->paragraph(3),
+            'price' => fake()->randomElement([0, 49.99, 99.99, 149.99, 199.99, 299.99]),
+            'created_at' => now(),
+            'updated_at' => now(),
         ];
     }
 
     /**
-     * Indicate that the course is free.
+     * Create a free course.
      */
     public function free(): static
     {
         return $this->state(fn (array $attributes) => [
-            'price' => null,
+            'price' => 0,
+            'type' => 'free',
         ]);
     }
 
     /**
-     * Indicate that the course is paid.
+     * Create a premium course.
      */
-    public function paid(): static
+    public function premium(): static
     {
         return $this->state(fn (array $attributes) => [
-            'price' => $this->faker->randomFloat(2, 29.99, 299.99),
+            'price' => fake()->randomElement([99.99, 149.99, 199.99, 299.99]),
+            'type' => 'premium',
         ]);
     }
 
     /**
-     * Create a course with a specific name.
+     * Create a featured course.
      */
-    public function withName(string $name): static
+    public function featured(): static
     {
         return $this->state(fn (array $attributes) => [
-            'name' => $name,
-            'image' => 'courses/' . Str::slug($name) . '.jpg',
+            'is_featured' => true,
+            'is_popular' => true,
+            'price' => fake()->randomElement([149.99, 199.99, 299.99]),
         ]);
     }
 
     /**
-     * Indicate that the course is a medical course.
+     * Create an inactive course.
      */
-    public function medical(): static
+    public function inactive(): static
     {
         return $this->state(fn (array $attributes) => [
-            'type' => 'medical',
+            'is_active' => false,
         ]);
     }
 
     /**
-     * Indicate that the course is a custom course.
+     * Create a course with specific enrollment count.
      */
-    public function custom(): static
+    public function withEnrollments(int $count): static
     {
         return $this->state(fn (array $attributes) => [
-            'type' => 'custom',
+            'total_enrollments' => $count,
         ]);
     }
-} 
+
+    /**
+     * Create a course with high rating.
+     */
+    public function highlyRated(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'average_rating' => fake()->randomFloat(1, 4.5, 5.0),
+            'total_enrollments' => fake()->numberBetween(100, 1000),
+        ]);
+    }
+
+    /**
+     * Create a beginner-level course.
+     */
+    public function beginner(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'difficulty_level' => 'beginner',
+            'estimated_duration_hours' => fake()->numberBetween(10, 50),
+            'price' => fake()->randomElement([0, 49.99, 79.99]),
+        ]);
+    }
+
+    /**
+     * Create an advanced-level course.
+     */
+    public function advanced(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'difficulty_level' => 'advanced',
+            'estimated_duration_hours' => fake()->numberBetween(100, 200),
+            'price' => fake()->randomElement([199.99, 299.99, 399.99]),
+            'prerequisites' => json_encode([
+                'Intermediate medical knowledge',
+                'Clinical experience',
+                'Advanced coursework completion'
+            ]),
+        ]);
+    }
+}

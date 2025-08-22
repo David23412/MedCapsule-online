@@ -40,15 +40,47 @@ class QuestionController extends Controller
         // Validate basic fields first
         // TODO: Create FormRequest class for validation
 
-        // Handle image upload
+        // SECURITY FIX: Enhanced file upload security
         $imageUrl = null;
         if ($request->hasFile('question_image')) {
             $file = $request->file('question_image');
-            $filename = time() . '_' . $file->getClientOriginalName();
-            $path = $file->storeAs('questions', $filename, 'public');
+
+            // SECURITY FIX: Validate file integrity
+            if (!$file->isValid()) {
+                throw new \Exception('Invalid file upload');
+            }
+
+            // SECURITY FIX: Check for malicious filename patterns
+            $originalName = $file->getClientOriginalName();
+            if (preg_match('/[<>\"\'\/\\\\]/', $originalName)) {
+                throw new \Exception('Invalid filename. Please use only alphanumeric characters, dots, and underscores.');
+            }
+
+            // SECURITY FIX: Check for double extensions
+            $nameWithoutExt = pathinfo($originalName, PATHINFO_FILENAME);
+            $extension = strtolower($file->getClientOriginalExtension());
+            if (strpos($nameWithoutExt, '.') !== false) {
+                throw new \Exception('Double extensions are not allowed for security reasons.');
+            }
+
+            // SECURITY FIX: Sanitize filename
+            $sanitizedFilename = time() . '_' . preg_replace('/[^a-zA-Z0-9.]/', '_', $originalName);
+            $path = $file->storeAs('questions', $sanitizedFilename, 'public');
             $imageUrl = 'storage/' . $path;
+
         } elseif ($request->filled('image_url')) {
-            $imageUrl = $request->image_url;
+            // SECURITY FIX: Validate URL format and prevent malicious URLs
+            $url = $request->image_url;
+            if (!filter_var($url, FILTER_VALIDATE_URL)) {
+                throw new \Exception('Invalid image URL format');
+            }
+
+            // SECURITY FIX: Only allow HTTP/HTTPS URLs
+            if (!preg_match('/^https?:\/\//', $url)) {
+                throw new \Exception('Only HTTP and HTTPS URLs are allowed');
+            }
+
+            $imageUrl = $url;
         }
 
         // Validate based on question type

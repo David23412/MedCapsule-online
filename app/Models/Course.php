@@ -19,7 +19,6 @@ class Course extends Model
         'image',
         'price',
         'currency',
-        'cache_version',
         'color',
         'title_color',
         'academic_year'
@@ -29,13 +28,11 @@ class Course extends Model
         'enrolled_students_count',
         'completion_percentage',
         'mastered_topics_count',
-        'formatted_price',
-        'image_url'
+        'formatted_price'
     ];
 
     protected $casts = [
-        'type' => 'string',
-        'cache_version' => 'integer'
+        'type' => 'string'
     ];
 
     const CACHE_TTL = 30; // 30 seconds for INSTANT updates
@@ -57,7 +54,7 @@ class Course extends Model
     public function users()
     {
         return $this->belongsToMany(User::class, 'course_user')
-                    ->withPivot('is_enrolled', 'enrolled_at')
+                    ->withPivot('enrolled_at')
                     ->withTimestamps();
     }
 
@@ -161,7 +158,7 @@ class Course extends Model
         return Cache::remember("course_{$this->id}_user_{$userId}_enrolled", self::CACHE_TTL, function () use ($userId) {
             return $this->users()
                        ->where('user_id', $userId)
-                       ->where('is_enrolled', true)
+                       ->whereNotNull('enrolled_at')
                        ->exists();
         });
     }
@@ -314,8 +311,8 @@ class Course extends Model
                     // Remove all enrollments for this course
                     DB::table('course_user')
                         ->where('course_id', $course->id)
-                        ->where('is_enrolled', true)
-                        ->delete();
+                        ->whereNotNull('enrolled_at')
+                        ->update(['enrolled_at' => null, 'updated_at' => now()]);
                     
                     \Illuminate\Support\Facades\Log::info('✅ Enrollments revoked for course that became paid', [
                         'course_id' => $course->id,
@@ -336,7 +333,7 @@ class Course extends Model
                     $allUsers = \App\Models\User::all();
                     $enrolledUserIds = DB::table('course_user')
                         ->where('course_id', $course->id)
-                        ->where('is_enrolled', true)
+                        ->whereNotNull('enrolled_at')
                         ->pluck('user_id')
                         ->toArray();
                     
@@ -347,7 +344,6 @@ class Course extends Model
                         $enrollmentData[] = [
                             'user_id' => $user->id,
                             'course_id' => $course->id,
-                            'is_enrolled' => true,
                             'enrolled_at' => now(),
                             'created_at' => now(),
                             'updated_at' => now()
@@ -458,13 +454,15 @@ class Course extends Model
     public function getTitleColorAttribute($value)
     {
         return $value ?: '#FFFFFF'; // Default white if no title color set
-    // 💀 N+1 WARNING: This accessor accesses 'image' - consider eager loading
     }
 
+    // 💀 N+1 WARNING: This accessor accesses 'image' - consider eager loading
     public function getImageUrlAttribute()
     {
         return $this->image;
     }
+
+
 
     /** -------------------
      * COURSE TYPE METHODS

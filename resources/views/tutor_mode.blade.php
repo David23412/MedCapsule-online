@@ -1561,12 +1561,22 @@
                 gradeIcon.className = 'grade-icon perfect';
                 popupTitle.textContent = 'Perfect Score!';
                 popupMessage.textContent = 'Outstanding! You\'ve mastered this topic!';
-                // PERFECT CENTER CONFETTI
+                // PERFECT CENTER CONFETTI - SAFARI-CORRECTED POSITIONING
                 if (typeof confetti !== 'undefined') {
+                    // Detect if the browser is Safari
+                    const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+                    let originX = 0.62; // Default to center for all other browsers
+
+                    // If it is Safari, apply a corrected origin value to counteract zoom effect
+                    if (isSafari) {
+                        // Fine-tuned for perfect centering - using 0.47 for optimal positioning
+                        originX = 0.47;
+                    }
+
                     confetti({
                         particleCount: 100,
                         spread: 70,
-                        origin: { x: 0.62, y: 0.45 },
+                        origin: { x: originX, y: 0.45 },
                         colors: ['#FFD700', '#FFA500', '#FF69B4', '#00CED1', '#98FB98'],
                         zIndex: 10000
                     });
@@ -2077,4 +2087,4 @@
         }
     </style>
 </body>
-</html> 
+</html>

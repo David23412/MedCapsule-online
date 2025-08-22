@@ -279,7 +279,7 @@ class GradingService
                         'submitted_answer' => $actualAnswer,
                         'question_text' => $question->question,
                         'correct_answer' => $question->correct_answer,
-                        'image_path' => $question->image_url,
+                        'image' => $question->image_url,
                         'last_attempt_date' => now()
                     ]
                 );
@@ -410,7 +410,7 @@ class GradingService
                             'submitted_answer' => $actualAnswer,
                             'question_text' => $question->question,
                             'correct_answer' => $question->correct_answer,
-                            'image_path' => $question->image_url,
+                            'image' => $question->image_url,
                             'last_attempt_date' => now()
                         ]
                     );
@@ -824,7 +824,7 @@ class GradingService
                         'submitted_answer' => $answer,
                         'question_text' => $question->question,
                         'correct_answer' => $question->correct_answer,
-                        'image_path' => $question->image_url,
+                        'image' => $question->image_url,
                         'last_attempt_date' => now()
                     ]
                 );
@@ -1055,4 +1055,4 @@ class GradingService
             ]);
         }
     }
-} 
+}

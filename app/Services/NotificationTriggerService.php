@@ -18,18 +18,42 @@ class NotificationTriggerService
         $score = $quizData['score'] ?? 0;
         $totalQuestions = $quizData['total_questions'] ?? 1;
         $percentage = round(($score / $totalQuestions) * 100, 1);
-        $courseName = $quizData['course_name'] ?? 'Quiz';
+        $courseName = $quizData['course_name'] ?? 'Course';
+        $topicName = $quizData['topic_name'] ?? 'Topic';
         $mode = $quizData['mode'] ?? 'quiz'; // Default to regular quiz mode
+        $assignmentCompleted = $quizData['assignment_completed'] ?? false;
+        $assignmentTitle = $quizData['assignment_title'] ?? null;
 
-        // Different notifications based on quiz mode
-        if ($mode === 'tutor') {
-            // LETHAL FIX: Perfect tutor score gets ONLY purple star notification (no duplicate)
+        // Different notifications based on quiz mode and context
+        if ($assignmentCompleted && $assignmentTitle) {
+            // ASSIGNMENT COMPLETION NOTIFICATION
+            if ($percentage == 100) {
+                UniversalNotificationService::create(
+                    $user,
+                    'assignment_perfect',
+                    'Perfect Assignment Score',
+                    "Amazing! You got 100% on '{$assignmentTitle}'",
+                    $quizData,
+                    'perfect' // PURPLE BORDER for perfect scores
+                );
+            } else {
+                UniversalNotificationService::create(
+                    $user,
+                    'assignment_completed',
+                    'Assignment Completed',
+                    "You scored {$percentage}% on '{$assignmentTitle}'",
+                    $quizData,
+                    'normal'
+                );
+            }
+        } elseif ($mode === 'tutor') {
+            // TUTOR MODE NOTIFICATION
             if ($percentage == 100) {
                 UniversalNotificationService::create(
                     $user,
                     'tutor_perfect',
                     'Perfect Tutor Score',
-                    "Outstanding! You got 100% in tutor mode for {$courseName}",
+                    "Outstanding! You got 100% in tutor mode for {$topicName}",
                     $quizData,
                     'perfect' // PURPLE BORDER for perfect scores
                 );
@@ -39,7 +63,7 @@ class NotificationTriggerService
                     $user,
                     'tutor_quiz_completed',
                     'Tutor Quiz Completed',
-                    "You scored {$percentage}% in tutor mode for {$courseName}",
+                    "You scored {$percentage}% in tutor mode for {$topicName}",
                     $quizData,
                     'normal'
                 );
@@ -50,20 +74,20 @@ class NotificationTriggerService
                         $user,
                         'tutor_needs_practice',
                         'More Practice Needed',
-                        "You scored {$percentage}% in tutor mode. Try again!",
+                        "You scored {$percentage}% in tutor mode for {$topicName}. Try again!",
                         $quizData,
                         'normal'
                     );
                 }
             }
         } else {
-            // LETHAL FIX: Perfect score gets ONLY purple star notification (no duplicate)
+            // REGULAR QUIZ COMPLETION NOTIFICATION
             if ($percentage == 100) {
                 UniversalNotificationService::create(
                     $user,
                     'perfect_score',
                     'Perfect Score',
-                    "Amazing! You got 100% on {$courseName}",
+                    "Amazing! You got 100% on {$topicName}",
                     $quizData,
                     'perfect' // PURPLE BORDER for perfect scores
                 );
@@ -73,7 +97,7 @@ class NotificationTriggerService
                     $user,
                     'quiz_completed',
                     'Quiz Completed',
-                    "You scored {$percentage}% on {$courseName}",
+                    "You scored {$percentage}% on {$topicName}",
                     $quizData,
                     'normal'
                 );
@@ -87,7 +111,10 @@ class NotificationTriggerService
             'user_id' => $user->id,
             'score' => $percentage,
             'course' => $courseName,
-            'mode' => $mode
+            'topic' => $topicName,
+            'mode' => $mode,
+            'assignment_completed' => $assignmentCompleted,
+            'assignment_title' => $assignmentTitle
         ]);
     }
 

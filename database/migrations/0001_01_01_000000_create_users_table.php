@@ -57,7 +57,7 @@ return new class extends Migration
 
     public function down(): void
     {
-        Schema::disableForeignKeyConstraints();
+        // ✅ FIXED: Remove Schema::disableForeignKeyConstraints() - maintain data integrity
         // Drop dependent pivot tables that may reference users
         if (Schema::hasTable('assignment_users')) {
             Schema::drop('assignment_users');
@@ -68,6 +68,6 @@ return new class extends Migration
         Schema::dropIfExists('sessions');
         Schema::dropIfExists('password_reset_tokens');
         Schema::dropIfExists('users');
-        Schema::enableForeignKeyConstraints();
+        // ✅ FIXED: Remove Schema::enableForeignKeyConstraints() - not needed when not disabled
     }
 };

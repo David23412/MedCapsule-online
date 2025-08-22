@@ -16,7 +16,7 @@ class PaymentService
     public function createPayment(User $user, Course $course, array $data): Payment
     {
         // Check if already enrolled
-        if ($user->courses()->where('course_id', $course->id)->where('is_enrolled', true)->exists()) {
+        if ($user->courses()->where('course_id', $course->id)->whereNotNull('enrolled_at')->exists()) {
             throw new \Exception('Already enrolled in this course');
         }
 
@@ -43,7 +43,7 @@ class PaymentService
             // Auto-enroll user
             DB::table('course_user')->updateOrInsert(
                 ['user_id' => $payment->user_id, 'course_id' => $payment->course_id],
-                ['is_enrolled' => true, 'enrolled_at' => now(), 'updated_at' => now()]
+                ['enrolled_at' => now(), 'updated_at' => now()]
             );
             
             return true;
@@ -106,6 +106,14 @@ class PaymentService
     public function getPaginatedPayments(string $search = null, int $page = 1, int $perPage = 20): array
     {
         try {
+            \Log::info('🔍 PaymentService::getPaginatedPayments called', [
+                'search' => $search,
+                'page' => $page,
+                'per_page' => $perPage,
+                'user_id' => auth()->id(),
+                'user_role' => auth()->user()->role ?? 'unknown',
+                'is_admin' => auth()->user()->isAdmin() ?? false
+            ]);
             $query = DB::table('payments')
                 ->join('users', 'payments.user_id', '=', 'users.id')
                 ->join('courses', 'payments.course_id', '=', 'courses.id')

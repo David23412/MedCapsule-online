@@ -1547,7 +1547,7 @@
                                 <div class="d-flex justify-content-between align-items-center">
                                     <div>
                                         <h6 class="mb-1">
-                                            {!! $icon !!}
+                                            {{ $icon }}
                                             {{ $topic->name }}
                                         </h6>
                                         <small class="text-muted">Course: {{ $topic->course->name }}</small>

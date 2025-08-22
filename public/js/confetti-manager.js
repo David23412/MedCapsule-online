@@ -232,6 +232,21 @@ class ConfettiManager {
             return;
         }
 
+        // Check for reduced motion preference
+        if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+            return; // Skip confetti for users who prefer reduced motion
+        }
+
+        // Performance check for mobile devices
+        const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+        const isLowPerformance = navigator.hardwareConcurrency && navigator.hardwareConcurrency < 4;
+        
+        let performanceMultiplier = 1;
+        if (isMobile || isLowPerformance) {
+            // Reduce particle count for better performance
+            performanceMultiplier = 0.6;
+        }
+
         try {
             // Clear any existing confetti first
             this.clearConfetti();
@@ -243,9 +258,22 @@ class ConfettiManager {
             let centerY = 0.5;
             
             if (isSafari) {
-                // Safari viewport compensation - EXTREME left shift to obliterate Safari's positioning bug
-                centerX = 0.25; // EXTREME left shift - Safari's positioning is completely fucked
+                // Safari viewport compensation - REFINED positioning for better accuracy
+                centerX = 0.35; // Reduced left shift for better centering
                 centerY = 0.5;
+                
+                // Additional Safari-specific adjustments based on viewport
+                const viewportWidth = window.innerWidth;
+                if (viewportWidth < 768) {
+                    // Mobile Safari - more aggressive positioning
+                    centerX = 0.3;
+                } else if (viewportWidth < 1024) {
+                    // Tablet Safari
+                    centerX = 0.32;
+                } else {
+                    // Desktop Safari
+                    centerX = 0.35;
+                }
             }
 
             const centerOptions = {
@@ -261,7 +289,7 @@ class ConfettiManager {
             switch (type) {
                 case 'perfect':
                     confettiOptions = {
-                        particleCount: 150,
+                        particleCount: Math.floor(150 * (performanceMultiplier || 1)),
                         spread: 80,
                         startVelocity: 35,
                         decay: 0.85,
@@ -274,7 +302,7 @@ class ConfettiManager {
                     
                 case 'good':
                     confettiOptions = {
-                        particleCount: 100,
+                        particleCount: Math.floor(100 * (performanceMultiplier || 1)),
                         spread: 70,
                         startVelocity: 30,
                         decay: 0.9,
@@ -286,7 +314,7 @@ class ConfettiManager {
                     
                 case 'achievement':
                     confettiOptions = {
-                        particleCount: 75,
+                        particleCount: Math.floor(75 * (performanceMultiplier || 1)),
                         spread: 60,
                         startVelocity: 25,
                         decay: 0.9,
@@ -298,7 +326,7 @@ class ConfettiManager {
                     
                 default:
                     confettiOptions = {
-                        particleCount: 100,
+                        particleCount: Math.floor(100 * (performanceMultiplier || 1)),
                         spread: 70,
                         startVelocity: 30,
                         decay: 0.9,

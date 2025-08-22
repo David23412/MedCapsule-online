@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+N TN A<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -1997,9 +1997,9 @@
                             $optimizedImageUrl = str_replace('picsum.photos/', 'picsum.photos/420/580/', $optimizedImageUrl);
                         }
                     @endphp
-                    <div class="course-image" 
-                         style="background-image: url('{{ $optimizedImageUrl }}');"
-                         data-bg-image="{{ $optimizedImageUrl }}" 
+                    <div class="course-image"
+                         style="background-image: url('{{ $course->image_url }}');"
+                         data-bg-image="{{ $course->image_url }}"
                          data-course-name="{{ $course->name }}">
                         <div class="info-icon">
                             <i class="fas fa-info"></i>
@@ -2051,26 +2051,56 @@
                                     <i class="fas fa-play"></i>
                                     Continue Learning
                                 </a>
-                            @elseif ($course->is_enrolled)
-                                <a href="{{ route('topics.forCourse', $course->id) }}" class="action-btn continue">
-                                    <i class="fas fa-play"></i>
-                                    Continue Learning
-                                </a>
-                            @elseif (!$course->price || $course->price <= 0)
-                                <a href="{{ route('topics.forCourse', $course->id) }}" class="action-btn enroll free">
-                                    <i class="fas fa-play"></i>
-                                    Start Learning (Free)
-                                </a>
                             @else
-                                <button type="button" class="action-btn enroll show-payment-modal" id="paymentBtn_{{ $course->id }}" data-course-id="{{ $course->id }}" @if($course->has_pending_payment) disabled @endif data-debug-pending="{{ $course->has_pending_payment }}" data-debug-enrolled="{{ $course->is_enrolled }}" data-debug-price="{{ $course->price }}">
-                                    @if($course->has_pending_payment)
-                                        <i class="fas fa-clock" style="color: #ff8c00;"></i>
-                                        <span style="color: #ff8c00; font-weight: bold;">Payment Pending</span>
+                                <!-- ✅ CORRECT ACCESS CONTROL: Check enrolled_at IS NOT NULL -->
+                                @php
+                                    $userEnrollment = DB::table('course_user')
+                                        ->where('user_id', auth()->id())
+                                        ->where('course_id', $course->id)
+                                        ->whereNotNull('enrolled_at')
+                                        ->first();
+
+                                    $isActuallyEnrolled = $userEnrollment !== null;
+                                    $isFree = !$course->price || $course->price <= 0;
+                                @endphp
+
+                                @if($isActuallyEnrolled)
+                                    <!-- User has valid enrollment (enrolled_at IS NOT NULL) -->
+                                    <a href="{{ route('topics.forCourse', $course->id) }}" class="action-btn continue">
+                                        <i class="fas fa-play"></i>
+                                        Continue Learning
+                                    </a>
+                                @elseif($isFree)
+                                    <!-- Free course: check if user has ANY record (for historical access) -->
+                                    @php
+                                        $hasAnyRecord = DB::table('course_user')
+                                            ->where('user_id', auth()->id())
+                                            ->where('course_id', $course->id)
+                                            ->exists();
+                                    @endphp
+                                    @if($hasAnyRecord)
+                                        <a href="{{ route('topics.forCourse', $course->id) }}" class="action-btn enroll free">
+                                            <i class="fas fa-play"></i>
+                                            Start Learning (Free)
+                                        </a>
                                     @else
-                                        <i class="fas fa-unlock"></i>
-                                        <span>Pay to Access</span>
+                                        <button type="button" class="action-btn enroll" disabled style="background: #6c757d; cursor: not-allowed;">
+                                            <i class="fas fa-lock"></i>
+                                            <span>Access Revoked</span>
+                                        </button>
                                     @endif
-                                </button>
+                                @else
+                                    <!-- Paid course: show payment button -->
+                                    <button type="button" class="action-btn enroll show-payment-modal" id="paymentBtn_{{ $course->id }}" data-course-id="{{ $course->id }}" @if($course->has_pending_payment) disabled @endif data-debug-pending="{{ $course->has_pending_payment }}" data-debug-enrolled="{{ $course->is_enrolled }}" data-debug-price="{{ $course->price }}">
+                                        @if($course->has_pending_payment)
+                                            <i class="fas fa-clock" style="color: #ff8c00;"></i>
+                                            <span style="color: #ff8c00; font-weight: bold;">Payment Pending</span>
+                                        @else
+                                            <i class="fas fa-unlock"></i>
+                                            <span>Pay to Access</span>
+                                        @endif
+                                    </button>
+                                @endif
                             @endif
                         @else
                             @if (!$course->price || $course->price <= 0)

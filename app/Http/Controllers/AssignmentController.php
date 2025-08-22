@@ -271,7 +271,7 @@ class AssignmentController extends Controller
                     'status' => $progress['status'],
                     'status_string' => $progress['status_string'],
                     'score' => $progress['score'],
-                    'completed_at' => $progress['completed_at']
+                    'completed_at' => $progress['completed'] ? $progress['latest_attempt'] : null
                 ];
             }
             

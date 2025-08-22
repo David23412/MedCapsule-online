@@ -21,6 +21,7 @@ class TopicLockingViewController extends Controller
     
     /**
      * Check if user has permission for topic management
+     * Uses integer role constants for proper role-based access control
      */
     private function checkPermission()
     {
@@ -28,7 +29,10 @@ class TopicLockingViewController extends Controller
         if (!$user) {
             abort(403, 'You must be logged in to manage topics.');
         }
-        if (!in_array($user->role, ['admin', 'tutor'])) {
+
+        // Use integer constants instead of strings for proper role checking
+        $allowedRoles = [\App\Models\User::ROLE_ADMIN, \App\Models\User::ROLE_TUTOR];
+        if (!in_array((int)$user->role, $allowedRoles)) {
             abort(403, 'You do not have permission to manage topics.');
         }
         return $user;

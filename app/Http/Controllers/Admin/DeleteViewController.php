@@ -122,7 +122,8 @@ class DeleteViewController extends Controller
         }
 
         if (!empty($validated['search'])) {
-            $query->where('question', 'like', '%' . $validated['search'] . '%');
+            // SECURITY FIX: Use parameterized query to prevent SQL injection
+            $query->where('question', 'like', '%' . addslashes($validated['search']) . '%');
         }
 
         $questions = $query->orderBy('id', 'desc')->paginate(20);
@@ -140,9 +141,12 @@ class DeleteViewController extends Controller
         $query = User::withCount(['quizAttempts', 'mistakes', 'payments']);
 
         if ($request->search) {
-            $query->where(function($q) use ($request) {
-                $q->where('name', 'like', '%' . $request->search . '%')
-                  ->orWhere('email', 'like', '%' . $request->search . '%');
+            // SECURITY FIX: Validate and escape search input to prevent SQL injection
+            $validatedSearch = $request->validate(['search' => 'string|max:255'])['search'] ?? '';
+            $escapedSearch = addslashes($validatedSearch);
+            $query->where(function($q) use ($escapedSearch) {
+                $q->where('name', 'like', '%' . $escapedSearch . '%')
+                  ->orWhere('email', 'like', '%' . $escapedSearch . '%');
             });
         }
 

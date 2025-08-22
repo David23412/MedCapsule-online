@@ -192,7 +192,6 @@ class ComprehensiveWebsiteSeeder extends Seeder
                 'color' => '#FF1744',
                 'title_color' => '#FFFFFF',
                 'image' => 'https://images.pexels.com/photos/40568/medical-appointment-doctor-healthcare-40568.jpeg',
-                'is_active' => true,
             ],
             [
                 'name' => 'Advanced Pathology & Disease Mechanisms',
@@ -203,7 +202,6 @@ class ComprehensiveWebsiteSeeder extends Seeder
                 'color' => '#2196F3',
                 'title_color' => '#FFFFFF',
                 'image' => 'https://images.pexels.com/photos/263194/pexels-photo-263194.jpeg',
-                'is_active' => true,
             ],
             [
                 'name' => 'Clinical Pharmacology & Therapeutics',
@@ -214,7 +212,6 @@ class ComprehensiveWebsiteSeeder extends Seeder
                 'color' => '#00C853',
                 'title_color' => '#FFFFFF',
                 'image' => 'https://images.pexels.com/photos/3683074/pexels-photo-3683074.jpeg?auto=compress&cs=tinysrgb&w=800&h=600&fit=crop',
-                'is_active' => true,
             ],
             [
                 'name' => 'Internal Medicine & Clinical Reasoning',
@@ -225,7 +222,6 @@ class ComprehensiveWebsiteSeeder extends Seeder
                 'color' => '#9C27B0',
                 'title_color' => '#FFFFFF',
                 'image' => 'https://images.pexels.com/photos/5327585/pexels-photo-5327585.jpeg?auto=compress&cs=tinysrgb&w=800&h=600&fit=crop',
-                'is_active' => true,
             ],
             [
                 'name' => 'Emergency Medicine & Critical Care',
@@ -236,7 +232,6 @@ class ComprehensiveWebsiteSeeder extends Seeder
                 'color' => '#FF5722',
                 'title_color' => '#FFFFFF',
                 'image' => 'https://images.pexels.com/photos/263402/pexels-photo-263402.jpeg?auto=compress&cs=tinysrgb&w=800&h=600&fit=crop',
-                'is_active' => true,
             ],
             [
                 'name' => 'Surgical Principles & Techniques',
@@ -247,7 +242,6 @@ class ComprehensiveWebsiteSeeder extends Seeder
                 'color' => '#607D8B',
                 'title_color' => '#FFFFFF',
                 'image' => 'https://images.pexels.com/photos/1170979/pexels-photo-1170979.jpeg?auto=compress&cs=tinysrgb&w=800&h=600&fit=crop',
-                'is_active' => true,
             ],
         ];
 
@@ -289,7 +283,6 @@ class ComprehensiveWebsiteSeeder extends Seeder
                     'name' => $topicInfo['name'],
                     'case_type' => $topicInfo['type'], // 'quiz', 'cases', 'practical'
                     'display_order' => $index + 1,
-                    'is_locked' => $index > 2 ? (rand(0, 100) < 20) : false, // 20% chance locked for later topics
                 ]);
                 $createdTopics[] = $topic;
             }
@@ -336,9 +329,8 @@ class ComprehensiveWebsiteSeeder extends Seeder
                 'topic_id' => $topic->id,
                 'youtube_video_id' => $sampleYouTubeIds[$index % count($sampleYouTubeIds)],
                 'title' => $topic->name . ' - Introduction',
-                
+
                 'duration' => rand(300, 1200),
-                'is_active' => true,
             ]);
         }
 
@@ -497,7 +489,7 @@ class ComprehensiveWebsiteSeeder extends Seeder
                         'submitted_answer' => $submittedAnswer,
                         'question_text' => $question->question,
                         'correct_answer' => $question->correct_answer,
-                        'image_path' => $question->image_url,
+                        'image' => $question->image_url,
                         'correct_streak' => $correctStreak,
                         'last_attempt_date' => now()->subDays(rand(1, 30)),
                         'quick_correct_count' => rand(0, 3),
@@ -511,24 +503,37 @@ class ComprehensiveWebsiteSeeder extends Seeder
             }
         }
 
-        // 10. CREATE PAYMENTS
-        $this->command->info('Creating payments...');
-        
+        // 10. CREATE PAYMENTS WITH REALISTIC TRANSACTION CODES
+        $this->command->info('Creating payments with realistic transaction codes...');
+
         foreach ($students as $student) {
             // Create 1-3 payments per student
             for ($i = 1; $i <= rand(1, 3); $i++) {
                 $course = collect($createdCourses)->random();
                 $status = ['pending', 'completed', 'failed'][rand(0, 2)];
+                $paymentMethod = ['vodafone_cash', 'fawry', 'instapay'][rand(0, 2)];
+
+                // Generate realistic transaction codes based on payment method
+                $transactionCode = $this->generateRealisticTransactionCode($paymentMethod);
+
                 Payment::create([
                     'user_id' => $student->id,
                     'course_id' => $course->id,
                     'reference_number' => 'MC' . rand(10000000000000, 99999999999999) . strtoupper(substr(uniqid(), -8)),
+                    'transaction_id' => $transactionCode, // REAL PROVIDER TRANSACTION CODE
                     'amount' => $course->price,
-                    'payment_method' => ['vodafone_cash', 'fawry', 'instapay'][rand(0, 2)],
+                    'payment_method' => $paymentMethod,
                     'status' => $status,
                     'payment_data' => json_encode([
-                        'transaction_id' => 'TXN_' . strtoupper(uniqid()),
-                        'reference' => 'REF_' . rand(100000, 999999),
+                        'provider_transaction_id' => $transactionCode,
+                        'payment_reference' => 'REF_' . rand(100000, 999999),
+                        'gateway_response' => [
+                            'status' => $status,
+                            'transaction_code' => $transactionCode,
+                            'payment_method' => $paymentMethod,
+                            'amount' => $course->price,
+                            'processed_at' => now()->subDays(rand(1, 30))->toISOString()
+                        ]
                     ]),
                     'paid_at' => $status === 'completed' ? now()->subDays(rand(1, 30)) : null,
                     'created_at' => now()->subDays(rand(1, 30)),
@@ -875,5 +880,178 @@ class ComprehensiveWebsiteSeeder extends Seeder
         ];
 
         return $messages[array_rand($messages)];
+    }
+
+    private function generateRealisticTransactionCode($paymentMethod)
+    {
+        $timestamp = date('His'); // Current time in HHMMSS format
+        $randomId = strtoupper(substr(uniqid(), -6)); // 6-character unique ID
+
+        switch ($paymentMethod) {
+            case 'vodafone_cash':
+                // Vodafone Cash format: VOD + timestamp + random
+                return 'VOD' . $timestamp . $randomId;
+
+            case 'fawry':
+                // Fawry format: FAWRY + timestamp + random
+                return 'FAWRY' . $timestamp . substr($randomId, 0, 4);
+
+            case 'instapay':
+                // Instapay format: INSTA + timestamp + random
+                return 'INSTA' . $timestamp . substr($randomId, 0, 4);
+
+            default:
+                // Generic format for other methods
+                return 'TXN' . $timestamp . $randomId;
+        }
+    }
+
+    private function addWrittenQuestionsForTopic1($topicId)
+    {
+        $this->command->info('Adding written questions for Topic ID 1...');
+
+        $writtenQuestions = [
+            [
+                'question' => 'Explain the pathophysiology of acute myocardial infarction, including the cellular and molecular mechanisms involved in ischemia-reperfusion injury.',
+                'question_type' => 'written',
+                'option_a' => '',
+                'option_b' => '',
+                'option_c' => '',
+                'option_d' => '',
+                'correct_answer' => 'Essay response required',
+                'explanation' => 'This question tests the student\'s understanding of AMI pathophysiology, including coronary artery occlusion, myocardial ischemia, cellular hypoxia, ATP depletion, membrane damage, calcium overload, and reperfusion injury mechanisms like oxidative stress and inflammation.',
+                'image_url' => null,
+                'source' => 'Cardiovascular System - Advanced Pathophysiology',
+                'total_attempts' => 45,
+                'correct_attempts' => 18,
+                'last_attempted_at' => now()->subDays(5),
+            ],
+            [
+                'question' => 'Describe the Frank-Starling mechanism and its clinical significance in heart failure management.',
+                'question_type' => 'written',
+                'option_a' => '',
+                'option_b' => '',
+                'option_c' => '',
+                'option_d' => '',
+                'correct_answer' => 'Essay response required',
+                'explanation' => 'This question evaluates the student\'s knowledge of the Frank-Starling law of the heart, preload-stroke volume relationship, and its implications for heart failure therapy including preload reduction and inotropic support.',
+                'image_url' => null,
+                'source' => 'Cardiovascular Physiology - Clinical Applications',
+                'total_attempts' => 52,
+                'correct_attempts' => 28,
+                'last_attempted_at' => now()->subDays(3),
+            ],
+            [
+                'question' => 'Discuss the electrophysiological basis of cardiac arrhythmias and their management strategies.',
+                'question_type' => 'written',
+                'option_a' => '',
+                'option_b' => '',
+                'option_c' => '',
+                'option_d' => '',
+                'correct_answer' => 'Essay response required',
+                'explanation' => 'This comprehensive question tests understanding of cardiac electrophysiology, action potentials, conduction system disorders, and evidence-based management approaches for various arrhythmias.',
+                'image_url' => null,
+                'source' => 'Cardiac Electrophysiology - Advanced Concepts',
+                'total_attempts' => 38,
+                'correct_attempts' => 15,
+                'last_attempted_at' => now()->subDays(7),
+            ],
+            [
+                'question' => 'Explain the renin-angiotensin-aldosterone system (RAAS) and its role in hypertension and heart failure.',
+                'question_type' => 'written',
+                'option_a' => '',
+                'option_b' => '',
+                'option_c' => '',
+                'option_d' => '',
+                'correct_answer' => 'Essay response required',
+                'explanation' => 'This question assesses knowledge of the RAAS pathway, its activation in cardiovascular diseases, and the mechanism of action of RAAS inhibitors in clinical practice.',
+                'image_url' => null,
+                'source' => 'Endocrine Regulation of Cardiovascular System',
+                'total_attempts' => 41,
+                'correct_attempts' => 22,
+                'last_attempted_at' => now()->subDays(4),
+            ],
+            [
+                'question' => 'Describe the differences between systolic and diastolic heart failure, including diagnostic criteria and treatment approaches.',
+                'question_type' => 'written',
+                'option_a' => '',
+                'option_b' => '',
+                'option_c' => '',
+                'option_d' => '',
+                'correct_answer' => 'Essay response required',
+                'explanation' => 'This question evaluates the student\'s ability to differentiate between HFpEF and HFrEF, understand diagnostic parameters (EF, BNP), and recognize tailored treatment strategies for each type.',
+                'image_url' => null,
+                'source' => 'Heart Failure Classification and Management',
+                'total_attempts' => 35,
+                'correct_attempts' => 19,
+                'last_attempted_at' => now()->subDays(6),
+            ],
+            [
+                'question' => 'Discuss the role of beta-adrenergic receptors in cardiac physiology and their therapeutic targeting in cardiovascular diseases.',
+                'question_type' => 'written',
+                'option_a' => '',
+                'option_b' => '',
+                'option_c' => '',
+                'option_d' => '',
+                'correct_answer' => 'Essay response required',
+                'explanation' => 'This advanced question tests understanding of beta-receptor subtypes, their signaling pathways, desensitization in heart failure, and the clinical pharmacology of beta-blockers.',
+                'image_url' => null,
+                'source' => 'Cardiac Pharmacology - Receptor Systems',
+                'total_attempts' => 29,
+                'correct_attempts' => 12,
+                'last_attempted_at' => now()->subDays(8),
+            ],
+            [
+                'question' => 'Explain the concept of cardiac preload, afterload, and contractility, and how they are altered in various cardiac conditions.',
+                'question_type' => 'written',
+                'option_a' => '',
+                'option_b' => '',
+                'option_c' => '',
+                'option_d' => '',
+                'correct_answer' => 'Essay response required',
+                'explanation' => 'This question assesses understanding of the three key determinants of cardiac performance and their modifications in conditions like hypertension, valvular disease, and cardiomyopathies.',
+                'image_url' => null,
+                'source' => 'Cardiac Mechanics and Hemodynamics',
+                'total_attempts' => 47,
+                'correct_attempts' => 25,
+                'last_attempted_at' => now()->subDays(2),
+            ],
+            [
+                'question' => 'Describe the cardiac conduction system and discuss common conduction disturbances with their electrocardiographic features.',
+                'question_type' => 'written',
+                'option_a' => '',
+                'option_b' => '',
+                'option_c' => '',
+                'option_d' => '',
+                'correct_answer' => 'Essay response required',
+                'explanation' => 'This question evaluates knowledge of the cardiac conduction pathway from SA node to Purkinje fibers, and the ECG manifestations of conduction blocks and bundle branch blocks.',
+                'image_url' => null,
+                'source' => 'Cardiac Conduction System - Clinical Correlations',
+                'total_attempts' => 33,
+                'correct_attempts' => 17,
+                'last_attempted_at' => now()->subDays(9),
+            ],
+        ];
+
+        foreach ($writtenQuestions as $questionData) {
+            Question::create([
+                'topic_id' => $topicId,
+                'question' => $questionData['question'],
+                'question_type' => $questionData['question_type'],
+                'option_a' => $questionData['option_a'],
+                'option_b' => $questionData['option_b'],
+                'option_c' => $questionData['option_c'],
+                'option_d' => $questionData['option_d'],
+                'correct_answer' => $questionData['correct_answer'],
+                'explanation' => $questionData['explanation'],
+                'image_url' => $questionData['image_url'],
+                'source' => $questionData['source'],
+                'total_attempts' => $questionData['total_attempts'],
+                'correct_attempts' => $questionData['correct_attempts'],
+                'last_attempted_at' => $questionData['last_attempted_at'],
+            ]);
+        }
+
+        $this->command->info('Added ' . count($writtenQuestions) . ' written questions for Topic ID 1');
     }
 }

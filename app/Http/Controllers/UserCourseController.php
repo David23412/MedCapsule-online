@@ -15,6 +15,7 @@ use App\Services\UserService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use App\Http\Requests\UpdatePaymentSettingsRequest;
+use Illuminate\Http\Request;
 
 class UserCourseController extends Controller
 {
@@ -31,7 +32,7 @@ class UserCourseController extends Controller
 
     public function index()
     {
-        $data = $this->userService->getManageAccessPageData();
+        $data = $this->userService->getManageAccessPageData(15); // Default 15 users per page
 
         if (!$data['success']) {
             return view('admin.manage-access')->with('error', $data['message']);
@@ -111,17 +112,17 @@ class UserCourseController extends Controller
     /**
      * Get enrollment data for AJAX refresh
      */
-    public function getEnrollments(Request $request)
+    public function getEnrollments(\Illuminate\Http\Request $request)
     {
         $result = $this->userCourseService->getEnrollmentDataForAjax();
 
         return response()->json($result, $result['success'] ? 200 : 500);
     }
-    
+
     /**
      * Get user enrollments for course dropdown
      */
-    public function getUserEnrollments(Request $request)
+    public function getUserEnrollments(\Illuminate\Http\Request $request)
     {
         $userId = $request->input('user_id');
 

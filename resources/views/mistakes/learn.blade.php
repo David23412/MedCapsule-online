@@ -1961,11 +1961,21 @@
                 setTimeout(() => {
                     popup.classList.add('show');
                     
-                    // Dead center confetti - no calculations, just center
+                    // PERFECT CENTER CONFETTI - SAFARI-CORRECTED POSITIONING
+                    // Detect if the browser is Safari
+                    const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+                    let originX = 0.62; // Default to center for all other browsers
+
+                    // If it is Safari, apply a corrected origin value to counteract zoom effect
+                    if (isSafari) {
+                        // Fine-tuned for perfect centering - using 0.47 for optimal positioning
+                        originX = 0.47;
+                    }
+
                     confetti({
                         particleCount: 150,
                         spread: 60,
-                        origin: { x: 0.62, y: 0.45 },
+                        origin: { x: originX, y: 0.45 },
                         colors: ['#007bff', '#0056b3', '#3b82f6', '#60a5fa'],
                         ticks: 400,
                         disableForReducedMotion: true,

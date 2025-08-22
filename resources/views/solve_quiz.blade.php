@@ -933,8 +933,8 @@
             <a class="navbar-brand" href="/">MedCapsule</a>
             <div class="nav-links">
                 <a href="javascript:history.back()" class="nav-link">← Back</a>
-                <a href="{{ route('profile') }}" class="profile-circle {{ !Auth::user()->profile_picture_url ? 'no-image' : '' }}" 
-                     style="{{ Auth::user()->profile_picture_url ? 'background-image: url(' . secure_url(Auth::user()->profile_picture_url) . ');' : '' }}">
+                <a href="{{ route('profile') }}" class="profile-circle {{ !Auth::user()->profile_picture_url ? 'no-image' : '' }}"
+                     style="{{ Auth::user()->profile_picture_url ? 'background-image: url(' . htmlspecialchars(secure_url(Auth::user()->profile_picture_url), ENT_QUOTES, 'UTF-8') . ');' : '' }}">
                     @if(!Auth::user()->profile_picture_url)
                         {{ substr(Auth::user()->name, 0, 1) }}
                     @endif
@@ -1707,11 +1707,22 @@
                             if (typeof ConfettiManager !== 'undefined') {
                                 ConfettiManager.celebratePerfectScore('#popup');
                             } else if (typeof confetti !== 'undefined') {
-                                // SINGLE PERFECT CONFETTI - Dead center of screen where modal is
+                                // SAFARI-SPECIFIC CONFETTI POSITIONING FIX
+                                // Detect if the browser is Safari
+                                const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+                                let originX = 0.62; // Default to center for all other browsers
+
+                                // If it is Safari, apply a corrected origin value to counteract zoom effect
+                                if (isSafari) {
+                                    // Fine-tuned for perfect centering - using 0.47 for optimal positioning
+                                    originX = 0.47;
+                                }
+
+                                // SINGLE PERFECT CONFETTI - Safari-corrected positioning
                                 confetti({
                                     particleCount: 100,
                                     spread: 70,
-                                    origin: { x: 0.62, y: 0.45 },
+                                    origin: { x: originX, y: 0.45 },
                                     colors: ['#FFD700', '#FFA500', '#FF69B4', '#00CED1', '#98FB98'],
                                     zIndex: 10000
                                 });
@@ -2113,10 +2124,22 @@
 
         // Function to create confetti
         function createConfetti() {
+            // SAFARI-SPECIFIC CONFETTI POSITIONING FIX
+            // Detect if the browser is Safari
+            const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+            let originX = 0.62; // Default to center for all other browsers
+
+            // If it is Safari, apply a corrected origin value to counteract zoom effect
+            if (isSafari) {
+                // Fine-tuned for perfect centering - using 0.47 for optimal positioning
+                originX = 0.47;
+            }
+
+            // SAFARI-CORRECTED CONFETTI - Consistent positioning across browsers
             confetti({
                 particleCount: 100,
                 spread: 70,
-                origin: { x: 0.62, y: 0.45 },
+                origin: { x: originX, y: 0.45 },
                 colors: ['#FFD700', '#FFA500', '#FF69B4', '#00CED1', '#98FB98'],
                 zIndex: 9999
             });

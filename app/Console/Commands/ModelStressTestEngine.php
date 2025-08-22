@@ -86,11 +86,11 @@ class ModelStressTestEngine extends Command
     }
 
     /**
-     * Backup database before stress testing
+     * Backup database before stress testing - SECURE VERSION
      */
     private function backupDatabase(): void
     {
-        $this->info('💾 Creating database backup...');
+        $this->info('💾 Creating secure database backup...');
         
         try {
             $backupFile = storage_path('backups/model_stress_test_backup_' . now()->format('Y-m-d_H-i-s') . '.sql');
@@ -105,17 +105,44 @@ class ModelStressTestEngine extends Command
             $password = config('database.connections.mysql.password');
             $host = config('database.connections.mysql.host');
             
-            $command = "mysqldump -h {$host} -u {$username} -p{$password} {$database} > {$backupFile}";
+            // ✅ SECURE: Use credentials file instead of command line exposure
+            $credentialsFile = storage_path('backups/.db_creds_tmp');
+            
+            // Create secure credentials file with restricted permissions
+            file_put_contents($credentialsFile, "[client]\npassword=\"{$password}\"\n", LOCK_EX);
+            chmod($credentialsFile, 0600); // Only owner can read/write
+            
+            // Use --defaults-extra-file to securely pass credentials
+            $command = sprintf(
+                'mysqldump --defaults-extra-file=%s -h %s -u %s %s > %s',
+                escapeshellarg($credentialsFile),
+                escapeshellarg($host),
+                escapeshellarg($username),
+                escapeshellarg($database),
+                escapeshellarg($backupFile)
+            );
+            
             exec($command, $output, $returnCode);
             
+            // Immediately remove credentials file
+            if (file_exists($credentialsFile)) {
+                unlink($credentialsFile);
+            }
+            
             if ($returnCode === 0) {
-                $this->info("✅ Database backup created: {$backupFile}");
+                $this->info("✅ Secure database backup created: {$backupFile}");
             } else {
                 $this->warn("⚠️  Database backup failed, continuing without backup");
+                $this->warn("Command output: " . implode("\n", $output));
             }
             
         } catch (Exception $e) {
             $this->warn("⚠️  Database backup failed: " . $e->getMessage());
+            
+            // Ensure credentials file is removed even on exception
+            if (isset($credentialsFile) && file_exists($credentialsFile)) {
+                unlink($credentialsFile);
+            }
         }
     }
 }

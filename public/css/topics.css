@@ -18,6 +18,511 @@ body {
     box-shadow: 0 2px 4px rgba(0, 0, 0, .1);
     position: fixed;
     top: 0;
+
+/* 
+ * Styles moved from topics_for_course.blade.php
+ * These styles were previously embedded in the template
+ */
+
+/* Assignment Status Banner */
+.assignment-status-banner {
+    margin: -2rem -2.5rem 1.5rem -2.5rem;
+    padding: 0;
+    position: relative;
+    width: calc(100% + 5rem);
+}
+
+.assignment-status-banner.assignment-active {
+    border-top: 3px solid #f59e0b;
+}
+
+.assignment-status-banner.assignment-overdue {
+    border-top: 3px solid #ef4444;
+}
+
+.assignment-status-banner.assignment-completed {
+    border-top: 3px solid #10b981;
+}
+
+/* Assignment Info */
+.assignment-info {
+    padding: 1rem 2.5rem;
+    font-size: 0.9rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: #f9fafb;
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.assignment-info i {
+    margin-right: 0.5rem;
+    font-size: 1rem;
+}
+
+.assignment-info.overdue {
+    color: #dc2626;
+}
+
+.assignment-info.completed {
+    color: #059669;
+}
+
+/* Assignment Countdown */
+.assignment-countdown {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.35rem 0.75rem;
+    border-radius: 9999px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    background: rgba(255, 255, 255, 0.9);
+    color: #4b5563;
+    border: 1px solid rgba(0, 0, 0, 0.1);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+    transition: all 0.2s ease;
+}
+
+.assignment-countdown:hover {
+    background: rgba(255, 255, 255, 1);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.countdown-display {
+    letter-spacing: 0.3px;
+    font-variant-numeric: tabular-nums;
+}
+
+.overdue-text {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.35rem 0.75rem;
+    border-radius: 9999px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    background: rgba(239, 68, 68, 0.1);
+    color: #dc2626;
+    border: 1px solid rgba(239, 68, 68, 0.2);
+}
+
+.completed-text {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.35rem 0.75rem;
+    border-radius: 9999px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    background: rgba(16, 185, 129, 0.1);
+    color: #059669;
+    border: 1px solid rgba(16, 185, 129, 0.2);
+}
+
+/* Premium Locked Topic Styling */
+.topic-locked {
+    position: relative;
+    transform: scale(0.98);
+    transition: all 0.3s ease;
+    opacity: 0.5;
+}
+
+.topic-locked::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.7) 0%, rgba(248, 250, 252, 0.8) 100%);
+    backdrop-filter: blur(2px) saturate(0.8);
+    border-radius: 12px;
+    z-index: 1;
+    pointer-events: none;
+}
+
+.topic-locked::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(241, 243, 244, 0.7);
+    backdrop-filter: blur(1px);
+    pointer-events: none;
+    z-index: 2;
+    border-radius: 12px;
+}
+
+.topic-locked .start-quiz-btn {
+    background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%) !important;
+    color: #64748b !important;
+    cursor: not-allowed;
+    pointer-events: none;
+    border: 1px solid #cbd5e1 !important;
+    box-shadow: none !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    min-width: 180px !important;
+    min-height: 48px !important;
+}
+
+.topic-locked .start-quiz-btn .lock-icon {
+    color: #9ca3af !important;
+    font-size: 1.2em !important;
+    margin: 0 !important;
+}
+
+.topic-locked .start-quiz-btn span {
+    display: none !important;
+}
+
+.topic-locked .start-quiz-btn .fa-arrow-right {
+    display: none !important;
+}
+
+/* Start Assignment Button - Exact Style from new_topics.blade.php */
+.start-quiz-btn {
+    background: #007bff;
+    color: white;
+    padding: 0.8rem 1.5rem;
+    border-radius: 8px;
+    font-weight: 500;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    border: none;
+    cursor: pointer;
+    margin-top: 1rem;
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
+    transition: all 0.2s ease;
+}
+
+.start-quiz-btn:hover {
+    background: #0056b3;
+    color: white;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0, 123, 255, 0.2);
+}
+
+.start-quiz-btn:active {
+    background: #004085;
+    transform: translateY(0);
+}
+
+.start-quiz-btn[data-processing="true"] {
+    pointer-events: none;
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+/* Source Selection Modal Styles */
+#sourceSelectionModal .source-card {
+    padding: 0.75rem 0.75rem 0.75rem 0;
+    border-radius: 8px;
+    transition: all 0.2s ease;
+    margin-bottom: 0.75rem;
+    background: white;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+    position: relative;
+    overflow: hidden;
+}
+
+#sourceSelectionModal .source-card:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 3px 6px rgba(0, 0, 0, 0.08);
+}
+
+#sourceSelectionModal .source-card:last-child {
+    margin-bottom: 0;
+}
+
+#sourceSelectionModal .source-status {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    width: 4px;
+}
+
+#sourceSelectionModal .source-content {
+    padding-left: calc(4px + 0.75rem);
+}
+
+#sourceSelectionModal .source-status.completed {
+    background-color: #28a745;
+}
+
+#sourceSelectionModal .source-status.in-progress {
+    background-color: #ffc107;
+}
+
+#sourceSelectionModal .source-status.failed {
+    background-color: #dc3545;
+}
+
+#sourceSelectionModal .source-status.not-started {
+    background-color: #e9ecef;
+}
+
+#sourceSelectionModal .btn-primary {
+    background-color: #007bff;
+    border-color: #007bff;
+    color: white;
+    font-weight: 500;
+    padding: 0.75rem 1.5rem;
+    border-radius: 8px;
+    transition: all 0.2s ease;
+}
+
+#sourceSelectionModal .btn-primary:hover {
+    background-color: #0069d9;
+    border-color: #0062cc;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0, 123, 255, 0.2);
+}
+
+#sourceSelectionModal .source-info {
+    font-size: 0.9rem;
+    border-radius: 8px;
+    padding: 1rem;
+    margin-top: 0.5rem;
+    background-color: #e7f3ff;
+    border-left: 4px solid #007bff;
+}
+
+/* Premium Countdown Urgency */
+.countdown-urgent {
+    background: rgba(255, 243, 224, 0.95) !important;
+    border-color: rgba(255, 152, 0, 0.3) !important;
+    color: #ea580c !important;
+    box-shadow: 0 0 0 1px rgba(255, 152, 0, 0.1), 0 4px 12px rgba(255, 152, 0, 0.15) !important;
+}
+
+.countdown-urgent .countdown-display {
+    animation: premiumPulse 2s ease-in-out infinite;
+}
+
+/* Animations */
+@keyframes premiumUrgent {
+    0%, 100% { 
+        border-top-color: #f44336;
+        background: linear-gradient(135deg, rgba(244, 67, 54, 0.08) 0%, rgba(255, 87, 34, 0.05) 100%);
+    }
+    50% { 
+        border-top-color: #ff5722;
+        background: linear-gradient(135deg, rgba(255, 87, 34, 0.12) 0%, rgba(244, 67, 54, 0.08) 100%);
+    }
+}
+
+@keyframes premiumPulse {
+    0%, 100% { 
+        opacity: 1;
+        transform: scale(1);
+    }
+    50% { 
+        opacity: 0.8;
+        transform: scale(1.02);
+    }
+}
+
+@keyframes subtleUrgent {
+    0%, 100% { 
+        border-bottom-color: #f44336;
+    }
+    50% { 
+        border-bottom-color: #ff5722;
+    }
+}
+
+@keyframes subtlePulse {
+    0%, 100% { 
+        opacity: 1;
+    }
+    50% { 
+        opacity: 0.7;
+    }
+}
+
+/* Minimal Assignment Status Bar - Only at top */
+.assignment-status-bar {
+    margin: -2rem -2.5rem 1.5rem -2.5rem;
+    padding: 1.1rem 2.5rem 0.7rem 2.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    font-size: 0.95rem;
+    font-weight: 600;
+    border-radius: 16px 16px 0 0;
+    position: relative;
+    width: calc(100% + 5rem);
+    left: 0;
+    box-sizing: border-box;
+    min-height: 56px;
+}
+
+.assignment-status-bar.assignment-active {
+    background: linear-gradient(135deg, #fff8e1 0%, #fff3cd 100%);
+    color: #e65100;
+    border-bottom: 1px solid #ffcc02;
+}
+
+.assignment-status-bar.assignment-overdue {
+    background: linear-gradient(135deg, #ffebee 0%, #ffcdd2 100%);
+    color: #c62828;
+    border-bottom: 1px solid #f44336;
+    animation: subtleUrgent 3s infinite;
+}
+
+.assignment-status-bar.assignment-completed {
+    background: linear-gradient(135deg, #e8f5e9 0%, #c8e6c9 100%);
+    color: #2e7d32;
+    border-bottom: 1px solid #4caf50;
+}
+
+.assignment-info-minimal {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    line-height: 1.2;
+}
+
+.assignment-info-minimal i {
+    font-size: 1rem;
+    opacity: 0.8;
+    margin-right: 0.25rem;
+}
+
+.assignment-info-minimal span {
+    font-size: 1.15rem;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+}
+
+.assignment-countdown-minimal {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    background: rgba(255, 255, 255, 0.7);
+    padding: 0.2rem 0.7rem;
+    border-radius: 18px;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    font-weight: 600;
+    font-size: 0.75rem;
+    border: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+/* Assignment status bar content alignment fixes */
+.assignment-status-bar .assignment-info-minimal span {
+    white-space: nowrap;
+}
+
+.assignment-status-bar .assignment-countdown-minimal,
+.assignment-status-bar .overdue-text,
+.assignment-status-bar .completed-text {
+    white-space: nowrap;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .assignment-status-banner {
+        margin: -1.5rem -1.5rem 0 -1.5rem;
+    }
+    
+    .assignment-status-bar {
+        margin: -1.5rem -1.5rem 1rem -1.5rem;
+        padding: 0.5rem 1.5rem;
+        width: calc(100% + 3rem);
+        border-radius: 18px 18px 0 0;
+    }
+    
+    .assignment-info {
+        padding: 0.75rem 1.5rem;
+        font-size: 0.8rem;
+    }
+    
+    .assignment-countdown,
+    .overdue-text,
+    .completed-text {
+        margin-right: 1.5rem;
+        padding: 0.4rem 0.75rem;
+        font-size: 0.75rem;
+    }
+    
+    .assignment-countdown-minimal {
+        margin-right: 0;
+        padding: 0.3rem 0.6rem;
+        font-size: 0.75rem;
+    }
+}
+
+@media (max-width: 480px) {
+    .assignment-status-bar {
+        margin: -1.5rem -1.5rem 1rem -1.5rem;
+        padding: 0.5rem 1.5rem;
+        width: calc(100% + 3rem);
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.5rem;
+    }
+    
+    .assignment-countdown,
+    .overdue-text,
+    .completed-text {
+        margin-right: 0;
+        margin-top: 0.5rem;
+    }
+    
+    .assignment-countdown-minimal {
+        margin-right: 0;
+        margin-top: 0.5rem;
+    }
+}
+
+/* Start Assignment button: match simple minimal blue .start-quiz-btn styling (no gradients) */
+.assignment-start-btn {
+    background: #007bff !important;
+    border: none !important;
+    color: white !important;
+    font-weight: 600 !important;
+    user-select: none !important;
+    -webkit-tap-highlight-color: transparent !important;
+}
+
+.assignment-start-btn:hover {
+    background: #0056b3 !important;
+    color: white !important;
+}
+
+.assignment-start-btn:active {
+    background: #004085 !important;
+}
+
+/* Make the "Assignment Due:" label use stronger orange for contrast in active bar */
+.assignment-status-bar.assignment-active .assignment-info-minimal span:first-child {
+    color: #e65100 !important;
+}
+
+/* ADDITIONAL OVERRIDE: Target the specific span element */
+.assignment-info-minimal span:first-child {
+    color: #e65100 !important;
+}
+
+/* ULTIMATE OVERRIDE: Target by text content */
+.assignment-status-bar.assignment-active span:contains("Assignment Due:") {
+    color: #e65100 !important;
+}
+
+/* FINAL OVERRIDE: Force assignment active status bar color */
+.assignment-status-bar.assignment-active {
+    color: #e65100 !important;
+}
+
+.assignment-status-bar.assignment-active * {
+    color: #e65100 !important;
+}
     left: 0;
     right: 0;
     z-index: 1000;

@@ -130,7 +130,7 @@ class AssignmentRetrievalService
                     ->join('course_user', 'users.id', '=', 'course_user.user_id')
                     ->where('users.role', User::ROLE_STUDENT)
                     ->whereIn('course_user.course_id', $tutorCourseIds)
-                    ->where('course_user.is_enrolled', true)
+                    ->whereNotNull('course_user.enrolled_at')
                     ->distinct()
                     ->orderBy('users.name')
                     ->get();
@@ -171,7 +171,7 @@ class AssignmentRetrievalService
                     ->join('course_user', 'users.id', '=', 'course_user.user_id')
                     ->where('users.role', User::ROLE_STUDENT)
                     ->whereIn('course_user.course_id', $tutorCourseIds)
-                    ->where('course_user.is_enrolled', true)
+                    ->whereNotNull('course_user.enrolled_at')
                     ->distinct()
                     ->orderBy('users.name')
                     ->get();

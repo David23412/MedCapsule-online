@@ -19,6 +19,15 @@ class Assignment extends Model
      */
     const STATUS_ACTIVE = 1;
     const STATUS_COMPLETED = 2;
+    const STATUS_LOCKED = 3;
+
+    /**
+     * Urgency level constants used by getUrgencyLevel()
+     */
+    const URGENCY_OVERDUE = 0;
+    const URGENCY_URGENT = 1;
+    const URGENCY_APPROACHING = 2;
+    const URGENCY_NORMAL = 3;
 
     /**
      * Get the current status of the assignment.
@@ -46,7 +55,7 @@ class Assignment extends Model
         
         // Check if past deadline
         if ($this->deadline && now()->gt($this->deadline)) {
-            return self::STATUS_COMPLETED;
+            return self::STATUS_LOCKED; // Use LOCKED status for overdue assignments
         }
         
         return self::STATUS_ACTIVE;
@@ -66,9 +75,12 @@ class Assignment extends Model
             return 'completed';
         }
         
-        // Check if past deadline but not yet marked as completed
-        if ($this->deadline && now()->gt($this->deadline)) {
-            return 'overdue';
+        if ($status === self::STATUS_LOCKED) {
+            // Check if it's locked due to being overdue
+            if ($this->deadline && now()->gt($this->deadline)) {
+                return 'overdue';
+            }
+            return 'locked';
         }
         
         return 'active';
@@ -706,13 +718,18 @@ class Assignment extends Model
             ];
         }
 
+        // Calculate overall progress across all sources for complete topics
+        $totalCorrectAnswers = $attempts->sum('score');
+        $totalQuestions = $attempts->sum('total_questions');
+        $overallPercentage = $totalQuestions > 0 ? ($totalCorrectAnswers / $totalQuestions) * 100 : 0;
+        
         $bestAttempt = $attempts->sortByDesc('percentage_grade')->first();
         $latestAttempt = $attempts->sortByDesc('created_at')->first();
 
         return [
-            'completed' => $bestAttempt->percentage_grade >= 50,
-            'score' => $bestAttempt->score,
-            'percentage' => $bestAttempt->percentage_grade,
+            'completed' => $overallPercentage >= 50,
+            'score' => $totalCorrectAnswers,
+            'percentage' => $overallPercentage,
             'attempts_count' => $attempts->count(),
             'best_score' => $bestAttempt->percentage_grade,
             'latest_attempt' => $latestAttempt->created_at
@@ -724,18 +741,37 @@ class Assignment extends Model
      */
     public function isCompletedByUser($userId): bool
     {
-        return $this->attemptsForUser($userId)
-                   ->where('percentage_grade', '>=', 50)
-                   ->exists();
+        $attempts = $this->attemptsForUser($userId)->get();
+        
+        if ($attempts->isEmpty()) {
+            return false;
+        }
+        
+        // Calculate overall progress across all sources
+        $totalCorrectAnswers = $attempts->sum('score');
+        $totalQuestions = $attempts->sum('total_questions');
+        $overallPercentage = $totalQuestions > 0 ? ($totalCorrectAnswers / $totalQuestions) * 100 : 0;
+        
+        return $overallPercentage >= 50;
     }
 
     /**
-     * 🚀 GENIUS: Get user's best score for this assignment
+     * 🚀 GENIUS: Get user's overall score for this assignment
      */
     public function getUserBestScore($userId): float
     {
-        return $this->attemptsForUser($userId)
-                   ->max('percentage_grade') ?? 0;
+        $attempts = $this->attemptsForUser($userId)->get();
+        
+        if ($attempts->isEmpty()) {
+            return 0;
+        }
+        
+        // Calculate overall progress across all sources
+        $totalCorrectAnswers = $attempts->sum('score');
+        $totalQuestions = $attempts->sum('total_questions');
+        $overallPercentage = $totalQuestions > 0 ? ($totalCorrectAnswers / $totalQuestions) * 100 : 0;
+        
+        return $overallPercentage;
     }
 
 

@@ -14,14 +14,11 @@ return new class extends Migration {
             $table->string('youtube_video_id');
             $table->string('title');
             $table->integer('duration')->nullable(); // in seconds
-            $table->boolean('is_active')->default(true);
             $table->timestamps();
-            
+
             // Performance indexes for videos
             $table->index('topic_id');
-            $table->index(['topic_id', 'is_active']);
             $table->index('youtube_video_id');
-            $table->index('is_active');
         });
 
         // Create video progress pivot table
@@ -50,9 +47,8 @@ return new class extends Migration {
 
     public function down(): void
     {
-        Schema::disableForeignKeyConstraints();
+        // ✅ FIXED: Remove foreign key constraint disabling - maintain data integrity
         Schema::dropIfExists('video_user_progress');
         Schema::dropIfExists('videos');
-        Schema::enableForeignKeyConstraints();
     }
 };

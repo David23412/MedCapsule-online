@@ -27,7 +27,7 @@ class CourseActionController extends Controller
                 return redirect()->route('home')->with('error', 'Unauthorized access.');
             }
             return $next($request);
-        })
+        });
     }
 
     /**
@@ -42,7 +42,7 @@ class CourseActionController extends Controller
         // Check if user is already enrolled
         $existingEnrollment = $user->courses()
             ->where('course_id', $courseId)
-            ->where('is_enrolled', true)
+            ->whereNotNull('enrolled_at')
             ->exists();
 
         if ($existingEnrollment) {
@@ -66,7 +66,6 @@ class CourseActionController extends Controller
 
         // Enroll the user
         $user->courses()->attach($courseId, [
-            'is_enrolled' => true,
             'enrolled_at' => now()
         ]);
 

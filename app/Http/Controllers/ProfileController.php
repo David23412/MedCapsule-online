@@ -15,6 +15,7 @@ use Carbon\Carbon;
 use App\Models\Topic;
 use App\Models\User;
 use App\Models\QuizAttempt;
+use App\Services\SecureFileUploadService;
 
 // TODO: Inject services in constructor
     // TODO: Inject services in constructor
@@ -277,29 +278,20 @@ use App\Models\QuizAttempt;
     }
 
     /**
-     * Handle profile picture upload
+     * Handle profile picture upload with MEGA LETHAL security
      */
     public function updateProfilePicture(Request $request)
     {
-        // TODO: Create FormRequest for validation
-
         try {
-            // Validate the profile picture upload
+            // 🔒 MEGA LETHAL SECURITY: Use secure file upload service
             $request->validate([
-                'profile_picture' => 'required|file|mimes:jpg,jpeg,png,gif,webp|max:5120' // 5MB max
+                'profile_picture' => 'required|file|max:5120' // Basic validation, security handled by service
             ]);
-            
-            $user = auth()->user();
-            
-            if ($request->hasFile('profile_picture')) {
-                $file = $request->file('profile_picture');
-                
-                // Ensure file is valid
-                if (!$file->isValid()) {
-                    throw new \Exception('Invalid file upload');
-                }
 
-                // Delete old profile picture if exists
+            $user = auth()->user();
+
+            if ($request->hasFile('profile_picture')) {
+                // Delete old profile picture if exists (secure deletion)
                 if ($user->profile_picture_url) {
                     $oldPath = str_replace('storage/', '', $user->profile_picture_url);
                     $oldFilePath = storage_path('app/public/' . $oldPath);
@@ -308,39 +300,61 @@ use App\Models\QuizAttempt;
                     }
                 }
 
-                // Create a unique filename
-                $filename = time() . '_' . preg_replace('/[^a-zA-Z0-9.]/', '_', $file->getClientOriginalName());
+                // 🔒 USE SECURE FILE UPLOAD SERVICE - MEGA LETHAL PROTECTION
+                $secureUploadService = app(SecureFileUploadService::class);
 
-                // Store the file in the public disk
-                $path = $file->storeAs('profile_pictures', $filename, 'public');
+                try {
+                    $uploadResult = $secureUploadService->processSecureUpload(
+                        $request->file('profile_picture'),
+                        'images', // category
+                        'profile-pictures' // directory
+                    );
 
-                if (!$path) {
-                    throw new \Exception('Failed to store file');
-                }
+                    // Update user's profile_picture_url with secure path
+                    $user->profile_picture_url = $uploadResult['storage_path'];
+                    $user->save();
 
-                // Update path to include storage prefix
-                $fullPath = 'storage/' . $path;
-
-                // Update user's profile_picture_url
-                $user->profile_picture_url = $fullPath;
-                $user->save();
-
-                // Check if it's an AJAX request
-                if (request()->ajax() || request()->wantsJson()) {
-                    return response()->json([
-                        'success' => true,
-                        'message' => 'Profile picture updated successfully!',
-                        'new_url' => $fullPath,
-                        'timestamp' => time()
+                    \Log::info('Secure profile picture upload completed', [
+                        'user_id' => $user->id,
+                        'secure_filename' => $uploadResult['secure_name'],
+                        'original_filename' => $uploadResult['original_name']
                     ]);
+
+                    // Check if it's an AJAX request
+                    if (request()->ajax() || request()->wantsJson()) {
+                        return response()->json([
+                            'success' => true,
+                            'message' => 'Profile picture updated successfully!',
+                            'new_url' => $uploadResult['storage_path'],
+                            'timestamp' => time()
+                        ]);
+                    }
+
+                    return redirect()->back()
+                        ->with('success', 'Profile picture updated successfully!')
+                        ->with('cache_bust', time());
+
+                } catch (\Exception $e) {
+                    \Log::error('Secure profile picture upload failed', [
+                        'user_id' => $user->id,
+                        'error' => $e->getMessage(),
+                        'original_filename' => $request->file('profile_picture')->getClientOriginalName()
+                    ]);
+
+                    if (request()->ajax() || request()->wantsJson()) {
+                        return response()->json([
+                            'success' => false,
+                            'message' => 'File upload failed security validation: ' . $e->getMessage()
+                        ], 422);
+                    }
+
+                    return redirect()->back()
+                        ->with('error', 'File upload failed security validation: ' . $e->getMessage());
                 }
-                
-                return redirect()->back()
-                    ->with('success', 'Profile picture updated successfully!')
-                    ->with('cache_bust', time());
             }
 
             return redirect()->back()->with('error', 'No file uploaded.');
+
         } catch (\Illuminate\Validation\ValidationException $e) {
             if (request()->ajax() || request()->wantsJson()) {
                 return response()->json([
@@ -349,9 +363,9 @@ use App\Models\QuizAttempt;
                     'errors' => $e->errors()
                 ], 422);
             }
-            
+
             return redirect()->back()->withErrors($e->validator)->withInput();
-            
+
         } catch (\Exception $e) {
             \Log::error('Profile picture upload failed', [
                 'user_id' => auth()->id(),
@@ -364,7 +378,7 @@ use App\Models\QuizAttempt;
                     'message' => 'Failed to update profile picture: ' . $e->getMessage()
                 ], 500);
             }
-            
+
             return redirect()->back()->with('error', 'Failed to update profile picture: ' . $e->getMessage());
         }
     }

@@ -814,6 +814,47 @@
         to { opacity: 1; }
     }
 }
+
+        .notification-bell {
+            position: relative;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .notification-bell:hover {
+            transform: scale(1.05);
+        }
+
+        .notification-icon.fire-icon {
+            color: #f97316 !important;
+            animation: flame 1.5s infinite;
+        }
+
+        @keyframes flame {
+            0% { transform: scale(1) rotate(0deg); }
+            25% { transform: scale(1.1) rotate(5deg); }
+            50% { transform: scale(1.05) rotate(-5deg); }
+            75% { transform: scale(1.1) rotate(5deg); }
+            100% { transform: scale(1) rotate(0deg); }
+        }
+
+        .notification-dropdown {
+            position: absolute;
+            top: 100%;
+            right: 0;
+            width: 400px;
+            max-height: 500px;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+            border: 1px solid #e5e7eb;
+            z-index: 1000;
+            opacity: 0;
+            visibility: hidden;
+            transform: translateY(-10px);
+            transition: all 0.3s ease;
+            overflow: hidden;
+        }
 </style>
 
 <script>
@@ -1353,6 +1394,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 'streak_month_3': '#fbbf24',            // amber-400
                 'streak_month_6': '#fbbf24',            // amber-400
                 'streak_year_1': '#fbbf24',             // amber-400
+                'streak_milestone': '#f97316',          // orange-500 (FIXED: FIRE ICON COLOR!)
+                'study_streak': '#f97316',              // orange-500 (FIXED: FIRE ICON COLOR!)
+                'burning_streak': '#f97316',            // orange-500 (FIXED: FIRE ICON COLOR!)
                 'course_mastery': '#1e40af',            // deep blue for course mastery
                 'correct_answers_milestone': '#7c3aed', // deep purple for milestones
                 'streak_reset': '#f97316',              // orange-500
@@ -1461,6 +1505,9 @@ document.addEventListener('DOMContentLoaded', function() {
             if (type === 'streak_day_1') {
                 return '#10b981'; // GREEN BORDER for first quiz
             }
+            if (type === 'streak_milestone' || type === 'study_streak' || type === 'burning_streak') {
+                return '#f97316'; // FIERY ORANGE BORDER for streak notifications
+            }
             if (type === 'assignment_due_1h' || type === 'assignment_due_3h' || type === 'assignment_overdue') {
                 return '#ef4444'; // RED BORDER for urgent deadlines
             }
@@ -1517,10 +1564,11 @@ document.addEventListener('DOMContentLoaded', function() {
                 const readClass = notification.read ? 'read' : 'unread';
                 const iconColor = getNotificationIconColor(notification.type);
                 const borderColor = getNotificationBorderColor(notification.priority, notification.type);
+                const isFireIcon = ['streak_milestone', 'study_streak', 'burning_streak'].includes(notification.type);
                 
                 notificationHTML += `
                     <div class="notification-item ${priorityClass} ${readClass}" data-id="${notification.id}" style="border-left: 4px solid ${borderColor};">
-                        <div class="notification-icon" style="background-color: ${iconColor}20; border: 1px solid ${iconColor}30;">
+                        <div class="notification-icon ${isFireIcon ? 'fire-icon' : ''}" style="background-color: ${iconColor}20; border: 1px solid ${iconColor}30;">
                             <i class="${getNotificationIcon(notification.type)}" style="color: ${iconColor};"></i>
                         </div>
                         <div class="notification-content">

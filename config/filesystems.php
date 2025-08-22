@@ -47,6 +47,15 @@ return [
             'report' => false,
         ],
 
+        'secure_uploads' => [
+            'driver' => 'local',
+            'root' => storage_path('app/uploads'), // Outside web root for security
+            'visibility' => 'private', // Files not publicly accessible
+            'throw' => false,
+            'report' => false,
+            'serve' => false, // Prevent direct serving of files
+        ],
+
         's3' => [
             'driver' => 's3',
             'key' => env('AWS_ACCESS_KEY_ID'),

@@ -1,6 +1,7 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
+use App\Http\Middleware\SecurityHeaders;
 use Illuminate\Http\Request;
 use App\Http\Controllers\{
     CourseController,
@@ -28,10 +29,7 @@ use Illuminate\Support\Facades\DB;
 // Public routes
 Route::get('/', [HomeController::class, 'index'])->name('home');
 
-// Test route for progress update system
-Route::get('/test-progress-update', function() {
-    return view('test-progress-update');
-})->name('test.progress-update');
+
 
 // Real-time progress update routes
 Route::prefix('api/progress')->middleware('auth')->group(function () {
@@ -53,13 +51,14 @@ Route::post('/api/check-enrollment-status', function(Request $request) {
     $enrollments = DB::table('course_user')
         ->where('user_id', $userId)
         ->whereIn('course_id', $courseIds)
-        ->pluck('is_enrolled', 'course_id')
+        ->whereNotNull('enrolled_at')
+        ->pluck('enrolled_at', 'course_id')
         ->toArray();
     
     // Check for changes (this would need session storage in real implementation)
     $changes = [];
     foreach ($courseIds as $courseId) {
-        $isEnrolled = isset($enrollments[$courseId]) ? (bool)$enrollments[$courseId] : false;
+        $isEnrolled = isset($enrollments[$courseId]);
         // For now, we'll return all statuses - in production you'd compare with previous state
         $changes[] = [
             'course_id' => $courseId,
@@ -139,34 +138,26 @@ Route::get('/api/active-users', function() {
 Route::middleware(['auth', 'admin'])->group(function () {
     Route::get('/manage-access', [UserCourseController::class, 'index'])->name('admin.user-course');
     
-    // Manage Access Routes - NO CSRF but with admin protection
-    Route::post('/manage-access/enroll', [UserCourseController::class, 'enroll'])->name('admin.user-course.enroll')->withoutMiddleware([\App\Http\Middleware\VerifyCsrfToken::class]);
-    Route::post('/manage-access/revoke', [UserCourseController::class, 'revoke'])->name('admin.user-course.revoke')->withoutMiddleware([\App\Http\Middleware\VerifyCsrfToken::class]);
+    // Manage Access Routes - SECURE with CSRF protection
+    Route::post('/manage-access/enroll', [UserCourseController::class, 'enroll'])->name('admin.user-course.enroll');
+    Route::post('/manage-access/revoke', [UserCourseController::class, 'revoke'])->name('admin.user-course.revoke');
 });
 // Route removed - restore functionality is handled by revoke method (toggle)
 
 // Auth routes
 require __DIR__.'/auth.php';
-require __DIR__.'/debug.php';
 
-// Protected routes
-Route::middleware('auth')->group(function () {
+// 🔒 INTEGRATE SECURITY HEADERS MIDDLEWARE - MEGA LETHAL PROTECTION
+Route::middleware(['web', SecurityHeaders::class])->group(function () {
+
+    // Protected routes
+    Route::middleware('auth')->group(function () {
     // User progress route
     Route::get('/profile/progress', [ProfileController::class, 'getProgress'])->name('user.progress');
     
     // Course routes
     Route::get('/courses', [CourseController::class, 'index'])->name('courses.index');
     Route::get('/courses/{course}', [CourseController::class, 'show'])->name('courses.show');
-    
-    // Notification routes
-    Route::prefix('notifications')->group(function () {
-        Route::get('/', [NotificationViewController::class, 'index'])->name('notifications.index');
-        Route::get('/stats', [NotificationViewController::class, 'stats'])->name('notifications.stats');
-        Route::post('/mark-all-read', [NotificationViewController::class, 'markAllAsRead'])->name('notifications.mark-all-read');
-        Route::post('/mark-read', [NotificationViewController::class, 'markAsRead'])->name('notifications.mark-read');
-        Route::post('/delete', [NotificationViewController::class, 'deleteNotification'])->name('notifications.delete');
-        Route::post('/cleanup', [NotificationViewController::class, 'cleanup'])->name('notifications.cleanup');
-    });
 
     // Review routes with CSRF and rate limiting
     Route::get('/review', [App\Http\Controllers\Quiz\QuizMistakeController::class, 'showMistakes'])->name('review.index')->withoutMiddleware('auth');
@@ -191,70 +182,17 @@ Route::middleware('auth')->group(function () {
     });
 
     
-    // EMERGENCY DIRECT DATABASE UPDATE - NO MIDDLEWARE, NO AUTH
-    Route::any('/force-enroll/{userId}/{courseId}', function($userId, $courseId) {
-        \DB::table('course_user')->updateOrInsert(
-            ['user_id' => $userId, 'course_id' => $courseId],
-            ['is_enrolled' => true, 'enrolled_at' => now(), 'updated_at' => now(), 'created_at' => now()]
-        );
-        
-        $record = \DB::table('course_user')->where('user_id', $userId)->where('course_id', $courseId)->first();
-        
-        return response()->json([
-            'success' => true, 
-            'message' => 'FORCE ENROLLED!',
-            'record' => $record
-        ]);
-    })->withoutMiddleware(['auth']);
-    
-    // EMERGENCY ENROLL ENDPOINT - NO AUTH REQUIRED
-    Route::post('/emergency-enroll', function(\Illuminate\Http\Request $request) {
-        $userId = $request->input('user_id');
-        $courseId = $request->input('course_id');
-        
-        \Log::emergency('🚨 EMERGENCY ENROLL CALLED', [
-            'user_id' => $userId,
-            'course_id' => $courseId,
-            'all_data' => $request->all()
-        ]);
-        
-        if (!$userId || !$courseId) {
-            return response()->json(['success' => false, 'message' => 'Missing user_id or course_id']);
-        }
-        
-        \DB::table('course_user')->updateOrInsert(
-            ['user_id' => $userId, 'course_id' => $courseId],
-            ['is_enrolled' => true, 'enrolled_at' => now(), 'updated_at' => now(), 'created_at' => now()]
-        );
-        
-        $record = \DB::table('course_user')->where('user_id', $userId)->where('course_id', $courseId)->first();
-        
-        return response()->json([
-            'success' => true, 
-            'message' => 'EMERGENCY ENROLLMENT SUCCESSFUL!',
-            'record' => $record
-        ]);
-    })->withoutMiddleware(['auth']);
-    
-    // EMERGENCY LOGIN AS ADMIN - NO PASSWORD REQUIRED
-    Route::get('/emergency-login', function() {
-        $admin = \App\Models\User::where('role', 'admin')->first();
-        if ($admin) {
-            auth()->login($admin);
-            return redirect('/manage-access')->with('success', 'Logged in as admin!');
-        }
-        return 'No admin user found';
-    });
+
     // Manage Access Routes - Admin only
     Route::middleware('admin')->group(function () {
         Route::get('/manage-access/search-users', [UserCourseController::class, 'searchUsers'])->name('admin.user-course.search');
-        
+
         // Video Management Routes
         Route::get('/admin/videos', [App\Http\Controllers\VideoController::class, 'index'])->name('admin.videos.index');
         Route::post('/admin/videos', [App\Http\Controllers\VideoController::class, 'store'])->name('admin.videos.store');
         Route::post('/admin/videos/{video}/toggle', [App\Http\Controllers\VideoController::class, 'toggle'])->name('admin.videos.toggle');
         Route::delete('/admin/videos/{video}', [App\Http\Controllers\VideoController::class, 'destroy'])->name('admin.videos.destroy');
-        
+
         // API route for getting course topics
         Route::get('/api/courses/{course}/topics', function($courseId) {
             $topics = \App\Models\Topic::where('course_id', $courseId)
@@ -265,11 +203,39 @@ Route::middleware('auth')->group(function () {
         });
         Route::get('/manage-access/user-courses/{userId}', [UserCourseController::class, 'userCourses'])->name('admin.user-course.user-courses');
         Route::post('/manage-access/toggle-admin', [UserCourseController::class, 'toggleAdmin'])->name('admin.user-course.toggle-admin');
-        Route::get('/manage-access/payments', [UserCourseController::class, 'payments'])->name('admin.user-course.payments');
+        // TEMPORARY: Move payments route outside admin middleware group for testing
+        // Route::get('/manage-access/payments', [UserCourseController::class, 'payments'])->name('admin.user-course.payments')->withoutMiddleware([\App\Http\Middleware\AdminMiddleware::class]);
         Route::get('/manage-access/enrollments', [UserCourseController::class, 'getEnrollments'])->name('admin.user-course.enrollments');
         Route::get('/manage-access/user-enrollments', [UserCourseController::class, 'getUserEnrollments'])->name('admin.user-course.user-enrollments');
         Route::post('/manage-access/payment-settings', [UserCourseController::class, 'updatePaymentSettings'])->name('admin.payment-settings.update');
     });
+
+    // 🔍 DEBUG: Temporary test route to check admin status (remove after debugging)
+    Route::get('/debug/admin-status', function() {
+        $user = auth()->user();
+        if (!$user) {
+            return response()->json(['error' => 'Not authenticated'], 401);
+        }
+
+        return response()->json([
+            'user_id' => $user->id,
+            'user_name' => $user->name,
+            'user_email' => $user->email,
+            'role_raw' => $user->role,
+            'role_type' => gettype($user->role),
+            'role_cast_to_int' => (int)($user->role ?? 0),
+            'expected_admin_role' => \App\Models\User::ROLE_ADMIN,
+            'is_admin_method' => $user->isAdmin(),
+            'role_comparison' => ((int)($user->role ?? 0) === \App\Models\User::ROLE_ADMIN),
+            'session_data' => session()->all(),
+            'middleware_check' => true
+        ]);
+    })->name('debug.admin-status');
+
+    // ✅ FIXED: Payments route with proper admin protection
+    Route::get('/manage-access/payments', [UserCourseController::class, 'payments'])
+        ->name('admin.user-course.payments')
+        ->middleware(['auth', 'admin']);
     
     // Delete Management Routes
     Route::get('/admin/delete', [DeleteController::class, 'index'])->name('admin.delete.index');
@@ -308,36 +274,18 @@ Route::middleware('auth')->group(function () {
         
         // Course exists, proceed normally
         return app(TopicController::class)->forCourse($courseId);
-    })->name('topics.forCourse')->where('courseId', '[0-9]+')->middleware(\App\Http\Middleware\DebugRouteMiddleware::class);
-    
-    // EMERGENCY DEBUG ROUTE
-    Route::get('/debug-topics/{courseId}', function($courseId) {
-        return response()->json([
-            'received_courseId' => $courseId,
-            'courseId_type' => gettype($courseId),
-            'converted_id' => (int) $courseId,
-            'route_params' => request()->route()->parameters(),
-            'all_params' => request()->all(),
-            'url' => request()->url(),
-            'path' => request()->path(),
-            'method' => request()->method(),
-            'headers' => request()->headers->all(),
-            'server' => request()->server(),
-            'user_id' => auth()->id(),
-            'timestamp' => now()->toDateTimeString()
-        ]);
-    })->where('courseId', '[0-9]+')->middleware('auth');
+    })->name('topics.forCourse')->where('courseId', '[0-9]+');
     Route::get('/topics/course/{courseId}', [TopicController::class, 'forCourse'])->name('topics.forCourseLegacy')->where('courseId', '[0-9]+');
     Route::get('/courses/{course}/cases', [TopicController::class, 'casesForCourse'])->name('cases.forCourse');
     Route::get('/courses/{course}/cases-count', [TopicController::class, 'casesCount'])->name('cases.count');
 
     // 💀 NUCLEAR OPTIMIZED QUIZ ROUTES - SPLIT ARCHITECTURE 💀
     Route::prefix('quiz')->name('quiz.')->group(function () {
-        // Quiz Execution
-        Route::get('/{course}/{topic}', [App\Http\Controllers\Quiz\QuizExecutionController::class, 'startQuiz'])
+        // Quiz Execution - REFACTORED ARCHITECTURE
+        Route::get('/{course}/{topic}', [App\Http\Controllers\Quiz\QuizReadController::class, 'show'])
             ->name('start')
             ->where(['course' => '[0-9]+', 'topic' => '[0-9]+']);
-        Route::post('/{course}/{topic}/grade', [App\Http\Controllers\Quiz\QuizExecutionController::class, 'grade'])
+        Route::post('/{course}/{topic}/grade', [App\Http\Controllers\Quiz\QuizGradingController::class, 'submit'])
             ->name('grade')
             ->where(['course' => '[0-9]+', 'topic' => '[0-9]+'])
             ->withoutMiddleware([\App\Http\Middleware\VerifyCsrfToken::class]);
@@ -403,41 +351,7 @@ Route::middleware('auth')->group(function () {
         Route::get('/details/{payment}', [App\Http\Controllers\Admin\PaymentController::class, 'adminPaymentDetails'])->name('details');
     });
 
-    // Test route for payment verification (bypasses auth for testing)
-    Route::post('/test-payment-verify/{payment}', function($payment) {
-        try {
-            $payment = \App\Models\Payment::findOrFail($payment);
-            
-            // Update payment status
-            $payment->update([
-                'status' => 'completed',
-                'paid_at' => now(),
-                'payment_data' => array_merge($payment->payment_data ?? [], [
-                    'verified_by' => 'test_route',
-                    'verified_at' => now()->toDateTimeString(),
-                    'admin_notes' => 'Test verification via route'
-                ])
-            ]);
-            
-            // Enroll user in course
-            $user = \App\Models\User::find($payment->user_id);
-            if ($user) {
-                $user->courses()->syncWithoutDetaching([$payment->course_id]);
-            }
-            
-            return response()->json([
-                'success' => true,
-                'message' => 'Payment verified successfully via test route',
-                'payment_id' => $payment->id,
-                'status' => $payment->status
-            ]);
-        } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Error: ' . $e->getMessage()
-            ], 500);
-        }
-    })->name('test.payment.verify');
+
 
     // Source progress endpoint
     Route::get('/topics/{topic}/source-progress', [TopicController::class, 'getSourceProgress'])
@@ -584,6 +498,7 @@ Route::middleware('auth')->group(function () {
         Route::get('/locked-topics', [\App\Http\Controllers\TopicLocking\TopicLockingApiController::class, 'getLockedTopics'])
             ->name('locked.topics');
     });
+    });
 });
 
 // Notification routes - simplified implementation
@@ -602,65 +517,7 @@ Route::get('/health', function() {
     return response()->json(['status' => 'ok'], 200);
 });
 
-// Test route removed - proper authentication now in place via /topic-locking route
 
-// Debug route for assignment creation
-Route::get('/debug/assignment-data', function() {
-    if (!auth()->check() || !auth()->user()->isAdmin()) {
-        abort(403);
-    }
-    
-    $user = auth()->user();
-    $courses = \App\Models\Course::orderBy('name')->get();
-    $students = \App\Models\User::where('role', 'student')->orderBy('name')->get();
-    
-    return response()->json([
-        'user' => $user->name,
-        'is_admin' => $user->isAdmin(),
-        'courses_count' => $courses->count(),
-        'students_count' => $students->count(),
-        'courses' => $courses->map(function($course) {
-            return [
-                'id' => $course->id,
-                'name' => $course->name,
-                'year' => $course->year
-            ];
-        }),
-        'students' => $students->map(function($student) {
-            return [
-                'id' => $student->id,
-                'name' => $student->name,
-                'username' => $student->username
-            ];
-        })
-    ]);
-})->middleware('auth');
-
-// Debug route for mistakes data
-Route::get('/debug/mistakes-data', function() {
-    if (!auth()->check()) {
-        abort(403);
-    }
-    
-    $userId = auth()->id();
-    $mistakes = \App\Models\Mistake::where('user_id', $userId)->get();
-    
-    return response()->json([
-        'user_id' => $userId,
-        'total_mistakes' => $mistakes->count(),
-        'skipped_mistakes' => $mistakes->where('skipped', true)->count(),
-        'mistakes_data' => $mistakes->map(function($mistake) {
-            return [
-                'id' => $mistake->id,
-                'question_id' => $mistake->question_id,
-                'skipped' => $mistake->skipped,
-                'skipped_type' => gettype($mistake->skipped),
-                'mastered' => $mistake->mastered,
-                'last_attempt_date' => $mistake->last_attempt_date
-            ];
-        })
-    ]);
-})->middleware('auth');
 
 // Admin Tutor Management Routes (Admin & Tutor Access)
 Route::middleware(['auth', 'tutor'])->prefix('admin/tutors')->name('admin.tutors.')->group(function () {
@@ -687,27 +544,7 @@ Route::middleware(['auth', 'tutor'])->prefix('tutor')->name('tutor.')->group(fun
 });
 
 
-// DEBUG ROUTE FOR 403 TESTING - REMOVE IN PRODUCTION
-Route::any('/debug-quiz-403', function(\Illuminate\Http\Request $request) {
-    return response()->json([
-        'success' => true,
-        'authenticated' => auth()->check(),
-        'user_id' => auth()->id(),
-        'csrf_token' => csrf_token(),
-        'session_id' => session()->getId(),
-        'request_method' => $request->method(),
-        'request_path' => $request->path(),
-        'has_csrf_header' => $request->hasHeader('X-CSRF-TOKEN'),
-        'has_csrf_input' => $request->has('_token'),
-        'csrf_header' => $request->header('X-CSRF-TOKEN') ? substr($request->header('X-CSRF-TOKEN'), 0, 10) . '...' : null,
-        'csrf_input' => $request->input('_token') ? substr($request->input('_token'), 0, 10) . '...' : null,
-        'session_token' => session()->token() ? substr(session()->token(), 0, 10) . '...' : null,
-        'host' => $request->getHost(),
-        'is_ngrok' => str_contains($request->getHost(), 'ngrok'),
-        'user_agent' => $request->header('User-Agent'),
-        'timestamp' => now()->toDateTimeString()
-    ]);
-})->withoutMiddleware([\App\Http\Middleware\VerifyCsrfToken::class]);
+
 
 // Video access endpoints (moved from API routes for session-based auth)
 Route::middleware(['auth'])->prefix('api')->group(function () {
@@ -735,19 +572,5 @@ Route::middleware(['auth'])->prefix('api')->group(function () {
         ]);
     });
     
-    // Test route returns a working video-token URL using the first available video
-    Route::get('/test-video', function() {
-        $video = \App\Models\Video::select('id')->orderBy('id')->first();
-        return response()->json([
-            'message' => 'Video routes working',
-            'test_video_url' => $video ? url('/api/video-token/'.$video->id) : null,
-            'has_video' => (bool) $video,
-            'available_routes' => [
-                'GET /api/video-token/{video}',
-                'POST /api/video-token/{video}',
-                'GET /api/video-stream/{token}',
-                'GET /api/video-access/{video}'
-            ]
-        ]);
-    });
+
 });

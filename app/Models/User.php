@@ -74,7 +74,7 @@ class User extends Authenticatable
 
     /**
      * Define the relationship with courses (many-to-many).
-     * Only returns enrolled courses (is_enrolled = true).
+     * Only returns enrolled courses (enrolled_at is not null).
      */
     public function courses()
     {
@@ -178,6 +178,16 @@ class User extends Authenticatable
     }
 
     /**
+     * Get the user's system notifications (many-to-many with pivot).
+     */
+    public function systemNotifications()
+    {
+        return $this->belongsToMany(SystemNotification::class, 'system_notification_user')
+                    ->withPivot(['is_read', 'read_at'])
+                    ->withTimestamps();
+    }
+
+    /**
         // Check authorization for role assignment
         if (!auth()->user()->can('assign-roles')) {
             abort(403, 'Unauthorized to assign roles');
@@ -198,6 +208,77 @@ class User extends Authenticatable
             ->where('course_id', $courseId)
             ->whereNotNull('enrolled_at')
             ->exists();
+    }
+
+    /**
+     * Bulk check if user has access to multiple courses.
+     * Returns an array mapping course IDs to access status.
+     * 
+     * @param array $courseIds
+     * @return array
+     */
+    public function hasAccessToCourses(array $courseIds): array
+    {
+        // Admins always have access to all courses
+        if ($this->isAdmin()) {
+            return array_fill_keys($courseIds, true);
+        }
+        
+        // Early return for empty array
+        if (empty($courseIds)) {
+            return [];
+        }
+        
+        // Get enrolled courses in a single query
+        $enrolledCourses = DB::table('course_user')
+            ->where('user_id', $this->id)
+            ->whereIn('course_id', $courseIds)
+            ->whereNotNull('enrolled_at')
+            ->pluck('course_id')
+            ->toArray();
+        
+        // Create result array with all courses set to false initially
+        $result = array_fill_keys($courseIds, false);
+        
+        // Set enrolled courses to true
+        foreach ($enrolledCourses as $courseId) {
+            $result[$courseId] = true;
+        }
+        
+        return $result;
+    }
+
+    /**
+     * Bulk check if user has pending payments for multiple courses.
+     * Returns an array mapping course IDs to pending payment status.
+     * 
+     * @param array $courseIds
+     * @return array
+     */
+    public function hasPendingPaymentsForCourses(array $courseIds): array
+    {
+        // Early return for empty array
+        if (empty($courseIds)) {
+            return [];
+        }
+        
+        // Get courses with pending payments in a single query
+        $pendingPayments = DB::table('payments')
+            ->where('user_id', $this->id)
+            ->whereIn('course_id', $courseIds)
+            ->where('status', 'pending')
+            ->pluck('course_id')
+            ->toArray();
+        
+        // Create result array with all courses set to false initially
+        $result = array_fill_keys($courseIds, false);
+        
+        // Set courses with pending payments to true
+        foreach ($pendingPayments as $courseId) {
+            $result[$courseId] = true;
+        }
+        
+        return $result;
     }
 
     /**
@@ -250,7 +331,6 @@ class User extends Authenticatable
             $this->courses()->syncWithoutDetaching(
                 $freeCourseIds->mapWithKeys(function($courseId) {
                     return [$courseId => [
-                        'is_enrolled' => true,
                         'enrolled_at' => now()
                     ]];
                 })->toArray()
@@ -281,20 +361,17 @@ class User extends Authenticatable
     /**
      * Get the enrollment status and completion progress for a given course.
      */
-    // 💀 N+1 WARNING: This accessor accesses 'courses' - consider eager loading
+    // 🚀 NUCLEAR PERFORMANCE FIX: Single optimized query instead of N+1
     public function getCourseProgressAttribute()
     {
-        return $this->courses()
-            ->get()
-            ->mapWithKeys(function ($course) {
-                return [$course->id => $course->pivot->completion_percentage ?? 0];
-            })
+        // Single query with JOIN - eliminates N+1 completely
+        $courseProgress = DB::table('course_user')
+            ->where('user_id', $this->id)
+            ->whereNotNull('enrolled_at')
+            ->pluck('completion_percentage', 'course_id')
             ->toArray();
-        // Check authorization for role assignment
-        if (!auth()->user()->can('assign-roles')) {
-            abort(403, 'Unauthorized to assign roles');
-        }
 
+        return $courseProgress;
     }
 
     public function setCourseProgressAttribute($value)
@@ -310,17 +387,53 @@ class User extends Authenticatable
 
     /**
      * Check if user is an admin
-        // Check authorization for role assignment
-        if (!auth()->user()->can('assign-roles')) {
-            abort(403, 'Unauthorized to assign roles');
-        }
-
      *
      * @return bool
      */
     public function isAdmin(): bool
     {
-        return (int)($this->role ?? 0) === self::ROLE_ADMIN;
+        // 🔍 DEBUG: Enhanced admin role checking with detailed logging
+        $roleValue = $this->role;
+        $roleType = gettype($roleValue);
+        $expectedAdminRole = self::ROLE_ADMIN;
+        $castRole = (int)($roleValue ?? 0);
+        $isAdminResult = $castRole === $expectedAdminRole;
+
+        \Log::info('🔍 User::isAdmin() debug', [
+            'user_id' => $this->id,
+            'user_name' => $this->name,
+            'role_raw' => $roleValue,
+            'role_type' => $roleType,
+            'role_cast_to_int' => $castRole,
+            'expected_admin_role' => $expectedAdminRole,
+            'is_admin_result' => $isAdminResult,
+            'comparison_details' => [
+                'cast_role === expected_role' => $castRole === $expectedAdminRole,
+                'cast_role == expected_role' => $castRole == $expectedAdminRole,
+                'strict_equal' => $castRole === $expectedAdminRole,
+                'loose_equal' => $castRole == $expectedAdminRole,
+            ]
+        ]);
+
+        // 🔧 FIX: More robust admin checking with multiple fallbacks
+        if ($isAdminResult) {
+            return true;
+        }
+
+        // Additional checks for edge cases
+        if (is_string($roleValue)) {
+            $trimmedRole = trim($roleValue);
+            if (is_numeric($trimmedRole) && (int)$trimmedRole === $expectedAdminRole) {
+                \Log::warning('⚠️ Admin role detected via string fallback', [
+                    'user_id' => $this->id,
+                    'original_role' => $roleValue,
+                    'trimmed_role' => $trimmedRole
+                ]);
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**
@@ -365,6 +478,18 @@ class User extends Authenticatable
     {
         return $this->belongsToMany(User::class, 'tutor_student_relationships', 'user_id', 'tutor_id')
                     ->where('users.role', self::ROLE_TUTOR)
+                    ->withPivot('assigned_at')
+                    ->withTimestamps();
+    }
+
+    /**
+     * Get courses assigned to this tutor (for tutors only)
+     *
+     * @return \Illuminate\Database\Eloquent\Relations\BelongsToMany
+     */
+    public function tutorCourses()
+    {
+        return $this->belongsToMany(Course::class, 'tutor_course_assignments', 'tutor_id', 'course_id')
                     ->withPivot('assigned_at')
                     ->withTimestamps();
     }

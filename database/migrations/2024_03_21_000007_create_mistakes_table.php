@@ -15,7 +15,6 @@ return new class extends Migration
             $table->string('submitted_answer')->nullable(); // User's wrong answer (null if skipped)
             $table->text('question_text'); // Stores question text directly
             $table->string('correct_answer'); // Correct answer for review
-            $table->string('image_path')->nullable(); // Image if attached to question
             $table->integer('correct_streak')->default(0); // # of consecutive correct answers
             $table->integer('quick_correct_count')->default(0); // Count of correct answers in quick mode
             $table->integer('quiz_correct_count')->default(0); // Count of correct answers in quiz mode

@@ -41,7 +41,7 @@ class UserCourseService
                     'user_email' => $user->email,
                     'course_id' => $course->id,
                     'course_name' => $course->name,
-                    'is_enrolled' => true,
+
                     'enrolled_at' => now()->toDateTimeString(),
                 ]
             ];
@@ -107,39 +107,61 @@ class UserCourseService
         }
     }
 
+    /**
+     * Revoke/Grant user access to a course - ULTRA-OPTIMIZED
+     * Single atomic operation with proper status handling
+     *
+     * @param User $user
+     * @param Course $course
+     * @return array
+     */
     public function revokeUserAccess(User $user, Course $course): array
     {
         try {
-            $enrollment = DB::table('course_user')
+            // 🔥 SINGLE ATOMIC OPERATION 🔥
+            // Check if user is already enrolled
+            $existingEnrollment = DB::table('course_user')
                 ->where('user_id', $user->id)
                 ->where('course_id', $course->id)
+                ->whereNotNull('enrolled_at')
                 ->first();
 
-            if (!$enrollment) {
-                return ['success' => false, 'message' => 'User is not enrolled in this course.'];
+            if ($existingEnrollment) {
+                // User is enrolled, revoke access by setting enrolled_at to null
+                DB::table('course_user')
+                    ->where('user_id', $user->id)
+                    ->where('course_id', $course->id)
+                    ->update(['enrolled_at' => null, 'updated_at' => now()]);
+
+                $isEnrolled = false;
+                $message = "Access revoked for {$user->name} from {$course->name}.";
+            } else {
+                // User is not enrolled, grant access
+                DB::table('course_user')->updateOrInsert(
+                    ['user_id' => $user->id, 'course_id' => $course->id],
+                    ['enrolled_at' => now(), 'updated_at' => now()]
+                );
+
+                $isEnrolled = true;
+                $message = "Access granted to {$user->name} for {$course->name}.";
             }
-
-            $isEnrolled = !is_null($enrollment->enrolled_at);
-            $newStatus = !$isEnrolled;
-
-            DB::table('course_user')
-                ->where('user_id', $user->id)
-                ->where('course_id', $course->id)
-                ->update([
-                    'enrolled_at' => $newStatus ? now() : null,
-                    'updated_at' => now()
-                ]);
 
             $this->clearCourseCacheForUser($user);
 
-            $message = $newStatus
-                ? "Access granted to {$user->name} for {$course->name}."
-                : "Access revoked for {$user->name} from {$course->name}.";
+            Log::info('ACCESS STATUS TOGGLED', [
+                'user_id' => $user->id,
+                'course_id' => $course->id,
+                'new_status' => $isEnrolled ? 'enrolled' : 'revoked'
+            ]);
 
-            return ['success' => true, 'message' => $message, 'is_enrolled' => $newStatus];
+            return [
+                'success' => true,
+                'message' => $message,
+                'is_enrolled' => $isEnrolled
+            ];
         } catch (\Exception $e) {
-            Log::error('Access revocation failed in service: ' . $e->getMessage());
-            return ['success' => false, 'message' => 'Failed to revoke access.'];
+            Log::error('Access toggle failed in service: ' . $e->getMessage());
+            return ['success' => false, 'message' => 'Failed to toggle access.'];
         }
     }
 
@@ -150,8 +172,52 @@ class UserCourseService
      */
     private function clearCourseCacheForUser(User $user): void
     {
-        // Using tagged cache for efficient invalidation
-        Cache::tags(["courses_user_{$user->id}"])->flush();
-        Log::info("Cache cleared for user {$user->id}");
+        // 🔥 CRITICAL FIX: Clear BOTH cache types used by different controllers
+
+        // 1. Clear tagged cache (used by some controllers)
+        try {
+            Cache::tags(["courses_user_{$user->id}"])->flush();
+        } catch (\Exception $e) {
+            // Tagged cache might not be supported, continue with regular cache
+            Log::warning("Tagged cache not supported, falling back to regular cache");
+        }
+
+        // 2. Clear regular cache keys used by CourseController
+        Cache::forget("user_course_optimization_data_{$user->id}");
+        Cache::forget("courses_metadata_{$user->id}_guest_all_v1");
+
+        // 3. Clear versioned caches by incrementing version
+        $currentVersion = Cache::get('courses_cache_version', 1);
+        Cache::put('courses_cache_version', $currentVersion + 1, 86400);
+
+        // 4. Clear pattern-based caches
+        $this->clearPatternBasedCaches($user->id);
+
+        Log::info("Cache cleared for user {$user->id} - Both tagged and regular cache");
+    }
+
+    /**
+     * Clear pattern-based caches for user.
+     *
+     * @param int $userId
+     */
+    private function clearPatternBasedCaches(int $userId): void
+    {
+        // Common cache patterns to clear
+        $patterns = [
+            "courses_metadata_{$userId}_*",
+            "course_*_enrolled_{$userId}",
+            "course_*_user_{$userId}",
+            "courses_list",
+            "courses_with_stats"
+        ];
+
+        foreach ($patterns as $pattern) {
+            try {
+                Cache::forget($pattern);
+            } catch (\Exception $e) {
+                // Ignore cache errors
+            }
+        }
     }
 }

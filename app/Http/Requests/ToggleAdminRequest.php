@@ -13,7 +13,7 @@ class ToggleAdminRequest extends FormRequest
      */
     public function authorize()
     {
-        return auth()->check() && auth()->user()->role === 'admin';
+        return auth()->check() && auth()->user()->isAdmin();
     }
 
     /**

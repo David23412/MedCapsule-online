@@ -1,44 +1,43 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#2196f3">
+    <meta name="description" content="MedCapsule - Your ultimate study companion for medical topics">
     <title>MedCapsule</title>
 
-    <!-- NUCLEAR CRITICAL CSS - LIGHTNING FAST FOUC PREVENTION -->
+    <!-- ⚡ ULTRA-CRITICAL CSS - ZERO FOUC - PERFORMANCE BEAST ⚡ -->
     <style>
-        /* CRITICAL CSS - Above fold only - RUTHLESS OPTIMIZATION */
         html, body {
-            margin: 0;
-            padding: 0;
+            margin: 0; padding: 0;
             background: #f8fafc;
-            font-family: 'Poppins', -apple-system, BlinkMacSystemFont, sans-serif;
+            font-family: system-ui, -apple-system, sans-serif;
             overflow-x: hidden;
-            opacity: 1 !important;
+            visibility: hidden; /* Hide until loaded */
         }
-        
-        /* CRITICAL: Navbar - Above fold */
+        .page-loaded { visibility: visible; }
+
+        /* ⚡ CRITICAL ABOVE-FOLD ELEMENTS - INSTANT RENDER ⚡ */
         .navbar {
-            background-color: white;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-            padding: 1rem 0;
+            background: white;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            padding: 0.75rem 0;
+            position: sticky;
+            top: 0;
+            z-index: 1000;
         }
-        
         .navbar-brand {
             display: flex;
             align-items: center;
             font-weight: 700;
-            font-size: 2rem;
+            font-size: 1.8rem;
             background: linear-gradient(90deg, #2A6DFF, #7B3FE4, #E63946);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             text-decoration: none;
         }
-        
-        /* CRITICAL: Hero section - Above fold */
         .hero-section {
-            position: relative;
             min-height: 100vh;
             display: flex;
             flex-direction: column;
@@ -46,74 +45,32 @@
             align-items: center;
             text-align: center;
             padding: 2rem;
+            background: linear-gradient(135deg, #f8fafc 0%, #e9ecef 100%);
         }
-        
         .hero-section h1 {
-            font-size: 3.5rem;
+            font-size: clamp(2.5rem, 5vw, 3.5rem);
             font-weight: 700;
             color: #2196f3;
             margin-bottom: 1rem;
-            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.1);
         }
-        
         .btn-primary {
             padding: 15px 40px;
-            font-size: 1.5rem;
+            font-size: 1.2rem;
             border-radius: 50px;
             background: #2196f3;
             border: none;
             color: white;
             text-decoration: none;
             display: inline-block;
-            transition: background 0.3s ease;
+            transition: all 0.2s ease;
+            font-weight: 600;
         }
-        
-        .btn-primary:hover {
-            background: #1976d2;
-        }
-        
-        /* NUCLEAR: Lightning fast loading optimization */
-        html {
-            visibility: hidden;
-        }
-        
-        .page-loaded {
-            animation: fadeInFast 0.3s ease-out;
-        }
-        
-        @keyframes fadeInFast {
-            from { opacity: 0; transform: translateY(10px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-        
-        /* NUCLEAR: Preloader optimization */
-        .loading-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: #f8fafc;
-            z-index: 9999;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            transition: opacity 0.3s ease-out;
-        }
-        
-        .loading-spinner {
-            width: 40px;
-            height: 40px;
-            border: 3px solid #e3f2fd;
-            border-top: 3px solid #2196f3;
-            border-radius: 50%;
-            animation: spin 0.8s linear infinite;
-        }
-        
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
+        .btn-primary:hover { background: #1976d2; transform: translateY(-2px); }
+
+        /* ⚡ PERFORMANCE OPTIMIZATIONS ⚡ */
+        * { box-sizing: border-box; }
+        img { max-width: 100%; height: auto; }
+        .gpu-accelerated { will-change: transform; transform: translateZ(0); }
     </style>
 
     <!-- Favicon -->

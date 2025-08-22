@@ -173,8 +173,9 @@ class QueueIntegrityManager
                         Artisan::call('horizon:terminate');
                         break;
                     case 'queue':
-                        // Send SIGTERM to queue workers
-                        exec('pkill -TERM -f "queue:work"');
+                        // ✅ SECURE: Use Laravel's queue:restart command instead of dangerous pkill
+                        Artisan::call('queue:restart');
+                        Log::info("Sent queue restart signal using Laravel command");
                         break;
                     case 'scheduler':
                         // Scheduler will stop naturally, just wait

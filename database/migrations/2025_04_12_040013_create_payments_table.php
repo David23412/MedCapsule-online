@@ -16,19 +16,20 @@ return new class extends Migration
             $table->foreignId('user_id')->constrained()->onDelete('cascade');
             $table->foreignId('course_id')->constrained()->onDelete('cascade');
             $table->string('reference_number')->unique();
+            $table->string('transaction_id')->nullable()
+                  ->comment('Actual transaction code from payment provider (Vodafone Cash, Fawry, Instapay, etc.)');
             $table->decimal('amount', 10, 2);
             $table->string('payment_method'); // 'fawry', 'vodafone_cash', etc.
             $table->string('status'); // 'pending', 'completed', 'failed', 'expired'
             $table->json('payment_data')->nullable(); // Store gateway-specific data
             $table->timestamp('paid_at')->nullable(); // When payment was submitted/created
-            
+
             $table->timestamps();
 
-            // 🚀 LEAN INDEXES: Only essential ones (detailed indexes in nuclear_performance_indexing)
+            // 🚀 MINIMAL INDEXES - All performance indexes in dedicated migration
             $table->index('user_id');
             $table->index('course_id');
             $table->index('reference_number');
-            $table->index('status');
         });
     }
 

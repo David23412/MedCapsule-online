@@ -848,7 +848,7 @@
             transform: rotate(180deg);
         }
 
-        /* 🎯 RESTORED: Original 3D Flashcard Flipping Effect */
+        /* 🚀 ULTRA-SMOOTH 3D Flashcard Flipping Effect */
         .mistake-card.flashcard-mode .normal-mode-content {
             display: none;
         }
@@ -857,12 +857,14 @@
             display: block;
             cursor: pointer;
             transform-style: preserve-3d;
-            transition: all 0.7s cubic-bezier(0.4, 0.2, 0.2, 1);
+            transition: all 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94);
             min-height: 450px;
-            perspective: 1200px;
+            perspective: 1000px;
             position: relative;
             border-radius: 16px;
             overflow: visible;
+            will-change: transform;
+            backface-visibility: hidden;
         }
 
         .mistake-card.flashcard-mode::before {
@@ -886,9 +888,13 @@
             padding: 3rem;
             border: 2px solid #e2e8f0;
             box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-            transition: all 0.3s ease;
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
             overflow: hidden;
             will-change: transform;
+            -webkit-backface-visibility: hidden;
+            -moz-backface-visibility: hidden;
+            -ms-backface-visibility: hidden;
+            transform-style: preserve-3d;
         }
 
         .mistake-card.flashcard-mode:hover .card-face {
@@ -927,7 +933,7 @@
         }
 
         .mistake-card.flashcard-mode .question-text p {
-            font-size: 1.5rem;
+            font-size: 1.7rem;
             font-weight: 500;
             color: #1e293b;
             line-height: 1.5;
@@ -935,7 +941,7 @@
         }
 
         .mistake-card.flashcard-mode .correct-answer {
-            font-size: 1.5rem;
+            font-size: 1.7rem;
             font-weight: 500;
             color: #16a34a;
             text-align: center;
@@ -948,9 +954,9 @@
                 min-height: 250px;
             }
 
-            .mistake-card.flashcard-mode .question-text p,
-            .mistake-card.flashcard-mode .correct-answer {
-                font-size: 1.15rem;
+        .mistake-card.flashcard-mode .question-text p,
+        .mistake-card.flashcard-mode .correct-answer {
+                font-size: 1.9rem;
             }
 
             .mistake-card.flashcard-mode .card-face {
@@ -1232,11 +1238,53 @@
             `;
         });
 
-        // Handle card flipping in flashcard mode
+        // 🚀 ULTRA-SMOOTH: Enhanced card flipping with better responsiveness
+        let isFlipping = false; // Prevent rapid clicking during flip
+
         mistakeCards.forEach(card => {
-            card.addEventListener('click', () => {
+            card.addEventListener('click', (e) => {
+                if (isFlashcardMode && !isFlipping) {
+                    e.preventDefault();
+                    isFlipping = true;
+
+                    // Add visual feedback immediately
+                    card.style.transform = 'scale(0.98)';
+
+                    setTimeout(() => {
+                        card.classList.toggle('flipped');
+                        card.style.transform = '';
+
+                        // Reset flip prevention after animation completes
+                        setTimeout(() => {
+                            isFlipping = false;
+                        }, 600); // Match CSS transition duration
+                    }, 50);
+                }
+            });
+
+            // Add touch support for mobile devices
+            card.addEventListener('touchstart', (e) => {
                 if (isFlashcardMode) {
-                    card.classList.toggle('flipped');
+                    e.preventDefault();
+                    // Add slight visual feedback for touch
+                    card.style.transform = 'scale(0.96)';
+                }
+            });
+
+            card.addEventListener('touchend', (e) => {
+                if (isFlashcardMode) {
+                    e.preventDefault();
+                    card.style.transform = '';
+
+                    if (!isFlipping) {
+                        isFlipping = true;
+                        setTimeout(() => {
+                            card.classList.toggle('flipped');
+                            setTimeout(() => {
+                                isFlipping = false;
+                            }, 600);
+                        }, 50);
+                    }
                 }
             });
         });

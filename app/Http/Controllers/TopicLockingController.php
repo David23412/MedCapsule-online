@@ -12,22 +12,28 @@ class TopicLockingController extends Controller
     public function index()
     {
         $user = auth()->user();
-        
-        // Debug: Log user info
-        \Log::info('TopicLocking - User Info', [
+
+        // CRITICAL FIX: Use integer role constants instead of string comparison
+        // User model defines ROLE_ADMIN = 1, not 'admin'
+        $isAdmin = $user->isAdmin();
+
+        // Debug: Log user info with proper role checking
+        \Log::info('TopicLocking - User Info (FIXED)', [
             'user_id' => $user->id,
             'user_role' => $user->role,
-            'is_admin' => $user->role === 'admin'
+            'role_type' => gettype($user->role),
+            'is_admin' => $isAdmin,
+            'admin_check_method' => 'isAdmin()'
         ]);
-        
-        // Get courses based on user role
-        if ($user->role === 'admin') {
+
+        // Get courses based on user role using proper role checking
+        if ($isAdmin) {
             // Admins can see all courses
             $courses = \App\Models\Course::with(['topics' => function ($query) {
                 $query->select('id', 'course_id', 'name', 'is_locked');
             }])->get();
-            
-            \Log::info('TopicLocking - Admin sees all courses', [
+
+            \Log::info('TopicLocking - Admin sees all courses (FIXED)', [
                 'course_count' => $courses->count(),
                 'course_names' => $courses->pluck('name')->toArray()
             ]);
@@ -38,23 +44,23 @@ class TopicLockingController extends Controller
                     $query->select('id', 'course_id', 'name', 'is_locked');
                 }])
                 ->get();
-                
-            \Log::info('TopicLocking - Tutor enrolled courses', [
+
+            \Log::info('TopicLocking - Tutor enrolled courses (FIXED)', [
                 'course_count' => $courses->count(),
                 'course_names' => $courses->pluck('name')->toArray()
             ]);
-            
+
             // Debug: Check raw enrollment data
             $enrollments = \DB::table('course_user')
                 ->where('user_id', $user->id)
-                ->where('is_enrolled', true)
+                ->whereNotNull('enrolled_at')
                 ->get();
-                
-            \Log::info('TopicLocking - Raw enrollments', [
+
+            \Log::info('TopicLocking - Raw enrollments (FIXED)', [
                 'enrollments' => $enrollments->toArray()
             ]);
         }
-        
+
         return view('topic-locking.index', compact('courses'));
     }
 
@@ -62,12 +68,25 @@ class TopicLockingController extends Controller
     {
         $user = auth()->user();
         $course = \App\Models\Course::findOrFail($courseId);
-        
-        // Check if user has access to this course
+
+        // CRITICAL FIX: Use consistent admin checking with isAdmin() method
+        // This ensures admin users (role = 1) are properly recognized
         if (!$user->isAdmin() && !$user->courses()->where('courses.id', $courseId)->exists()) {
+            \Log::warning('TopicLocking - Access denied to course', [
+                'user_id' => $user->id,
+                'user_role' => $user->role,
+                'course_id' => $courseId,
+                'is_admin' => $user->isAdmin()
+            ]);
             abort(403, 'You do not have permission to manage topics in this course.');
         }
-        
+
+        \Log::info('TopicLocking - Course access granted', [
+            'user_id' => $user->id,
+            'course_id' => $courseId,
+            'is_admin' => $user->isAdmin()
+        ]);
+
         return view('topic-locking.course', compact('course'));
     }
 
@@ -189,16 +208,28 @@ class TopicLockingController extends Controller
         try {
             $user = auth()->user();
             $course = \App\Models\Course::findOrFail($courseId);
-            
-            // Check if user has access to this course
+
+            // CRITICAL FIX: Use consistent isAdmin() method for proper admin recognition
             if (!$user->isAdmin() && !$user->courses()->where('courses.id', $courseId)->exists()) {
+                \Log::warning('TopicLocking - Course lock access denied', [
+                    'user_id' => $user->id,
+                    'user_role' => $user->role,
+                    'course_id' => $courseId,
+                    'is_admin' => $user->isAdmin()
+                ]);
                 throw new \InvalidArgumentException('You do not have permission to manage topics in this course.');
             }
-            
+
             $topicIds = $course->topics()->pluck('id')->toArray();
             $lockingService = app(\App\Services\TopicLockingService::class);
             $results = $lockingService->bulkLock($topicIds, $user);
-            
+
+            \Log::info('TopicLocking - Course locked successfully', [
+                'user_id' => $user->id,
+                'course_id' => $courseId,
+                'topic_count' => count($topicIds)
+            ]);
+
             return response()->json([
                 'success' => true,
                 'message' => 'All topics in course locked successfully',
@@ -217,16 +248,28 @@ class TopicLockingController extends Controller
         try {
             $user = auth()->user();
             $course = \App\Models\Course::findOrFail($courseId);
-            
-            // Check if user has access to this course
+
+            // CRITICAL FIX: Use consistent isAdmin() method for proper admin recognition
             if (!$user->isAdmin() && !$user->courses()->where('courses.id', $courseId)->exists()) {
+                \Log::warning('TopicLocking - Course unlock access denied', [
+                    'user_id' => $user->id,
+                    'user_role' => $user->role,
+                    'course_id' => $courseId,
+                    'is_admin' => $user->isAdmin()
+                ]);
                 throw new \InvalidArgumentException('You do not have permission to manage topics in this course.');
             }
-            
+
             $topicIds = $course->topics()->pluck('id')->toArray();
             $lockingService = app(\App\Services\TopicLockingService::class);
             $results = $lockingService->bulkUnlock($topicIds, $user);
-            
+
+            \Log::info('TopicLocking - Course unlocked successfully', [
+                'user_id' => $user->id,
+                'course_id' => $courseId,
+                'topic_count' => count($topicIds)
+            ]);
+
             return response()->json([
                 'success' => true,
                 'message' => 'All topics in course unlocked successfully',

@@ -319,7 +319,7 @@ class TopicLockingService
         return DB::table('course_user')
             ->where('user_id', $tutor->id)
             ->where('course_id', $courseId)
-            ->where('is_enrolled', true)
+            ->whereNotNull('enrolled_at')
             ->exists();
     }
     

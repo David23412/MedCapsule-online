@@ -14,13 +14,11 @@ class Video extends Model
         'topic_id',
         'youtube_video_id',
         'title',
-        'duration',
-        'is_active'
+        'duration'
     ];
 
     protected $casts = [
-        'youtube_video_id' => 'encrypted',
-        'is_active' => 'boolean'
+        'youtube_video_id' => 'encrypted'
     ];
 
     public function topic(): BelongsTo

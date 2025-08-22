@@ -62,10 +62,10 @@ return [
                 PDO::MYSQL_ATTR_SSL_CA => env('MYSQL_ATTR_SSL_CA'),
                 PDO::ATTR_EMULATE_PREPARES => false,
                 PDO::ATTR_STRINGIFY_FETCHES => false,
-                PDO::MYSQL_ATTR_USE_BUFFERED_QUERY => true,
+                PDO::MYSQL_ATTR_USE_BUFFERED_QUERY => false, // Disabled for better performance
                 PDO::MYSQL_ATTR_LOCAL_INFILE => true,
-                PDO::ATTR_TIMEOUT => 30, // Reduced timeout for faster failures
-                PDO::MYSQL_ATTR_INIT_COMMAND => "SET time_zone = '+00:00', wait_timeout = 28800, interactive_timeout = 28800, net_read_timeout = 60, net_write_timeout = 60, innodb_lock_wait_timeout = 10",
+                PDO::ATTR_TIMEOUT => 5, // Ultra-fast timeout for performance
+                PDO::MYSQL_ATTR_INIT_COMMAND => "SET time_zone = '+00:00', wait_timeout = 60, interactive_timeout = 60, net_read_timeout = 5, net_write_timeout = 5, innodb_lock_wait_timeout = 2, sql_mode = 'STRICT_TRANS_TABLES,NO_ZERO_DATE,NO_ZERO_IN_DATE,ERROR_FOR_DIVISION_BY_ZERO'",
             ]) : [],
         ],
 

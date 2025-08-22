@@ -13,7 +13,9 @@ class GetPaymentsRequest extends FormRequest
      */
     public function authorize()
     {
-        return auth()->check() && auth()->user()->role === 'admin';
+        // 🔧 FIXED: Use integer comparison instead of string comparison
+        // User role is stored as integer (1 = admin), not string
+        return auth()->check() && auth()->user()->isAdmin();
     }
 
     /**

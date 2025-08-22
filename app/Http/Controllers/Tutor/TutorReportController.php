@@ -85,7 +85,7 @@ class TutorReportController extends Controller
                 $students = User::where('role', User::ROLE_STUDENT)
                     ->whereHas('courses', function ($q) use ($tutorCourseIds) {
                         $q->whereIn('courses.id', $tutorCourseIds)
-                          ->where('course_user.is_enrolled', true);
+                          ->whereNotNull('course_user.enrolled_at');
                     })
                     ->with(['quizAttempts' => function($query) {
                         $query->select('user_id', 'score');
@@ -127,7 +127,7 @@ class TutorReportController extends Controller
         // Check if student is enrolled in any of the tutor's courses
         return $student->courses()
             ->whereIn('courses.id', $tutorCourseIds)
-            ->where('course_user.is_enrolled', true)
+            ->whereNotNull('course_user.enrolled_at')
             ->exists();
     }
 
