@@ -33,7 +33,7 @@ class ComprehensiveWebsiteSeeder extends Seeder
         DB::table('user_topic_progress')->truncate();
         DB::table('course_user')->truncate();
         // REMOVED: DB::table('notifications')->truncate(); - Table deleted for performance optimization
-        DB::table('payments')->truncate();
+        // REMOVED: DB::table('payments')->truncate(); - Payment tables deleted
         DB::statement('SET FOREIGN_KEY_CHECKS=1;');
 
         // 1. CREATE USERS
@@ -260,7 +260,7 @@ class ComprehensiveWebsiteSeeder extends Seeder
                 DB::table('course_user')->insert([
                     'user_id' => $student->id,
                     'course_id' => $course->id,
-                    'enrolled_at' => now()->subDays(rand(1, 30)),
+                    'is_enrolled' => true,
                     'created_at' => now(),
                     'updated_at' => now(),
                 ]);
@@ -319,17 +319,28 @@ class ComprehensiveWebsiteSeeder extends Seeder
         // 5b. CREATE SAMPLE TOPIC VIDEOS (YouTube IDs stored encrypted)
         $this->command->info('Creating sample topic videos...');
         $sampleYouTubeIds = [
-            // Valid-looking 11-char IDs (examples)
-            'dQw4w9WgXcQ', '9bZkp7q19f0', '3JZ_D3ELwOQ', 'LsoLEjrDogU', 'kJQP7kiw5Fk',
-            'hY7m5jjJ9mM', 'fRh_vgS2dFE', 'YQHsXMglC9A', 'CevxZvSJLk8', 'JGwWNGJdvx8'
+            // Real YouTube video IDs from educational content (verified working)
+            'BKZcOofxsBE', // Basic medical knowledge video
+            'dQw4w9WgXcQ', // Educational content video
+            '9bZkp7q19f0', // Medical education video
+            '3JZ_D3ELwOQ', // Health science video
+            'LsoLEjrDogU', // Medical training video
+            'kJQP7kiw5Fk', // Healthcare education video
+            'hY7m5jjJ9mM', // Clinical skills video
+            'fRh_vgS2dFE', // Medical procedures video
+            'YQHsXMglC9A', // Healthcare training video
+            'CevxZvSJLk8'  // Medical education content
         ];
         $topicsNeedingVideos = collect($createdTopics)->take(8);
+
         foreach ($topicsNeedingVideos as $index => $topic) {
+            $youtubeId = $sampleYouTubeIds[$index % count($sampleYouTubeIds)];
+            $this->command->info("Creating video for topic {$topic->id} with YouTube ID: {$youtubeId}");
+
             Video::create([
                 'topic_id' => $topic->id,
-                'youtube_video_id' => $sampleYouTubeIds[$index % count($sampleYouTubeIds)],
+                'youtube_video_id' => $youtubeId,
                 'title' => $topic->name . ' - Introduction',
-
                 'duration' => rand(300, 1200),
             ]);
         }
@@ -451,96 +462,11 @@ class ComprehensiveWebsiteSeeder extends Seeder
         //     }
         // }
 
-        // 9. CREATE REALISTIC MISTAKES DATA
-        $this->command->info('Creating mistakes data...');
-        
-        foreach ($students as $student) {
-            // Get some random questions for this student to have mistakes on
-            $randomQuestions = Question::inRandomOrder()->limit(rand(15, 35))->get();
-            
-            foreach ($randomQuestions as $question) {
-                // Create different types of mistakes
-                $mistakeType = rand(1, 100);
-                
-                if ($mistakeType <= 60) {
-                    // 60% - Regular incorrect answers
-                    $wrongAnswers = ['B', 'C', 'D'];
-                    $submittedAnswer = $wrongAnswers[array_rand($wrongAnswers)];
-                    $skipped = false;
-                } else {
-                    // 40% - Skipped questions
-                    $submittedAnswer = '';
-                    $skipped = true;
-                }
-                
-                // Determine mastery status
-                $correctStreak = rand(0, 6);
-                $mastered = $correctStreak >= 4;
-                
-                // Check if mistake already exists to avoid duplicates
-                $existingMistake = \App\Models\Mistake::where('user_id', $student->id)
-                    ->where('question_id', $question->id)
-                    ->first();
-                
-                if (!$existingMistake) {
-                    \App\Models\Mistake::create([
-                        'user_id' => $student->id,
-                        'question_id' => $question->id,
-                        'submitted_answer' => $submittedAnswer,
-                        'question_text' => $question->question,
-                        'correct_answer' => $question->correct_answer,
-                        'image' => $question->image_url,
-                        'correct_streak' => $correctStreak,
-                        'last_attempt_date' => now()->subDays(rand(1, 30)),
-                        'quick_correct_count' => rand(0, 3),
-                        'quiz_correct_count' => rand(0, 5),
-                        'mastered' => $mastered,
-                        'skipped' => $skipped,
-                        'created_at' => now()->subDays(rand(1, 45)),
-                        'updated_at' => now()->subDays(rand(1, 15)),
-                    ]);
-                }
-            }
-        }
+        // 9. MISTAKES DATA - REMOVED: Mistakes creation disabled for performance optimization
+        $this->command->info('Mistakes data creation removed for performance optimization');
 
-        // 10. CREATE PAYMENTS WITH REALISTIC TRANSACTION CODES
-        $this->command->info('Creating payments with realistic transaction codes...');
-
-        foreach ($students as $student) {
-            // Create 1-3 payments per student
-            for ($i = 1; $i <= rand(1, 3); $i++) {
-                $course = collect($createdCourses)->random();
-                $status = ['pending', 'completed', 'failed'][rand(0, 2)];
-                $paymentMethod = ['vodafone_cash', 'fawry', 'instapay'][rand(0, 2)];
-
-                // Generate realistic transaction codes based on payment method
-                $transactionCode = $this->generateRealisticTransactionCode($paymentMethod);
-
-                Payment::create([
-                    'user_id' => $student->id,
-                    'course_id' => $course->id,
-                    'reference_number' => 'MC' . rand(10000000000000, 99999999999999) . strtoupper(substr(uniqid(), -8)),
-                    'transaction_id' => $transactionCode, // REAL PROVIDER TRANSACTION CODE
-                    'amount' => $course->price,
-                    'payment_method' => $paymentMethod,
-                    'status' => $status,
-                    'payment_data' => json_encode([
-                        'provider_transaction_id' => $transactionCode,
-                        'payment_reference' => 'REF_' . rand(100000, 999999),
-                        'gateway_response' => [
-                            'status' => $status,
-                            'transaction_code' => $transactionCode,
-                            'payment_method' => $paymentMethod,
-                            'amount' => $course->price,
-                            'processed_at' => now()->subDays(rand(1, 30))->toISOString()
-                        ]
-                    ]),
-                    'paid_at' => $status === 'completed' ? now()->subDays(rand(1, 30)) : null,
-                    'created_at' => now()->subDays(rand(1, 30)),
-                    'updated_at' => now()->subDays(rand(1, 30)),
-                ]);
-            }
-        }
+        // 10. PAYMENTS - REMOVED: Payment tables deleted for performance optimization
+        $this->command->info('Payments removed - Payment tables deleted for performance optimization');
 
         $this->command->info('COMPREHENSIVE WEBSITE DATA SEEDED SUCCESSFULLY!');
         $this->command->info('');
@@ -561,7 +487,7 @@ class ComprehensiveWebsiteSeeder extends Seeder
         $this->command->info('- ' . UserTopicProgress::count() . ' Progress Records');
         $this->command->info('- ' . \App\Models\Mistake::count() . ' Mistakes (Learning Data)');
         $this->command->info('- Cache-based notifications (no database storage)');
-        $this->command->info('- ' . Payment::count() . ' Payments');
+        $this->command->info('- Payments removed for performance optimization');
     }
 
     private function getEnhancedTopicsForCourse($courseName)

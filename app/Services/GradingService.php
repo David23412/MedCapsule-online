@@ -113,8 +113,11 @@ class GradingService
 
             DB::commit();
 
+            // Get updated overall topic progress after quiz completion
+            $overallTopicProgress = QuizAttempt::getTopicProgress($user->id, $topic->id, $mode);
+
             // Prepare response
-            return $this->prepareGradingResponse($gradingResult, $questions, $answers, $xpResult);
+            return $this->prepareGradingResponse($gradingResult, $questions, $answers, $xpResult, $overallTopicProgress);
 
         } catch (\Exception $e) {
             DB::rollBack();
@@ -519,7 +522,7 @@ class GradingService
 
 
     /**
-     * ULTRA EFFICIENT: Create quiz attempts with optimized batch processing
+     * ULTRA EFFICIENT: Create quiz attempts with attempt_id grouping for chart optimization
      *
      * @param User $user
      * @param array $sourceData
@@ -533,18 +536,23 @@ class GradingService
     {
         $numSources = count($sourceData);
         $durationPerSource = $numSources > 0 ? (int) round($duration / $numSources) : $duration;
-        
+
         // Determine quiz type based on assignment status (tutor mode uses 'normal' quiz_type)
         $quizType = $isAssignment ? 'assignment' : 'normal';
-        
-        // 🚀 ULTRA EFFICIENT: Batch create attempts for maximum performance
-        $attemptData = [];
+
+        // 🚀 CRITICAL FIX: Generate SINGLE attempt_id for ALL sources in this quiz
+        // This ensures multiple sources from same quiz = 1 chart point
+        $attemptId = \App\Models\QuizAttempt::generateAttemptId($user->id, $topic->id);
+
+        // 🚀 ULTRA EFFICIENT: Create attempts with shared attempt_id
+        $attemptsCreated = 0;
         foreach ($sourceData as $source => $data) {
             $score = $data['score'];
             $totalQuestions = $data['total'];
             $percentage = $totalQuestions > 0 ? min(100, ($score / $totalQuestions) * 100) : 0;
-            
-            $attemptData[] = [
+
+            // Use createWithProgress to ensure attempt_id is auto-generated if not provided
+            $attemptData = [
                 'user_id' => $user->id,
                 'topic_id' => $topic->id,
                 'assignment_id' => $assignmentId,
@@ -555,35 +563,27 @@ class GradingService
                 'total_questions' => $totalQuestions,
                 'percentage_grade' => $percentage,
                 'duration_seconds' => $durationPerSource,
-                'question_data' => json_encode($data['question_data']),
+                'question_data' => $data['question_data'],
                 'correct_answers' => $score,
-                'created_at' => now(),
-                'updated_at' => now()
+                'attempt_id' => $attemptId // 🚀 CRITICAL: Same ID for all sources in this quiz
             ];
+
+            \App\Models\QuizAttempt::createWithProgress($attemptData);
+            $attemptsCreated++;
         }
-        
-        // Create all attempts efficiently (use create instead of insert to trigger model events)
-        if (!empty($attemptData)) {
-            foreach ($attemptData as $data) {
-                // Remove timestamps for create method
-                unset($data['created_at'], $data['updated_at']);
-                // Decode JSON for create method
-                $data['question_data'] = json_decode($data['question_data'], true);
-                
-                QuizAttempt::create($data);
-            }
-            
-            Log::info('🚀 ULTRA EFFICIENT: Created quiz attempts', [
-                'user_id' => $user->id,
-                'topic_id' => $topic->id,
-                'mode' => $mode,
-                'attempts_created' => count($attemptData)
-            ]);
-        }
+
+        Log::info('🚀 ULTRA EFFICIENT: Created quiz attempts with attempt_id grouping', [
+            'user_id' => $user->id,
+            'topic_id' => $topic->id,
+            'mode' => $mode,
+            'attempt_id' => $attemptId,
+            'sources_grouped' => $attemptsCreated,
+            'chart_points' => 1 // Multiple sources = 1 chart point ✅
+        ]);
     }
 
     /**
-     * Create a single quiz attempt for random quizzes (no source)
+     * Create a single quiz attempt for random quizzes (no source) with attempt_id
      *
      * @param User $user
      * @param array $gradingResult
@@ -597,14 +597,18 @@ class GradingService
     {
         // Determine quiz type based on assignment status
         $quizType = $isAssignment ? 'assignment' : 'normal';
-        
+
+        // Generate attempt_id for random quiz (single attempt = 1 chart point)
+        $attemptId = \App\Models\QuizAttempt::generateAttemptId($user->id, $topic->id);
+
         // Consolidate all question data from all sources
         $allQuestionData = [];
         foreach ($gradingResult['sourceData'] as $sourceData) {
             $allQuestionData = array_merge($allQuestionData, $sourceData['question_data']);
         }
-        
-        QuizAttempt::create([
+
+        // Use createWithProgress to ensure attempt_id is set properly
+        $attemptData = [
             'user_id' => $user->id,
             'topic_id' => $topic->id,
             'assignment_id' => $assignmentId,
@@ -616,7 +620,17 @@ class GradingService
             'percentage_grade' => $gradingResult['percentageGrade'],
             'duration_seconds' => $duration,
             'question_data' => $allQuestionData,
-            'correct_answers' => $gradingResult['score']
+            'correct_answers' => $gradingResult['score'],
+            'attempt_id' => $attemptId // 🚀 CRITICAL: Set attempt_id for chart grouping
+        ];
+
+        \App\Models\QuizAttempt::createWithProgress($attemptData);
+
+        Log::info('🚀 RANDOM QUIZ: Created attempt with attempt_id', [
+            'user_id' => $user->id,
+            'topic_id' => $topic->id,
+            'attempt_id' => $attemptId,
+            'chart_points' => 1 // Random quiz = 1 chart point ✅
         ]);
     }
 
@@ -732,9 +746,10 @@ class GradingService
      * @param \Illuminate\Database\Eloquent\Collection $questions
      * @param array $answers
      * @param array $xpResult
+     * @param array $overallTopicProgress
      * @return array
      */
-    private function prepareGradingResponse(array $gradingResult, $questions, array $answers, array $xpResult): array
+    private function prepareGradingResponse(array $gradingResult, $questions, array $answers, array $xpResult, array $overallTopicProgress): array
     {
         // Get updated progress for all sources
         $sourceProgress = [];
@@ -742,13 +757,25 @@ class GradingService
             $totalSourceQuestions = Question::where('topic_id', $questions->first()->topic_id)
                 ->where('source', $source)
                 ->count();
-            
+
             $sourceProgress[$source] = [
                 'score' => $data['score'],
                 'total' => $data['total'],
                 'total_questions_available' => $totalSourceQuestions,
                 'percentage' => $data['total'] > 0 ? min(100, ($data['score'] / $data['total']) * 100) : 0
             ];
+        }
+
+        // Get overall topic progress for sources
+        $overallSourceProgress = [];
+        if (isset($overallTopicProgress['sources'])) {
+            foreach ($overallTopicProgress['sources'] as $source => $data) {
+                $overallSourceProgress[$source] = [
+                    'score' => $data['score'],
+                    'total' => $data['total'],
+                    'percentage' => $data['percentage']
+                ];
+            }
         }
 
         return [
@@ -759,11 +786,13 @@ class GradingService
             'percentageGrade' => $gradingResult['percentageGrade'],
             'percentage_grade' => $gradingResult['percentageGrade'],
             'encouragement' => $this->getEncouragementMessage($gradingResult['percentageGrade']),
-            'source_progress' => $sourceProgress,
-            'correct_answers' => $questions->mapWithKeys(function ($question) use ($answers) {
+            'source_progress' => $sourceProgress, // Current quiz attempt progress
+            'overall_topic_progress' => $overallTopicProgress, // Overall progress including all attempts
+            'overall_source_progress' => $overallSourceProgress, // Overall progress by source
+            'correct_answers' => $questions->mapWithKeys(function ($question) {
                 return [$question->id => $question->correct_answer];
             }),
-            'correctAnswers' => $questions->mapWithKeys(function ($question) use ($answers) {
+            'correctAnswers' => $questions->mapWithKeys(function ($question) {
                 return [$question->id => $question->correct_answer];
             }),
             'xp_earned' => $xpResult['earnedXP'],
@@ -931,7 +960,7 @@ class GradingService
     }
 
     /**
-     * Create tutor attempt record
+     * Create tutor attempt record with attempt_id for chart optimization
      *
      * @param User $user
      * @param Topic $topic
@@ -947,7 +976,13 @@ class GradingService
                 'source' => $source,
                 'progress' => $sourceProgress
             ]);
+
             $sourceDuration = time() - $sourceProgress['start_time'];
+            $percentageGrade = ($sourceProgress['correct'] / max(1, $sourceProgress['total'])) * 100;
+
+            // Generate attempt_id for tutor attempt (single source = 1 chart point)
+            $attemptId = \App\Models\QuizAttempt::generateAttemptId($user->id, $topic->id);
+
             $questionData = [];
             foreach (array_unique($sourceProgress['completed_questions']) as $questionId) {
                 $questionData[] = [
@@ -956,7 +991,9 @@ class GradingService
                     'is_correct' => true
                 ];
             }
-            $attempt = QuizAttempt::create([
+
+            // Use createWithProgress to ensure attempt_id is set properly
+            $attemptData = [
                 'user_id' => $user->id,
                 'topic_id' => $topic->id,
                 'assignment_id' => null, // Tutor mode doesn't use assignments
@@ -965,22 +1002,28 @@ class GradingService
                 'source' => $source,
                 'score' => $sourceProgress['correct'],
                 'total_questions' => $sourceProgress['total'],
-                'percentage_grade' => ($sourceProgress['correct'] / max(1, $sourceProgress['total'])) * 100,
+                'percentage_grade' => $percentageGrade,
                 'duration_seconds' => $sourceDuration,
                 'question_data' => $questionData,
-                'correct_answers' => $sourceProgress['correct']  // LETHAL FIX: Use correct count from progress
-            ]);
+                'correct_answers' => $sourceProgress['correct'],
+                'attempt_id' => $attemptId // 🚀 CRITICAL: Set attempt_id for chart grouping
+            ];
+
+            $attempt = \App\Models\QuizAttempt::createWithProgress($attemptData);
+
             $this->userStatsService->updateAfterQuizAttempt(
                 $user,
                 $sourceProgress['total'],
                 $sourceProgress['correct'],
                 $sourceDuration
             );
-            Log::info('Tutor quiz attempt created successfully', [
-                'attempt_id' => $attempt->id,
+
+            Log::info('Tutor quiz attempt created successfully with attempt_id', [
+                'attempt_id' => $attemptId,
                 'user_id' => $user->id,
                 'topic_id' => $topic->id,
-                'source' => $source
+                'source' => $source,
+                'chart_points' => 1 // Tutor attempt = 1 chart point ✅
             ]);
         } catch (\Exception $e) {
             Log::error('Failed to create tutor quiz attempt', [

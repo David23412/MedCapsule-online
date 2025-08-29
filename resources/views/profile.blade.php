@@ -18,9 +18,9 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js" defer></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.bundle.min.js" defer></script>
     <!-- Favicon -->
-    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 50'%3E%3Crect fill='%23007bff' x='10' y='15' width='80' height='20' rx='10' ry='10' /%3E%3Crect x='50' y='15' width='40' height='20' fill='%23ff0000' rx='0 10 10 0' ry='10'/%3E%3Cline x1='50' y1='15' x2='50' y2='35' stroke='white' stroke-width='1.5' stroke-dasharray='2,1'/%3E%3C/svg%3E">
-    <link rel="shortcut icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 50'%3E%3Crect fill='%23007bff' x='10' y='15' width='80' height='20' rx='10' ry='10' /%3E%3Crect x='50' y='15' width='40' height='20' fill='%23ff0000' rx='0 10 10 0' ry='10'/%3E%3Cline x1='50' y1='15' x2='50' y2='35' stroke='white' stroke-width='1.5' stroke-dasharray='2,1'/%3E%3C/svg%3E">
-    <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 50'%3E%3Crect fill='%23007bff' x='10' y='15' width='80' height='20' rx='10' ry='10' /%3E%3Crect x='50' y='15' width='40' height='20' fill='%23ff0000' rx='0 10 10 0' ry='10'/%3E%3Cline x1='50' y1='15' x2='50' y2='35' stroke='white' stroke-width='1.5' stroke-dasharray='2,1'/%3E%3C/svg%3E">
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 50'%3E%3Crect fill='%233579F6' x='10' y='15' width='80' height='20' rx='10' ry='10' /%3E%3Crect x='50' y='15' width='40' height='20' fill='%23ff0000' rx='0 10 10 0' ry='10'/%3E%3Cline x1='50' y1='15' x2='50' y2='35' stroke='white' stroke-width='1.5' stroke-dasharray='2,1'/%3E%3C/svg%3E">
+    <link rel="shortcut icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 50'%3E%3Crect fill='%233579F6' x='10' y='15' width='80' height='20' rx='10' ry='10' /%3E%3Crect x='50' y='15' width='40' height='20' fill='%23ff0000' rx='0 10 10 0' ry='10'/%3E%3Cline x1='50' y1='15' x2='50' y2='35' stroke='white' stroke-width='1.5' stroke-dasharray='2,1'/%3E%3C/svg%3E">
+    <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 50'%3E%3Crect fill='%233579F6' x='10' y='15' width='80' height='20' rx='10' ry='10' /%3E%3Crect x='50' y='15' width='40' height='20' fill='%23ff0000' rx='0 10 10 0' ry='10'/%3E%3Cline x1='50' y1='15' x2='50' y2='35' stroke='white' stroke-width='1.5' stroke-dasharray='2,1'/%3E%3C/svg%3E">
     <style>
         /* Profile page zoom fix - 80% scale */
         html {
@@ -75,18 +75,21 @@
         }
 
         .profile-header {
-            background: linear-gradient(135deg, #ffffff, #f8f9fa);
-            border-radius: 20px;
-            padding: 35px;
+            background: linear-gradient(135deg, #ffffff 0%, #fafbfc 50%, #f8f9fa 100%);
+            border-radius: 24px;
+            padding: 40px;
             margin-bottom: 30px;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.06);
+            box-shadow:
+                0 8px 32px rgba(0,0,0,0.08),
+                0 2px 8px rgba(0,0,0,0.04),
+                inset 0 1px 0 rgba(255,255,255,0.8);
             display: flex;
             align-items: center;
-            gap: 25px;
+            gap: 30px;
             position: relative;
             overflow: hidden;
-            border: 1px solid rgba(0,0,0,0.08);
-            transition: all 0.3s ease;
+            border: 1px solid rgba(0,0,0,0.06);
+            transition: all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
         }
 
         .profile-header::after {
@@ -116,19 +119,16 @@
 
         .welcome-text h1 {
             font-size: 2.4rem;
-            margin-bottom: 8px;
-            font-weight: 800;
-            letter-spacing: -0.02em;
-            line-height: 1.2;
-            background: linear-gradient(135deg, #2b4c8c 0%, #1e88e5 50%, #039be5 100%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-size: 200% auto;
-            animation: gradientShift 8s ease infinite;
+            margin-bottom: 12px;
+            font-weight: 700;
+            letter-spacing: -0.025em;
+            line-height: 1.15;
+            color: #007bff;
             position: relative;
             display: inline-flex;
             align-items: center;
             gap: 12px;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.1);
         }
 
         .welcome-text p {
@@ -152,12 +152,18 @@
             display: inline-block;
             font-size: 2rem;
             margin-left: 5px;
-            transform-origin: 70% 70%;
-            animation: wave 2.5s ease infinite;
+            transform-origin: center center;
+            animation: wave 2.5s ease-in-out infinite;
             position: relative;
             top: -2px;
             transition: transform 0.3s ease;
             cursor: pointer;
+            /* Ensure crisp rendering */
+            image-rendering: -webkit-optimize-contrast;
+            image-rendering: crisp-edges;
+            backface-visibility: hidden;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
         }
 
         .wave-emoji:hover {
@@ -206,87 +212,35 @@
             }
         }
 
-        /* Garland Wire Effect */
+        /* Clean Accent Line with Subtle Glow */
         .profile-header::before {
             content: '';
             position: absolute;
             top: 0;
-            left: -5%;
-            right: -5%;
-            height: 2px;
+            left: 0;
+            right: 0;
+            height: 3px;
             background: linear-gradient(
                 90deg,
                 transparent 0%,
-                rgba(255, 255, 255, 0.5) 50%,
+                #007bff 20%,
+                #007bff 80%,
                 transparent 100%
             );
-            filter: drop-shadow(0 0 2px rgba(255, 255, 255, 0.8));
+            box-shadow: 0 0 15px rgba(0, 123, 255, 0.4);
             z-index: 1;
+            animation: accentGlow 3s ease-in-out infinite;
         }
 
-        /* Christmas Lights Effect */
-        @keyframes lightTwinkle {
-            0%, 100% { opacity: 1; transform: translate3d(0, 0, 0) scale(1); filter: brightness(1); }
-            50% { opacity: 0.7; transform: translate3d(0, 0, 0) scale(0.8); filter: brightness(0.8); }
-        }
-
-        @keyframes wireSwing {
-            0%, 100% { transform: translate3d(0, 0, 0); }
-            50% { transform: translate3d(0, 2px, 0); }
-        }
-
-        .garland {
-            position: absolute;
-            top: -5px;
-            left: 0;
-            right: 0;
-            height: 15px;
-            display: flex;
-            justify-content: space-between;
-            padding: 0 20px;
-            animation: wireSwing 3s ease-in-out infinite;
-            z-index: 2;
-        }
-
-        .light {
-            width: 12px;
-            height: 12px;
-            border-radius: 50%;
-            margin: 0 15px;
-            animation: lightTwinkle 1.5s ease-in-out infinite;
-            box-shadow: 0 0 10px currentColor;
-            /* RUTHLESS GPU OPTIMIZATION - SAME VISUAL EFFECT */
-            will-change: transform, opacity, filter;
-            transform: translate3d(0, 0, 0);
-        }
-
-        .light:nth-child(5n+1) { color: #ff4136; animation-delay: 0s; }    /* Red */
-        .light:nth-child(5n+2) { color: #2ecc40; animation-delay: 0.3s; }  /* Green */
-        .light:nth-child(5n+3) { color: #ffdc00; animation-delay: 0.6s; }  /* Gold */
-        .light:nth-child(5n+4) { color: #39cccc; animation-delay: 0.9s; }  /* Blue */
-        .light:nth-child(5n+5) { color: #ff6f61; animation-delay: 1.2s; }  /* Coral */
-
-        /* Wire Curve Effect */
-        .wire-curve {
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            height: 20px;
-            z-index: 1;
-            overflow: hidden;
-        }
-
-        .wire-curve::after {
-            content: '';
-            position: absolute;
-            top: -15px;
-            left: -5%;
-            right: -5%;
-            height: 20px;
-            border-radius: 50%;
-            box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.1);
-            animation: wireSwing 3s ease-in-out infinite;
+        @keyframes accentGlow {
+            0%, 100% {
+                box-shadow: 0 0 15px rgba(0, 123, 255, 0.4);
+                opacity: 0.8;
+            }
+            50% {
+                box-shadow: 0 0 25px rgba(0, 123, 255, 0.6);
+                opacity: 1;
+            }
         }
 
         .profile-picture {
@@ -1355,26 +1309,31 @@
     <div class="main-content">
         <!-- Profile Header -->
         <div class="profile-header animate-fadeInUp">
-            <div class="garland">
-                <div class="light"></div>
-                <div class="light"></div>
-                <div class="light"></div>
-                <div class="light"></div>
-                <div class="light"></div>
-                <div class="light"></div>
-                <div class="light"></div>
-                <div class="light"></div>
-                <div class="light"></div>
-                <div class="light"></div>
-                <div class="light"></div>
-                <div class="light"></div>
-                <div class="light"></div>
-                <div class="light"></div>
-            </div>
-            <div class="wire-curve"></div>
             <div class="profile-picture" id="profilePictureContainer" style="cursor: pointer;" title="Click to upload new profile picture">
-                <img src="{{ auth()->user()->profile_picture_url ? secure_url(auth()->user()->profile_picture_url) . '?v=' . time() : 'https://ui-avatars.com/api/?name=' . urlencode(auth()->user()->name) }}" 
-                     alt="Profile Picture" id="profileImage">
+                @php
+                    $profileImageUrl = null;
+                    if (auth()->user()->profile_picture_url) {
+                        // Check if it's an external URL (starts with http/https)
+                        if (filter_var(auth()->user()->profile_picture_url, FILTER_VALIDATE_URL)) {
+                            $profileImageUrl = auth()->user()->profile_picture_url;
+                        } else {
+                            // Local file - use secure_url with cache busting
+                            $localPath = storage_path('app/public/' . auth()->user()->profile_picture_url);
+                            if (file_exists($localPath)) {
+                                $profileImageUrl = secure_url(auth()->user()->profile_picture_url) . '?v=' . time();
+                            }
+                        }
+                    }
+
+                    // Fallback to UI Avatars if no valid image
+                    if (!$profileImageUrl) {
+                        $profileImageUrl = 'https://ui-avatars.com/api/?name=' . urlencode(auth()->user()->name) . '&size=200&background=007bff&color=ffffff';
+                    }
+                @endphp
+                <img src="{{ $profileImageUrl }}"
+                     alt="Profile Picture"
+                     id="profileImage"
+                     onerror="this.src='https://ui-avatars.com/api/?name={{ urlencode(auth()->user()->name) }}&size=200&background=007bff&color=ffffff'">
                 <div class="upload-overlay">
                     <i class="fas fa-camera"></i>
                 </div>
@@ -1547,7 +1506,7 @@
                                 <div class="d-flex justify-content-between align-items-center">
                                     <div>
                                         <h6 class="mb-1">
-                                            {{ $icon }}
+                                            {!! $icon !!}
                                             {{ $topic->name }}
                                         </h6>
                                         <small class="text-muted">Course: {{ $topic->course->name }}</small>
@@ -1670,41 +1629,150 @@
             // Get the chart data
             const chartData = @json($chartData);
 
+        // Sort data by timestamp for proper line connection
+        const sortedChartData = chartData.sort((a, b) => a.x - b.x);
+
+        // Create dynamic gradient based on performance
+        const createDynamicGradient = (ctx, performance) => {
+            const gradient = ctx.createLinearGradient(0, 0, 0, 300);
+            if (performance >= 90) {
+                gradient.addColorStop(0, 'rgba(40, 167, 69, 0.4)');   // Green for excellent
+                gradient.addColorStop(1, 'rgba(40, 167, 69, 0.0)');
+            } else if (performance >= 70) {
+                gradient.addColorStop(0, 'rgba(23, 162, 184, 0.4)'); // Blue for good
+                gradient.addColorStop(1, 'rgba(23, 162, 184, 0.0)');
+            } else if (performance >= 50) {
+                gradient.addColorStop(0, 'rgba(255, 193, 7, 0.4)');  // Yellow for average
+                gradient.addColorStop(1, 'rgba(255, 193, 7, 0.0)');
+            } else {
+                gradient.addColorStop(0, 'rgba(220, 53, 69, 0.4)');  // Red for needs improvement
+                gradient.addColorStop(1, 'rgba(220, 53, 69, 0.0)');
+            }
+            return gradient;
+        };
+
+        // Create vibrant color array for points based on performance ranges
+        const createPointColors = (dataPoints) => {
+            return dataPoints.map(point => {
+                if (point.y >= 90) return '#10B981';      // Emerald Green - excellent
+                if (point.y >= 50) return '#FFD700';     // Yellow - good to average (50-89%)
+                return '#EF4444';                        // Bright Red - needs improvement
+            });
+        };
+
+        // Create clear, distinct color zones under the line
+        const createSegmentedFill = (ctx, dataPoints) => {
+            const gradient = ctx.createLinearGradient(0, 0, ctx.canvas.width, 0);
+
+            // Create sharp color transitions at performance boundaries
+            let lastColorStop = 0;
+
+            dataPoints.forEach((point, index) => {
+                const position = dataPoints.length > 1 ? index / (dataPoints.length - 1) : 0;
+
+                // Determine solid color for this performance range
+                let zoneColor;
+                if (point.y >= 90) {
+                    zoneColor = 'rgba(16, 185, 129, 0.3)';   // Solid green zone
+                } else if (point.y >= 50) {
+                    zoneColor = 'rgba(255, 215, 0, 0.3)';  // Solid yellow zone (50-89%)
+                } else {
+                    zoneColor = 'rgba(239, 68, 68, 0.3)';   // Solid red zone
+                }
+
+                // Add sharp color stops to create distinct zones
+                if (index === 0) {
+                    gradient.addColorStop(0, zoneColor);
+                } else {
+                    // Create a very narrow transition zone
+                    gradient.addColorStop(position - 0.001, zoneColor);
+                    gradient.addColorStop(position, zoneColor);
+                }
+            });
+
+            return gradient;
+        };
+
+        // Create gradient line color based on performance ranges
+        const createGradientLineColor = (ctx, dataPoints) => {
+            if (dataPoints.length < 2) {
+                // Single point or no data - use performance-based color
+                const performance = dataPoints.length > 0 ? dataPoints[0].y : 0;
+                return performance >= 90 ? '#10B981' :
+                       performance >= 50 ? '#FFD700' : '#EF4444';
+            }
+
+            const gradient = ctx.createLinearGradient(0, 0, ctx.canvas.width, 0);
+            dataPoints.forEach((point, index) => {
+                const position = dataPoints.length > 1 ? index / (dataPoints.length - 1) : 0;
+                let color;
+
+                if (point.y >= 90) {
+                    color = '#10B981';  // Green
+                } else if (point.y >= 50) {
+                    color = '#FFD700';  // Yellow
+                } else {
+                    color = '#EF4444';  // Red
+                }
+
+                gradient.addColorStop(position, color);
+            });
+
+            return gradient;
+        };
+
         // Initialize performance chart
         performanceChart = new Chart(performanceCtx, {
             type: 'line',
             data: {
                 datasets: [{
                     label: 'Quiz Performance',
-                    data: chartData,
-                    borderColor: '#3a7bd5',
-                    backgroundColor: gradient,
-                    tension: 0.4,
+                    data: sortedChartData,
+                    borderColor: createGradientLineColor(performanceCtx, sortedChartData),
+                    backgroundColor: createSegmentedFill(performanceCtx, sortedChartData),
+                    tension: 0.4, // Optimized for smooth curves
                     fill: true,
-                    pointBackgroundColor: '#3a7bd5',
-                    pointBorderColor: '#fff',
-                    pointBorderWidth: 2,
-                    pointRadius: 5,
-                    pointHoverRadius: 8,
-                    pointHoverBorderWidth: 3,
-                    pointHoverBackgroundColor: '#fff',
-                    pointHoverBorderColor: '#3a7bd5',
-                    pointStyle: 'circle',
-                    pointShadowBlur: 10,
-                    pointHoverShadowBlur: 20,
-                    pointShadowColor: 'rgba(58, 123, 213, 0.5)',
-                    pointHoverShadowColor: 'rgba(58, 123, 213, 0.8)',
-                    transition: {
-                        duration: 300
+                    pointBackgroundColor: (context) => {
+                        const value = context.raw?.y || 0;
+                        return value >= 90 ? '#10B981' :  // Emerald Green
+                               value >= 50 ? '#FFD700' : '#EF4444'; // Yellow : Bright Red
                     },
-                    hoverBorderJoinStyle: 'round',
-                    hoverBackgroundColor: '#fff',
-                    hoverBorderColor: '#3a7bd5',
-                    pointHoverStyle: {
-                        shadowColor: 'rgba(58, 123, 213, 0.8)',
-                        shadowBlur: 20,
-                        shadowOffsetX: 0,
-                        shadowOffsetY: 5
+                    pointBorderColor: '#fff',
+                    pointBorderWidth: 3,
+                    pointRadius: (context) => {
+                        // Make recent points larger
+                        const dataLength = context.chart.data.datasets[0].data.length;
+                        const index = context.dataIndex;
+                        const recency = (index + 1) / dataLength;
+                        return Math.max(4, Math.min(8, 4 + (recency * 4)));
+                    },
+                    pointHoverRadius: 12,
+                    pointHoverBorderWidth: 4,
+                    pointHoverBackgroundColor: '#fff',
+                    pointHoverBorderColor: (context) => {
+                        const value = context.raw?.y || 0;
+                        return value >= 90 ? '#10B981' :  // Emerald Green
+                               value >= 50 ? '#FFD700' : '#EF4444'; // Yellow : Bright Red
+                    },
+                    pointStyle: 'circle',
+                    // Advanced curve smoothing
+                    cubicInterpolationMode: 'monotone',
+                    spanGaps: true,
+                    // Performance optimizations
+                    borderWidth: 4,
+                    borderCapStyle: 'round',
+                    borderJoinStyle: 'round',
+                    // Animation settings
+                    animation: {
+                        duration: 2000,
+                        easing: 'easeInOutQuart'
+                    },
+                    transitions: {
+                        active: {
+                            animation: {
+                                duration: 300
+                            }
+                        }
                     }
                 }]
             },
@@ -1913,24 +1981,31 @@
                 
                 performanceChart.data.datasets[0].data.push(newDataPoint);
                 
-                // Animate the new point with a smooth transition
+                // Animate the new point with smooth transition using performance-based colors
                 const lastPoint = performanceChart.data.datasets[0].data.length - 1;
-                const originalColors = Array(lastPoint).fill('#3a7bd5');
-                
-                performanceChart.data.datasets[0].pointBackgroundColor = [...originalColors, '#00d4ff'];
-                performanceChart.data.datasets[0].pointBorderColor = [...Array(lastPoint).fill('#fff'), '#fff'];
-                performanceChart.data.datasets[0].pointHoverBackgroundColor = [...Array(lastPoint).fill('#fff'), '#fff'];
-                performanceChart.data.datasets[0].pointHoverBorderColor = [...Array(lastPoint).fill('#3a7bd5'), '#00d4ff'];
-                
+                const newPointColor = quizData.percentage_grade >= 90 ? '#10B981' :
+                                    quizData.percentage_grade >= 50 ? '#FFD700' : '#EF4444';
+
+                // Update all colors based on current data
+                const allData = performanceChart.data.datasets[0].data;
+                performanceChart.data.datasets[0].pointBackgroundColor = createPointColors(allData);
+                performanceChart.data.datasets[0].pointBorderColor = Array(allData.length).fill('#fff');
+                performanceChart.data.datasets[0].pointHoverBackgroundColor = Array(allData.length).fill('#fff');
+                performanceChart.data.datasets[0].pointHoverBorderColor = createPointColors(allData);
+                performanceChart.data.datasets[0].backgroundColor = createSegmentedFill(performanceCtx, allData);
+                performanceChart.data.datasets[0].borderColor = createGradientLineColor(performanceCtx, allData);
+
                 // Update with smooth animation
                 performanceChart.update('active');
-                
-                // Reset point colors after animation
+
+                // Reset to dynamic colors after animation
                 setTimeout(() => {
-                    performanceChart.data.datasets[0].pointBackgroundColor = '#3a7bd5';
-                    performanceChart.data.datasets[0].pointBorderColor = '#fff';
-                    performanceChart.data.datasets[0].pointHoverBackgroundColor = '#fff';
-                    performanceChart.data.datasets[0].pointHoverBorderColor = '#3a7bd5';
+                    const currentData = performanceChart.data.datasets[0].data;
+                    performanceChart.data.datasets[0].pointBackgroundColor = createPointColors(currentData);
+                    performanceChart.data.datasets[0].pointBorderColor = Array(currentData.length).fill('#fff');
+                    performanceChart.data.datasets[0].pointHoverBackgroundColor = Array(currentData.length).fill('#fff');
+                    performanceChart.data.datasets[0].pointHoverBorderColor = createPointColors(currentData);
+                    performanceChart.data.datasets[0].backgroundColor = createSegmentedFill(performanceCtx, currentData);
                     performanceChart.update('none');
                 }, 2000);
 
@@ -2137,19 +2212,22 @@
                     // Remove loading state
                     profilePicture.style.opacity = '1';
                     profilePicture.style.filter = 'none';
-                    
-                    // Update image with cache busting
+
+                    // INSTANT IMAGE UPDATE: Force reload with cache busting
                     if (data.new_url) {
-                        profileImage.src = data.new_url + '?v=' + (data.timestamp || Date.now());
-                    } else {
-                        const timestamp = Date.now();
-                        const currentSrc = profileImage.src.split('?')[0];
-                        profileImage.src = currentSrc + '?v=' + timestamp;
+                        // Add aggressive cache busting
+                        const cacheBust = Date.now() + '_' + Math.random();
+                        profileImage.src = data.new_url + '?cb=' + cacheBust + '&t=' + Date.now();
+
+                        // Force browser to reload the image
+                        profileImage.style.display = 'none';
+                        profileImage.offsetHeight; // Trigger reflow
+                        profileImage.style.display = 'block';
                     }
-                    
+
                     // Show success message
                     showSuccessMessage(data.message || 'Profile picture updated successfully!');
-                    
+
                     // Clear the file input
                     profilePictureInput.value = '';
                 })
@@ -2195,4 +2273,3 @@
 
 </body>
 </html>
-

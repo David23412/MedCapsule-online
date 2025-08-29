@@ -97,13 +97,22 @@ class QuestionController extends Controller
             
             // Process alternative answers if provided
             if ($request->filled('alternative_answers')) {
-                // Split by new lines and filter out empty lines
-                $alternativeAnswers = array_filter(
-                    explode("\n", $request->alternative_answers),
-                    function($line) {
-                        return trim($line) !== '';
+                try {
+                    // Store as plain text - just clean it up
+                    $alternativeAnswers = trim($request->alternative_answers);
+
+                    // Basic validation - ensure it's not empty after trimming
+                    if (empty($alternativeAnswers)) {
+                        $alternativeAnswers = null;
                     }
-                );
+
+                } catch (\Exception $e) {
+                    \Log::error('Error processing alternative answers', [
+                        'error' => $e->getMessage(),
+                        'raw_input' => substr($request->alternative_answers, 0, 100)
+                    ]);
+                    return redirect()->back()->with('error', 'Invalid format in alternative answers. Please use only plain text.')->withInput();
+                }
             } else {
                 $alternativeAnswers = null;
             }
@@ -154,26 +163,52 @@ class QuestionController extends Controller
     public function updateQuestion(Request $request, $id)
     {
         try {
+            // TODO: Create FormRequest class for validation
 
-        // TODO: Create FormRequest class for validation
+            $question = Question::findOrFail($id);
 
-        $question = Question::findOrFail($id);
-        $question->update([
-            'topic_id' => $request->topic_id,
-            'question' => $request->question_text,
-            'option_a' => $request->option_a ?? '',
-            'option_b' => $request->option_b ?? '',
-            'option_c' => $request->option_c ?? '',
-            'option_d' => $request->option_d ?? '',
-            'correct_answer' => $request->correct_answer]);
+            // Process alternative answers if provided
+            $alternativeAnswers = null;
+            if ($request->filled('alternative_answers')) {
+                try {
+                    // Store as plain text - just clean it up
+                    $alternativeAnswers = trim($request->alternative_answers);
 
-        return redirect()->back()->with('success', 'Question updated successfully!');
-    
+                    // Basic validation - ensure it's not empty after trimming
+                    if (empty($alternativeAnswers)) {
+                        $alternativeAnswers = null;
+                    }
+
+                } catch (\Exception $e) {
+                    \Log::error('Error processing alternative answers during update', [
+                        'error' => $e->getMessage(),
+                        'question_id' => $id,
+                        'raw_input' => substr($request->alternative_answers, 0, 100)
+                    ]);
+                    return redirect()->back()->with('error', 'Invalid format in alternative answers. Please use only plain text.')->withInput();
+                }
+            }
+
+            $question->update([
+                'topic_id' => $request->topic_id,
+                'question' => $request->question_text,
+                'option_a' => $request->option_a ?? '',
+                'option_b' => $request->option_b ?? '',
+                'option_c' => $request->option_c ?? '',
+                'option_d' => $request->option_d ?? '',
+                'correct_answer' => $request->correct_answer,
+                'alternative_answers' => $alternativeAnswers,
+                'explanation' => $request->explanation,
+                'source' => $request->source
+            ]);
+
+            return redirect()->back()->with('success', 'Question updated successfully!');
+
         } catch (\Exception $e) {
             \Log::error('Method execution failed', ['error' => $e->getMessage()]);
             return response()->json(['success' => false, 'message' => 'Operation failed'], 500);
         }
-}
+    }
 
     public function deleteQuestion($id)
     {

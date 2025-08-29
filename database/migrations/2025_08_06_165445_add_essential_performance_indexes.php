@@ -46,11 +46,7 @@ return new class extends Migration
         $this->addIndexSafely('questions', 'source', 'idx_questions_source');
         $this->addIndexSafely('questions', 'total_attempts', 'idx_questions_attempts');
 
-        // ⚡ PAYMENTS TABLE - TRANSACTION PROCESSING
-        $this->addIndexSafely('payments', 'status', 'idx_payments_status');
-        $this->addIndexSafely('payments', 'payment_method', 'idx_payments_method');
-        $this->addIndexSafely('payments', 'transaction_id', 'idx_payments_transaction_id');
-        $this->addIndexSafely('payments', 'paid_at', 'idx_payments_paid_at');
+        // ⚡ PAYMENTS TABLE - REMOVED: Payment tables deleted for performance optimization
 
         // ⚡ ASSIGNMENTS TABLE
         $this->addIndexSafely('assignments', 'assignment_mode', 'idx_assignments_mode');
@@ -78,21 +74,17 @@ return new class extends Migration
         $this->addCompositeIndexSafely('quiz_attempts', ['user_id', 'percentage_grade'], 'idx_quiz_attempts_user_grade');
         $this->addCompositeIndexSafely('quiz_attempts', ['created_at', 'score'], 'idx_quiz_attempts_date_score');
 
-        // COURSE ENROLLMENTS
-        $this->addCompositeIndexSafely('course_user', ['user_id', 'course_id', 'enrolled_at'], 'idx_course_user_enrolled');
-        $this->addCompositeIndexSafely('course_user', ['course_id', 'enrolled_at'], 'idx_course_enrollments');
-        $this->addCompositeIndexSafely('course_user', ['user_id', 'enrolled_at'], 'idx_course_user_date');
+        // COURSE ENROLLMENTS - REMOVED: enrolled_at column no longer exists
+        $this->addCompositeIndexSafely('course_user', ['user_id', 'course_id'], 'idx_course_user_enrolled');
+        $this->addCompositeIndexSafely('course_user', ['course_id', 'created_at'], 'idx_course_enrollments');
+        $this->addCompositeIndexSafely('course_user', ['user_id', 'created_at'], 'idx_course_user_date');
 
         // TOPICS
         $this->addCompositeIndexSafely('topics', ['course_id', 'is_locked'], 'idx_topics_course_locked');
         $this->addCompositeIndexSafely('topics', ['course_id', 'display_order'], 'idx_topics_display_order');
         $this->addCompositeIndexSafely('topics', ['course_id', 'case_type'], 'idx_topics_course_type');
 
-        // PAYMENTS - Financial operations
-        $this->addCompositeIndexSafely('payments', ['user_id', 'status', 'created_at'], 'idx_payments_user_status');
-        $this->addCompositeIndexSafely('payments', ['status', 'created_at'], 'idx_payments_status_date');
-        $this->addCompositeIndexSafely('payments', ['payment_method', 'status'], 'idx_payments_method_status');
-        $this->addCompositeIndexSafely('payments', ['user_id', 'paid_at'], 'idx_payments_user_paid');
+        // PAYMENTS - REMOVED: Payment tables deleted for performance optimization
 
         // USER TOPIC PROGRESS
         $this->addCompositeIndexSafely('user_topic_progress', ['user_id', 'topic_id', 'updated_at'], 'idx_user_topic_progress');

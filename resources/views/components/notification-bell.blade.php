@@ -77,7 +77,7 @@
 
 .clean-notification-bell i {
     font-size: 20px;
-    color: #3b82f6;
+    color: #3579F6;
     transition: all 300ms cubic-bezier(0.4, 0, 0.2, 1);
 }
 

@@ -78,7 +78,7 @@ class QuizReadController extends Controller
             Log::info("🚀 ULTRA-FAST QUIZ INDEX", [
                 'user_id' => auth()->id(),
                 'quiz_count' => $quizzes->count(),
-                'execution_ms' => $performanceData['execution_time_ms']
+                'execution_ms' => $performanceData['duration_ms'] ?? 0
             ]);
 
             return response()->json([
@@ -107,7 +107,7 @@ class QuizReadController extends Controller
      * Get specific quiz details with ULTRA-FAST LOADING
      * Uses UltraFastQuizService for <100ms performance
      */
-    public function show(QuizExecutionRequest $request, int $id): JsonResponse
+    public function show(QuizExecutionRequest $request, int $id)
     {
         $operationId = $this->performanceMonitor->startOperation('quiz_show', [
             'quiz_id' => $id,
@@ -120,10 +120,14 @@ class QuizReadController extends Controller
             $user = auth()->user();
 
             // Check if user has access to this topic
-            if (!$user->courses()->where('course_id', $topic->course_id)->exists()) {
-                return response()->json([
-                    'error' => 'Access denied to this quiz'
-                ], 403);
+            // FIXED: Use isEnrolledInCourse method which properly handles admin access
+            if (!$user->isEnrolledInCourse($topic->course_id)) {
+                if ($request->expectsJson()) {
+                    return response()->json([
+                        'error' => 'Access denied to this quiz'
+                    ], 403);
+                }
+                abort(403, 'Access denied to this quiz');
             }
 
             // Get quiz statistics using UltraFastQuizService
@@ -132,18 +136,49 @@ class QuizReadController extends Controller
             // Get user's progress
             $userProgress = $this->ultraFastQuizService->getTopicQuizStats($topic, $user);
 
-            $data = [
-                'id' => $topic->id,
-                'title' => $topic->name,
-                'course_name' => $topic->course->name,
-                'description' => $topic->description,
-                'statistics' => $statistics,
-                'user_progress' => $userProgress,
-                'available_sources' => $this->ultraFastQuizService->getAvailableSources($topic),
-                'available_modes' => ['quiz', 'tutor', 'random'],
-                'estimated_completion_time' => $this->estimateCompletionTime($statistics['total_questions'] ?? 0)
-            ];
+            // Calculate total topic progress from quiz mode attempts only
+            $totalTopicProgress = \App\Models\QuizAttempt::getTopicProgress($user->id, $topic->id, 'quiz');
+            $totalCorrectQuestions = $totalTopicProgress['overall']['score'] ?? 0;
+            $totalQuestionsInTopic = $totalTopicProgress['overall']['total_questions'] ?? 0;
 
+            // Get questions for the quiz
+            $sources = $request->get('sources', ['all']);
+            $quizData = $this->ultraFastQuizService->getQuizQuestions($topic, $sources, true);
+
+            // Check if request expects JSON (API request)
+            if ($request->expectsJson()) {
+                $data = [
+                    'id' => $topic->id,
+                    'title' => $topic->name,
+                    'course_name' => $topic->course->name,
+                    'description' => $topic->description,
+                    'statistics' => $statistics,
+                    'user_progress' => $userProgress,
+                    'available_sources' => $this->ultraFastQuizService->getAvailableSources($topic),
+                    'available_modes' => ['quiz', 'tutor', 'random'],
+                    'estimated_completion_time' => $this->estimateCompletionTime($statistics['total_questions'] ?? 0)
+                ];
+
+                $performanceData = $this->performanceMonitor->endOperation($operationId, [
+                    'topic_id' => $id,
+                    'cache_status' => 'ultra_fast_redis'
+                ]);
+
+                Log::info("🚀 ULTRA-FAST QUIZ DETAILS", [
+                    'quiz_id' => $id,
+                    'topic_name' => $topic->name,
+                    'user_id' => auth()->id(),
+                    'execution_ms' => $performanceData['duration_ms'] ?? 0
+                ]);
+
+                return response()->json([
+                    'success' => true,
+                    'data' => $data,
+                    'performance' => $performanceData
+                ]);
+            }
+
+            // Web request - return Blade view
             $performanceData = $this->performanceMonitor->endOperation($operationId, [
                 'topic_id' => $id,
                 'cache_status' => 'ultra_fast_redis'
@@ -153,14 +188,31 @@ class QuizReadController extends Controller
                 'quiz_id' => $id,
                 'topic_name' => $topic->name,
                 'user_id' => auth()->id(),
-                'execution_ms' => $performanceData['execution_time_ms']
+                'execution_ms' => $performanceData['duration_ms'] ?? 0
             ]);
 
-            return response()->json([
-                'success' => true,
-                'data' => $data,
-                'performance' => $performanceData
-            ]);
+            // Prepare data for Blade view
+            $questionsCollection = collect($quizData['questions'])->map(function ($question) {
+                // Convert array to object if needed (for cached data)
+                return is_array($question) ? (object) $question : $question;
+            });
+            $viewData = [
+                'topic' => $topic,
+                'course' => $topic->course,
+                'questions' => $questionsCollection,
+                'statistics' => $statistics,
+                'userProgress' => $userProgress,
+                'selected_sources' => $sources,
+                'mode' => $request->get('mode', 'quiz'),
+                'assignment' => null, // No assignment for regular quiz
+                'totalTopicProgress' => [
+                    'correct' => $totalCorrectQuestions,
+                    'total' => $totalQuestionsInTopic,
+                    'percentage' => $totalQuestionsInTopic > 0 ? round(($totalCorrectQuestions / $totalQuestionsInTopic) * 100, 1) : 0
+                ]
+            ];
+
+            return view('solve_quiz', $viewData);
 
         } catch (\Exception $e) {
             $this->performanceMonitor->endOperation($operationId, ['error' => $e->getMessage()]);
@@ -172,10 +224,14 @@ class QuizReadController extends Controller
                 'trace' => $e->getTraceAsString()
             ]);
 
-            return response()->json([
-                'error' => 'Failed to retrieve quiz details',
-                'message' => $e->getMessage()
-            ], 500);
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'error' => 'Failed to retrieve quiz details',
+                    'message' => $e->getMessage()
+                ], 500);
+            }
+
+            abort(500, 'Failed to load quiz');
         }
     }
 
@@ -196,7 +252,8 @@ class QuizReadController extends Controller
             $user = auth()->user();
 
             // Check if user has access to this topic
-            if (!$user->courses()->where('course_id', $topic->course_id)->exists()) {
+            // FIXED: Use isEnrolledInCourse method which properly handles admin access
+            if (!$user->isEnrolledInCourse($topic->course_id)) {
                 return response()->json([
                     'error' => 'Access denied to this quiz'
                 ], 403);
@@ -254,7 +311,7 @@ class QuizReadController extends Controller
                 'topic_name' => $topic->name,
                 'user_id' => auth()->id(),
                 'attempts_count' => $recentAttempts->count(),
-                'execution_ms' => $performanceData['execution_time_ms']
+                'execution_ms' => $performanceData['duration_ms'] ?? 0
             ]);
 
             return response()->json([

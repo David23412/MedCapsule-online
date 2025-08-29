@@ -1,0 +1,1 @@
+a:8:{s:8:"original";s:21:"Héart pümps blóöd";s:10:"normalized";s:12:"hart pmp bld";s:7:"cleaned";s:13:"hart pmps bld";s:6:"tokens";a:3:{i:0;s:4:"hart";i:1;s:4:"pmps";i:2;s:3:"bld";}s:13:"medical_terms";a:0:{}s:13:"abbreviations";a:0:{}s:10:"confidence";d:0.5;s:15:"processing_time";d:0.0007231235504150391;}

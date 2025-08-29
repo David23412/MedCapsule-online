@@ -241,8 +241,9 @@
         }
 
         .question-text {
-            font-size: 1.1rem;
-            color: #333;
+            font-size: 1.4rem;
+            color: #000000;
+            font-weight: 425;
             margin-bottom: 1rem;
             line-height: 1.5;
         }
@@ -593,27 +594,34 @@
         }
 
         .profile-circle {
-            width: 32px;
-            height: 32px;
-            background: #2196f3;
+            width: 40px;
+            height: 40px;
             border-radius: 50%;
             display: flex;
             align-items: center;
             justify-content: center;
-            color: white;
             font-weight: 600;
-            font-size: 0.9rem;
-            transition: transform 0.2s ease;
+            color: white;
+            text-decoration: none;
+            transition: all 0.3s ease;
+            box-shadow: 0 2px 8px rgba(0, 123, 255, 0.2);
             background-size: cover;
             background-position: center;
+            overflow: hidden;
         }
 
-        .profile-circle.no-image {
-            background: #2196f3;
+        .profile-circle img {
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            object-fit: cover;
+            display: block;
         }
 
         .profile-circle:hover {
             transform: scale(1.1);
+            box-shadow: 0 4px 12px rgba(0, 123, 255, 0.3);
+            color: white;
         }
 
         .unanswered-label {
@@ -658,11 +666,31 @@
                     <i class="fas fa-arrow-left"></i>
                     Back
                 </a>
-                <a href="{{ route('profile') }}" class="profile-circle {{ !Auth::user()->profile_picture_url ? 'no-image' : '' }}" 
-                     style="{{ Auth::user()->profile_picture_url ? 'background-image: url(' . secure_url(Auth::user()->profile_picture_url) . ');' : '' }}">
-                    @if(!Auth::user()->profile_picture_url)
-                        {{ substr(Auth::user()->name, 0, 1) }}
-                    @endif
+                @php
+                    $profileImageUrl = null;
+                    if (Auth::user() && Auth::user()->profile_picture_url) {
+                        // Check if it's an external URL (starts with http/https)
+                        if (filter_var(Auth::user()->profile_picture_url, FILTER_VALIDATE_URL)) {
+                            $profileImageUrl = Auth::user()->profile_picture_url;
+                        } else {
+                            // Local file - use secure_url with cache busting
+                            $localPath = storage_path('app/public/' . Auth::user()->profile_picture_url);
+                            if (file_exists($localPath)) {
+                                $profileImageUrl = secure_url(Auth::user()->profile_picture_url) . '?v=' . time();
+                            }
+                        }
+                    }
+
+                    // Fallback to UI Avatars if no valid image
+                    if (!$profileImageUrl) {
+                        $profileImageUrl = 'https://ui-avatars.com/api/?name=' . urlencode(Auth::user()->name) . '&size=200&background=007bff&color=ffffff';
+                    }
+                @endphp
+                <a href="{{ route('profile') }}" class="profile-circle">
+                    <img src="{{ $profileImageUrl }}"
+                         alt="Profile Picture"
+                         class="profile-image"
+                         onerror="this.src='https://ui-avatars.com/api/?name={{ urlencode(Auth::user()->name) }}&size=200&background=007bff&color=ffffff'">
                 </a>
             </div>
         </div>
@@ -1154,23 +1182,26 @@
                             // First disable all inputs
                             inputs.forEach(input => input.disabled = true);
                             
-                            // Then mark answers
+                            // Then mark answers - ROBUST REVIEW LOGIC
                             labels.forEach(label => {
                                 const input = label.previousElementSibling;
                                 if (input) {
                                     const isCorrectAnswer = input.value === correctAnswer;
                                     const isSelectedAnswer = input.value === submittedAnswer;
-                                    
-                                    // Remove any existing classes
+                                    const isIncorrectSelection = isSelectedAnswer && !isCorrectAnswer;
+
+                                    // Remove any existing classes first
                                     label.classList.remove('correct', 'incorrect');
-                                    
+
                                     if (isCorrectAnswer) {
                                         // Always mark correct answer in green
                                         label.classList.add('correct');
-                                    } else if (isSelectedAnswer && incorrectData) {
+                                    } else if (isIncorrectSelection) {
                                         // Mark selected wrong answer in red
                                         label.classList.add('incorrect');
                                     }
+
+                                    console.log(`🔍 RANDOM QUIZ REVIEW: Question ${questionId} - Option "${input.value}": Correct=${isCorrectAnswer}, Selected=${isSelectedAnswer}, Incorrect=${isIncorrectSelection}`);
                                 }
                             });
                         }
@@ -1242,4 +1273,4 @@
         });
     </script>
 </body>
-</html> 
+</html>

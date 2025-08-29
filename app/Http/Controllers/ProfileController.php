@@ -92,26 +92,49 @@ use App\Services\SecureFileUploadService;
             });
         }
 
-        // RUTHLESS OPTIMIZATION: Single optimized query with JOIN
-        $performanceData = Cache::remember("performance_data_optimized_{$user->id}", 1800, function() use ($user) { 
-            return DB::table('quiz_attempts')
+        // ULTRA-EFFICIENT: Group by attempt_id - multiple sources from same quiz = ONE point
+        // REAL-TIME OPTIMIZATION: Reduced cache time for immediate chart updates
+        $performanceData = Cache::remember("performance_data_optimized_{$user->id}", 30, function() use ($user) {
+            // Get attempts grouped by attempt_id with combined scores
+            $groupedAttempts = DB::table('quiz_attempts')
                 ->leftJoin('topics', 'quiz_attempts.topic_id', '=', 'topics.id')
                 ->where('quiz_attempts.user_id', $user->id)
                 ->where('quiz_attempts.quiz_type', '!=', 'mistake_review')
+                ->whereNotNull('quiz_attempts.attempt_id') // Only group attempts with attempt_id
                 ->select(
-                    'quiz_attempts.created_at as date',
-                    DB::raw('COALESCE(quiz_attempts.percentage_grade, 0) as accuracy'),
-                    DB::raw('CASE 
+                    'quiz_attempts.attempt_id',
+                    DB::raw('MAX(quiz_attempts.created_at) as date'),
+                    'quiz_attempts.topic_id',
+                    'quiz_attempts.study_mode',
+                    DB::raw('SUM(quiz_attempts.score) as total_score'),
+                    DB::raw('SUM(quiz_attempts.total_questions) as total_questions'),
+                    DB::raw('COUNT(*) as attempts_count'),
+                    DB::raw('CASE
                         WHEN quiz_attempts.quiz_type = "random" THEN "Random Quiz"
                         WHEN quiz_attempts.topic_id IS NULL THEN "Unknown Topic"
                         ELSE COALESCE(topics.name, "Unknown Topic")
                     END as topic')
                 )
-                ->orderBy('quiz_attempts.created_at', 'desc')
-                ->limit(7)
-                ->get()
-                ->sortBy('date')
-                ->values();
+                ->groupBy('quiz_attempts.attempt_id', 'quiz_attempts.topic_id', 'quiz_attempts.study_mode', 'topics.name', 'quiz_attempts.quiz_type')
+                ->orderBy('date', 'desc')
+                ->take(7)
+                ->get();
+
+            // Calculate combined accuracy for each attempt group
+            $finalAttempts = [];
+            foreach ($groupedAttempts as $attempt) {
+                $combinedAccuracy = $attempt->total_questions > 0
+                    ? ($attempt->total_score / $attempt->total_questions) * 100
+                    : 0;
+
+                $finalAttempts[] = (object) [
+                    'date' => $attempt->date,
+                    'accuracy' => round($combinedAccuracy, 1),
+                    'topic' => $attempt->topic
+                ];
+            }
+
+            return collect($finalAttempts);
         });
 
         // Format data for the chart
@@ -310,14 +333,16 @@ use App\Services\SecureFileUploadService;
                         'profile-pictures' // directory
                     );
 
-                    // Update user's profile_picture_url with secure path
-                    $user->profile_picture_url = $uploadResult['storage_path'];
+                    // Update user's profile_picture_url with full HTTPS URL + cache busting
+                    $cacheBust = time() . '_' . rand(1000, 9999);
+                    $user->profile_picture_url = config('app.url') . '/uploads/' . $uploadResult['storage_path'] . '?v=' . $cacheBust;
                     $user->save();
 
                     \Log::info('Secure profile picture upload completed', [
                         'user_id' => $user->id,
                         'secure_filename' => $uploadResult['secure_name'],
-                        'original_filename' => $uploadResult['original_name']
+                        'original_filename' => $uploadResult['original_name'],
+                        'cache_bust' => $cacheBust
                     ]);
 
                     // Check if it's an AJAX request
@@ -325,8 +350,9 @@ use App\Services\SecureFileUploadService;
                         return response()->json([
                             'success' => true,
                             'message' => 'Profile picture updated successfully!',
-                            'new_url' => $uploadResult['storage_path'],
-                            'timestamp' => time()
+                            'new_url' => config('app.url') . '/uploads/' . $uploadResult['storage_path'] . '?v=' . $cacheBust,
+                            'timestamp' => time(),
+                            'cache_bust' => $cacheBust
                         ]);
                     }
 

@@ -141,6 +141,144 @@
             font-weight: 600;
         }
 
+        /* TOTAL TOPIC PROGRESS BAR */
+        .total-topic-progress {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 15px;
+            padding: 1.5rem;
+            margin: 1rem auto;
+            max-width: 600px;
+            box-shadow: 0 8px 25px rgba(102, 126, 234, 0.3);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .total-topic-progress::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+            animation: shimmer 3s infinite;
+        }
+
+        .total-topic-progress h3 {
+            color: white;
+            margin: 0 0 1rem 0;
+            font-size: 1.2rem;
+            text-align: center;
+            font-weight: 600;
+        }
+
+        .total-progress-bar {
+            width: 100%;
+            height: 12px;
+            background: rgba(255,255,255,0.2);
+            border-radius: 6px;
+            overflow: hidden;
+            margin-bottom: 0.5rem;
+        }
+
+        .total-progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #ffd700, #ffed4e);
+            border-radius: 6px;
+            width: 0%;
+            transition: width 0.8s ease;
+            box-shadow: 0 0 10px rgba(255, 215, 0, 0.5);
+        }
+
+        .total-progress-text {
+            color: white;
+            font-size: 1.1rem;
+            font-weight: 600;
+            text-align: center;
+            text-shadow: 0 1px 2px rgba(0,0,0,0.3);
+        }
+
+        .total-progress-percentage {
+            color: #ffd700;
+            font-size: 1.3rem;
+            font-weight: 800;
+            text-shadow: 0 0 10px rgba(255, 215, 0, 0.8);
+        }
+
+        @keyframes shimmer {
+            0% { left: -100%; }
+            100% { left: 100%; }
+        }
+
+        /* TOTAL TOPIC PROGRESS BAR */
+        .total-topic-progress {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 15px;
+            padding: 1.5rem;
+            margin: 1rem auto;
+            max-width: 600px;
+            box-shadow: 0 8px 25px rgba(102, 126, 234, 0.3);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .total-topic-progress::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+            animation: shimmer 3s infinite;
+        }
+
+        .total-topic-progress h3 {
+            color: white;
+            margin: 0 0 1rem 0;
+            font-size: 1.2rem;
+            text-align: center;
+            font-weight: 600;
+        }
+
+        .total-progress-bar {
+            width: 100%;
+            height: 12px;
+            background: rgba(255,255,255,0.2);
+            border-radius: 6px;
+            overflow: hidden;
+            margin-bottom: 0.5rem;
+        }
+
+        .total-progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #ffd700, #ffed4e);
+            border-radius: 6px;
+            width: 0%;
+            transition: width 0.8s ease;
+            box-shadow: 0 0 10px rgba(255, 215, 0, 0.5);
+        }
+
+        .total-progress-text {
+            color: white;
+            font-size: 1.1rem;
+            font-weight: 600;
+            text-align: center;
+            text-shadow: 0 1px 2px rgba(0,0,0,0.3);
+        }
+
+        .total-progress-percentage {
+            color: #ffd700;
+            font-size: 1.3rem;
+            font-weight: 800;
+            text-shadow: 0 0 10px rgba(255, 215, 0, 0.8);
+        }
+
+        @keyframes shimmer {
+            0% { left: -100%; }
+            100% { left: 100%; }
+        }
+
         .progress-bar-container {
             position: fixed;
             bottom: 0;
@@ -405,8 +543,9 @@
         }
 
         .question-text {
-            font-size: 1.1rem;
-            color: #333;
+            font-size: 1.4rem;
+            font-weight: 425;
+            color: #000000;
             margin-bottom: 1rem;
             line-height: 1.5;
         }
@@ -466,17 +605,33 @@
             color: #007bff;
         }
 
-        /* Styles for answers after grading - must override selected styles */
-        .form-check input[disabled] + label.correct {
-            background-color: #e3fcef;
-            border-color: #00a854;
-            color: #00a854;
+        /* STRONG REVIEW MODE STYLES - HIGHER SPECIFICITY TO OVERRIDE BLUE */
+        .form-check label.correct {
+            background-color: #e3fcef !important;
+            border-color: #00a854 !important;
+            color: #00a854 !important;
         }
 
-        .form-check input[disabled] + label.incorrect {
-            background-color: #fff1f0;
-            border-color: #f5222d;
-            color: #f5222d;
+        .form-check label.incorrect {
+            background-color: #fff1f0 !important;
+            border-color: #f5222d !important;
+            color: #f5222d !important;
+        }
+
+        /* EXTRA STRONG OVERRIDE FOR SELECTED WRONG ANSWERS */
+        .form-check input:checked + label.incorrect {
+            background-color: #fff1f0 !important;
+            border-color: #f5222d !important;
+            color: #f5222d !important;
+            box-shadow: 0 0 0 0.2rem rgba(245, 34, 45, 0.25) !important;
+        }
+
+        /* ENSURE CORRECT SELECTED ANSWERS SHOW GREEN */
+        .form-check input:checked + label.correct {
+            background-color: #e3fcef !important;
+            border-color: #00a854 !important;
+            color: #00a854 !important;
+            box-shadow: 0 0 0 0.2rem rgba(0, 168, 84, 0.25) !important;
         }
 
         .written-answer.correct {
@@ -808,22 +963,26 @@
         .profile-circle {
             width: 40px;
             height: 40px;
-            background: linear-gradient(135deg, #007bff, #00d4ff);
             border-radius: 50%;
             display: flex;
             align-items: center;
             justify-content: center;
-            color: white;
             font-weight: 600;
+            color: white;
             text-decoration: none;
             transition: all 0.3s ease;
             box-shadow: 0 2px 8px rgba(0, 123, 255, 0.2);
             background-size: cover;
             background-position: center;
+            overflow: hidden;
         }
 
-        .profile-circle.no-image {
-            background: linear-gradient(135deg, #007bff, #00d4ff);
+        .profile-circle img {
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            object-fit: cover;
+            display: block;
         }
 
         .profile-circle:hover {
@@ -874,6 +1033,44 @@
             position: absolute;
             left: 5px;
             color: #ff4d4f;
+        }
+
+        /* CRITICAL FIX: Show correct answer in green for incorrect submissions */
+        .form-check-label.correct-answer {
+            color: #52c41a !important;
+            font-weight: 600 !important;
+            position: relative;
+            padding-left: 25px;
+            background-color: rgba(82, 196, 26, 0.1) !important;
+            border-left: 3px solid #52c41a !important;
+        }
+
+        .form-check-label.correct-answer::before {
+            content: '✓ Correct Answer';
+            position: absolute;
+            left: 5px;
+            color: #52c41a;
+            font-weight: bold;
+            font-size: 0.9em;
+        }
+
+        /* Style for user's incorrect selection */
+        .form-check-label.user-incorrect {
+            color: #ff4d4f !important;
+            font-weight: 600 !important;
+            position: relative;
+            padding-left: 25px;
+            background-color: rgba(255, 77, 79, 0.1) !important;
+            border-left: 3px solid #ff4d4f !important;
+        }
+
+        .form-check-label.user-incorrect::before {
+            content: '✗ Your Answer';
+            position: absolute;
+            left: 5px;
+            color: #ff4d4f;
+            font-weight: bold;
+            font-size: 0.9em;
         }
 
         .written-answer.correct {
@@ -933,11 +1130,31 @@
             <a class="navbar-brand" href="/">MedCapsule</a>
             <div class="nav-links">
                 <a href="javascript:history.back()" class="nav-link">← Back</a>
-                <a href="{{ route('profile') }}" class="profile-circle {{ !Auth::user()->profile_picture_url ? 'no-image' : '' }}"
-                     style="{{ Auth::user()->profile_picture_url ? 'background-image: url(' . htmlspecialchars(secure_url(Auth::user()->profile_picture_url), ENT_QUOTES, 'UTF-8') . ');' : '' }}">
-                    @if(!Auth::user()->profile_picture_url)
-                        {{ substr(Auth::user()->name, 0, 1) }}
-                    @endif
+                @php
+                    $profileImageUrl = null;
+                    if (Auth::user() && Auth::user()->profile_picture_url) {
+                        // Check if it's an external URL (starts with http/https)
+                        if (filter_var(Auth::user()->profile_picture_url, FILTER_VALIDATE_URL)) {
+                            $profileImageUrl = Auth::user()->profile_picture_url;
+                        } else {
+                            // Local file - use secure_url with cache busting
+                            $localPath = storage_path('app/public/' . Auth::user()->profile_picture_url);
+                            if (file_exists($localPath)) {
+                                $profileImageUrl = secure_url(Auth::user()->profile_picture_url) . '?v=' . time();
+                            }
+                        }
+                    }
+
+                    // Fallback to UI Avatars if no valid image
+                    if (!$profileImageUrl) {
+                        $profileImageUrl = 'https://ui-avatars.com/api/?name=' . urlencode(Auth::user()->name) . '&size=200&background=007bff&color=ffffff';
+                    }
+                @endphp
+                <a href="{{ route('profile') }}" class="profile-circle">
+                    <img src="{{ $profileImageUrl }}"
+                         alt="Profile Picture"
+                         class="profile-image"
+                         onerror="this.src='https://ui-avatars.com/api/?name={{ urlencode(Auth::user()->name) }}&size=200&background=007bff&color=ffffff'">
                 </a>
             </div>
         </div>
@@ -946,6 +1163,21 @@
     <div class="main-content">
         <div class="container">
             <h1>@if(isset($assignment) && $assignment && $assignment->title){{ $assignment->title }}@else{{ $topic->name }}@endif</h1>
+
+            <!-- TOTAL TOPIC PROGRESS BAR -->
+            @if(isset($totalTopicProgress) && $totalTopicProgress['total'] > 0)
+                <div class="total-topic-progress">
+                    <h3><i class="fas fa-trophy"></i> Topic Progress</h3>
+                    <div class="total-progress-bar">
+                        <div class="total-progress-fill" style="width: {{ $totalTopicProgress['percentage'] }}%"></div>
+                    </div>
+                    <div class="total-progress-text">
+                        <span class="total-progress-percentage">{{ $totalTopicProgress['percentage'] }}%</span> Complete
+                        <br>
+                        <small>Correct Questions: {{ $totalTopicProgress['correct'] }}/{{ $totalTopicProgress['total'] }}</small>
+                    </div>
+                </div>
+            @endif
 
             <!-- Source information display -->
             @if(isset($selected_sources) && count($selected_sources) > 0 && !in_array('all', $selected_sources))
@@ -1002,8 +1234,8 @@
                                 </div>
 
                                 @if($question->image_url)
-                                    <img src="{{ asset($question->image_url) }}" 
-                                         alt="Question image" 
+                                    <img src="{{ asset($question->image_url) }}"
+                                         alt="Question image"
                                          class="question-image"
                                          onerror="this.style.display='none'">
                                 @endif
@@ -1014,10 +1246,10 @@
                                             $optionField = 'option_' . strtolower($option);
                                         @endphp
                                         <div class="form-check">
-                                            <input type="radio" 
-                                                   name="answers[{{ $question->id }}]" 
-                                                   value="{{ $option }}" 
-                                                   id="q{{ $question->id }}_{{ strtolower($option) }}" 
+                                            <input type="radio"
+                                                   name="answers[{{ $question->id }}]"
+                                                   value="{{ $option }}"
+                                                   id="q{{ $question->id }}_{{ strtolower($option) }}"
                                                    class="form-check-input">
                                             <label for="q{{ $question->id }}_{{ strtolower($option) }}" class="form-check-label">
                                                 {{ $option }}. {{ $question->$optionField }}
@@ -1032,7 +1264,21 @@
                     <button type="submit" id="submit-btn" class="submit-btn" disabled>Submit Quiz</button>
                 </form>
             @else
-                <p class="text-center text-danger">No questions available for this topic.</p>
+                <div class="alert alert-warning text-center" style="max-width: 600px; margin: 2rem auto; border-radius: 15px; border: 2px solid #ffc107;">
+                    <h4><i class="fas fa-exclamation-triangle"></i> No Questions Available</h4>
+                    <p style="margin-bottom: 0.5rem;">No questions found for the selected source(s): <strong>{{ implode(', ', $selected_sources) }}</strong></p>
+                    <p style="font-size: 0.9rem; color: #6c757d; margin-bottom: 1rem;">
+                        Try selecting different sources or choose "All Sources" to see all available questions for this topic.
+                    </p>
+                    <div class="d-flex gap-2 justify-content-center">
+                        <a href="{{ route('topics.forCourse', $course->id) }}" class="btn btn-outline-primary">
+                            <i class="fas fa-arrow-left"></i> Back to Topics
+                        </a>
+                        <a href="{{ route('quiz.start', ['course' => $course->id, 'topic' => $topic->id]) }}" class="btn btn-primary">
+                            <i class="fas fa-list"></i> All Sources
+                        </a>
+                    </div>
+                </div>
             @endif
         </div>
     </div>
@@ -1691,12 +1937,19 @@
                         const popupMessage = document.getElementById('popup-message');
                         const scoreDetails = document.getElementById('score-details');
 
-                        // Update score display
-                        popupScore.textContent = `${data.score}/${data.total}`;
-                        popupMessage.textContent = data.message;
+                        // Handle nested data structure from controller
+                        const quizData = data.data || data;
+
+                        // Update score display - use the correct field names from GradingService
+                        const score = quizData.score || 0;
+                        const total = quizData.totalQuestions || quizData.total_questions || 0;
+                        popupScore.textContent = `${score}/${total}`;
+
+                        // Use the correct message field
+                        popupMessage.textContent = quizData.encouragement || quizData.message || data.message || 'Quiz completed!';
 
                         // Calculate percentage
-                        const percentage = (data.score / data.total) * 100;
+                        const percentage = (score / total) * 100;
 
                         // Update grade icon and title
                         if (percentage === 100) {
@@ -1848,28 +2101,52 @@
                         @endif
                         
                         // Mark correct and incorrect answers only if we have the data
+                        console.log('🔍 REVIEW MODE: Full response data:', data);
+                        console.log('🔍 REVIEW MODE: Checking data.correct_answers:', data.correct_answers);
+                        console.log('🔍 REVIEW MODE: Checking data.data:', data.data);
+
+                        // Check for correct_answers in different possible locations
+                        let correctAnswers = null;
                         if (data.correct_answers) {
-                            Object.keys(data.correct_answers).forEach(questionId => {
-                                const correctAnswer = data.correct_answers[questionId];
-                                const submittedAnswer = formData.get(`answers[${questionId}]`);
+                            correctAnswers = data.correct_answers;
+                            console.log('🔍 REVIEW MODE: Found correct_answers in data.correct_answers', correctAnswers);
+                        } else if (data.data && data.data.correct_answers) {
+                            correctAnswers = data.data.correct_answers;
+                            console.log('🔍 REVIEW MODE: Found correct_answers in data.data.correct_answers', correctAnswers);
+                        } else if (data.data && data.data.correctAnswers) {
+                            correctAnswers = data.data.correctAnswers;
+                            console.log('🔍 REVIEW MODE: Found correct_answers in data.data.correctAnswers', correctAnswers);
+                        }
+
+                        if (correctAnswers) {
+                            console.log('🔍 REVIEW MODE: Processing correct answers for review', correctAnswers);
+
+                            Object.keys(correctAnswers).forEach(questionId => {
+                                const correctAnswer = correctAnswers[questionId];
+                                const submittedAnswer = selectedAnswers[questionId] || ''; // Use selectedAnswers object instead of formData
                                 const questionBox = document.querySelector(`[data-question-id="${questionId}"]`);
-                                
+
+                                console.log(`🔍 REVIEW MODE: Question ${questionId} - Correct: "${correctAnswer}", Submitted: "${submittedAnswer}"`);
+
                                 if (questionBox) {
                                     // Check if this is a written question
                                     const writtenAnswer = questionBox.querySelector('.written-answer');
                                     if (writtenAnswer) {
                                         // Handle written question
                                         const feedbackElement = questionBox.querySelector('.answer-feedback');
-                                        
+
                                         // Disable the textarea
                                         writtenAnswer.disabled = true;
-                                        
+
                                         // Store the correct answer for review
                                         questionBox.setAttribute('data-correct-answer', correctAnswer);
-                                        
+
                                         // Check if answer was correct
-                                        const isCorrect = correctAnswer === submittedAnswer;
-                                        
+                                        const isCorrect = correctAnswer && submittedAnswer &&
+                                            correctAnswer.toLowerCase().trim() === submittedAnswer.toLowerCase().trim();
+
+                                        console.log(`🔍 REVIEW MODE: Written question ${questionId} - Is correct: ${isCorrect}`);
+
                                         if (isCorrect) {
                                             writtenAnswer.classList.add('correct');
                                             feedbackElement.classList.add('correct');
@@ -1877,7 +2154,7 @@
                                         } else {
                                             writtenAnswer.classList.add('incorrect');
                                             feedbackElement.classList.add('incorrect');
-                                            
+
                                             // Create a card to show the correct answer
                                             const correctAnswerCard = document.createElement('div');
                                             correctAnswerCard.className = 'correct-answer-card';
@@ -1888,32 +2165,41 @@
                                         // Handle multiple choice question
                                         const labels = questionBox.querySelectorAll('.form-check label');
                                         const inputs = questionBox.querySelectorAll('.form-check input');
-                                        
+
                                         // First disable all inputs
                                         inputs.forEach(input => input.disabled = true);
-                                        
-                                        // Then mark answers
+
+                                        console.log(`🔍 REVIEW MODE: Multiple choice question ${questionId} - Processing ${labels.length} options`);
+
+                                        // ROBUST REVIEW LOGIC - Use CSS classes to override blue selection
                                         labels.forEach(label => {
                                             const input = label.previousElementSibling;
                                             if (input) {
                                                 const isCorrectAnswer = input.value === correctAnswer;
                                                 const isSelectedAnswer = input.value === submittedAnswer;
-                                                
-                                                // Remove any existing classes
+                                                const isIncorrectSelection = isSelectedAnswer && !isCorrectAnswer;
+
+                                                // Remove any existing classes first
                                                 label.classList.remove('correct', 'incorrect');
-                                                
+
                                                 if (isCorrectAnswer) {
                                                     // Always mark correct answer in green
                                                     label.classList.add('correct');
-                                                } else if (isSelectedAnswer) {
+                                                } else if (isIncorrectSelection) {
                                                     // Mark selected wrong answer in red
                                                     label.classList.add('incorrect');
                                                 }
+
+                                                console.log(`🔍 REVIEW MODE: Question ${questionId} - Option "${input.value}": Correct=${isCorrectAnswer}, Selected=${isSelectedAnswer}, Incorrect=${isIncorrectSelection}`);
                                             }
                                         });
                                     }
                                 }
                             });
+
+                            console.log('✅ REVIEW MODE: Answer marking completed');
+                        } else {
+                            console.log('❌ REVIEW MODE: No correct_answers data found in response');
                         }
                         
                         // LETHAL FIX: Sound already played in showQuizResults - no duplicate

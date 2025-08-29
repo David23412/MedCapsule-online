@@ -78,12 +78,12 @@
         <div class="card-body p-3">
             <div class="d-flex justify-content-between align-items-center">
                 <div>
-                    <h6 class="mb-2 fs-5">{{ $course->name }}</h6>
+                    <h6 class="mb-2 fs-5">{{ $course['name'] }}</h6>
                     <div class="text-muted">
-                        {{ $course->description ? \Illuminate\Support\Str::limit($course->description, 80) : 'Learn and master new skills' }}
+                        Learn and master new skills
                     </div>
                 </div>
-                <div class="h4 text-primary mb-0">{{ $course->formatted_price }}</div>
+                <div class="h4 text-primary mb-0">{{ $course['price'] }} {{ $course['currency'] }}</div>
             </div>
         </div>
     </div>
@@ -132,7 +132,7 @@
         <div class="tab-pane fade show active" id="vodafone-panel" role="tabpanel">
             <div class="d-flex align-items-center mb-3">
                 <div class="text-danger me-3"><i class="fas fa-mobile-alt fa-2x"></i></div>
-                <div class="fw-bold fs-5">Send {{ $course->price }} EGP to:</div>
+                <div class="fw-bold fs-5">Send {{ $course['price'] }} EGP to:</div>
             </div>
             <div class="d-flex align-items-center my-3">
                 <code class="bg-white py-2 px-3 rounded border flex-grow-1 me-2 fs-5">{{ config('payment.vodafone_cash.number', '01XXXXXXXXX') }}</code>
@@ -149,7 +149,7 @@
         <div class="tab-pane fade" id="fawry-panel" role="tabpanel">
             <div class="d-flex align-items-center mb-3">
                 <div class="text-warning me-3"><i class="fas fa-store fa-2x"></i></div>
-                <div class="fw-bold fs-5">Pay {{ $course->price }} EGP to:</div>
+                <div class="fw-bold fs-5">Pay {{ $course['price'] }} EGP to:</div>
             </div>
             <div class="d-flex align-items-center my-3">
                 <code class="bg-white py-2 px-3 rounded border flex-grow-1 me-2 fs-5">{{ config('payment.fawry.number', 'FAWRY-XXXXXXXXX') }}</code>
@@ -166,7 +166,7 @@
         <div class="tab-pane fade" id="instapay-panel" role="tabpanel">
             <div class="d-flex align-items-center mb-3">
                 <div style="color: #c13584;" class="me-3"><i class="fas fa-credit-card fa-2x"></i></div>
-                <div class="fw-bold fs-5">Pay {{ $course->price }} EGP via:</div>
+                <div class="fw-bold fs-5">Pay {{ $course['price'] }} EGP via:</div>
             </div>
             <div class="d-flex align-items-center my-3">
                 <code class="bg-white py-2 px-3 rounded border flex-grow-1 me-2 fs-5">{{ config('payment.instapay.number', 'INSTAPAY-XXXXXXXXX') }}</code>
@@ -181,11 +181,11 @@
     </div>
     
     <!-- Payment Form -->
-                    <form id="coursePaymentForm" class="mb-0" method="POST" action="{{ route('payments.process', $course) }}" data-course-id="{{ $course->id }}">
+                    <form id="coursePaymentForm" class="mb-0" method="POST" action="{{ route('payments.process', $course['id']) }}" data-course-id="{{ $course['id'] }}">
         @csrf
         <!-- Hidden payment method field that gets updated by JavaScript -->
         <input type="hidden" id="paymentMethodField" name="payment_method" value="vodafone_cash">
-        <input type="hidden" name="amount" value="{{ $course->price }}">
+        <input type="hidden" name="amount" value="{{ $course['price'] }}">
         
         <!-- Transaction ID Input -->
         <div class="mb-4">
@@ -601,4 +601,4 @@ document.addEventListener('DOMContentLoaded', function() {
         opacity: 0.7;
         cursor: not-allowed;
     }
-</style> 
+</style>

@@ -19,48 +19,43 @@ class WrittenAnswerEvaluationService
     protected $patternMatcher;
     
     /**
-     * @var MedicalKnowledgeService
-     */
-    protected $medicalKnowledge;
-    
-    /**
      * Default threshold for combined similarity to consider answers correct
      */
     const DEFAULT_SIMILARITY_THRESHOLD = 0.85;
-    
+
     /**
      * Cache configuration
      */
     private $cacheEnabled = true;
     private $cacheTtl = 86400; // 24 hours
-    
+
     /**
      * Specialized medical domains with their respective weights
      */
     private $medicalDomains = [
         'cardiovascular' => ['heart', 'cardiac', 'myocardial', 'coronary', 'artery', 'arteries', 'atrial', 'ventricular', 'circulation', 'bp', 'blood pressure', 'aorta', 'ventricle', 'atrium', 'endocardium', 'myocardium', 'epicardium', 'pericardium', 'valve', 'chordae', 'purkinje', 'sinoatrial', 'atrioventricular'],
-        
+
         'respiratory' => ['lung', 'pulmonary', 'respiratory', 'breath', 'breathing', 'ventilation', 'airway', 'alveoli', 'bronchi', 'oxygen', 'co2', 'trachea', 'larynx', 'pharynx', 'diaphragm', 'pleura', 'mediastinum', 'pneumothorax', 'spirometry', 'hypoxia', 'hypoxemia', 'hypercarbia', 'surfactant'],
-        
+
         'nervous' => ['brain', 'neural', 'nervous', 'cns', 'pns', 'neuron', 'parasympathetic', 'sympathetic', 'nerve', 'spinal', 'cord', 'cerebrum', 'cerebral', 'cerebellum', 'brainstem', 'cortex', 'thalamus', 'hypothalamus', 'hippocampus', 'amygdala', 'basal ganglia', 'axon', 'dendrite', 'oligodendrocyte', 'astrocyte', 'microglia', 'schwann', 'reflex', 'sensory', 'motor', 'neurotransmitter'],
-        
+
         'gastrointestinal' => ['gi', 'stomach', 'intestine', 'colon', 'bowel', 'digestion', 'digestive', 'liver', 'hepatic', 'gallbladder', 'pancreas', 'esophagus', 'duodenum', 'jejunum', 'ileum', 'cecum', 'rectum', 'peritoneum', 'mucosa', 'submucosa', 'muscularis', 'serosa', 'villus', 'peristalsis', 'enzyme', 'bile', 'absorption'],
-        
+
         'endocrine' => ['hormone', 'insulin', 'thyroid', 'adrenal', 'pituitary', 'pancreatic', 'diabetes', 'glycemic', 'gland', 'endocrine', 'tsh', 'cortisol', 'aldosterone', 'adrenaline', 'estrogen', 'testosterone', 'progesterone', 'thyroid', 'parathyroid', 'acth', 'prolactin', 'feedback', 'receptor', 'signaling'],
-        
+
         'musculoskeletal' => ['muscle', 'bone', 'joint', 'tendon', 'ligament', 'skeletal', 'orthopedic', 'fracture', 'spine', 'vertebral', 'spinal', 'cartilage', 'synovial', 'ossification', 'osteoblast', 'osteoclast', 'myosin', 'actin', 'sarcomere', 'contraction', 'neuromuscular', 'articulation', 'axial', 'appendicular', 'collagen', 'calcium'],
-        
+
         'urinary' => ['kidney', 'renal', 'bladder', 'urinary', 'urine', 'nephron', 'ureter', 'urethra', 'glomerular', 'nephritis', 'tubule', 'podocyte', 'filtration', 'reabsorption', 'secretion', 'collecting duct', 'loop of henle', 'cystitis', 'pyelonephritis', 'creatinine', 'urea', 'micturition'],
-        
+
         'immune' => ['immune', 'antibody', 'antigen', 'inflammation', 'lymphocyte', 'leukocyte', 'white blood cell', 'wbc', 'infection', 'neutrophil', 'basophil', 'eosinophil', 'monocyte', 'macrophage', 'dendritic', 'nk cell', 'cytokine', 'chemokine', 'complement', 'immunoglobulin', 'mhc', 'thymus', 'spleen', 'lymph node', 'humoral', 'cellular'],
-        
+
         'reproductive' => ['ovary', 'ovarian', 'testis', 'testes', 'testicular', 'uterus', 'uterine', 'vagina', 'vaginal', 'penis', 'penile', 'prostate', 'prostatic', 'gamete', 'spermatogenesis', 'oogenesis', 'ovulation', 'menstruation', 'fertilization', 'zygote', 'embryo', 'placenta', 'fetus', 'gestation', 'parturition'],
-        
+
         'histology' => ['tissue', 'epithelium', 'epithelial', 'connective', 'muscle', 'nervous', 'basement membrane', 'collagen', 'elastin', 'fibroblast', 'macrophage', 'mast cell', 'simple', 'stratified', 'squamous', 'cuboidal', 'columnar', 'transitional', 'goblet cell', 'microvilli', 'cilia', 'tight junction', 'desmosome', 'gap junction', 'hematoxylin', 'eosin'],
-        
+
         'biochemistry' => ['enzyme', 'protein', 'carbohydrate', 'lipid', 'nucleic acid', 'dna', 'rna', 'atp', 'metabolism', 'glycolysis', 'krebs', 'tca cycle', 'citric acid cycle', 'electron transport', 'oxidative phosphorylation', 'gluconeogenesis', 'glycogenesis', 'glycogenolysis', 'fatty acid', 'amino acid', 'transcription', 'translation', 'replication', 'mutation', 'coenzyme', 'cofactor']
     ];
-    
+
     /**
      * Course-specific pattern matchers
      */
@@ -69,48 +64,45 @@ class WrittenAnswerEvaluationService
         'anatomical_position' => ['anatomical position', 'anterior', 'posterior', 'superior', 'inferior', 'medial', 'lateral'],
         'skeletal_system' => ['axial skeleton', 'appendicular skeleton', 'bone classification', 'bone markings'],
         'joint_types' => ['fibrous joint', 'cartilaginous joint', 'synovial joint', 'arthrokinematics', 'osteokinematics'],
-        
+
         // Physiology patterns
         'action_potential' => ['depolarization', 'repolarization', 'hyperpolarization', 'threshold', 'sodium channel', 'potassium channel'],
         'cardiac_cycle' => ['systole', 'diastole', 'isovolumetric contraction', 'isovolumetric relaxation', 'atrial contraction'],
         'respiratory_mechanics' => ['inspiration', 'expiration', 'compliance', 'resistance', 'surfactant', 'boyle\'s law'],
         'renal_physiology' => ['glomerular filtration', 'tubular reabsorption', 'tubular secretion', 'countercurrent mechanism'],
-        
+
         // Biochemistry patterns
         'glycolysis' => ['glycolysis', 'pyruvate', 'atp generation', 'substrate-level phosphorylation'],
         'tca_cycle' => ['citric acid cycle', 'krebs cycle', 'oxidative decarboxylation', 'acetyl-coa'],
         'electron_transport' => ['electron transport chain', 'oxidative phosphorylation', 'proton gradient', 'atp synthase'],
         'dna_replication' => ['dna replication', 'leading strand', 'lagging strand', 'okazaki fragments', 'dna polymerase'],
-        
+
         // Histology patterns
         'epithelial_tissue' => ['epithelial tissue', 'simple epithelium', 'stratified epithelium', 'basement membrane'],
         'connective_tissue' => ['connective tissue', 'loose connective', 'dense connective', 'specialized connective'],
         'muscle_tissue' => ['skeletal muscle', 'cardiac muscle', 'smooth muscle', 'sarcomere organization']
     ];
-    
+
     /**
      * Medical symbols and notations
      */
     private $medicalSymbols = [];
     private $chemicalSymbols = [];
-    
+
     /**
      * Constructor
      */
     public function __construct(
         TextProcessingService $textProcessor,
-        PatternMatcherService $patternMatcher,
-        MedicalKnowledgeService $medicalKnowledge
+        PatternMatcherService $patternMatcher
     ) {
         $this->textProcessor = $textProcessor;
         $this->patternMatcher = $patternMatcher;
-        $this->medicalKnowledge = $medicalKnowledge;
-        
+
         // Initialize services with caching
         $this->textProcessor->setCacheConfig(true, 86400);
         $this->patternMatcher->setCacheConfig(true, 86400);
-        $this->medicalKnowledge->setCacheConfig(true, 86400);
-        
+
         // Initialize medical symbols translation map
         $this->initializeMedicalSymbols();
     }
@@ -255,9 +247,9 @@ class WrittenAnswerEvaluationService
     }
     
     /**
-     * Evaluate if a written answer is correct using enhanced scoring
-     * Domain-specific optimization for medical education
-     * 
+     * SMART GRADING ALGORITHM - The Sweet Spot Between Accuracy and Intelligence
+     * This system finds the optimal balance for medical education grading
+     *
      * @param string $submittedAnswer The answer submitted by the user
      * @param string $correctAnswer The correct answer from the database
      * @param array $alternativeAnswers Optional array of alternative correct answers
@@ -265,18 +257,17 @@ class WrittenAnswerEvaluationService
      * @return array Results including score, similarity, detailed metrics, and reason
      */
     public function evaluateAnswer(
-        string $submittedAnswer, 
-        string $correctAnswer, 
-        array $alternativeAnswers = [], 
+        string $submittedAnswer,
+        string $correctAnswer,
+        array $alternativeAnswers = [],
         float $similarityThreshold = self::DEFAULT_SIMILARITY_THRESHOLD
     ): array {
         $startTime = microtime(true);
-        
-        // 🚨 EARLY TERMINATION CHECKS - ADD THESE FIRST
+
+        // 🚨 CRITICAL EARLY CHECKS
         $submittedAnswer = trim($submittedAnswer);
         $correctAnswer = trim($correctAnswer);
-        
-        // Check 1: Empty answer = immediate fail
+
         if (empty($submittedAnswer)) {
             return [
                 'isCorrect' => false,
@@ -285,8 +276,7 @@ class WrittenAnswerEvaluationService
                 'processing_time' => microtime(true) - $startTime
             ];
         }
-        
-        // Check 1.5: Empty correct answer = immediate fail
+
         if (empty($correctAnswer)) {
             return [
                 'isCorrect' => false,
@@ -295,24 +285,13 @@ class WrittenAnswerEvaluationService
                 'processing_time' => microtime(true) - $startTime
             ];
         }
-        
-        // Check 2: Exact match = immediate success (fastest path)
+
+        // ✅ EXACT MATCH - FASTEST PATH
         if (strtolower($submittedAnswer) === strtolower($correctAnswer)) {
             return [
                 'isCorrect' => true,
                 'similarity' => 1.0,
                 'reason' => 'Perfect match!',
-                'processing_time' => microtime(true) - $startTime
-            ];
-        }
-        
-        // Check 3: Length comparison (quick heuristic)
-        $lengthDiff = abs(strlen($submittedAnswer) - strlen($correctAnswer));
-        if ($lengthDiff > strlen($correctAnswer) * 0.5) {
-            return [
-                'isCorrect' => false,
-                'similarity' => 0.1,
-                'reason' => 'Answer length significantly different',
                 'processing_time' => microtime(true) - $startTime
             ];
         }
@@ -538,35 +517,71 @@ class WrittenAnswerEvaluationService
                 }
             }
             
-            // Special case: Heart function with vague but correct answers
-            if (
-                (stripos($normalizedCorrect, 'heart pump') !== false || 
-                 stripos($normalizedCorrect, 'heart pumps') !== false) && 
-                (stripos($normalizedSubmitted, 'heart circulate') !== false || 
-                 stripos($normalizedSubmitted, 'heart circulates') !== false || 
-                 stripos($normalizedSubmitted, 'cardiac pump') !== false || 
-                 stripos($normalizedSubmitted, 'cardiac pumps') !== false || 
-                 stripos($normalizedSubmitted, 'heart pump') !== false || 
-                 stripos($normalizedSubmitted, 'heart pumps') !== false || 
-                 (stripos($normalizedSubmitted, 'heart') !== false && 
-                  stripos($normalizedSubmitted, 'blood') !== false && 
-                  (stripos($normalizedSubmitted, 'pump') !== false || 
-                   stripos($normalizedSubmitted, 'propel') !== false || 
-                   stripos($normalizedSubmitted, 'circulate') !== false || 
-                   stripos($normalizedSubmitted, 'move') !== false)))
-            ) {
-                // This is a vague but technically correct description of heart function
+            // Enhanced intelligent matching for common medical concepts
+            if ($this->isIntelligentConceptMatch($normalizedSubmitted, $normalizedCorrect)) {
                 return [
                     'isCorrect' => true,
-                    'similarity' => 0.85, // Just at the threshold
+                    'similarity' => 0.95, // High score for intelligent understanding
                     'metrics' => [
-                        'conceptual' => 0.85,
-                        'keyword' => 0.7,
-                        'hasContradictions' => false
+                        'conceptual' => 0.95,
+                        'keyword' => 0.85,
+                        'hasContradictions' => false,
+                        'intelligent_match' => true
                     ],
-                    'reason' => 'Vague but technically correct answer',
+                    'reason' => 'Intelligent understanding of medical concept',
+                    'courseTopic' => $courseTopic,
+                    'feedback' => 'Your answer demonstrates intelligent understanding of the medical concept, even with different wording.'
+                ];
+            }
+
+            // Special case: Heart function with enhanced understanding
+            if ($this->isHeartFunctionMatch($normalizedSubmitted, $normalizedCorrect)) {
+                return [
+                    'isCorrect' => true,
+                    'similarity' => 0.90,
+                    'metrics' => [
+                        'conceptual' => 0.90,
+                        'keyword' => 0.75,
+                        'hasContradictions' => false,
+                        'heart_function_match' => true
+                    ],
+                    'reason' => 'Correct understanding of heart function',
                     'courseTopic' => 'physiology',
-                    'feedback' => 'Your answer correctly captures the basic function of the heart, though it could be more detailed.'
+                    'feedback' => 'Your answer correctly captures the function of the heart, demonstrating good understanding.'
+                ];
+            }
+
+            // Special case: Medical abbreviations - be more lenient
+            if ($this->isMedicalAbbreviationMatch($normalizedSubmitted, $normalizedCorrect)) {
+                return [
+                    'isCorrect' => true,
+                    'similarity' => 0.92,
+                    'metrics' => [
+                        'conceptual' => 0.95,
+                        'keyword' => 0.80,
+                        'hasContradictions' => false,
+                        'abbreviation_match' => true
+                    ],
+                    'reason' => 'Correct use of medical abbreviations',
+                    'courseTopic' => $courseTopic,
+                    'feedback' => 'Your answer correctly uses medical abbreviations and demonstrates understanding of the concepts.'
+                ];
+            }
+
+            // Special case: Typos and misspellings - be very forgiving
+            if ($this->isTypoMatch($normalizedSubmitted, $normalizedCorrect)) {
+                return [
+                    'isCorrect' => true,
+                    'similarity' => 0.88,
+                    'metrics' => [
+                        'conceptual' => 0.90,
+                        'keyword' => 0.70,
+                        'hasContradictions' => false,
+                        'typo_match' => true
+                    ],
+                    'reason' => 'Correct despite minor typos',
+                    'courseTopic' => $courseTopic,
+                    'feedback' => 'Your answer is correct despite minor spelling variations. Pay attention to precise medical terminology.'
                 ];
             }
             
@@ -967,27 +982,19 @@ class WrittenAnswerEvaluationService
     
     /**
      * Identify the course topic based on the answer content
-     * Now using the MedicalKnowledgeService to identify domains
-     * 
+     * Using local domain identification logic
+     *
      * @param string $text The answer text to analyze
      * @return string|null Identified course topic or null if not identified
      */
     protected function identifyCourseTopic(string $text): ?string
     {
         return $this->getCachedOrCompute("courseTopic:" . md5($text), function() use ($text) {
-            // Use the MedicalKnowledgeService to identify the domain
-            $domainSlug = $this->medicalKnowledge->identifyDomain($text);
-            
-            // If we have a clear domain match, return it
-            if ($domainSlug) {
-                return $domainSlug;
-            }
-            
-            // Fall back to older implementation if no domain is identified
+            // Use local domain identification logic
             $normalizedText = strtolower($text);
             $topicScores = [];
-            
-            // Check for domain-specific terms using the legacy approach as fallback
+
+            // Check for domain-specific terms using the local approach
             foreach ($this->medicalDomains as $topic => $terms) {
                 $score = 0;
                 foreach ($terms as $term) {
@@ -995,18 +1002,18 @@ class WrittenAnswerEvaluationService
                         $score++;
                     }
                 }
-                
+
                 if ($score > 0) {
                     $topicScores[$topic] = $score;
                 }
             }
-            
+
             // If we found matches, return the topic with the highest score
             if (!empty($topicScores)) {
                 arsort($topicScores);
                 return key($topicScores);
             }
-            
+
             return null;
         });
     }
@@ -2005,28 +2012,384 @@ class WrittenAnswerEvaluationService
     }
     
     /**
+     * Intelligent concept matching that understands context and semantics
+     * This handles cases like "blood flows in vein" vs "vein flows in blood"
+     *
+     * @param string $normalizedSubmitted The normalized submitted answer
+     * @param string $normalizedCorrect The normalized correct answer
+     * @return bool Whether this is an intelligent concept match
+     */
+    private function isIntelligentConceptMatch(string $normalizedSubmitted, string $normalizedCorrect): bool
+    {
+        // Flow direction understanding: "blood flows in vein" should match "blood flows through veins"
+        if ($this->hasFlowDirectionMatch($normalizedSubmitted, $normalizedCorrect)) {
+            return true;
+        }
+
+        // Location understanding: "heart in chest" should match "heart located in thorax"
+        if ($this->hasLocationMatch($normalizedSubmitted, $normalizedCorrect)) {
+            return true;
+        }
+
+        // Function understanding: "heart pumps blood" should match "heart functions to circulate blood"
+        if ($this->hasFunctionMatch($normalizedSubmitted, $normalizedCorrect)) {
+            return true;
+        }
+
+        // Process understanding: "protein synthesis in ribosome" should match "protein synthesis occurs in ribosomes"
+        if ($this->hasProcessMatch($normalizedSubmitted, $normalizedCorrect)) {
+            return true;
+        }
+
+        // Quantitative understanding: "BP 120/80" should match "blood pressure is 120 over 80"
+        if ($this->hasQuantitativeMatch($normalizedSubmitted, $normalizedCorrect)) {
+            return true;
+        }
+
+        return false;
+    }
+
+    /**
+     * Check for flow direction matches (blood flows in vein vs vein flows in blood)
+     */
+    private function hasFlowDirectionMatch(string $submitted, string $correct): bool
+    {
+        // Pattern: "X flows in Y" should match "X flows through Y"
+        $flowPatterns = [
+            '/\b(blood|oxygen|fluid|urine)\s+(?:flows?\s+)?(?:in|into|from)\s+(vein|artery|capillary|heart|lung|kidney)\b/i',
+            '/\b(vein|artery|capillary|heart|lung|kidney)\s+(?:flows?\s+)?(?:in|into|from)\s+(blood|oxygen|fluid|urine)\b/i',
+        ];
+
+        foreach ($flowPatterns as $pattern) {
+            if (preg_match($pattern, $submitted) && preg_match($pattern, $correct)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Check for location matches (heart in chest vs heart located in thorax)
+     */
+    private function hasLocationMatch(string $submitted, string $correct): bool
+    {
+        $locationPatterns = [
+            '/\b(heart|lung|liver|kidney|stomach|spleen)\s+(?:is\s+)?(?:in|at|on|located\s+in)\s+(chest|thorax|abdomen|pelvis|peritoneum)\b/i',
+            '/\b(chest|thorax|abdomen|pelvis|peritoneum)\s+(?:contains?|has|houses?)\s+(heart|lung|liver|kidney|stomach|spleen)\b/i',
+        ];
+
+        foreach ($locationPatterns as $pattern) {
+            if (preg_match($pattern, $submitted) && preg_match($pattern, $correct)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Check for function matches (heart pumps blood vs heart functions to circulate blood)
+     */
+    private function hasFunctionMatch(string $submitted, string $correct): bool
+    {
+        $functionPatterns = [
+            '/\b(heart|lungs|kidneys|liver|stomach)\s+(?:function|work|role|job)\s+(?:to\s+)?(.+)/i',
+            '/\b(.+)\s+(?:is|are)\s+(?:function|role|purpose)\s+of\s+(heart|lungs|kidneys|liver|stomach)/i',
+        ];
+
+        foreach ($functionPatterns as $pattern) {
+            if (preg_match($pattern, $submitted) && preg_match($pattern, $correct)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Check for process matches (protein synthesis in ribosome vs protein synthesis occurs in ribosomes)
+     */
+    private function hasProcessMatch(string $submitted, string $correct): bool
+    {
+        $processPatterns = [
+            '/\b(protein|synthesis|dna|replication|glycolysis|respiration)\s+(?:happens?|occurs?|takes\s+place)\s+(?:in|at|on)\s+(.+)/i',
+            '/\b(.+)\s+(?:is|are)\s+(?:location|site|place)\s+(?:for|of)\s+(protein|synthesis|dna|replication|glycolysis|respiration)/i',
+        ];
+
+        foreach ($processPatterns as $pattern) {
+            if (preg_match($pattern, $submitted) && preg_match($pattern, $correct)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Check for quantitative matches (BP 120/80 vs blood pressure is 120 over 80)
+     */
+    private function hasQuantitativeMatch(string $submitted, string $correct): bool
+    {
+        $quantitativePatterns = [
+            '/\b(bp|blood pressure|hr|heart rate)\s+(?:is|are|=)\s*(\d+)(?:\/|over)?(\d+)?/i',
+            '/\b(\d+)(?:\/|over)?(\d+)?\s+(?:is|are)?\s+(bp|blood pressure|hr|heart rate)/i',
+        ];
+
+        foreach ($quantitativePatterns as $pattern) {
+            if (preg_match($pattern, $submitted) && preg_match($pattern, $correct)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Enhanced heart function matching with better understanding
+     */
+    private function isHeartFunctionMatch(string $normalizedSubmitted, string $normalizedCorrect): bool
+    {
+        // Core heart function keywords
+        $heartKeywords = ['heart', 'cardiac', 'myocardial'];
+        $functionKeywords = ['pump', 'circulate', 'propel', 'move', 'flow', 'blood'];
+
+        $hasHeartKeyword = false;
+        $hasFunctionKeyword = false;
+        $hasBloodKeyword = false;
+
+        // Check submitted answer
+        foreach ($heartKeywords as $keyword) {
+            if (stripos($normalizedSubmitted, $keyword) !== false) {
+                $hasHeartKeyword = true;
+                break;
+            }
+        }
+
+        foreach ($functionKeywords as $keyword) {
+            if (stripos($normalizedSubmitted, $keyword) !== false) {
+                $hasFunctionKeyword = true;
+                break;
+            }
+        }
+
+        if (stripos($normalizedSubmitted, 'blood') !== false) {
+            $hasBloodKeyword = true;
+        }
+
+        // If submitted answer mentions heart function with blood, it's likely correct
+        if ($hasHeartKeyword && ($hasFunctionKeyword || $hasBloodKeyword)) {
+            // Check if correct answer is also about heart function
+            $correctHasHeartKeyword = false;
+            $correctHasFunctionKeyword = false;
+
+            foreach ($heartKeywords as $keyword) {
+                if (stripos($normalizedCorrect, $keyword) !== false) {
+                    $correctHasHeartKeyword = true;
+                    break;
+                }
+            }
+
+            foreach ($functionKeywords as $keyword) {
+                if (stripos($normalizedCorrect, $keyword) !== false) {
+                    $correctHasFunctionKeyword = true;
+                    break;
+                }
+            }
+
+            if ($correctHasHeartKeyword && $correctHasFunctionKeyword) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Check for medical abbreviation matches
+     */
+    private function isMedicalAbbreviationMatch(string $normalizedSubmitted, string $normalizedCorrect): bool
+    {
+        // Common medical abbreviations and their expansions
+        $abbreviations = [
+            // Nervous system
+            'sns' => 'sympathetic nervous system',
+            'pns' => 'parasympathetic nervous system',
+            'ans' => 'autonomic nervous system',
+            'cns' => 'central nervous system',
+
+            // Cardiovascular
+            'bp' => 'blood pressure',
+            'hr' => 'heart rate',
+            'co' => 'cardiac output',
+
+            // Respiratory
+            'o2' => 'oxygen',
+            'co2' => 'carbon dioxide',
+            'spo2' => 'oxygen saturation',
+
+            // Biochemistry
+            'atp' => 'adenosine triphosphate',
+            'nadh' => 'nicotinamide adenine dinucleotide',
+            'fadh' => 'flavin adenine dinucleotide',
+            'dna' => 'deoxyribonucleic acid',
+            'rna' => 'ribonucleic acid',
+
+            // Lab values
+            'na' => 'sodium',
+            'k' => 'potassium',
+            'ca' => 'calcium',
+            'mg' => 'magnesium',
+            'cl' => 'chloride',
+
+            // Other medical
+            'gi' => 'gastrointestinal',
+            'cv' => 'cardiovascular',
+            'er' => 'endoplasmic reticulum',
+            'mt' => 'mitochondria'
+        ];
+
+        foreach ($abbreviations as $abbr => $expansion) {
+            // Check if abbreviation is used in submitted answer
+            if (stripos($normalizedSubmitted, $abbr) !== false) {
+                // Check if the full term or abbreviation is in correct answer
+                if (stripos($normalizedCorrect, $expansion) !== false ||
+                    stripos($normalizedCorrect, $abbr) !== false) {
+                    return true;
+                }
+            }
+
+            // Check reverse: if expansion is in submitted but abbreviation is in correct
+            if (stripos($normalizedSubmitted, $expansion) !== false) {
+                if (stripos($normalizedCorrect, $abbr) !== false ||
+                    stripos($normalizedCorrect, $expansion) !== false) {
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Check for typo matches with intelligent correction
+     */
+    private function isTypoMatch(string $normalizedSubmitted, string $normalizedCorrect): bool
+    {
+        // Use the text processor's typo correction to compare
+        $correctedSubmitted = $this->textProcessor->normalizeText($normalizedSubmitted);
+        $correctedCorrect = $this->textProcessor->normalizeText($normalizedCorrect);
+
+        // If correction makes them match, it's a typo match
+        if ($correctedSubmitted === $correctedCorrect) {
+            return true;
+        }
+
+        // Check for common medical typos specifically
+        $medicalTypos = [
+            // Heart and cardiovascular
+            'hart' => 'heart',
+            'hear' => 'heart',
+            'caridac' => 'cardiac',
+            'cardic' => 'cardiac',
+            'ventrical' => 'ventricle',
+            'ventricl' => 'ventricle',
+            'artey' => 'artery',
+            'arteries' => 'artery',
+            'vein' => 'vein',
+            'veins' => 'vein',
+
+            // Nervous system
+            'parasympatheic' => 'parasympathetic',
+            'sympatheic' => 'sympathetic',
+            'parasympathetc' => 'parasympathetic',
+            'sympathetc' => 'sympathetic',
+            'nueron' => 'neuron',
+            'neurone' => 'neuron',
+
+            // Respiratory
+            'lung' => 'lung',
+            'lungs' => 'lung',
+            'alveloi' => 'alveoli',
+            'alvelo' => 'alveoli',
+            'diaphram' => 'diaphragm',
+            'diaphrgm' => 'diaphragm',
+            'trachea' => 'trachea',
+            'trache' => 'trachea',
+
+            // Biochemistry
+            'protien' => 'protein',
+            'protine' => 'protein',
+            'carbohydrate' => 'carbohydrate',
+            'carb' => 'carbohydrate',
+            'glycolysis' => 'glycolysis',
+            'glyclysis' => 'glycolysis',
+            'pyruvate' => 'pyruvate',
+            'pyruvat' => 'pyruvate',
+
+            // Histology
+            'epithelal' => 'epithelial',
+            'epithelum' => 'epithelial',
+            'connective' => 'connective',
+            'conective' => 'connective',
+            'muscel' => 'muscle',
+            'muscels' => 'muscle',
+
+            // General medical
+            'tempreture' => 'temperature',
+            'temp' => 'temperature',
+            'presure' => 'pressure',
+            'pressur' => 'pressure',
+            'metablism' => 'metabolism',
+            'metabolsm' => 'metabolism',
+            'inflamation' => 'inflammation',
+            'infetcion' => 'infection',
+        ];
+
+        foreach ($medicalTypos as $typo => $correction) {
+            // Check if typo is in submitted answer and correction is in correct answer
+            if (stripos($normalizedSubmitted, $typo) !== false) {
+                if (stripos($normalizedCorrect, $correction) !== false ||
+                    stripos($normalizedCorrect, $typo) !== false) {
+                    return true;
+                }
+            }
+
+            // Check if typo is in correct answer and correction is in submitted answer
+            if (stripos($normalizedCorrect, $typo) !== false) {
+                if (stripos($normalizedSubmitted, $correction) !== false ||
+                    stripos($normalizedSubmitted, $typo) !== false) {
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
+    /**
      * Check if the answer contains sympathetic effects
-     * 
+     *
      * @param string $submittedAnswer The submitted answer
      * @param string $correctAnswer The correct answer
      * @return bool Whether sympathetic effects are mentioned
      */
     protected function isSympatheticEffectsMatch(string $submittedAnswer, string $correctAnswer): bool
     {
-        return $this->patternMatcher->matchesPattern('sympathetic_effects', $submittedAnswer) && 
+        return $this->patternMatcher->matchesPattern('sympathetic_effects', $submittedAnswer) &&
                $this->patternMatcher->matchesPattern('sympathetic_effects', $correctAnswer);
     }
-    
+
     /**
      * Check if the answer contains parasympathetic effects
-     * 
+     *
      * @param string $submittedAnswer The submitted answer
      * @param string $correctAnswer The correct answer
      * @return bool Whether parasympathetic effects are mentioned
      */
     protected function isParasympatheticEffectsMatch(string $submittedAnswer, string $correctAnswer): bool
     {
-        return $this->patternMatcher->matchesPattern('parasympathetic_effects', $submittedAnswer) && 
+        return $this->patternMatcher->matchesPattern('parasympathetic_effects', $submittedAnswer) &&
                $this->patternMatcher->matchesPattern('parasympathetic_effects', $correctAnswer);
     }
     

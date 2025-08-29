@@ -34,15 +34,17 @@ class SecurityHeaders
      */
     private const CSP_DIRECTIVES = [
         "default-src 'self'",
-        "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://trusted.cdn.com",
-        "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://trusted.cdn.com",
-        "font-src 'self' https://fonts.gstatic.com data:",
+        "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://code.jquery.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://www.youtube.com https://youtube.com https://www.youtube-nocookie.com https://youtube-nocookie.com",
+        "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com",
+        "font-src 'self' https://fonts.gstatic.com data: https://cdnjs.cloudflare.com",
         "img-src 'self' data: https: blob:",
         "media-src 'self' https: blob:",
         "object-src 'none'",
         "base-uri 'self'",
         "form-action 'self'",
+        "frame-src 'self' https://www.youtube.com https://youtube.com https://www.youtube-nocookie.com https://youtube-nocookie.com", // ✅ Allow YouTube embeds
         "frame-ancestors 'none'", // Equivalent to X-Frame-Options: DENY
+        "connect-src 'self' https://www.youtube.com https://youtube.com https://www.youtube-nocookie.com https://youtube-nocookie.com https://www.googleapis.com https://fonts.googleapis.com https://fonts.gstatic.com", // ✅ Allow YouTube API
         "upgrade-insecure-requests",
         "block-all-mixed-content"
     ];

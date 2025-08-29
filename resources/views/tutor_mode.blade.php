@@ -185,23 +185,31 @@
             width: 40px;
             height: 40px;
             border-radius: 50%;
-            background-size: cover;
-            background-position: center;
             display: flex;
             align-items: center;
             justify-content: center;
             font-weight: 600;
             color: white;
             text-decoration: none;
-            transition: transform 0.3s ease;
+            transition: all 0.3s ease;
+            box-shadow: 0 2px 8px rgba(0, 123, 255, 0.2);
+            background-size: cover;
+            background-position: center;
+            overflow: hidden;
         }
 
-        .profile-circle.no-image {
-            background-color: #007bff;
+        .profile-circle img {
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            object-fit: cover;
+            display: block;
         }
 
         .profile-circle:hover {
             transform: scale(1.1);
+            box-shadow: 0 4px 12px rgba(0, 123, 255, 0.3);
+            color: white;
         }
 
         .main-content {
@@ -211,17 +219,17 @@
 
         .container {
             background: white;
-            padding: 2rem;
+            padding: 2.5rem;
             border-radius: 12px;
             box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
-            max-width: 1000px;
+            max-width: 1200px;
             margin: 0 auto;
         }
 
         .question-card {
             background: white;
             border-radius: 12px;
-            padding: 2rem;
+            padding: 2.5rem;
             box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
             margin-bottom: 1rem;
         }
@@ -239,15 +247,15 @@
         }
 
         .question-text {
-            font-size: 1.25rem;
+            font-size: 1.4rem;
             line-height: 1.6;
-            color: #333;
-            font-weight: 500;
+            color: #000000;
+            font-weight: 425;
             margin-bottom: 1.5rem;
         }
 
         .question-image {
-            width: 280px;
+            width: 380px;
             flex-shrink: 0;
         }
 
@@ -458,7 +466,7 @@
 
             .question-image {
                 width: 100%;
-                max-width: 280px;
+                max-width: 420px;
                 margin: 0 auto 1.5rem;
             }
 
@@ -736,11 +744,31 @@
             <a class="navbar-brand" href="/">MedCapsule</a>
             <div class="nav-links">
                 <a href="javascript:history.back()" class="nav-link">← Back</a>
-                <a href="{{ route('profile') }}" class="profile-circle {{ !Auth::user()->profile_picture_url ? 'no-image' : '' }}" 
-                     style="{{ Auth::user()->profile_picture_url ? 'background-image: url(' . asset(Auth::user()->profile_picture_url) . ');' : '' }}">
-                    @if(!Auth::user()->profile_picture_url)
-                        {{ substr(Auth::user()->name, 0, 1) }}
-                    @endif
+                @php
+                    $profileImageUrl = null;
+                    if (Auth::user() && Auth::user()->profile_picture_url) {
+                        // Check if it's an external URL (starts with http/https)
+                        if (filter_var(Auth::user()->profile_picture_url, FILTER_VALIDATE_URL)) {
+                            $profileImageUrl = Auth::user()->profile_picture_url;
+                        } else {
+                            // Local file - use secure_url with cache busting
+                            $localPath = storage_path('app/public/' . Auth::user()->profile_picture_url);
+                            if (file_exists($localPath)) {
+                                $profileImageUrl = secure_url(Auth::user()->profile_picture_url) . '?v=' . time();
+                            }
+                        }
+                    }
+
+                    // Fallback to UI Avatars if no valid image
+                    if (!$profileImageUrl) {
+                        $profileImageUrl = 'https://ui-avatars.com/api/?name=' . urlencode(Auth::user()->name) . '&size=200&background=007bff&color=ffffff';
+                    }
+                @endphp
+                <a href="{{ route('profile') }}" class="profile-circle">
+                    <img src="{{ $profileImageUrl }}"
+                         alt="Profile Picture"
+                         class="profile-image"
+                         onerror="this.src='https://ui-avatars.com/api/?name={{ urlencode(Auth::user()->name) }}&size=200&background=007bff&color=ffffff'">
                 </a>
             </div>
         </div>

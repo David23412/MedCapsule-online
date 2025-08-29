@@ -317,14 +317,12 @@
             unreadCount: 0,
             loading: false,
             lastFetched: 0,
-            websocket: null,
-            
             init() {
                 // Fetch initial notifications immediately
                 this.fetchNotifications();
-                
-                // ELIMINATE POLLING - Use WebSocket for instant updates
-                this.initializeWebSocket();
+
+                // Use simple polling for notifications
+                this.initializePolling();
 
                 // Add bell ring animation when new notifications arrive
                 this.$watch('unreadCount', (newValue, oldValue) => {
@@ -337,36 +335,14 @@
                     }
                 });
             },
-            
-            // NUCLEAR SPEED: WebSocket for instant notification delivery
-            initializeWebSocket() {
-                // Connect to WebSocket for real-time notifications
-                this.websocket = new WebSocket(`ws://${window.location.host}/notifications/stream`);
-                
-                this.websocket.onopen = () => {
-                    console.log('🔥 NUCLEAR SPEED: WebSocket connected for instant notifications');
-                };
-                
-                this.websocket.onmessage = (event) => {
-                    const data = JSON.parse(event.data);
-                    
-                    // INSTANT UPDATE - No polling delay
-                    if (data.type === 'notification') {
-                        this.unreadCount = data.unread_count;
-                        this.notifications = data.notifications || [];
-                        this.updateBadge();
-                    }
-                };
-                
-                this.websocket.onerror = (error) => {
-                    console.error('WebSocket error:', error);
-                    // Fallback to immediate fetch (still faster than polling)
+
+            // Simple polling for notifications
+            initializePolling() {
+                // Poll every 60 seconds for notifications
+                setInterval(() => {
                     this.fetchNotifications();
-                };
+                }, 60000);
             },
-            
-            // ELIMINATE POLLING - Remove all setTimeout and setInterval
-            // No more polling delays - WebSocket handles everything
             
             // Fetch notifications from server with aggressive caching
             async fetchNotifications() {
@@ -432,11 +408,9 @@
                 }
             },
             
-            // Cleanup WebSocket on page unload
+            // Simple cleanup function
             cleanup() {
-                if (this.websocket) {
-                    this.websocket.close();
-                }
+                // No WebSocket to cleanup - using polling
             },
             
             // Methods to filter notifications by type for better organization
@@ -517,4 +491,4 @@
             }
         }
     });
-</script> 
+</script>

@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\QuizExecutionRequest;
 use App\Services\QuizPerformanceService;
 use App\Services\GradingService;
+use App\Models\Topic;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
@@ -41,11 +42,19 @@ class QuizGradingController extends Controller
 
             DB::beginTransaction();
 
-            // Grade the quiz
+            // Get the user and topic objects
+            $user = auth()->user();
+            $topic = Topic::with('course')->findOrFail($quizId);
+
+            // Grade the quiz with proper parameters
             $gradingResult = $this->gradingService->gradeQuiz(
-                $quizId,
-                $userId,
-                $validated['answers'] ?? []
+                $user,
+                $validated['answers'] ?? [],
+                $validated['duration_seconds'] ?? 0,
+                $validated['mode'] ?? 'quiz',
+                $topic,
+                $topic->course,
+                $validated['assignment_id'] ?? null
             );
 
             DB::commit();

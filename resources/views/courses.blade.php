@@ -1,4 +1,4 @@
-N TN A<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -6,10 +6,29 @@ N TN A<!DOCTYPE html>
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>MedCapsule</title>
 
+    <!-- PWA Meta Tags -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="MedCapsule">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="theme-color" content="#667eea">
+    <meta name="msapplication-TileColor" content="#667eea">
+    <meta name="msapplication-TileImage" content="/images/icon-144x144.png">
+    <meta name="application-name" content="MedCapsule">
+    <meta name="description" content="The ultimate medical education platform for students and professionals. Learn, practice, and excel in medical knowledge.">
+
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="/manifest.json">
+
+    <!-- Apple Touch Icons -->
+    <link rel="apple-touch-icon" sizes="180x180" href="/images/icon-192x192.png">
+    <link rel="apple-touch-icon" sizes="192x192" href="/images/icon-192x192.png">
+    <link rel="apple-touch-icon" sizes="512x512" href="/images/icon-512x512.png">
+
     <!-- Favicon -->
-    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 50'%3E%3Crect fill='%23007bff' x='10' y='15' width='80' height='20' rx='10' ry='10' /%3E%3Crect x='50' y='15' width='40' height='20' fill='%23ff0000' rx='0 10 10 0' ry='10'/%3E%3Cline x1='50' y1='15' x2='50' y2='35' stroke='white' stroke-width='1.5' stroke-dasharray='2,1'/%3E%3C/svg%3E">
-    <link rel="shortcut icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 50'%3E%3Crect fill='%23007bff' x='10' y='15' width='80' height='20' rx='10' ry='10' /%3E%3Crect x='50' y='15' width='40' height='20' fill='%23ff0000' rx='0 10 10 0' ry='10'/%3E%3Cline x1='50' y1='15' x2='50' y2='35' stroke='white' stroke-width='1.5' stroke-dasharray='2,1'/%3E%3C/svg%3E">
-    <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 50'%3E%3Crect fill='%23007bff' x='10' y='15' width='80' height='20' rx='10' ry='10' /%3E%3Crect x='50' y='15' width='40' height='20' fill='%23ff0000' rx='0 10 10 0' ry='10'/%3E%3Cline x1='50' y1='15' x2='50' y2='35' stroke='white' stroke-width='1.5' stroke-dasharray='2,1'/%3E%3C/svg%3E">
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 50'%3E%3Crect fill='%233579F6' x='10' y='15' width='80' height='20' rx='10' ry='10' /%3E%3Crect x='50' y='15' width='40' height='20' fill='%23ff0000' rx='0 10 10 0' ry='10'/%3E%3Cline x1='50' y1='15' x2='50' y2='35' stroke='white' stroke-width='1.5' stroke-dasharray='2,1'/%3E%3C/svg%3E">
+    <link rel="shortcut icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 50'%3E%3Crect fill='%233579F6' x='10' y='15' width='80' height='20' rx='10' ry='10' /%3E%3Crect x='50' y='15' width='40' height='20' fill='%23ff0000' rx='0 10 10 0' ry='10'/%3E%3Cline x1='50' y1='15' x2='50' y2='35' stroke='white' stroke-width='1.5' stroke-dasharray='2,1'/%3E%3C/svg%3E">
+    <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 50'%3E%3Crect fill='%233579F6' x='10' y='15' width='80' height='20' rx='10' ry='10' /%3E%3Crect x='50' y='15' width='40' height='20' fill='%23ff0000' rx='0 10 10 0' ry='10'/%3E%3Cline x1='50' y1='15' x2='50' y2='35' stroke='white' stroke-width='1.5' stroke-dasharray='2,1'/%3E%3C/svg%3E">
 
     <!-- RUTHLESS: Resource hints for faster loading -->
     <link rel="dns-prefetch" href="//fonts.googleapis.com">
@@ -79,7 +98,10 @@ N TN A<!DOCTYPE html>
     
     <!-- LOAD CUSTOM FONTS IN BACKGROUND - FIXED ONLOAD HANDLER -->
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="preload" as="style" onload="if(this&&document.body){this.onload=null;this.rel='stylesheet';document.body.style.fontFamily='Poppins, -apple-system, BlinkMacSystemFont, sans-serif';}">
-    
+
+    <!-- BOLD IMPACTFUL FONT FOR MEDICAL COURSES HEADER -->
+    <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&display=swap" rel="preload" as="style" onload="if(this){this.onload=null;this.rel='stylesheet';}">
+
     <!-- FONT AWESOME - ASYNC LOAD - FIXED ONLOAD HANDLER -->
     <link rel="preload" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" as="style" onload="if(this){this.onload=null;this.rel='stylesheet';}">
     <noscript><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css"></noscript>
@@ -115,7 +137,6 @@ N TN A<!DOCTYPE html>
             left: 0;
             right: 0;
             z-index: 1000;
-            border-bottom: 1px solid rgba(0,0,0,0.05);
         }
 
         .navbar-brand {
@@ -161,7 +182,7 @@ N TN A<!DOCTYPE html>
         }
 
         .dropdown-menu-end {
-            transform: translateX(-400px) !important;
+            transform: translateX(-450px) !important;
         }
 
         .dropdown-menu.show {
@@ -191,6 +212,20 @@ N TN A<!DOCTYPE html>
             background-color: rgba(33, 150, 243, 0.1);
             color: #2196f3;
             transform: translateX(5px);
+        }
+
+        /* Logout button specific red hover styling */
+        .logout-btn:hover,
+        .logout-btn:focus {
+            background-color: rgba(220, 53, 69, 0.1) !important;
+            color: #dc3545 !important;
+            transform: translateX(5px);
+            border-color: rgba(220, 53, 69, 0.2) !important;
+        }
+
+        .logout-btn:hover i,
+        .logout-btn:focus i {
+            color: #dc3545 !important;
         }
 
         .dropdown-item i {
@@ -422,12 +457,13 @@ N TN A<!DOCTYPE html>
 
 
         .hero-section {
-            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
-            padding: 6rem 2rem 3rem; /* Further reduced padding */
+            background: white;
+            padding: 4rem 2rem 2rem; /* Much more compact padding */
             text-align: center;
             position: relative;
-            margin-bottom: 2rem; /* Reduced margin */
+            margin-bottom: 1rem; /* Reduced margin */
             overflow: hidden;
+            border: none; /* Remove all borders to create seamless illusion */
             -webkit-text-size-adjust: 100%; /* Prevent Safari text auto-sizing */
         }
 
@@ -460,13 +496,14 @@ N TN A<!DOCTYPE html>
         }
 
         .hero-title {
-            font-size: 1.75rem; /* Smaller base size */
-            font-weight: 600;
-            color: #2196f3;
-            margin-bottom: 0.75rem;
+            font-size: 2.5rem;
+            font-weight: 700;
+            color: #3579F6;
+            margin-bottom: 1rem;
+            margin-top: 1.25rem;
+            text-align: center;
             position: relative;
-            letter-spacing: -0.01em;
-            -webkit-text-size-adjust: 100%; /* Prevent Safari text auto-sizing */
+            z-index: 10;
         }
 
         @supports (-webkit-touch-callout: none) {
@@ -546,14 +583,14 @@ N TN A<!DOCTYPE html>
         }
 
         .course-card {
-            flex: 0 0 420px;
+            flex: 0 0 435px;
             scroll-snap-align: start;
             background: white;
             border-radius: 16px;
             overflow: hidden;
             box-shadow: 0 3px 6px rgba(0, 0, 0, 0.08);
             transition: transform 0.2s ease;
-            width: 420px;
+            width: 435px;
             margin-bottom: 3rem;
             position: relative;
             border: 2px solid var(--course-color, #3b82f6);
@@ -587,7 +624,7 @@ N TN A<!DOCTYPE html>
 
         .course-image {
             position: relative;
-            height: 580px;
+            height: 590px;
             background-size: cover;
             background-position: center;
             background-repeat: no-repeat;
@@ -1000,25 +1037,530 @@ N TN A<!DOCTYPE html>
             visibility: visible;
         }
 
-        .floating-capsule {
+        /* 🌟 MEDICAL ANIMATION SYSTEM - DNA, MOLECULES & ICONS 🌟 */
+
+        /* Enhanced DNA Double Helix Animation - ULTRA FAST */
+        .enhanced-dna-helix {
             position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            width: 120px;
-            height: 240px;
-            background: linear-gradient(135deg, rgba(33, 150, 243, 0.2), rgba(33, 150, 243, 0.05));
-            border-radius: 60px;
-            filter: blur(2px);
-            animation: floatCapsule 8s infinite ease-in-out;
-            z-index: 0;
+            top: 15%;
+            left: 8%;
+            width: 100px;
+            height: 150px;
+            z-index: 1;
+            animation: dnaHelixRotate 8s linear infinite;
+            transform-style: preserve-3d;
+            will-change: transform;
         }
 
-        @keyframes floatCapsule {
-            0%, 100% { transform: translate(-50%, -50%) rotate(0deg); }
-            25% { transform: translate(-45%, -55%) rotate(5deg); }
-            75% { transform: translate(-55%, -45%) rotate(-5deg); }
+        .dna-strand-left {
+            position: absolute;
+            width: 3px;
+            height: 100%;
+            background: linear-gradient(180deg, #1e40af, #2563eb, #3b82f6);
+            border-radius: 2px;
+            left: 15px;
+            filter: drop-shadow(0 0 15px rgba(220, 38, 38, 0.9)) drop-shadow(0 0 25px rgba(248, 113, 113, 0.7));
+            animation: dnaGlow 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
         }
+
+        .dna-strand-right {
+            position: absolute;
+            width: 3px;
+            height: 100%;
+            background: linear-gradient(180deg, #dc2626, #ef4444, #f87171);
+            border-radius: 2px;
+            right: 5px;
+            filter: drop-shadow(0 0 15px rgba(220, 38, 38, 0.8)) drop-shadow(0 0 25px rgba(248, 113, 113, 0.6));
+            animation: dnaGlow 3s cubic-bezier(0.4, 0, 0.6, 1) infinite 1.5s;
+        }
+
+        .dna-bond {
+            position: absolute;
+            width: 25px;
+            height: 2px;
+            background: linear-gradient(90deg, rgba(30, 64, 175, 0.6), rgba(220, 38, 38, 0.6));
+            border-radius: 1px;
+            left: 18px;
+            transform-origin: center;
+            animation: dnaBondPulse 5s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+            box-shadow: 0 0 8px rgba(30, 64, 175, 0.3);
+        }
+
+        @keyframes dnaHelixRotate {
+            0% {
+                transform: rotateY(0deg) scale(1);
+            }
+            25% {
+                transform: rotateY(90deg) scale(1.01);
+            }
+            50% {
+                transform: rotateY(180deg) scale(1.02);
+            }
+            75% {
+                transform: rotateY(270deg) scale(1.01);
+            }
+            100% {
+                transform: rotateY(360deg) scale(1);
+            }
+        }
+
+        @keyframes dnaGlow {
+            0%, 100% {
+                filter: drop-shadow(0 0 12px rgba(74, 144, 226, 0.4));
+                transform: scaleY(1);
+                opacity: 0.8;
+            }
+            25% {
+                filter: drop-shadow(0 0 15px rgba(74, 144, 226, 0.5));
+                transform: scaleY(1.005);
+                opacity: 0.9;
+            }
+            50% {
+                filter: drop-shadow(0 0 20px rgba(74, 144, 226, 0.6));
+                transform: scaleY(1.01);
+                opacity: 1;
+            }
+            75% {
+                filter: drop-shadow(0 0 15px rgba(74, 144, 226, 0.5));
+                transform: scaleY(1.005);
+                opacity: 0.9;
+            }
+        }
+
+        @keyframes dnaBondPulse {
+            0%, 100% {
+                opacity: 0.5;
+                transform: scaleX(0.95);
+                filter: brightness(0.9);
+            }
+            50% {
+                opacity: 0.8;
+                transform: scaleX(1.05);
+                filter: brightness(1.1);
+            }
+        }
+
+        /* Floating Molecules (positioned away from title) */
+        .molecule {
+            position: absolute;
+            animation: moleculeFloat 15s ease-in-out infinite;
+            z-index: 1;
+        }
+
+        .molecule.glucose {
+            top: 65%;
+            right: 20%;
+            width: 60px;
+            height: 40px;
+            animation-delay: 0s;
+        }
+
+        .molecule.water {
+            top: 75%;
+            left: 15%;
+            width: 40px;
+            height: 30px;
+            animation-delay: -7s;
+        }
+
+        .atom {
+            position: absolute;
+            border-radius: 50%;
+            animation: atomPulse 2s ease-in-out infinite;
+        }
+
+        .atom.hydrogen {
+            width: 6px;
+            height: 6px;
+            background: linear-gradient(135deg, #3b82f6, #60a5fa);
+        }
+
+        .atom.oxygen {
+            width: 8px;
+            height: 8px;
+            background: linear-gradient(135deg, #ef4444, #f87171);
+        }
+
+        .atom.carbon {
+            width: 7px;
+            height: 7px;
+            background: linear-gradient(135deg, #10b981, #34d399);
+        }
+
+        .bond {
+            position: absolute;
+            height: 1px;
+            background: rgba(255, 255, 255, 0.6);
+            transform-origin: center;
+        }
+
+        @keyframes moleculeFloat {
+            0%, 100% {
+                transform: translateY(0px) rotate(0deg);
+                opacity: 0.7;
+            }
+            25% {
+                transform: translateY(-10px) rotate(90deg);
+                opacity: 0.9;
+            }
+            50% {
+                transform: translateY(-5px) rotate(180deg);
+                opacity: 0.8;
+            }
+            75% {
+                transform: translateY(-15px) rotate(270deg);
+                opacity: 0.95;
+            }
+        }
+
+        @keyframes atomPulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.2); }
+        }
+
+        /* Ultra-Compact Capsule-Shaped Pills - Enhanced & Calmer */
+        .ultra-capsule {
+            position: absolute;
+            z-index: 0;
+            opacity: 0.6;
+            animation: freeFloat 42s cubic-bezier(0.25, 0.46, 0.45, 0.94) infinite;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            filter: drop-shadow(0 0 6px rgba(74, 144, 226, 0.15));
+            transform-style: preserve-3d;
+        }
+
+        .capsule-head {
+            background: linear-gradient(135deg, rgba(74, 144, 226, 0.5), rgba(16, 185, 129, 0.4));
+            border: 1px solid rgba(74, 144, 226, 0.6);
+            border-radius: 50%;
+            box-shadow: inset 0 1px 2px rgba(255, 255, 255, 0.3);
+        }
+
+        .capsule-body {
+            background: linear-gradient(135deg, rgba(74, 144, 226, 0.4), rgba(16, 185, 129, 0.3));
+            border: 1px solid rgba(74, 144, 226, 0.5);
+            border-top: none;
+            box-shadow: inset 0 1px 2px rgba(255, 255, 255, 0.2);
+        }
+
+        .ultra-capsule.capsule-large {
+            top: 25%;
+            right: 30%;
+            animation-duration: 32s;
+            animation-delay: 0s;
+            transform: scale(1.3) translateY(8px);
+        }
+
+        .ultra-capsule.capsule-large .capsule-head {
+            width: 24px;
+            height: 12px;
+            background: linear-gradient(135deg, rgba(50, 205, 50, 0.6), rgba(0, 255, 0, 0.5));
+            border-color: rgba(50, 205, 50, 0.7);
+        }
+
+        .ultra-capsule.capsule-large .capsule-body {
+            width: 24px;
+            height: 28px;
+            border-radius: 0 0 12px 12px;
+            background: linear-gradient(135deg, rgba(50, 205, 50, 0.5), rgba(0, 255, 0, 0.4));
+            border-color: rgba(50, 205, 50, 0.6);
+        }
+
+        .ultra-capsule.capsule-medium {
+            top: 60%;
+            left: 25%;
+            animation-duration: 32s;
+            animation-delay: -12s;
+            transform: scale(1.5);
+        }
+
+        .ultra-capsule.capsule-medium .capsule-head {
+            width: 26px;
+            height: 14px;
+            background: linear-gradient(135deg, rgba(255, 165, 0, 0.6), rgba(255, 140, 0, 0.5));
+            border-color: rgba(255, 165, 0, 0.7);
+        }
+
+        .ultra-capsule.capsule-medium .capsule-body {
+            width: 26px;
+            height: 28px;
+            border-radius: 0 0 13px 13px;
+            background: linear-gradient(135deg, rgba(255, 165, 0, 0.5), rgba(255, 140, 0, 0.4));
+            border-color: rgba(255, 165, 0, 0.6);
+        }
+
+        .ultra-capsule.capsule-small {
+            top: 40%;
+            right: 15%;
+            animation-duration: 42s;
+            animation-delay: -25s;
+        }
+
+        .ultra-capsule.capsule-small .capsule-head {
+            width: 12px;
+            height: 6px;
+        }
+
+        .ultra-capsule.capsule-small .capsule-body {
+            width: 12px;
+            height: 14px;
+            border-radius: 0 0 6px 6px;
+        }
+
+        .ultra-capsule.capsule-variant1 {
+            top: 70%;
+            right: 40%;
+            animation-duration: 28s;
+            animation-delay: -6s;
+        }
+
+        .ultra-capsule.capsule-variant1 .capsule-head {
+            width: 18px;
+            height: 9px;
+            background: linear-gradient(135deg, rgba(139, 124, 246, 0.5), rgba(196, 181, 253, 0.4));
+            border-color: rgba(139, 124, 246, 0.6);
+        }
+
+        .ultra-capsule.capsule-variant1 .capsule-body {
+            width: 18px;
+            height: 21px;
+            border-radius: 0 0 9px 9px;
+            background: linear-gradient(135deg, rgba(139, 124, 246, 0.4), rgba(196, 181, 253, 0.3));
+            border-color: rgba(139, 124, 246, 0.5);
+        }
+
+        .ultra-capsule.capsule-variant2 {
+            top: 35%;
+            left: 40%;
+            animation-duration: 36s;
+            animation-delay: -18s;
+        }
+
+        .ultra-capsule.capsule-variant2 .capsule-head {
+            width: 16px;
+            height: 8px;
+            background: linear-gradient(135deg, rgba(16, 185, 129, 0.5), rgba(52, 211, 153, 0.4));
+            border-color: rgba(16, 185, 129, 0.6);
+        }
+
+        .ultra-capsule.capsule-variant2 .capsule-body {
+            width: 16px;
+            height: 20px;
+            border-radius: 0 0 8px 8px;
+            background: linear-gradient(135deg, rgba(16, 185, 129, 0.4), rgba(52, 211, 153, 0.3));
+            border-color: rgba(16, 185, 129, 0.5);
+        }
+
+        @keyframes freeFloat {
+            0% {
+                transform: translate3d(0, 0, 0) rotate(0deg) scale(0.9);
+                opacity: 0.5;
+                filter: brightness(0.9);
+            }
+            10% {
+                transform: translate3d(8px, -5px, 0) rotate(36deg) scale(0.95);
+                opacity: 0.6;
+                filter: brightness(0.95);
+            }
+            20% {
+                transform: translate3d(15px, -10px, 0) rotate(72deg) scale(1.05);
+                opacity: 0.7;
+                filter: brightness(1.0);
+            }
+            30% {
+                transform: translate3d(5px, -15px, 0) rotate(108deg) scale(1.1);
+                opacity: 0.8;
+                filter: brightness(1.05);
+            }
+            40% {
+                transform: translate3d(-8px, -20px, 0) rotate(144deg) scale(1.0);
+                opacity: 0.75;
+                filter: brightness(1.0);
+            }
+            50% {
+                transform: translate3d(-15px, -15px, 0) rotate(180deg) scale(0.95);
+                opacity: 0.7;
+                filter: brightness(0.95);
+            }
+            60% {
+                transform: translate3d(-5px, -10px, 0) rotate(216deg) scale(0.9);
+                opacity: 0.65;
+                filter: brightness(0.9);
+            }
+            70% {
+                transform: translate3d(10px, -8px, 0) rotate(252deg) scale(1.02);
+                opacity: 0.75;
+                filter: brightness(1.0);
+            }
+            80% {
+                transform: translate3d(18px, -3px, 0) rotate(288deg) scale(1.08);
+                opacity: 0.8;
+                filter: brightness(1.05);
+            }
+            90% {
+                transform: translate3d(12px, 2px, 0) rotate(324deg) scale(1.0);
+                opacity: 0.7;
+                filter: brightness(1.0);
+            }
+            100% {
+                transform: translate3d(0, 0, 0) rotate(360deg) scale(0.9);
+                opacity: 0.5;
+                filter: brightness(0.9);
+            }
+        }
+
+        /* EPIC RED HEARTBEAT WAVE - ULTRA SMOOTH & OPTIMIZED */
+        .heartbeat-wave {
+            position: absolute;
+            z-index: 2;
+            opacity: 0.9;
+            will-change: transform, opacity;
+            animation: heartbeatFloat 15s ease-in-out infinite;
+        }
+
+        .heartbeat-wave-primary {
+            top: 45%;
+            right: 25%;
+            width: 120px;
+            height: 50px;
+            animation-delay: 0s;
+            transform: scale(0.8);
+            opacity: 0.7;
+        }
+
+        .heartbeat-svg {
+            width: 100%;
+            height: 100%;
+            animation: heartbeatPulse 1.5s ease-in-out infinite;
+            transform-origin: center;
+            will-change: transform;
+        }
+
+        @keyframes heartbeatFloat {
+            0%, 100% {
+                transform: translate(0px, 0px) rotate(0deg) scale(0.9);
+            }
+            12% {
+                transform: translate(3px, -4px) rotate(1deg) scale(0.95);
+            }
+            25% {
+                transform: translate(6px, -8px) rotate(2deg) scale(1.0);
+            }
+            37% {
+                transform: translate(2px, -6px) rotate(0deg) scale(1.05);
+            }
+            50% {
+                transform: translate(-2px, -4px) rotate(-1deg) scale(1.1);
+            }
+            62% {
+                transform: translate(-4px, -8px) rotate(-2deg) scale(1.05);
+            }
+            75% {
+                transform: translate(-1px, -12px) rotate(1deg) scale(1.0);
+            }
+            87% {
+                transform: translate(1px, -6px) rotate(0.5deg) scale(0.95);
+            }
+        }
+
+        @keyframes heartbeatPulse {
+            0%, 100% {
+                transform: scale(1);
+                stroke-dasharray: 120 0;
+                stroke-dashoffset: 0;
+            }
+            25% {
+                transform: scale(1.05);
+                stroke-dasharray: 120 0;
+                stroke-dashoffset: 0;
+            }
+            50% {
+                transform: scale(1.1);
+                stroke-dasharray: 120 0;
+                stroke-dashoffset: 0;
+            }
+            75% {
+                transform: scale(1.02);
+                stroke-dasharray: 120 0;
+                stroke-dashoffset: 0;
+            }
+        }
+
+        /* Enhanced glow effect for medical authority */
+        .heartbeat-wave-primary .heartbeat-svg {
+            filter: drop-shadow(0 0 12px rgba(220, 38, 38, 0.6)) drop-shadow(0 0 20px rgba(220, 38, 38, 0.3));
+        }
+
+        .heartbeat-wave-secondary .heartbeat-svg,
+        .heartbeat-wave-tertiary .heartbeat-svg {
+            filter: drop-shadow(0 0 8px rgba(220, 38, 38, 0.4)) drop-shadow(0 0 15px rgba(220, 38, 38, 0.2));
+        }
+
+        /* 🔥 LIVE MOVING HEARTBEAT WAVE - REAL ECG MONITOR EFFECT 🔥 */
+        .heartbeat-path {
+            stroke-dasharray: 400;
+            stroke-dashoffset: 400;
+            animation: moveHeartbeatWave 3s linear infinite;
+            will-change: stroke-dashoffset;
+        }
+
+        /* Continuous wave movement from left to right */
+        @keyframes moveHeartbeatWave {
+            0% {
+                stroke-dashoffset: 400;
+                opacity: 0;
+                transform: translateX(-50px);
+            }
+            10% {
+                opacity: 1;
+                transform: translateX(-25px);
+            }
+            90% {
+                opacity: 1;
+                transform: translateX(25px);
+            }
+            100% {
+                stroke-dashoffset: -400;
+                opacity: 0;
+                transform: translateX(50px);
+            }
+        }
+
+        /* Stagger the animations for layered effect */
+        .heartbeat-wave-primary .heartbeat-path {
+            animation: moveHeartbeatWave 2.8s linear infinite;
+            animation-delay: 0s;
+        }
+
+        .heartbeat-wave-secondary .heartbeat-path {
+            animation: moveHeartbeatWave 2.8s linear infinite;
+            animation-delay: -0.7s;
+        }
+
+        .heartbeat-wave-tertiary .heartbeat-path {
+            animation: moveHeartbeatWave 2.8s linear infinite;
+            animation-delay: -1.4s;
+        }
+
+        /* Ultra-bright pulsing effect for medical intensity */
+        .heartbeat-wave-primary .heartbeat-svg {
+            animation: heartbeatGlow 2s ease-in-out infinite alternate;
+        }
+
+        @keyframes heartbeatGlow {
+            0% {
+                filter: drop-shadow(0 0 15px rgba(255, 0, 0, 0.8)) drop-shadow(0 0 25px rgba(255, 0, 0, 0.4));
+                transform: scale(1);
+            }
+            100% {
+                filter: drop-shadow(0 0 20px rgba(255, 0, 0, 1)) drop-shadow(0 0 35px rgba(255, 0, 0, 0.6));
+                transform: scale(1.02);
+            }
+        }
+
+        /* Removed old floating capsule - replaced with ultra-compact capsules */
 
         .course-progress {
             display: none;
@@ -1044,7 +1586,7 @@ N TN A<!DOCTYPE html>
             max-width: 95vw;
             background: white;
             border-radius: 10px;
-            padding: 0.75rem;
+            padding: 0.4rem;
             box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
             transition: transform 0.3s ease;
             /* RUTHLESS GPU OPTIMIZATION - SAME VISUAL EFFECT */
@@ -1162,9 +1704,10 @@ N TN A<!DOCTYPE html>
             display: flex;
             align-items: center;
             justify-content: center;
-            transform: translateX(-50%) scale(0.9);
+            transform: translateX(-11px) scale(0.9);
             transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
             box-shadow: 0 2px 8px rgba(59, 130, 246, 0.25);
+            z-index: 3;
         }
 
         .milestone-mark:hover {
@@ -1260,8 +1803,43 @@ N TN A<!DOCTYPE html>
             margin-left: 0;
         }
 
+        /* Profile image styles - handles background-image approach */
+        .profile-circle {
+            background-size: cover !important;
+            background-position: center !important;
+            background-repeat: no-repeat !important;
+        }
+
+        /* Profile image styles for img tags (if used) */
+        .profile-circle .profile-image {
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            object-fit: cover;
+            display: block;
+        }
+
+        /* Enhanced profile circle for better image display */
+        .profile-circle img {
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            object-fit: cover;
+            display: block;
+        }
+
+        /* Fallback styles for profile circles */
         .profile-circle.no-image {
-            background: #2196f3;
+            background: linear-gradient(135deg, #007bff, #00d4ff) !important;
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            color: white !important;
+            font-weight: 600 !important;
+        }
+
+        .profile-circle.no-image {
+            background: linear-gradient(135deg, #007bff, #00d4ff);
         }
 
         .profile-circle:hover {
@@ -1356,7 +1934,7 @@ N TN A<!DOCTYPE html>
             background: rgba(0, 123, 255, 0.1);
             color: #007bff;
             border-radius: 20px;
-            font-size: 0.85rem;
+            font-size: 1rem;
             font-weight: 500;
             cursor: pointer;
             transition: all 0.2s ease;
@@ -1443,7 +2021,7 @@ N TN A<!DOCTYPE html>
         }
 
         .notification-bell button:hover {
-            background: rgba(0, 123, 255, 0.08);
+            background: rgba(30, 64, 175, 0.08);
         }
 
         .notification-bell button:active i {
@@ -1744,6 +2322,179 @@ N TN A<!DOCTYPE html>
             color: #6c757d;
         }
 
+        /* 🧬 BIOLOGICAL CELL - Clean & Simple */
+        .biological-cell {
+            position: absolute;
+            top: 50%;
+            left: 30%;
+            width: 75px;
+            height: 75px;
+            z-index: 1;
+            animation: cellFloat 25s ease-in-out infinite;
+            transform-style: preserve-3d;
+        }
+
+        .cell-membrane {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            border: 2px solid rgba(59, 130, 246, 0.6);
+            border-radius: 50%;
+            background: radial-gradient(circle, rgba(59, 130, 246, 0.1) 0%, rgba(59, 130, 246, 0.05) 70%);
+            box-shadow:
+                0 0 10px rgba(59, 130, 246, 0.3),
+                inset 0 0 20px rgba(59, 130, 246, 0.1);
+            animation: cellMembranePulse 8s ease-in-out infinite;
+        }
+
+        .cell-interior {
+            position: absolute;
+            top: 8px;
+            left: 8px;
+            width: calc(100% - 16px);
+            height: calc(100% - 16px);
+            border-radius: 50%;
+            background: linear-gradient(135deg, rgba(248, 250, 252, 0.8), rgba(241, 245, 249, 0.6));
+        }
+
+        .cell-nucleus {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 20px;
+            height: 20px;
+            background: linear-gradient(135deg, rgba(99, 102, 241, 0.4), rgba(139, 92, 246, 0.3));
+            border: 1px solid rgba(99, 102, 241, 0.5);
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+            box-shadow: 0 0 8px rgba(99, 102, 241, 0.4);
+            animation: nucleusPulse 6s ease-in-out infinite;
+        }
+
+        .chromosome {
+            position: absolute;
+            background: linear-gradient(45deg, rgba(220, 38, 38, 0.6), rgba(239, 68, 68, 0.4));
+            border-radius: 2px;
+            box-shadow: 0 0 4px rgba(220, 38, 38, 0.3);
+            animation: chromosomeFloat 12s ease-in-out infinite;
+        }
+
+        .chromosome-1 {
+            width: 18px;
+            height: 3px;
+            top: 25%;
+            left: 20%;
+            transform: rotate(45deg);
+            animation-delay: 0s;
+        }
+
+        .chromosome-2 {
+            width: 15px;
+            height: 3px;
+            top: 35%;
+            right: 25%;
+            transform: rotate(-30deg);
+            animation-delay: -3s;
+        }
+
+        .chromosome-3 {
+            width: 12px;
+            height: 3px;
+            bottom: 30%;
+            left: 30%;
+            transform: rotate(60deg);
+            animation-delay: -6s;
+        }
+
+        .chromosome-4 {
+            width: 16px;
+            height: 3px;
+            bottom: 25%;
+            right: 20%;
+            transform: rotate(-45deg);
+            animation-delay: -9s;
+        }
+
+        @keyframes cellFloat {
+            0% {
+                transform: translate(0px, 0px) rotate(0deg) scale(1);
+                opacity: 0.7;
+            }
+            15% {
+                transform: translate(8px, -12px) rotate(45deg) scale(1.08);
+                opacity: 0.9;
+            }
+            30% {
+                transform: translate(15px, -8px) rotate(90deg) scale(0.95);
+                opacity: 0.8;
+            }
+            45% {
+                transform: translate(-5px, -15px) rotate(135deg) scale(1.05);
+                opacity: 0.75;
+            }
+            60% {
+                transform: translate(-12px, 5px) rotate(180deg) scale(0.92);
+                opacity: 0.8;
+            }
+            75% {
+                transform: translate(10px, 8px) rotate(270deg) scale(1.03);
+                opacity: 0.85;
+            }
+            90% {
+                transform: translate(5px, 3px) rotate(315deg) scale(0.98);
+                opacity: 0.9;
+            }
+            100% {
+                transform: translate(0px, 0px) rotate(360deg) scale(1);
+                opacity: 0.7;
+            }
+        }
+
+        @keyframes cellMembranePulse {
+            0%, 100% {
+                border-color: rgba(59, 130, 246, 0.6);
+                box-shadow:
+                    0 0 10px rgba(59, 130, 246, 0.3),
+                    inset 0 0 20px rgba(59, 130, 246, 0.1);
+            }
+            50% {
+                border-color: rgba(59, 130, 246, 0.8);
+                box-shadow:
+                    0 0 15px rgba(59, 130, 246, 0.5),
+                    inset 0 0 25px rgba(59, 130, 246, 0.15);
+            }
+        }
+
+        @keyframes nucleusPulse {
+            0%, 100% {
+                transform: translate(-50%, -50%) scale(1);
+                box-shadow: 0 0 8px rgba(99, 102, 241, 0.4);
+            }
+            50% {
+                transform: translate(-50%, -50%) scale(1.1);
+                box-shadow: 0 0 12px rgba(99, 102, 241, 0.6);
+            }
+        }
+
+        @keyframes chromosomeFloat {
+            0%, 100% {
+                transform: rotate(0deg) scale(1);
+                opacity: 0.6;
+            }
+            25% {
+                transform: rotate(5deg) scale(1.05);
+                opacity: 0.8;
+            }
+            50% {
+                transform: rotate(-3deg) scale(0.95);
+                opacity: 0.7;
+            }
+            75% {
+                transform: rotate(2deg) scale(1.02);
+                opacity: 0.9;
+            }
+        }
+
         /* Add profile circle styles */
         .nav-item {
             display: flex;
@@ -1756,6 +2507,170 @@ N TN A<!DOCTYPE html>
         .navbar-nav {
             display: flex;
             align-items: center;
+        }
+
+        /* 🦠 MICRO CELL - TINY ORGANISM UNDER HEARTBEAT 🌟 */
+        .micro-cell {
+            position: absolute;
+            top: 65%;
+            right: 35%;
+            width: 35px;
+            height: 35px;
+            z-index: 3;
+            animation: microFloat 18s ease-in-out infinite;
+            transform-style: preserve-3d;
+            will-change: transform, opacity;
+        }
+
+        .micro-membrane {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            border: 1px solid rgba(59, 130, 246, 0.7);
+            border-radius: 50%;
+            background: radial-gradient(circle, rgba(59, 130, 246, 0.15) 0%, rgba(59, 130, 246, 0.08) 60%);
+            box-shadow:
+                0 0 6px rgba(59, 130, 246, 0.4),
+                inset 0 0 8px rgba(59, 130, 246, 0.15);
+            animation: microMembranePulse 10s ease-in-out infinite;
+        }
+
+        .micro-interior {
+            position: absolute;
+            top: 5px;
+            left: 5px;
+            width: calc(100% - 10px);
+            height: calc(100% - 10px);
+            border-radius: 50%;
+            background: linear-gradient(135deg, rgba(248, 250, 252, 0.9), rgba(241, 245, 249, 0.7));
+        }
+
+        .micro-nucleus {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 8px;
+            height: 8px;
+            background: linear-gradient(135deg, rgba(99, 102, 241, 0.5), rgba(139, 92, 246, 0.4));
+            border: 1px solid rgba(99, 102, 241, 0.6);
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+            box-shadow: 0 0 4px rgba(99, 102, 241, 0.5);
+            animation: microNucleusPulse 8s ease-in-out infinite;
+        }
+
+        .micro-chromosome {
+            position: absolute;
+            background: linear-gradient(45deg, rgba(220, 38, 38, 0.7), rgba(239, 68, 68, 0.5));
+            border-radius: 1px;
+            box-shadow: 0 0 3px rgba(220, 38, 38, 0.4);
+            animation: microChromosomeFloat 15s ease-in-out infinite;
+        }
+
+        .micro-chromosome-1 {
+            width: 8px;
+            height: 1.5px;
+            top: 28%;
+            left: 18%;
+            transform: rotate(45deg);
+            animation-delay: 0s;
+        }
+
+        .micro-chromosome-2 {
+            width: 7px;
+            height: 1.5px;
+            top: 35%;
+            right: 20%;
+            transform: rotate(-35deg);
+            animation-delay: -5s;
+        }
+
+        @keyframes microFloat {
+            0%, 100% {
+                transform: translate(0px, 0px) rotate(0deg) scale(1);
+                opacity: 0.8;
+            }
+            10% {
+                transform: translate(4px, -6px) rotate(36deg) scale(1.08);
+                opacity: 0.95;
+            }
+            20% {
+                transform: translate(8px, -2px) rotate(72deg) scale(0.95);
+                opacity: 0.9;
+            }
+            30% {
+                transform: translate(2px, 4px) rotate(108deg) scale(1.05);
+                opacity: 0.85;
+            }
+            40% {
+                transform: translate(-6px, 6px) rotate(144deg) scale(0.92);
+                opacity: 0.9;
+            }
+            50% {
+                transform: translate(-8px, -3px) rotate(180deg) scale(1.02);
+                opacity: 0.95;
+            }
+            60% {
+                transform: translate(3px, 8px) rotate(216deg) scale(1.1);
+                opacity: 0.88;
+            }
+            70% {
+                transform: translate(7px, 3px) rotate(252deg) scale(0.98);
+                opacity: 0.92;
+            }
+            80% {
+                transform: translate(-3px, -7px) rotate(288deg) scale(1.03);
+                opacity: 0.87;
+            }
+            90% {
+                transform: translate(-5px, 2px) rotate(324deg) scale(0.97);
+                opacity: 0.93;
+            }
+        }
+
+        @keyframes microMembranePulse {
+            0%, 100% {
+                border-color: rgba(59, 130, 246, 0.7);
+                box-shadow:
+                    0 0 6px rgba(59, 130, 246, 0.4),
+                    inset 0 0 8px rgba(59, 130, 246, 0.15);
+            }
+            50% {
+                border-color: rgba(59, 130, 246, 0.9);
+                box-shadow:
+                    0 0 10px rgba(59, 130, 246, 0.6),
+                    inset 0 0 12px rgba(59, 130, 246, 0.2);
+            }
+        }
+
+        @keyframes microNucleusPulse {
+            0%, 100% {
+                transform: translate(-50%, -50%) scale(1);
+                box-shadow: 0 0 4px rgba(99, 102, 241, 0.5);
+            }
+            50% {
+                transform: translate(-50%, -50%) scale(1.15);
+                box-shadow: 0 0 6px rgba(99, 102, 241, 0.7);
+            }
+        }
+
+        @keyframes microChromosomeFloat {
+            0%, 100% {
+                transform: rotate(0deg) scale(1);
+                opacity: 0.7;
+            }
+            25% {
+                transform: rotate(3deg) scale(1.02);
+                opacity: 0.9;
+            }
+            50% {
+                transform: rotate(-2deg) scale(0.98);
+                opacity: 0.8;
+            }
+            75% {
+                transform: rotate(1deg) scale(1.01);
+                opacity: 1;
+            }
         }
     </style>
 </head>
@@ -1895,7 +2810,7 @@ N TN A<!DOCTYPE html>
                                 <li>
                                     <form method="POST" action="{{ secure_url(route('logout', [], false)) }}" class="dropdown-item p-0">
                                         @csrf
-                                        <button type="submit" class="dropdown-item w-100 text-danger">
+                                        <button type="submit" class="dropdown-item w-100 text-danger logout-btn">
                                             <i class="fas fa-sign-out-alt me-2"></i>Logout
                                         </button>
                                     </form>
@@ -1908,13 +2823,31 @@ N TN A<!DOCTYPE html>
                         </li>
                         
                         <li class="nav-item me-5">
-                            <a href="{{ route('profile') }}" class="nav-link">
-                                <div class="profile-circle {{ !Auth::user()->profile_picture_url ? 'no-image' : '' }}" 
-                                     style="{{ Auth::user()->profile_picture_url ? 'background-image: url(' . secure_url(Auth::user()->profile_picture_url) . ');' : '' }}">
-                                    @if(!Auth::user()->profile_picture_url)
-                                        {{ substr(Auth::user()->name, 0, 1) }}
-                                    @endif
-                                </div>
+                            @php
+                                $profileImageUrl = null;
+                                if (Auth::user() && Auth::user()->profile_picture_url) {
+                                    // Check if it's an external URL (starts with http/https)
+                                    if (filter_var(Auth::user()->profile_picture_url, FILTER_VALIDATE_URL)) {
+                                        $profileImageUrl = Auth::user()->profile_picture_url;
+                                    } else {
+                                        // Local file - use secure_url with cache busting
+                                        $localPath = storage_path('app/public/' . Auth::user()->profile_picture_url);
+                                        if (file_exists($localPath)) {
+                                            $profileImageUrl = secure_url(Auth::user()->profile_picture_url) . '?v=' . time();
+                                        }
+                                    }
+                                }
+
+                                // Fallback to UI Avatars if no valid image
+                                if (!$profileImageUrl) {
+                                    $profileImageUrl = 'https://ui-avatars.com/api/?name=' . urlencode(Auth::user()->name) . '&size=200&background=007bff&color=ffffff';
+                                }
+                            @endphp
+                            <a href="{{ route('profile') }}" class="profile-circle">
+                                <img src="{{ $profileImageUrl }}"
+                                     alt="Profile Picture"
+                                     class="profile-image"
+                                     onerror="this.src='https://ui-avatars.com/api/?name={{ urlencode(Auth::user()->name) }}&size=200&background=007bff&color=ffffff'">
                             </a>
                         </li>
                     @endguest
@@ -1924,51 +2857,146 @@ N TN A<!DOCTYPE html>
     </nav>
 
     <section class="hero-section">
-        <div class="floating-elements">
-            @for($i = 0; $i < 5; $i++)
-                <div class="floating-element" style="
-                    width: {{ rand(100, 300) }}px;
-                    height: {{ rand(100, 300) }}px;
-                    top: {{ rand(-50, 100) }}%;
-                    left: {{ rand(-50, 100) }}%;
-                    animation-delay: -{{ $i * 5 }}s;
-                "></div>
+        <!-- 🌟 ENHANCED MEDICAL ANIMATION ELEMENTS 🌟 -->
+
+        <!-- Enhanced DNA Double Helix -->
+        <div class="enhanced-dna-helix">
+            <div class="dna-strand-left"></div>
+            <div class="dna-strand-right"></div>
+            <!-- DNA connecting bonds -->
+            @for($i = 0; $i < 8; $i++)
+                <div class="dna-bond" style="top: {{ $i * 15 + 10 }}px; transform: rotate({{ $i * 45 }}deg);"></div>
             @endfor
         </div>
-        <div class="floating-capsule"></div>
-        <h1 class="hero-title">Medical Courses</h1>
+
+        <!-- Floating Molecules (positioned away from title) -->
+        <div class="molecule glucose">
+            <div class="atom carbon" style="top: 10px; left: 15px;"></div>
+            <div class="atom carbon" style="top: 5px; left: 35px;"></div>
+            <div class="atom oxygen" style="top: 25px; left: 10px;"></div>
+            <div class="atom oxygen" style="top: 20px; left: 40px;"></div>
+            <div class="atom hydrogen" style="top: 15px; left: 5px;"></div>
+            <div class="bond" style="top: 15px; left: 20px; width: 15px; transform: rotate(45deg);"></div>
+        </div>
+
+        <div class="molecule water">
+            <div class="atom oxygen" style="top: 12px; left: 17px;"></div>
+            <div class="atom hydrogen" style="top: 5px; left: 10px;"></div>
+            <div class="atom hydrogen" style="top: 5px; left: 25px;"></div>
+            <div class="bond" style="top: 8px; left: 12px; width: 8px; transform: rotate(-45deg);"></div>
+            <div class="bond" style="top: 8px; left: 22px; width: 8px; transform: rotate(45deg);"></div>
+        </div>
+
+        <!-- Ultra-Compact Capsule-Shaped Pills -->
+        <div class="ultra-capsule capsule-large">
+            <div class="capsule-head"></div>
+            <div class="capsule-body"></div>
+        </div>
+        <div class="ultra-capsule capsule-medium">
+            <div class="capsule-head"></div>
+            <div class="capsule-body"></div>
+        </div>
+        <div class="ultra-capsule capsule-small">
+            <div class="capsule-head"></div>
+            <div class="capsule-body"></div>
+        </div>
+        <div class="ultra-capsule capsule-variant1">
+            <div class="capsule-head"></div>
+            <div class="capsule-body"></div>
+        </div>
+        <div class="ultra-capsule capsule-variant2">
+            <div class="capsule-head"></div>
+            <div class="capsule-body"></div>
+        </div>
+
+        <!-- 🧬 BIOLOGICAL CELL - Clean & Simple -->
+        <div class="biological-cell">
+            <!-- Cell Membrane -->
+            <div class="cell-membrane"></div>
+
+            <!-- Cell Interior -->
+            <div class="cell-interior">
+                <!-- Nucleus -->
+                <div class="cell-nucleus"></div>
+
+                <!-- Scattered Chromosomes -->
+                <div class="chromosome chromosome-1"></div>
+                <div class="chromosome chromosome-2"></div>
+                <div class="chromosome chromosome-3"></div>
+                <div class="chromosome chromosome-4"></div>
+            </div>
+        </div>
+
+        <!-- 🔥 SINGLE RED HEARTBEAT WAVE - LIVE ECG MONITOR 🔥 -->
+        <div class="heartbeat-wave heartbeat-wave-primary">
+            <svg viewBox="0 0 200 60" class="heartbeat-svg">
+                <defs>
+                    <linearGradient id="heartbeatGradient1" x1="0%" y1="0%" x2="100%" y2="0%">
+                        <stop offset="0%" style="stop-color:#ff0000;stop-opacity:1" />
+                        <stop offset="50%" style="stop-color:#ff4444;stop-opacity:1" />
+                        <stop offset="100%" style="stop-color:#ff0000;stop-opacity:1" />
+                    </linearGradient>
+                </defs>
+                <path d="M0,30 L30,30 L32,10 L34,50 L36,30 L50,30 L52,20 L54,40 L56,30 L200,30"
+                      stroke="url(#heartbeatGradient1)" stroke-width="3" fill="none" stroke-linecap="round"
+                      class="heartbeat-path"/>
+            </svg>
+        </div>
+
+        <!-- 🦠 TINY CELL UNDER HEARTBEAT - MICRO ORGANISM 🌟 -->
+        <div class="micro-cell">
+            <!-- Tiny Cell Membrane -->
+            <div class="micro-membrane"></div>
+
+            <!-- Tiny Cell Interior -->
+            <div class="micro-interior">
+                <!-- Tiny Nucleus -->
+                <div class="micro-nucleus"></div>
+
+                <!-- Tiny Chromosomes -->
+                <div class="micro-chromosome micro-chromosome-1"></div>
+                <div class="micro-chromosome micro-chromosome-2"></div>
+            </div>
+        </div>
+
+        <h1 class="hero-title">Pick Your Course</h1>
     </section>
 
     <div class="position-relative">
         <div class="semester-pills">
             <select class="semester-dropdown" id="semesterDropdown" onchange="filterCoursesByAcademicYear()">
-                <option value="" {{ !$selectedYear ? 'selected' : '' }}>All Courses</option>
+                <option value="">All Courses</option>
                 @php
-                    $availableYears = $courses->pluck('academic_year')->filter()->unique()->sort();
-                    $medicalYears = $availableYears->filter(function($year) {
-                        return str_starts_with($year, 'YEAR');
-                    });
-                    $testPrep = $availableYears->filter(function($year) {
-                        return in_array($year, ['SAT', 'EST', 'ACT']);
-                    });
+                    // Get unique academic years directly from courses table
+                    $academicYears = $courses->pluck('academic_year')->filter()->unique()->sort();
+
+                    // Debug: Show academic years in console
+                    $debugYears = $courses->pluck('academic_year')->toArray();
                 @endphp
-                
-                @if($medicalYears->isNotEmpty())
-                    <optgroup label="Medical School Years">
-                        @foreach($medicalYears as $year)
-                            <option value="{{ $year }}" {{ $selectedYear == $year ? 'selected' : '' }}>{{ $year }}</option>
-                        @endforeach
-                    </optgroup>
-                @endif
-                
-                @if($testPrep->isNotEmpty())
-                    <optgroup label="Standardized Tests">
-                        @foreach($testPrep as $year)
-                            <option value="{{ $year }}" {{ $selectedYear == $year ? 'selected' : '' }}>{{ $year }}</option>
+
+                @if($academicYears->isNotEmpty())
+                    <optgroup label="Academic Years">
+                        @foreach($academicYears as $year)
+                            @php
+                                // Format the year to be more readable
+                                $readableYear = ucwords(strtolower(str_replace('_', ' ', $year)));
+                                $readableYear = str_replace(['Year', 'Semester'], ['Year', 'Semester'], $readableYear);
+                            @endphp
+                            <option value="{{ $year }}" {{ ($selectedYear ?? '') == $year ? 'selected' : '' }}>
+                                {{ $readableYear }}
+                            </option>
                         @endforeach
                     </optgroup>
                 @endif
             </select>
+
+            {{-- Debug Script to show available academic years --}}
+            <script>
+                console.log('🔍 DEBUG: Available Academic Years:', @json($debugYears));
+                console.log('📋 DEBUG: Filtered Academic Years:', @json($academicYears->toArray()));
+                console.log('📊 DEBUG: Total Courses:', @json($courses->count()));
+            </script>
+        </div>
             
             @guest
             @else
@@ -2046,61 +3074,24 @@ N TN A<!DOCTYPE html>
                             </div>
                         </div>
                         @if (auth()->check())
-                            @if (Auth::user()->isAdmin())
+                            @if (Auth::user()->isEnrolledInCourse($course->id))
+                                <!-- User is enrolled - show continue button -->
                                 <a href="{{ route('topics.forCourse', $course->id) }}" class="action-btn continue">
                                     <i class="fas fa-play"></i>
                                     Continue Learning
                                 </a>
+                            @elseif ($course->hasUserPendingPayment(Auth::user()->id))
+                                <!-- User has pending payment - show pending button -->
+                                <button type="button" class="action-btn enroll" id="paymentBtn_{{ $course->id }}" disabled style="background: #fff7ed; border-color: #fed7aa; color: #ea580c; cursor: not-allowed;">
+                                    <i class="fas fa-clock" style="color: #ea580c;"></i>
+                                    <span style="color: #ea580c; font-weight: bold;">Payment Pending</span>
+                                </button>
                             @else
-                                <!-- ✅ CORRECT ACCESS CONTROL: Check enrolled_at IS NOT NULL -->
-                                @php
-                                    $userEnrollment = DB::table('course_user')
-                                        ->where('user_id', auth()->id())
-                                        ->where('course_id', $course->id)
-                                        ->whereNotNull('enrolled_at')
-                                        ->first();
-
-                                    $isActuallyEnrolled = $userEnrollment !== null;
-                                    $isFree = !$course->price || $course->price <= 0;
-                                @endphp
-
-                                @if($isActuallyEnrolled)
-                                    <!-- User has valid enrollment (enrolled_at IS NOT NULL) -->
-                                    <a href="{{ route('topics.forCourse', $course->id) }}" class="action-btn continue">
-                                        <i class="fas fa-play"></i>
-                                        Continue Learning
-                                    </a>
-                                @elseif($isFree)
-                                    <!-- Free course: check if user has ANY record (for historical access) -->
-                                    @php
-                                        $hasAnyRecord = DB::table('course_user')
-                                            ->where('user_id', auth()->id())
-                                            ->where('course_id', $course->id)
-                                            ->exists();
-                                    @endphp
-                                    @if($hasAnyRecord)
-                                        <a href="{{ route('topics.forCourse', $course->id) }}" class="action-btn enroll free">
-                                            <i class="fas fa-play"></i>
-                                            Start Learning (Free)
-                                        </a>
-                                    @else
-                                        <button type="button" class="action-btn enroll" disabled style="background: #6c757d; cursor: not-allowed;">
-                                            <i class="fas fa-lock"></i>
-                                            <span>Access Revoked</span>
-                                        </button>
-                                    @endif
-                                @else
-                                    <!-- Paid course: show payment button -->
-                                    <button type="button" class="action-btn enroll show-payment-modal" id="paymentBtn_{{ $course->id }}" data-course-id="{{ $course->id }}" @if($course->has_pending_payment) disabled @endif data-debug-pending="{{ $course->has_pending_payment }}" data-debug-enrolled="{{ $course->is_enrolled }}" data-debug-price="{{ $course->price }}">
-                                        @if($course->has_pending_payment)
-                                            <i class="fas fa-clock" style="color: #ff8c00;"></i>
-                                            <span style="color: #ff8c00; font-weight: bold;">Payment Pending</span>
-                                        @else
-                                            <i class="fas fa-unlock"></i>
-                                            <span>Pay to Access</span>
-                                        @endif
-                                    </button>
-                                @endif
+                                <!-- User is not enrolled and no pending payment - show payment button -->
+                                <button type="button" class="action-btn enroll show-payment-modal" id="paymentBtn_{{ $course->id }}" data-course-id="{{ $course->id }}">
+                                    <i class="fas fa-unlock"></i>
+                                    <span>Unlock</span>
+                                </button>
                             @endif
                         @else
                             @if (!$course->price || $course->price <= 0)
@@ -2190,46 +3181,7 @@ N TN A<!DOCTYPE html>
 
 
 
-    <!-- SUPER LIGHTNING SPEED SCRIPT LOADING -->
-    <script>
-        // CRITICAL: Load scripts only when needed
-        const scripts = [
-            { src: 'https://code.jquery.com/jquery-3.6.0.min.js', priority: 'high' },
-            { src: 'https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js', priority: 'medium' },
-            { src: 'https://cdn.jsdelivr.net/npm/gsap@3.12.2/dist/gsap.min.js', priority: 'low' },
-            { src: 'https://cdn.jsdelivr.net/npm/alpinejs@2.8.2/dist/alpine.min.js', priority: 'low' }
-        ];
-
-        // LOAD HIGH PRIORITY SCRIPTS IMMEDIATELY
-        scripts.filter(s => s.priority === 'high').forEach(script => {
-            const s = document.createElement('script');
-            s.src = script.src;
-            s.async = true;
-            document.head.appendChild(s);
-        });
-
-        // LOAD MEDIUM PRIORITY AFTER DOM READY
-        document.addEventListener('DOMContentLoaded', () => {
-            scripts.filter(s => s.priority === 'medium').forEach(script => {
-                const s = document.createElement('script');
-                s.src = script.src;
-                s.async = true;
-                document.head.appendChild(s);
-            });
-        });
-
-        // LOAD LOW PRIORITY AFTER WINDOW LOAD
-        window.addEventListener('load', () => {
-            setTimeout(() => {
-                scripts.filter(s => s.priority === 'low').forEach(script => {
-                    const s = document.createElement('script');
-                    s.src = script.src;
-                    s.async = true;
-                    document.head.appendChild(s);
-                });
-            }, 100);
-        });
-    </script>
+    <!-- CRITICAL BOOTSTRAP LOADING FIX - MOVED TO BOTTOM -->
     
     <!-- SUPER LIGHTNING SPEED PERFORMANCE SYSTEM -->
     <script>
@@ -2653,6 +3605,14 @@ N TN A<!DOCTYPE html>
 
         // Add polling mechanism to update progress bar when correct answers change
         function pollUserProgress() {
+            // Skip polling if we're on a development/tunneled URL
+            if (window.location.hostname.includes('ngrok') ||
+                window.location.hostname.includes('localhost') ||
+                window.location.hostname.includes('127.0.0.1')) {
+                console.log('Skipping progress polling on development environment');
+                return;
+            }
+
             fetch('/profile/progress', {
                 method: 'GET',
                 headers: {
@@ -2662,14 +3622,26 @@ N TN A<!DOCTYPE html>
                 },
                 credentials: 'same-origin'
             })
-            .then(response => response.json())
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                return response.json();
+            })
             .then(data => {
                 if (data.correct_answers_count !== undefined && data.correct_answers_count !== correctAnswers) {
                     updateProgress(data.correct_answers_count);
                     document.getElementById('correctCount').textContent = data.correct_answers_count;
                 }
             })
-            .catch(error => console.log('Progress polling error:', error));
+            .catch(error => {
+                console.log('Progress polling error (will retry):', error.message);
+                // Don't spam console, just log once
+                if (!window.progressPollingErrorLogged) {
+                    console.warn('Progress polling disabled due to network issues. This is normal in development.');
+                    window.progressPollingErrorLogged = true;
+                }
+            });
         }
 
         // Poll every 5 seconds for progress updates
@@ -2826,6 +3798,13 @@ N TN A<!DOCTYPE html>
         });
         
         function initializePaymentModal() {
+            // Safety check for Bootstrap
+            if (typeof bootstrap === 'undefined') {
+                console.warn('Bootstrap not loaded yet, retrying...');
+                setTimeout(initializePaymentModal, 100);
+                return;
+            }
+
             const paymentModal = new bootstrap.Modal(document.getElementById('paymentModal'));
 
             document.querySelectorAll('.show-payment-modal').forEach(button => {
@@ -3134,7 +4113,7 @@ N TN A<!DOCTYPE html>
                         newButton.className = 'action-btn enroll';
                         newButton.id = `paymentBtn_${courseId}`;
                         newButton.onclick = () => showPaymentModal(courseId);
-                        newButton.innerHTML = '<i class="fas fa-unlock"></i> <span>Pay to Access</span>';
+                        newButton.innerHTML = '<i class="fas fa-unlock"></i> <span>Unlock</span>';
                         actionButton.parentNode.replaceChild(newButton, actionButton);
                     }
                 }
@@ -3369,7 +4348,7 @@ ${generateOptimizationSuggestions(totalTime)}
             navigator.serviceWorker.register('/sw.js')
                 .then(registration => {
                     console.log('🚀 Service Worker registered for lightning-fast caching');
-                    
+
                     // Check for updates
                     registration.addEventListener('updatefound', () => {
                         console.log('🔄 Service Worker update found');
@@ -3383,5 +4362,36 @@ ${generateOptimizationSuggestions(totalTime)}
             console.log('Service Worker not supported in this browser');
         }
     </script>
+
+    <!-- BOOTSTRAP SCRIPTS - MOVED TO BOTTOM TO AVOID CSP ISSUES -->
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+    <!-- SIMPLE PROFILE PICTURE FALLBACK - JUST SHOW INITIALS -->
+    <script>
+        // Simple fallback: Just show user initials if profile picture fails to load
+        document.addEventListener('DOMContentLoaded', function() {
+            // Handle all profile pictures with simple fallback
+            const profileCircles = document.querySelectorAll('.profile-circle, .profile-circle-small');
+
+            profileCircles.forEach(circle => {
+                // Add error handler to the profile circle
+                circle.addEventListener('error', function() {
+                    // Simple fallback - just show initials
+                    this.style.backgroundImage = 'none';
+                    this.classList.add('no-image');
+                    this.style.background = 'linear-gradient(135deg, #007bff, #00d4ff)';
+                });
+
+                // If no image URL is set, ensure initials are visible
+                const computedStyle = window.getComputedStyle(circle);
+                if (!computedStyle.backgroundImage || computedStyle.backgroundImage === 'none') {
+                    circle.classList.add('no-image');
+                    circle.style.background = 'linear-gradient(135deg, #007bff, #00d4ff)';
+                }
+            });
+        });
+    </script>
+
 </body>
 </html>

@@ -104,7 +104,7 @@ class TopicController extends Controller
         $user = auth()->user();
         
             // Allow access if user is admin, enrolled, or if course is free
-            if (!$user->isAdmin() && !$user->hasAccessToCourse($course->id) && $course->price && $course->price > 0) {
+            if (!$user->isAdmin() && !$user->isEnrolledInCourse($course->id) && $course->price && $course->price > 0) {
             // Check if user has a pending payment
             $pendingPayment = Payment::where('user_id', $user->id)
                 ->where('course_id', $course->id)
@@ -371,9 +371,19 @@ class TopicController extends Controller
     {
         try {
             $user = auth()->user();
-            
+
             // Check if user has access to the topic's course
-            if (!$user->isAdmin() && !$user->hasAccessToCourse($topic->course_id)) {
+            if (!$user->isAdmin() && !$user->isEnrolledInCourse($topic->course_id)) {
+                // TEMPORARY: Log the access issue for debugging
+                Log::info('Video access denied - redirecting to course', [
+                    'user_id' => $user->id,
+                    'user_role' => $user->role,
+                    'topic_id' => $topic->id,
+                    'course_id' => $topic->course_id,
+                    'is_admin' => $user->isAdmin(),
+                    'is_enrolled' => $user->isEnrolledInCourse($topic->course_id)
+                ]);
+
                 return redirect()->route('courses.show', $topic->course_id)
                     ->with('error', 'You need to purchase this course to access its content.');
             }

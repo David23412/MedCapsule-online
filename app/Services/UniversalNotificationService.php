@@ -224,7 +224,7 @@ class UniversalNotificationService
         // 🔥 SINGLE CACHE WRITE OPERATION
         $unreadCount = count(array_filter($existingNotifications, fn($n) => !$n['read']));
 
-        Cache::putMultiple([
+        Cache::putMany([
             $cacheKey => $existingNotifications,
             $unreadKey => $unreadCount
         ], 86400 * 30);
@@ -301,7 +301,7 @@ class UniversalNotificationService
 
         if ($found) {
             // 🔥 BATCH CACHE UPDATE
-            Cache::putMultiple([
+            Cache::putMany([
                 $cacheKey => $notifications,
                 $unreadKey => $unreadCount
             ], 86400 * 30);
@@ -331,7 +331,7 @@ class UniversalNotificationService
         }
 
         // 🔥 ATOMIC BATCH UPDATE
-        Cache::putMultiple([
+        Cache::putMany([
             $cacheKey => $notifications,
             $unreadKey => 0
         ], 86400 * 30);
@@ -365,7 +365,7 @@ class UniversalNotificationService
         }
 
         // 🔥 BATCH CACHE UPDATE
-        Cache::putMultiple([
+        Cache::putMany([
             $cacheKey => $filteredNotifications,
             $unreadKey => $unreadCount
         ], 86400 * 30);
@@ -497,7 +497,7 @@ class UniversalNotificationService
 
         if ($removedCount > 0) {
             $unreadCount = count(array_filter($optimizedNotifications, fn($n) => !$n['read']));
-            Cache::putMultiple([
+            Cache::putMany([
                 $cacheKey => $optimizedNotifications,
                 $unreadKey => $unreadCount
             ], 86400 * 30);

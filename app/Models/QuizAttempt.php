@@ -25,7 +25,8 @@ class QuizAttempt extends Model
         'duration_seconds',
         'question_data',     // JSON array of {question_id, user_answer, is_correct} for potential review
         'correct_answers',   // Number of correct answers in the quiz
-        'assignment_id'      // Link to assignment if this is an assignment quiz
+        'assignment_id',     // Link to assignment if this is an assignment quiz
+        'attempt_id'         // Groups multiple sources from same quiz attempt
     ];
 
     protected $casts = [
@@ -85,10 +86,14 @@ class QuizAttempt extends Model
             try {
                 $cacheKey = "user_profile_optimized_{$quizAttempt->user_id}_" . now()->format('Y-m-d-H');
                 \Illuminate\Support\Facades\Cache::forget($cacheKey);
-                
+
                 // Also clear the previous hour's cache to ensure immediate updates
                 $previousHourKey = "user_profile_optimized_{$quizAttempt->user_id}_" . now()->subHour()->format('Y-m-d-H');
                 \Illuminate\Support\Facades\Cache::forget($previousHourKey);
+
+                // ULTRA-FAST: Clear performance chart cache immediately for real-time updates
+                $performanceCacheKey = "performance_data_optimized_{$quizAttempt->user_id}";
+                \Illuminate\Support\Facades\Cache::forget($performanceCacheKey);
                 
                 \Log::info('Profile cache cleared after quiz attempt', [
                     'user_id' => $quizAttempt->user_id,
@@ -334,7 +339,7 @@ class QuizAttempt extends Model
 
     /**
      * Calculate topic progress (internal method)
-     * OPTIMIZED LOGIC: Count unique questions answered correctly out of total available questions by source
+     * LATEST ATTEMPT LOGIC: Use the most recent attempt for each source to determine progress
      */
     private static function calculateTopicProgress($userId, $topicId, $studyMode)
     {
@@ -357,79 +362,53 @@ class QuizAttempt extends Model
                 ];
             }
 
-            // STEP 2: Get quiz attempts and extract unique correct questions (OPTIMIZED: Minimal data fetch)
+            // STEP 2: Get the LATEST attempt for each source (CRITICAL FIX)
+            $latestAttemptsBySource = [];
             $attempts = self::where('user_id', $userId)
                 ->where('topic_id', $topicId)
                 ->where('study_mode', $studyMode)
-                ->select(['source', 'question_data'])
-                ->get();
+                ->whereNotNull('source')
+                ->orderBy('created_at', 'desc')
+                ->get()
+                ->groupBy('source');
 
-            // STEP 3: Get question ID to source mapping for accurate source assignment
-            $questionSourceMap = \App\Models\Question::where('topic_id', $topicId)
-                ->pluck('source', 'id')
-                ->toArray();
-
-            // STEP 4: Process correct questions and attempted questions by their ACTUAL source (CRITICAL FIX)
-            $correctQuestionsBySource = [];
-            $attemptedQuestionsBySource = [];
-            
-            foreach ($attempts as $attempt) {
-                // Extract question IDs and map to their actual sources
-                if (is_array($attempt->question_data)) {
-                    foreach ($attempt->question_data as $questionData) {
-                        if (!empty($questionData['question_id'])) {
-                            
-                            $questionId = $questionData['question_id'];
-                            $actualSource = $questionSourceMap[$questionId] ?? 'General';
-                            
-                            // Track all attempted questions
-                            if (!isset($attemptedQuestionsBySource[$actualSource])) {
-                                $attemptedQuestionsBySource[$actualSource] = [];
-                            }
-                            $attemptedQuestionsBySource[$actualSource][$questionId] = true;
-                            
-                            // Track correct questions
-                            if (!empty($questionData['is_correct'])) {
-                                if (!isset($correctQuestionsBySource[$actualSource])) {
-                                    $correctQuestionsBySource[$actualSource] = [];
-                                }
-                                $correctQuestionsBySource[$actualSource][$questionId] = true;
-                            }
-                        }
-                    }
-                }
+            // Get the most recent attempt for each source
+            foreach ($attempts as $source => $sourceAttempts) {
+                $latestAttemptsBySource[$source] = $sourceAttempts->first();
             }
 
-            // STEP 5: Calculate progress for each source (OPTIMIZED: Direct count)
+            // STEP 3: Calculate progress based on LATEST attempts only
             $sourceProgress = [];
             $totalCorrectQuestions = 0;
             $totalQuestionsInTopic = array_sum($totalQuestionsBySource);
 
             foreach ($totalQuestionsBySource as $source => $totalQuestions) {
-                // Count unique correct questions (OPTIMIZED: array_keys count)
-                $correctCount = isset($correctQuestionsBySource[$source]) 
-                    ? count($correctQuestionsBySource[$source]) 
-                    : 0;
-                
-                // Count unique attempted questions
-                $attemptedCount = isset($attemptedQuestionsBySource[$source])
-                    ? count($attemptedQuestionsBySource[$source])
-                    : 0;
-                
-                $percentage = $attemptedCount > 0 ? ($correctCount / $attemptedCount) * 100 : 0;
-                
+                $latestAttempt = $latestAttemptsBySource[$source] ?? null;
+
+                if ($latestAttempt) {
+                    // Use the latest attempt's score and total for this source
+                    $correctCount = $latestAttempt->score;
+                    $attemptedCount = $latestAttempt->total_questions;
+                    $percentage = $attemptedCount > 0 ? ($correctCount / $attemptedCount) * 100 : 0;
+                } else {
+                    // No attempts for this source yet
+                    $correctCount = 0;
+                    $attemptedCount = 0;
+                    $percentage = 0;
+                }
+
                 $sourceProgress[$source] = [
                     'score' => $correctCount,
-                    'total' => $attemptedCount, // FIXED: Use attempted count, not available count
+                    'total' => $attemptedCount,
                     'percentage' => round($percentage, 2)
                 ];
-                
+
                 $totalCorrectQuestions += $correctCount;
             }
 
-            // STEP 6: Calculate overall percentage (OPTIMIZED: Pre-calculated total)
-            $overallPercentage = $totalQuestionsInTopic > 0 
-                ? ($totalCorrectQuestions / $totalQuestionsInTopic) * 100 
+            // STEP 4: Calculate overall percentage based on latest attempts
+            $overallPercentage = $totalQuestionsInTopic > 0
+                ? ($totalCorrectQuestions / $totalQuestionsInTopic) * 100
                 : 0;
 
             return [
@@ -447,7 +426,7 @@ class QuizAttempt extends Model
                 'study_mode' => $studyMode,
                 'error' => $e->getMessage()
             ]);
-            
+
             return [
                 'overall' => [
                     'score' => 0,
@@ -568,12 +547,32 @@ class QuizAttempt extends Model
     }
 
     /**
-     * Create a new quiz attempt with progress tracking     */
+     * Generate a simple sequential attempt ID for grouping multiple sources
+     * Format: Simple incrementing number (1, 2, 3, etc.)
+     */
+    public static function generateAttemptId($userId, $topicId, $timestamp = null)
+    {
+        // Get the next available attempt ID for this user
+        $maxId = self::where('user_id', $userId)->max('attempt_id') ?? 0;
+        return $maxId + 1;
+    }
+
+    /**
+     * Create a new quiz attempt with progress tracking
+     */
     public static function createWithProgress($data)
     {
         try {
+            // Generate attempt_id if not provided (for grouping multiple sources)
+            if (!isset($data['attempt_id']) || empty($data['attempt_id'])) {
+                $data['attempt_id'] = self::generateAttemptId(
+                    $data['user_id'],
+                    $data['topic_id'] ?? null
+                );
+            }
+
             // Calculate percentage for this attempt
-            $percentage = $data['total_questions'] > 0 
+            $percentage = $data['total_questions'] > 0
                 ? round(($data['score'] / $data['total_questions']) * 100, 2)
                 : 0;
 
@@ -597,9 +596,12 @@ class QuizAttempt extends Model
                 'question_data' => $questionData
             ]));
 
-            // Clear relevant caches
+            // Clear relevant caches using smart invalidation
             try {
-                app(UltraConsolidatedCacheService::class)->clearUserTopicProgressCache($data['user_id'], $data['topic_id']);
+                $cacheService = app(UltraConsolidatedCacheService::class);
+                $cacheService->smartInvalidate('user_progress', $data['user_id'], [
+                    'topic_id' => $data['topic_id']
+                ]);
             } catch (\Exception $e) {
                 \Log::warning('Failed to clear cache after quiz attempt creation', [
                     'error' => $e->getMessage()
@@ -616,6 +618,51 @@ class QuizAttempt extends Model
                 'data' => $data,
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString()
+            ]);
+            throw $e;
+        }
+    }
+
+    /**
+     * Create multiple quiz attempts for different sources with the same attempt_id
+     * This ensures they get grouped together on the chart
+     */
+    public static function createMultipleSourceAttempts($baseData, $sourceAttempts)
+    {
+        try {
+            // Generate a single attempt_id for all sources in this quiz
+            $attemptId = self::generateAttemptId(
+                $baseData['user_id'],
+                $baseData['topic_id'] ?? null
+            );
+
+            $createdAttempts = [];
+            foreach ($sourceAttempts as $sourceData) {
+                // Merge base data with source-specific data
+                $attemptData = array_merge($baseData, $sourceData, [
+                    'attempt_id' => $attemptId
+                ]);
+
+                $attempt = self::createWithProgress($attemptData);
+                $createdAttempts[] = $attempt['attempt'];
+            }
+
+            \Log::info('Created multiple source attempts with shared attempt_id', [
+                'attempt_id' => $attemptId,
+                'user_id' => $baseData['user_id'],
+                'topic_id' => $baseData['topic_id'],
+                'sources_count' => count($sourceAttempts)
+            ]);
+
+            return [
+                'attempts' => $createdAttempts,
+                'attempt_id' => $attemptId
+            ];
+        } catch (\Exception $e) {
+            \Log::error('Error creating multiple source attempts', [
+                'error' => $e->getMessage(),
+                'user_id' => $baseData['user_id'],
+                'sources_count' => count($sourceAttempts)
             ]);
             throw $e;
         }
@@ -725,4 +772,4 @@ class QuizAttempt extends Model
         
         return sprintf("%ds", $seconds);
     }
-} 
+}

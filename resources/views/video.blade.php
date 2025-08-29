@@ -586,10 +586,11 @@
             
             @if(isset($video) && $video && $video->youtube_video_id)
                 <div class="video-player" id="videoContainer">
-                    <iframe 
+                    <!-- Use YouTube NoCookie embed which has fewer restrictions -->
+                    <iframe
                         id="videoFrame"
-                        src="https://www.youtube.com/embed/{{ $video->youtube_video_id }}?autoplay=1&rel=0&modestbranding=1&controls=1" 
-                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
+                        src="https://www.youtube-nocookie.com/embed/{{ $video->youtube_video_id }}?autoplay=1&rel=0&modestbranding=1&controls=1&enablejsapi=0"
+                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
                         allowfullscreen>
                     </iframe>
                 </div>
@@ -623,17 +624,18 @@
     
     <script>
         function loadTestVideo() {
-            // Replace the placeholder with a test YouTube video
+            // Replace the placeholder with a test YouTube video using HTTPS and minimal parameters
             const videoMain = document.querySelector('.video-main');
             videoMain.innerHTML = `
                 <a href="{{ route('topics.forCourse', $course->id ?? 1) }}" class="back-btn" title="Back to Topics">
                     <i class="fas fa-times"></i>
                 </a>
                 <div class="video-player">
-                    <iframe 
-                        src="https://www.youtube.com/embed/dQw4w9WgXcQ?autoplay=1&rel=0&modestbranding=1" 
-                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
-                        allowfullscreen>
+                    <iframe
+                        src="https://www.youtube.com/embed/dQw4w9WgXcQ?rel=0&modestbranding=1&autoplay=1&controls=1"
+                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
+                        allowfullscreen
+                        sandbox="allow-same-origin allow-scripts allow-presentation allow-forms">
                     </iframe>
                 </div>
             `;

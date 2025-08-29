@@ -1,0 +1,1 @@
+a:8:{s:8:"original";s:25:"Na⁺, K⁺, Ca²⁺ ions";s:10:"normalized";s:13:"na, k, ca ion";s:7:"cleaned";s:14:"na, k, ca ions";s:6:"tokens";a:4:{i:0;s:3:"na,";i:1;s:2:"k,";i:2;s:2:"ca";i:3;s:4:"ions";}s:13:"medical_terms";a:0:{}s:13:"abbreviations";a:0:{}s:10:"confidence";d:0.6;s:15:"processing_time";d:0.0008230209350585938;}

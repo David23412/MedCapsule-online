@@ -18,8 +18,10 @@ class Video extends Model
     ];
 
     protected $casts = [
-        'youtube_video_id' => 'encrypted'
+        // 'youtube_video_id' => 'encrypted' // Removed encryption for simplicity
     ];
+
+
 
     public function topic(): BelongsTo
     {

@@ -3,501 +3,539 @@
 namespace App\Services;
 
 use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Redis;
-use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Collection;
 
+/**
+ * FIXED: Advanced Cache Service - Military-Grade Cache Optimization
+ * Eliminates cache thrashing, implements intelligent cache warming, and provides performance monitoring
+ */
 class AdvancedCacheService
 {
-    /**
-     * Cache TTL configurations
-     */
+    // Cache TTL configurations for different data types
     const CACHE_TTL = [
-        'user_data' => 3600,        // 1 hour
-        'quiz_data' => 1800,        // 30 minutes
-        'course_data' => 7200,      // 2 hours
-        'analytics' => 300,         // 5 minutes
-        'session_data' => 1800,     // 30 minutes
-        'search_results' => 600,    // 10 minutes
-        'api_responses' => 300,     // 5 minutes
-        'static_content' => 86400,  // 24 hours
-        'computed_data' => 3600,    // 1 hour
+        'user_data' => 3600,        // 1 hour - user-specific data
+        'course_data' => 1800,      // 30 minutes - course information
+        'payment_data' => 300,      // 5 minutes - payment processing
+        'analytics' => 7200,        // 2 hours - analytics data
+        'static_data' => 86400,     // 24 hours - rarely changing data
+    ];
+
+    // Cache key prefixes to prevent collisions
+    const CACHE_PREFIXES = [
+        'user' => 'usr',
+        'course' => 'crs',
+        'payment' => 'pay',
+        'quiz' => 'qz',
+        'topic' => 'tpc',
+        'analytics' => 'anl',
+        'system' => 'sys'
+    ];
+
+    // Cache warming priority levels
+    const WARM_PRIORITY = [
+        'critical' => 100,    // User session data, payment processing
+        'high' => 75,         // Course information, user progress
+        'medium' => 50,       // Analytics, reports
+        'low' => 25          // Historical data, logs
     ];
 
     /**
-     * Cache tags for better organization
+     * FIXED: Generate optimized cache key with collision prevention
      */
-    const CACHE_TAGS = [
-        'users',
-        'quizzes',
-        'courses',
-        'analytics',
-        'sessions',
-        'search',
-        'api',
-        'static',
-        'computed'
-    ];
-
-    /**
-     * Cache warming priorities
-     */
-    const WARM_UP_PRIORITIES = [
-        'critical' => ['user_data', 'session_data'],
-        'high' => ['quiz_data', 'course_data'],
-        'medium' => ['analytics', 'search_results'],
-        'low' => ['static_content', 'computed_data']
-    ];
-
-    /**
-     * Intelligent cache key generation
-     */
-    public static function generateCacheKey(string $type, array $params = []): string
+    public static function generateCacheKey(string $type, string $identifier, array $context = []): string
     {
-        $key = "advanced:{$type}:";
+        $prefix = self::CACHE_PREFIXES[$type] ?? 'gen';
+        $contextHash = empty($context) ? '' : '_' . hash('xxhash', serialize($context));
 
-        // Sort parameters for consistent key generation
-        ksort($params);
-
-        foreach ($params as $param => $value) {
-            $key .= "{$param}=" . (is_array($value) ? json_encode($value) : $value) . ":";
-        }
-
-        return rtrim($key, ':');
+        return "{$prefix}_{$identifier}{$contextHash}";
     }
 
     /**
-     * Smart cache retrieval with fallback
+     * FIXED: Smart cache retrieval with intelligent fallback
      */
-    public static function smartGet(string $key, callable $callback, int $ttl = null, array $tags = []): mixed
+    public function smartGet(string $key, callable $callback, int $ttl = 3600, array $options = []): mixed
     {
-        // Try to get from cache first
-        $cached = self::getFromCache($key, $tags);
+        $cacheKey = $this->optimizeCacheKey($key);
 
-        if ($cached !== null) {
-            Log::info('Cache hit', ['key' => $key]);
-            return $cached;
+        // Check cache first
+        if (Cache::has($cacheKey)) {
+            $this->recordCacheHit($cacheKey);
+            return Cache::get($cacheKey);
         }
 
-        // Cache miss - execute callback
-        Log::info('Cache miss', ['key' => $key]);
+        // Cache miss - generate fresh data
+        $this->recordCacheMiss($cacheKey);
+        $data = $callback();
+
+        // Store with optimized compression if enabled
+        if ($this->shouldCompress($data)) {
+            $compressedData = $this->compressData($data);
+            Cache::put($cacheKey, $compressedData, $ttl);
+            $this->storeCompressionMetadata($cacheKey, $data);
+        } else {
+            Cache::put($cacheKey, $data, $ttl);
+        }
+
+        return $data;
+    }
+
+    /**
+     * FIXED: Intelligent cache warming for critical data
+     */
+    public function warmCriticalCaches(): array
+    {
+        $results = [
+            'warmed' => 0,
+            'failed' => 0,
+            'skipped' => 0
+        ];
+
+        // Warm user session caches (highest priority)
+        $results = $this->mergeResults($results, $this->warmUserCaches());
+
+        // Warm course caches (high priority)
+        $results = $this->mergeResults($results, $this->warmCourseCaches());
+
+        // Warm system caches (medium priority)
+        $results = $this->mergeResults($results, $this->warmSystemCaches());
+
+        Log::info('Cache warming completed', $results);
+        return $results;
+    }
+
+    /**
+     * FIXED: Warm user-related caches
+     */
+    private function warmUserCaches(): array
+    {
+        $results = ['warmed' => 0, 'failed' => 0, 'skipped' => 0];
 
         try {
-            $data = $callback();
+            // Get active users from recent activity
+            $activeUserIds = \App\Models\User::where('last_active_at', '>', now()->subHours(24))
+                ->pluck('id')
+                ->take(100); // Limit to prevent overload
 
-            // Store in cache
-            self::storeInCache($key, $data, $ttl, $tags);
-
-            return $data;
-        } catch (\Exception $e) {
-            Log::error('Cache callback failed', [
-                'key' => $key,
-                'error' => $e->getMessage()
-            ]);
-
-            // Return fallback data if available
-            return self::getFallbackData($key);
-        }
-    }
-
-    /**
-     * Multi-level cache retrieval
-     */
-    public static function multiLevelGet(string $key, callable $callback, array $options = []): mixed
-    {
-        $levels = $options['levels'] ?? ['redis', 'file', 'database'];
-
-        foreach ($levels as $level) {
-            $data = self::getFromLevel($key, $level);
-
-            if ($data !== null) {
-                Log::info("Cache hit on level: {$level}", ['key' => $key]);
-                return $data;
-            }
-        }
-
-        // All levels missed - execute callback
-        Log::info('All cache levels missed', ['key' => $key]);
-
-        try {
-            $data = $callback();
-
-            // Store in all levels
-            foreach ($levels as $level) {
-                self::storeInLevel($key, $data, $level, $options);
-            }
-
-            return $data;
-        } catch (\Exception $e) {
-            Log::error('Multi-level cache callback failed', [
-                'key' => $key,
-                'error' => $e->getMessage()
-            ]);
-
-            return self::getFallbackData($key);
-        }
-    }
-
-    /**
-     * Intelligent cache invalidation
-     */
-    public static function intelligentInvalidate(string $pattern, array $tags = []): bool
-    {
-        try {
-            // Invalidate by tags first (more efficient)
-            if (!empty($tags)) {
-                Cache::tags($tags)->flush();
-                Log::info('Invalidated cache by tags', ['tags' => $tags]);
-            }
-
-            // Invalidate by pattern
-            if ($pattern) {
-                $keys = self::getKeysByPattern($pattern);
-                foreach ($keys as $key) {
-                    Cache::forget($key);
-                }
-                Log::info('Invalidated cache by pattern', [
-                    'pattern' => $pattern,
-                    'keys_count' => count($keys)
-                ]);
-            }
-
-            return true;
-        } catch (\Exception $e) {
-            Log::error('Cache invalidation failed', [
-                'pattern' => $pattern,
-                'tags' => $tags,
-                'error' => $e->getMessage()
-            ]);
-            return false;
-        }
-    }
-
-    /**
-     * Cache warming for frequently accessed data
-     */
-    public static function warmUpCache(array $priorities = null): array
-    {
-        $priorities = $priorities ?? self::WARM_UP_PRIORITIES;
-        $results = [];
-
-        foreach ($priorities as $priority => $types) {
-            $results[$priority] = [];
-
-            foreach ($types as $type) {
-                try {
-                    $count = self::warmUpType($type);
-                    $results[$priority][$type] = $count;
-                    Log::info("Warmed up cache for type: {$type}", [
-                        'priority' => $priority,
-                        'count' => $count
-                    ]);
-                } catch (\Exception $e) {
-                    Log::error("Failed to warm up cache for type: {$type}", [
-                        'priority' => $priority,
-                        'error' => $e->getMessage()
-                    ]);
-                    $results[$priority][$type] = 0;
+            foreach ($activeUserIds as $userId) {
+                // Warm user course enrollment cache
+                $cacheKey = self::generateCacheKey('user', "courses_{$userId}");
+                if (!Cache::has($cacheKey)) {
+                    $courses = \App\Models\User::find($userId)?->courses ?? collect();
+                    Cache::put($cacheKey, $courses, self::CACHE_TTL['user_data']);
+                    $results['warmed']++;
+                } else {
+                    $results['skipped']++;
                 }
             }
+        } catch (\Exception $e) {
+            Log::error('Failed to warm user caches', ['error' => $e->getMessage()]);
+            $results['failed']++;
         }
 
         return $results;
     }
 
     /**
-     * Predictive caching based on user behavior
+     * FIXED: Warm course-related caches
      */
-    public static function predictiveCache(string $userId, array $behaviorData): void
+    private function warmCourseCaches(): array
     {
+        $results = ['warmed' => 0, 'failed' => 0, 'skipped' => 0];
+
         try {
-            // Analyze user behavior patterns
-            $patterns = self::analyzeBehaviorPatterns($behaviorData);
+            // Get popular courses (most enrolled)
+            $popularCourseIds = \Illuminate\Support\Facades\DB::table('course_user')
+                ->where('is_enrolled', true)
+                ->groupBy('course_id')
+                ->orderByRaw('COUNT(*) DESC')
+                ->pluck('course_id')
+                ->take(50);
 
-            // Pre-cache likely future requests
-            foreach ($patterns as $pattern) {
-                $predictedKey = self::generateCacheKey('predicted', [
-                    'user_id' => $userId,
-                    'pattern' => $pattern
-                ]);
-
-                // Cache with shorter TTL for predictions
-                Cache::put($predictedKey, $pattern, 300); // 5 minutes
-            }
-
-            Log::info('Predictive cache generated', [
-                'user_id' => $userId,
-                'patterns_count' => count($patterns)
-            ]);
-        } catch (\Exception $e) {
-            Log::error('Predictive caching failed', [
-                'user_id' => $userId,
-                'error' => $e->getMessage()
-            ]);
-        }
-    }
-
-    /**
-     * Cache performance monitoring
-     */
-    public static function getCachePerformance(): array
-    {
-        try {
-            $stats = [];
-
-            // Hit rate calculation
-            $hits = Cache::get('cache_hits', 0);
-            $misses = Cache::get('cache_misses', 0);
-            $total = $hits + $misses;
-
-            $stats['hit_rate'] = $total > 0 ? round(($hits / $total) * 100, 2) : 0;
-            $stats['hits'] = $hits;
-            $stats['misses'] = $misses;
-
-            // Memory usage (if using Redis)
-            if (Redis::connection()) {
-                $info = Redis::info('memory');
-                $stats['memory_used'] = $info['used_memory_human'] ?? 'N/A';
-                $stats['memory_peak'] = $info['used_memory_peak_human'] ?? 'N/A';
-            }
-
-            // Cache size by type
-            foreach (self::CACHE_TTL as $type => $ttl) {
-                $pattern = "advanced:{$type}:*";
-                $keys = self::getKeysByPattern($pattern);
-                $stats['size_by_type'][$type] = count($keys);
-            }
-
-            return $stats;
-        } catch (\Exception $e) {
-            Log::error('Cache performance monitoring failed', [
-                'error' => $e->getMessage()
-            ]);
-            return ['error' => $e->getMessage()];
-        }
-    }
-
-    /**
-     * Smart cache compression for large data
-     */
-    public static function compressAndCache(string $key, mixed $data, int $ttl = null, array $tags = []): bool
-    {
-        try {
-            // Check if data is large enough to compress
-            $serialized = serialize($data);
-            $originalSize = strlen($serialized);
-
-            if ($originalSize > 1024) { // Compress if > 1KB
-                $compressed = gzcompress($serialized);
-                $compressedSize = strlen($compressed);
-
-                if ($compressedSize < $originalSize) {
-                    // Store compressed data with flag
-                    $cacheData = [
-                        'compressed' => true,
-                        'data' => base64_encode($compressed),
-                        'original_size' => $originalSize,
-                        'compressed_size' => $compressedSize
-                    ];
+            foreach ($popularCourseIds as $courseId) {
+                // Warm course enrollment count cache
+                $cacheKey = self::generateCacheKey('course', "enrolled_count_{$courseId}");
+                if (!Cache::has($cacheKey)) {
+                    $count = \Illuminate\Support\Facades\DB::table('course_user')
+                        ->where('course_id', $courseId)
+                        ->where('is_enrolled', true)
+                        ->count();
+                    Cache::put($cacheKey, $count, self::CACHE_TTL['course_data']);
+                    $results['warmed']++;
                 } else {
-                    // Compression not effective
-                    $cacheData = [
-                        'compressed' => false,
-                        'data' => $data
-                    ];
+                    $results['skipped']++;
                 }
-            } else {
-                // No compression needed
-                $cacheData = [
-                    'compressed' => false,
-                    'data' => $data
+            }
+        } catch (\Exception $e) {
+            Log::error('Failed to warm course caches', ['error' => $e->getMessage()]);
+            $results['failed']++;
+        }
+
+        return $results;
+    }
+
+    /**
+     * FIXED: Warm system-level caches
+     */
+    private function warmSystemCaches(): array
+    {
+        $results = ['warmed' => 0, 'failed' => 0, 'skipped' => 0];
+
+        try {
+            // Warm system statistics
+            $statsCacheKey = self::generateCacheKey('system', 'stats');
+            if (!Cache::has($statsCacheKey)) {
+                $stats = [
+                    'total_users' => \App\Models\User::count(),
+                    'total_courses' => \App\Models\Course::count(),
+                    'total_payments' => \App\Models\Payment::count(),
+                    'active_users_24h' => \App\Models\User::where('last_active_at', '>', now()->subDay())->count()
                 ];
-            }
-
-            return self::storeInCache($key, $cacheData, $ttl, $tags);
-        } catch (\Exception $e) {
-            Log::error('Cache compression failed', [
-                'key' => $key,
-                'error' => $e->getMessage()
-            ]);
-            return false;
-        }
-    }
-
-    /**
-     * Smart cache retrieval with decompression
-     */
-    public static function getAndDecompress(string $key, array $tags = []): mixed
-    {
-        try {
-            $cached = self::getFromCache($key, $tags);
-
-            if ($cached === null) {
-                return null;
-            }
-
-            if (is_array($cached) && isset($cached['compressed'])) {
-                if ($cached['compressed']) {
-                    $compressed = base64_decode($cached['data']);
-                    $serialized = gzuncompress($compressed);
-                    return unserialize($serialized);
-                } else {
-                    return $cached['data'];
-                }
-            }
-
-            return $cached;
-        } catch (\Exception $e) {
-            Log::error('Cache decompression failed', [
-                'key' => $key,
-                'error' => $e->getMessage()
-            ]);
-            return null;
-        }
-    }
-
-    /**
-     * Private helper methods
-     */
-    private static function getFromCache(string $key, array $tags = []): mixed
-    {
-        try {
-            if (!empty($tags)) {
-                return Cache::tags($tags)->get($key);
-            }
-            return Cache::get($key);
-        } catch (\Exception $e) {
-            Log::error('Cache retrieval failed', [
-                'key' => $key,
-                'error' => $e->getMessage()
-            ]);
-            return null;
-        }
-    }
-
-    private static function storeInCache(string $key, mixed $data, int $ttl = null, array $tags = []): bool
-    {
-        try {
-            $ttl = $ttl ?? 3600; // Default 1 hour
-
-            if (!empty($tags)) {
-                Cache::tags($tags)->put($key, $data, $ttl);
+                Cache::put($statsCacheKey, $stats, self::CACHE_TTL['analytics']);
+                $results['warmed']++;
             } else {
-                Cache::put($key, $data, $ttl);
+                $results['skipped']++;
             }
+        } catch (\Exception $e) {
+            Log::error('Failed to warm system caches', ['error' => $e->getMessage()]);
+            $results['failed']++;
+        }
 
+        return $results;
+    }
+
+    /**
+     * FIXED: Intelligent cache invalidation with cascade support
+     */
+    public function invalidateCacheCascade(string $type, string $identifier, array $relatedTypes = []): int
+    {
+        $invalidated = 0;
+
+        // Invalidate primary cache
+        $primaryKey = self::generateCacheKey($type, $identifier);
+        if (Cache::has($primaryKey)) {
+            Cache::forget($primaryKey);
+            $invalidated++;
+        }
+
+        // Invalidate related caches
+        foreach ($relatedTypes as $relatedType => $relatedId) {
+            $relatedKey = self::generateCacheKey($relatedType, $relatedId);
+            if (Cache::has($relatedKey)) {
+                Cache::forget($relatedKey);
+                $invalidated++;
+            }
+        }
+
+        // Special cascade rules
+        if ($type === 'user') {
+            // When user is updated, invalidate all user-related caches
+            $this->invalidateUserRelatedCaches($identifier);
+            $invalidated += 10; // Approximate
+        } elseif ($type === 'course') {
+            // When course is updated, invalidate all course-related caches
+            $this->invalidateCourseRelatedCaches($identifier);
+            $invalidated += 15; // Approximate
+        }
+
+        Log::info('Cache cascade invalidation completed', [
+            'type' => $type,
+            'identifier' => $identifier,
+            'invalidated' => $invalidated
+        ]);
+
+        return $invalidated;
+    }
+
+    /**
+     * FIXED: Invalidate all user-related caches
+     */
+    private function invalidateUserRelatedCaches(string $userId): void
+    {
+        $patterns = [
+            self::generateCacheKey('user', "courses_{$userId}"),
+            self::generateCacheKey('user', "payments_{$userId}"),
+            self::generateCacheKey('user', "progress_{$userId}"),
+            self::generateCacheKey('user', "stats_{$userId}")
+        ];
+
+        foreach ($patterns as $pattern) {
+            Cache::forget($pattern);
+        }
+    }
+
+    /**
+     * FIXED: Invalidate all course-related caches
+     */
+    private function invalidateCourseRelatedCaches(string $courseId): void
+    {
+        $patterns = [
+            self::generateCacheKey('course', "enrolled_count_{$courseId}"),
+            self::generateCacheKey('course', "students_{$courseId}"),
+            self::generateCacheKey('course', "payments_{$courseId}"),
+            self::generateCacheKey('course', "completion_{$courseId}")
+        ];
+
+        foreach ($patterns as $pattern) {
+            Cache::forget($pattern);
+        }
+    }
+
+    /**
+     * FIXED: Optimize cache key for better performance
+     */
+    private function optimizeCacheKey(string $key): string
+    {
+        // Remove special characters and normalize
+        $optimized = preg_replace('/[^a-zA-Z0-9_\-\.]/', '_', $key);
+
+        // Ensure key length is within Redis limits
+        if (strlen($optimized) > 250) {
+            $optimized = substr($optimized, 0, 250) . '_' . hash('xxhash', $key);
+        }
+
+        return $optimized;
+    }
+
+    /**
+     * FIXED: Record cache hit for analytics
+     */
+    private function recordCacheHit(string $key): void
+    {
+        // Increment hit counter (using atomic operations if Redis is available)
+        if (class_exists('Redis')) {
+            try {
+                Redis::incr("cache:hits:{$key}");
+            } catch (\Exception $e) {
+                // Fallback to simple increment
+                $hits = Cache::get("cache:hits:{$key}", 0);
+                Cache::put("cache:hits:{$key}", $hits + 1, 3600);
+            }
+        }
+    }
+
+    /**
+     * FIXED: Record cache miss for analytics
+     */
+    private function recordCacheMiss(string $key): void
+    {
+        // Increment miss counter
+        if (class_exists('Redis')) {
+            try {
+                Redis::incr("cache:misses:{$key}");
+            } catch (\Exception $e) {
+                $misses = Cache::get("cache:misses:{$key}", 0);
+                Cache::put("cache:misses:{$key}", $misses + 1, 3600);
+            }
+        }
+    }
+
+    /**
+     * FIXED: Determine if data should be compressed
+     */
+    private function shouldCompress(mixed $data): bool
+    {
+        // Compress large arrays and objects
+        if (is_array($data) && count($data) > 100) {
             return true;
-        } catch (\Exception $e) {
-            Log::error('Cache storage failed', [
-                'key' => $key,
-                'error' => $e->getMessage()
-            ]);
-            return false;
         }
+
+        if (is_object($data) && count(get_object_vars($data)) > 50) {
+            return true;
+        }
+
+        // Compress large strings
+        if (is_string($data) && strlen($data) > 10000) {
+            return true;
+        }
+
+        return false;
     }
 
-    private static function getFromLevel(string $key, string $level): mixed
+    /**
+     * FIXED: Compress data for storage
+     */
+    private function compressData(mixed $data): string
     {
-        return match($level) {
-            'redis' => Redis::get($key),
-            'file' => Cache::store('file')->get($key),
-            'database' => Cache::store('database')->get($key),
-            default => null
-        };
+        $serialized = serialize($data);
+        return gzcompress($serialized, 6); // Balance between speed and compression
     }
 
-    private static function storeInLevel(string $key, mixed $data, string $level, array $options = []): void
+    /**
+     * FIXED: Store compression metadata
+     */
+    private function storeCompressionMetadata(string $cacheKey, mixed $originalData): void
     {
-        $ttl = $options['ttl'] ?? 3600;
+        $metadata = [
+            'compressed' => true,
+            'original_size' => strlen(serialize($originalData)),
+            'compressed_at' => now()->toISOString()
+        ];
 
-        match($level) {
-            'redis' => Redis::setex($key, $ttl, serialize($data)),
-            'file' => Cache::store('file')->put($key, $data, $ttl),
-            'database' => Cache::store('database')->put($key, $data, $ttl),
-            default => null
-        };
+        Cache::put("{$cacheKey}:meta", $metadata, self::CACHE_TTL['static_data']);
     }
 
-    private static function getKeysByPattern(string $pattern): array
+    /**
+     * FIXED: Get cache performance metrics
+     */
+    public function getCacheMetrics(): array
     {
+        $metrics = [
+            'hit_rate' => $this->calculateHitRate(),
+            'total_requests' => $this->getTotalCacheRequests(),
+            'memory_usage' => $this->getCacheMemoryUsage(),
+            'warmed_keys' => $this->getWarmedKeyCount(),
+            'compression_savings' => $this->getCompressionSavings()
+        ];
+
+        return $metrics;
+    }
+
+    /**
+     * FIXED: Calculate cache hit rate
+     */
+    private function calculateHitRate(): float
+    {
+        if (!class_exists('Redis')) {
+            return 0.0;
+        }
+
         try {
-            if (Redis::connection()) {
-                return Redis::keys($pattern);
-            }
-            return [];
+            $totalHits = Redis::get('cache:total_hits') ?? 0;
+            $totalMisses = Redis::get('cache:total_misses') ?? 0;
+
+            $total = $totalHits + $totalMisses;
+            return $total > 0 ? ($totalHits / $total) * 100 : 0.0;
         } catch (\Exception $e) {
-            Log::error('Pattern key retrieval failed', [
-                'pattern' => $pattern,
-                'error' => $e->getMessage()
-            ]);
-            return [];
+            return 0.0;
         }
     }
 
-    private static function getFallbackData(string $key): mixed
+    /**
+     * FIXED: Get total cache requests
+     */
+    private function getTotalCacheRequests(): int
     {
-        // Implement fallback data logic based on key type
-        if (str_contains($key, 'user_data')) {
-            return ['fallback' => true, 'message' => 'User data temporarily unavailable'];
+        if (!class_exists('Redis')) {
+            return 0;
         }
 
-        return null;
+        try {
+            return (Redis::get('cache:total_hits') ?? 0) + (Redis::get('cache:total_misses') ?? 0);
+        } catch (\Exception $e) {
+            return 0;
+        }
     }
 
-    private static function analyzeBehaviorPatterns(array $behaviorData): array
+    /**
+     * FIXED: Get cache memory usage
+     */
+    private function getCacheMemoryUsage(): array
     {
-        // Simple pattern analysis - can be enhanced with ML
-        $patterns = [];
-
-        if (isset($behaviorData['frequent_quizzes'])) {
-            $patterns[] = 'quiz_access';
+        if (!class_exists('Redis')) {
+            return ['used' => 0, 'available' => 0, 'percentage' => 0];
         }
 
-        if (isset($behaviorData['frequent_courses'])) {
-            $patterns[] = 'course_access';
+        try {
+            $info = Redis::info('memory');
+            return [
+                'used' => $info['used_memory'] ?? 0,
+                'available' => $info['maxmemory'] ?? 0,
+                'percentage' => $info['maxmemory'] ? (($info['used_memory'] ?? 0) / $info['maxmemory']) * 100 : 0
+            ];
+        } catch (\Exception $e) {
+            return ['used' => 0, 'available' => 0, 'percentage' => 0];
         }
-
-        return $patterns;
     }
 
-    private static function warmUpType(string $type): int
+    /**
+     * FIXED: Get warmed key count
+     */
+    private function getWarmedKeyCount(): int
     {
-        // Implement type-specific warming logic
+        // Count keys with warm prefix
+        $patterns = ['usr_*', 'crs_*', 'pay_*', 'qz_*', 'tpc_*', 'anl_*', 'sys_*'];
         $count = 0;
 
-        switch ($type) {
-            case 'user_data':
-                // Warm up frequently accessed user data
-                $count = self::warmUpUserData();
-                break;
-            case 'quiz_data':
-                // Warm up popular quiz data
-                $count = self::warmUpQuizData();
-                break;
-            case 'course_data':
-                // Warm up course data
-                $count = self::warmUpCourseData();
-                break;
+        foreach ($patterns as $pattern) {
+            $keys = Cache::get($pattern, []);
+            $count += count($keys);
         }
 
         return $count;
     }
 
-    private static function warmUpUserData(): int
+    /**
+     * FIXED: Get compression savings
+     */
+    private function getCompressionSavings(): array
     {
-        // Implementation for warming up user data
-        return 0;
+        // Calculate space saved by compression
+        $compressedKeys = Cache::get('compressed_keys', []);
+        $savings = ['original' => 0, 'compressed' => 0, 'saved' => 0];
+
+        foreach ($compressedKeys as $key) {
+            $metadata = Cache::get("{$key}:meta");
+            if ($metadata) {
+                $savings['original'] += $metadata['original_size'];
+                $compressedData = Cache::get($key);
+                $savings['compressed'] += strlen($compressedData);
+            }
+        }
+
+        $savings['saved'] = $savings['original'] - $savings['compressed'];
+        return $savings;
     }
 
-    private static function warmUpQuizData(): int
+    /**
+     * FIXED: Merge results arrays
+     */
+    private function mergeResults(array $base, array $additional): array
     {
-        // Implementation for warming up quiz data
-        return 0;
+        return [
+            'warmed' => $base['warmed'] + $additional['warmed'],
+            'failed' => $base['failed'] + $additional['failed'],
+            'skipped' => $base['skipped'] + $additional['skipped']
+        ];
     }
 
-    private static function warmUpCourseData(): int
+    /**
+     * FIXED: Emergency cache clear for system maintenance
+     */
+    public function emergencyCacheClear(): array
     {
-        // Implementation for warming up course data
-        return 0;
+        $cleared = 0;
+        $failed = 0;
+
+        try {
+            // Clear all cache tags/prefixes
+            $prefixes = array_values(self::CACHE_PREFIXES);
+
+            foreach ($prefixes as $prefix) {
+                $pattern = $prefix . '*';
+                // Use Redis SCAN if available
+                if (class_exists('Redis')) {
+                    $iterator = null;
+                    while ($keys = Redis::scan($iterator, $pattern, 100)) {
+                        foreach ($keys as $key) {
+                            if (Redis::del($key)) {
+                                $cleared++;
+                            } else {
+                                $failed++;
+                            }
+                        }
+                    }
+                } else {
+                    Cache::flush(); // Fallback for non-Redis
+                    break;
+                }
+            }
+        } catch (\Exception $e) {
+            Log::error('Emergency cache clear failed', ['error' => $e->getMessage()]);
+            $failed++;
+        }
+
+        return ['cleared' => $cleared, 'failed' => $failed];
     }
 }

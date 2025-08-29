@@ -78,7 +78,7 @@ class UserService
 
             // PERFORMANCE OPTIMIZATION: Get total enrollments count
             $totalEnrollments = DB::table('course_user')
-                ->whereNotNull('enrolled_at')
+                ->where('is_enrolled', true)
                 ->count();
 
             // PERFORMANCE OPTIMIZATION: Get users with pagination
@@ -99,7 +99,7 @@ class UserService
                     ->join('users', 'course_user.user_id', '=', 'users.id')
                     ->join('courses', 'course_user.course_id', '=', 'courses.id')
                     ->whereIn('course_user.user_id', $userIds)
-                    ->whereNotNull('course_user.enrolled_at') // Only active enrollments
+                    ->where('course_user.is_enrolled', true) // Only active enrollments
                     ->select(
                         'users.id as user_id',
                         'users.name',
@@ -120,7 +120,7 @@ class UserService
                         'course_name' => $enrollment->course_name,
                         'course_id' => $enrollment->course_id,
                         'created_at' => $enrollment->created_at,
-                        'is_enrolled' => true // If enrolled_at is not null, user is enrolled
+                        'is_enrolled' => true // User is enrolled since we filtered by is_enrolled = true
                     ];
                 });
             } else {
@@ -166,7 +166,7 @@ class UserService
             $user = User::with([
                 'courses' => function ($query) {
                     $query->select('courses.id', 'courses.name', 'courses.price', 'courses.created_at')
-                          ->withPivot('enrolled_at')
+                          ->withPivot('is_enrolled')
                           ->orderBy('courses.name');
                 }
             ])
@@ -181,7 +181,7 @@ class UserService
                     'price' => $course->price,
                     'created_at' => $course->created_at,
                     'enrolled_at' => $course->pivot->enrolled_at,
-                    'is_enrolled' => !is_null($course->pivot->enrolled_at),
+                    'is_enrolled' => $course->pivot->is_enrolled,
                     'status' => $this->getEnrollmentStatus($course->pivot)
                 ];
             });
@@ -198,7 +198,7 @@ class UserService
      */
     private function getEnrollmentStatus($pivot): string
     {
-        if (is_null($pivot->enrolled_at)) {
+        if (!$pivot->is_enrolled) {
             return 'Never Enrolled';
         }
 

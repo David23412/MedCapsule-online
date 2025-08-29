@@ -74,9 +74,9 @@
     </style>
 
     <!-- Favicon -->
-    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 50'%3E%3Crect fill='%23007bff' x='10' y='15' width='80' height='20' rx='10' ry='10' /%3E%3Crect x='50' y='15' width='40' height='20' fill='%23ff0000' rx='0 10 10 0' ry='10'/%3E%3Cline x1='50' y1='15' x2='50' y2='35' stroke='white' stroke-width='1.5' stroke-dasharray='2,1'/%3E%3C/svg%3E">
-    <link rel="shortcut icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 50'%3E%3Crect fill='%23007bff' x='10' y='15' width='80' height='20' rx='10' ry='10' /%3E%3Crect x='50' y='15' width='40' height='20' fill='%23ff0000' rx='0 10 10 0' ry='10'/%3E%3Cline x1='50' y1='15' x2='50' y2='35' stroke='white' stroke-width='1.5' stroke-dasharray='2,1'/%3E%3C/svg%3E">
-    <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 50'%3E%3Crect fill='%23007bff' x='10' y='15' width='80' height='20' rx='10' ry='10' /%3E%3Crect x='50' y='15' width='40' height='20' fill='%23ff0000' rx='0 10 10 0' ry='10'/%3E%3Cline x1='50' y1='15' x2='50' y2='35' stroke='white' stroke-width='1.5' stroke-dasharray='2,1'/%3E%3C/svg%3E">
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 50'%3E%3Crect fill='%233579F6' x='10' y='15' width='80' height='20' rx='10' ry='10' /%3E%3Crect x='50' y='15' width='40' height='20' fill='%23ff0000' rx='0 10 10 0' ry='10'/%3E%3Cline x1='50' y1='15' x2='50' y2='35' stroke='white' stroke-width='1.5' stroke-dasharray='2,1'/%3E%3C/svg%3E">
+    <link rel="shortcut icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 50'%3E%3Crect fill='%233579F6' x='10' y='15' width='80' height='20' rx='10' ry='10' /%3E%3Crect x='50' y='15' width='40' height='20' fill='%23ff0000' rx='0 10 10 0' ry='10'/%3E%3Cline x1='50' y1='15' x2='50' y2='35' stroke='white' stroke-width='1.5' stroke-dasharray='2,1'/%3E%3C/svg%3E">
+    <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 50'%3E%3Crect fill='%233579F6' x='10' y='15' width='80' height='20' rx='10' ry='10' /%3E%3Crect x='50' y='15' width='40' height='20' fill='%23ff0000' rx='0 10 10 0' ry='10'/%3E%3Cline x1='50' y1='15' x2='50' y2='35' stroke='white' stroke-width='1.5' stroke-dasharray='2,1'/%3E%3C/svg%3E">
     
     <!-- NUCLEAR: Resource hints for LIGHTNING FAST loading -->
     <link rel="dns-prefetch" href="//fonts.googleapis.com">
@@ -510,6 +510,15 @@
             transition: transform 0.2s ease;
             background-size: cover;
             background-position: center;
+        }
+
+        /* Profile image styles */
+        .profile-circle .profile-image {
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            object-fit: cover;
+            display: block;
         }
 
         .profile-circle.no-image {
@@ -2358,13 +2367,31 @@
                         
 
                         <li class="nav-item">
-                            <a href="{{ route('profile') }}" class="nav-link">
-                                <div class="profile-circle {{ !Auth::user()->profile_picture_url ? 'no-image' : '' }}" 
-                                     style="{{ Auth::user()->profile_picture_url ? 'background-image: url(' . secure_url(Auth::user()->profile_picture_url) . ');' : '' }}">
-                                    @if(!Auth::user()->profile_picture_url)
-                                        {{ substr(Auth::user()->name, 0, 1) }}
-                                    @endif
-                                </div>
+                            @php
+                                $profileImageUrl = null;
+                                if (Auth::user() && Auth::user()->profile_picture_url) {
+                                    // Check if it's an external URL (starts with http/https)
+                                    if (filter_var(Auth::user()->profile_picture_url, FILTER_VALIDATE_URL)) {
+                                        $profileImageUrl = Auth::user()->profile_picture_url;
+                                    } else {
+                                        // Local file - use secure_url with cache busting
+                                        $localPath = storage_path('app/public/' . Auth::user()->profile_picture_url);
+                                        if (file_exists($localPath)) {
+                                            $profileImageUrl = secure_url(Auth::user()->profile_picture_url) . '?v=' . time();
+                                        }
+                                    }
+                                }
+
+                                // Fallback to UI Avatars if no valid image
+                                if (!$profileImageUrl) {
+                                    $profileImageUrl = 'https://ui-avatars.com/api/?name=' . urlencode(Auth::user()->name) . '&size=200&background=007bff&color=ffffff';
+                                }
+                            @endphp
+                            <a href="{{ route('profile') }}" class="profile-circle">
+                                <img src="{{ $profileImageUrl }}"
+                                     alt="Profile Picture"
+                                     class="profile-image"
+                                     onerror="this.src='https://ui-avatars.com/api/?name={{ urlencode(Auth::user()->name) }}&size=200&background=007bff&color=ffffff'">
                             </a>
                         </li>
                     @endguest
@@ -2659,22 +2686,21 @@
                 lastFetched: 0,
                 notificationSound: new Audio('/sounds/notification-sound.mp3'),
                 prevUnreadCount: 0,
-                websocket: null,
-                
+
                 init() {
                     // Preload the notification sound
                     this.notificationSound.load();
-                    
+
                     // Set user interaction flag - ensures sound can play in browsers
                     this.setUserInteractionFlag();
-                    
+
                     // Store initial unread count
                     this.fetchNotifications().then(() => {
                         this.prevUnreadCount = this.unreadCount;
                     });
-                    
-                    // ELIMINATE POLLING - Use WebSocket for instant updates
-                    this.initializeWebSocket();
+
+                    // Use simple polling for notifications
+                    this.initializePolling();
                     
                     // Play notification sound on new notifications
                     this.$watch('unreadCount', (newCount, oldCount) => {
@@ -2694,53 +2720,12 @@
                     });
                 },
                 
-                // NUCLEAR SPEED: WebSocket for instant notification delivery
-                initializeWebSocket() {
-                    try {
-                        // SECURITY FIX: Auto-detect correct protocol
-                        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-                        const wsUrl = `${protocol}//${window.location.host}/notifications/stream`;
-                        
-                        // Connect to WebSocket for real-time notifications
-                        this.websocket = new WebSocket(wsUrl);
-                        
-                        this.websocket.onopen = () => {
-                            console.log('🔥 NUCLEAR SPEED: WebSocket connected for instant notifications');
-                        };
-                        
-                        this.websocket.onmessage = (event) => {
-                            const data = JSON.parse(event.data);
-                            
-                            // INSTANT UPDATE - No polling delay
-                            if (data.type === 'notification') {
-                                this.unreadCount = data.unread_count;
-                                this.notifications = data.notifications || [];
-                                this.updateBadge();
-                                
-                                // Play sound instantly if new notification
-                                if (data.unread_count > this.prevUnreadCount) {
-                                    this.playNotificationSound();
-                                }
-                                this.prevUnreadCount = data.unread_count;
-                            }
-                        };
-                        
-                        this.websocket.onerror = (error) => {
-                            console.warn('⚠️ WebSocket failed, using polling fallback');
-                            // Graceful degradation - no visual impact
-                            this.initializePollingFallback();
-                        };
-                        
-                        this.websocket.onclose = (event) => {
-                            console.log('🔌 WebSocket connection closed, attempting reconnect...');
-                            // Auto-reconnect after 5 seconds
-                            setTimeout(() => this.initializeWebSocket(), 5000);
-                        };
-                        
-                    } catch (error) {
-                        console.error('❌ WebSocket initialization failed:', error);
-                        this.initializePollingFallback();
-                    }
+                // Simple polling for notifications - no WebSocket needed
+                initializePolling() {
+                    // Poll every 60 seconds for notifications
+                    setInterval(() => {
+                        this.fetchNotifications();
+                    }, 60000);
                 },
                 
                 // Polling fallback maintains same functionality
@@ -2837,11 +2822,9 @@
                     }
                 },
                 
-                // Cleanup WebSocket on page unload
+                // Cleanup function
                 cleanup() {
-                    if (this.websocket) {
-                        this.websocket.close();
-                    }
+                    // No WebSocket to cleanup - using polling
                 }
             };
         }

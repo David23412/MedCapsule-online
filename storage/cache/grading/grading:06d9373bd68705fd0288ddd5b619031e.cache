@@ -1,0 +1,1 @@
+a:8:{s:6:"cosine";d:0;s:7:"jaccard";d:0.2857142857142857;s:11:"levenshtein";d:0.6666666666666667;s:8:"semantic";d:0.12;s:7:"medical";d:1;s:8:"ensemble";d:0.40389233954451353;s:10:"confidence";d:0.6354025277600757;s:15:"processing_time";d:0.0019421577453613281;}

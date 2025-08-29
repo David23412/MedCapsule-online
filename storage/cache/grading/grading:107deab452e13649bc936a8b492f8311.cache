@@ -1,0 +1,1 @@
+a:8:{s:8:"original";s:24:"SQL injection prevention";s:10:"normalized";s:24:"sql injection prevention";s:7:"cleaned";s:24:"sql injection prevention";s:6:"tokens";a:3:{i:0;s:3:"sql";i:1;s:9:"injection";i:2;s:10:"prevention";}s:13:"medical_terms";a:0:{}s:13:"abbreviations";a:0:{}s:10:"confidence";d:0.5;s:15:"processing_time";d:0.0019440650939941406;}

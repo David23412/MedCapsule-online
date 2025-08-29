@@ -40,7 +40,7 @@ class Question extends Model
 
     protected $casts = [
         'topic_id' => 'integer',
-        'alternative_answers' => 'array',
+        'alternative_answers' => 'string',
         'total_attempts' => 'integer',
         'correct_attempts' => 'integer',
         'similarity_threshold' => 'float',
@@ -220,9 +220,14 @@ class Question extends Model
             
             // 3. Check alternative answers if available
             if (!empty($this->alternative_answers)) {
-                foreach ($this->alternative_answers as $altAnswer) {
+                // Split the text by newlines and check each alternative answer
+                $altAnswers = array_filter(explode("\n", $this->alternative_answers), function($line) {
+                    return trim($line) !== '';
+                });
+
+                foreach ($altAnswers as $altAnswer) {
                     if (empty($altAnswer)) continue;
-                    
+
                     $altAnswer = trim(strtolower($altAnswer));
                     if ($submittedAnswer === $altAnswer) {
                         return true;
@@ -304,12 +309,17 @@ class Question extends Model
             
             // 9. Check similarity against alternative answers
             if (!empty($this->alternative_answers)) {
-                foreach ($this->alternative_answers as $altAnswer) {
+                // Split the text by newlines and check each alternative answer
+                $altAnswers = array_filter(explode("\n", $this->alternative_answers), function($line) {
+                    return trim($line) !== '';
+                });
+
+                foreach ($altAnswers as $altAnswer) {
                     if (empty($altAnswer)) continue;
-                    
+
                     $normalizedAlt = $this->normalizeTextForComparison(trim(strtolower($altAnswer)));
                     $altSimilarity = $this->calculateTextSimilarity($normalizedSubmitted, $normalizedAlt);
-                    
+
                     if ($altSimilarity >= $adjustedThreshold) {
                         Log::info('Answer accepted by alternative similarity check', [
                             'question_id' => $this->id,

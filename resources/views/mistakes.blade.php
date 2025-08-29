@@ -433,6 +433,15 @@
             margin-left: 1rem;
         }
 
+        /* Profile image styles */
+        .profile-circle .profile-image {
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            object-fit: cover;
+            display: block;
+        }
+
         .profile-circle.no-image {
             background: linear-gradient(135deg, #007bff, #00d4ff);
         }
@@ -983,11 +992,31 @@
                         <i class="fas fa-arrow-left"></i> Back to Courses
                     </a>
                 @endif
-                <a href="{{ route('profile') }}" class="profile-circle {{ !Auth::user() || !Auth::user()->profile_picture_url ? 'no-image' : '' }}" 
-                     style="{{ Auth::user() && Auth::user()->profile_picture_url ? 'background-image: url(' . secure_url(Auth::user()->profile_picture_url) . ');' : '' }}">
-                    @if(!Auth::user() || !Auth::user()->profile_picture_url)
-                        {{ Auth::user() ? substr(Auth::user()->name, 0, 1) : 'U' }}
-                    @endif
+                @php
+                    $profileImageUrl = null;
+                    if (Auth::user() && Auth::user()->profile_picture_url) {
+                        // Check if it's an external URL (starts with http/https)
+                        if (filter_var(Auth::user()->profile_picture_url, FILTER_VALIDATE_URL)) {
+                            $profileImageUrl = Auth::user()->profile_picture_url;
+                        } else {
+                            // Local file - use secure_url with cache busting
+                            $localPath = storage_path('app/public/' . Auth::user()->profile_picture_url);
+                            if (file_exists($localPath)) {
+                                $profileImageUrl = secure_url(Auth::user()->profile_picture_url) . '?v=' . time();
+                            }
+                        }
+                    }
+
+                    // Fallback to UI Avatars if no valid image
+                    if (!$profileImageUrl) {
+                        $profileImageUrl = 'https://ui-avatars.com/api/?name=' . urlencode(Auth::user()->name) . '&size=200&background=007bff&color=ffffff';
+                    }
+                @endphp
+                <a href="{{ route('profile') }}" class="profile-circle">
+                    <img src="{{ $profileImageUrl }}"
+                         alt="Profile Picture"
+                         class="profile-image"
+                         onerror="this.src='https://ui-avatars.com/api/?name={{ urlencode(Auth::user()->name) }}&size=200&background=007bff&color=ffffff'">
                 </a>
             </div>
         </div>

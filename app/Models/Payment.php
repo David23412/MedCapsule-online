@@ -5,7 +5,6 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Payment extends Model
 {
@@ -14,44 +13,37 @@ class Payment extends Model
     protected $fillable = [
         'user_id',
         'course_id',
-        'reference_number',
         'amount',
-        'payment_method',
         'status',
-        'payment_data',
+        'payment_method',
+        'reference_number',
+        'transaction_id',
         'paid_at'
     ];
 
     protected $casts = [
-        'payment_data' => 'json',
-        'paid_at' => 'datetime'
+        'amount' => 'decimal:2',
+        'paid_at' => 'datetime',
     ];
 
-    protected static function boot()
-    {
-        parent::boot();
+    const STATUSES = [
+        'pending' => 'Pending',
+        'completed' => 'Completed',
+        'rejected' => 'Rejected',
+        'failed' => 'Failed'
+    ];
 
-        // Generate reference number before creating
-        static::creating(function ($payment) {
-            if (empty($payment->reference_number)) {
-                $payment->reference_number = 'MC' . strtoupper(substr(md5(uniqid()), 0, 4)) . time() . strtoupper(substr(md5(uniqid()), 0, 8));
-            }
-        });
-
-        // PHASE 2: Dispatch PaymentCompleted event when payment is completed
-        static::updated(function ($payment) {
-            if ($payment->wasChanged('status') && $payment->status === 'completed') {
-                event(new \App\Events\PaymentCompleted(
-                    $payment,
-                    $payment->user_id,
-                    [$payment->course_id]
-                ));
-            }
-        });
-    }
+    const PAYMENT_METHODS = [
+        'vodafone_cash' => 'Vodafone Cash',
+        'fawry' => 'Fawry',
+        'instapay' => 'InstaPay',
+        'credit_card' => 'Credit Card',
+        'paypal' => 'PayPal',
+        'manual' => 'Manual Payment'
+    ];
 
     /**
-     * Get the user that made the payment
+     * Relationship with User model
      */
     public function user(): BelongsTo
     {
@@ -59,36 +51,90 @@ class Payment extends Model
     }
 
     /**
-     * Get the course that was paid for
+     * Relationship with Course model
      */
     public function course(): BelongsTo
     {
         return $this->belongsTo(Course::class);
     }
 
-
-
     /**
-     * Mark a payment as completed and enroll the user in the course
+     * Check if payment is pending
      */
-    public function markAsPaid()
+    public function isPending(): bool
     {
-        $this->status = 'completed';
-        $this->paid_at = now();
-        $this->save();
-
-        // Single course enrollment
-        $this->user->courses()->syncWithoutDetaching([$this->course_id]);
-        
-        // Create notification for single course
-        app(NotificationService::class)->createPaymentSuccessNotification(
-            $this->user,
-            $this->course->name,
-            $this->amount
-        );
-
-        return $this;
+        return $this->status === 'pending';
     }
 
+    /**
+     * Check if payment is completed
+     */
+    public function isCompleted(): bool
+    {
+        return $this->status === 'completed';
+    }
 
+    /**
+     * Check if payment is rejected
+     */
+    public function isRejected(): bool
+    {
+        return $this->status === 'rejected';
+    }
+
+    /**
+     * Get formatted amount
+     */
+    public function getFormattedAmountAttribute(): string
+    {
+        return number_format($this->amount, 2) . ' EGP';
+    }
+
+    /**
+     * Get status label
+     */
+    public function getStatusLabelAttribute(): string
+    {
+        return self::STATUSES[$this->status] ?? 'Unknown';
+    }
+
+    /**
+     * Get payment method label
+     */
+    public function getPaymentMethodLabelAttribute(): string
+    {
+        return self::PAYMENT_METHODS[$this->payment_method] ?? 'Unknown';
+    }
+
+    /**
+     * Scope for pending payments
+     */
+    public function scopePending($query)
+    {
+        return $query->where('status', 'pending');
+    }
+
+    /**
+     * Scope for completed payments
+     */
+    public function scopeCompleted($query)
+    {
+        return $query->where('status', 'completed');
+    }
+
+    /**
+     * Scope for rejected payments
+     */
+    public function scopeRejected($query)
+    {
+        return $query->where('status', 'rejected');
+    }
+
+    /**
+     * Scope for failed payments
+     */
+    public function scopeFailed($query)
+    {
+        return $query->where('status', 'failed');
+    }
 }

@@ -10,14 +10,21 @@ class ContentSecurityPolicy
     public function handle(Request $request, Closure $next)
     {
         $response = $next($request);
-        
-        $csp = "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self';";
-        
+
+        // Updated CSP to allow YouTube embeds and API calls
+        $csp = "default-src 'self'; " .
+               "script-src 'self' 'unsafe-inline' https://www.youtube.com https://youtube.com https://www.youtube-nocookie.com https://youtube-nocookie.com; " .
+               "style-src 'self' 'unsafe-inline'; " .
+               "img-src 'self' data: https: blob:; " .
+               "font-src 'self' https://fonts.googleapis.com https://fonts.gstatic.com; " .
+               "frame-src 'self' https://www.youtube.com https://youtube.com https://www.youtube-nocookie.com https://youtube-nocookie.com; " .
+               "connect-src 'self' https://www.youtube.com https://youtube.com https://www.youtube-nocookie.com https://youtube-nocookie.com https://www.googleapis.com https://fonts.googleapis.com https://fonts.gstatic.com;";
+
         $response->headers->set('Content-Security-Policy', $csp);
         $response->headers->set('X-Content-Type-Options', 'nosniff');
         $response->headers->set('X-Frame-Options', 'DENY');
         $response->headers->set('X-XSS-Protection', '1; mode=block');
-        
+
         return $response;
     }
 }

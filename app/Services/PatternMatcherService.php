@@ -2,329 +2,324 @@
 
 namespace App\Services;
 
-use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Str;
-
+/**
+ * Enhanced PatternMatcherService for Written Answer Evaluation
+ * Provides medical pattern matching and domain-specific analysis
+ */
 class PatternMatcherService
 {
+    private $cacheEnabled = false;
+    private $cacheTtl = 3600;
+
     /**
-     * Cache settings
+     * Medical pattern definitions
      */
-    private bool $cacheEnabled = true;
-    private int $cacheTtl = 86400; // 24 hours
-    
+    private $medicalPatterns = [
+        'sympathetic_effects' => [
+            'patterns' => [
+                '/sympathetic.*increases?.*heart.*rate/i',
+                '/sympathetic.*decreases?.*digestion/i',
+                '/sympathetic.*increases?.*blood.*pressure/i',
+                '/sympathetic.*fight.*or.*flight/i',
+                '/sympathetic.*stimulates?.*adrenal/i',
+                '/SNS.*increases?.*HR/i',
+                '/SNS.*decreases?.*GI/i'
+            ],
+            'weight' => 0.8
+        ],
+        'parasympathetic_effects' => [
+            'patterns' => [
+                '/parasympathetic.*decreases?.*heart.*rate/i',
+                '/parasympathetic.*increases?.*digestion/i',
+                '/parasympathetic.*rest.*and.*digest/i',
+                '/parasympathetic.*decreases?.*blood.*pressure/i',
+                '/PNS.*decreases?.*HR/i',
+                '/PNS.*increases?.*GI/i'
+            ],
+            'weight' => 0.8
+        ],
+        'action_potential' => [
+            'patterns' => [
+                '/depolarization.*repolarization/i',
+                '/sodium.*influx.*potassium.*efflux/i',
+                '/threshold.*potential/i',
+                '/voltage.*gated.*channels/i',
+                '/Na\+.*K\+.*pump/i'
+            ],
+            'weight' => 0.7
+        ],
+        'cardiac_cycle' => [
+            'patterns' => [
+                '/systole.*diastole/i',
+                '/contraction.*relaxation/i',
+                '/atrial.*ventricular/i',
+                '/AV.*valve.*open/i',
+                '/semilunar.*valve/i'
+            ],
+            'weight' => 0.7
+        ],
+        'respiratory_mechanics' => [
+            'patterns' => [
+                '/inspiration.*expiration/i',
+                '/diaphragm.*contracts/i',
+                '/alveolar.*pressure/i',
+                '/boyle.*law/i',
+                '/surfactant/i'
+            ],
+            'weight' => 0.6
+        ],
+        'renal_physiology' => [
+            'patterns' => [
+                '/glomerular.*filtration/i',
+                '/tubular.*reabsorption/i',
+                '/tubular.*secretion/i',
+                '/countercurrent.*mechanism/i',
+                '/loop.*henle/i'
+            ],
+            'weight' => 0.6
+        ],
+        'glycolysis' => [
+            'patterns' => [
+                '/glucose.*pyruvate/i',
+                '/ATP.*production/i',
+                '/NADH.*formation/i',
+                '/substrate.*level.*phosphorylation/i'
+            ],
+            'weight' => 0.7
+        ],
+        'tca_cycle' => [
+            'patterns' => [
+                '/citric.*acid.*cycle/i',
+                '/krebs.*cycle/i',
+                '/acetyl.*CoA/i',
+                '/oxidative.*decarboxylation/i',
+                '/NADH.*FADH2/i'
+            ],
+            'weight' => 0.8
+        ],
+        'electron_transport' => [
+            'patterns' => [
+                '/electron.*transport.*chain/i',
+                '/oxidative.*phosphorylation/i',
+                '/ATP.*synthase/i',
+                '/proton.*gradient/i',
+                '/inner.*mitochondrial.*membrane/i'
+            ],
+            'weight' => 0.7
+        ],
+        'dna_replication' => [
+            'patterns' => [
+                '/leading.*lagging.*strand/i',
+                '/DNA.*polymerase/i',
+                '/helicase.*unwinds/i',
+                '/semiconservative/i',
+                '/okazaki.*fragments/i'
+            ],
+            'weight' => 0.6
+        ],
+        'epithelial_tissue' => [
+            'patterns' => [
+                '/simple.*stratified/i',
+                '/squamous.*cuboidal.*columnar/i',
+                '/basement.*membrane/i',
+                '/tight.*junction/i',
+                '/desmosome/i'
+            ],
+            'weight' => 0.6
+        ],
+        'connective_tissue' => [
+            'patterns' => [
+                '/loose.*dense/i',
+                '/extracellular.*matrix/i',
+                '/collagen.*fibers/i',
+                '/specialized.*connective/i'
+            ],
+            'weight' => 0.6
+        ],
+        'muscle_tissue' => [
+            'patterns' => [
+                '/skeletal.*cardiac.*smooth/i',
+                '/striated.*non.*striated/i',
+                '/sarcomere/i',
+                '/myosin.*actin/i'
+            ],
+            'weight' => 0.6
+        ],
+        'anatomical_position' => [
+            'patterns' => [
+                '/anterior.*posterior/i',
+                '/superior.*inferior/i',
+                '/medial.*lateral/i',
+                '/proximal.*distal/i',
+                '/palmar.*plantar/i'
+            ],
+            'weight' => 0.5
+        ],
+        'skeletal_system' => [
+            'patterns' => [
+                '/axial.*appendicular/i',
+                '/long.*short.*flat.*irregular/i',
+                '/compact.*spongy.*bone/i',
+                '/diaphysis.*epiphysis/i'
+            ],
+            'weight' => 0.5
+        ],
+        'joint_types' => [
+            'patterns' => [
+                '/fibrous.*cartilaginous.*synovial/i',
+                '/hinge.*pivot.*ball.*socket/i',
+                '/suture.*syndesmosis/i'
+            ],
+            'weight' => 0.5
+        ]
+    ];
+
     /**
-     * Registered pattern matchers
-     */
-    private array $patternMatchers = [];
-    
-    /**
-     * Constructor
-     */
-    public function __construct()
-    {
-        $this->registerDefaultPatternMatchers();
-    }
-    
-    /**
-     * Set cache configuration
-     *
-     * @param bool $enabled Whether caching is enabled
-     * @param int $ttl Time to live in seconds
-     * @return self
-     */
-    public function setCacheConfig(bool $enabled, int $ttl = 86400): self
-    {
-        $this->cacheEnabled = $enabled;
-        $this->cacheTtl = $ttl;
-        return $this;
-    }
-    
-    /**
-     * Register default pattern matchers
-     */
-    private function registerDefaultPatternMatchers(): void
-    {
-        // ANS-related patterns
-        $this->registerPatternMatcher('ans_division', function ($text) {
-            $text = strtolower($text);
-            
-            $hasANS = preg_match('/\b(ans|autonomic nervous system)\b/', $text);
-            
-            $hasSympatheticMention = preg_match('/\b(sympathetic|adrenergic)\b/', $text);
-            $hasParasympatheticMention = preg_match('/\b(parasympathetic|cholinergic|vagal)\b/', $text);
-            
-            return $hasANS && ($hasSympatheticMention || $hasParasympatheticMention);
-        });
-        
-        // Sympathetic effects pattern
-        $this->registerPatternMatcher('sympathetic_effects', function ($text) {
-            $text = strtolower($text);
-            
-            $hasSympatheticMention = preg_match('/\b(sympathetic|adrenergic)\b/', $text);
-            
-            // Check for specific effects
-            $hasHeartRateEffect = preg_match('/\b(increas\w+\s+heart\s+rate|heart\s+rate\s+increas\w+)\b/', $text);
-            $hasBloodPressureEffect = preg_match('/\b(increas\w+\s+blood\s+pressure|blood\s+pressure\s+increas\w+)\b/', $text);
-            $hasDilationEffect = preg_match('/\b(pupil\w*\s+dilat\w+|dilat\w+\s+pupil\w*)\b/', $text);
-            $hasDigestionEffect = preg_match('/\b(decreas\w+\s+digest\w+|digest\w+\s+decreas\w+)\b/', $text);
-            
-            $hasEffects = $hasHeartRateEffect || $hasBloodPressureEffect || $hasDilationEffect || $hasDigestionEffect;
-            
-            return $hasSympatheticMention && $hasEffects;
-        });
-        
-        // Parasympathetic effects pattern
-        $this->registerPatternMatcher('parasympathetic_effects', function ($text) {
-            $text = strtolower($text);
-            
-            // Allow for common misspelling
-            $hasParasympatheticMention = preg_match('/\b(parasympathetic|parasymathetic|cholinergic|vagal)\b/', $text);
-            
-            // Check for specific effects
-            $hasHeartRateEffect = preg_match('/\b(decreas\w+\s+heart\s+rate|heart\s+rate\s+decreas\w+)\b/', $text);
-            $hasDigestionEffect = preg_match('/\b(increas\w+\s+digest\w+|digest\w+\s+increas\w+)\b/', $text);
-            $hasConstrictionEffect = preg_match('/\b(pupil\w*\s+constrict\w+|constrict\w+\s+pupil\w*|miosis)\b/', $text);
-            
-            $hasEffects = $hasHeartRateEffect || $hasDigestionEffect || $hasConstrictionEffect;
-            
-            return $hasParasympatheticMention && $hasEffects;
-        });
-        
-        // Anatomy pattern
-        $this->registerPatternMatcher('anatomy', function ($text) {
-            $text = strtolower($text);
-            
-            $anatomyParts = [
-                'heart', 'lung', 'liver', 'kidney', 'brain', 'spleen', 'pancreas', 
-                'stomach', 'intestine', 'colon', 'rectum', 'bladder', 'uterus', 
-                'ovary', 'testicle', 'prostate', 'thyroid', 'adrenal'
-            ];
-            
-            $matches = 0;
-            foreach ($anatomyParts as $part) {
-                if (strpos($text, $part) !== false) {
-                    $matches++;
-                }
-            }
-            
-            return $matches >= 2;
-        });
-        
-        // Drug mechanism pattern
-        $this->registerPatternMatcher('drug_mechanism', function ($text) {
-            $text = strtolower($text);
-            
-            $hasDrugTerm = preg_match('/\b(drug|medication|agent|antagonist|agonist|inhibitor|blocker)\b/', $text);
-            
-            $hasMechanismTerm = preg_match('/\b(mechanism|action|effect|bind|receptor|block|activate|inhibit)\b/', $text);
-            
-            return $hasDrugTerm && $hasMechanismTerm;
-        });
-        
-        // Diagnosis pattern
-        $this->registerPatternMatcher('diagnosis', function ($text) {
-            $text = strtolower($text);
-            
-            $hasDiagnosisTerm = preg_match('/\b(diagnos\w+|condition|disease|disorder|syndrome)\b/', $text);
-            
-            $hasSymptomTerm = preg_match('/\b(symptom|sign|presentation|manifests|presents)\b/', $text);
-            
-            return $hasDiagnosisTerm || $hasSymptomTerm;
-        });
-        
-        // Treatment pattern
-        $this->registerPatternMatcher('treatment', function ($text) {
-            $text = strtolower($text);
-            
-            $hasTreatmentTerm = preg_match('/\b(treat\w+|therap\w+|intervention|management|procedure|surgery)\b/', $text);
-            
-            $hasOutcomeTerm = preg_match('/\b(outcome|prognosis|efficacy|effective|response|result)\b/', $text);
-            
-            return $hasTreatmentTerm || $hasOutcomeTerm;
-        });
-        
-        // Pathophysiology pattern
-        $this->registerPatternMatcher('pathophysiology', function ($text) {
-            $text = strtolower($text);
-            
-            $hasPathophysiologyTerm = preg_match('/\b(pathophysiology|pathogenesis|mechanism|cause|etiology|develop\w+)\b/', $text);
-            
-            $hasProcessTerm = preg_match('/\b(process|progression|cascade|pathway|sequence|lead\s+to)\b/', $text);
-            
-            return $hasPathophysiologyTerm || $hasProcessTerm;
-        });
-    }
-    
-    /**
-     * Register a new pattern matcher
-     *
-     * @param string $name The name of the pattern matcher
-     * @param callable $callback The pattern matching function
-     * @return self
-     */
-    public function registerPatternMatcher(string $name, callable $callback): self
-    {
-        $this->patternMatchers[$name] = $callback;
-        return $this;
-    }
-    
-    /**
-     * Get a cached result or compute it
-     *
-     * @param string $key Cache key
-     * @param callable $callback Function to compute the result
-     * @return mixed The cached or computed result
-     */
-    private function getCachedOrCompute(string $key, callable $callback)
-    {
-        if (!$this->cacheEnabled) {
-            return $callback();
-        }
-        
-        return Cache::remember($key, $this->cacheTtl, $callback);
-    }
-    
-    /**
-     * Get pattern matches for two texts (MISSING METHOD FROM FIX.MD)
-     * This method was mentioned as missing in the Fix.md file
-     *
-     * @param string $text1 First text to compare
-     * @param string $text2 Second text to compare
-     * @return array Array of matching patterns between the two texts
-     */
-    public function getPatternMatches(string $text1, string $text2): array
-    {
-        $cacheKey = 'pattern_matches:' . md5($text1 . '|' . $text2);
-        
-        return $this->getCachedOrCompute($cacheKey, function () use ($text1, $text2) {
-            $matches = [];
-            
-            // Get patterns for both texts
-            $patterns1 = $this->identifyPatterns($text1);
-            $patterns2 = $this->identifyPatterns($text2);
-            
-            // Find matching patterns
-            foreach ($patterns1 as $patternName => $description) {
-                if (isset($patterns2[$patternName])) {
-                    $matches[$patternName] = [
-                        'pattern' => $patternName,
-                        'description' => $description,
-                        'confidence' => $this->calculatePatternConfidence($patternName, $text1, $text2)
-                    ];
-                }
-            }
-            
-            return $matches;
-        });
-    }
-    
-    /**
-     * Calculate confidence score for a pattern match between two texts
-     *
-     * @param string $patternName The pattern name
-     * @param string $text1 First text
-     * @param string $text2 Second text
-     * @return float Confidence score between 0 and 1
-     */
-    private function calculatePatternConfidence(string $patternName, string $text1, string $text2): float
-    {
-        // Simple confidence calculation based on pattern strength
-        $baseConfidence = 0.8;
-        
-        // Boost confidence for stronger patterns
-        $strongPatterns = ['sympathetic_effects', 'parasympathetic_effects', 'drug_mechanism'];
-        if (in_array($patternName, $strongPatterns)) {
-            $baseConfidence += 0.1;
-        }
-        
-        // Adjust based on text length (longer texts might have more reliable patterns)
-        $avgLength = (strlen($text1) + strlen($text2)) / 2;
-        if ($avgLength > 100) {
-            $baseConfidence += 0.05;
-        }
-        
-        return min(1.0, $baseConfidence);
-    }
-    
-    /**
-     * Identify matching patterns in a text
-     *
-     * @param string $text The text to analyze
-     * @return array Array of pattern matches with name, description, and confidence
-     */
-    public function identifyPatterns(string $text): array
-    {
-        $cacheKey = 'pattern_matcher:' . md5($text);
-        
-        return $this->getCachedOrCompute($cacheKey, function () use ($text) {
-            $matches = [];
-            
-            foreach ($this->patternMatchers as $name => $matcher) {
-                if ($matcher($text)) {
-                    $matches[$name] = $this->getPatternDescription($name);
-                }
-            }
-            
-            return $matches;
-        });
-    }
-    
-    /**
-     * Check if a specific pattern matches in a text
-     *
-     * @param string $patternName The name of the pattern to check
-     * @param string $text The text to analyze
-     * @return bool Whether the pattern matches
+     * Match a specific pattern in text
      */
     public function matchesPattern(string $patternName, string $text): bool
     {
-        if (!isset($this->patternMatchers[$patternName])) {
+        if (!isset($this->medicalPatterns[$patternName])) {
             return false;
         }
-        
-        $cacheKey = 'pattern_matcher:' . $patternName . ':' . md5($text);
-        
-        return $this->getCachedOrCompute($cacheKey, function () use ($patternName, $text) {
-            return $this->patternMatchers[$patternName]($text);
-        });
-    }
-    
-    /**
-     * Get the list of all registered pattern matchers
-     * 
-     * @return array List of pattern matcher names and descriptions
-     */
-    public function getRegisteredPatterns(): array
-    {
-        $patterns = [];
-        
-        foreach (array_keys($this->patternMatchers) as $name) {
-            $patterns[$name] = $this->getPatternDescription($name);
+
+        $text = strtolower($text);
+        $patterns = $this->medicalPatterns[$patternName]['patterns'];
+
+        foreach ($patterns as $pattern) {
+            if (preg_match($pattern, $text)) {
+                return true;
+            }
         }
-        
-        return $patterns;
+
+        return false;
     }
-    
+
     /**
-     * Get description for a pattern
-     *
-     * @param string $patternName Pattern name
-     * @return string Pattern description
+     * Get pattern match score
      */
-    private function getPatternDescription(string $patternName): string
+    public function getPatternScore(string $patternName, string $text): float
     {
-        $descriptions = [
-            'ans_division' => 'Autonomic Nervous System Divisions',
-            'sympathetic_effects' => 'Sympathetic Effects',
-            'parasympathetic_effects' => 'Parasympathetic Effects',
-            'anatomy' => 'Anatomical Structures',
-            'drug_mechanism' => 'Drug Mechanism of Action',
-            'diagnosis' => 'Disease Diagnosis',
-            'treatment' => 'Treatment Approach',
-            'pathophysiology' => 'Disease Pathophysiology'
-        ];
-        
-        return $descriptions[$patternName] ?? 'Unknown Pattern';
+        if (!isset($this->medicalPatterns[$patternName])) {
+            return 0.0;
+        }
+
+        $text = strtolower($text);
+        $patterns = $this->medicalPatterns[$patternName]['patterns'];
+        $weight = $this->medicalPatterns[$patternName]['weight'];
+
+        $matches = 0;
+        foreach ($patterns as $pattern) {
+            if (preg_match($pattern, $text)) {
+                $matches++;
+            }
+        }
+
+        if ($matches === 0) {
+            return 0.0;
+        }
+
+        // Calculate score based on number of matching patterns
+        $matchRatio = $matches / count($patterns);
+        return $matchRatio * $weight;
     }
-} 
+
+    /**
+     * Get all matching patterns for text
+     */
+    public function getMatchingPatterns(string $text): array
+    {
+        $matches = [];
+        $text = strtolower($text);
+
+        foreach ($this->medicalPatterns as $patternName => $config) {
+            $score = $this->getPatternScore($patternName, $text);
+            if ($score > 0) {
+                $matches[$patternName] = [
+                    'score' => $score,
+                    'weight' => $config['weight'],
+                    'matched_patterns' => $this->getMatchedPatterns($patternName, $text)
+                ];
+            }
+        }
+
+        return $matches;
+    }
+
+    /**
+     * Get specific matched patterns
+     */
+    private function getMatchedPatterns(string $patternName, string $text): array
+    {
+        $matched = [];
+        $patterns = $this->medicalPatterns[$patternName]['patterns'];
+
+        foreach ($patterns as $pattern) {
+            if (preg_match($pattern, $text, $matches)) {
+                $matched[] = [
+                    'pattern' => $pattern,
+                    'matches' => $matches
+                ];
+            }
+        }
+
+        return $matched;
+    }
+
+    /**
+     * Match patterns in text (legacy method)
+     */
+    public function matchPatterns(string $text, array $patterns): array
+    {
+        $matches = [];
+
+        foreach ($patterns as $pattern => $replacement) {
+            if (preg_match($pattern, $text, $match)) {
+                $matches[$pattern] = $match;
+            }
+        }
+
+        return $matches;
+    }
+
+    /**
+     * Find specific pattern in text (legacy method)
+     */
+    public function findPattern(string $text, string $pattern): bool
+    {
+        return preg_match($pattern, $text) === 1;
+    }
+
+    /**
+     * Extract pattern groups (legacy method)
+     */
+    public function extractGroups(string $text, string $pattern): array
+    {
+        if (preg_match($pattern, $text, $matches)) {
+            return $matches;
+        }
+
+        return [];
+    }
+
+    /**
+     * Replace patterns in text (legacy method)
+     */
+    public function replacePatterns(string $text, array $patterns): string
+    {
+        foreach ($patterns as $pattern => $replacement) {
+            $text = preg_replace($pattern, $replacement, $text);
+        }
+
+        return $text;
+    }
+
+    /**
+     * Set cache configuration
+     */
+    public function setCacheConfig(bool $enabled, int $ttl = 3600): void
+    {
+        $this->cacheEnabled = $enabled;
+        $this->cacheTtl = $ttl;
+    }
+}

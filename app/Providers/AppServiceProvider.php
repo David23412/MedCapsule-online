@@ -2,16 +2,12 @@
 
 namespace App\Providers;
 
-use App\Models\Payment;
-use App\Observers\PaymentObserver;
-use App\Services\GradingService;
-use App\Services\QuizService;
-use App\Services\NotificationService;
-use App\Services\Core\UltraConsolidatedCacheService;
-use App\Services\UserStatsService;
-use App\Services\WrittenAnswerEvaluationService;
-use App\Services\QueryMonitoringService;
 use Illuminate\Support\ServiceProvider;
+use Illuminate\Support\Facades\Schema;
+use App\Services\PaymentService;
+use App\Services\PaymentSecurityService;
+use App\Services\AdvancedCacheService;
+use App\Services\PerformanceMonitorService;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -20,108 +16,37 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        // Register GradingService with dependencies
-        $this->app->singleton(GradingService::class, function ($app) {
-            return new GradingService(
-                $app->make(\App\Services\Core\UltraConsolidatedCacheService::class),
-                $app->make(UserStatsService::class),
-                $app->make(NotificationService::class),
-                $app->make(WrittenAnswerEvaluationService::class)
+        // FIXED: Register all military-grade services
+        $this->app->singleton(PaymentService::class, function ($app) {
+            return new PaymentService(
+                $app->make(\App\Services\SecurePaymentService::class),
+                $app->make(\App\Services\PerformanceMonitorService::class),
+                $app->make(PaymentSecurityService::class)
             );
         });
 
-        // Register QuizService with dependencies
-        $this->app->singleton(QuizService::class, function ($app) {
-            return new QuizService(
-                $app->make(\App\Services\Core\UltraConsolidatedCacheService::class)
-            );
+        $this->app->singleton(PaymentSecurityService::class, function ($app) {
+            return new PaymentSecurityService();
         });
 
-        // Register NotificationService as singleton
-        $this->app->singleton(NotificationService::class, function ($app) {
-            return new NotificationService();
+        $this->app->singleton(AdvancedCacheService::class, function ($app) {
+            return new AdvancedCacheService();
         });
 
-        // Register UltraConsolidatedCacheService as singleton (replaces CacheService)
-        $this->app->singleton(\App\Services\Core\UltraConsolidatedCacheService::class, function ($app) {
-            return new \App\Services\Core\UltraConsolidatedCacheService();
+        $this->app->singleton(PerformanceMonitorService::class, function ($app) {
+            return new PerformanceMonitorService();
         });
 
-        // Register UserStatsService as singleton
-        $this->app->singleton(UserStatsService::class, function ($app) {
-            return new UserStatsService();
+        $this->app->singleton(\App\Services\PerformanceMonitorService::class, function ($app) {
+            return new \App\Services\PerformanceMonitorService();
         });
 
-        // PHASE 3: Register QueryMonitoringService as singleton
-        $this->app->singleton(QueryMonitoringService::class, function ($app) {
-            return new QueryMonitoringService();
+        // FIXED: Register existing services for compatibility
+        $this->app->singleton(\App\Services\SecurePaymentService::class, function ($app) {
+            return new \App\Services\SecurePaymentService();
         });
 
-        // Register TextProcessingService as singleton
-        $this->app->singleton(\App\Services\TextProcessingService::class, function ($app) {
-            return new \App\Services\TextProcessingService();
-        });
 
-        // Register PatternMatcherService as singleton
-        $this->app->singleton(\App\Services\PatternMatcherService::class, function ($app) {
-            return new \App\Services\PatternMatcherService();
-        });
-
-        // Register MedicalKnowledgeService as singleton
-        $this->app->singleton(\App\Services\MedicalKnowledgeService::class, function ($app) {
-            return new \App\Services\MedicalKnowledgeService();
-        });
-
-        // Register WrittenAnswerEvaluationService as singleton
-        $this->app->singleton(WrittenAnswerEvaluationService::class, function ($app) {
-            return new WrittenAnswerEvaluationService(
-                $app->make(\App\Services\TextProcessingService::class),
-                $app->make(\App\Services\PatternMatcherService::class),
-                $app->make(\App\Services\MedicalKnowledgeService::class)
-            );
-        });
-
-        // Register PerformanceOptimizationService as singleton (updated to use consolidated cache)
-        $this->app->singleton(\App\Services\PerformanceOptimizationService::class, function ($app) {
-            return new \App\Services\PerformanceOptimizationService(
-                $app->make(\App\Services\Core\UltraConsolidatedCacheService::class)
-            );
-        });
-
-        // Register PaymentVerificationService as singleton
-        $this->app->singleton(\App\Services\PaymentVerificationService::class, function ($app) {
-            return new \App\Services\PaymentVerificationService();
-        });
-
-        // Register FraudDetectionService as singleton
-        $this->app->singleton(\App\Services\FraudDetectionService::class, function ($app) {
-            return new \App\Services\FraudDetectionService();
-        });
-
-        // Register PaymentLogService as singleton
-        $this->app->singleton(\App\Services\PaymentLogService::class, function ($app) {
-            return new \App\Services\PaymentLogService();
-        });
-
-        // Register InputValidationService as singleton
-        $this->app->singleton(\App\Services\InputValidationService::class, function ($app) {
-            return new \App\Services\InputValidationService();
-        });
-
-        // Register DatabaseService as singleton
-        $this->app->singleton(\App\Services\DatabaseService::class, function ($app) {
-            return new \App\Services\DatabaseService();
-        });
-
-        // Register ResilientCacheService as singleton
-        $this->app->singleton(\App\Services\ResilientUltraConsolidatedCacheService::class, function ($app) {
-            return new \App\Services\ResilientCacheService();
-        });
-        
-        // Register CourseTypeService as singleton
-        $this->app->singleton(\App\Services\CourseTypeService::class, function ($app) {
-            return new \App\Services\CourseTypeService();
-        });
     }
 
     /**
@@ -129,17 +54,187 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        // Only force HTTPS in production, not for ngrok development
-        if (app()->environment('production')) {
-            \URL::forceScheme('https');
+        Schema::defaultStringLength(191);
+
+        // FIXED: Initialize performance monitoring on boot
+        $this->initializePerformanceMonitoring();
+
+        // FIXED: Warm critical caches on application start
+        $this->warmCriticalCaches();
+
+        // FIXED: Set up global performance monitoring
+        $this->setupGlobalPerformanceMonitoring();
+    }
+
+    /**
+     * FIXED: Initialize performance monitoring system
+     */
+    private function initializePerformanceMonitoring(): void
+    {
+        try {
+            $performanceService = app(PerformanceMonitorService::class);
+
+            // Start system monitoring
+            $operationId = $performanceService->startOperation('system_boot', [
+                'timestamp' => now()->toISOString(),
+                'environment' => app()->environment()
+            ]);
+
+            // Record system boot metrics
+            $metrics = [
+                'php_version' => PHP_VERSION,
+                'laravel_version' => app()->version(),
+                'memory_limit' => ini_get('memory_limit'),
+                'max_execution_time' => ini_get('max_execution_time'),
+                'database_connection' => config('database.default'),
+                'cache_driver' => config('cache.default'),
+                'session_driver' => config('session.driver')
+            ];
+
+            $performanceService->endOperation($operationId, $metrics);
+
+        } catch (\Exception $e) {
+            \Log::error('Failed to initialize performance monitoring', [
+                'error' => $e->getMessage()
+            ]);
         }
-        // Register the Payment model observer
-        Payment::observe(PaymentObserver::class);
-        
-        // Register the Question model observer with dependency injection
-        \App\Models\Question::observe(app()->make(\App\Observers\QuestionObserver::class));
-        
-        // Register the Course model observer for INSTANT cache clearing
-        \App\Models\Course::observe(\App\Observers\CourseObserver::class);
+    }
+
+    /**
+     * FIXED: Warm critical caches on application start
+     */
+    private function warmCriticalCaches(): void
+    {
+        try {
+            $cacheService = app(AdvancedCacheService::class);
+
+            // Warm caches in background to not block boot
+            dispatch(function () use ($cacheService) {
+                $cacheService->warmCriticalCaches();
+            })->onQueue('cache-warming');
+
+        } catch (\Exception $e) {
+            \Log::error('Failed to initialize cache warming', [
+                'error' => $e->getMessage()
+            ]);
+        }
+    }
+
+    /**
+     * FIXED: Set up global performance monitoring hooks
+     */
+    private function setupGlobalPerformanceMonitoring(): void
+    {
+        // FIXED: Monitor database queries globally
+        \DB::listen(function ($query) {
+            $performanceService = app(PerformanceMonitorService::class);
+
+            if ($query->time > 1000) { // Log slow queries (>1 second)
+                $operationId = $performanceService->startOperation('slow_query', [
+                    'sql' => $query->sql,
+                    'bindings' => $query->bindings,
+                    'connection' => $query->connectionName
+                ]);
+
+                $performanceService->endOperation($operationId, [
+                    'execution_time_ms' => $query->time,
+                    'query_type' => $this->getQueryType($query->sql)
+                ]);
+            }
+        });
+
+        // FIXED: Monitor HTTP requests globally
+        if (app()->runningInConsole() === false) {
+            $this->app['events']->listen('kernel.handling', function () {
+                $performanceService = app(PerformanceMonitorService::class);
+                $request = request();
+
+                $operationId = $performanceService->startOperation('http_request', [
+                    'method' => $request->method(),
+                    'url' => $request->url(),
+                    'ip' => $request->ip(),
+                    'user_agent' => $request->userAgent(),
+                    'route' => $request->route() ? $request->route()->getName() : 'unknown'
+                ]);
+
+                // Store operation ID in request for later retrieval
+                $request->merge(['_performance_operation_id' => $operationId]);
+            });
+
+            $this->app['events']->listen('kernel.terminating', function () {
+                try {
+                    $performanceService = app(PerformanceMonitorService::class);
+                    $request = request();
+
+                    if ($request->has('_performance_operation_id')) {
+                        $operationId = $request->get('_performance_operation_id');
+
+                        $performanceService->endOperation($operationId, [
+                            'response_code' => http_response_code(),
+                            'response_size' => strlen(ob_get_contents() ?: ''),
+                            'user_id' => auth()->id()
+                        ]);
+                    }
+                } catch (\Exception $e) {
+                    \Log::error('Failed to end HTTP request monitoring', [
+                        'error' => $e->getMessage()
+                    ]);
+                }
+            });
+        }
+
+        // FIXED: Monitor queue jobs
+        $this->app['events']->listen('Illuminate\Queue\Events\JobProcessing', function ($event) {
+            $performanceService = app(PerformanceMonitorService::class);
+
+            $operationId = $performanceService->startOperation('queue_job', [
+                'job' => $event->job->getName(),
+                'queue' => $event->job->getQueue(),
+                'connection' => $event->connectionName,
+                'attempts' => $event->job->attempts()
+            ]);
+
+            // Store operation ID in job for completion tracking
+            $event->job->_performance_operation_id = $operationId;
+        });
+
+        $this->app['events']->listen('Illuminate\Queue\Events\JobProcessed', function ($event) {
+            try {
+                $performanceService = app(PerformanceMonitorService::class);
+
+                if (isset($event->job->_performance_operation_id)) {
+                    $operationId = $event->job->_performance_operation_id;
+
+                    $performanceService->endOperation($operationId, [
+                        'status' => 'completed',
+                        'execution_time' => $event->job->getExecutionTime()
+                    ]);
+                }
+            } catch (\Exception $e) {
+                \Log::error('Failed to end queue job monitoring', [
+                    'error' => $e->getMessage()
+                ]);
+            }
+        });
+    }
+
+    /**
+     * FIXED: Get query type from SQL
+     */
+    private function getQueryType(string $sql): string
+    {
+        $sql = strtoupper(trim($sql));
+
+        if (str_starts_with($sql, 'SELECT')) {
+            return 'SELECT';
+        } elseif (str_starts_with($sql, 'INSERT')) {
+            return 'INSERT';
+        } elseif (str_starts_with($sql, 'UPDATE')) {
+            return 'UPDATE';
+        } elseif (str_starts_with($sql, 'DELETE')) {
+            return 'DELETE';
+        } else {
+            return 'OTHER';
+        }
     }
 }

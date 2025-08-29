@@ -15,7 +15,7 @@ use App\Http\Controllers\{
     ProfileController,
     StudySessionController,
     NotificationController,
-    PaymentController,
+    App\Http\Controllers\Admin\PaymentController,
     PaymentSettingsController,
     PaymentLogController,
     DeleteController,
@@ -28,6 +28,20 @@ use Illuminate\Support\Facades\DB;
 
 // Public routes
 Route::get('/', [HomeController::class, 'index'])->name('home');
+
+    // Profile picture serving route (PUBLIC ACCESS)
+    Route::get('/uploads/profile-pictures/{path}', function ($path) {
+        $fullPath = storage_path('app/uploads/profile-pictures/' . $path);
+
+        if (!file_exists($fullPath)) {
+            abort(404);
+        }
+
+        return response()->file($fullPath, [
+            'Content-Type' => 'image/jpeg',
+            'Cache-Control' => 'public, max-age=31536000',
+        ]);
+    })->where('path', '.*');
 
 
 
@@ -183,9 +197,45 @@ Route::middleware(['web', SecurityHeaders::class])->group(function () {
 
     
 
+// Search Users Route - Auth only (not admin)
+Route::get('/manage-access/search-users', [UserCourseController::class, 'searchUsers'])->name('admin.user-course.search')->withoutMiddleware([\App\Http\Middleware\VerifyCsrfToken::class]);
+
+// Debug route to check authentication status
+Route::get('/debug/auth-status', function() {
+    return response()->json([
+        'authenticated' => auth()->check(),
+        'user_id' => auth()->id(),
+        'user' => auth()->user(),
+        'session' => session()->all(),
+        'headers' => request()->headers->all(),
+        'cookies' => request()->cookies->all()
+    ]);
+})->withoutMiddleware([\App\Http\Middleware\VerifyCsrfToken::class]);
+
+// TEST ROUTE: Completely bypass all middleware for testing
+Route::get('/test/search-users-bypass', function() {
+    try {
+        // Test the UserService directly without User model serialization
+        $users = \DB::table('users')
+            ->where('name', 'like', '%' . 'Dr' . '%')
+            ->select('id', 'name', 'email', 'role')
+            ->get();
+
+        return response()->json([
+            'success' => true,
+            'users' => $users
+        ]);
+    } catch (\Exception $e) {
+        return response()->json([
+            'success' => false,
+            'message' => $e->getMessage(),
+            'trace' => $e->getTraceAsString()
+        ]);
+    }
+})->withoutMiddleware([\App\Http\Middleware\VerifyCsrfToken::class, \App\Http\Middleware\Authenticate::class]);
+
     // Manage Access Routes - Admin only
     Route::middleware('admin')->group(function () {
-        Route::get('/manage-access/search-users', [UserCourseController::class, 'searchUsers'])->name('admin.user-course.search');
 
         // Video Management Routes
         Route::get('/admin/videos', [App\Http\Controllers\VideoController::class, 'index'])->name('admin.videos.index');
@@ -334,6 +384,20 @@ Route::middleware(['web', SecurityHeaders::class])->group(function () {
         Route::post('/profile/update-picture', [ProfileController::class, 'updateProfilePicture'])->name('profile.update-picture');
     });
 
+    // Profile picture serving route (public access for uploaded images)
+    Route::get('/uploads/profile-pictures/{path}', function ($path) {
+        $fullPath = storage_path('app/uploads/profile-pictures/' . $path);
+
+        if (!file_exists($fullPath)) {
+            abort(404);
+        }
+
+        return response()->file($fullPath, [
+            'Content-Type' => 'image/jpeg',
+            'Cache-Control' => 'public, max-age=31536000', // Cache for 1 year
+        ]);
+    })->where('path', '.*')->withoutMiddleware(['web', \App\Http\Middleware\SecurityHeaders::class]);
+
     // Dashboard redirect
     Route::get('/dashboard', function () {
         return redirect('/courses');
@@ -341,14 +405,17 @@ Route::middleware(['web', SecurityHeaders::class])->group(function () {
 
     // Payment Routes
     Route::prefix('payments')->name('payments.')->group(function () {
-        Route::get('/{course}/options', [PaymentController::class, 'getPaymentOptions'])->name('options');
-        Route::post('/{course}/process', [PaymentController::class, 'processManualPayment'])->name('process');
+        Route::get('/{course}/options', [App\Http\Controllers\Admin\PaymentController::class, 'getPaymentOptions'])->name('options');
+        Route::post('/{course}/process', [App\Http\Controllers\Admin\PaymentController::class, 'processManualPayment'])->name('process');
     });
 
     // Admin Payment Routes
-    Route::prefix('admin/payments')->name('admin.payments.')->middleware(['admin'])->group(function () {
-        Route::get('/history', [App\Http\Controllers\Admin\PaymentController::class, 'adminPaymentHistory'])->name('history');
-        Route::get('/details/{payment}', [App\Http\Controllers\Admin\PaymentController::class, 'adminPaymentDetails'])->name('details');
+    Route::prefix('admin/payments')->name('admin.payments.')->middleware(['auth'])->group(function () {
+        Route::get('/history', [App\Http\Controllers\Admin\PaymentController::class, 'adminPaymentHistory'])->name('history')->middleware('admin');
+        Route::get('/details/{payment}', [App\Http\Controllers\Admin\PaymentController::class, 'adminPaymentDetails'])->name('details')->middleware('admin');
+        Route::post('/accept/{payment}', [App\Http\Controllers\Admin\PaymentController::class, 'acceptPayment'])->name('accept')->middleware('admin');
+        Route::post('/reject/{payment}', [App\Http\Controllers\Admin\PaymentController::class, 'rejectPayment'])->name('reject')->middleware('admin');
+        Route::post('/verify/{payment}', [App\Http\Controllers\Admin\PaymentController::class, 'acceptPayment'])->name('verify')->middleware('admin');
     });
 
 
@@ -358,8 +425,12 @@ Route::middleware(['web', SecurityHeaders::class])->group(function () {
         ->name('topics.source-progress')
         ->middleware('auth');
 
-    // Video page route
-    Route::get('/video/{topic}', [TopicController::class, 'showVideo'])->name('video.show')->middleware('auth');
+    // Video page route - NO CSP RESTRICTIONS for YouTube functionality
+    Route::get('/video/{topic}', [TopicController::class, 'showVideo'])->name('video.show')->middleware('auth')->withoutMiddleware([
+        \App\Http\Middleware\ContentSecurityPolicy::class,
+        \App\Http\Middleware\SecurityHeaders::class,
+        \App\Http\Middleware\SecurityHeadersMiddleware::class
+    ]);
     
     // Video progress routes
     Route::post('/api/video/progress', [App\Http\Controllers\VideoProgressController::class, 'updateProgress'])->name('video.progress.update')->middleware('auth');
@@ -515,6 +586,35 @@ Route::middleware('auth:sanctum')->group(function () {
 // Healthcheck route for monitoring
 Route::get('/health', function() {
     return response()->json(['status' => 'ok'], 200);
+});
+
+// DEBUG: Test CSP headers
+Route::get('/test-csp', function() {
+    $response = response()->json(['csp_test' => 'ok']);
+    $csp = "default-src 'self'; " .
+           "script-src 'self' 'unsafe-inline' https://www.youtube.com https://youtube.com https://www.youtube-nocookie.com https://youtube-nocookie.com; " .
+           "style-src 'self' 'unsafe-inline'; " .
+           "img-src 'self' data: https: blob:; " .
+           "font-src 'self' https://fonts.googleapis.com https://fonts.gstatic.com; " .
+           "frame-src 'self' https://www.youtube.com https://youtube.com https://www.youtube-nocookie.com https://youtube-nocookie.com; " .
+           "connect-src 'self' https://www.youtube.com https://youtube.com https://www.youtube-nocookie.com https://youtube-nocookie.com https://www.googleapis.com https://fonts.googleapis.com https://fonts.gstatic.com;";
+    $response->headers->set('Content-Security-Policy', $csp);
+    return $response;
+});
+
+// Test route for debugging search-users endpoint
+Route::get('/test-search-users', function() {
+    try {
+        $userService = app(\App\Services\UserService::class);
+        $result = $userService->searchUsers('Dr');
+        return response()->json($result);
+    } catch (\Exception $e) {
+        return response()->json([
+            'success' => false,
+            'message' => $e->getMessage(),
+            'trace' => $e->getTraceAsString()
+        ]);
+    }
 });
 
 

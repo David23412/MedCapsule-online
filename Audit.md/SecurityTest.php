@@ -10,7 +10,7 @@ use App\Models\Question;
 use App\Models\Course;
 use App\Models\Topic;
 use App\Http\Controllers\QuizController;
-use App\Http\Controllers\PaymentController;
+use App\Http\Controllers\Admin\PaymentController;
 
 class SecurityTest extends TestCase
 {
@@ -230,4 +230,4 @@ class SecurityTest extends TestCase
         $response = $this->get('/admin/delete');
         $this->assertEquals(403, $response->getStatusCode()); // Forbidden
     }
-} 
+}

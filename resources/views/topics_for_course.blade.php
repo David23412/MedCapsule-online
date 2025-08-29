@@ -84,6 +84,15 @@
             color: #e65100 !important;
         }
 
+        /* Profile image styles */
+        .profile-circle .profile-image {
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            object-fit: cover;
+            display: block;
+        }
+
         /* Source selection modal styles from old.topics */
         #sourceSelectionModal .source-card {
             padding: 0.75rem 1rem;
@@ -194,11 +203,31 @@
                     Back to Courses
                 </a>
                 
-                <a href="{{ route('profile') }}" class="profile-circle {{ !Auth::user()->profile_picture_url ? 'no-image' : '' }}" 
-                     style="{{ Auth::user()->profile_picture_url ? 'background-image: url(' . asset(Auth::user()->profile_picture_url) . ');' : '' }}">
-                    @if(!Auth::user()->profile_picture_url)
-                        {{ substr(Auth::user()->name, 0, 1) }}
-                    @endif
+                @php
+                    $profileImageUrl = null;
+                    if (Auth::user() && Auth::user()->profile_picture_url) {
+                        // Check if it's an external URL (starts with http/https)
+                        if (filter_var(Auth::user()->profile_picture_url, FILTER_VALIDATE_URL)) {
+                            $profileImageUrl = Auth::user()->profile_picture_url;
+                        } else {
+                            // Local file - use secure_url with cache busting
+                            $localPath = storage_path('app/public/' . Auth::user()->profile_picture_url);
+                            if (file_exists($localPath)) {
+                                $profileImageUrl = secure_url(Auth::user()->profile_picture_url) . '?v=' . time();
+                            }
+                        }
+                    }
+
+                    // Fallback to UI Avatars if no valid image
+                    if (!$profileImageUrl) {
+                        $profileImageUrl = 'https://ui-avatars.com/api/?name=' . urlencode(Auth::user()->name) . '&size=200&background=007bff&color=ffffff';
+                    }
+                @endphp
+                <a href="{{ route('profile') }}" class="profile-circle">
+                    <img src="{{ $profileImageUrl }}"
+                         alt="Profile Picture"
+                         class="profile-image"
+                         onerror="this.src='https://ui-avatars.com/api/?name={{ urlencode(Auth::user()->name) }}&size=200&background=007bff&color=ffffff'">
                 </a>
             </div>
         </div>
@@ -741,7 +770,7 @@
                     
                     {{-- Video Play Button OUTSIDE the card --}}
                     @if($topic->video && !$isLocked)
-                        <a href="{{ route('video.show', ['topic' => $topic->id]) }}" class="video-play-btn">
+                        <a href="{{ route('video.show', ['topic' => $topic->id]) }}" class="video-play-btn" id="video-btn-{{ $topic->id }}">
                             <i class="fas fa-play"></i>
                         </a>
                     @endif
@@ -1382,14 +1411,56 @@
             if (window.performance && window.performance.mark) {
                 window.performance.mark('topics-page-start');
             }
-            
+
             // Apply saved filter state from URL or sessionStorage
             const urlParams = new URLSearchParams(window.location.search);
             const savedFilter = urlParams.get('filter') || sessionStorage.getItem('topicsFilter') || 'all';
-            
+
             if (savedFilter !== 'all') {
                 document.body.classList.add(`${savedFilter}-filter-active`);
             }
+        });
+
+        // Handle video play button clicks specifically
+        function handleVideoPlay(event, topicId) {
+            event.preventDefault();
+            event.stopImmediatePropagation();
+
+            console.log('🎬 Video button clicked for topic:', topicId);
+
+            // Get the href from the clicked link
+            const videoLink = event.target.closest('a');
+            if (videoLink && videoLink.href) {
+                console.log('🎯 Redirecting to:', videoLink.href);
+                window.location.href = videoLink.href;
+            } else {
+                console.error('❌ Could not find video link');
+            }
+
+            return false;
+        }
+
+        // Add event listeners for video buttons
+        document.addEventListener('DOMContentLoaded', function() {
+            // Find all video play buttons and add click handlers
+            const videoButtons = document.querySelectorAll('.video-play-btn');
+            videoButtons.forEach(button => {
+                button.addEventListener('click', function(event) {
+                    event.preventDefault();
+                    event.stopImmediatePropagation();
+
+                    const href = this.getAttribute('href');
+                    console.log('🎬 Video button clicked, redirecting to:', href);
+
+                    if (href) {
+                        window.location.href = href;
+                    } else {
+                        console.error('❌ No href found on video button');
+                    }
+
+                    return false;
+                });
+            });
         });
     </script>
 </body>

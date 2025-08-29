@@ -1476,11 +1476,107 @@
                 }, duration);
             }
             
-            // Initialize Select2 for user search
+            // Initialize Select2 for user search with AJAX and debugging
             $('.user-select').select2({
                 placeholder: 'Type to search for user...',
                 allowClear: true,
-                width: '100%'
+                width: '100%',
+                minimumInputLength: 2,
+                debug: true, // Enable debugging
+                ajax: {
+                    url: '/manage-access/search-users',
+                    type: 'GET',
+                    dataType: 'json',
+                    delay: 250,
+                    data: function (params) {
+                        console.log('🔍 Select2 AJAX Data:', params);
+                        return {
+                            query: params.term
+                        };
+                    },
+                    processResults: function (data, params) {
+                        console.log('📊 Select2 Process Results:', data);
+                        if (data.success && data.users) {
+                            return {
+                                results: data.users.map(function (user) {
+                                    return {
+                                        id: user.id,
+                                        text: user.name + ' (' + user.email + ')',
+                                        name: user.name,
+                                        email: user.email,
+                                        role: user.role
+                                    };
+                                })
+                            };
+                        } else {
+                            console.warn('❌ No users found or API error:', data);
+                            return {
+                                results: []
+                            };
+                        }
+                    },
+                    error: function(xhr, status, error) {
+                        console.error('❌ Select2 AJAX Error:', {
+                            status: xhr.status,
+                            statusText: xhr.statusText,
+                            responseText: xhr.responseText,
+                            error: error
+                        });
+                    },
+                    cache: true
+                },
+                escapeMarkup: function (markup) {
+                    return markup;
+                },
+                templateResult: function (user) {
+                    console.log('🎨 Template Result:', user);
+                    if (user.loading) {
+                        return user.text;
+                    }
+                    if (!user.id) {
+                        return user.text;
+                    }
+
+                    // Get role name
+                    let roleName = 'Student';
+                    if (user.role === 1) roleName = 'Admin';
+                    else if (user.role === 2) roleName = 'Tutor';
+
+                    // Create display with role badge
+                    let display = '<div class="d-flex align-items-center justify-content-between w-100">';
+                    display += '<div class="flex-grow-1">';
+                    display += '<div class="fw-medium">' + user.name + '</div>';
+                    display += '<small class="text-muted">' + user.email + '</small>';
+                    display += '</div>';
+                    display += '<span class="badge bg-secondary ms-2" style="font-size: 0.7rem;">' + roleName + '</span>';
+                    display += '</div>';
+
+                    return display;
+                },
+                templateSelection: function (user) {
+                    console.log('✅ Template Selection:', user);
+                    if (!user.id) {
+                        return user.text;
+                    }
+                    return user.name + ' (' + user.email + ')';
+                }
+            });
+
+            // Add event listeners for debugging
+            $('.user-select').on('select2:open', function() {
+                console.log('🔓 Select2 opened');
+            });
+
+            $('.user-select').on('select2:close', function() {
+                console.log('🔒 Select2 closed');
+            });
+
+            $('.user-select').on('select2:select', function(e) {
+                console.log('✅ User selected:', e.params.data);
+            });
+
+            $('.user-select').on('select2:unselect', function(e) {
+                console.log('❌ User unselected:', e.params.data);
             });
             
             // GRANT ACCESS BUTTON HANDLER
@@ -1942,36 +2038,8 @@
     // Payment History Tab Handler
     $('#payment-tab').on('click', function() {
         console.log('Payment tab clicked, loading payments...');
-
-        // 🔍 DEBUG: First check admin status before loading payments
-        checkAdminStatusBeforeLoadingPayments();
+        loadPayments();
     });
-
-    // 🔍 DEBUG: Function to check admin status before loading payments
-    function checkAdminStatusBeforeLoadingPayments() {
-        console.log('🔍 Checking admin status before loading payments...');
-
-        // Check admin status via debug endpoint
-        $.ajax({
-            url: '/debug/admin-status',
-            method: 'GET',
-            success: function(response) {
-                console.log('🔍 Admin status response:', response);
-
-                if (response.is_admin_method) {
-                    console.log('✅ User is admin, proceeding to load payments...');
-                    loadPayments();
-                } else {
-                    console.error('❌ User is not admin according to system:', response);
-                    alert('Access denied: You do not have administrator privileges. Please contact support if you believe this is an error.');
-                }
-            },
-            error: function(xhr) {
-                console.error('❌ Error checking admin status:', xhr.responseText);
-                alert('Error checking admin status. Please try refreshing the page.');
-            }
-        });
-    }
             
             // Auto-load payments when page loads (for admin users)
             @if(Auth::user()->role === 'admin')
@@ -2053,7 +2121,7 @@
         // Load payments function
         function loadPayments(page = 1, search = '') {
             console.log('Loading payments...', {page, search});
-            
+
             // Show loading state
             const tbody = $('#payments-table-body');
             tbody.html(`
@@ -2064,10 +2132,15 @@
                     </td>
                 </tr>
             `);
-            
+
             $.ajax({
                 url: '/manage-access/payments',
                 method: 'GET',
+                headers: {
+                    'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                    'Accept': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest'
+                },
                 data: {
                     page: page,
                     search: search
@@ -2587,30 +2660,48 @@
         
         // Load videos function
         function loadVideos() {
+            console.log('Loading videos...');
+
+            // Show loading state
+            const tbody = $('#videos-table-body');
+            tbody.html(`
+                <tr>
+                    <td colspan="4" class="text-center py-3">
+                        <i class="fas fa-spinner fa-spin fa-2x mb-2"></i>
+                        <div>Loading videos...</div>
+                    </td>
+                </tr>
+            `);
+
             $.ajax({
                 url: '/admin/videos',
                 method: 'GET',
+                headers: {
+                    'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                    'Accept': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest'
+                },
                 success: function(response) {
-                    const tbody = $('#videos-table-body');
+                    console.log('Videos response:', response);
                     tbody.empty();
-                    
-                    if (response.videos && response.videos.length > 0) {
+
+                    if (response.success && response.videos && response.videos.length > 0) {
                         $('#video-count').html(`<i class="fas fa-video"></i> ${response.videos.length}`);
-                        
+
                         response.videos.forEach(video => {
                             const statusBadge = '<span class="badge bg-success">Active</span>';
-                                
+
                             tbody.append(`
                                 <tr>
                                     <td>
-                                        <div class="fw-medium">${video.topic_name}</div>
-                                        <small class="text-muted">${video.course_name}</small>
+                                        <div class="fw-medium">${video.topic_name || 'N/A'}</div>
+                                        <small class="text-muted">${video.course_name || 'N/A'}</small>
                                     </td>
                                     <td>
-                                        <div class="fw-medium">${video.title}</div>
+                                        <div class="fw-medium">${video.title || 'Untitled'}</div>
                                         <small class="text-muted">
-                                            <i class="fab fa-youtube text-danger"></i> 
-                                            ${video.youtube_video_id.substring(0, 8)}...
+                                            <i class="fab fa-youtube text-danger"></i>
+                                            ${video.youtube_video_id ? video.youtube_video_id.substring(0, 8) + '...' : 'N/A'}
                                         </small>
                                     </td>
                                     <td>${statusBadge}</td>
@@ -2624,6 +2715,8 @@
                                 </tr>
                             `);
                         });
+
+                        showNotification('Videos loaded successfully!', 'success');
                     } else {
                         $('#video-count').html('<i class="fas fa-video"></i> 0');
                         tbody.append(`
@@ -2637,8 +2730,18 @@
                         `);
                     }
                 },
-                error: function() {
-                    showNotification('Failed to load videos', 'error');
+                error: function(xhr, status, error) {
+                    console.error('Videos error:', xhr, status, error);
+                    tbody.html(`
+                        <tr>
+                            <td colspan="4" class="text-center py-3 text-danger">
+                                <i class="fas fa-exclamation-triangle fa-2x mb-2"></i>
+                                <div>Failed to load videos</div>
+                                <small>${xhr.responseJSON?.message || error || 'Please try again'}</small>
+                            </td>
+                        </tr>
+                    `);
+                    showNotification('Failed to load videos: ' + (xhr.responseJSON?.message || error), 'error');
                 }
             });
         }

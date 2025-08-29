@@ -12,12 +12,14 @@ return new class extends Migration
             $table->id();
             $table->foreignId('user_id')->constrained()->onDelete('cascade');
             $table->foreignId('course_id')->constrained()->onDelete('cascade');
+            $table->boolean('is_enrolled')->default(true);
             $table->timestamp('enrolled_at')->nullable();
             $table->timestamps();
 
             // Indexes for better performance
             $table->unique(['user_id', 'course_id']);
-            $table->index(['user_id', 'enrolled_at']);
+            $table->index(['user_id', 'is_enrolled']);
+            $table->index('enrolled_at');
         });
     }
 
@@ -25,4 +27,4 @@ return new class extends Migration
     {
         Schema::dropIfExists('course_user');
     }
-}; 
+};

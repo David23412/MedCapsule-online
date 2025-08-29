@@ -2,205 +2,248 @@
 
 namespace App\Services;
 
-use App\Models\Course;
 use App\Models\Payment;
+use App\Models\Course;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 class PaymentService
 {
-    /**
-     * Streamlined payment creation
-     */
-    public function createPayment(User $user, Course $course, array $data): Payment
-    {
-        // Check if already enrolled
-        if ($user->courses()->where('course_id', $course->id)->whereNotNull('enrolled_at')->exists()) {
-            throw new \Exception('Already enrolled in this course');
-        }
+    // Remove complex dependencies that might not exist
+    // protected $securePaymentService;
+    // protected $performanceMonitor;
+    // protected $paymentSecurityService;
 
-        return Payment::create([
+    // public function __construct(
+    //     SecurePaymentService $securePaymentService,
+    //     PerformanceMonitorService $performanceMonitor,
+    //     PaymentSecurityService $paymentSecurityService
+    // ) {
+    //     $this->securePaymentService = $securePaymentService;
+    //     $this->performanceMonitor = $performanceMonitor;
+    //     $this->paymentSecurityService = $paymentSecurityService;
+    // }
+
+    /**
+     * Process a payment for a course
+     */
+    public function processPayment(User $user, Course $course, array $paymentData): Payment
+    {
+        $operationId = $this->performanceMonitor->startOperation('payment_processing', [
             'user_id' => $user->id,
             'course_id' => $course->id,
-            'reference_number' => $data['reference_number'],
-            'amount' => $course->price,
-            'payment_method' => $data['payment_method'],
-            'status' => 'pending',
-            'payment_data' => json_encode($data)
+            'amount' => $paymentData['amount'] ?? $course->price,
+            'payment_method' => $paymentData['payment_method'] ?? 'manual'
         ]);
+
+        try {
+            // Validate payment data
+            $this->validatePaymentData($user, $course, $paymentData);
+
+            // Check for duplicate payments
+            $this->checkForDuplicatePayments($user, $course, $paymentData);
+
+            // Process the payment
+            $payment = $this->createPayment($user, $course, $paymentData);
+
+            $this->performanceMonitor->endOperation($operationId, [
+                'status' => 'completed',
+                'payment_id' => $payment->id
+            ]);
+
+            return $payment;
+
+        } catch (\Exception $e) {
+            $this->performanceMonitor->endOperation($operationId, [
+                'status' => 'failed',
+                'error' => $e->getMessage()
+            ]);
+
+            throw $e;
+        }
     }
 
     /**
-     * Streamlined payment verification with auto-enrollment
+     * Validate payment data
      */
-    public function verifyPayment(Payment $payment): bool
+    protected function validatePaymentData(User $user, Course $course, array $paymentData): void
     {
-        return DB::transaction(function () use ($payment) {
-            // Update payment
-            $payment->update(['status' => 'completed', 'paid_at' => now()]);
-            
-            // Auto-enroll user
-            DB::table('course_user')->updateOrInsert(
-                ['user_id' => $payment->user_id, 'course_id' => $payment->course_id],
-                ['enrolled_at' => now(), 'updated_at' => now()]
-            );
-            
-            return true;
-        });
-    }
+        // Check if user is already enrolled
+        if ($user->isEnrolledInCourse($course->id)) {
+            throw new \Exception('User is already enrolled in this course');
+        }
 
-    /**
-     * Streamlined payment rejection
-     */
-    public function rejectPayment(Payment $payment, string $reason = null): bool
-    {
-        return $payment->update([
-            'status' => 'rejected',
-            'payment_data' => array_merge($payment->payment_data ?? [], [
-                'rejection_reason' => $reason ?? 'Rejected by admin'
-            ])
-        ]);
-    }
+        // Check if user has pending payment
+        if ($course->hasUserPendingPayment($user->id)) {
+            throw new \Exception('User already has a pending payment for this course');
+        }
 
-    /**
-     * Get payment statistics for admin dashboard
-     *
-     * @return array
-     */
-    public function getPaymentStatistics(): array
-    {
-        return [
-            'total_payments' => Payment::count(),
-            'pending_payments' => Payment::where('status', 'pending')->count(),
-            'completed_payments' => Payment::where('status', 'completed')->count(),
-            'rejected_payments' => Payment::where('status', 'rejected')->count(),
-            'total_revenue' => Payment::where('status', 'completed')->sum('amount'),
-            'pending_revenue' => Payment::where('status', 'pending')->sum('amount'),
-        ];
+        // Validate amount
+        if ($course->price > 0 && (!isset($paymentData['amount']) || $paymentData['amount'] != $course->price)) {
+            throw new \Exception('Payment amount does not match course price');
+        }
+
+        // Validate payment method
+        $validMethods = ['vodafone_cash', 'fawry', 'instapay', 'credit_card', 'paypal', 'manual'];
+        if (!isset($paymentData['payment_method']) || !in_array($paymentData['payment_method'], $validMethods)) {
+            throw new \Exception('Invalid payment method');
+        }
     }
 
     /**
      * Check for duplicate payments
-     *
-     * @param User $user
-     * @param Course $course
-     * @return bool
      */
-    public function hasDuplicatePayment(User $user, Course $course): bool
+    protected function checkForDuplicatePayments(User $user, Course $course, array $paymentData): void
     {
-        return Payment::where('user_id', $user->id)
+        $existingPayment = Payment::where('user_id', $user->id)
             ->where('course_id', $course->id)
-            ->where('status', 'pending')
-            ->exists();
+            ->where('reference_number', $paymentData['transaction_id'] ?? '')
+            ->first();
+
+        if ($existingPayment) {
+            throw new \Exception('This transaction ID has already been used for this course');
+        }
     }
 
     /**
-     * Get paginated payments with optional search.
-     *
-     * @param string|null $search
-     * @param int $page
-     * @param int $perPage
-     * @return array
+     * Create payment record
      */
-    public function getPaginatedPayments(string $search = null, int $page = 1, int $perPage = 20): array
+    protected function createPayment(User $user, Course $course, array $paymentData): Payment
+    {
+        return DB::transaction(function () use ($user, $course, $paymentData) {
+            return Payment::create([
+                'user_id' => $user->id,
+                'course_id' => $course->id,
+                'amount' => $paymentData['amount'] ?? $course->price,
+                'status' => 'pending',
+                'payment_method' => $paymentData['payment_method'],
+                'reference_number' => $paymentData['transaction_id'] ?? uniqid('PAY_'),
+                'paid_at' => null,
+                'created_at' => now(),
+                'updated_at' => now()
+            ]);
+        });
+    }
+
+    /**
+     * Get payment by ID
+     */
+    public function getPayment(int $paymentId): ?Payment
+    {
+        return Payment::find($paymentId);
+    }
+
+    /**
+     * Get user payments
+     */
+    public function getUserPayments(User $user, int $limit = 50): \Illuminate\Database\Eloquent\Collection
+    {
+        return Payment::where('user_id', $user->id)
+            ->with('course')
+            ->orderBy('created_at', 'desc')
+            ->limit($limit)
+            ->get();
+    }
+
+    /**
+     * Get pending payments
+     */
+    public function getPendingPayments(): \Illuminate\Database\Eloquent\Collection
+    {
+        return Payment::where('status', 'pending')
+            ->with(['user', 'course'])
+            ->orderBy('created_at', 'asc')
+            ->get();
+    }
+
+    /**
+     * Get paginated payments with search functionality
+     */
+    public function getPaginatedPayments(?string $search = null, int $page = 1, int $perPage = 20): array
     {
         try {
-            \Log::info('🔍 PaymentService::getPaginatedPayments called', [
-                'search' => $search,
-                'page' => $page,
-                'per_page' => $perPage,
-                'user_id' => auth()->id(),
-                'user_role' => auth()->user()->role ?? 'unknown',
-                'is_admin' => auth()->user()->isAdmin() ?? false
-            ]);
-            $query = DB::table('payments')
-                ->join('users', 'payments.user_id', '=', 'users.id')
-                ->join('courses', 'payments.course_id', '=', 'courses.id')
-                ->select(
-                    'payments.id',
-                    'payments.reference_number',
-                    'payments.amount',
-                    'payments.payment_method',
-                    'payments.status',
-                    'payments.created_at',
-                    'payments.paid_at',
-                    'payments.payment_data',
-                    'users.name as user_name',
-                    'users.email as user_email',
-                    'courses.name as course_name'
-                );
+            $query = Payment::with(['user', 'course']);
 
+            // Apply search filter if provided
             if ($search) {
-                $query->where(function($q) use ($search) {
-                    $q->where('users.name', 'like', "%{$search}%")
-                      ->orWhere('users.email', 'like', "%{$search}%")
-                      ->orWhere('courses.name', 'like', "%{$search}%")
-                      ->orWhere('payments.reference_number', 'like', "%{$search}%");
+                $query->where(function ($q) use ($search) {
+                    $q->where('reference_number', 'like', "%{$search}%")
+                      ->orWhere('payment_method', 'like', "%{$search}%")
+                      ->orWhereHas('user', function ($userQuery) use ($search) {
+                          $userQuery->where('name', 'like', "%{$search}%")
+                                   ->orWhere('email', 'like', "%{$search}%");
+                      })
+                      ->orWhereHas('course', function ($courseQuery) use ($search) {
+                          $courseQuery->where('name', 'like', "%{$search}%");
+                      });
                 });
             }
 
-            $total = $query->count();
-            $payments = $query->orderBy('payments.created_at', 'desc')
-                            ->offset(($page - 1) * $perPage)
-                            ->limit($perPage)
-                            ->get();
-
-            $payments = $payments->map(function($payment) {
-                $paymentData = json_decode($payment->payment_data, true) ?? [];
-                $payment->transaction_id = $paymentData['transaction_id'] ?? null;
-                return $payment;
-            });
-
-            $stats = $this->getPaymentStatistics();
+            $payments = $query->orderBy('created_at', 'desc')
+                             ->paginate($perPage, ['*'], 'page', $page);
 
             return [
                 'success' => true,
-                'payments' => $payments,
-                'stats' => $stats,
-                'pagination' => [
-                    'current_page' => $page,
-                    'per_page' => $perPage,
-                    'total' => $total,
-                    'last_page' => ceil($total / $perPage)
+                'data' => [
+                    'payments' => $payments->items(),
+                    'pagination' => [
+                        'current_page' => $payments->currentPage(),
+                        'last_page' => $payments->lastPage(),
+                        'per_page' => $payments->perPage(),
+                        'total' => $payments->total(),
+                        'from' => $payments->firstItem(),
+                        'to' => $payments->lastItem(),
+                    ]
                 ]
             ];
+
         } catch (\Exception $e) {
-            Log::error('Payment fetch failed in service: ' . $e->getMessage());
+            Log::error('Error getting paginated payments', [
+                'error' => $e->getMessage(),
+                'search' => $search,
+                'page' => $page,
+                'per_page' => $perPage
+            ]);
+
             return [
                 'success' => false,
-                'message' => 'Failed to load payments.'
+                'message' => 'Error retrieving payments',
+                'error' => $e->getMessage()
             ];
         }
     }
 
     /**
-     * Get payment history for user
-     *
-     * @param User $user
-     * @param int $limit
-     * @return \Illuminate\Database\Eloquent\Collection
+     * Update payment settings
      */
     public function updatePaymentSettings(array $settings): array
     {
         try {
-            // In a real application, you would validate and save the settings here.
-            // For example, updating a configuration file or a database table.
-            Log::info('Updating payment settings', $settings);
+            // In a real implementation, this would update payment settings
+            // For now, we'll just log the settings
 
-            return ['success' => true, 'message' => 'Payment settings updated successfully.'];
+            Log::info('Payment settings updated', [
+                'settings' => $settings,
+                'updated_by' => auth()->id()
+            ]);
+
+            return [
+                'success' => true,
+                'message' => 'Payment settings updated successfully'
+            ];
+
         } catch (\Exception $e) {
-            Log::error('Payment settings update failed in service: ' . $e->getMessage());
-            return ['success' => false, 'message' => 'Failed to update payment settings.'];
-        }
-    }
+            Log::error('Error updating payment settings', [
+                'error' => $e->getMessage(),
+                'settings' => $settings
+            ]);
 
-    public function getUserPaymentHistory(User $user, int $limit = 10)
-    {
-        return Payment::where('user_id', $user->id)
-            ->with(['course:id,name,price'])
-            ->orderBy('created_at', 'desc')
-            ->limit($limit)
-            ->get();
+            return [
+                'success' => false,
+                'message' => 'Error updating payment settings',
+                'error' => $e->getMessage()
+            ];
+        }
     }
 }

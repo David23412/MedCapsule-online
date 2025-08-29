@@ -22,7 +22,7 @@ class UserCourseService
         try {
             DB::table('course_user')->updateOrInsert(
                 ['user_id' => $user->id, 'course_id' => $course->id],
-                ['enrolled_at' => now(), 'updated_at' => now()]
+                ['is_enrolled' => true, 'enrolled_at' => now(), 'updated_at' => now()]
             );
 
             $this->clearCourseCacheForUser($user);
@@ -70,7 +70,7 @@ class UserCourseService
                     'courses.id',
                     'courses.name',
                     'courses.price',
-                    DB::raw('COALESCE(course_user.enrolled_at IS NOT NULL, false) as is_enrolled')
+                    DB::raw('COALESCE(course_user.is_enrolled, false) as is_enrolled')
                 )
                 ->orderBy('courses.name')
                 ->get();
@@ -88,6 +88,7 @@ class UserCourseService
             $enrollments = DB::table('course_user')
                 ->join('users', 'course_user.user_id', '=', 'users.id')
                 ->join('courses', 'course_user.course_id', '=', 'courses.id')
+                ->where('course_user.is_enrolled', true) // Only show active enrollments
                 ->select(
                     'users.id as user_id',
                     'users.name as name',
@@ -123,15 +124,15 @@ class UserCourseService
             $existingEnrollment = DB::table('course_user')
                 ->where('user_id', $user->id)
                 ->where('course_id', $course->id)
-                ->whereNotNull('enrolled_at')
+                ->where('is_enrolled', true)
                 ->first();
 
             if ($existingEnrollment) {
-                // User is enrolled, revoke access by setting enrolled_at to null
+                // User is enrolled, revoke access by setting is_enrolled to false
                 DB::table('course_user')
                     ->where('user_id', $user->id)
                     ->where('course_id', $course->id)
-                    ->update(['enrolled_at' => null, 'updated_at' => now()]);
+                    ->update(['is_enrolled' => false, 'updated_at' => now()]);
 
                 $isEnrolled = false;
                 $message = "Access revoked for {$user->name} from {$course->name}.";
@@ -139,7 +140,7 @@ class UserCourseService
                 // User is not enrolled, grant access
                 DB::table('course_user')->updateOrInsert(
                     ['user_id' => $user->id, 'course_id' => $course->id],
-                    ['enrolled_at' => now(), 'updated_at' => now()]
+                    ['is_enrolled' => true, 'enrolled_at' => now(), 'updated_at' => now()]
                 );
 
                 $isEnrolled = true;
