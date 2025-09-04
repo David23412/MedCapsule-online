@@ -534,6 +534,21 @@ class GradingService
      */
     private function createQuizAttempts(User $user, array $sourceData, int $duration, string $mode, Topic $topic, bool $isAssignment = false, ?int $assignmentId = null): void
     {
+        Log::info('🔥 DEBUG: createQuizAttempts called', [
+            'user_id' => $user->id,
+            'source_count' => count($sourceData),
+            'mode' => $mode,
+            'topic_id' => $topic->id,
+            'is_random' => ($mode === 'random'),
+            'is_tutor' => ($mode === 'tutor'),
+            'source_data_keys' => array_keys($sourceData),
+            'transaction_active' => DB::transactionLevel()
+        ]);
+
+        if (empty($sourceData)) {
+            Log::error('⚠️ DEBUG: No sourceData provided to createQuizAttempts!');
+            return;
+        }
         $numSources = count($sourceData);
         $durationPerSource = $numSources > 0 ? (int) round($duration / $numSources) : $duration;
 
@@ -596,7 +611,7 @@ class GradingService
     private function createRandomQuizAttempt(User $user, array $gradingResult, int $duration, string $mode, Topic $topic, bool $isAssignment = false, ?int $assignmentId = null): void
     {
         // Determine quiz type based on assignment status
-        $quizType = $isAssignment ? 'assignment' : 'normal';
+        $quizType = $isAssignment ? 'assignment' : 'random'; // Use 'random' for better profile detection
 
         // Generate attempt_id for random quiz (single attempt = 1 chart point)
         $attemptId = \App\Models\QuizAttempt::generateAttemptId($user->id, $topic->id);
@@ -630,6 +645,8 @@ class GradingService
             'user_id' => $user->id,
             'topic_id' => $topic->id,
             'attempt_id' => $attemptId,
+            'quiz_type' => $quizType,
+            'study_mode' => $mode,
             'chart_points' => 1 // Random quiz = 1 chart point ✅
         ]);
     }

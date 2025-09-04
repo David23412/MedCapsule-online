@@ -46,8 +46,11 @@ class TutorDashboardViewController extends Controller
         $user = auth()->user();
 
         // Verify access permissions FIRST with optimized query
-        if (!$user->isAdmin() && !$this->canAccessStudentOptimized($user, $studentId)) {
-            abort(403, 'You do not have permission to view this student\'s profile.');
+        if (!$user || (!$user->isAdmin() && !$this->canAccessStudentOptimized($user, $studentId))) {
+            if (!auth()->check()) {
+                return redirect()->route('login')->with('error', 'Please login to continue.');
+            }
+            return redirect()->route('tutor.dashboard')->with('error', 'You do not have permission to view this student\'s profile.');
         }
 
         // Generate cache key for student profile

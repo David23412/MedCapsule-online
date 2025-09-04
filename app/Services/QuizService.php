@@ -599,23 +599,60 @@ class QuizService
                 'course_ids' => $courseIds
             ]);
 
+            // SECURITY FIX: Validate user access to specified courses
+            if (!empty($courseIds)) {
+                $accessibleCourses = $user->hasAccessToCourses($courseIds);
+                $inaccessibleCourses = array_filter($courseIds, function($courseId) use ($accessibleCourses) {
+                    return !($accessibleCourses[$courseId] ?? false);
+                });
+
+                if (!empty($inaccessibleCourses)) {
+                    Log::warning('User attempted to access random quiz with inaccessible courses', [
+                        'user_id' => $user->id,
+                        'inaccessible_courses' => $inaccessibleCourses,
+                        'all_requested_courses' => $courseIds
+                    ]);
+
+                    return [
+                        'success' => false,
+                        'message' => 'You do not have access to one or more of the requested courses.',
+                        'questions' => []
+                    ];
+                }
+            }
+
+            // If no specific courses requested, use only accessible courses
+            if (empty($courseIds)) {
+                $userCourses = $user->courses()->pluck('id')->toArray();
+                if (empty($userCourses)) {
+                    Log::warning('User has no accessible courses for random quiz', [
+                        'user_id' => $user->id
+                    ]);
+
+                    return [
+                        'success' => false,
+                        'message' => 'You are not enrolled in any courses. Please enroll in a course first.',
+                        'questions' => []
+                    ];
+                }
+                $courseIds = $userCourses;
+            }
+
             // SMART QUERY: Build with efficient deletion checks
             $questionsQuery = Question::query()
                 ->whereNotNull('question') // Ensure question content exists
                 ->where('question', '!=', '') // Ensure question is not empty
                 ->select([
-                    'id', 'topic_id', 'question', 'question_type', 
+                    'id', 'topic_id', 'question', 'question_type',
                     'option_a', 'option_b', 'option_c', 'option_d',
                     'correct_answer', 'explanation', 'image_url', 'source',
                     'alternative_answers', 'similarity_threshold'
                 ]);
 
-            // Apply course filtering if specified
-            if (!empty($courseIds)) {
-                $questionsQuery->whereHas('topic', function($query) use ($courseIds) {
-                    $query->whereIn('course_id', $courseIds);
-                });
-            }
+            // Apply course filtering with validated course IDs
+            $questionsQuery->whereHas('topic', function($query) use ($courseIds) {
+                $query->whereIn('course_id', $courseIds);
+            });
 
             // Apply source filtering
             if (!in_array('all', $sources)) {
@@ -1051,4 +1088,4 @@ class QuizService
         
         return $query;
     }
-} 
+}

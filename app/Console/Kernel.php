@@ -118,7 +118,16 @@ class Kernel extends ConsoleKernel
                 ->at('10:00')
                 ->withoutOverlapping()
                 ->runInBackground()
-                ->appendOutputTo(storage_path('logs/mistake-reminders.log'));}
+                ->appendOutputTo(storage_path('logs/mistake-reminders.log'));
+
+        // 🚀 AUTOMATIC ENROLLMENT MAINTENANCE - Keep all users enrolled in free courses
+        $schedule->command('enroll:free-courses --force')
+                ->weekly()
+                ->sundays()
+                ->at('03:30')
+                ->withoutOverlapping()
+                ->runInBackground()
+                ->appendOutputTo(storage_path('logs/free-course-enrollment.log'));}
 
     /**
      * Register the commands for the application.
@@ -158,5 +167,6 @@ class Kernel extends ConsoleKernel
         Commands\SendMistakeReviewReminders::class,
         Commands\TestAllNotifications::class,
         Commands\NuclearNotificationOptimization::class,
+        Commands\EnrollUsersInFreeCourses::class, // 🚀 AUTOMATIC FREE COURSE ENROLLMENT
     ];
-} 
+}

@@ -17,7 +17,6 @@ class CourseRequest extends FormRequest
             'name' => 'required|string|max:255',
             'description' => 'nullable|string|max:1000',
             'price' => 'required|numeric|min:0|max:9999.99',
-            'is_active' => 'boolean',
             'category_id' => 'nullable|integer|exists:categories,id',
             'difficulty_level' => 'nullable|in:beginner,intermediate,advanced',
             'estimated_duration' => 'nullable|integer|min:1|max:1000'

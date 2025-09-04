@@ -35,35 +35,35 @@ class OptimizedRandomQuizController extends Controller
         $questionCount = (int) $request->input('question_limit', 10);
         $durationMinutes = (float) $request->input('duration_minutes', 15);
         $selectedCourseIds = $request->input('selected_courses', []);
-        
+
         // Generate a random quiz for display
         $user = auth()->user();
-        
+
         // Build options for quiz generation
         $options = [
             'sources' => ['all'],
             'course_ids' => $selectedCourseIds,
             'difficulty' => 'mixed'
         ];
-        
+
         $result = $this->quizService->generateRandomQuiz($user, $questionCount, $options);
-        
+
         if (!$result['success']) {
             return redirect()->back()->with('error', 'Unable to generate random quiz. Please try again.');
         }
-        
+
         // If we got fewer questions than requested, adjust the count
         $actualQuestionCount = count($result['questions']);
         if ($actualQuestionCount < $questionCount) {
             Log::info("Requested {$questionCount} questions but only {$actualQuestionCount} available");
         }
-        
+
         // Get selected courses for navigation
         $selectedCourses = collect();
         if (!empty($selectedCourseIds)) {
             $selectedCourses = \App\Models\Course::whereIn('id', $selectedCourseIds)->get();
         }
-        
+
         // Fallback to first available course if none selected
         if ($selectedCourses->isEmpty()) {
             $selectedCourses = \App\Models\Course::take(1)->get();
@@ -71,13 +71,73 @@ class OptimizedRandomQuizController extends Controller
                 $selectedCourses = collect([new \App\Models\Course(['id' => 1, 'name' => 'General'])]);
             }
         }
-        
+
         return view('quiz.random_quiz', [
             'questions' => $result['questions'],
             'selectedCourses' => $selectedCourses,
             'duration_minutes' => $durationMinutes,
             'requested_questions' => $questionCount,
-            'actual_questions' => $actualQuestionCount
+            'actual_questions' => $actualQuestionCount,
+            'quiz_mode' => 'quiz'
+        ]);
+    }
+
+    /**
+     * Show random tutor quiz page
+     */
+    public function showRandomTutorQuiz(Request $request)
+    {
+        // Get parameters from the modal form
+        $questionCount = (int) $request->input('question_limit', 10);
+        $durationMinutes = (float) $request->input('duration_minutes', 15);
+        $selectedCourseIds = $request->input('selected_courses', []);
+
+        // Generate a random quiz for display
+        $user = auth()->user();
+
+        // Build options for quiz generation
+        $options = [
+            'sources' => ['all'],
+            'course_ids' => $selectedCourseIds,
+            'difficulty' => 'mixed'
+        ];
+
+        $result = $this->quizService->generateRandomQuiz($user, $questionCount, $options);
+
+        if (!$result['success']) {
+            return redirect()->back()->with('error', 'Unable to generate random tutor quiz. Please try again.');
+        }
+
+        // If we got fewer questions than requested, adjust the count
+        $actualQuestionCount = count($result['questions']);
+        if ($actualQuestionCount < $questionCount) {
+            Log::info("Requested {$questionCount} questions but only {$actualQuestionCount} available");
+        }
+
+        // Get selected courses for navigation
+        $selectedCourses = collect();
+        if (!empty($selectedCourseIds)) {
+            $selectedCourses = \App\Models\Course::whereIn('id', $selectedCourseIds)->get();
+        }
+
+        // Fallback to first available course if none selected
+        if ($selectedCourses->isEmpty()) {
+            $selectedCourses = \App\Models\Course::take(1)->get();
+            if ($selectedCourses->isEmpty()) {
+                $selectedCourses = collect([new \App\Models\Course(['id' => 1, 'name' => 'General'])]);
+            }
+        }
+
+        return view('tutor_mode', [
+            'questions' => $result['questions'],
+            'is_random_quiz' => true,
+            'selectedCourses' => $selectedCourses,
+            'duration_minutes' => $durationMinutes,
+            'requested_questions' => $questionCount,
+            'actual_questions' => $actualQuestionCount,
+            // Pass dummy course/topic for unified template
+            'course' => $selectedCourses->first() ?? new \App\Models\Course(['id' => 1, 'name' => 'Random Quiz']),
+            'topic' => new \App\Models\Topic(['id' => 0, 'name' => 'Mixed Random Questions'])
         ]);
     }
 
@@ -164,6 +224,14 @@ class OptimizedRandomQuizController extends Controller
             $firstQuestion = $questions->first();
             $topic = $firstQuestion->topic;
             $course = $topic->course;
+
+            // Ensure topic and course exist
+            if (!$topic || !$course) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Invalid question context - missing topic or course'
+                ], 400);
+            }
 
             // Use the GradingService to grade the quiz
             $gradingResult = app(\App\Services\GradingService::class)->gradeQuiz(

@@ -43,7 +43,9 @@ class QuizMistakeController extends Controller
 
             // 🎯 SMART HYBRID: Short-lived cache (5 minutes) for performance
             // But with immediate invalidation on writes for accuracy
+            $courseFilter = $courseFilter ?: ''; // Ensure empty string instead of null
             $cacheKey = "mistakes_smart_{$userId}_{$courseFilter}_v3";
+            $cacheKey = trim($cacheKey, '_'); // Remove trailing underscore if no course filter
             $mistakesData = Cache::remember($cacheKey, 300, function() use ($userId, $courseFilter) { // 5 minutes only
                 $query = DB::table('mistakes')
                     ->join('questions', 'mistakes.question_id', '=', 'questions.id')
@@ -250,30 +252,30 @@ class QuizMistakeController extends Controller
     public static function clearUserMistakeCaches($userId)
     {
         try {
-            // Clear the NEW smart cache keys
+            // Clear ALL possible cache key combinations with CORRECT format
             $cacheKeys = [
-                "mistakes_smart_{$userId}__v3",           // No course filter
-                "mistakes_smart_{$userId}_skipped_v3",    // Skipped filter
-                "mistakes_support_smart_{$userId}",       // Supporting data cache
+                "mistakes_smart_{$userId}_v3",                    // No course filter (empty string becomes just userId_v3)
+                "mistakes_smart_{$userId}_skipped_v3",            // Skipped filter
+                "mistakes_support_smart_{$userId}",               // Supporting data cache
             ];
-            
+
             // Get all course IDs and clear their specific caches
             $courseIds = \App\Models\Course::pluck('id')->toArray();
             foreach ($courseIds as $courseId) {
                 $cacheKeys[] = "mistakes_smart_{$userId}_{$courseId}_v3";
             }
-            
+
             // Clear all cache keys immediately
             foreach ($cacheKeys as $key) {
                 Cache::forget($key);
             }
-            
+
             Log::info("🎯 SMART cache invalidation completed", [
                 'user_id' => $userId,
                 'cache_keys_cleared' => count($cacheKeys),
                 'strategy' => 'immediate_invalidation'
             ]);
-            
+
         } catch (\Exception $e) {
             Log::error("❌ Error in smart cache invalidation", [
                 'user_id' => $userId,

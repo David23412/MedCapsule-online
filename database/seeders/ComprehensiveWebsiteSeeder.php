@@ -293,10 +293,20 @@ class ComprehensiveWebsiteSeeder extends Seeder
         
         foreach ($createdTopics as $topic) {
             $questionCount = $topic->case_type === 'cases' ? rand(8, 12) : rand(10, 20);
-            
+
             for ($i = 1; $i <= $questionCount; $i++) {
                 $questionData = $this->getUSMLEStyleQuestion($topic->name, $topic->case_type, $i);
-                
+
+                // BULLETPROOF DUPLICATE CHECKING - Check for ANY existing question with same content
+                $existingQuestion = Question::where('question', $questionData['question'])
+                    ->where('topic_id', $topic->id)
+                    ->first();
+
+                if ($existingQuestion) {
+                    $this->command->warn("🚫 DUPLICATE USMLE QUESTION SKIPPED: " . substr($questionData['question'], 0, 50) . "...");
+                    continue;
+                }
+
                 Question::create([
                     'topic_id' => $topic->id,
                     'question' => $questionData['question'],
@@ -313,6 +323,8 @@ class ComprehensiveWebsiteSeeder extends Seeder
                     'correct_attempts' => intval($totalAttempts * (rand(40, 85) / 100)),
                     'last_attempted_at' => now()->subDays(rand(1, 30)),
                 ]);
+
+                $this->command->info("✅ Created USMLE question: " . substr($questionData['question'], 0, 50) . "...");
             }
         }
 
@@ -960,6 +972,16 @@ class ComprehensiveWebsiteSeeder extends Seeder
         ];
 
         foreach ($writtenQuestions as $questionData) {
+            // BULLETPROOF DUPLICATE CHECKING - Check for ANY existing question with same content
+            $existingQuestion = Question::where('question', $questionData['question'])
+                ->where('topic_id', $topicId)
+                ->first();
+
+            if ($existingQuestion) {
+                $this->command->warn("🚫 DUPLICATE WRITTEN QUESTION SKIPPED: " . substr($questionData['question'], 0, 50) . "...");
+                continue;
+            }
+
             Question::create([
                 'topic_id' => $topicId,
                 'question' => $questionData['question'],
@@ -976,6 +998,8 @@ class ComprehensiveWebsiteSeeder extends Seeder
                 'correct_attempts' => $questionData['correct_attempts'],
                 'last_attempted_at' => $questionData['last_attempted_at'],
             ]);
+
+            $this->command->info("✅ Created written question: " . substr($questionData['question'], 0, 50) . "...");
         }
 
         $this->command->info('Added ' . count($writtenQuestions) . ' written questions for Topic ID 1');

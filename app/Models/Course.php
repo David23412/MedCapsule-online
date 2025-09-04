@@ -301,6 +301,19 @@ class Course extends Model
     {
         parent::boot();
 
+        static::created(function ($course) {
+            // BULLETPROOF: Invalidate home page cache when new courses are created
+            try {
+                $cacheService = app(\App\Services\CacheInvalidationService::class);
+                $cacheService->invalidateHomePageCache();
+            } catch (\Exception $e) {
+                \Illuminate\Support\Facades\Log::error('Failed to invalidate home page cache on course creation', [
+                    'course_id' => $course->id,
+                    'error' => $e->getMessage()
+                ]);
+            }
+        });
+
         static::updated(function ($course) {
             // 🚀 BULLETPROOF PRICE CHANGE LOGIC - ENHANCED VERSION
             if ($course->isDirty('price')) {
@@ -315,7 +328,7 @@ class Course extends Model
                     'user_id' => auth()->id()
                 ]);
 
-                // SCENARIO 1: FREE TO PAID - Revoke all enrollments
+                // SCENARIO 1: FREE TO PAID - Revoke all enrollments (EXCEPT ADMINS)
                 if ($originalPrice <= 0 && $newPrice > 0) {
                     try {
                         \Illuminate\Support\Facades\Log::info('🔒 Course changed from FREE to PAID - revoking enrollments', [
@@ -327,22 +340,28 @@ class Course extends Model
 
                         // Use transaction for atomicity
                         DB::transaction(function () use ($course) {
-                            // Get count before revocation for logging
+                            // Get admin user IDs to preserve their enrollments
+                            $adminUsers = \App\Models\User::where('role', \App\Models\User::ROLE_ADMIN)->pluck('id')->toArray();
+
+                            // Get count before revocation for logging (excluding admins)
                             $enrollmentCount = DB::table('course_user')
                                 ->where('course_id', $course->id)
                                 ->where('is_enrolled', true)
+                                ->whereNotIn('user_id', $adminUsers)
                                 ->count();
 
-                            // Remove all enrollments for this course
+                            // Remove all enrollments for this course EXCEPT for ADMINS
                             DB::table('course_user')
                                 ->where('course_id', $course->id)
                                 ->where('is_enrolled', true)
+                                ->whereNotIn('user_id', $adminUsers) // 🔧 FIX: Preserve admin enrollments
                                 ->update(['is_enrolled' => false, 'updated_at' => now()]);
 
-                            \Illuminate\Support\Facades\Log::info('✅ Enrollments revoked for course that became paid', [
+                            \Illuminate\Support\Facades\Log::info('✅ Enrollments revoked for course that became paid (admins preserved)', [
                                 'course_id' => $course->id,
                                 'course_name' => $course->name,
-                                'enrollments_revoked' => $enrollmentCount
+                                'enrollments_revoked' => $enrollmentCount,
+                                'admin_users_preserved' => count($adminUsers)
                             ]);
                         });
 
@@ -416,6 +435,17 @@ class Course extends Model
             // Clear caches AFTER price change logic to prevent interference
             $course->clearCaches();
 
+            // BULLETPROOF: Invalidate home page cache when courses change
+            try {
+                $cacheService = app(\App\Services\CacheInvalidationService::class);
+                $cacheService->invalidateHomePageCache();
+            } catch (\Exception $e) {
+                \Illuminate\Support\Facades\Log::error('Failed to invalidate home page cache on course update', [
+                    'course_id' => $course->id,
+                    'error' => $e->getMessage()
+                ]);
+            }
+
             // Increment cache version to invalidate all course caches
             $currentVersion = Cache::get('courses_cache_version', 1);
             Cache::put('courses_cache_version', $currentVersion + 1, 86400); // 24 hours
@@ -433,15 +463,26 @@ class Course extends Model
 
         static::deleted(function ($course) {
             $course->clearCaches();
-            
+
+            // BULLETPROOF: Invalidate home page cache when courses are deleted
+            try {
+                $cacheService = app(\App\Services\CacheInvalidationService::class);
+                $cacheService->invalidateHomePageCache();
+            } catch (\Exception $e) {
+                \Illuminate\Support\Facades\Log::error('Failed to invalidate home page cache on course deletion', [
+                    'course_id' => $course->id,
+                    'error' => $e->getMessage()
+                ]);
+            }
+
             // Increment cache version to invalidate all course caches
             $currentVersion = Cache::get('courses_cache_version', 1);
             Cache::put('courses_cache_version', $currentVersion + 1, 86400); // 24 hours
-            
+
             // Clear general course listing cache
             Cache::forget('courses_list');
             Cache::forget('courses_with_stats');
-            
+
             // PHASE 2: Dispatch CourseUpdated event for cache invalidation
             // Skip event dispatch during testing to avoid auth issues
             if (!app()->runningUnitTests()) {
@@ -461,11 +502,23 @@ class Course extends Model
                     // Use find instead of relationship to avoid ModelNotFoundException
                     if ($course = Course::find($topic->course_id)) {
                         $course->clearCaches();
-                        
+
+                        // BULLETPROOF: Invalidate home page cache when topics change
+                        try {
+                            $cacheService = app(\App\Services\CacheInvalidationService::class);
+                            $cacheService->invalidateHomePageCache();
+                        } catch (\Exception $e) {
+                            \Illuminate\Support\Facades\Log::error('Failed to invalidate home page cache on topic update', [
+                                'topic_id' => $topic->id,
+                                'course_id' => $topic->course_id,
+                                'error' => $e->getMessage()
+                            ]);
+                        }
+
                         // Increment cache version to invalidate all course caches
                         $currentVersion = Cache::get('courses_cache_version', 1);
                         Cache::put('courses_cache_version', $currentVersion + 1, 86400); // 24 hours
-                        
+
                         // PHASE 2: Dispatch CourseUpdated event for cache invalidation
                         event(new \App\Events\CourseUpdated(
                             $course,
@@ -478,6 +531,33 @@ class Course extends Model
                     \Log::info('Topic updated but course not accessible', [
                         'topic_id' => $topic->id,
                         'course_id' => $topic->course_id,
+                        'error' => $e->getMessage()
+                    ]);
+                }
+            });
+
+            // BULLETPROOF: Also handle topic creation and deletion
+            Topic::created(function ($topic) {
+                try {
+                    if ($course = Course::find($topic->course_id)) {
+                        $cacheService = app(\App\Services\CacheInvalidationService::class);
+                        $cacheService->invalidateHomePageCache();
+                    }
+                } catch (\Exception $e) {
+                    \Log::error('Failed to invalidate home page cache on topic creation', [
+                        'topic_id' => $topic->id,
+                        'error' => $e->getMessage()
+                    ]);
+                }
+            });
+
+            Topic::deleted(function ($topic) {
+                try {
+                    $cacheService = app(\App\Services\CacheInvalidationService::class);
+                    $cacheService->invalidateHomePageCache();
+                } catch (\Exception $e) {
+                    \Log::error('Failed to invalidate home page cache on topic deletion', [
+                        'topic_id' => $topic->id,
                         'error' => $e->getMessage()
                     ]);
                 }
@@ -502,7 +582,18 @@ class Course extends Model
     // 💀 N+1 WARNING: This accessor accesses 'image' - consider eager loading
     public function getImageUrlAttribute()
     {
-        return $this->image;
+        if (!$this->image) {
+            return null;
+        }
+        
+        // If it's already a full URL, return as is
+        if (filter_var($this->image, FILTER_VALIDATE_URL)) {
+            return $this->image;
+        }
+        
+        // If it's a local file path, construct the proper URL
+        $filename = basename($this->image);
+        return url('/uploads/course-images/' . $filename);
     }
 
     // Alias for backward compatibility - view expects image_url

@@ -191,22 +191,37 @@ class ComprehensiveTestSeeder extends Seeder
     private function createQuestions(): void
     {
         $this->command->info('❓ Creating test questions...');
-        
+
         $topics = Topic::all();
-        
+
         foreach ($topics as $topic) {
             for ($i = 1; $i <= 10; $i++) {
-                Question::firstOrCreate([
+                $questionText = "Test question {$i} for {$topic->name}?";
+
+                // BULLETPROOF DUPLICATE CHECKING - Check for ANY existing question with same content
+                $existingQuestion = Question::where('question', $questionText)
+                    ->where('topic_id', $topic->id)
+                    ->first();
+
+                if ($existingQuestion) {
+                    $this->command->warn("🚫 DUPLICATE TEST QUESTION SKIPPED: {$questionText}");
+                    continue;
+                }
+
+                Question::create([
                     'topic_id' => $topic->id,
-                    'question' => "Test question {$i} for {$topic->name}?",
-                ], [
+                    'question_type' => Question::TYPE_MULTIPLE_CHOICE,
+                    'question' => $questionText,
                     'correct_answer' => 'A',
                     'option_a' => 'Correct answer',
                     'option_b' => 'Incorrect option 1',
                     'option_c' => 'Incorrect option 2',
                     'option_d' => 'Incorrect option 3',
                     'explanation' => "This is the explanation for question {$i} in {$topic->name}.",
+                    'source' => 'Test Seeder',
                 ]);
+
+                $this->command->info("✅ Created test question: {$questionText}");
             }
         }
     }

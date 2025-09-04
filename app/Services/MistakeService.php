@@ -193,19 +193,31 @@ class MistakeService
      */
     public function clearUserMistakeCaches(int $userId): void
     {
-        // Clear mistake list caches
+        // Clear OLD mistake caches (legacy)
         Cache::forget("mistakes.user.{$userId}.filter.all");
         Cache::forget("mistakes.user.{$userId}.filter.skipped");
-
-        // Clear course filter cache
         Cache::forget("mistake_courses.user.{$userId}");
 
-        // Clear caches for each course
-        $courseIds = $this->getCoursesForMistakeFilter($userId)->pluck('id');
-        foreach ($courseIds as $courseId) {
-            Cache::forget("mistakes.user.{$userId}.filter.{$courseId}");
+        // Clear caches for each course (legacy)
+        try {
+            $courseIds = $this->getCoursesForMistakeFilter($userId)->pluck('id');
+            foreach ($courseIds as $courseId) {
+                Cache::forget("mistakes.user.{$userId}.filter.{$courseId}");
+            }
+        } catch (\Exception $e) {
+            // Ignore errors if courses can't be fetched
         }
 
-        Log::info('Cleared mistake caches for user.', ['user_id' => $userId]);
+        // 🎯 CRITICAL FIX: Also clear NEW SMART HYBRID caches
+        try {
+            \App\Http\Controllers\Quiz\QuizMistakeController::clearUserMistakeCaches($userId);
+        } catch (\Exception $e) {
+            Log::error('Failed to clear SMART HYBRID mistake caches', [
+                'user_id' => $userId,
+                'error' => $e->getMessage()
+            ]);
+        }
+
+        Log::info('Cleared ALL mistake caches for user (legacy + SMART HYBRID).', ['user_id' => $userId]);
     }
 }

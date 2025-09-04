@@ -135,7 +135,7 @@
             padding: 2rem;
             border-radius: 12px;
             box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
-            max-width: 800px;
+            max-width: 1200px;
             margin: 0 auto;
         }
 
@@ -158,7 +158,7 @@
             padding: 1rem 1.5rem;
             box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.15), 0 -2px 10px rgba(0, 0, 0, 0.1);
             z-index: 999;
-            max-width: 1000px;
+            max-width: 1200px;
             width: 100%;
             transition: all 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);
             border: 1px solid rgba(255, 255, 255, 0.2);
@@ -289,16 +289,20 @@
             display: block;
             padding: 1rem;
             background-color: #f8f9fa;
-            border: 1px solid #dee2e6;
+            border: 2px solid #e9ecef;
             border-radius: 8px;
             cursor: pointer;
-            transition: all 0.2s ease;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
             margin: 0;
+            outline: 1.5px solid transparent;
         }
 
         .form-check label:hover {
-            background-color: #e9ecef;
+            background-color: #f1f3f5;
+            border-color: #007bff;
             transform: translateY(-1px);
+            outline: 1.5px solid #007bff;
+            box-shadow: 0 4px 12px rgba(0, 123, 255, 0.15);
         }
 
         .form-check input:checked + label {
@@ -543,6 +547,17 @@
             pointer-events: none;
         }
 
+        /* Ensure confetti appears above modal and is properly positioned */
+        canvas {
+            z-index: 10001 !important;
+            pointer-events: none !important;
+            position: fixed !important;
+            top: 0 !important;
+            left: 0 !important;
+            width: 100vw !important;
+            height: 100vh !important;
+        }
+
         @media (max-width: 480px) {
             .popup-buttons {
                 flex-direction: row;
@@ -556,7 +571,6 @@
                 padding: 0.6rem 1rem;
                 font-size: 0.9rem;
             }
-        }
         }
 
         @media (max-width: 850px) {
@@ -700,7 +714,6 @@
         <div class="container">
             <h1>Random Quiz</h1>
 
-
             @if ($questions->isNotEmpty())
                 <div class="progress-bar-container" id="progress-bar-container">
                     <div class="progress-bar">
@@ -756,7 +769,6 @@
                 <p class="text-center text-danger">No questions available for this quiz.</p>
             @endif
         </div>
-                </div>
 
     <!-- Quiz Results Popup -->
     <div class="popup-overlay" id="popup-overlay">
@@ -1049,26 +1061,52 @@
                         // Trigger confetti AFTER popup is shown and positioned
                         setTimeout(() => {
                             if (percentage === 100) {
-                                // CONFETTI positioned right and down to center in popup
+                                // Direct confetti call for perfect scores - SAFARI-CORRECTED POSITIONING
                                 if (typeof confetti !== 'undefined') {
-                                    confetti({
-                                        particleCount: 150,
-                                        spread: 70,
-                                        origin: { x: 0.62, y: 0.45 },
-                                        colors: ['#FFD700', '#FFA500', '#FF69B4'],
-                                        zIndex: 10000
-                                    });
-                                }
-                            } else if (percentage >= 70) {
-                                // Good score confetti
-                                if (typeof confetti !== 'undefined') {
+                                    console.log('✅ Using direct confetti');
+                                    // Detect if the browser is Safari
+                                    const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+                                    let originX = 0.62; // Default to center for all other browsers
+
+                                    // If it is Safari, apply a corrected origin value to counteract zoom effect
+                                    if (isSafari) {
+                                        // Fine-tuned for perfect centering - using 0.47 for optimal positioning
+                                        originX = 0.47;
+                                    }
+
                                     confetti({
                                         particleCount: 100,
-                                        spread: 60,
-                                        origin: { x: 0.62, y: 0.45 },
-                                        colors: ['#00CED1', '#98FB98', '#4ECDC4'],
+                                        spread: 70,
+                                        origin: { x: originX, y: 0.45 },
+                                        colors: ['#FFD700', '#FFA500', '#FF69B4', '#00CED1', '#98FB98'],
                                         zIndex: 10000
                                     });
+                                } else {
+                                    console.log('❌ No confetti library available');
+                                }
+                            } else if (percentage >= 70) {
+                                // Direct confetti call for good scores - SAFARI-CORRECTED POSITIONING
+                                if (typeof confetti !== 'undefined') {
+                                    console.log('✅ Using direct confetti');
+                                    // Detect if the browser is Safari
+                                    const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+                                    let originX = 0.62; // Default to center for all other browsers
+
+                                    // If it is Safari, apply a corrected origin value to counteract zoom effect
+                                    if (isSafari) {
+                                        // Fine-tuned for perfect centering - using 0.47 for optimal positioning
+                                        originX = 0.47;
+                                    }
+
+                                    confetti({
+                                        particleCount: 100,
+                                        spread: 70,
+                                        origin: { x: originX, y: 0.45 },
+                                        colors: ['#FFD700', '#FFA500', '#FF69B4', '#00CED1', '#98FB98'],
+                                        zIndex: 10000
+                                    });
+                                } else {
+                                    console.log('❌ No confetti library available');
                                 }
                             }
                         }, 500);
@@ -1234,7 +1272,74 @@
             }
         });
 
+        // Function to create confetti
+        function createConfetti() {
+            // SAFARI-SPECIFIC CONFETTI POSITIONING FIX
+            // Detect if the browser is Safari
+            const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+            let originX = 0.62; // Default to center for all other browsers
 
+            // If it is Safari, apply a corrected origin value to counteract zoom effect
+            if (isSafari) {
+                // Fine-tuned for perfect centering - using 0.48 for optimal positioning
+                originX = 0.48;
+            }
+
+            // SAFARI-CORRECTED CONFETTI - Consistent positioning across browsers
+            confetti({
+                particleCount: 100,
+                spread: 70,
+                origin: { x: originX, y: 0.45 },
+                colors: ['#FFD700', '#FFA500', '#FF69B4', '#00CED1', '#98FB98'],
+                zIndex: 10000
+            });
+        }
+    </script>
+
+    <script>
+        // EDGE/SAFARI CONFETTI TEST FUNCTION
+        window.testConfetti = function() {
+            console.log('🎯 MANUAL CONFETTI TEST TRIGGERED');
+
+            if (typeof confetti !== 'undefined') {
+                console.log('✅ Direct confetti library available - testing...');
+                // Use Safari-corrected positioning for test
+                const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+                let originX = 0.62; // Default to center for all other browsers
+                if (isSafari) {
+                    originX = 0.47; // Fine-tuned for perfect centering
+                }
+                confetti({
+                    particleCount: 100,
+                    spread: 70,
+                    origin: { x: originX, y: 0.45 },
+                    colors: ['#FFD700', '#FFA500', '#FF69B4', '#00CED1', '#98FB98'],
+                    zIndex: 10000
+                });
+                alert('Testing direct confetti... check if confetti appears!');
+            } else {
+                console.log('❌ No confetti system available');
+                alert('ERROR: No confetti library loaded! Check browser or network issues.');
+            }
+        };
+
+        // Utility function to safely decode HTML entities
+        function decodeHtmlEntities(text) {
+            if (!text) return '';
+
+            try {
+                // Create a DOM element to leverage browser's built-in decoder
+                const textArea = document.createElement('textarea');
+                textArea.innerHTML = text;
+                const decodedText = textArea.value;
+
+                // Return safely decoded text
+                return decodedText;
+            } catch (e) {
+                console.error('Error decoding HTML entities:', e);
+                return text; // Return the original text if decoding fails
+            }
+        }
     </script>
 
     <!-- NUCLEAR OVERRIDE - PROGRESS BAR ANNIHILATION SYSTEM -->

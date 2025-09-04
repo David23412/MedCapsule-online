@@ -427,6 +427,310 @@
             100% { opacity: 1; }
         }
 
+        /* ===== MOBILE COMPATIBILITY OPTIMIZATIONS ===== */
+        
+        /* Mobile Navigation */
+        @media (max-width: 768px) {
+            .navbar {
+                padding: 0.5rem 0;
+                position: fixed;
+                top: 0;
+                left: 0;
+                right: 0;
+                z-index: 1001;
+            }
+            
+            .navbar .container-fluid {
+                padding: 0 1rem;
+            }
+            
+            .navbar-brand {
+                font-size: 1.5rem;
+                margin-left: 0;
+            }
+            
+            .navbar-nav {
+                background: white;
+                border-radius: 8px;
+                box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+                margin-top: 0.5rem;
+                padding: 0.5rem 0;
+            }
+            
+            .nav-link {
+                padding: 0.75rem 1rem;
+                font-size: 1rem;
+            }
+            
+            .dropdown-menu {
+                position: static !important;
+                transform: none !important;
+                box-shadow: none;
+                border: none;
+                background: #f8f9fa;
+                margin: 0.5rem 1rem;
+                border-radius: 8px;
+            }
+            
+            .dropdown-menu-end {
+                transform: none !important;
+            }
+        }
+
+        /* Mobile Hero Section */
+        @media (max-width: 768px) {
+            .hero-section {
+                min-height: 70vh;
+                padding: 6rem 1rem 2rem;
+                text-align: center;
+            }
+            
+            .hero-section h1 {
+                font-size: 2.2rem;
+                line-height: 1.2;
+                margin-bottom: 1rem;
+            }
+            
+            .hero-section p {
+                font-size: 1.1rem;
+                margin-bottom: 1.5rem;
+                padding: 0 1rem;
+            }
+            
+            .btn-primary {
+                padding: 12px 30px;
+                font-size: 1.2rem;
+                width: auto;
+                min-width: 200px;
+            }
+        }
+
+        /* Mobile Features Section */
+        @media (max-width: 768px) {
+            .features {
+                padding: 40px 0;
+            }
+            
+            .features h2 {
+                font-size: 1.8rem;
+                text-align: center;
+                margin-bottom: 2rem;
+            }
+            
+            .features .feature-box {
+                padding: 20px;
+                margin-bottom: 1.5rem;
+                text-align: center;
+            }
+            
+            .features .feature-box i {
+                font-size: 2.5rem;
+                margin-bottom: 1rem;
+            }
+            
+            .features .feature-box h4 {
+                font-size: 1.3rem;
+                margin-bottom: 1rem;
+            }
+        }
+
+        /* Mobile Profile Menu */
+        @media (max-width: 768px) {
+            .profile-menu {
+                width: 280px;
+                right: -10px;
+                margin-top: 0.25rem;
+            }
+            
+            .profile-header {
+                padding: 1rem;
+            }
+            
+            .profile-stats {
+                grid-template-columns: 1fr;
+                gap: 1rem;
+                padding: 1rem;
+            }
+            
+            .stat-item {
+                padding: 0.75rem;
+            }
+            
+            .progress-circle {
+                width: 60px;
+                height: 60px;
+            }
+            
+            .progress-value {
+                font-size: 1.2rem;
+            }
+            
+            .streak-indicator {
+                width: 70px;
+                height: 70px;
+                margin: 0.5rem auto;
+            }
+            
+            .streak-value {
+                font-size: 1.2rem;
+            }
+            
+            .streak-label {
+                font-size: 0.5rem;
+            }
+        }
+
+        /* Mobile Footer */
+        @media (max-width: 768px) {
+            .footer {
+                padding: 30px 0;
+                text-align: center;
+            }
+            
+            .footer .container {
+                padding: 0 1rem;
+            }
+        }
+
+        /* Small Mobile Devices */
+        @media (max-width: 480px) {
+            .hero-section h1 {
+                font-size: 1.8rem;
+            }
+            
+            .hero-section p {
+                font-size: 1rem;
+                padding: 0 0.5rem;
+            }
+            
+            .btn-primary {
+                padding: 10px 25px;
+                font-size: 1.1rem;
+                min-width: 180px;
+            }
+            
+            .navbar-brand {
+                font-size: 1.3rem;
+            }
+            
+            .features .feature-box {
+                padding: 15px;
+            }
+            
+            .features .feature-box i {
+                font-size: 2rem;
+            }
+        }
+
+        /* Landscape Mobile Optimization */
+        @media (max-width: 768px) and (orientation: landscape) {
+            .hero-section {
+                min-height: 60vh;
+                padding: 5rem 1rem 1rem;
+            }
+            
+            .hero-section h1 {
+                font-size: 2rem;
+                margin-bottom: 0.5rem;
+            }
+            
+            .hero-section p {
+                font-size: 1rem;
+                margin-bottom: 1rem;
+            }
+        }
+
+        /* Ultra-Performance Mobile Optimizations */
+        @media (max-width: 768px) {
+            /* Disable complex animations on mobile for better performance */
+            .floating-shapes,
+            .shape,
+            .shape-1,
+            .shape-2,
+            .shape-3,
+            .shape-4,
+            .shape-5,
+            .shape-6 {
+                display: none;
+            }
+            
+            /* Simplify hover effects for touch devices */
+            .btn-primary:hover {
+                transform: none;
+                background: #1976d2;
+            }
+            
+            .features .feature-box:hover {
+                transform: none;
+                box-shadow: 0 2px 8px rgba(0, 123, 255, 0.1);
+            }
+            
+            /* Optimize text rendering */
+            body {
+                -webkit-font-smoothing: antialiased;
+                -moz-osx-font-smoothing: grayscale;
+                text-rendering: optimizeSpeed;
+            }
+            
+            /* Reduce motion for users who prefer it */
+            @media (prefers-reduced-motion: reduce) {
+                * {
+                    animation-duration: 0.01ms !important;
+                    animation-iteration-count: 1 !important;
+                    transition-duration: 0.01ms !important;
+                }
+            }
+        }
+
+        /* Enhanced Touch Targets */
+        @media (hover: none) and (pointer: coarse) {
+            .btn-primary {
+                min-height: 48px;
+                min-width: 48px;
+                padding: 14px 32px;
+                font-size: 1.1rem;
+            }
+            
+            .nav-link {
+                min-height: 48px;
+                padding: 0.875rem 1.25rem;
+            }
+            
+            .dropdown-item {
+                min-height: 48px;
+                padding: 0.875rem 1.25rem;
+            }
+        }
+
+        /* iOS Safari Specific Fixes */
+        @supports (-webkit-touch-callout: none) {
+            .hero-section {
+                min-height: calc(100vh - 80px);
+            }
+            
+            .navbar {
+                -webkit-backdrop-filter: blur(10px);
+                backdrop-filter: blur(10px);
+            }
+            
+            /* Fix iOS Safari viewport height issues */
+            .hero-section {
+                min-height: -webkit-fill-available;
+            }
+        }
+
+        /* Android Chrome Specific Optimizations */
+        @media screen and (-webkit-min-device-pixel-ratio: 0) and (min-resolution: .001dpcm) {
+            .hero-section {
+                will-change: transform;
+                transform: translateZ(0);
+            }
+            
+            .btn-primary {
+                -webkit-tap-highlight-color: rgba(33, 150, 243, 0.3);
+            }
+        }
+
         /* Header Styles */
         .header {
             display: flex;
@@ -2116,12 +2420,17 @@
             background-clip: text;
         }
     </style>
+    
+    {{-- Responsive Navigation CSS - REMOVED TO FIX 404 ERRORS --}}
 </head>
 
 <body>
     <!-- SAFE PRELOADER - WON'T BREAK ANYTHING -->
     @include('components.lightning-preloader')
 
+    {{-- Include Responsive Navigation - TEMPORARILY DISABLED FOR TESTING --}}
+    {{-- <x-responsive-nav-integration mode="replace" /> --}}
+    
     <nav class="navbar navbar-expand-lg navbar-light">
         <div class="container">
             <a class="navbar-brand" href="{{ route('home') }}">
@@ -2374,10 +2683,11 @@
                                     if (filter_var(Auth::user()->profile_picture_url, FILTER_VALIDATE_URL)) {
                                         $profileImageUrl = Auth::user()->profile_picture_url;
                                     } else {
-                                        // Local file - use secure_url with cache busting
+                                        // Local file - construct proper URL for our route
                                         $localPath = storage_path('app/public/' . Auth::user()->profile_picture_url);
                                         if (file_exists($localPath)) {
-                                            $profileImageUrl = secure_url(Auth::user()->profile_picture_url) . '?v=' . time();
+                                            $filename = basename(Auth::user()->profile_picture_url);
+                                            $profileImageUrl = url('/uploads/profile-pictures/' . $filename) . '?v=' . time();
                                         }
                                     }
                                 }
@@ -2888,6 +3198,8 @@
             });
         });
     </script>
+
+
 </body>
 
 </html>

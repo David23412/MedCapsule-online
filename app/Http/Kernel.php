@@ -41,6 +41,7 @@ class Kernel extends HttpKernel
             \App\Http\Middleware\TrackUserActivity::class,
             \App\Http\Middleware\PerformanceMonitoring::class,
             \App\Http\Middleware\CourseCacheBuster::class,
+            \App\Http\Middleware\AutoEnrollFreeCourses::class, // 🚀 AUTOMATIC FREE COURSE ENROLLMENT
         ],
 
         'api' => [
@@ -84,4 +85,4 @@ class Kernel extends HttpKernel
         'single.session' => \App\Http\Middleware\SingleSessionMiddleware::class,
         'update.session' => \App\Http\Middleware\UpdateActiveSession::class,
     ];
-} 
+}

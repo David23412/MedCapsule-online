@@ -22,8 +22,11 @@ class TopicActionController extends Controller
     {
         $this->middleware(['auth']);
         $this->middleware(function ($request, $next) {
+            if (!auth()->check()) {
+                return redirect()->route('login')->with('error', 'Please login to continue.');
+            }
             if (auth()->user()->role !== 'admin') {
-                abort(403);
+                return redirect()->route('home')->with('error', 'Access denied. Only admins can manage topics.');
             }
             return $next($request);
         });
@@ -34,16 +37,14 @@ class TopicActionController extends Controller
      */
     public function addTopic(TopicRequest $request)
     {
+        if (!auth()->check()) {
+            return redirect()->route('login')->with('error', 'Please login to continue.');
+        }
         if (auth()->user()->role !== 'admin') {
-            abort(403);
+            return redirect()->route('home')->with('error', 'Access denied. Only admins can manage topics.');
         }
 
-        $validated = $request->validate([
-            'name' => 'required|string|max:255',
-            'course_id' => 'required|exists:courses,id',
-            'description' => 'nullable|string',
-            'display_order' => 'nullable|integer|min:0'
-        ]);
+        $validated = $request->validated();
 
         try {
             $topic = Topic::create([
@@ -51,7 +52,6 @@ class TopicActionController extends Controller
                 'course_id' => $validated['course_id'],
                 'description' => $validated['description'] ?? '',
                 'display_order' => $validated['display_order'] ?? 0,
-                'is_active' => true,
                 'created_by' => auth()->id()
             ]);
 

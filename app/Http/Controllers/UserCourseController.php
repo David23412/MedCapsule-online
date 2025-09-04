@@ -92,14 +92,27 @@ class UserCourseController extends Controller
 
     public function payments(GetPaymentsRequest $request)
     {
-        $validated = $request->validated();
-        $result = $this->paymentService->getPaginatedPayments(
-            $validated['search'] ?? null,
-            $validated['page'] ?? 1,
-            $validated['per_page'] ?? 20
-        );
+        try {
+            $validated = $request->validated();
+            $result = $this->paymentService->getPaginatedPayments(
+                $validated['search'] ?? null,
+                $validated['page'] ?? 1,
+                $validated['per_page'] ?? 20
+            );
 
-        return response()->json($result, $result['success'] ? 200 : 500);
+            return response()->json($result, $result['success'] ? 200 : 500);
+        } catch (\Exception $e) {
+            \Log::error('Payments endpoint error', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'An error occurred while loading payments.',
+                'error' => $e->getMessage()
+            ], 500);
+        }
     }
 
     public function updatePaymentSettings(UpdatePaymentSettingsRequest $request)

@@ -34,7 +34,7 @@ class QuizGradingController extends Controller
     /**
      * Submit quiz answers for grading
      */
-    public function submit(QuizExecutionRequest $request, int $quizId): JsonResponse
+    public function submit(QuizExecutionRequest $request, $course, $topic): JsonResponse
     {
         try {
             $validated = $request->validated();
@@ -42,30 +42,39 @@ class QuizGradingController extends Controller
 
             DB::beginTransaction();
 
+            // Convert to integers and validate course-topic relationship
+            $courseId = (int) $course;
+            $topicId = (int) $topic;
+
             // Get the user and topic objects
             $user = auth()->user();
-            $topic = Topic::with('course')->findOrFail($quizId);
+            $topicModel = Topic::with('course')->findOrFail($topicId);
+
+            // Validate topic belongs to course
+            if ($topicModel->course_id !== $courseId) {
+                throw new \Exception("Topic $topicId does not belong to course $courseId");
+            }
 
             // Grade the quiz with proper parameters
             $gradingResult = $this->gradingService->gradeQuiz(
                 $user,
                 $validated['answers'] ?? [],
                 $validated['duration_seconds'] ?? 0,
-                $validated['mode'] ?? 'quiz',
-                $topic,
-                $topic->course,
+                $validated['quiz_mode'] ?? $request->input('mode', 'quiz'),
+                $topicModel,
+                $topicModel->course,
                 $validated['assignment_id'] ?? null
             );
 
             DB::commit();
 
             // Clear related caches
-            $this->clearQuizCaches($quizId, $userId);
+            $this->clearQuizCaches($topicId, $userId);
 
             $this->performanceService->track("quiz_submit", 0.001);
 
             Log::info("Quiz submitted and graded", [
-                'quiz_id' => $quizId,
+                'quiz_id' => $topicId,
                 'user_id' => $userId,
                 'score' => $gradingResult['score'] ?? 0
             ]);
@@ -80,7 +89,7 @@ class QuizGradingController extends Controller
 
             Log::error("Quiz submission failed", [
                 'error' => $e->getMessage(),
-                'quiz_id' => $quizId,
+                'quiz_id' => $topicId,
                 'user_id' => auth()->id()
             ]);
 

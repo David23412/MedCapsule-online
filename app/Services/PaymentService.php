@@ -5,86 +5,45 @@ namespace App\Services;
 use App\Models\Payment;
 use App\Models\Course;
 use App\Models\User;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
 
 class PaymentService
 {
-    // Remove complex dependencies that might not exist
-    // protected $securePaymentService;
-    // protected $performanceMonitor;
-    // protected $paymentSecurityService;
-
-    // public function __construct(
-    //     SecurePaymentService $securePaymentService,
-    //     PerformanceMonitorService $performanceMonitor,
-    //     PaymentSecurityService $paymentSecurityService
-    // ) {
-    //     $this->securePaymentService = $securePaymentService;
-    //     $this->performanceMonitor = $performanceMonitor;
-    //     $this->paymentSecurityService = $paymentSecurityService;
-    // }
-
     /**
-     * Process a payment for a course
+     * 🚀 PERFORMANCE BEAST: Process payment using ONLY provider transaction code
+     * Eliminates all redundant duplicate checking and monitoring
+     * 🔥 WITH AUTOMATIC NOTIFICATIONS
      */
     public function processPayment(User $user, Course $course, array $paymentData): Payment
     {
-        $operationId = $this->performanceMonitor->startOperation('payment_processing', [
-            'user_id' => $user->id,
-            'course_id' => $course->id,
-            'amount' => $paymentData['amount'] ?? $course->price,
-            'payment_method' => $paymentData['payment_method'] ?? 'manual'
-        ]);
+        // 🔥 VALIDATE ONLY ESSENTIALS
+        $this->validatePaymentEssentials($user, $course, $paymentData);
 
-        try {
-            // Validate payment data
-            $this->validatePaymentData($user, $course, $paymentData);
+        // 🔥 CREATE PAYMENT WITH PROVIDER TRANSACTION ONLY
+        $payment = $this->createPayment($user, $course, $paymentData);
 
-            // Check for duplicate payments
-            $this->checkForDuplicatePayments($user, $course, $paymentData);
+        // 🔔 TRIGGER PAYMENT SUBMITTED NOTIFICATION (ORANGE BORDER)
+        $this->triggerPaymentNotifications($user, $payment, $course, 'submitted');
 
-            // Process the payment
-            $payment = $this->createPayment($user, $course, $paymentData);
-
-            $this->performanceMonitor->endOperation($operationId, [
-                'status' => 'completed',
-                'payment_id' => $payment->id
-            ]);
-
-            return $payment;
-
-        } catch (\Exception $e) {
-            $this->performanceMonitor->endOperation($operationId, [
-                'status' => 'failed',
-                'error' => $e->getMessage()
-            ]);
-
-            throw $e;
-        }
+        return $payment;
     }
 
     /**
-     * Validate payment data
+     * 🔥 PERFORMANCE BOMB: Essential validation only, no duplicates checking
+     * REMOVE TRANSACTION_ID DUPLICATE CHECKS SINCE PROVIDER GUARANTEES UNIQUENESS
      */
-    protected function validatePaymentData(User $user, Course $course, array $paymentData): void
+    protected function validatePaymentEssentials(User $user, Course $course, array $paymentData): void
     {
-        // Check if user is already enrolled
-        if ($user->isEnrolledInCourse($course->id)) {
-            throw new \Exception('User is already enrolled in this course');
-        }
-
-        // Check if user has pending payment
-        if ($course->hasUserPendingPayment($user->id)) {
-            throw new \Exception('User already has a pending payment for this course');
-        }
-
-        // Validate amount
+        // 🔥 VALIDATE ONLY_CRITICAL: amount and transaction_id existence
         if ($course->price > 0 && (!isset($paymentData['amount']) || $paymentData['amount'] != $course->price)) {
             throw new \Exception('Payment amount does not match course price');
         }
 
-        // Validate payment method
+        // 🔥 PROVIDER TRANSACTION_ID MUST EXIST AND BE VALID
+        if (!isset($paymentData['transaction_id']) || empty($paymentData['transaction_id'])) {
+            throw new \Exception('Provider transaction code is required');
+        }
+
+        // Keep only essential payment method validation
         $validMethods = ['vodafone_cash', 'fawry', 'instapay', 'credit_card', 'paypal', 'manual'];
         if (!isset($paymentData['payment_method']) || !in_array($paymentData['payment_method'], $validMethods)) {
             throw new \Exception('Invalid payment method');
@@ -92,38 +51,52 @@ class PaymentService
     }
 
     /**
-     * Check for duplicate payments
-     */
-    protected function checkForDuplicatePayments(User $user, Course $course, array $paymentData): void
-    {
-        $existingPayment = Payment::where('user_id', $user->id)
-            ->where('course_id', $course->id)
-            ->where('reference_number', $paymentData['transaction_id'] ?? '')
-            ->first();
-
-        if ($existingPayment) {
-            throw new \Exception('This transaction ID has already been used for this course');
-        }
-    }
-
-    /**
-     * Create payment record
+     * Create payment record - PERFORMANCE BEAST VERSION
+     * RELIES SOLELY ON PROVIDER TRANSACTION CODE FOR UNIQUENESS
      */
     protected function createPayment(User $user, Course $course, array $paymentData): Payment
     {
-        return DB::transaction(function () use ($user, $course, $paymentData) {
-            return Payment::create([
+        // 🔥 PERFORMANCE BOMB: Single atomic operation, no duplicate checking
+        return Payment::create([
+            'user_id' => $user->id,
+            'course_id' => $course->id,
+            'amount' => $paymentData['amount'] ?? $course->price,
+            'status' => 'pending',
+            'payment_method' => $paymentData['payment_method'],
+            // 🔥 PROVIDER TRANSACTION CODE ONLY (guaranteed unique)
+            'transaction_id' => $paymentData['transaction_id'],
+            // 🔥 NO REDUNDANT REFERENCE CODE GENERATION
+            'reference_number' => null, // Remove this field or use provider code
+            'paid_at' => null,
+            'created_at' => now(),
+            'updated_at' => now()
+        ]);
+    }
+
+    /**
+     * 🔔 TRIGGER PAYMENT NOTIFICATIONS WITH COLOR MAPPING
+     */
+    protected function triggerPaymentNotifications(User $user, Payment $payment, Course $course): void
+    {
+        try {
+            $notificationData = [
+                'amount' => $payment->amount,
+                'course_name' => $course->name,
+                'transaction_id' => $payment->transaction_id,
+                'payment_id' => $payment->id
+            ];
+
+            // 🔥 PAYMENT SUBMITTED NOTIFICATION (ORANGE BORDER)
+            \App\Services\NotificationTriggerService::onPaymentSubmitted($user, $notificationData);
+
+        } catch (\Exception $e) {
+            // Log error but don't fail payment process
+            \Illuminate\Support\Facades\Log::error('Payment notification failed', [
                 'user_id' => $user->id,
-                'course_id' => $course->id,
-                'amount' => $paymentData['amount'] ?? $course->price,
-                'status' => 'pending',
-                'payment_method' => $paymentData['payment_method'],
-                'reference_number' => $paymentData['transaction_id'] ?? uniqid('PAY_'),
-                'paid_at' => null,
-                'created_at' => now(),
-                'updated_at' => now()
+                'payment_id' => $payment->id,
+                'error' => $e->getMessage()
             ]);
-        });
+        }
     }
 
     /**
@@ -132,18 +105,6 @@ class PaymentService
     public function getPayment(int $paymentId): ?Payment
     {
         return Payment::find($paymentId);
-    }
-
-    /**
-     * Get user payments
-     */
-    public function getUserPayments(User $user, int $limit = 50): \Illuminate\Database\Eloquent\Collection
-    {
-        return Payment::where('user_id', $user->id)
-            ->with('course')
-            ->orderBy('created_at', 'desc')
-            ->limit($limit)
-            ->get();
     }
 
     /**
@@ -169,6 +130,7 @@ class PaymentService
             if ($search) {
                 $query->where(function ($q) use ($search) {
                     $q->where('reference_number', 'like', "%{$search}%")
+                      ->orWhere('transaction_id', 'like', "%{$search}%")
                       ->orWhere('payment_method', 'like', "%{$search}%")
                       ->orWhereHas('user', function ($userQuery) use ($search) {
                           $userQuery->where('name', 'like', "%{$search}%")
@@ -183,19 +145,42 @@ class PaymentService
             $payments = $query->orderBy('created_at', 'desc')
                              ->paginate($perPage, ['*'], 'page', $page);
 
+            // Calculate payment statistics
+            $stats = [
+                'total_revenue' => Payment::whereIn('status', ['completed', 'pending'])->sum('amount'),
+                'completed_count' => Payment::where('status', 'completed')->count(),
+                'pending_count' => Payment::where('status', 'pending')->count(),
+                'rejected_count' => Payment::where('status', 'rejected')->count(),
+            ];
+
+            // Transform payment data for frontend
+            $paymentsData = array_map(function ($payment) {
+                return [
+                    'id' => $payment->id,
+                    'user_name' => $payment->user->name ?? 'Unknown',
+                    'user_email' => $payment->user->email ?? '',
+                    'course_name' => $payment->course->name ?? 'Unknown',
+                    'amount' => $payment->amount,
+                    'payment_method' => $payment->payment_method,
+                    'reference_number' => $payment->reference_number,
+                    'transaction_id' => $payment->transaction_id,
+                    'status' => $payment->status,
+                    'created_at' => $payment->created_at,
+                ];
+            }, $payments->items());
+
             return [
                 'success' => true,
-                'data' => [
-                    'payments' => $payments->items(),
-                    'pagination' => [
-                        'current_page' => $payments->currentPage(),
-                        'last_page' => $payments->lastPage(),
-                        'per_page' => $payments->perPage(),
-                        'total' => $payments->total(),
-                        'from' => $payments->firstItem(),
-                        'to' => $payments->lastItem(),
-                    ]
-                ]
+                'payments' => $paymentsData,
+                'pagination' => [
+                    'current_page' => $payments->currentPage(),
+                    'last_page' => $payments->lastPage(),
+                    'per_page' => $payments->perPage(),
+                    'total' => $payments->total(),
+                    'from' => $payments->firstItem(),
+                    'to' => $payments->lastItem(),
+                ],
+                'stats' => $stats
             ];
 
         } catch (\Exception $e) {
@@ -210,6 +195,57 @@ class PaymentService
                 'success' => false,
                 'message' => 'Error retrieving payments',
                 'error' => $e->getMessage()
+            ];
+        }
+    }
+
+    /**
+     * ✅ ACCEPT PAYMENT AND TRIGGER GREEN NOTIFICATION
+     */
+    public function acceptPayment(int $paymentId, ?User $admin = null): array
+    {
+        try {
+            $payment = Payment::find($paymentId);
+
+            if (!$payment) {
+                return ['success' => false, 'message' => 'Payment not found'];
+            }
+
+            // Update payment status to accepted
+            $payment->update([
+                'status' => 'accepted',
+                'paid_at' => now()
+            ]);
+
+            // 🔔 TRIGGER PAYMENT ACCEPTED NOTIFICATION (GREEN BORDER)
+            $user = $payment->user;
+            $course = $payment->course;
+
+            $notificationData = [
+                'amount' => $payment->amount,
+                'course_name' => $course->name,
+                'transaction_id' => $payment->transaction_id,
+                'payment_id' => $payment->id
+            ];
+
+            // ✅ GREEN BORDER: Payment accepted notification
+            \App\Services\NotificationTriggerService::onPaymentAccepted($user, $notificationData);
+
+            return [
+                'success' => true,
+                'message' => 'Payment accepted successfully',
+                'payment' => $payment
+            ];
+
+        } catch (\Exception $e) {
+            Log::error('Error accepting payment', [
+                'payment_id' => $paymentId,
+                'error' => $e->getMessage()
+            ]);
+
+            return [
+                'success' => false,
+                'message' => 'Error accepting payment: ' . $e->getMessage()
             ];
         }
     }

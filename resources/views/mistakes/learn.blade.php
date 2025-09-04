@@ -901,11 +901,19 @@
         }
 
     </style>
+    
+    {{-- Responsive Navigation CSS --}}
+    <link rel="stylesheet" href="{{ asset('css/responsive.css') }}">
+    <link rel="stylesheet" href="{{ asset('css/mobile-utils.css') }}">
+    <link rel="stylesheet" href="{{ asset('css/responsive-navigation.css') }}">
 </head>
 
 <body>
     <!-- LIGHTNING-FAST FOUC ELIMINATOR -->
     @include('components.lightning-preloader')
+
+    {{-- Include Responsive Navigation --}}
+    <x-responsive-nav-integration mode="replace" />
 
     <nav class="navbar">
         <div class="container">
@@ -1353,6 +1361,8 @@
                 }
             };
 
+            // PATCH CYCLING SYSTEM - Group questions into patches of 5
+            const PATCH_SIZE = 5;
             let selectedMode = null;
             let questionsData = [];
             let currentQuestionIndex = 0;
@@ -1361,21 +1371,102 @@
             let correctFirstAttempts = 0;
             let startTime = 0;
             let quizStarted = false; // 💀 BULLETPROOF AUDIO CONTROL - NO SOUNDS UNTIL QUIZ STARTS 💀
+            let currentPatchIndex = 0; // Track current patch
+            let currentPositionInPatch = -1; // Track position in current patch
+            let patches = []; // Array of question patches
 
-            // Initialize questions data from the cards
+            // Initialize questions data and create patches
             document.querySelectorAll('.card').forEach(card => {
                 const questionData = {
                     element: card,
                     id: card.dataset.questionId,
                     correctStreak: 0,
                     courseId: card.dataset.courseId || 'all',
-                    isActive: true
+                    isActive: true,
+                    patchIndex: 0 // Will be set when creating patches
                 };
                 questionsData.push(questionData);
                 activeQuestions.add(questionData.id);
                 // Hide all cards initially
                 card.classList.remove('active');
             });
+
+            // Create patches from questions
+            function createPatches() {
+                patches = [];
+                for (let i = 0; i < questionsData.length; i += PATCH_SIZE) {
+                    const patch = questionsData.slice(i, i + PATCH_SIZE);
+                    // Assign patch index to each question
+                    patch.forEach(q => q.patchIndex = patches.length);
+                    patches.push(patch);
+                }
+                console.log(`📦 Created ${patches.length} patches with ${PATCH_SIZE} questions each`);
+                console.log('📦 Patch details:', patches.map((patch, i) => `Patch ${i + 1}: ${patch.length} questions`));
+            }
+
+            // PATCH CYCLING: Check if current patch is completed
+            function isCurrentPatchCompleted() {
+                if (currentPatchIndex >= patches.length) return true;
+
+                const currentPatch = patches[currentPatchIndex];
+                return currentPatch.every(question =>
+                    question.correctStreak >= MODE_SETTINGS[selectedMode].requiredCorrect
+                );
+            }
+
+            // PATCH CYCLING: Move to next patch
+            function moveToNextPatch() {
+                if (currentPatchIndex < patches.length - 1) {
+                    currentPatchIndex++;
+                    console.log(`🔄 MOVING TO PATCH ${currentPatchIndex + 1}/${patches.length}`);
+
+                    // Reset question index to start of new patch
+                    currentQuestionIndex = patches[currentPatchIndex][0] ?
+                        questionsData.indexOf(patches[currentPatchIndex][0]) : 0;
+
+                    // Reset position for new patch
+                    currentPositionInPatch = -1;
+
+                    // Show encouragement when moving to next patch
+                    const encouragementMessage = document.querySelector('.encouragement-message');
+                    encouragementMessage.querySelector('h2').textContent = `Patch ${currentPatchIndex} Complete! 🎉`;
+                    encouragementMessage.querySelector('p').textContent = 'Moving to next set of questions...';
+                    encouragementMessage.style.display = 'block';
+                    setTimeout(() => {
+                        encouragementMessage.style.display = 'none';
+                    }, 2000);
+
+                    return true;
+                }
+                return false; // No more patches
+            }
+
+            // PATCH CYCLING: Get next question from current patch
+            function getNextQuestionFromCurrentPatch() {
+                if (currentPatchIndex >= patches.length) return null;
+
+                const currentPatch = patches[currentPatchIndex];
+
+                if (currentPatch.length === 0) return null;
+
+                // Start from the next position after current
+                let start = (currentPositionInPatch + 1) % currentPatch.length;
+
+                // Find the next active question, wrapping around
+                for (let i = 0; i < currentPatch.length; i++) {
+                    let pos = (start + i) % currentPatch.length;
+                    const question = currentPatch[pos];
+                    const questionId = question.id;
+
+                    if (activeQuestions.has(questionId)) {
+                        // Found next active - update position and return index
+                        currentPositionInPatch = pos;
+                        return questionsData.findIndex(q => q.id === questionId);
+                    }
+                }
+
+                return null; // No active questions in patch
+            }
 
 
 
@@ -1394,26 +1485,28 @@
                 totalAttempts = 0;
                 correctFirstAttempts = 0;
                 startTime = Date.now();
-                
+
                 // Reset all questions data for a new session
                 questionsData.forEach(q => {
                     q.correctStreak = 0;
                     q.isActive = true;
                 });
-                
+
                 currentQuestionIndex = 0;
+                currentPatchIndex = 0; // Reset patch index
+                currentPositionInPatch = -1; // Reset position
                 activeQuestions.clear();
                 questionsData.forEach(q => activeQuestions.add(q.id));
-                
+
                 // Make sure all cards are hidden
                 document.querySelectorAll('.card').forEach(card => {
                     card.classList.remove('active');
                 });
-                
+
                 // Show the first question
                 showNextQuestion();
                 updateStageIndicator();
-                
+
                 // Reset progress
                 updateProgress();
             });
@@ -1548,8 +1641,7 @@
                                     feedbackElement.removeChild(correctAnswerDiv);
                                 }
                                 
-                                // Move to next question
-                                currentQuestionIndex = (currentQuestionIndex + 1) % questionsData.length;
+                                // Move to next question using patch cycling
                                 showNextQuestion();
                                 updateStageIndicator();
                             }, 1500);
@@ -1609,24 +1701,29 @@
             // Handle start button click
             startButton.addEventListener('click', function() {
                 if (!selectedMode) return;
-                
+
                 // 💀 BULLETPROOF AUDIO CONTROL - ENABLE SOUNDS ONLY AFTER QUIZ STARTS 💀
                 quizStarted = true;
                 console.log('🔥 QUIZ STARTED - AUDIO SYSTEM NOW ACTIVE');
-                
+
                 // Initialize start time when learning begins
-                    startTime = Date.now();
-                    
+                startTime = Date.now();
+
+                // Create patches for patch cycling system
+                createPatches();
+
                 // Hide difficulty selector and overlay
-                    difficultySelector.style.display = 'none';
-                    difficultyOverlay.style.display = 'none';
-                    
+                difficultySelector.style.display = 'none';
+                difficultyOverlay.style.display = 'none';
+
                 // Show progress container
-                    progressContainer.style.display = 'block';
-                    
-                    // Initialize the first question
-                    currentQuestionIndex = -1; // Set to -1 so showNextQuestion will start at 0
-                    showNextQuestion();
+                progressContainer.style.display = 'block';
+
+                // Initialize the first question
+                currentQuestionIndex = -1; // Set to -1 so showNextQuestion will start at 0
+                currentPatchIndex = 0; // Start with first patch
+                currentPositionInPatch = -1; // Start before first question
+                showNextQuestion();
             });
 
             // 💀 LETHAL INSTANT SOUND SYSTEM - F16 RAPTOR SPEED 💀
@@ -1832,33 +1929,37 @@
             function showNextQuestion() {
                 if (questionsData.length === 0) return;
 
-                // Check if all questions have been mastered (streak of 2)
+                // PATCH CYCLING: Check if all questions have been mastered
                 if (activeQuestions.size === 0) {
                     showCompletion();
                     return;
                 }
 
-                // Find the next active question
-                let nextQuestionFound = false;
-                let originalIndex = currentQuestionIndex;
-                let nextIndex = currentQuestionIndex;
-
-                do {
-                    nextIndex = (nextIndex + 1) % questionsData.length;
-                    if (activeQuestions.has(questionsData[nextIndex].id)) {
-                        nextQuestionFound = true;
-                        break;
-                    }
-                    // If we've checked all questions and found none active
-                    if (nextIndex === originalIndex) {
-                        // If there are no active questions left, show completion
+                // PATCH CYCLING: Check if current patch is completed
+                if (isCurrentPatchCompleted()) {
+                    console.log(`✅ Patch ${currentPatchIndex + 1} completed!`);
+                    if (!moveToNextPatch()) {
+                        // No more patches available
                         showCompletion();
                         return;
                     }
-                } while (!nextQuestionFound);
+                }
 
-                // Update current question index to the next active question
-                currentQuestionIndex = nextIndex;
+                // PATCH CYCLING: Get next question from current patch
+                const nextQuestionIndex = getNextQuestionFromCurrentPatch();
+
+                if (nextQuestionIndex === null) {
+                    // All questions in current patch are mastered, try to move to next patch
+                    if (!moveToNextPatch()) {
+                        showCompletion();
+                        return;
+                    }
+                    // Try again with new patch
+                    return showNextQuestion();
+                }
+
+                // Update current question index
+                currentQuestionIndex = nextQuestionIndex;
 
                 // Hide ALL cards in the DOM
                 document.querySelectorAll('.card').forEach(card => {
@@ -1867,7 +1968,7 @@
 
                 // Show only the current question
                 questionsData[currentQuestionIndex].element.classList.add('active');
-                
+
                 // Update progress
                 updateProgress();
                 updateStageIndicator();
@@ -1878,8 +1979,8 @@
                 const completed = questionsData.length - activeQuestions.size;
                 const progressText = document.querySelector('.progress-text');
                 const progressFill = document.querySelector('.progress-fill');
-                
-                progressText.textContent = `${completed} of ${total} mastered this session`;
+
+                progressText.textContent = `${completed} of ${total} completed this session`;
                 progressFill.style.width = `${(completed / total) * 100}%`;
             }
 

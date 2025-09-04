@@ -174,6 +174,7 @@
             justify-content: center;
             transition: all 0.2s ease;
             box-shadow: 0 2px 8px rgba(255, 77, 77, 0.1);
+            z-index: 10;
         }
 
         .remove-question:hover {
@@ -195,6 +196,8 @@
             font-weight: 600;
             line-height: 1.6;
             margin-bottom: 1.5rem;
+            padding-right: 4rem; /* Only add padding to prevent text from reaching button area */
+            word-wrap: break-word;
         }
 
         .answer-section {
@@ -336,7 +339,7 @@
         .form-check input:checked + label {
             background-color: #e3f2fd;
             border-color: #007bff;
-            color: #000000;
+            color: #007bff;
         }
 
         .form-check label.correct {
@@ -580,6 +583,10 @@
             .learn-mistakes-btn {
                 width: 100%;
                 justify-content: center;
+            }
+
+            .question-text {
+                padding-right: 3rem; /* Reduced padding for mobile */
             }
         }
 
@@ -973,10 +980,15 @@
             }
         }
     </style>
+    
+    {{-- Desktop styles only --}}
 </head>
 <body>
     <!-- SAFE PRELOADER - WON'T BREAK ANYTHING -->
     @include('components.lightning-preloader')
+
+    {{-- Include Responsive Navigation --}}
+    <x-responsive-nav-integration mode="replace" />
 
     <!-- Navigation Bar -->
     <nav class="navbar">
@@ -1024,6 +1036,31 @@
 
     <div class="main-content">
         <div class="container">
+            <!-- Flash Messages -->
+            @if(session('success'))
+                <div class="alert alert-success alert-dismissible fade show" role="alert" style="border-radius: 12px; border: none; box-shadow: 0 4px 12px rgba(34, 197, 94, 0.15);">
+                    <i class="fas fa-check-circle me-2"></i>
+                    {{ session('success') }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+            @endif
+
+            @if(session('info'))
+                <div class="alert alert-info alert-dismissible fade show" role="alert" style="border-radius: 12px; border: none; box-shadow: 0 4px 12px rgba(59, 130, 246, 0.15);">
+                    <i class="fas fa-info-circle me-2"></i>
+                    {{ session('info') }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+            @endif
+
+            @if(session('error'))
+                <div class="alert alert-danger alert-dismissible fade show" role="alert" style="border-radius: 12px; border: none; box-shadow: 0 4px 12px rgba(239, 68, 68, 0.15);">
+                    <i class="fas fa-exclamation-circle me-2"></i>
+                    {{ session('error') }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+            @endif
+
             <div class="toast-container"></div>
             <div class="header-section">
                 <div>
@@ -1034,9 +1071,15 @@
                         <i class="fas fa-sync-alt"></i>
                         Flashcard Mode
                     </button>
-                    <a href="{{ route('review.learn') }}" class="learn-mistakes-btn">
-                        Learn Mistakes <i class="fas fa-arrow-right"></i>
-                    </a>
+                    @if($mistakes->isEmpty())
+                        <span class="learn-mistakes-btn disabled" style="cursor: not-allowed; opacity: 0.6;">
+                            No Mistakes to Learn <i class="fas fa-check-circle"></i>
+                        </span>
+                    @else
+                        <a href="{{ route('review.learn') }}" class="learn-mistakes-btn">
+                            Learn Mistakes <i class="fas fa-arrow-right"></i>
+                        </a>
+                    @endif
                 </div>
             </div>
 
@@ -1087,7 +1130,7 @@
                     <p>Fantastic work! You're crushing it with zero mistakes. Keep up the amazing progress!</p>
                 </div>
             @else
-{{-- 💀 N+1 FIX NEEDED: Eager load 'question' in controller --}}
+{{-- 🚀 OPTIMIZED: Controller uses JOIN queries to eliminate N+1 queries --}}
                 @foreach($mistakes as $mistake)
                     <div class="mistake-card" data-question-id="{{ $mistake->question_id }}">
                         <!-- Normal Mode Content -->
@@ -1468,5 +1511,7 @@
             }
         });
     </script>
+
+    {{-- No mobile JS --}}
 </body>
 </html>

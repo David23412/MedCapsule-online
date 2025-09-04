@@ -18,7 +18,6 @@ class TopicRequest extends FormRequest
             'description' => 'nullable|string|max:1000',
             'course_id' => 'required|integer|exists:courses,id',
             'order_index' => 'nullable|integer|min:0',
-            'is_active' => 'boolean',
             'difficulty_level' => 'nullable|in:easy,medium,hard',
             'estimated_time' => 'nullable|integer|min:1|max:480'
         ];

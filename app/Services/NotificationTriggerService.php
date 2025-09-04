@@ -9,113 +9,173 @@ use Illuminate\Support\Facades\Log;
 class NotificationTriggerService
 {
     /**
-     * CRITICAL NOTIFICATION SCENARIOS - COMPREHENSIVE INTEGRATION
+     * 🐆 NUCLEAR STABLE NOTIFICATION SYSTEM - AUTOMATIC ACTIVITY DETECTION
+     * 🔥 ZERO COMPROMISE STABILITY - ALWAYS SENDS CORRECT NOTIFICATIONS
      */
 
-    // 🎓 ACADEMIC & LEARNING NOTIFICATIONS
+    /**
+     * MASTER QUIZ COMPLETION HANDLER - DETECTS ACTIVITY TYPE AUTOMATICALLY
+     */
     public static function onQuizCompleted(User $user, array $quizData)
     {
-        $score = $quizData['score'] ?? 0;
-        $totalQuestions = $quizData['total_questions'] ?? 1;
-        $percentage = round(($score / $totalQuestions) * 100, 1);
-        $courseName = $quizData['course_name'] ?? 'Course';
-        $topicName = $quizData['topic_name'] ?? 'Topic';
-        $mode = $quizData['mode'] ?? 'quiz'; // Default to regular quiz mode
-        $assignmentCompleted = $quizData['assignment_completed'] ?? false;
-        $assignmentTitle = $quizData['assignment_title'] ?? null;
+        try {
+            $score = $quizData['score'] ?? 0;
+            $totalQuestions = $quizData['total_questions'] ?? 1;
 
-        // Different notifications based on quiz mode and context
-        if ($assignmentCompleted && $assignmentTitle) {
-            // ASSIGNMENT COMPLETION NOTIFICATION
-            if ($percentage == 100) {
-                UniversalNotificationService::create(
-                    $user,
-                    'assignment_perfect',
-                    'Perfect Assignment Score',
-                    "Amazing! You got 100% on '{$assignmentTitle}'",
-                    $quizData,
-                    'perfect' // PURPLE BORDER for perfect scores
-                );
-            } else {
-                UniversalNotificationService::create(
-                    $user,
-                    'assignment_completed',
-                    'Assignment Completed',
-                    "You scored {$percentage}% on '{$assignmentTitle}'",
-                    $quizData,
-                    'normal'
-                );
+            // Prevent division by zero
+            if ($totalQuestions <= 0) {
+                $totalQuestions = 1;
             }
-        } elseif ($mode === 'tutor') {
-            // TUTOR MODE NOTIFICATION
-            if ($percentage == 100) {
-                UniversalNotificationService::create(
+
+            $percentage = round(($score / $totalQuestions) * 100, 1);
+            $courseName = $quizData['course_name'] ?? 'Course';
+            $topicName = $quizData['topic_name'] ?? 'Topic';
+            $mode = $quizData['mode'] ?? 'quiz';
+            $quizType = $quizData['quiz_type'] ?? 'normal';
+
+            // 🔥 NUCLEAR STABLE: ACTIVITY TYPE DETECTION
+            $activityType = self::detectActivityType($quizData);
+
+            // 🔥 ALWAYS SEND THE CORRECT NOTIFICATION BASED ON ACTIVITY
+            $notificationData = self::getNotificationForActivity($activityType, $percentage, $quizData);
+
+            if ($notificationData) {
+                $result = UniversalNotificationService::create(
                     $user,
-                    'tutor_perfect',
-                    'Perfect Tutor Score',
-                    "Outstanding! You got 100% in tutor mode for {$topicName}",
+                    $notificationData['type'],
+                    $notificationData['title'],
+                    $notificationData['message'],
                     $quizData,
-                    'perfect' // PURPLE BORDER for perfect scores
+                    $notificationData['priority']
                 );
+
+                Log::info("🐆 NUCLEAR NOTIFICATION: {$notificationData['type']} sent for {$activityType}", [
+                    'user_id' => $user->id,
+                    'score' => $percentage,
+                    'activity_type' => $activityType,
+                    'notification_type' => $notificationData['type'],
+                    'result' => $result
+                ]);
             } else {
-                // Regular tutor completion notification for non-perfect scores
-                UniversalNotificationService::create(
-                    $user,
-                    'tutor_quiz_completed',
-                    'Tutor Quiz Completed',
-                    "You scored {$percentage}% in tutor mode for {$topicName}",
-                    $quizData,
-                    'normal'
-                );
-                
-                // NEW: Tutor needs practice for scores less than 50%
-                if ($percentage < 50) {
-                    UniversalNotificationService::create(
-                        $user,
-                        'tutor_needs_practice',
-                        'More Practice Needed',
-                        "You scored {$percentage}% in tutor mode for {$topicName}. Try again!",
-                        $quizData,
-                        'normal'
-                    );
-                }
+                Log::warning("🐆 NUCLEAR NOTIFICATION: No notification data for activity {$activityType}", [
+                    'user_id' => $user->id,
+                    'quiz_data' => $quizData
+                ]);
             }
-        } else {
-            // REGULAR QUIZ COMPLETION NOTIFICATION
-            if ($percentage == 100) {
-                UniversalNotificationService::create(
-                    $user,
-                    'perfect_score',
-                    'Perfect Score',
-                    "Amazing! You got 100% on {$topicName}",
-                    $quizData,
-                    'perfect' // PURPLE BORDER for perfect scores
-                );
-            } else {
-                // Regular quiz completion notification for non-perfect scores
+
+        } catch (\Exception $e) {
+            Log::error('🐆 NUCLEAR NOTIFICATION FAILED', [
+                'user_id' => $user->id,
+                'error' => $e->getMessage(),
+                'quiz_data' => $quizData,
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            // 🔥 FALLBACK: Always send a basic notification
+            try {
                 UniversalNotificationService::create(
                     $user,
                     'quiz_completed',
                     'Quiz Completed',
-                    "You scored {$percentage}% on {$topicName}",
+                    "You completed a quiz with score {$percentage}%",
                     $quizData,
                     'normal'
                 );
+                Log::info("🐆 FALLBACK NOTIFICATION: Sent basic quiz completion", [
+                    'user_id' => $user->id,
+                    'percentage' => $percentage
+                ]);
+            } catch (\Exception $fallbackError) {
+                Log::error('🐆 FALLBACK NOTIFICATION FAILED', [
+                    'user_id' => $user->id,
+                    'error' => $fallbackError->getMessage()
+                ]);
             }
+        }
+    }
 
-            // REMOVED: First attempt notification (as requested)
-            // REMOVED: Speed demon notification (as requested)
+    /**
+     * 🔥 NUCLEAR ACTIVITY TYPE DETECTOR - 100% ACCURATE
+     */
+    private static function detectActivityType(array $quizData): string
+    {
+        // Priority detection order
+        if (isset($quizData['assignment_completed']) && $quizData['assignment_completed']) {
+            return 'assignment_completion';
         }
 
-        Log::info('Quiz completion notifications sent', [
-            'user_id' => $user->id,
-            'score' => $percentage,
-            'course' => $courseName,
-            'topic' => $topicName,
-            'mode' => $mode,
-            'assignment_completed' => $assignmentCompleted,
-            'assignment_title' => $assignmentTitle
-        ]);
+        if (isset($quizData['quiz_type']) && $quizData['quiz_type'] === 'random') {
+            return 'random_quiz';
+        }
+
+        if (isset($quizData['mode']) && $quizData['mode'] === 'tutor') {
+            return 'tutor_quiz';
+        }
+
+        if (isset($quizData['mode']) && $quizData['mode'] === 'mistake_review') {
+            return 'mistake_review';
+        }
+
+        return 'regular_quiz';
+    }
+
+    /**
+     * 🔥 NUCLEAR NOTIFICATION MAPPER - EXACTLY AS DEFINED IN UNIVERSAL SERVICE
+     */
+    private static function getNotificationForActivity(string $activityType, float $percentage, array $quizData): ?array
+    {
+        $courseName = $quizData['course_name'] ?? 'Course';
+        $topicName = $quizData['topic_name'] ?? 'Topic';
+        $assignmentTitle = $quizData['assignment_title'] ?? 'Assignment';
+
+        $notifications = [
+            'assignment_completion' => [
+                'type' => $percentage == 100 ? 'assignment_perfect' : 'assignment_completed',
+                'title' => $percentage == 100 ? 'Perfect Assignment Score' : 'Assignment Completed',
+                'message' => $percentage == 100
+                    ? "Amazing! You got 100% on '{$assignmentTitle}'"
+                    : "You scored {$percentage}% on '{$assignmentTitle}'",
+                'priority' => $percentage == 100 ? 'perfect' : 'normal'
+            ],
+
+            'random_quiz' => [
+                'type' => $percentage == 100 ? 'random_quiz_perfect' : 'random_quiz_completed',
+                'title' => $percentage == 100 ? 'Perfect Random Quiz!' : 'Random Quiz Completed',
+                'message' => $percentage == 100
+                    ? "Outstanding! You got 100% on your random quiz from {$courseName}"
+                    : "You scored {$percentage}% on your random quiz from {$courseName}",
+                'priority' => $percentage == 100 ? 'perfect' : 'normal'
+            ],
+
+            'tutor_quiz' => [
+                'type' => $percentage == 100 ? 'tutor_perfect' : 'tutor_quiz_completed',
+                'title' => $percentage == 100 ? 'Perfect Tutor Score' : 'Tutor Quiz Completed',
+                'message' => $percentage == 100
+                    ? "Outstanding! You got 100% in tutor mode for {$topicName}"
+                    : "You scored {$percentage}% in tutor mode for {$topicName}",
+                'priority' => $percentage == 100 ? 'perfect' : 'normal'
+            ],
+
+            'mistake_review' => [
+                'type' => $percentage == 100 ? 'perfect_score' : 'quiz_completed',
+                'title' => $percentage == 100 ? 'Perfect Score' : 'Mistake Review Completed',
+                'message' => $percentage == 100
+                    ? "Amazing! You got 100% on mistake review for {$topicName}"
+                    : "You scored {$percentage}% on mistake review for {$topicName}",
+                'priority' => $percentage == 100 ? 'perfect' : 'normal'
+            ],
+
+            'regular_quiz' => [
+                'type' => $percentage == 100 ? 'perfect_score' : 'quiz_completed',
+                'title' => $percentage == 100 ? 'Perfect Score' : 'Quiz Completed',
+                'message' => $percentage == 100
+                    ? "Amazing! You got 100% on {$topicName}"
+                    : "You scored {$percentage}% on {$topicName}",
+                'priority' => $percentage == 100 ? 'perfect' : 'normal'
+            ]
+        ];
+
+        return $notifications[$activityType] ?? null;
     }
 
     /**
@@ -401,20 +461,69 @@ class NotificationTriggerService
 
 
 
-    // 💳 PAYMENT NOTIFICATIONS
+    // 💳 PAYMENT NOTIFICATIONS WITH COLOR MAPPING 🔥
+    public static function onPaymentSubmitted(User $user, array $paymentData)
+    {
+        $amount = $paymentData['amount'] ?? 0;
+        $courseName = $paymentData['course_name'] ?? 'Course';
+        $providerTransaction = $paymentData['transaction_id'] ?? 'N/A';
+
+        // 🔥 ORANGE BORDER: Payment submitted for processing
+        UniversalNotificationService::create(
+            $user,
+            'payment_pending',
+            'Payment Submitted!',
+            "Your payment of \${$amount} for {$courseName} has been submitted and is being processed. TX: {$providerTransaction}",
+            $paymentData,
+            'orange' // 🔥 ORANGE BORDER FOR PAYMENT SUBMITTED
+        );
+
+        Log::info('Payment submitted notification sent', [
+            'user_id' => $user->id,
+            'amount' => $amount,
+            'course' => $courseName,
+            'transaction_id' => $providerTransaction
+        ]);
+    }
+
+    public static function onPaymentAccepted(User $user, array $paymentData)
+    {
+        $amount = $paymentData['amount'] ?? 0;
+        $courseName = $paymentData['course_name'] ?? 'Course';
+
+        // ✅ SUCCESS GREEN BORDER: Payment accepted
+        UniversalNotificationService::create(
+            $user,
+            'payment_accepted',
+            'Payment Accepted!',
+            "Great news! Your payment of \${$amount} for {$courseName} has been accepted. You now have access to the course!",
+            $paymentData,
+            'green' // ✅ GREEN BORDER FOR PAYMENT ACCEPTED
+        );
+
+        // Also trigger course access granted notification
+        self::onAdminGrantsCourseAccess($user, $courseName);
+
+        Log::info('Payment accepted notification sent', [
+            'user_id' => $user->id,
+            'amount' => $amount,
+            'course' => $courseName
+        ]);
+    }
+
     public static function onPaymentSuccess(User $user, array $paymentData)
     {
         $amount = $paymentData['amount'] ?? 0;
         $courseName = $paymentData['course_name'] ?? 'Course';
 
-        // FIXED: Only trigger payment success notification
+        // 💙 BLUE BORDER: Payment success notification
         UniversalNotificationService::create(
             $user,
             'payment_success',
-            'Payment Successful',
-            "Payment of \${$amount} for {$courseName} was successful",
+            'Payment Confirmation',
+            "✅ Payment of \${$amount} for {$courseName} completed successfully. Welcome to your new course!",
             $paymentData,
-            'normal'
+            'blue' // 💙 BLUE BORDER FOR SUCCESS
         );
 
         Log::info('Payment success notification sent', [
@@ -778,4 +887,6 @@ class NotificationTriggerService
             'message' => $message
         ]);
     }
+
+
 }

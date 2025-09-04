@@ -1201,14 +1201,15 @@
     }
     
     .progress-modal-container {
-        max-width: 800px;
-        width: 90vw;
-        max-height: 80vh;
+        max-width: 1200px;
+        width: 95vw;
+        max-height: 85vh;
         background: white;
-        border-radius: 12px;
-        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
-        transform: scale(0.9);
-        transition: transform 0.3s ease;
+        border-radius: 16px;
+        box-shadow: 0 25px 80px rgba(0, 0, 0, 0.15);
+        transform: scale(0.95);
+        transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        backdrop-filter: blur(20px);
     }
     
     .modal-overlay.show .progress-modal-container {
@@ -1238,52 +1239,80 @@
         display: flex;
         justify-content: space-between;
         align-items: center;
-        padding: 1rem 0;
-        border-bottom: 1px solid #e5e7eb;
+        padding: 1rem 1.25rem;
+        border: 1px solid #e5e7eb;
+        border-radius: 8px;
         margin-bottom: 1.5rem;
+        background: #ffffff;
     }
-    
+
     .assignment-info {
         flex: 1;
     }
-    
+
     .assignment-title-modal {
-        font-size: 1.125rem;
+        font-size: 1.25rem;
         font-weight: 600;
         color: #1e293b;
         margin: 0 0 0.25rem 0;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
     }
-    
+
+    .assignment-title-modal::before {
+        content: '📊';
+        font-size: 1rem;
+    }
+
     .assignment-meta-modal {
         font-size: 0.875rem;
         color: #64748b;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
     }
-    
+
+    .assignment-meta-modal::before {
+        content: '🎓';
+        font-size: 0.875rem;
+    }
+
     .progress-stats-modal {
         display: flex;
         gap: 1.5rem;
         align-items: center;
     }
-    
+
     .stat-item-modal {
         text-align: center;
+        padding: 0.75rem 1rem;
+        background: #f8fafc;
+        border-radius: 8px;
+        border: 1px solid #e5e7eb;
+        transition: all 0.2s ease;
     }
-    
+
+    .stat-item-modal:hover {
+        background: #f1f5f9;
+        border-color: #cbd5e1;
+    }
+
     .stat-number-modal {
         display: block;
         font-size: 1.5rem;
         font-weight: 700;
         color: #1e293b;
         line-height: 1;
+        margin-bottom: 0.25rem;
     }
-    
+
     .stat-label-modal {
         font-size: 0.75rem;
         color: #64748b;
         text-transform: uppercase;
         letter-spacing: 0.05em;
-        font-weight: 500;
-        margin-top: 0.25rem;
+        font-weight: 600;
     }
     
     .students-grid {
@@ -1298,31 +1327,32 @@
         display: flex;
         align-items: center;
         justify-content: space-between;
-        padding: 1rem;
+        padding: 1rem 1.25rem;
         background: white;
         border: 1px solid #e5e7eb;
         border-radius: 8px;
         transition: all 0.2s ease;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
     }
-    
+
     .student-card:hover {
         border-color: #cbd5e1;
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-        transform: translateY(-1px);
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+        background: #f9fafb;
     }
-    
+
     .student-info-modal {
         display: flex;
         align-items: center;
-        gap: 0.75rem;
+        gap: 0.875rem;
         flex: 1;
     }
-    
+
     .student-avatar-modal {
         width: 40px;
         height: 40px;
         border-radius: 50%;
-        background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+        background: #3b82f6;
         display: flex;
         align-items: center;
         justify-content: center;
@@ -1331,68 +1361,91 @@
         font-size: 0.875rem;
         flex-shrink: 0;
     }
-    
+
     .student-details-modal {
         flex: 1;
         min-width: 0;
     }
-    
+
     .student-name-modal {
-        font-weight: 600;
+        font-weight: 700;
         color: #1e293b;
-        font-size: 0.875rem;
-        margin: 0 0 0.25rem 0;
+        font-size: 1rem;
+        margin: 0 0 0.375rem 0;
+        letter-spacing: -0.01em;
+        line-height: 1.2;
     }
-    
+
     .student-email-modal {
-        font-size: 0.75rem;
+        font-size: 0.8rem;
         color: #64748b;
         overflow: hidden;
         text-overflow: ellipsis;
         white-space: nowrap;
+        font-weight: 500;
     }
-    
+
     .student-progress-modal {
         display: flex;
         align-items: center;
-        gap: 0.75rem;
+        gap: 1rem;
+        position: relative;
+        z-index: 1;
     }
-    
+
     .progress-status-modal {
         padding: 0.375rem 0.75rem;
-        border-radius: 6px;
+        border-radius: 4px;
         font-size: 0.75rem;
         font-weight: 600;
         text-transform: capitalize;
         white-space: nowrap;
+        letter-spacing: 0.01em;
+        display: inline-block;
+        border: 1px solid rgba(0, 0, 0, 0.1);
+        transition: all 0.2s ease;
     }
-    
+
+    .progress-status-modal.status-active {
+        background: #fef3c7;
+        color: #d97706;
+        border-color: #f59e0b;
+    }
+
     .progress-status-modal.status-completed {
         background: #dcfce7;
         color: #166534;
+        border-color: #10b981;
     }
-    
-    .progress-status-modal.status-in_progress {
-        background: #dbeafe;
-        color: #1d4ed8;
-    }
-    
+
     .progress-status-modal.status-overdue {
         background: #fee2e2;
         color: #dc2626;
+        border-color: #ef4444;
     }
-    
+
     .progress-status-modal.status-not_started {
-        background: #f1f5f9;
-        color: #475569;
+        background: #f3f4f6;
+        color: #6b7280;
+        border-color: #d1d5db;
     }
-    
+
     .progress-score-modal {
-        font-size: 1.125rem;
-        font-weight: 700;
+        font-size: 1.25rem;
+        font-weight: 800;
         color: #059669;
-        min-width: 60px;
+        min-width: 70px;
         text-align: right;
+        letter-spacing: -0.02em;
+        position: relative;
+    }
+
+    .progress-score-modal::after {
+        content: '%';
+        font-size: 0.8rem;
+        font-weight: 600;
+        color: #10b981;
+        margin-left: 0.125rem;
     }
     
     .no-students-message {
@@ -1524,31 +1577,53 @@
         justify-content: center;
         font-size: 0.875rem;
     }
-    
+
     .action-btn:hover {
         text-decoration: none;
         transform: translateY(-2px) scale(1.1);
     }
-    
+
+    .action-btn i {
+        transition: all 0.3s ease;
+    }
+
+    .primary-btn {
+        background: #3b82f6;
+        color: white;
+        border: none;
+        box-shadow: 0 2px 10px rgba(59, 130, 246, 0.3);
+    }
+
+    .primary-btn:hover {
+        background: #2563eb;
+        color: white;
+        box-shadow: 0 6px 20px rgba(59, 130, 246, 0.5);
+        transform: translateY(-3px) scale(1.15);
+    }
+
+    .primary-btn i {
+        color: white;
+    }
+
     .edit-btn {
         background: white;
         color: #6b7280;
         border: 1px solid #e5e7eb;
     }
-    
+
     .edit-btn:hover {
         background: white;
         color: #6b7280;
         border-color: #6b7280;
         box-shadow: 0 2px 8px rgba(107, 114, 128, 0.2);
     }
-    
+
     .delete-btn {
         background: white;
         color: #ef4444;
         border: 1px solid #e5e7eb;
     }
-    
+
     .delete-btn:hover {
         background: white;
         color: #ef4444;
@@ -1761,14 +1836,16 @@
     }
     
     .modal-container {
-        max-width: 420px;
+        max-width: 900px;
         width: 90%;
-        max-height: 85vh;
+        max-height: 80vh;
         overflow-y: auto;
-        transform: scale(0.9) translateY(20px);
-        transition: transform 0.3s ease;
+        transform: scale(0.95) translateY(20px);
+        transition: all 0.3s ease;
+        border-radius: 12px;
+        box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
     }
-    
+
     .modal-overlay.show .modal-container {
         transform: scale(1) translateY(0);
     }
@@ -2757,9 +2834,9 @@ function displayProgressData(assignment, students, content) {
     const totalStudents = students.length;
     const completedStudents = students.filter(s => s.status === 'completed').length;
     const progressPercentage = totalStudents > 0 ? Math.round((completedStudents / totalStudents) * 100) : 0;
-    
+
     let studentsHTML = '';
-    
+
     if (students.length === 0) {
         studentsHTML = `
             <div class="no-students-message">
@@ -2771,9 +2848,35 @@ function displayProgressData(assignment, students, content) {
     } else {
         studentsHTML = students.map(student => {
             const initials = student.name.split(' ').map(n => n[0]).join('').toUpperCase();
-            const statusText = student.status.replace('_', ' ');
-            const statusClass = `status-${student.status}`;
-            
+            const status = student.status_string || student.status || 'not_started';
+            const hasCompleted = student.completed_at || status === 'completed';
+            let statusText = '';
+            let statusClass = '';
+            let scoreDisplay = '';
+
+            // Determine status and display logic - STUDENT PROGRESS TAKES PRECEDENCE
+            if (hasCompleted) {
+                // Student completed the assignment - show their actual score regardless of assignment deadline
+                statusText = 'Completed';
+                statusClass = 'status-completed';
+                scoreDisplay = student.score ? `<span class="progress-score-modal">${student.score}%</span>` : '<span class="progress-score-modal">0%</span>';
+            } else if (status === 'overdue' || status === 'not_started') {
+                // Assignment is inactive (overdue or not started) - student hasn't completed it
+                statusText = 'Inactive';
+                statusClass = 'status-overdue';
+                scoreDisplay = '<span class="progress-score-modal">0%</span>';
+            } else if (status === 'active' || status === 'in_progress') {
+                // Assignment is still active and student is working on it
+                statusText = 'Active';
+                statusClass = 'status-active';
+                scoreDisplay = ''; // No percentage for active assignments
+            } else {
+                // Fallback for any other status - treat as inactive
+                statusText = 'Inactive';
+                statusClass = 'status-overdue';
+                scoreDisplay = '<span class="progress-score-modal">0%</span>';
+            }
+
             return `
                 <div class="student-card">
                     <div class="student-info-modal">
@@ -2785,7 +2888,7 @@ function displayProgressData(assignment, students, content) {
                     </div>
                     <div class="student-progress-modal">
                         <span class="progress-status-modal ${statusClass}">${statusText}</span>
-                        ${student.score ? `<span class="progress-score-modal">${student.score}%</span>` : ''}
+                        ${scoreDisplay}
                     </div>
                 </div>
             `;

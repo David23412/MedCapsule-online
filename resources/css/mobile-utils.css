@@ -1,0 +1,660 @@
+/* ============================================================================
+   MEDCAPSULE MOBILE UTILITIES
+   ============================================================================
+   
+   Additional mobile-specific utilities and optimizations
+   that complement the main responsive foundation.
+   
+   ============================================================================ */
+
+/* ============================================================================
+   MOBILE NAVIGATION UTILITIES
+   ============================================================================ */
+
+.mobile-nav-toggle {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  width: var(--touch-target-min);
+  height: var(--touch-target-min);
+  padding: 8px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  transition: all var(--duration-fast) var(--ease-out);
+}
+
+.mobile-nav-toggle span {
+  display: block;
+  width: 24px;
+  height: 3px;
+  background-color: currentColor;
+  border-radius: 2px;
+  transition: all var(--duration-normal) var(--ease-out);
+  transform-origin: center;
+}
+
+.mobile-nav-toggle span:not(:last-child) {
+  margin-bottom: 4px;
+}
+
+/* Hamburger to X animation */
+.mobile-nav-toggle.active span:nth-child(1) {
+  transform: rotate(45deg) translate(6px, 6px);
+}
+
+.mobile-nav-toggle.active span:nth-child(2) {
+  opacity: 0;
+  transform: scale(0);
+}
+
+.mobile-nav-toggle.active span:nth-child(3) {
+  transform: rotate(-45deg) translate(6px, -6px);
+}
+
+/* Mobile menu overlay */
+.mobile-menu-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(4px);
+  z-index: var(--z-modal-backdrop);
+  opacity: 0;
+  visibility: hidden;
+  transition: all var(--duration-normal) var(--ease-out);
+}
+
+.mobile-menu-overlay.active {
+  opacity: 1;
+  visibility: visible;
+}
+
+.mobile-menu {
+  position: fixed;
+  top: 0;
+  right: -100%;
+  width: 280px;
+  height: 100vh;
+  background-color: white;
+  box-shadow: var(--shadow-lg);
+  z-index: var(--z-modal);
+  transition: right var(--duration-normal) var(--ease-out);
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.mobile-menu.active {
+  right: 0;
+}
+
+.mobile-menu-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-lg);
+  border-bottom: 1px solid #e9ecef;
+}
+
+.mobile-menu-close {
+  width: var(--touch-target-min);
+  height: var(--touch-target-min);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: none;
+  font-size: 24px;
+  cursor: pointer;
+  color: #6c757d;
+  transition: color var(--duration-fast) var(--ease-out);
+}
+
+.mobile-menu-close:hover {
+  color: #495057;
+}
+
+.mobile-menu-items {
+  padding: var(--space-lg) 0;
+}
+
+.mobile-menu-item {
+  display: block;
+  padding: var(--space-md) var(--space-lg);
+  color: #495057;
+  font-weight: 500;
+  text-decoration: none;
+  border-bottom: 1px solid #f8f9fa;
+  transition: all var(--duration-fast) var(--ease-out);
+  min-height: var(--touch-target-min);
+  display: flex;
+  align-items: center;
+}
+
+.mobile-menu-item:hover {
+  background-color: #f8f9fa;
+  color: #007bff;
+  padding-left: calc(var(--space-lg) + 8px);
+}
+
+.mobile-menu-item i {
+  margin-right: var(--space-md);
+  width: 20px;
+  text-align: center;
+}
+
+/* ============================================================================
+   MOBILE QUIZ INTERFACE UTILITIES
+   ============================================================================ */
+
+.quiz-mobile-container {
+  padding: var(--space-md);
+  max-width: 100%;
+}
+
+.quiz-question-mobile {
+  background: white;
+  border-radius: var(--radius-lg);
+  padding: var(--space-lg);
+  margin-bottom: var(--space-lg);
+  box-shadow: var(--shadow-md);
+}
+
+.quiz-question-text-mobile {
+  font-size: var(--text-lg);
+  line-height: var(--leading-relaxed);
+  margin-bottom: var(--space-lg);
+  color: #2c3e50;
+}
+
+.quiz-options-mobile {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+}
+
+.quiz-option-mobile {
+  display: flex;
+  align-items: flex-start;
+  padding: var(--space-md);
+  background: #f8f9fa;
+  border: 2px solid #e9ecef;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: all var(--duration-fast) var(--ease-out);
+  min-height: var(--touch-target-min);
+  text-align: left;
+  font-size: var(--text-base);
+  line-height: var(--leading-normal);
+}
+
+.quiz-option-mobile:hover {
+  border-color: #007bff;
+  background-color: #e3f2fd;
+  transform: translateY(-1px);
+}
+
+.quiz-option-mobile.selected {
+  border-color: #007bff;
+  background-color: #e3f2fd;
+  color: #007bff;
+}
+
+.quiz-option-mobile.correct {
+  border-color: #28a745;
+  background-color: #d4edda;
+  color: #155724;
+}
+
+.quiz-option-mobile.incorrect {
+  border-color: #dc3545;
+  background-color: #f8d7da;
+  color: #721c24;
+}
+
+.quiz-option-letter {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  background-color: #6c757d;
+  color: white;
+  border-radius: 50%;
+  font-weight: 600;
+  font-size: var(--text-sm);
+  margin-right: var(--space-md);
+  flex-shrink: 0;
+  transition: background-color var(--duration-fast) var(--ease-out);
+}
+
+.quiz-option-mobile:hover .quiz-option-letter,
+.quiz-option-mobile.selected .quiz-option-letter {
+  background-color: #007bff;
+}
+
+.quiz-option-mobile.correct .quiz-option-letter {
+  background-color: #28a745;
+}
+
+.quiz-option-mobile.incorrect .quiz-option-letter {
+  background-color: #dc3545;
+}
+
+/* Mobile progress bar */
+.quiz-progress-mobile {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(10px);
+  padding: var(--space-md);
+  border-top: 1px solid #e9ecef;
+  z-index: var(--z-sticky);
+}
+
+.quiz-progress-bar-mobile {
+  width: 100%;
+  height: 8px;
+  background: #e9ecef;
+  border-radius: var(--radius-full);
+  overflow: hidden;
+  margin-bottom: var(--space-sm);
+}
+
+.quiz-progress-fill-mobile {
+  height: 100%;
+  background: linear-gradient(90deg, #007bff, #00d4ff);
+  border-radius: var(--radius-full);
+  transition: width var(--duration-normal) var(--ease-out);
+}
+
+.quiz-progress-text-mobile {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: var(--text-sm);
+  color: #6c757d;
+}
+
+/* ============================================================================
+   MOBILE FORM UTILITIES
+   ============================================================================ */
+
+.form-mobile {
+  padding: var(--space-md);
+}
+
+.form-group-mobile {
+  margin-bottom: var(--space-lg);
+}
+
+.form-label-mobile {
+  display: block;
+  margin-bottom: var(--space-sm);
+  font-weight: 600;
+  color: #495057;
+  font-size: var(--text-base);
+}
+
+.form-control-mobile {
+  width: 100%;
+  min-height: var(--touch-target-comfortable);
+  padding: 16px;
+  font-size: 16px; /* Prevents iOS zoom */
+  line-height: 1.5;
+  color: #495057;
+  background-color: #fff;
+  border: 2px solid #ced4da;
+  border-radius: var(--radius-md);
+  transition: all var(--duration-fast) var(--ease-out);
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+}
+
+.form-control-mobile:focus {
+  outline: none;
+  border-color: #007bff;
+  box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.25);
+}
+
+.form-control-mobile.error {
+  border-color: #dc3545;
+}
+
+.form-error-mobile {
+  display: block;
+  margin-top: var(--space-sm);
+  font-size: var(--text-sm);
+  color: #dc3545;
+}
+
+.form-help-mobile {
+  display: block;
+  margin-top: var(--space-sm);
+  font-size: var(--text-sm);
+  color: #6c757d;
+}
+
+/* Mobile checkbox and radio styles */
+.form-check-mobile {
+  display: flex;
+  align-items: flex-start;
+  margin-bottom: var(--space-md);
+  cursor: pointer;
+  min-height: var(--touch-target-min);
+}
+
+.form-check-input-mobile {
+  width: 20px;
+  height: 20px;
+  margin-right: var(--space-md);
+  margin-top: 2px;
+  flex-shrink: 0;
+}
+
+.form-check-label-mobile {
+  font-size: var(--text-base);
+  line-height: var(--leading-normal);
+  color: #495057;
+  cursor: pointer;
+}
+
+/* ============================================================================
+   MOBILE CARD UTILITIES
+   ============================================================================ */
+
+.card-mobile {
+  background: white;
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-md);
+  overflow: hidden;
+  margin-bottom: var(--space-lg);
+}
+
+.card-header-mobile {
+  padding: var(--space-lg);
+  border-bottom: 1px solid #e9ecef;
+  background-color: #f8f9fa;
+}
+
+.card-body-mobile {
+  padding: var(--space-lg);
+}
+
+.card-footer-mobile {
+  padding: var(--space-lg);
+  border-top: 1px solid #e9ecef;
+  background-color: #f8f9fa;
+}
+
+.card-title-mobile {
+  font-size: var(--text-xl);
+  font-weight: 600;
+  color: #2c3e50;
+  margin-bottom: var(--space-sm);
+}
+
+.card-text-mobile {
+  font-size: var(--text-base);
+  line-height: var(--leading-relaxed);
+  color: #495057;
+}
+
+/* ============================================================================
+   MOBILE MODAL UTILITIES
+   ============================================================================ */
+
+.modal-mobile {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: var(--z-modal);
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  padding: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(4px);
+  opacity: 0;
+  visibility: hidden;
+  transition: all var(--duration-normal) var(--ease-out);
+}
+
+.modal-mobile.active {
+  opacity: 1;
+  visibility: visible;
+}
+
+.modal-content-mobile {
+  width: 100%;
+  max-height: 90vh;
+  background: white;
+  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+  transform: translateY(100%);
+  transition: transform var(--duration-normal) var(--ease-out);
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.modal-mobile.active .modal-content-mobile {
+  transform: translateY(0);
+}
+
+.modal-header-mobile {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-lg);
+  border-bottom: 1px solid #e9ecef;
+  position: sticky;
+  top: 0;
+  background: white;
+  z-index: 1;
+}
+
+.modal-title-mobile {
+  font-size: var(--text-xl);
+  font-weight: 600;
+  color: #2c3e50;
+}
+
+.modal-close-mobile {
+  width: var(--touch-target-min);
+  height: var(--touch-target-min);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: none;
+  font-size: 24px;
+  cursor: pointer;
+  color: #6c757d;
+  transition: color var(--duration-fast) var(--ease-out);
+}
+
+.modal-close-mobile:hover {
+  color: #495057;
+}
+
+.modal-body-mobile {
+  padding: var(--space-lg);
+}
+
+.modal-footer-mobile {
+  padding: var(--space-lg);
+  border-top: 1px solid #e9ecef;
+  background-color: #f8f9fa;
+  position: sticky;
+  bottom: 0;
+}
+
+/* ============================================================================
+   MOBILE TOAST/NOTIFICATION UTILITIES
+   ============================================================================ */
+
+.toast-mobile {
+  position: fixed;
+  top: var(--space-lg);
+  left: var(--space-md);
+  right: var(--space-md);
+  background: white;
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-lg);
+  padding: var(--space-md);
+  z-index: var(--z-tooltip);
+  transform: translateY(-100px);
+  opacity: 0;
+  transition: all var(--duration-normal) var(--ease-out);
+}
+
+.toast-mobile.active {
+  transform: translateY(0);
+  opacity: 1;
+}
+
+.toast-mobile.success {
+  border-left: 4px solid #28a745;
+}
+
+.toast-mobile.error {
+  border-left: 4px solid #dc3545;
+}
+
+.toast-mobile.warning {
+  border-left: 4px solid #ffc107;
+}
+
+.toast-mobile.info {
+  border-left: 4px solid #17a2b8;
+}
+
+/* ============================================================================
+   MOBILE LOADING STATES
+   ============================================================================ */
+
+.loading-mobile {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-2xl);
+  text-align: center;
+}
+
+.spinner-mobile {
+  width: 40px;
+  height: 40px;
+  border: 4px solid #e9ecef;
+  border-top: 4px solid #007bff;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin-bottom: var(--space-md);
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.loading-text-mobile {
+  font-size: var(--text-base);
+  color: #6c757d;
+}
+
+/* ============================================================================
+   MOBILE SKELETON LOADING
+   ============================================================================ */
+
+.skeleton-mobile {
+  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background-size: 200% 100%;
+  animation: loading 1.5s infinite;
+  border-radius: var(--radius-sm);
+}
+
+@keyframes loading {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+.skeleton-text-mobile {
+  height: 1em;
+  margin-bottom: var(--space-sm);
+}
+
+.skeleton-title-mobile {
+  height: 1.5em;
+  width: 60%;
+  margin-bottom: var(--space-md);
+}
+
+.skeleton-avatar-mobile {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+}
+
+/* ============================================================================
+   MOBILE SAFE AREA SUPPORT (iOS)
+   ============================================================================ */
+
+@supports (padding-top: env(safe-area-inset-top)) {
+  .safe-area-top {
+    padding-top: env(safe-area-inset-top);
+  }
+  
+  .safe-area-bottom {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  
+  .safe-area-left {
+    padding-left: env(safe-area-inset-left);
+  }
+  
+  .safe-area-right {
+    padding-right: env(safe-area-inset-right);
+  }
+  
+  .safe-area-all {
+    padding-top: env(safe-area-inset-top);
+    padding-bottom: env(safe-area-inset-bottom);
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
+  }
+}
+
+/* ============================================================================
+   MOBILE PERFORMANCE OPTIMIZATIONS
+   ============================================================================ */
+
+/* Optimize scrolling performance */
+.smooth-scroll-mobile {
+  -webkit-overflow-scrolling: touch;
+  scroll-behavior: smooth;
+}
+
+/* GPU acceleration for animations */
+.gpu-mobile {
+  transform: translateZ(0);
+  will-change: transform;
+}
+
+/* Optimize touch interactions */
+.touch-optimized {
+  touch-action: manipulation;
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+/* ============================================================================
+   END OF MOBILE UTILITIES
+   ============================================================================ */

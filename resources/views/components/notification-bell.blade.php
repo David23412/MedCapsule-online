@@ -163,17 +163,17 @@
     animation: badgeCountChange 300ms cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-/* === CLEAN NOTIFICATION DROPDOWN === */
-.clean-notification-dropdown {
-    /* Position */
-    position: absolute;
-    top: calc(100% + 8px);
-    right: -190px;
-    z-index: 1050;
-    
-    /* Size - Wider and more spacious */
-    width: 420px;
-    max-height: 480px;
+    /* === CLEAN NOTIFICATION DROPDOWN === */
+    .clean-notification-dropdown {
+        /* Position */
+        position: absolute;
+        top: calc(100% + 8px);
+        right: -190px;
+        z-index: 1070; /* Higher than responsive nav (1030-1050)
+
+        /* Size - Wider and more spacious */
+        width: 420px;
+        max-height: 480px;
     
     /* Appearance */
     background: white;
@@ -878,11 +878,29 @@ document.addEventListener('DOMContentLoaded', function() {
     function initializeNotificationSystem() {
         console.log('🔔 Clean Notification System Initialized');
         
-        // Bell click handler
-        notificationBell.addEventListener('click', function(e) {
-            e.stopPropagation();
+        // Bell click handler - ISOLATED FROM ALL OTHER INTERFERENCE
+        const clickHandler = function(e) {
+            console.log('🔔 Bell clicked - ISOLATED HANDLER');
+            // Prevent any default behavior
+            e.preventDefault();
+            e.stopImmediatePropagation();
+
+            // Force remove any other event listeners temporarily
+            const existingListeners = notificationBell.listeners || [];
+            notificationBell.listeners = [];
+
+            // Execute toggle immediately without setTimeout
             toggleDropdown();
-        });
+
+            // Restore original state
+            setTimeout(() => {
+                notificationBell.listeners = existingListeners;
+            }, 500);
+        };
+
+        // Remove any existing click handlers first to prevent conflicts
+        notificationBell.removeEventListener('click', clickHandler);
+        notificationBell.addEventListener('click', clickHandler, { capture: true, passive: false });
         
         // Close dropdown when clicking outside
         document.addEventListener('click', function(e) {
@@ -1224,6 +1242,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 // 🎓 ACADEMIC & LEARNING (6 icons)
                 'course_welcome': 'fas fa-graduation-cap',
                 'quiz_completed': 'fas fa-check-circle',
+                'random_quiz_completed': 'fas fa-dice', // DICE ICON FOR RANDOM QUIZ!
+                'random_quiz_perfect': 'fas fa-dice', // DICE ICON FOR PERFECT RANDOM QUIZ!
                 'topic_mastery': 'fas fa-graduation-cap',
                 'level_up': 'fas fa-bolt', // LIGHTNING YELLOW ONE!
                 'assignment_due': 'fas fa-clock',
@@ -1354,6 +1374,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 // 🎓 ACADEMIC & LEARNING
                 'course_welcome': '#10b981',    // emerald-500
                 'quiz_completed': '#3b82f6',    // blue-500
+                'random_quiz_completed': '#8b5cf6', // PURPLE FOR RANDOM QUIZ!
+                'random_quiz_perfect': '#8b5cf6', // PURPLE FOR PERFECT RANDOM QUIZ!
                 'topic_mastery': '#10b981',     // emerald-500
                 'level_up': '#fbbf24',          // amber-400 (LIGHTNING YELLOW!)
                 'assignment_due': '#ef4444',     // red-500

@@ -134,8 +134,19 @@ class QuestionSeeder extends Seeder
 
             foreach ($questions as $questionData) {
                 try {
+                    // BULLETPROOF DUPLICATE CHECKING - Check for ANY existing question with same content
+                    $existingQuestion = Question::where('question', $questionData['question'])
+                        ->where('topic_id', $questionData['topic_id'])
+                        ->first();
+
+                    if ($existingQuestion) {
+                        $this->command->warn("🚫 DUPLICATE QUESTION SKIPPED: " . substr($questionData['question'], 0, 50) . "...");
+                        continue;
+                    }
+
                     Question::create($questionData);
                     $createdCount++;
+                    $this->command->info("✅ Created question: " . substr($questionData['question'], 0, 50) . "...");
                 } catch (\Exception $e) {
                     $errorCount++;
                     Log::error('Failed to create question', [

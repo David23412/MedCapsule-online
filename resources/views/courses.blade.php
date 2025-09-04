@@ -43,7 +43,7 @@
         .clean-notification-dropdown.show{display:flex!important}
         .navbar{min-height:76px!important}
         .course-card{opacity:1!important;transform:none!important;contain:layout style paint}
-        .course-image{background-color:#f8f9fa!important;opacity:1!important;will-change:auto}
+        .course-image{background-color:#ffffff!important;opacity:1!important;will-change:auto}
         body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif!important}
         /* INSTANT PERFORMANCE BOOST */
         *{box-sizing:border-box}
@@ -116,7 +116,7 @@
         
         body {
             font-family: 'Poppins', sans-serif;
-            background-color: #f8f9fa;
+            background-color: #ffffff;
             color: #1a1a1a;
             margin: 0;
             padding: 0;
@@ -127,8 +127,7 @@
         }
 
         .navbar {
-            background: linear-gradient(180deg, rgba(255,255,255,0.98) 0%, rgba(248,249,250,0.95) 70%, rgba(248,249,250,0.8) 100%);
-            backdrop-filter: blur(10px);
+            background: #ffffff;
             border: none;
             box-shadow: none;
             padding: 0.4rem 0;
@@ -183,6 +182,20 @@
 
         .dropdown-menu-end {
             transform: translateX(-450px) !important;
+        }
+
+        /* Adjust dropdown position for Edge and non-Safari browsers */
+        @supports (-ms-ime-align: auto) {
+            .dropdown-menu-end {
+                transform: translateX(-400px) !important;
+            }
+        }
+
+        /* Adjust dropdown position for non-Safari browsers */
+        @supports (not (-webkit-touch-callout: none)) {
+            .dropdown-menu-end {
+                transform: translateX(-400px) !important;
+            }
         }
 
         .dropdown-menu.show {

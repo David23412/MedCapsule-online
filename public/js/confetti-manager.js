@@ -153,10 +153,10 @@ class ConfettiManager {
         // Safari-specific positioning fix
         const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
         
-        let originX = 0.5;
+        let originX = 0.62; // Default to center for all other browsers
         if (isSafari) {
-            // EXTREME left shift for Safari's fucked positioning
-            originX = 0.25;
+            // Fine-tuned for perfect centering - using 0.48 for optimal positioning
+            originX = 0.48;
         }
         
         this.triggerConfetti(container, 'heavy', {

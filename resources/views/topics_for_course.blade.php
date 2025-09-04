@@ -191,8 +191,16 @@
             background-color: #e9ecef;
         }
     </style>
+    
+    {{-- Responsive Navigation CSS --}}
+    <link rel="stylesheet" href="{{ asset('css/responsive.css') }}">
+    <link rel="stylesheet" href="{{ asset('css/mobile-utils.css') }}">
+    <link rel="stylesheet" href="{{ asset('css/responsive-navigation.css') }}">
 </head>
 <body>
+    {{-- Include Responsive Navigation --}}
+    <x-responsive-nav-integration mode="replace" />
+
     <!-- Navigation Bar -->
     <nav class="navbar">
         <div class="container">
@@ -262,15 +270,27 @@
                                     if ($user->role === 'admin') {
                                         $availableCourses = \App\Models\Course::orderBy('name')->get();
                                     } else {
-                                        // Get courses the user is enrolled in through the pivot table
-                                        $availableCourses = \App\Models\Course::whereHas('users', function($query) use ($user) {
-                                            $query->where('user_id', $user->id);
+                                        // Get courses the user has ACCESS to:
+                                        // 1. Courses where user is enrolled AND (paid successfully OR course is free)
+                                        $availableCourses = \App\Models\Course::where(function($query) use ($user) {
+                                            // User must be enrolled
+                                            $query->whereHas('users', function($subQuery) use ($user) {
+                                                $subQuery->where('user_id', $user->id)
+                                                        ->where('is_enrolled', true);
+                                            })
+                                            // AND user has paid successfully OR course is free
+                                            ->where(function($accessQuery) use ($user) {
+                                                // Either course is free
+                                                $accessQuery->where(function($freeQuery) {
+                                                    $freeQuery->where('price', 0)->orWhereNull('price');
+                                                })
+                                                // OR user has completed payment
+                                                ->orWhereHas('payments', function($paymentQuery) use ($user) {
+                                                    $paymentQuery->where('user_id', $user->id)
+                                                               ->where('status', 'completed');
+                                                });
+                                            });
                                         })->orderBy('name')->get();
-                                        
-                                        // If no enrolled courses found, get all courses (fallback)
-                                        if ($availableCourses->isEmpty()) {
-                                            $availableCourses = \App\Models\Course::orderBy('name')->get();
-                                        }
                                     }
                                 @endphp
                                 @if($availableCourses->count() > 0)
@@ -331,6 +351,20 @@
                                 <option value="90">90 Minutes</option>
                                 <option value="120">2 Hours</option>
                             </select>
+                        </div>
+
+                        <!-- Mode Selection -->
+                        <div class="mb-4">
+                            <div class="d-flex align-items-center gap-3">
+                                <div class="form-check form-check-inline">
+                                    <input class="form-check-input" type="radio" name="quiz_mode" id="modalQuizMode" value="quiz" checked>
+                                    <label class="form-check-label" for="modalQuizMode">Quiz Mode</label>
+                                </div>
+                                <div class="form-check form-check-inline">
+                                    <input class="form-check-input" type="radio" name="quiz_mode" id="modalTutorMode" value="tutor">
+                                    <label class="form-check-label" for="modalTutorMode">Tutor Mode</label>
+                                </div>
+                            </div>
                         </div>
                     </form>
                 </div>
@@ -1299,7 +1333,7 @@
                     return;
                 }
                 
-                // Quick source check - if only one source, skip modal
+                // ALWAYS show modal for source/mode selection
                 fetch(`/topics/${topicId}/source-progress?mode=quiz`, {
                     method: 'GET',
                     headers: {
@@ -1310,40 +1344,34 @@
                 .then(response => response.json())
                 .then(data => {
                     const availableSources = data.availableSources || [];
-                    
-                    // If only one source or no sources, redirect directly
-                    if (availableSources.length <= 1) {
-                        window.location.href = originalHref;
-                        return;
-                    }
-                    
-                    // Multiple sources - show modal
+
+                    // ALWAYS show the modal to let user choose between Quiz Mode and Tutor Mode
                     const modal = getModal();
                     if (!modal) {
                         window.location.href = originalHref;
                         return;
                     }
-                    
+
                     // Reset button
                     button.innerHTML = originalContent;
                     button.style.pointerEvents = '';
                     button.dataset.processing = 'false';
-                    
+
                     // Set form values
                     sourceTopicId.value = topicId;
                     sourceCourseId.value = courseId;
                     sourceSelectionForm.action = originalHref;
-                    
+
                     // Update sources immediately
                     if (typeof updateSourcesContainer === 'function') {
                         updateSourcesContainer(data);
                     }
-                    
-                    // Show modal
+
+                    // Show modal - ALWAYS, so user can choose mode
                     sourceSelectionModal.show();
                 })
                 .catch(error => {
-                    // On error, redirect directly
+                    // On error, fallback to direct redirect
                     window.location.href = originalHref;
                 });
             });
@@ -1372,33 +1400,68 @@
                 window.location.href = `${baseUrl}?${sourceParams}`;
             });
 
-            // Random Quiz Modal Validation
+            // Random Quiz Modal Validation and Mode Handling
             if (randomQuizForm) {
                 randomQuizForm.addEventListener('submit', function(e) {
+                    e.preventDefault();
+
                     // Check if at least one course is selected
                     const selectedCourses = this.querySelectorAll('input[name="selected_courses[]"]:checked');
-                    
+
                     if (selectedCourses.length === 0) {
-                        e.preventDefault();
                         alert('Please select at least one course for the random quiz.');
                         return false;
                     }
-                    
+
                     // Validate question limit
                     const questionLimitValue = parseInt(questionLimit?.value || 10);
                     if (questionLimitValue < 1 || questionLimitValue > 100) {
-                        e.preventDefault();
                         alert('Please enter a valid question limit (1-100).');
                         return false;
                     }
-                    
+
                     // Validate time limit
                     const timeLimitValue = parseFloat(timeLimit?.value || 30);
                     if (timeLimitValue < 0.1 || timeLimitValue > 180) {
-                        e.preventDefault();
                         alert('Please enter a valid time limit (1-180 minutes).');
                         return false;
                     }
+
+                    // Handle mode selection - CRITICAL FIX: Search entire modal, not just form
+                    const modal = document.getElementById('randomQuizModal');
+                    const selectedModeElement = modal.querySelector('input[name="quiz_mode"]:checked');
+                    const selectedMode = selectedModeElement ? selectedModeElement.value : 'quiz';
+
+                    console.log('🎯 RANDOM QUIZ MODE SELECTED:', selectedMode); // DEBUG LOG
+                    console.log('🎯 SELECTED ELEMENT:', selectedModeElement); // DEBUG LOG
+
+                    const formData = new FormData(this);
+                    const params = new URLSearchParams();
+
+                    // Add all form data to params
+                    for (let [key, value] of formData.entries()) {
+                        if (key === 'selected_courses[]') {
+                            params.append('selected_courses[]', value);
+                        } else {
+                            params.append(key, value);
+                        }
+                    }
+
+                    // CRITICAL FIX: Ensure mode is properly included in params
+                    params.set('quiz_mode', selectedMode);
+
+                    // Determine the URL based on selected mode - FIXED: More explicit routing
+                    let url;
+                    if (selectedMode === 'tutor') {
+                        url = '{{ route("quiz.random.tutor") }}?' + params.toString();
+                        console.log('🎯 REDIRECTING TO TUTOR MODE:', url); // DEBUG LOG
+                    } else {
+                        url = '{{ route("quiz.random.show") }}?' + params.toString();
+                        console.log('🎯 REDIRECTING TO QUIZ MODE:', url); // DEBUG LOG
+                    }
+
+                    // Redirect to the appropriate URL
+                    window.location.href = url;
                 });
             }
         });

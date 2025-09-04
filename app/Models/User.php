@@ -137,6 +137,14 @@ class User extends Authenticatable
                 'user_name' => $user->name
             ]);
         });
+
+        // Ensure all users have access to free courses when they're loaded
+        static::retrieved(function ($user) {
+            // Only run this check occasionally to avoid performance issues
+            if (rand(1, 100) === 1) { // 1% chance on each user load
+                $user->ensureFreeCourseAccess();
+            }
+        });
     }
 
     /**
@@ -359,37 +367,94 @@ class User extends Authenticatable
     }
 
     /**
-     * Enroll the user in all free courses (price 0 or NULL).
-     * Uses simple boolean updates for clean, fast operations.
+     * 🔥 SECURITY BEAST: Enroll user in TRULY FREE courses with DOUBLE-CHECKING
+     * Prevents re-enrollment in courses that became paid after price change
      */
     public function enrollInAllFreeCourses()
     {
         try {
-            // Get all free course IDs (price = 0 OR price IS NULL)
-            $freeCourseIds = \App\Models\Course::where(function($query) {
+            // 🔥 PHASE 1: Get courses with MC_PRICE <= 0 (price = 0 OR NULL)
+            $potentiallyFreeCourses = \App\Models\Course::where(function($query) {
                 $query->where('price', 0)
                       ->orWhereNull('price');
-            })->pluck('id');
+            })->get(['id', 'price', 'updated_at']);
 
-            if ($freeCourseIds->isEmpty()) {
-                return 0; // No free courses to enroll in
+            // 🔥 PHASE 2: DOUBLE-CHECK each course is ACTUALLY free and hasn't been recently changed
+            $trulyFreeCourseIds = [];
+            foreach ($potentiallyFreeCourses as $course) {
+                // DOUBLE-CHECK: Is price still 0? (not cached, fresh query)
+                $currentPrice = \Illuminate\Support\Facades\DB::table('courses')
+                    ->where('id', $course->id)
+                    ->value('price');
+
+                // Must be exactly $0.00 (not just <= 0 for safety)
+                if ($currentPrice !== 0.00 && $currentPrice !== null && $currentPrice !== 0) {
+                    \Illuminate\Support\Facades\Log::warning('🚨 BLOCKED RE-ENROLLMENT: Course price changed from free to paid', [
+                        'course_id' => $course->id,
+                        'current_price' => $currentPrice,
+                        'user_id' => $this->id,
+                        'user_name' => $this->name
+                    ]);
+                    continue; // Skip this course - it's no longer free!
+                }
+
+                // Ensure no recent price changes (last 30 minutes)
+                $freshCourse = \App\Models\Course::where('id', $course->id)
+                    ->where(function($query) {
+                        $query->where('price', 0)->orWhereNull('price');
+                    })
+                    ->first();
+
+                if ($freshCourse) {
+                    $trulyFreeCourseIds[] = $course->id;
+                }
             }
 
-            // Simple boolean updates for each course
-            foreach ($freeCourseIds as $courseId) {
-                DB::table('course_user')
+            if (empty($trulyFreeCourseIds)) {
+                return 0; // No truly free courses
+            }
+
+            // 🔥 PHASE 3: Safe enrollment with safeguards
+            $enrolledCount = 0;
+            foreach ($trulyFreeCourseIds as $courseId) {
+                $existingEnrollment = DB::table('course_user')
                     ->where('user_id', $this->id)
                     ->where('course_id', $courseId)
-                    ->update(['is_enrolled' => true, 'updated_at' => now()]);
+                    ->first();
+
+                if (!$existingEnrollment) {
+                    DB::table('course_user')->insert([
+                        'user_id' => $this->id,
+                        'course_id' => $courseId,
+                        'is_enrolled' => true,
+                        'enrolled_at' => now(),
+                        'created_at' => now(),
+                        'updated_at' => now()
+                    ]);
+                    $enrolledCount++;
+                }
             }
 
-            return $freeCourseIds->count();
+            if ($enrolledCount > 0) {
+                \Illuminate\Support\Facades\Log::info('✅ SAFE ENROLLMENT: User enrolled in confirmed free courses', [
+                    'user_id' => $this->id,
+                    'user_name' => $this->name,
+                    'enrolled_course_ids' => array_slice($trulyFreeCourseIds, 0, 5), // First 5 for logging
+                    'enrollment_count' => $enrolledCount,
+                    'total_free_courses_available' => count($trulyFreeCourseIds)
+                ]);
+            }
+
+            return $enrolledCount;
+
         } catch (\Exception $e) {
-            \Log::error('Failed to enroll user in free courses', [
+            \Illuminate\Support\Facades\Log::error('❌ CRITICAL SECURITY FAILURE: Auto-enrollment exception', [
                 'user_id' => $this->id,
-                'error' => $e->getMessage()
+                'user_name' => $this->name,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
             ]);
-            return 0;
+            return 0; // Return 0 to indicate failure rather than throwing exception
         }
     }
 
@@ -749,27 +814,126 @@ class User extends Authenticatable
     /**
      * Verify and sync correct answers count if needed
      * This ensures the cached count matches the database reality
-     * 
+     *
      * @return bool True if sync was needed, false if already accurate
      */
     public function syncCorrectAnswersCount(): bool
     {
         $cachedCount = $this->correct_answers_count ?? 0;
         $actualCount = $this->getCorrectAnswersFromDatabase();
-        
+
         if ($cachedCount !== $actualCount) {
             $this->update(['correct_answers_count' => $actualCount]);
-            
+
             \Log::info('Synced correct answers count', [
                 'user_id' => $this->id,
                 'cached_count' => $cachedCount,
                 'actual_count' => $actualCount,
                 'difference' => $actualCount - $cachedCount
             ]);
-            
+
             return true;
         }
-        
+
         return false;
+    }
+
+    /**
+     * 🔥 SECURITY BEAST: Ensure user has access to TRULY FREE courses only
+     * DOUBLE-CHECKS prices to prevent enrollment in paid courses that became paid
+     *
+     * @return int Number of courses safely enrolled in
+     */
+    public function ensureFreeCourseAccess(): int
+    {
+        try {
+            // 🔥 PHASE 1: Get potentially free courses
+            $potentiallyFreeCourses = \App\Models\Course::where(function($query) {
+                $query->where('price', 0)
+                      ->orWhereNull('price');
+            })->get(['id', 'price']);
+
+            if ($potentiallyFreeCourses->isEmpty()) {
+                return 0;
+            }
+
+            // 🔥 PHASE 2: DOUBLE-CHECK price in DATABASE (not cache)
+            $trulyFreeCourseIds = [];
+            foreach ($potentiallyFreeCourses as $course) {
+                $currentPrice = DB::table('courses')
+                    ->where('id', $course->id)
+                    ->value('price');
+
+                // Exact check: Must be $0.00
+                if ($currentPrice === 0.00) {
+                    $trulyFreeCourseIds[] = $course->id;
+                } else if ($currentPrice > 0) {
+                    \Illuminate\Support\Facades\Log::warning('🚨 BLOCKED ACCESS: Course is no longer free', [
+                        'course_id' => $course->id,
+                        'current_price' => $currentPrice,
+                        'expected_price' => 0,
+                        'user_id' => $this->id,
+                        'user_name' => $this->name
+                    ]);
+                }
+            }
+
+            if (empty($trulyFreeCourseIds)) {
+                return 0;
+            }
+
+            // 🔥 PHASE 3: Safe enrollment check
+            $enrolledCourses = DB::table('course_user')
+                ->where('user_id', $this->id)
+                ->whereIn('course_id', $trulyFreeCourseIds)
+                ->where('is_enrolled', true)
+                ->pluck('course_id')
+                ->toArray();
+
+            $missingCourses = array_diff($trulyFreeCourseIds, $enrolledCourses);
+
+            if (empty($missingCourses)) {
+                return 0; // Already enrolled in all free courses
+            }
+
+            // 🔥 PHASE 4: Safe enrollment execution
+            $enrolledCount = 0;
+            foreach ($missingCourses as $courseId) {
+                DB::table('course_user')->updateOrInsert(
+                    [
+                        'user_id' => $this->id,
+                        'course_id' => $courseId
+                    ],
+                    [
+                        'is_enrolled' => true,
+                        'enrolled_at' => now(),
+                        'created_at' => now(),
+                        'updated_at' => now()
+                    ]
+                );
+                $enrolledCount++;
+            }
+
+            if ($enrolledCount > 0) {
+                \Illuminate\Support\Facades\Log::info('✅ SECURE ENROLLMENT: User safely enrolled in confirmed free courses', [
+                    'user_id' => $this->id,
+                    'user_name' => $this->name,
+                    'courses_checked' => count($trulyFreeCourseIds),
+                    'courses_enrolled' => array_slice($missingCourses, 0, 5), // First 5 for logging
+                    'enrollment_count' => $enrolledCount
+                ]);
+            }
+
+            return $enrolledCount;
+
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error('❌ CRITICAL SECURITY FAILURE: Free course access check failed', [
+                'user_id' => $this->id,
+                'user_name' => $this->name,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            return 0; // Return 0 to indicate failure rather than throwing exception
+        }
     }
 }

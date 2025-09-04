@@ -18,10 +18,12 @@ class CourseEnrollmentController extends Controller
 {
     public function __construct()
     {
-        $this->middleware(['auth']);
         $this->middleware(function ($request, $next) {
+            if (!auth()->check()) {
+                return redirect()->route('login')->with('error', 'Please login to continue.');
+            }
             if (!auth()->user()->isAdmin()) {
-                abort(403, 'Unauthorized access.');
+                return redirect()->route('home')->with('error', 'Access denied. Only admins can manage enrollments.');
             }
             return $next($request);
         });
@@ -46,9 +48,9 @@ class CourseEnrollmentController extends Controller
                 ])
                 ->findOrFail($validated['user_id']);
                 
-            $course = Course::select('id', 'name', 'price', 'description', 'is_active')
+            $course = Course::select('id', 'name', 'price', 'description')
                 ->with([
-                    'topics:id,course_id,name,is_active',
+                    'topics:id,course_id,name',
                     'topics.questions:id,topic_id,difficulty',
                     'users:id,name,email,role',
                     'payments:id,user_id,course_id,status,amount',

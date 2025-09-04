@@ -246,12 +246,18 @@
             min-width: 0; /* Prevents flex item from overflowing */
         }
 
+        /* When there's no image, text takes full width */
+        .question-content:not(:has(.question-image)) .question-text-container {
+            flex: 1 1 100%;
+            max-width: none;
+        }
+
         .question-text {
             font-size: 1.4rem;
-            line-height: 1.6;
-            color: #000000;
             font-weight: 425;
-            margin-bottom: 1.5rem;
+            color: #000000;
+            margin-bottom: 1rem;
+            line-height: 1.5;
         }
 
         .question-image {
@@ -272,6 +278,7 @@
 
         .option-card {
             padding: 1rem;
+            background-color: #f8f9fa;
             border: 2px solid #e9ecef;
             border-radius: 8px;
             margin-bottom: 1rem;
@@ -279,17 +286,22 @@
             display: flex;
             align-items: flex-start;
             gap: 1rem;
-            transition: all 0.2s ease;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            outline: 1.5px solid transparent;
         }
 
         .option-card:hover {
+            background-color: #f1f3f5;
             border-color: #007bff;
-            background: #f8f9fa;
+            transform: translateY(-1px);
+            outline: 1px solid #007bff;
+            box-shadow: 0 4px 12px rgba(0, 123, 255, 0.15);
         }
 
         .option-card.selected {
             border-color: #007bff;
-            background: #f0f7ff;
+            background: #e3f2fd;
+            color: #007bff;
         }
 
         .option-card.correct {
@@ -320,7 +332,7 @@
             border-radius: 10px;
             padding: 1rem;
             box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
-            margin-bottom: 2rem;
+            margin-bottom: 0.25rem;
         }
 
         .progress-bar {
@@ -334,10 +346,100 @@
 
         .progress-fill {
             height: 100%;
-            background: linear-gradient(90deg, #007bff, #00d4ff);
+            background:
+                linear-gradient(90deg, #007bff, #00d4ff),
+                url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="120" height="20" viewBox="0 0 120 20"><path fill="%23ffffff" fill-opacity="0.3" d="M0 10 Q 10 0, 20 10 T 40 10 T 60 10 T 80 10 T 100 10 T 120 10 V20 H0 Z"/></svg>') repeat-x;
+            background-size: 100% 100%, 60px 20px;
+            background-repeat: no-repeat, repeat-x;
+            background-position: 0 0, 0 0;
             width: 0;
-            transition: width 0.5s ease;
+            transition: width 0.8s cubic-bezier(0.4, 0, 0.2, 1);
             border-radius: 5px;
+            animation: waveMove 3s linear infinite;
+            box-shadow:
+                0 0 10px rgba(0, 123, 255, 0.5),
+                0 0 20px rgba(0, 123, 255, 0.3),
+                inset 0 1px 0 rgba(255, 255, 255, 0.2);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .progress-fill::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(
+                90deg,
+                transparent,
+                rgba(255, 255, 255, 0.3),
+                transparent
+            );
+            animation: shimmer 2s infinite;
+        }
+
+        .progress-fill::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: radial-gradient(
+                circle at 50% 50%,
+                rgba(255, 255, 255, 0.1) 0%,
+                transparent 70%
+            );
+            animation: pulse 2s ease-in-out infinite;
+        }
+
+        .progress-fill.warning {
+            background:
+                linear-gradient(90deg, #ffc107, #ff8c00),
+                url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="120" height="20" viewBox="0 0 120 20"><path fill="%23ffffff" fill-opacity="0.3" d="M0 10 Q 10 0, 20 10 T 40 10 T 60 10 T 80 10 T 100 10 T 120 10 V20 H0 Z"/></svg>') repeat-x;
+            box-shadow:
+                0 0 10px rgba(255, 193, 7, 0.5),
+                0 0 20px rgba(255, 193, 7, 0.3),
+                inset 0 1px 0 rgba(255, 255, 255, 0.2);
+        }
+
+        .progress-fill.danger {
+            background:
+                linear-gradient(90deg, #dc3545, #ff6b7a),
+                url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="120" height="20" viewBox="0 0 120 20"><path fill="%23ffffff" fill-opacity="0.3" d="M0 10 Q 10 0, 20 10 T 40 10 T 60 10 T 80 10 T 100 10 T 120 10 V20 H0 Z"/></svg>') repeat-x;
+            box-shadow:
+                0 0 10px rgba(220, 53, 69, 0.5),
+                0 0 20px rgba(220, 53, 69, 0.3),
+                inset 0 1px 0 rgba(255, 255, 255, 0.2);
+        }
+
+        @keyframes waveMove {
+            0% {
+                background-position: 0 0, 0 0;
+            }
+            100% {
+                background-position: 0 0, 60px 0;
+            }
+        }
+
+        @keyframes shimmer {
+            0% {
+                left: -100%;
+            }
+            100% {
+                left: 100%;
+            }
+        }
+
+        @keyframes pulse {
+            0%, 100% {
+                opacity: 0.8;
+            }
+            50% {
+                opacity: 1;
+            }
         }
 
         .progress-text {
@@ -358,10 +460,45 @@
             align-items: center;
             gap: 0.5rem;
             margin-bottom: 0.5rem;
+            transition: all 0.3s ease;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
         }
 
         .timer i {
             color: #007bff;
+            transition: color 0.3s ease;
+        }
+
+        .timer.warning {
+            background: linear-gradient(135deg, #fff3cd, #ffeaa7);
+            border: 2px solid #ffc107;
+            color: #856404;
+            animation: timerWarning 1s ease-in-out infinite alternate;
+        }
+
+        .timer.warning i {
+            color: #ffc107;
+        }
+
+        .timer.danger {
+            background: linear-gradient(135deg, #f8d7da, #fab1a0);
+            border: 2px solid #dc3545;
+            color: #721c24;
+            animation: timerDanger 0.5s ease-in-out infinite alternate;
+        }
+
+        .timer.danger i {
+            color: #dc3545;
+        }
+
+        @keyframes timerWarning {
+            0% { transform: scale(1); }
+            100% { transform: scale(1.02); }
+        }
+
+        @keyframes timerDanger {
+            0% { transform: scale(1); }
+            100% { transform: scale(1.05); }
         }
 
         .answer-feedback .alert {
@@ -678,9 +815,448 @@
 
 
 
+        /* ===== ENHANCED MOBILE COMPATIBILITY OPTIMIZATIONS ===== */
+        
+        /* Mobile Navigation */
         @media (max-width: 768px) {
+            .navbar {
+                padding: 0.5rem 1rem;
+                position: fixed;
+                top: 0;
+                left: 0;
+                right: 0;
+                z-index: 1001;
+            }
+            
+            .navbar .container {
+                padding: 0;
+                max-width: 100%;
+            }
+            
+            .navbar-brand {
+                font-size: 1.3rem;
+            }
+            
+            .nav-links {
+                gap: 1rem;
+            }
+            
+            .nav-link {
+                padding: 0.5rem 0.75rem;
+                font-size: 0.9rem;
+            }
+            
+            .profile-circle {
+                width: 35px;
+                height: 35px;
+            }
+        }
+
+        /* Mobile Main Content */
+        @media (max-width: 768px) {
+            .main-content {
+                margin-top: 70px;
+                padding: 1rem;
+            }
+            
+            .container {
+                padding: 1.5rem;
+                border-radius: 8px;
+                max-width: 100%;
+                margin: 0;
+            }
+            
+            .topic-header h1 {
+                font-size: 1.5rem;
+                text-align: center;
+                margin-bottom: 1rem;
+            }
+        }
+
+        /* Mobile Progress Bar */
+        @media (max-width: 768px) {
+            .progress-bar-container {
+                padding: 0.75rem;
+                margin-bottom: 1rem;
+                border-radius: 8px;
+            }
+            
+            .timer {
+                font-size: 1rem;
+                padding: 0.4rem 0.8rem;
+                margin-bottom: 0.75rem;
+            }
+            
+            .progress-text {
+                font-size: 0.85rem;
+                margin-top: 0.4rem;
+            }
+        }
+
+        /* Mobile Question Card */
+        @media (max-width: 768px) {
+            .question-card {
+                padding: 1.5rem;
+                border-radius: 8px;
+                margin-bottom: 1rem;
+            }
+            
+            .question-content {
+                flex-direction: column;
+                gap: 1rem;
+            }
+            
+            .question-text {
+                font-size: 1.2rem;
+                line-height: 1.4;
+                margin-bottom: 1rem;
+            }
+            
+            .question-image {
+                width: 100%;
+                max-width: 100%;
+                margin: 0 0 1rem 0;
+            }
+            
+            .question-image img {
+                width: 100%;
+                height: auto;
+                max-height: 250px;
+                object-fit: contain;
+            }
+        }
+
+        /* Mobile Options */
+        @media (max-width: 768px) {
+            .option-card {
+                padding: 0.875rem;
+                margin-bottom: 0.75rem;
+                border-radius: 8px;
+                gap: 0.75rem;
+            }
+            
+            .option-letter {
+                width: 28px;
+                height: 28px;
+                font-size: 0.9rem;
+                flex-shrink: 0;
+            }
+            
+            .option-content {
+                font-size: 0.95rem;
+                line-height: 1.4;
+            }
+        }
+
+        /* Mobile Actions */
+        @media (max-width: 768px) {
+            .actions {
+                margin-top: 1.25rem;
+                flex-direction: column;
+                gap: 0.75rem;
+            }
+            
+            .btn {
+                padding: 0.875rem 1.25rem;
+                font-size: 1rem;
+                width: 100%;
+                min-height: 44px;
+                touch-action: manipulation;
+            }
+        }
+
+        /* Mobile Popup */
+        @media (max-width: 768px) {
+            .popup {
+                padding: 2rem 1.5rem;
+                width: 95%;
+                max-width: 400px;
+                border-radius: 16px;
+            }
+            
+            .popup-title {
+                font-size: 2rem;
+                margin-bottom: 1rem;
+            }
+            
+            .popup-score {
+                font-size: 3rem;
+            }
+            
+            .popup-message {
+                font-size: 1.1rem;
+                margin: 1rem 0;
+            }
+            
             .popup-buttons {
                 flex-direction: column;
+                gap: 0.75rem;
+                margin-top: 1.5rem;
+            }
+            
+            .popup-btn {
+                width: 100%;
+                justify-content: center;
+                min-height: 44px;
+                font-size: 1rem;
+                padding: 0.875rem 1.5rem;
+            }
+            
+            .grade-icon {
+                font-size: 2.5rem;
+                margin-bottom: 0.75rem;
+            }
+        }
+
+        /* Small Mobile Devices */
+        @media (max-width: 480px) {
+            .navbar-brand {
+                font-size: 1.2rem;
+            }
+            
+            .main-content {
+                padding: 0.75rem;
+            }
+            
+            .container {
+                padding: 1rem;
+            }
+            
+            .topic-header h1 {
+                font-size: 1.3rem;
+            }
+            
+            .question-card {
+                padding: 1rem;
+            }
+            
+            .question-text {
+                font-size: 1.1rem;
+            }
+            
+            .option-card {
+                padding: 0.75rem;
+                gap: 0.5rem;
+            }
+            
+            .option-letter {
+                width: 26px;
+                height: 26px;
+                font-size: 0.85rem;
+            }
+            
+            .option-content {
+                font-size: 0.9rem;
+            }
+            
+            .popup {
+                padding: 1.5rem 1rem;
+            }
+            
+            .popup-title {
+                font-size: 1.8rem;
+            }
+            
+            .popup-score {
+                font-size: 2.5rem;
+            }
+            
+            .popup-message {
+                font-size: 1rem;
+            }
+        }
+
+        /* Landscape Mobile Optimization */
+        @media (max-width: 768px) and (orientation: landscape) {
+            .main-content {
+                margin-top: 60px;
+            }
+            
+            .question-content {
+                flex-direction: row;
+                gap: 1.5rem;
+            }
+            
+            .question-text-container {
+                flex: 1;
+            }
+            
+            .question-image {
+                width: 200px;
+                max-width: 200px;
+                margin: 0;
+            }
+            
+            .question-image img {
+                max-height: 150px;
+            }
+            
+            .popup {
+                max-height: 90vh;
+                overflow-y: auto;
+            }
+        }
+
+        /* Touch Improvements */
+        @media (hover: none) and (pointer: coarse) {
+            .option-card:hover {
+                transform: none;
+                background-color: #f8f9fa;
+            }
+            
+            .option-card {
+                min-height: 48px;
+                touch-action: manipulation;
+                -webkit-tap-highlight-color: rgba(0, 123, 255, 0.1);
+            }
+            
+            .nav-link {
+                min-height: 48px;
+                display: flex;
+                align-items: center;
+            }
+            
+            .btn:hover {
+                transform: none;
+            }
+            
+            .popup-btn:hover {
+                transform: none;
+            }
+            
+            .btn {
+                -webkit-tap-highlight-color: rgba(0, 123, 255, 0.3);
+            }
+        }
+
+        /* Ultra-Performance Mobile Optimizations */
+        @media (max-width: 768px) {
+            /* Optimize rendering performance */
+            .question-card {
+                will-change: auto;
+                contain: layout style paint;
+            }
+            
+            /* Simplify progress bar animations */
+            .progress-fill {
+                animation: none;
+            }
+            
+            .progress-fill::before,
+            .progress-fill::after {
+                display: none;
+            }
+            
+            /* Optimize text rendering */
+            body {
+                -webkit-font-smoothing: antialiased;
+                -moz-osx-font-smoothing: grayscale;
+                text-rendering: optimizeSpeed;
+            }
+            
+            /* Reduce motion for accessibility */
+            @media (prefers-reduced-motion: reduce) {
+                * {
+                    animation-duration: 0.01ms !important;
+                    animation-iteration-count: 1 !important;
+                    transition-duration: 0.01ms !important;
+                }
+                
+                .timer.warning,
+                .timer.danger {
+                    animation: none;
+                }
+            }
+        }
+
+        /* iOS Safari Specific Fixes */
+        @supports (-webkit-touch-callout: none) {
+            .main-content {
+                min-height: calc(100vh - 80px);
+            }
+            
+            .navbar {
+                -webkit-backdrop-filter: blur(10px);
+                backdrop-filter: blur(10px);
+            }
+            
+            .popup {
+                max-height: calc(100vh - 40px);
+                overflow-y: auto;
+                -webkit-overflow-scrolling: touch;
+            }
+        }
+
+        /* Android Chrome Specific Optimizations */
+        @media screen and (-webkit-min-device-pixel-ratio: 0) and (min-resolution: .001dpcm) {
+            .option-card {
+                will-change: transform;
+                transform: translateZ(0);
+            }
+            
+            .btn {
+                -webkit-tap-highlight-color: rgba(0, 123, 255, 0.3);
+            }
+        }
+
+        /* Enhanced Accessibility */
+        @media (max-width: 768px) {
+            /* Improve focus indicators */
+            .option-card:focus,
+            .btn:focus {
+                outline: 2px solid #2196f3;
+                outline-offset: 2px;
+            }
+            
+            /* Better text contrast */
+            .question-text {
+                color: #1a1a1a;
+                font-weight: 500;
+            }
+            
+            .option-content {
+                color: #2a2a2a;
+                line-height: 1.5;
+            }
+            
+            /* Ensure timer is always readable */
+            .timer {
+                background: rgba(255, 255, 255, 0.95);
+                border: 1px solid rgba(0, 0, 0, 0.1);
+            }
+            
+            .timer.warning {
+                background: rgba(255, 243, 205, 0.95);
+                border-color: #ffc107;
+            }
+            
+            .timer.danger {
+                background: rgba(248, 215, 218, 0.95);
+                border-color: #dc3545;
+            }
+        }
+
+        /* Battery and Performance Optimizations */
+        @media (max-width: 768px) {
+            /* Reduce GPU usage */
+            .progress-fill {
+                will-change: width;
+                transform: none;
+            }
+            
+            /* Optimize animations */
+            .popup {
+                transition: opacity 0.2s ease, transform 0.2s ease;
+            }
+            
+            .option-card {
+                transition: background-color 0.15s ease, border-color 0.15s ease;
+            }
+            
+            /* Prevent unnecessary repaints */
+            .container {
+                contain: layout style;
+            }
         }
 
         .popup-buttons {
@@ -777,7 +1353,11 @@
     <div class="main-content">
         <div class="container">
             <div class="topic-header mb-4">
-                <h1>{{ $topic->name }} - Tutor Mode</h1>
+                @if(isset($is_random_quiz) && $is_random_quiz)
+                    <h1>Random Quiz - Tutor Mode</h1>
+                @else
+                    <h1>{{ $topic->name }} - Tutor Mode</h1>
+                @endif
             </div>
 
             <!-- Source information display -->
@@ -852,6 +1432,9 @@
                         </button>
                         <button class="btn btn-primary next-question" style="display: none;" onclick="showNextQuestion({{ $index + 1 }})">
                             Next Question
+                        </button>
+                        <button class="btn btn-success view-results" style="display: none;" onclick="showFinalResults()">
+                            View Results
                         </button>
                     </div>
                 </div>
@@ -1037,24 +1620,6 @@
                 console.log(`🔥 LETHAL AUDIO POOL: Replenished partial pool with ${needed} elements`);
             }
             
-            // Replenish perfect pool
-            if (audioPool.perfect.length < minPoolSize) {
-                const needed = minPoolSize - audioPool.perfect.length;
-                for (let i = 0; i < needed; i++) {
-                    createAudioElement('perfect');
-                }
-                console.log(`🔥 LETHAL AUDIO POOL: Replenished perfect pool with ${needed} elements`);
-            }
-            
-            // Replenish partial pool
-            if (audioPool.partial.length < minPoolSize) {
-                const needed = minPoolSize - audioPool.partial.length;
-                for (let i = 0; i < needed; i++) {
-                    createAudioElement('partial');
-                }
-                console.log(`🔥 LETHAL AUDIO POOL: Replenished partial pool with ${needed} elements`);
-            }
-            
 
         }
         
@@ -1158,36 +1723,327 @@
         let totalAnswers = 0;
         let questionStartTime = new Date(); // Track time for each question
         let totalStudyTime = 0; // Track total study time
-        
+
         // CRITICAL FIX: Track all user answers throughout the session
         let userAnswers = {};
-        
-        // Timer functionality
+
+        // AUTO-GRADE RANDOM QUIZ WHEN TIME RUNS OUT (DEFINED FIRST)
+        function autoGradeRandomQuiz() {
+            console.log('⏰ AUTO-GRADING: Time ran out, grading random quiz with current answers...');
+
+            // Check if we have any answers to grade
+            const hasAnswers = Object.keys(userAnswers).length > 0;
+
+            if (!hasAnswers) {
+                console.log('ℹ️ No answers provided, showing empty results');
+                // Show results with 0 correct answers
+                showQuizResults({
+                    correct: 0,
+                    total: totalQuestions,
+                    percentage: 0
+                });
+                return;
+            }
+
+            console.log(`📊 Grading ${Object.keys(userAnswers).length} answers out of ${totalQuestions} questions`);
+
+            // Calculate current score based on answered questions
+            let currentCorrect = 0;
+            let answeredCount = 0;
+
+            // Count correct answers from answered questions
+            for (const [questionId, answer] of Object.entries(userAnswers)) {
+                answeredCount++;
+                // FIXED: Use questionData instead of undefined 'questions' variable
+                const questionDataItem = questionData[questionId];
+                if (questionDataItem && answer.toLowerCase().trim() === questionDataItem.correct_answer.toLowerCase().trim()) {
+                    currentCorrect++;
+                }
+            }
+
+            console.log(`✅ Auto-grade results: ${currentCorrect}/${answeredCount} answered questions correct`);
+
+            // Calculate percentage based on answered questions only
+            const percentage = answeredCount > 0 ? Math.round((currentCorrect / answeredCount) * 100) : 0;
+
+            // Show results immediately
+            showQuizResults({
+                correct: currentCorrect,
+                total: answeredCount,
+                percentage: percentage
+            });
+        }
+
+        // Timer functionality - DIFFERENT MODES FOR RANDOM VS NORMAL TUTOR
         let timerInterval;
-        
+        let isRandomQuiz = {{ isset($is_random_quiz) && $is_random_quiz ? 'true' : 'false' }};
+        let initialDuration = {{ isset($duration_minutes) ? $duration_minutes * 60 : 0 }}; // Only for random quiz
+        let timeLeft = isRandomQuiz ? initialDuration : 0; // Start at 0 for normal tutor, duration for random
+        let warningThreshold = Math.floor(initialDuration * 0.3); // Warning at 30% time remaining (only for random)
+        let dangerThreshold = Math.floor(initialDuration * 0.1); // Danger at 10% time remaining (only for random)
+
         function updateTimer() {
             const currentTime = new Date();
-            const elapsedSeconds = Math.floor((currentTime - quizStartTime) / 1000);
-            const minutes = Math.floor(elapsedSeconds / 60);
-            const seconds = elapsedSeconds % 60;
-            
-            document.getElementById('timer').textContent = 
-                `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
-            
+            const elapsedSeconds = Math.floor((currentTime - quizStartTime) / 1000); // Ensure integer
+
+            if (initialDuration > 0) {
+                // Use countdown timer
+                timeLeft = Math.max(0, initialDuration - elapsedSeconds);
+            } else {
+                // Use elapsed timer
+                timeLeft = elapsedSeconds;
+            }
+
+            // Ensure timeLeft is always an integer
+            timeLeft = Math.floor(timeLeft);
+
+            const minutes = Math.floor(Math.abs(timeLeft) / 60);
+            const seconds = Math.floor(Math.abs(timeLeft) % 60); // Ensure seconds is integer
+            const timerElement = document.getElementById('timer');
+
+            if (timerElement) {
+                let timeDisplay = '';
+                if (initialDuration > 0) {
+                    // Countdown format - always show integers
+                    timeDisplay = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+                } else {
+                    // Elapsed format - always show integers
+                    timeDisplay = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+                }
+
+                timerElement.textContent = timeDisplay;
+
+                // Apply color grading based on time remaining
+                updateTimerStyling(timerElement, timeLeft);
+            }
+
+            // Auto-submit when time runs out (only for countdown mode)
+            if (initialDuration > 0 && timeLeft <= 0) {
+                clearInterval(timerInterval);
+                console.log('⏰ TIME RAN OUT - AUTO-GRADING RANDOM QUIZ...');
+                submitQuizRandomTutor();
+                return;
+            }
+
             timerInterval = setTimeout(updateTimer, 1000);
         }
-        
+
+        function updateTimerStyling(timerElement, remainingTime) {
+            // Remove existing classes
+            timerElement.classList.remove('warning', 'danger');
+
+            if (initialDuration <= 0) return; // No styling for elapsed timer
+
+            const percentageRemaining = (remainingTime / initialDuration) * 100;
+
+            if (percentageRemaining <= 10) {
+                // Danger: Red styling with animation
+                timerElement.classList.add('danger');
+            } else if (percentageRemaining <= 30) {
+                // Warning: Yellow styling with animation
+                timerElement.classList.add('warning');
+            }
+            // Normal: Default styling (no class needed)
+        }
+
+        // SUBMIT QUIZ WHEN TIME RUNS OUT - TZAR TECHNIQUE FROM WORKING RANDOM QUIZ
+        function submitQuizRandomTutor() {
+            console.log('⏰ AUTO-SUBMIT: Time ran out, submitting tutor random quiz immediately');
+
+            // 🚀 FORCE IMMEDIATE SUBMISSION - USE CORRECT ROUTE BASED ON QUIZ TYPE
+            const isRandomQuiz = {{ isset($is_random_quiz) && $is_random_quiz ? 'true' : 'false' }};ff57
+            const gradeUrl = isRandomQuiz
+                ? '/quiz/grade-random'
+                : '/quiz/{{ $course->id ?? 1 }}/{{ $topic->id ?? 1 }}/grade';
+            console.log('🎯 GRADE URL:', gradeUrl, '(Random Quiz:', isRandomQuiz + ')');
+            console.log('🏘️ QUIZ MODE DATA:', {
+                course: '{{ $course->id ?? "no-course" }}',
+                topic: '{{ $topic->id ?? "no-topic" }}',
+                isRandomQuiz: '{{ isset($is_random_quiz) && $is_random_quiz ? "true" : "false" }}'
+            });
+
+            // 🔥 DIRECT DATABASE CHECK BEFORE SUBMISSION - TELL US THE TRUTH!
+            if (typeof window.checkDatabaseBeforeSubmit === 'undefined') {
+                window.checkDatabaseBeforeSubmit = true;
+                console.log('🔍 PRE-SUBMIT: Checking database state...');
+
+                // Try to check if we can connect to the endpoint
+                fetch(gradeUrl, {
+                    method: 'HEAD',
+                    headers: { 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content }
+                }).then(response => {
+                    console.log('🌐 PRE-SUBMIT: Endpoint reachable, status:', response.status);
+                }).catch(error => {
+                    console.error('❌ PRE-SUBMIT: Cannot reach grade endpoint!', error);
+                });
+            }
+
+            const formDataObj = {};
+            formDataObj.answers = {};
+            formDataObj.time_taken = Math.floor((Date.now() - quizStartTime) / 1000); // Elapsed time
+            formDataObj.quiz_mode = '{{ isset($is_random_quiz) && $is_random_quiz ? 'random' : 'tutor' }}';
+
+            console.log('⏱️ TIME TAKEN:', formDataObj.time_taken);
+            console.log('📊 CURRENT ANSWERS BEFORE COLLECTION:', userAnswers);
+            console.log('🔥 CRITICAL: About to submit tutor quiz - ensuring data is captured!');
+            console.log('🎯 CSRF TOKEN present:', !!document.querySelector('meta[name="csrf-token"]').content);
+
+            // COLLECT ALL ANSWERS FROM FORM ELEMENTS (exactly like working random quiz)
+            document.querySelectorAll('[data-question-id]').forEach(questionBox => {
+                const questionId = questionBox.getAttribute('data-question-id');
+                // Initialize answer as empty string (unanswered)
+                formDataObj.answers[questionId] = '';
+
+                const writtenAnswer = questionBox.querySelector('.written-answer');
+                const selectedOption = questionBox.querySelector('.option-card.selected');
+
+                if (writtenAnswer) {
+                    formDataObj.answers[questionId] = writtenAnswer.value.trim();
+                } else if (selectedOption) {
+                    formDataObj.answers[questionId] = selectedOption.getAttribute('data-option');
+                }
+            });
+
+            console.log('🚀 COLLECTED ANSWERS:', formDataObj.answers);
+
+            fetch(gradeUrl, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                    'Accept': 'application/json'
+                },
+                body: JSON.stringify(formDataObj)
+            })
+            .then(response => {
+                console.log('🚀 AUTO-GRADING RESPONSE STATUS:', response.status);
+
+                if (!response.ok) {
+                    return response.json().then(data => {
+                        throw new Error(data.error || 'Auto-grading failed');
+                    });
+                }
+                return response.json();
+            })
+            .then(data => {
+                if (data.success) {
+                    console.log('✅ AUTO-GRADING SUCCESSFUL:', data);
+
+                    // Store quiz results globally for potential review
+                    window.lastQuizResults = data;
+
+                    // Get DOM elements
+                    const popupScore = document.getElementById('popup-score');
+                    const popupMessage = document.getElementById('popup-message');
+                    const popupTitle = document.getElementById('popup-title');
+                    const popupOverlay = document.getElementById('popup-overlay');
+                    const popup = document.getElementById('popup');
+                    const gradeIcon = document.getElementById('grade-icon');
+
+                    // Update score display and UI immediately
+                    const percentage = (data.score / data.total) * 100;
+
+                    // Set popup elements
+                    if (popupScore) popupScore.textContent = `${data.score}/${data.total}`;
+                    if (popupMessage) popupMessage.textContent = data.message || 'Quiz completed!';
+
+                    // Set appropriate grade icon and title
+                    if (percentage === 100) {
+                        if (gradeIcon) gradeIcon.innerHTML = '<i class="fas fa-crown"></i>';
+                        if (gradeIcon) gradeIcon.className = 'grade-icon perfect';
+                        if (popupTitle) popupTitle.textContent = 'Perfect Score!';
+                    } else if (percentage >= 70) {
+                        if (gradeIcon) gradeIcon.innerHTML = '<i class="fas fa-star"></i>';
+                        if (gradeIcon) gradeIcon.className = 'grade-icon good';
+                        if (popupTitle) popupTitle.textContent = 'Well Done!';
+                    } else {
+                        if (gradeIcon) gradeIcon.innerHTML = '<i class="fas fa-book"></i>';
+                        if (gradeIcon) gradeIcon.className = 'grade-icon needs-improvement';
+                        if (popupTitle) popupTitle.textContent = 'Keep Learning!';
+                    }
+
+                    // Play grading sound IMMEDIATELY
+                    playFinalGradingSound(data.score, data.total);
+
+                    // Show popup with animation
+                    if (popupOverlay) popupOverlay.classList.add('show');
+                    if (popup) {
+                        setTimeout(() => popup.classList.add('show'), 100);
+                    }
+                } else {
+                    console.error('❌ AUTO-GRADING FAILED:', data.error);
+
+                    // Get DOM elements for error display
+                    const popupScore = document.getElementById('popup-score');
+                    const popupTitle = document.getElementById('popup-title');
+                    const popupMessage = document.getElementById('popup-message');
+                    const popupOverlay = document.getElementById('popup-overlay');
+                    const popup = document.getElementById('popup');
+
+                    // Show error message
+                    if (popupTitle) popupTitle.textContent = 'Error';
+                    if (popupScore) popupScore.textContent = '';
+                    if (popupMessage) popupMessage.textContent = 'An error occurred while grading. Please try again.';
+                    if (popupOverlay) popupOverlay.classList.add('show');
+                    if (popup) {
+                        setTimeout(() => popup.classList.add('show'), 100);
+                    }
+                }
+            })
+            .catch(error => {
+                console.error('🚨 AUTO-GRADING NETWORK ERROR:', error);
+
+                // Get DOM elements for error display
+                const popupScore = document.getElementById('popup-score');
+                const popupTitle = document.getElementById('popup-title');
+                const popupMessage = document.getElementById('popup-message');
+                const popupOverlay = document.getElementById('popup-overlay');
+                const popup = document.getElementById('popup');
+
+                // Show error popup
+                if (popupTitle) popupTitle.textContent = 'Error';
+                if (popupScore) popupScore.textContent = '';
+                if (popupMessage) popupMessage.textContent = 'Failed to submit quiz. Please check your connection and try again.';
+                if (popupOverlay) popupOverlay.classList.add('show');
+                if (popup) {
+                    setTimeout(() => popup.classList.add('show'), 100);
+                }
+
+                // Re-enable any disabled form elements
+                document.querySelectorAll('input, textarea, button').forEach(el => el.disabled = false);
+            });
+        }
+
         // Start the timer
         updateTimer();
 
-        // Update progress bar
+        // Update progress bar with timer color integration
         function updateProgress(completed, total) {
             const progressFill = document.getElementById('progress-fill');
             const progressText = document.getElementById('progress-text');
+            const timerElement = document.getElementById('timer');
             const percentage = (completed / total) * 100;
-            
-            progressFill.style.width = `${percentage}%`;
-            progressText.textContent = `${completed} of ${total} questions completed`;
+
+            if (progressFill) {
+                progressFill.style.width = `${percentage}%`;
+
+                // Sync progress bar color with timer state
+                if (timerElement) {
+                    if (timerElement.classList.contains('danger')) {
+                        progressFill.classList.add('danger');
+                        progressFill.classList.remove('warning');
+                    } else if (timerElement.classList.contains('warning')) {
+                        progressFill.classList.add('warning');
+                        progressFill.classList.remove('danger');
+                    } else {
+                        progressFill.classList.remove('warning', 'danger');
+                    }
+                }
+            }
+
+            if (progressText) {
+                progressText.textContent = `${completed} of ${total} questions completed`;
+            }
         }
 
 
@@ -1228,6 +2084,8 @@
             };
         });
         
+
+
         // EXTRACTED ANSWER PROCESSING FUNCTION FOR SPEED
         function processAnswerResult(questionNumber, questionId, data, checkBtn) {
             // 💀 BULLETPROOF DUPLICATE PREVENTION - NO MULTIPLE PROCESSING 💀
@@ -1237,27 +2095,30 @@
                 return;
             }
             processAnswerResult[resultKey] = true;
-            
+
+            // FINAL RESULTS CHECK - IF THIS IS THE LAST QUESTION
+            if (totalAnswers === totalQuestions) {
+                console.log('🔥 LAST QUESTION ANSWERED - SHOWING EXPLANATION FIRST');
+
+                // 🎯 SHOW EXPLANATION FOR LAST QUESTION BEFORE FINAL GRADING
+                updateQuestionUI(questionNumber, {
+                    correct: data.is_correct,
+                    explanation: data.explanation,
+                    correctAnswer: data.correct_answer,
+                    showNextButton: false, // Don't show next button
+                    showViewResultsButton: true // Show "View Results" button instead
+                });
+
+                return; // DON'T show grading popup yet, let user read explanation
+            }
+
+            // FOR NON-LAST QUESTIONS - SHOW NEXT BUTTON AS NORMAL
             updateQuestionUI(questionNumber, {
                 correct: data.is_correct,
                 explanation: data.explanation,
-                correctAnswer: data.correct_answer
+                correctAnswer: data.correct_answer,
+                showNextButton: true // Flag to show next button for non-last questions
             });
-
-            // FINAL RESULTS CHECK
-            if (totalAnswers === totalQuestions) {
-                const percentage = (correctAnswers / totalAnswers) * 100;
-                
-                // Save quiz attempt to database
-                saveTutorQuizAttempt(correctAnswers, totalAnswers, percentage);
-                
-                // Show results (sound will be played in showQuizResults)
-                showQuizResults({
-                    correct: correctAnswers,
-                    total: totalAnswers,
-                    percentage: percentage
-                });
-            }
         }
         
         window.checkAnswer = function checkAnswer(questionNumber, questionId) {
@@ -1293,6 +2154,28 @@
 
             if (!answer) {
                 console.warn('⚠️ No answer selected');
+
+                // Show user-friendly warning message
+                const questionCard = document.getElementById(`question-${questionNumber}`);
+                if (questionCard) {
+                    const feedbackDiv = questionCard.querySelector('.answer-feedback');
+
+                    // Hide any existing feedback first
+                    feedbackDiv.style.display = 'none';
+
+                    // Clear processing flag to allow retry
+                    delete checkAnswer[processingKey];
+
+                    // Show warning after a brief delay
+                    setTimeout(() => {
+                        feedbackDiv.style.display = 'block';
+                        const alertDiv = feedbackDiv.querySelector('.alert');
+                        alertDiv.className = 'alert alert-warning';
+                        feedbackDiv.querySelector('.result-text').textContent = 'Please select an answer first!';
+                        feedbackDiv.querySelector('.explanation-content').innerHTML = 'You need to choose an answer before checking. Select one of the options above and try again.';
+                    }, 300);
+                }
+
                 return;
             }
 
@@ -1449,9 +2332,8 @@
                 // Continue with quiz if all questions are answered
                 if (totalAnswers === totalQuestions) {
                     const percentage = (correctAnswers / totalAnswers) * 100;
-                    
-                    // Save attempt and show results (sound will be played in showQuizResults)
-                    saveTutorQuizAttempt(correctAnswers, totalAnswers, percentage);
+
+                    // Show results immediately (sound will be played in showQuizResults)
                     showQuizResults({
                         correct: correctAnswers,
                         total: totalAnswers,
@@ -1468,11 +2350,11 @@
         function showNextQuestion(currentNumber) {
             const currentQuestion = document.getElementById(`question-${currentNumber}`);
             const nextQuestion = document.getElementById(`question-${currentNumber + 1}`);
-            
+
             if (currentQuestion) {
                 currentQuestion.style.display = 'none';
             }
-            
+
             if (nextQuestion) {
                 nextQuestion.style.display = 'block';
                 currentQuestionIndex = currentNumber + 1;
@@ -1480,7 +2362,7 @@
             } else {
                 // No more questions, show final results
                 const percentage = (correctAnswers / totalAnswers) * 100;
-                
+
                 // Show results without playing sound here (sound will be played in showQuizResults)
                 showQuizResults({
                     correct: correctAnswers,
@@ -1488,6 +2370,18 @@
                     percentage: percentage
                 });
             }
+        }
+
+        // Function to show final results when "View Results" button is clicked
+        function showFinalResults() {
+            console.log('🎯 VIEW RESULTS: User clicked "View Results" button for final question');
+            const percentage = (correctAnswers / totalAnswers) * 100;
+
+            showQuizResults({
+                correct: correctAnswers,
+                total: totalAnswers,
+                percentage: percentage
+            });
         }
 
         // Function to update question UI after checking answer
@@ -1551,9 +2445,33 @@
             // Show next question button and hide check answer button
             const checkAnswerBtn = questionCard.querySelector('.check-answer');
             const nextQuestionBtn = questionCard.querySelector('.next-question');
-            
+            const viewResultsBtn = questionCard.querySelector('.view-results'); // Add View Results button
+
             if (checkAnswerBtn) checkAnswerBtn.style.display = 'none';
-            if (nextQuestionBtn) {
+
+            // Handle final question differently - show "View Results" button
+            if (data.showViewResultsButton) {
+                if (viewResultsBtn) {
+                    viewResultsBtn.style.display = 'block';
+                    viewResultsBtn.disabled = false;
+                    // Ensure it hasn't been created yet
+                    if (!viewResultsBtn) {
+                        const actionsDiv = questionCard.querySelector('.actions');
+                        const newViewResultsBtn = document.createElement('button');
+                        newViewResultsBtn.className = 'btn btn-success view-results';
+                        newViewResultsBtn.onclick = () => {
+                            const percentage = (correctAnswers / totalAnswers) * 100;
+                            showQuizResults({
+                                correct: correctAnswers,
+                                total: totalAnswers,
+                                percentage: percentage
+                            });
+                        };
+                        newViewResultsBtn.textContent = 'View Results';
+                        actionsDiv.appendChild(newViewResultsBtn);
+                    }
+                }
+            } else if (nextQuestionBtn) {
                 nextQuestionBtn.style.display = 'block';
                 nextQuestionBtn.disabled = false; // FIX: Ensure Next Question is enabled
             }
@@ -1562,16 +2480,38 @@
             updateProgress(totalAnswers, totalQuestions);
         }
 
-        // Function to show quiz results
-        function showQuizResults(results) {
-            console.log('🚀 SHOW QUIZ RESULTS CALLED - STARTING INSTANT SOUND');
-            const soundStart = performance.now();
-            
-            // 💀 NUCLEAR INSTANT GRADING SOUND - PLAYS IMMEDIATELY 💀
-            playFinalGradingSound(results.correct, results.total);
-            
-            console.log(`✅ SOUND TRIGGERED in ${(performance.now() - soundStart).toFixed(2)}ms`);
-            
+        // 🎯 UNIFIED FUSION RESULTS: Streamlined and efficient (SKIP RECORDING FOR TUTOR MODE)
+        async function showQuizResults(results) {
+            console.log('🚀 FUSION: Starting unified quiz completion process', results);
+            const completionStart = performance.now();
+
+            // ⚡ TUTOR MODE: Services learning sessions, DON'T record quiz attempts
+            const isRandomQuiz = {{ isset($is_random_quiz) && $is_random_quiz ? 'true' : 'false' }};
+
+            let recordingPromise;
+            if (isRandomQuiz) {
+                // 🎓 TUTOR MODE: Skip database recording, just show visual results
+                console.log('🎓 TUTOR MODE: Skipping quiz attempt recording for learning mode');
+                recordingPromise = Promise.resolve({ success: true, skipped: true });
+            } else {
+                // 📊 NORMAL QUIZ: Record attempt as usual
+                recordingPromise = recordTutorQuizAttempt(results);
+            }
+
+            // ⚡ NUCLEAR FUSION: Save data (if not tutor mode) AND play sound simultaneously
+            const [recordingResult, soundResult] = await Promise.all([
+                recordingPromise,
+                new Promise(resolve => {
+                    playFinalGradingSound(results.correct, results.total);
+                    resolve();
+                })
+            ]);
+
+            console.log('✅ FUSION: Database and sound completed in:', (performance.now() - completionStart).toFixed(2) + 'ms');
+            console.log('📊 Recording result:', recordingResult);
+            console.log('🔊 Sound triggered successfully');
+
+            // 🎯 CONTINUE WITH UI RENDERING
             const popupOverlay = document.getElementById('popup-overlay');
             const popup = document.getElementById('popup');
             const gradeIcon = document.getElementById('grade-icon');
@@ -1579,35 +2519,31 @@
             const popupScore = document.getElementById('popup-score');
             const popupMessage = document.getElementById('popup-message');
 
-            // Show score as X/Y, not percentage
+            // Show score as X/Y format
             popupScore.textContent = `${results.correct}/${results.total}`;
-            
-            // Set appropriate icon and message based on score
+
+            // Set appropriate UI based on score
             const percentage = (results.correct / results.total) * 100;
             if (percentage === 100) {
                 gradeIcon.innerHTML = '<i class="fas fa-crown"></i>';
                 gradeIcon.className = 'grade-icon perfect';
                 popupTitle.textContent = 'Perfect Score!';
                 popupMessage.textContent = 'Outstanding! You\'ve mastered this topic!';
-                // PERFECT CENTER CONFETTI - SAFARI-CORRECTED POSITIONING
+
+                // FIREWORKS FOR PERFECT SCORE
                 if (typeof confetti !== 'undefined') {
-                    // Detect if the browser is Safari
                     const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
-                    let originX = 0.62; // Default to center for all other browsers
+                    const originX = isSafari ? 0.48 : 0.62;
 
-                    // If it is Safari, apply a corrected origin value to counteract zoom effect
-                    if (isSafari) {
-                        // Fine-tuned for perfect centering - using 0.47 for optimal positioning
-                        originX = 0.47;
-                    }
-
-                    confetti({
-                        particleCount: 100,
-                        spread: 70,
-                        origin: { x: originX, y: 0.45 },
-                        colors: ['#FFD700', '#FFA500', '#FF69B4', '#00CED1', '#98FB98'],
-                        zIndex: 10000
-                    });
+                    setTimeout(() => {
+                        confetti({
+                            particleCount: 150,
+                            spread: 70,
+                            origin: { x: originX, y: 0.45 },
+                            colors: ['#FFD700', '#FFA500', '#FF69B4', '#00CED1', '#98FB98'],
+                            zIndex: 10000
+                        });
+                    }, 300); // Small delay for effect
                 }
             } else if (percentage >= 70) {
                 gradeIcon.innerHTML = '<i class="fas fa-star"></i>';
@@ -1621,9 +2557,11 @@
                 popupMessage.textContent = 'Don\'t give up! Practice makes perfect!';
             }
 
-            // Show popup with animation
+            // Show success popup with animation
             popupOverlay.classList.add('show');
             setTimeout(() => popup.classList.add('show'), 100);
+
+            console.log('🎉 FUSION: Complete quiz experience delivered in:', (performance.now() - completionStart).toFixed(2) + 'ms');
         }
 
 
@@ -1754,283 +2692,104 @@
         // 💀 NUCLEAR AUDIO PRELOADING SYSTEM 💀
 
 
-        // ULTRA EFFICIENT TUTOR QUIZ SUBMISSION - ALL DATA PRE-COMPUTED
-        function saveTutorQuizAttempt(correctAnswers, totalQuestions, percentage) {
-            const startTime = performance.now();
-            
-            console.log('🚀 ULTRA EFFICIENT: Pre-computing all tutor data locally', {
-                correctAnswers, totalQuestions, percentage
-            });
-            
-            // ULTRA EFFICIENT: Pre-compute everything locally for instant server processing
-            const duration = Math.floor((Date.now() - quizStartTime) / 1000);
-            const selectedSources = @json($selected_sources ?? []);
-            
-            // Build optimized JSON payload with all pre-computed data
-            const payload = {
-                // Pre-computed quiz results (no server-side calculation needed)
-                score: correctAnswers,
-                total_questions: totalQuestions,
-                percentage_grade: percentage,
-                duration_seconds: Math.max(1, duration),
-                
-                // Mode settings
-                mode: 'tutor',
-                study_mode: 'tutor',
-                
-                // All user answers (already stored locally)
-                answers: userAnswers,
-                
-                // Source configuration
-                sources: selectedSources || [],
-                
-                // Performance metadata
-                computed_locally: true,
-                submission_timestamp: Date.now(),
-                client_processing_time: performance.now() - startTime,
-                answers_count: Object.keys(userAnswers).length
-            };
-            
-            console.log('🚀 ULTRA EFFICIENT PAYLOAD (processed in ' + 
-                       (performance.now() - startTime).toFixed(2) + 'ms):', payload);
 
-            
-            console.log('🚀 ULTRA EFFICIENT: Sending optimized JSON to:', '{{ route("quiz.grade", ["course" => $course->id, "topic" => $topic->id]) }}');
-            
-            fetch('{{ route("quiz.grade", ["course" => $course->id, "topic" => $topic->id]) }}', {
-                method: 'POST',
-                body: JSON.stringify(payload),
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-Requested-With': 'XMLHttpRequest',
-                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
-                    'Accept': 'application/json'
-                }
-            })
-            .then(response => {
-                console.log('🚀 ULTRA EFFICIENT: Response status:', response.status);
-                
-                // ULTRA EFFICIENT: Handle all response types with optimized error handling
-                if (!response.ok) {
-                    console.warn(`⚠️ Quiz submission failed with ${response.status}: ${response.statusText}`);
-                    
-                    // Return structured error for consistent handling
-                    return {
-                        success: false,
-                        error: `Server error ${response.status}`,
-                        message: response.status === 500 ? 
-                            'Server processing error. Please try again.' : 
-                            'Network error. Please check your connection.'
-                    };
-                }
-                
-                // Parse JSON with enhanced error handling
-                return response.json().catch(jsonError => {
-                    console.warn('⚠️ Failed to parse server response as JSON');
-                    return {
-                        success: false,
-                        error: 'Invalid server response',
-                        message: 'Server returned invalid data format'
-                    };
+        // AUTO-GRADE RANDOM QUIZ WHEN TIME RUNS OUT
+        function autoGradeRandomQuiz() {
+            console.log('⏰ AUTO-GRADING: Time ran out, grading random quiz with current answers...');
+
+            // Check if we have any answers to grade
+            const hasAnswers = Object.keys(userAnswers).length > 0;
+
+            if (!hasAnswers) {
+                console.log('ℹ️ No answers provided, showing empty results');
+                // Show results with 0 correct answers
+                showQuizResults({
+                    correct: 0,
+                    total: totalQuestions,
+                    percentage: 0
                 });
-            })
-            .catch(networkError => {
-                console.error('🚨 Network error during quiz submission:', networkError);
-                return {
-                    success: false,
-                    error: 'Network error',
-                    message: 'Unable to connect to server. Please check your internet connection.'
-                };
-            })
-            .then(data => {
-                console.log('🔥 LETHAL DEBUG: Response data:', data);
-                if (data.success) {
-                    console.log('✅ Tutor quiz attempt saved successfully');
-                    
-                    // 🔔 TRIGGER TUTOR MODE COMPLETION NOTIFICATIONS AND SAVE QUIZ ATTEMPT
-                    const duration = Math.floor((Date.now() - quizStartTime) / 1000);
-                    const selectedSources = @json($selected_sources ?? []);
-                    const primarySource = selectedSources && selectedSources.length > 0 && !selectedSources.includes('all') 
-                        ? selectedSources[0] 
-                        : 'General';
-                    
-                    // Build question data for database storage
-                    const questionDataForDb = [];
-                    for (let i = 1; i <= totalQuestions; i++) {
-                        const questionId = document.querySelector(`#question-${i}`)?.dataset?.questionId;
-                        const userAnswer = userAnswers[i] || '';
-                        const isCorrect = correctAnswers >= i; // Simplified for now
-                        
-                        if (questionId) {
-                            questionDataForDb.push({
-                                question_id: parseInt(questionId),
-                                user_answer: userAnswer,
-                                is_correct: isCorrect
-                            });
-                        }
-                    }
-                    
-                    // Removed redundant call to quiz.tutor.complete-session as quiz.grade already saves the attempt.
-                    // The quiz.grade route (QuizExecutionController::grade) now handles the saving of the quiz attempt.
-                    // This prevents duplicate quiz attempt records in tutor mode.
-                    // The notification trigger is now handled directly by the quiz.grade backend.
-                    
-                    // Fetch updated source progress for tutor mode with LETHAL ERROR HANDLING
-                    fetch(`/topics/{{ $topic->id }}/source-progress?mode=tutor`, {
-                        method: 'GET',
-                        headers: {
-                            'X-Requested-With': 'XMLHttpRequest',
-                            'Accept': 'application/json',
-                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
-                        }
-                    })
-                    .then(response => {
-                        console.log('🔥 TUTOR DEBUG: Source progress response status:', response.status);
-                        
-                        // LETHAL FIX: Handle all response types gracefully
-                        if (!response.ok) {
-                            // Don't throw error, just log and return default data
-                            console.warn(`⚠️ Source progress request returned ${response.status}: ${response.statusText}`);
-                            return {
-                                success: false,
-                                progress: {},
-                                availableSources: [],
-                                hasMultipleSources: false,
-                                mode: 'tutor'
-                            };
-                        }
-                        
-                        return response.json().catch(jsonError => {
-                            console.warn('⚠️ Failed to parse JSON response, using default data');
-                            return {
-                                success: false,
-                                progress: {},
-                                availableSources: [],
-                                hasMultipleSources: false,
-                                mode: 'tutor'
-                            };
-                        });
-                    })
-                    .then(progressData => {
-                        console.log('🔥 TUTOR DEBUG: Fetched tutor source progress:', progressData);
-                        
-                        // LETHAL FIX: Always handle the response, even if not successful
-                        if (progressData && progressData.success && progressData.progress) {
-                            // Store progress data in localStorage for cross-page communication
-                            const progressDataForStorage = {
-                                    topicId: {{ $topic->id }},
-                                    assignmentId: null, // Tutor mode - no assignment context
-                                    progress: progressData.progress,
-                                    availableSources: progressData.availableSources || [],
-                                allSourcesMastered: progressData.progress ? Object.values(progressData.progress).every(p => p.percentage >= 90) : false,
-                                timestamp: Date.now(),
-                                mode: 'tutor' // CRITICAL: Identify this as tutor mode
-                            };
-                            
-                            // Store in localStorage for cross-page communication
-                            localStorage.setItem('quizProgressUpdate', JSON.stringify(progressDataForStorage));
-                            
-                            // Dispatch a custom event with the updated source progress data
-                            const event = new CustomEvent('sourceProgressUpdated', {
-                                detail: progressDataForStorage
-                            });
-                            document.dispatchEvent(event);
-                            
-                            // 🔥 SERVER-SIDE STORAGE - For cross-tab communication
-                            fetch('{{ route("progress.store-update") }}', {
-                                method: 'POST',
-                                headers: {
-                                    'Content-Type': 'application/json',
-                                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
-                                },
-                                body: JSON.stringify({
-                                    topicId: {{ $topic->id }},
-                                    assignmentId: null,
-                                    progress: progressData.progress,
-                                    availableSources: progressData.availableSources || [],
-                                    allSourcesMastered: progressData.progress ? Object.values(progressData.progress).every(p => p.percentage >= 90) : false,
-                                    userId: {{ auth()->id() }}
-                                })
-                            }).then(response => response.json())
-                            .then(result => {
-                                console.log('🔥 Server progress update stored (tutor mode):', result);
-                            })
-                            .catch(error => {
-                                console.error('Failed to store progress update on server (tutor mode):', error);
-                            });
-                            
-                            console.log('✅ Source progress update event dispatched for tutor mode with real-time sync (localStorage + server)');
-                        } else {
-                            // LETHAL FIX: Don't error, just log and continue
-                            console.log('ℹ️ Source progress not available or unsuccessful, continuing without update');
-                            
-                                                    // Store empty progress data in localStorage for cross-page communication
-                        const emptyProgressData = {
-                                    topicId: {{ $topic->id }},
-                                    assignmentId: null,
-                                    progress: {},
-                                    availableSources: [],
-                            allSourcesMastered: false,
-                            timestamp: Date.now(),
-                            mode: 'tutor' // CRITICAL: Identify this as tutor mode
-                        };
-                        
-                        // Store in localStorage for cross-page communication
-                        localStorage.setItem('quizProgressUpdate', JSON.stringify(emptyProgressData));
-                        
-                        // Dispatch event with empty data to prevent UI issues
-                        const event = new CustomEvent('sourceProgressUpdated', {
-                            detail: emptyProgressData
-                            });
-                            document.dispatchEvent(event);
-                        }
-                    })
-                    .catch(error => {
-                        // LETHAL FIX: Silent error handling - log but don't spam console
-                        console.log('ℹ️ Source progress fetch encountered an issue, continuing normally');
-                        
-                        // Store empty progress data in localStorage for cross-page communication
-                        const emptyProgressData = {
-                                topicId: {{ $topic->id }},
-                                assignmentId: null,
-                                progress: {},
-                                availableSources: [],
-                            allSourcesMastered: false,
-                            timestamp: Date.now(),
-                            mode: 'tutor' // CRITICAL: Identify this as tutor mode
-                        };
-                        
-                        // Store in localStorage for cross-page communication
-                        localStorage.setItem('quizProgressUpdate', JSON.stringify(emptyProgressData));
-                        
-                        // Dispatch event with empty data to prevent UI issues
-                        const event = new CustomEvent('sourceProgressUpdated', {
-                            detail: emptyProgressData
-                        });
-                        document.dispatchEvent(event);
-                    });
-                } else {
-                    console.log('❌ Failed to save tutor quiz attempt:', data.error || data.message);
+                return;
+            }
+
+            console.log(`📊 Grading ${Object.keys(userAnswers).length} answers out of ${totalQuestions} questions`);
+
+            // Calculate current score based on answered questions
+            let currentCorrect = 0;
+            let answeredCount = 0;
+
+            // Count correct answers from answered questions
+            for (const [questionId, answer] of Object.entries(userAnswers)) {
+                answeredCount++;
+                // FIXED: Use questionData instead of undefined 'questions' variable
+                const questionDataItem = questionData[questionId];
+                if (questionDataItem && answer.toLowerCase().trim() === questionDataItem.correct_answer.toLowerCase().trim()) {
+                    currentCorrect++;
                 }
-            })
-            .catch(error => {
-                // LETHAL FIX: Silent error handling - don't spam console
-                console.log('ℹ️ Quiz attempt save encountered an issue, but quiz results are still available');
+            }
+
+            console.log(`✅ Auto-grade results: ${currentCorrect}/${answeredCount} answered questions correct`);
+
+            // Calculate percentage based on answered questions only
+            const percentage = answeredCount > 0 ? Math.round((currentCorrect / answeredCount) * 100) : 0;
+
+            // Show results immediately
+            showQuizResults({
+                correct: currentCorrect,
+                total: answeredCount,
+                percentage: percentage
             });
         }
 
+        // 🎯 DIRECT APPROACH: Send all answers in simple format to backend
+        async function recordTutorQuizAttempt(results) {
+            console.log('🔥 DIRECT APPROACH: Sending all answers to backend for processing', results);
 
+            try {
+                // 🚀 SIMPLE PAYLOAD: Let backend handle the complexity
+                const payload = {
+                    results: results,
+                    user_answers: userAnswers,
+                    answered_questions: Object.keys(userAnswers).length
+                };
+
+                console.log('📤 SENDING PAYLOAD:', payload);
+
+                // 🚀 SINGLE CALL TO BACKEND - LET IT FIGURE OUT THE COMPLEXITY
+                const response = await fetch('/quiz/tutor/complete-session', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                        'Accept': 'application/json'
+                    },
+                    body: JSON.stringify(payload)
+                });
+
+                const result = await response.json();
+                console.log('📥 BACKEND RESPONSE:', result);
+
+                if (!response.ok) {
+                    return { success: false, error: result.message || 'Backend error' };
+                }
+
+                return result;
+
+            } catch (error) {
+                console.error('❌ DIRECT APPROACH ERROR:', error);
+                return { success: false, fallback: true, error: error.message };
+            }
+        }
 
         // Handle source progress updates from tutor quiz completion
         document.addEventListener('sourceProgressUpdated', function(e) {
             console.log('🔥 TUTOR MODE: Source progress update received:', e.detail);
             const { topicId, progress, availableSources, allSourcesMastered } = e.detail;
-            
+
             // Update the source information display if it exists
             const sourcesInfo = document.querySelector('.sources-info');
             if (sourcesInfo && progress) {
                 console.log('✅ TUTOR MODE: Updating source progress display');
-                
+
                 // Update the source display text with progress information
                 const selectedSources = @json($selected_sources ?? []);
                 if (selectedSources && selectedSources.length > 0 && !selectedSources.includes('all')) {
@@ -2043,7 +2802,7 @@
                             progressText += `${source}: ${status} ${percentage}% (${sourceProgress.completed}/${sourceProgress.total}) `;
                         }
                     });
-                    
+
                     if (progressText) {
                         sourcesInfo.innerHTML = `
                             <span class="text-muted">
@@ -2053,7 +2812,7 @@
                     }
                 }
             }
-            
+
             console.log('✅ TUTOR MODE: Source progress update completed');
         });
     </script>

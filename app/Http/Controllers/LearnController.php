@@ -45,7 +45,7 @@ class LearnController extends Controller
 
             if (empty($cachedData['mistakes']) || $cachedData['mistakes']->isEmpty()) {
                 return redirect()->route('review.index')
-                    ->with('info', 'No mistakes to review! Add some mistakes first.');
+                    ->with('success', '🎉 Excellent! You have no mistakes to review. Keep up the great work!');
             }
 
             extract($cachedData);

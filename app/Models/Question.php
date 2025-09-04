@@ -820,4 +820,23 @@ class Question extends Model
             return $subject;
         }
     }
+
+    /**
+     * Get the proper URL for question images
+     */
+    public function getImageUrlAttribute($value)
+    {
+        if (!$value) {
+            return null;
+        }
+        
+        // If it's already a full URL, return as is
+        if (filter_var($value, FILTER_VALIDATE_URL)) {
+            return $value;
+        }
+        
+        // If it's a local file path, construct the proper URL
+        $filename = basename($value);
+        return url('/uploads/questions/' . $filename);
+    }
 }

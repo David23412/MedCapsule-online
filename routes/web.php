@@ -31,14 +31,15 @@ Route::get('/', [HomeController::class, 'index'])->name('home');
 
     // Profile picture serving route (PUBLIC ACCESS)
     Route::get('/uploads/profile-pictures/{path}', function ($path) {
-        $fullPath = storage_path('app/uploads/profile-pictures/' . $path);
+        $fullPath = storage_path('app/public/profile_pictures/' . $path);
 
         if (!file_exists($fullPath)) {
             abort(404);
         }
 
+        $mimeType = mime_content_type($fullPath);
         return response()->file($fullPath, [
-            'Content-Type' => 'image/jpeg',
+            'Content-Type' => $mimeType,
             'Cache-Control' => 'public, max-age=31536000',
         ]);
     })->where('path', '.*');
@@ -151,7 +152,9 @@ Route::get('/api/active-users', function() {
 // ADMIN ROUTES - Protected with admin middleware
 Route::middleware(['auth', 'admin'])->group(function () {
     Route::get('/manage-access', [UserCourseController::class, 'index'])->name('admin.user-course');
-    
+    // FIXED: Add admin.dashboard route for navigation
+    Route::get('/admin/dashboard', [UserCourseController::class, 'index'])->name('admin.dashboard');
+
     // Manage Access Routes - SECURE with CSRF protection
     Route::post('/manage-access/enroll', [UserCourseController::class, 'enroll'])->name('admin.user-course.enroll');
     Route::post('/manage-access/revoke', [UserCourseController::class, 'revoke'])->name('admin.user-course.revoke');
@@ -171,6 +174,7 @@ Route::middleware(['web', SecurityHeaders::class])->group(function () {
     
     // Course routes
     Route::get('/courses', [CourseController::class, 'index'])->name('courses.index');
+    Route::get('/courses/create', [CourseController::class, 'create'])->name('courses.create');
     Route::get('/courses/{course}', [CourseController::class, 'show'])->name('courses.show');
 
     // Review routes with CSRF and rate limiting
@@ -180,6 +184,9 @@ Route::middleware(['web', SecurityHeaders::class])->group(function () {
         ->name('review.remove');
     Route::post('/review/skip/{question_id}', [MistakeController::class, 'skipMistake'])
         ->name('review.skip');
+
+    // Mistakes routes - FIXED: Add missing mistakes.index route
+    Route::resource('mistakes', MistakeController::class)->only(['index']);
     Route::post('/learn/review/{question_id}', [LearnController::class, 'reviewMistake'])
         ->name('learn.review');
     Route::post('/learn/save-time', [LearnController::class, 'saveStudyTime'])
@@ -356,8 +363,10 @@ Route::get('/test/search-users-bypass', function() {
     // Random Quiz Routes with CSRF and rate limiting - OPTIMIZED VERSION
     Route::get('/quiz/random', [App\Http\Controllers\Quiz\OptimizedRandomQuizController::class, 'showRandomQuiz'])
         ->name('quiz.random.show');
-    Route::post('/quiz/random', [App\Http\Controllers\Quiz\OptimizedRandomQuizController::class, 'generateRandomQuiz'])
-        ->name('quiz.random');
+    Route::get('/quiz/random/tutor', [App\Http\Controllers\Quiz\OptimizedRandomQuizController::class, 'showRandomTutorQuiz'])
+        ->name('quiz.random.tutor');
+    Route::post('/quiz/generate-random', [App\Http\Controllers\Quiz\OptimizedRandomQuizController::class, 'generateRandomQuiz'])
+        ->name('quiz.random.generate');
     Route::post('/quiz/grade-random', [App\Http\Controllers\Quiz\OptimizedRandomQuizController::class, 'gradeRandomQuiz'])
         ->name('quiz.grade-random');
 
@@ -386,15 +395,46 @@ Route::get('/test/search-users-bypass', function() {
 
     // Profile picture serving route (public access for uploaded images)
     Route::get('/uploads/profile-pictures/{path}', function ($path) {
-        $fullPath = storage_path('app/uploads/profile-pictures/' . $path);
+        $fullPath = storage_path('app/public/profile_pictures/' . $path);
 
         if (!file_exists($fullPath)) {
             abort(404);
         }
 
+        $mimeType = mime_content_type($fullPath);
         return response()->file($fullPath, [
-            'Content-Type' => 'image/jpeg',
+            'Content-Type' => $mimeType,
             'Cache-Control' => 'public, max-age=31536000', // Cache for 1 year
+        ]);
+    })->where('path', '.*')->withoutMiddleware(['web', \App\Http\Middleware\SecurityHeaders::class]);
+
+    // Course image serving route (public access)
+    Route::get('/uploads/course-images/{path}', function ($path) {
+        $fullPath = storage_path('app/public/course-images/' . $path);
+
+        if (!file_exists($fullPath)) {
+            abort(404);
+        }
+
+        $mimeType = mime_content_type($fullPath);
+        return response()->file($fullPath, [
+            'Content-Type' => $mimeType,
+            'Cache-Control' => 'public, max-age=31536000',
+        ]);
+    })->where('path', '.*')->withoutMiddleware(['web', \App\Http\Middleware\SecurityHeaders::class]);
+
+    // Question image serving route (public access)
+    Route::get('/uploads/questions/{path}', function ($path) {
+        $fullPath = storage_path('app/public/questions/' . $path);
+
+        if (!file_exists($fullPath)) {
+            abort(404);
+        }
+
+        $mimeType = mime_content_type($fullPath);
+        return response()->file($fullPath, [
+            'Content-Type' => $mimeType,
+            'Cache-Control' => 'public, max-age=31536000',
         ]);
     })->where('path', '.*')->withoutMiddleware(['web', \App\Http\Middleware\SecurityHeaders::class]);
 

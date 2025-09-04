@@ -107,21 +107,30 @@ class QuizReadController extends Controller
      * Get specific quiz details with ULTRA-FAST LOADING
      * Uses UltraFastQuizService for <100ms performance
      */
-    public function show(QuizExecutionRequest $request, int $id)
+    public function show(QuizExecutionRequest $request, $course, $topic)
     {
         $operationId = $this->performanceMonitor->startOperation('quiz_show', [
-            'quiz_id' => $id,
+            'course_id' => $course,
+            'topic_id' => $topic,
             'user_id' => auth()->id(),
             'request_params' => $request->all()
         ]);
 
         try {
-            $topic = Topic::with('course')->findOrFail($id);
+            // Convert to integers and find the model
+            $courseId = (int) $course;
+            $topicId = (int) $topic;
+
+            // Find topic and validate it belongs to the course
+            $topicModel = Topic::with('course')->findOrFail($topicId);
+            if ($topicModel->course_id !== $courseId) {
+                throw new \Exception("Topic $topicId does not belong to course $courseId");
+            }
             $user = auth()->user();
 
             // Check if user has access to this topic
             // FIXED: Use isEnrolledInCourse method which properly handles admin access
-            if (!$user->isEnrolledInCourse($topic->course_id)) {
+            if (!$user->isEnrolledInCourse($topicModel->course_id)) {
                 if ($request->expectsJson()) {
                     return response()->json([
                         'error' => 'Access denied to this quiz'
@@ -131,42 +140,42 @@ class QuizReadController extends Controller
             }
 
             // Get quiz statistics using UltraFastQuizService
-            $statistics = $this->ultraFastQuizService->getQuizStatistics($topic, ['all']);
+            $statistics = $this->ultraFastQuizService->getQuizStatistics($topicModel, ['all']);
 
             // Get user's progress
-            $userProgress = $this->ultraFastQuizService->getTopicQuizStats($topic, $user);
+            $userProgress = $this->ultraFastQuizService->getTopicQuizStats($topicModel, $user);
 
             // Calculate total topic progress from quiz mode attempts only
-            $totalTopicProgress = \App\Models\QuizAttempt::getTopicProgress($user->id, $topic->id, 'quiz');
+            $totalTopicProgress = \App\Models\QuizAttempt::getTopicProgress($user->id, $topicModel->id, 'quiz');
             $totalCorrectQuestions = $totalTopicProgress['overall']['score'] ?? 0;
             $totalQuestionsInTopic = $totalTopicProgress['overall']['total_questions'] ?? 0;
 
             // Get questions for the quiz
             $sources = $request->get('sources', ['all']);
-            $quizData = $this->ultraFastQuizService->getQuizQuestions($topic, $sources, true);
+            $quizData = $this->ultraFastQuizService->getQuizQuestions($topicModel, $sources, true);
 
             // Check if request expects JSON (API request)
             if ($request->expectsJson()) {
                 $data = [
-                    'id' => $topic->id,
-                    'title' => $topic->name,
-                    'course_name' => $topic->course->name,
-                    'description' => $topic->description,
+                    'id' => $topicModel->id,
+                    'title' => $topicModel->name,
+                    'course_name' => $topicModel->course->name,
+                    'description' => $topicModel->description,
                     'statistics' => $statistics,
                     'user_progress' => $userProgress,
-                    'available_sources' => $this->ultraFastQuizService->getAvailableSources($topic),
+                    'available_sources' => $this->ultraFastQuizService->getAvailableSources($topicModel),
                     'available_modes' => ['quiz', 'tutor', 'random'],
                     'estimated_completion_time' => $this->estimateCompletionTime($statistics['total_questions'] ?? 0)
                 ];
 
                 $performanceData = $this->performanceMonitor->endOperation($operationId, [
-                    'topic_id' => $id,
+                    'topic_id' => $topicId,
                     'cache_status' => 'ultra_fast_redis'
                 ]);
 
                 Log::info("🚀 ULTRA-FAST QUIZ DETAILS", [
-                    'quiz_id' => $id,
-                    'topic_name' => $topic->name,
+                    'quiz_id' => $topicId,
+                    'topic_name' => $topicModel->name,
                     'user_id' => auth()->id(),
                     'execution_ms' => $performanceData['duration_ms'] ?? 0
                 ]);
@@ -180,13 +189,13 @@ class QuizReadController extends Controller
 
             // Web request - return Blade view
             $performanceData = $this->performanceMonitor->endOperation($operationId, [
-                'topic_id' => $id,
+                'topic_id' => $topicId,
                 'cache_status' => 'ultra_fast_redis'
             ]);
 
             Log::info("🚀 ULTRA-FAST QUIZ DETAILS", [
-                'quiz_id' => $id,
-                'topic_name' => $topic->name,
+                'quiz_id' => $topicId,
+                'topic_name' => $topicModel->name,
                 'user_id' => auth()->id(),
                 'execution_ms' => $performanceData['duration_ms'] ?? 0
             ]);
@@ -197,8 +206,8 @@ class QuizReadController extends Controller
                 return is_array($question) ? (object) $question : $question;
             });
             $viewData = [
-                'topic' => $topic,
-                'course' => $topic->course,
+                'topic' => $topicModel,
+                'course' => $topicModel->course,
                 'questions' => $questionsCollection,
                 'statistics' => $statistics,
                 'userProgress' => $userProgress,
@@ -219,7 +228,7 @@ class QuizReadController extends Controller
 
             Log::error("❌ ULTRA-FAST QUIZ DETAILS FAILED", [
                 'error' => $e->getMessage(),
-                'quiz_id' => $id,
+                'quiz_id' => $topicId,
                 'user_id' => auth()->id(),
                 'trace' => $e->getTraceAsString()
             ]);

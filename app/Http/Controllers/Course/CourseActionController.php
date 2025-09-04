@@ -96,19 +96,13 @@ class CourseActionController extends Controller
      */
     public function addCourse(CourseRequest $request)
     {
-        $validated = $request->validate([
-            'name' => 'required|string|max:255',
-            'description' => 'nullable|string',
-            'price' => 'required|numeric|min:0',
-            'is_active' => 'boolean'
-        ]);
+        $validated = $request->validated();
 
         try {
             $course = Course::create([
                 'name' => $validated['name'],
                 'description' => $validated['description'],
                 'price' => $validated['price'],
-                'is_active' => $validated['is_active'] ?? true,
                 'created_by' => auth()->id()
             ]);
 

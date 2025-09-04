@@ -30,7 +30,8 @@ return new class extends Migration
             // 🚀 LEAN INDEXES: Only essential ones (detailed indexes in nuclear_performance_indexing)
             $table->index(['user_id', 'topic_id']); // Basic user-topic queries
             $table->index('created_at'); // Chronological ordering
-            
+            $table->string('attempt_id')->nullable(); // Unique attempt identifier for tracking
+
             $table->timestamps();
         });
     }
@@ -39,4 +40,4 @@ return new class extends Migration
     {
         Schema::dropIfExists('quiz_attempts');
     }
-}; 
+};

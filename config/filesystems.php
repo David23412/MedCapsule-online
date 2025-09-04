@@ -4,7 +4,7 @@ return [
 
     /*
     |--------------------------------------------------------------------------
-    | Default Filesystem Disk
+    | Default Filesystem DiskO
     |--------------------------------------------------------------------------
     |
     | Here you may specify the default filesystem disk that should be used
@@ -54,7 +54,7 @@ return [
             'visibility' => 'private', // Files not publicly accessible
             'throw' => false,
             'report' => false,
-            'serve' => false, // Prevent direct serving of files
+            'serve' => true, // Allow serving of uploaded files
         ],
 
         's3' => [

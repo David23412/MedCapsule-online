@@ -106,10 +106,12 @@ use App\Services\SecureFileUploadService;
                     DB::raw('MAX(quiz_attempts.created_at) as date'),
                     'quiz_attempts.topic_id',
                     'quiz_attempts.study_mode',
+                    'quiz_attempts.quiz_type', // Include quiz_type for random quiz detection
                     DB::raw('SUM(quiz_attempts.score) as total_score'),
                     DB::raw('SUM(quiz_attempts.total_questions) as total_questions'),
                     DB::raw('COUNT(*) as attempts_count'),
                     DB::raw('CASE
+                        WHEN quiz_attempts.study_mode = "random" THEN "Random Quiz"
                         WHEN quiz_attempts.quiz_type = "random" THEN "Random Quiz"
                         WHEN quiz_attempts.topic_id IS NULL THEN "Unknown Topic"
                         ELSE COALESCE(topics.name, "Unknown Topic")
@@ -253,13 +255,13 @@ use App\Services\SecureFileUploadService;
         $result = QuizAttempt::where('user_id', $user->id)
             ->selectRaw('
                 SUM(CASE WHEN quiz_type = "normal" AND study_mode = "quiz" AND topic_id IS NOT NULL THEN duration_seconds ELSE 0 END) as quiz,
-                SUM(CASE WHEN quiz_type = "normal" AND study_mode = "tutor" THEN duration_seconds ELSE 0 END) as tutor,
-                SUM(CASE WHEN quiz_type = "normal" AND study_mode = "random" THEN duration_seconds ELSE 0 END) as random_quiz,
+                SUM(CASE WHEN study_mode = "tutor" THEN duration_seconds ELSE 0 END) as tutor,
+                SUM(CASE WHEN quiz_type = "random" THEN duration_seconds ELSE 0 END) as random_quiz,
                 SUM(CASE WHEN quiz_type = "mistake_review" OR study_mode = "mistake_review" THEN duration_seconds ELSE 0 END) as mistake_review,
                 SUM(duration_seconds) as total
             ')
             ->first();
-            
+
         return [
             'quiz' => $result->quiz ?? 0,
             'tutor' => $result->tutor ?? 0,
@@ -333,15 +335,17 @@ use App\Services\SecureFileUploadService;
                         'profile-pictures' // directory
                     );
 
-                    // Update user's profile_picture_url with full HTTPS URL + cache busting
-                    $cacheBust = time() . '_' . rand(1000, 9999);
-                    $user->profile_picture_url = config('app.url') . '/uploads/' . $uploadResult['storage_path'] . '?v=' . $cacheBust;
+                    // Update user's profile_picture_url with the full storage path
+                    $user->profile_picture_url = $uploadResult['storage_path'];
                     $user->save();
+
+                    $cacheBust = time();
 
                     \Log::info('Secure profile picture upload completed', [
                         'user_id' => $user->id,
                         'secure_filename' => $uploadResult['secure_name'],
                         'original_filename' => $uploadResult['original_name'],
+                        'storage_path' => $uploadResult['storage_path'],
                         'cache_bust' => $cacheBust
                     ]);
 
@@ -350,8 +354,8 @@ use App\Services\SecureFileUploadService;
                         return response()->json([
                             'success' => true,
                             'message' => 'Profile picture updated successfully!',
-                            'new_url' => config('app.url') . '/uploads/' . $uploadResult['storage_path'] . '?v=' . $cacheBust,
-                            'timestamp' => time(),
+                            'new_url' => $uploadResult['public_url'] . '?v=' . $cacheBust,
+                            'timestamp' => $cacheBust,
                             'cache_bust' => $cacheBust
                         ]);
                     }

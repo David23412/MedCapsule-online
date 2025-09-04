@@ -120,18 +120,24 @@
             100% { transform: scale(1); }
         }
 
+        .quiz-interface {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 1rem;
+        }
+
         .main-content {
             margin-top: 80px;
-            padding: 2rem;
+            padding: 1rem;
+            min-height: 100vh;
         }
 
         .container {
             background: white;
-            padding: 2rem;
+            padding: 1rem;
             border-radius: 12px;
             box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
-            max-width: 1000px;
-            margin: 0 auto;
+            margin-bottom: 100px; /* Space for fixed progress bar */
         }
 
         h1 {
@@ -291,7 +297,7 @@
             padding: 1rem 1.5rem;
             box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.15), 0 -2px 10px rgba(0, 0, 0, 0.1);
             z-index: 999;
-            max-width: 1000px;
+            max-width: 1200px;
             width: 100%;
             transition: all 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);
             border: 1px solid rgba(255, 255, 255, 0.2);
@@ -589,13 +595,16 @@
             border: 1px solid #dee2e6;
             border-radius: 8px;
             cursor: pointer;
-            transition: all 0.2s ease;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
             margin: 0;
+            outline: 1.5px solid transparent;
         }
 
         .form-check label:hover {
-            background-color: #e9ecef;
+            background-color: #f1f3f5;
             transform: translateY(-1px);
+            outline: 1.5px solid #007bff;
+            box-shadow: 0 4px 12px rgba(0, 123, 255, 0.15);
         }
 
         /* Style for selected answers before grading */
@@ -734,7 +743,7 @@
         /* Ensure confetti appears above modal and is properly positioned */
         canvas {
             z-index: 10001 !important;
-            pointer-events: none;
+            pointer-events: none !important;
             position: fixed !important;
             top: 0 !important;
             left: 0 !important;
@@ -742,12 +751,6 @@
             height: 100vh !important;
         }
         
-        /* Make sure popup has proper positioning context */
-        .popup {
-            position: relative;
-            z-index: 1001;
-        }
-
         .popup-overlay.show {
             display: flex;
         }
@@ -1118,11 +1121,40 @@
             text-align: center;
             text-shadow: 0 0 10px rgba(76, 175, 80, 0.3);
         }
+
+        /* MINIMAL BLUE SOURCE OUTLINE - CLEAN AND SEPARATE */
+        .source-outline {
+            border: 1px solid #007bff;
+            border-radius: 3px;
+            padding: 0.25rem 0.5rem;
+            margin: 0.5rem 0;
+            background-color: #f8f9fa;
+            position: relative;
+            display: inline-block;
+            width: auto;
+        }
+
+        .source-outline small strong {
+            color: #007bff;
+            font-weight: 500;
+        }
+
+        .source-outline i {
+            color: #007bff;
+            opacity: 0.7;
+        }
+
+
     </style>
+    
+
 </head>
 <body>
     <!-- LIGHTNING-FAST FOUC ELIMINATOR -->
     @include('components.lightning-preloader')
+
+    {{-- Include Responsive Navigation --}}
+    <x-responsive-nav-integration mode="replace" />
 
     <!-- Navigation Bar -->
     <nav class="navbar">
@@ -1181,10 +1213,11 @@
 
             <!-- Source information display -->
             @if(isset($selected_sources) && count($selected_sources) > 0 && !in_array('all', $selected_sources))
-                <div class="sources-info text-center mb-4">
-                    <span class="text-muted">
-                        Source: {{ implode(', ', $selected_sources) }}
-                    </span>
+                <div class="source-outline">
+                    <small class="text-secondary">
+                        <i class="fas fa-book-open me-1"></i>
+                        <strong>Sources:</strong> {{ implode(', ', $selected_sources) }}
+                    </small>
                 </div>
             @endif
 
@@ -1956,11 +1989,11 @@
                             gradeIcon.innerHTML = '<i class="fas fa-crown"></i>';
                             gradeIcon.className = 'grade-icon perfect';
                             popupTitle.textContent = 'Perfect Score!';
-                            // Use unified confetti system for perfect scores
-                            if (typeof ConfettiManager !== 'undefined') {
-                                ConfettiManager.celebratePerfectScore('#popup');
-                            } else if (typeof confetti !== 'undefined') {
-                                // SAFARI-SPECIFIC CONFETTI POSITIONING FIX
+                            // Trigger confetti for perfect score
+
+                            // Direct confetti call for perfect scores - SAFARI-CORRECTED POSITIONING
+                            if (typeof confetti !== 'undefined') {
+                                console.log('✅ Using direct confetti');
                                 // Detect if the browser is Safari
                                 const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
                                 let originX = 0.62; // Default to center for all other browsers
@@ -1971,7 +2004,6 @@
                                     originX = 0.47;
                                 }
 
-                                // SINGLE PERFECT CONFETTI - Safari-corrected positioning
                                 confetti({
                                     particleCount: 100,
                                     spread: 70,
@@ -1979,6 +2011,8 @@
                                     colors: ['#FFD700', '#FFA500', '#FF69B4', '#00CED1', '#98FB98'],
                                     zIndex: 10000
                                 });
+                            } else {
+                                console.log('❌ No confetti library available');
                             }
                         } else if (percentage >= 70) {
                             gradeIcon.innerHTML = '<i class="fas fa-star"></i>';
@@ -2417,8 +2451,8 @@
 
             // If it is Safari, apply a corrected origin value to counteract zoom effect
             if (isSafari) {
-                // Fine-tuned for perfect centering - using 0.47 for optimal positioning
-                originX = 0.47;
+                // Fine-tuned for perfect centering - using 0.48 for optimal positioning
+                originX = 0.48;
             }
 
             // SAFARI-CORRECTED CONFETTI - Consistent positioning across browsers
@@ -2427,22 +2461,48 @@
                 spread: 70,
                 origin: { x: originX, y: 0.45 },
                 colors: ['#FFD700', '#FFA500', '#FF69B4', '#00CED1', '#98FB98'],
-                zIndex: 9999
+                zIndex: 10000
             });
         }
     </script>
 
     <script>
+        // EDGE/SAFARI CONFETTI TEST FUNCTION
+        window.testConfetti = function() {
+            console.log('🎯 MANUAL CONFETTI TEST TRIGGERED');
+
+            if (typeof confetti !== 'undefined') {
+                console.log('✅ Direct confetti library available - testing...');
+                // Use Safari-corrected positioning for test
+                const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+                let originX = 0.62; // Default to center for all other browsers
+                if (isSafari) {
+                    originX = 0.47; // Fine-tuned for perfect centering
+                }
+                confetti({
+                    particleCount: 100,
+                    spread: 70,
+                    origin: { x: originX, y: 0.45 },
+                    colors: ['#FFD700', '#FFA500', '#FF69B4', '#00CED1', '#98FB98'],
+                    zIndex: 10000
+                });
+                alert('Testing direct confetti... check if confetti appears!');
+            } else {
+                console.log('❌ No confetti system available');
+                alert('ERROR: No confetti library loaded! Check browser or network issues.');
+            }
+        };
+
         // Utility function to safely decode HTML entities
         function decodeHtmlEntities(text) {
             if (!text) return '';
-            
+
             try {
                 // Create a DOM element to leverage browser's built-in decoder
                 const textArea = document.createElement('textarea');
                 textArea.innerHTML = text;
                 const decodedText = textArea.value;
-                
+
                 // Return safely decoded text
                 return decodedText;
             } catch (e) {

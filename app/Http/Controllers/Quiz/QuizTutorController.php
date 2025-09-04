@@ -125,54 +125,143 @@ class QuizTutorController extends Controller
         try {
             $user = auth()->user();
             $sessionData = $request->all();
-            
-            $correctAnswers = $sessionData['correct_answers'] ?? 0;
-            $totalQuestions = $sessionData['total_questions'] ?? 1;
-            $courseId = $sessionData['course_id'] ?? null;
-            $topicId = $sessionData['topic_id'] ?? null;
-            $source = $sessionData['source'] ?? 'General';
-            $questionData = $sessionData['question_data'] ?? [];
-            $durationSeconds = $sessionData['duration_seconds'] ?? 0;
-            
-            // Get course and topic names
-            $course = $courseId ? Course::find($courseId) : null;
-            $topic = $topicId ? Topic::find($topicId) : null;
-            
-            // CRITICAL FIX: Create quiz attempt record for tutor mode
-            if ($topicId && $totalQuestions > 0) {
-                $percentage = ($correctAnswers / $totalQuestions) * 100;
-                
-                $quizAttemptData = [
-                    'user_id' => $user->id,
-                    'topic_id' => $topicId,
-                    'quiz_type' => 'tutor',
-                    'study_mode' => 'tutor',
-                    'source' => $source,
-                    'score' => $correctAnswers,
-                    'total_questions' => $totalQuestions,
-                    'percentage_grade' => round($percentage, 2),
-                    'duration_seconds' => $durationSeconds,
-                    'question_data' => $questionData,
-                    'correct_answers' => $correctAnswers
-                ];
-                
-                // Create the quiz attempt using the optimized method
-                $result = \App\Models\QuizAttempt::createWithProgress($quizAttemptData);
-                
-                Log::info('🔥 TUTOR MODE: Quiz attempt created successfully', [
-                    'user_id' => $user->id,
-                    'topic_id' => $topicId,
-                    'source' => $source,
-                    'score' => $correctAnswers,
-                    'total' => $totalQuestions,
-                    'percentage' => $percentage,
-                    'attempt_id' => $result['attempt']->id ?? null
-                ]);
+
+            \Log::info('🔥 TUTOR COMPLETE SESSION: Received payload', [
+                'raw_data' => $sessionData,
+                'user_id' => $user->id
+            ]);
+
+            // Extract data from NEW PAYLOAD STRUCTURE
+            $results = $sessionData['results'] ?? [];
+            $userAnswers = $sessionData['user_answers'] ?? [];
+            $answeredQuestions = $sessionData['answered_questions'] ?? 0;
+
+            \Log::info('📊 TUTOR SESSION DATA EXTRACTED', [
+                'results' => $results,
+                'user_answers_count' => count($userAnswers),
+                'answered_questions' => $answeredQuestions
+            ]);
+
+            // GET COURSE AND TOPIC FROM SESSION/URL PARAMS
+            $topicId = request()->input('topic_id', session('current_topic_id', request('topic_id')));
+            $courseId = request()->input('course_id', session('current_course_id', request('course_id')));
+
+            // Fallback to default values if not found
+            if (!$topicId) {
+                $topicId = 1; // Default topic ID
             }
-            
+            if (!$courseId) {
+                $courseId = 1; // Default course ID
+            }
+
+            \Log::info('🔍 RESOLVED IDs', [
+                'topic_id' => $topicId,
+                'course_id' => $courseId
+            ]);
+
+            // GET QUESTIONS TO EXTRACT SOURCES
+            $questions = [];
+            if ($topicId && $courseId) {
+                $topic = Topic::find($topicId);
+                if ($topic) {
+                    $questions = $topic->questions()->get();
+                }
+            }
+
+            // GROUP ANSWERS BY SOURCE AND CALCULATE SCORES
+            $sourceGroups = [];
+            $totalCorrect = 0;
+            $totalQuestions = 0;
+
+            foreach ($questions as $question) {
+                $questionId = $question->id;
+                $source = $question->source ?? 'General';
+                $userAnswer = isset($userAnswers[$questionId]) ? $userAnswers[$questionId] : null;
+
+                $isCorrect = false;
+                if ($userAnswer) {
+                    // Check if answer is correct (case-insensitive)
+                    $isCorrect = trim(strtolower($userAnswer)) === trim(strtolower($question->correct_answer));
+                    $totalQuestions++;
+                    if ($isCorrect) {
+                        $totalCorrect++;
+                    }
+                }
+
+                // Group by source
+                if (!isset($sourceGroups[$source])) {
+                    $sourceGroups[$source] = [
+                        'correct' => 0,
+                        'total' => 0,
+                        'question_data' => []
+                    ];
+                }
+
+                if ($userAnswer) {
+                    $sourceGroups[$source]['question_data'][] = [
+                        'question_id' => $questionId,
+                        'user_answer' => $userAnswer,
+                        'is_correct' => $isCorrect
+                    ];
+
+                    $sourceGroups[$source]['total']++;
+                    if ($isCorrect) {
+                        $sourceGroups[$source]['correct']++;
+                    }
+                }
+            }
+
+            \Log::info('📊 SOURCE GROUPS PROCESSING COMPLETE', [
+                'sources_processed' => count($sourceGroups),
+                'total_correct' => $totalCorrect,
+                'total_questions_processed' => $totalQuestions,
+                'source_data' => $sourceGroups
+            ]);
+
+            // CREATE QUIZ ATTEMPTS FOR EACH SOURCE
+            $createdAttempts = [];
+            foreach ($sourceGroups as $source => $groupData) {
+                if ($groupData['total'] > 0) {
+                    $percentage = ($groupData['correct'] / $groupData['total']) * 100;
+
+                    $quizAttemptData = [
+                        'user_id' => $user->id,
+                        'topic_id' => $topicId,
+                        'quiz_type' => 'normal',
+                        'study_mode' => 'tutor',
+                        'source' => $source,
+                        'score' => $groupData['correct'],
+                        'total_questions' => $groupData['total'],
+                        'percentage_grade' => round($percentage, 2),
+                        'duration_seconds' => count($userAnswers), // Use count as duration estimate
+                        'question_data' => $groupData['question_data'],
+                        'correct_answers' => $groupData['correct']
+                    ];
+
+                    // Create the quiz attempt using the optimized method
+                    $result = \App\Models\QuizAttempt::createWithProgress($quizAttemptData);
+
+                    $createdAttempts[] = $result;
+
+                    \Log::info('✅ TUTOR MODE: Quiz attempt created for source', [
+                        'user_id' => $user->id,
+                        'topic_id' => $topicId,
+                        'source' => $source,
+                        'score' => $groupData['correct'],
+                        'total' => $groupData['total'],
+                        'percentage' => $percentage,
+                        'attempt_id' => $result['attempt']->id ?? null
+                    ]);
+                }
+            }
+
+            // UPDATE FRONTEND WITH CORRECT CONTEXT
+            $course = Course::find($courseId);
+            $topic = Topic::find($topicId);
+
             // Trigger tutor mode completion notifications
             \App\Services\NotificationTriggerService::onQuizCompleted($user, [
-                'score' => $correctAnswers,
+                'score' => $totalCorrect,
                 'total_questions' => $totalQuestions,
                 'course_name' => $course->name ?? 'Course',
                 'topic_name' => $topic->name ?? 'Topic',
@@ -180,28 +269,36 @@ class QuizTutorController extends Controller
                 'topic_id' => $topicId,
                 'mode' => 'tutor'
             ]);
-            
-            Log::info('Tutor session completed with database record', [
+
+            \Log::info('🎉 TUTOR SESSION COMPLETED SUCCESSFULLY', [
                 'user_id' => $user->id,
-                'correct_answers' => $correctAnswers,
+                'correct_answers' => $totalCorrect,
                 'total_questions' => $totalQuestions,
                 'course_id' => $courseId,
                 'topic_id' => $topicId,
-                'source' => $source
+                'sources_processed' => count($createdAttempts),
+                'attempts_created' => count($createdAttempts)
             ]);
-            
+
             return response()->json([
                 'success' => true,
-                'message' => 'Tutor session completed and progress saved successfully'
+                'message' => 'Tutor session completed and progress saved successfully',
+                'data' => [
+                    'attempts_created' => count($createdAttempts),
+                    'total_correct' => $totalCorrect,
+                    'total_questions' => $totalQuestions,
+                    'sources_processed' => count($sourceGroups)
+                ]
             ]);
-            
+
         } catch (\Exception $e) {
-            Log::error('Error completing tutor session:', [
+            \Log::error('❌ ERROR COMPLETING TUTOR SESSION:', [
                 'error' => $e->getMessage(),
                 'user_id' => auth()->id(),
-                'trace' => $e->getTraceAsString()
+                'stack_trace' => $e->getTraceAsString(),
+                'request_data' => $request->all()
             ]);
-            
+
             return response()->json([
                 'success' => false,
                 'message' => 'Error completing tutor session: ' . $e->getMessage()

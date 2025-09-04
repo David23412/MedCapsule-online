@@ -139,26 +139,26 @@
             </div>
             
             <div class="status-selector">
-                <div class="status-option {{ $assignment->getCurrentStatusAttribute() === 'active' ? 'selected' : '' }}" 
+                <div class="status-option {{ $assignment->getCurrentStatusAttribute() === 'active' ? 'selected' : '' }}"
                      data-value="active">
                     <div class="status-indicator status-active"></div>
                     <div class="status-details">
                         <div class="status-name">Active</div>
                         <div class="status-description">Students can access and complete</div>
                     </div>
-                    <input type="radio" name="status" value="active" 
+                    <input type="radio" name="status" value="active"
                            {{ $assignment->getCurrentStatusAttribute() === 'active' ? 'checked' : '' }}>
                 </div>
-                
-                <div class="status-option {{ $assignment->getCurrentStatusAttribute() === 'overdue' ? 'selected' : '' }}" 
+
+                <div class="status-option {{ in_array($assignment->getCurrentStatusAttribute(), ['overdue', 'not_started']) ? 'selected' : '' }}"
                      data-value="overdue">
                     <div class="status-indicator status-overdue"></div>
                     <div class="status-details">
                         <div class="status-name">Overdue</div>
                         <div class="status-description">Past deadline, limited access</div>
                     </div>
-                    <input type="radio" name="status" value="overdue" 
-                           {{ $assignment->getCurrentStatusAttribute() === 'overdue' ? 'checked' : '' }}>
+                    <input type="radio" name="status" value="overdue"
+                           {{ in_array($assignment->getCurrentStatusAttribute(), ['overdue', 'not_started']) ? 'checked' : '' }}>
                 </div>
             </div>
         </div>
@@ -502,16 +502,23 @@
     background: #f8fafc;
 }
 
-.status-option.selected {
-    border-color: #3b82f6;
-    background: #f0f9ff;
-    box-shadow: 0 2px 8px rgba(59, 130, 246, 0.1);
+.status-option.selected[data-value="active"] {
+    border-color: #10b981;
+    background: #f0fdf4;
+    box-shadow: 0 2px 8px rgba(16, 185, 129, 0.2);
+}
+
+.status-option.selected[data-value="overdue"] {
+    border-color: #ef4444;
+    background: #fef2f2;
+    box-shadow: 0 2px 8px rgba(239, 68, 68, 0.2);
 }
 
 .status-option input[type="radio"] {
     position: absolute;
     opacity: 0;
     pointer-events: none;
+    z-index: -1;
 }
 
 .status-indicator {
@@ -965,20 +972,42 @@
 // Interactive status selection
 document.addEventListener('DOMContentLoaded', function() {
     const statusOptions = document.querySelectorAll('.status-option');
-    
+
     statusOptions.forEach(option => {
-        option.addEventListener('click', function() {
+        option.addEventListener('click', function(e) {
+            console.log('Status option clicked:', this.dataset.value);
+
             // Remove selected class from all options
             statusOptions.forEach(opt => opt.classList.remove('selected'));
-            
+
             // Add selected class to clicked option
             this.classList.add('selected');
-            
+
             // Check the radio button
             const radio = this.querySelector('input[type="radio"]');
             if (radio) {
                 radio.checked = true;
+                console.log('Radio button checked:', radio.value);
             }
+
+            // Prevent event bubbling
+            e.stopPropagation();
+        });
+    });
+
+    // Add visual feedback for debugging
+    statusOptions.forEach(option => {
+        option.style.userSelect = 'none';
+        option.addEventListener('mousedown', function() {
+            this.style.transform = 'scale(0.98)';
+        });
+
+        option.addEventListener('mouseup', function() {
+            this.style.transform = '';
+        });
+
+        option.addEventListener('mouseleave', function() {
+            this.style.transform = '';
         });
     });
     

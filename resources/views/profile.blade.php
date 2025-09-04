@@ -1317,10 +1317,10 @@
                         if (filter_var(auth()->user()->profile_picture_url, FILTER_VALIDATE_URL)) {
                             $profileImageUrl = auth()->user()->profile_picture_url;
                         } else {
-                            // Local file - use secure_url with cache busting
-                            $localPath = storage_path('app/public/' . auth()->user()->profile_picture_url);
+                            // Local file - use secure uploads disk URL
+                            $localPath = storage_path('app/uploads/' . auth()->user()->profile_picture_url);
                             if (file_exists($localPath)) {
-                                $profileImageUrl = secure_url(auth()->user()->profile_picture_url) . '?v=' . time();
+                                $profileImageUrl = url('/uploads/' . auth()->user()->profile_picture_url) . '?v=' . time();
                             }
                         }
                     }

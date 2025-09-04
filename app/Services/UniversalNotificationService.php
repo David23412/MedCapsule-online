@@ -28,6 +28,8 @@ class UniversalNotificationService
         'level_up' => 'fas fa-bolt',
         'assignment_due' => 'fas fa-clock',
         'grade_released' => 'fas fa-star',
+        'random_quiz_completed' => 'fas fa-dice',
+        'random_quiz_perfect' => 'fas fa-dice',
 
         // 🔔 SYSTEM NOTIFICATIONS - HIGH PERFORMANCE CACHE-BASED
         'system_maintenance' => 'fas fa-tools',
@@ -46,6 +48,8 @@ class UniversalNotificationService
         'tutor_perfect' => 'fas fa-star',
         'tutor_strong_performance' => 'fas fa-thumbs-up',
         'tutor_needs_practice' => 'fas fa-redo-alt',
+        'tutor_student_perfect' => 'fas fa-star',
+        'tutor_student_progress' => 'fas fa-chart-line',
         
         // 📝 ASSIGNMENT SPECIFIC
         'assignment_assigned' => 'fas fa-calendar',
@@ -120,9 +124,11 @@ class UniversalNotificationService
         'topic_needs_review' => 'fas fa-exclamation-triangle',
         'review_reminder' => 'fas fa-clock',
         
-        // 💳 PAYMENT & ACCESS
+        // 💳 PAYMENT & ACCESS 🔥 NUCLEAR OPTIMIZED
         'payment_success' => 'fas fa-credit-card',
         'payment_failed' => 'fas fa-exclamation-triangle',
+        'payment_pending' => 'fas fa-clock',
+        'payment_accepted' => 'fas fa-check-circle',
         'course_access_granted' => 'fas fa-unlock',
         'course_access_denied' => 'fas fa-lock',
         

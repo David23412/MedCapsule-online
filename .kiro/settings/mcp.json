@@ -8,14 +8,6 @@
       "command": "npx",
       "args": ["-y", "@kazuph/mcp-fetch"]
     },
-    "git": {
-      "command": "npx",
-      "args": ["-y", "@cyanheads/git-mcp-server"]
-    },
-    "github": {
-      "command": "npx",
-      "args": ["-y", "@modelcontextprotocol/server-github"]
-    },
     "playwright": {
       "command": "npx",
       "args": ["-y", "@executeautomation/playwright-mcp-server"]
@@ -31,6 +23,21 @@
     "macShell": {
       "command": "npx",
       "args": ["-y", "@mseep/mac-shell-mcp"]
+    },
+    "github": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-github"]
+    },
+    "n8n-mcp": {
+      "command": "npx",
+      "args": ["n8n-mcp"],
+      "env": {
+        "MCP_MODE": "stdio",
+        "LOG_LEVEL": "error",
+        "DISABLE_CONSOLE_OUTPUT": "true",
+        "N8N_API_URL": "http://localhost:5678/",
+        "N8N_API_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMWI1OGE5ZS1kZTdjLTQxNjMtOWE3My1iNDc0MmYyMTA5NjEiLCJpc3MiOiJuOG4iLCJhdWQiOiJwdWJsaWMtYXBpIiwiaWF0IjoxNzU2ODIzNTc2LCJleHAiOjE3NTkzNzc2MDB9.0soiCvizrcqbJKp31mcDuPS9rdcVl2RP9X39KOPrYyA"
+      }
     }
   }
 }

@@ -16,8 +16,7 @@ class TestQuestionsSeeder extends Seeder
             ['name' => 'Medical Test Course'],
             [
                 'type' => 'medical',
-                'price' => 0,
-                'is_active' => true
+                'price' => 0
             ]
         );
 
