@@ -1311,24 +1311,7 @@
         <div class="profile-header animate-fadeInUp">
             <div class="profile-picture" id="profilePictureContainer" style="cursor: pointer;" title="Click to upload new profile picture">
                 @php
-                    $profileImageUrl = null;
-                    if (auth()->user()->profile_picture_url) {
-                        // Check if it's an external URL (starts with http/https)
-                        if (filter_var(auth()->user()->profile_picture_url, FILTER_VALIDATE_URL)) {
-                            $profileImageUrl = auth()->user()->profile_picture_url;
-                        } else {
-                            // Local file - use secure uploads disk URL
-                            $localPath = storage_path('app/uploads/' . auth()->user()->profile_picture_url);
-                            if (file_exists($localPath)) {
-                                $profileImageUrl = url('/uploads/' . auth()->user()->profile_picture_url) . '?v=' . time();
-                            }
-                        }
-                    }
-
-                    // Fallback to UI Avatars if no valid image
-                    if (!$profileImageUrl) {
-                        $profileImageUrl = 'https://ui-avatars.com/api/?name=' . urlencode(auth()->user()->name) . '&size=200&background=007bff&color=ffffff';
-                    }
+                    $profileImageUrl = auth()->user()->getProfileImageUrl();
                 @endphp
                 <img src="{{ $profileImageUrl }}"
                      alt="Profile Picture"
@@ -2040,76 +2023,231 @@
             });
         });
 
-        // Profile picture upload handling - SIMPLIFIED AND FIXED
-        document.addEventListener('DOMContentLoaded', function() {
-            const profilePictureInput = document.getElementById('profilePictureInput');
-            const profileImage = document.getElementById('profileImage');
-            const profileForm = document.getElementById('profileForm');
-            const profilePicture = document.getElementById('profilePictureContainer');
+            // Profile picture upload handling - FIXED CLICK ISSUE
+            function initializeProfilePictureUpload() {
+                const profilePictureInput = document.getElementById('profilePictureInput');
+                const profileImage = document.getElementById('profileImage');
+                const profileForm = document.getElementById('profileForm');
+                const profilePicture = document.getElementById('profilePictureContainer');
+                const uploadOverlay = profilePicture ? profilePicture.querySelector('.upload-overlay') : null;
 
-            console.log('Profile picture elements:', {
-                profilePictureInput: !!profilePictureInput,
-                profileImage: !!profileImage,
-                profileForm: !!profileForm,
-                profilePicture: !!profilePicture
-            });
+                console.log('Initializing profile picture upload:', {
+                    profilePictureInput: !!profilePictureInput,
+                    profileImage: !!profileImage,
+                    profileForm: !!profileForm,
+                    profilePicture: !!profilePicture,
+                    uploadOverlay: !!uploadOverlay
+                });
 
-            if (!profilePictureInput || !profileImage || !profileForm || !profilePicture) {
-                console.error('Profile picture elements not found - upload functionality disabled');
-                return;
+                if (!profilePictureInput || !profileImage || !profileForm || !profilePicture) {
+                    console.error('Profile picture elements not found - retrying in 100ms...');
+                    setTimeout(initializeProfilePictureUpload, 100);
+                    return;
+                }
+
+                // Make the entire profile picture clickable (both container and overlay)
+                const clickHandler = function(e) {
+                    console.log('Profile picture clicked!', e.target);
+                    e.preventDefault();
+                    e.stopPropagation();
+                    profilePictureInput.click();
+                };
+
+                // Attach click handlers to both the container and overlay
+                profilePicture.addEventListener('click', clickHandler);
+
+                if (uploadOverlay) {
+                    uploadOverlay.addEventListener('click', clickHandler);
+                }
+
+                // Also make the image clickable
+                profileImage.addEventListener('click', clickHandler);
+
+                // Add visual feedback
+                profilePicture.addEventListener('mouseenter', function() {
+                    this.style.transform = 'scale(1.05)';
+                    this.style.transition = 'transform 0.2s ease';
+                });
+
+                profilePicture.addEventListener('mouseleave', function() {
+                    this.style.transform = 'scale(1)';
+                });
+
+                // Handle file selection with AJAX upload for instant update
+                profilePictureInput.addEventListener('change', function(e) {
+                    const file = e.target.files[0];
+                    console.log('File selected:', file);
+                    if (!file) return;
+
+                    // Validate file type and size
+                    const validTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/jpg', 'image/webp'];
+                    const maxSize = 5 * 1024 * 1024; // 5MB
+
+                    if (!validTypes.includes(file.type)) {
+                        alert('Please select a valid image file (JPEG, PNG, GIF, or WebP)');
+                        this.value = '';
+                        return;
+                    }
+
+                    if (file.size > maxSize) {
+                        alert('File size must be less than 5MB');
+                        this.value = '';
+                        return;
+                    }
+
+                    // Show instant preview
+                    const reader = new FileReader();
+                    reader.onload = function(e) {
+                        profileImage.src = e.target.result;
+                    };
+                    reader.readAsDataURL(file);
+
+                    // Show loading state
+                    profilePicture.style.opacity = '0.6';
+                    profilePicture.style.pointerEvents = 'none';
+
+                    // Create FormData for AJAX upload
+                    const formData = new FormData();
+                    formData.append('profile_picture', file);
+                    formData.append('_token', document.querySelector('meta[name="csrf-token"]').getAttribute('content'));
+
+                    // AJAX upload with proper error handling
+                    fetch(profileForm.action, {
+                        method: 'POST',
+                        body: formData,
+                        headers: {
+                            'X-Requested-With': 'XMLHttpRequest',
+                            'Accept': 'application/json'
+                        }
+                    })
+                    .then(response => {
+                        console.log('Response received:', response.status);
+                        if (!response.ok) {
+                            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                        }
+                        return response.json();
+                    })
+                    .then(data => {
+                        console.log('Upload successful:', data);
+
+                        // Remove loading state
+                        profilePicture.style.opacity = '1';
+                        profilePicture.style.pointerEvents = 'auto';
+
+                        // Update image with server response (includes cache busting)
+                        if (data.new_url) {
+                            // ULTRA AGGRESSIVE cache busting to force immediate update
+                            const cacheBust = Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+                            const newImageUrl = data.new_url + '?cb=' + cacheBust + '&t=' + Date.now() + '&r=' + Math.random();
+
+                            // Force complete image reload
+                            profileImage.style.display = 'none';
+                            profileImage.src = '';
+                            profileImage.offsetHeight; // Trigger reflow
+                            
+                            // Set new source
+                            profileImage.src = newImageUrl;
+                            profileImage.style.display = 'block';
+
+                            // Also update any other profile circles on the page
+                            document.querySelectorAll('.profile-circle').forEach(circle => {
+                                if (circle.style.backgroundImage) {
+                                    circle.style.backgroundImage = `url(${newImageUrl})`;
+                                }
+                            });
+
+                            console.log('Image updated with URL:', newImageUrl);
+                        }
+
+                        // Show success message
+                        showSuccessMessage(data.message || 'Profile picture updated successfully!');
+
+                        // Refresh all profile images across the entire page
+                        setTimeout(() => {
+                            refreshAllProfileImages(data.new_url);
+                        }, 100);
+
+                        // Clear file input for next upload
+                        profilePictureInput.value = '';
+                    })
+                    .catch(error => {
+                        console.error('Upload failed:', error);
+
+                        // Remove loading state
+                        profilePicture.style.opacity = '1';
+                        profilePicture.style.pointerEvents = 'auto';
+
+                        // Show error message
+                        alert('Upload failed: ' + error.message);
+
+                        // Clear file input
+                        profilePictureInput.value = '';
+
+                        // Revert to original image if upload failed
+                        location.reload();
+                    });
+                });
             }
 
-            // Make profile picture clickable
-            profilePicture.addEventListener('click', function(e) {
-                console.log('Profile picture clicked!');
-                e.preventDefault();
-                e.stopPropagation();
-                profilePictureInput.click();
-            });
+            function showSuccessMessage(message) {
+                const notification = document.createElement('div');
+                notification.style.cssText = `
+                    position: fixed;
+                    top: 20px;
+                    right: 20px;
+                    background: #28a745;
+                    color: white;
+                    padding: 15px 20px;
+                    border-radius: 5px;
+                    z-index: 9999;
+                    font-family: 'Poppins', sans-serif;
+                    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+                    font-size: 14px;
+                    max-width: 300px;
+                `;
+                notification.textContent = message;
 
-            // Handle file selection
-            profilePictureInput.addEventListener('change', function(e) {
-                const file = e.target.files[0];
-                if (!file) return;
+                document.body.appendChild(notification);
 
-                console.log('File selected:', file.name, file.type, file.size);
-                
-                // Validate file type and size
-                const validTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/jpg', 'image/webp'];
-                const maxSize = 5 * 1024 * 1024; // 5MB
+                setTimeout(() => {
+                    notification.remove();
+                }, 3000);
+            }
 
-                if (!validTypes.includes(file.type)) {
-                    alert('Please select a valid image file (JPEG, PNG, GIF, or WebP)');
-                    this.value = '';
-                    return;
+            function refreshAllProfileImages(newUrl) {
+                // Ultra aggressive cache busting
+                const cacheBust = Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+                const finalUrl = newUrl + '&refresh=' + cacheBust;
+
+                // Update all profile images (img tags)
+                document.querySelectorAll('img[alt*="Profile"], img[src*="profile"]').forEach(img => {
+                    if (img.src.includes('ui-avatars.com')) return; // Skip fallback avatars
+                    img.src = finalUrl;
+                });
+
+                // Update all profile circles with background images
+                document.querySelectorAll('.profile-circle').forEach(circle => {
+                    if (circle.style.backgroundImage && !circle.classList.contains('no-image')) {
+                        circle.style.backgroundImage = `url(${finalUrl})`;
+                    }
+                });
+
+                console.log('Refreshed all profile images with:', finalUrl);
+            }
+
+            // Initialize after a short delay to ensure DOM is ready
+            setTimeout(initializeProfilePictureUpload, 500);
+
+            // Force refresh profile images on page load to handle cache issues
+            window.addEventListener('load', function() {
+                const profileImage = document.getElementById('profileImage');
+                if (profileImage && profileImage.src && !profileImage.src.includes('ui-avatars.com')) {
+                    // Add cache busting to current image if it's not a fallback
+                    const currentSrc = profileImage.src.split('?')[0]; // Remove existing query params
+                    const cacheBust = Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+                    profileImage.src = currentSrc + '?v=' + cacheBust;
                 }
-
-                if (file.size > maxSize) {
-                    alert('File size must be less than 5MB');
-                    this.value = '';
-                    return;
-                }
-
-                // Show preview and submit
-                const reader = new FileReader();
-                reader.onload = function(e) {
-                    profileImage.src = e.target.result;
-                    console.log('Submitting profile picture form...');
-                    profileForm.submit();
-                };
-                reader.readAsDataURL(file);
             });
-
-            // Add visual feedback
-            profilePicture.addEventListener('mouseenter', function() {
-                this.style.transform = 'scale(1.05)';
-                this.style.transition = 'transform 0.2s ease';
-            });
-
-            profilePicture.addEventListener('mouseleave', function() {
-                this.style.transform = 'scale(1)';
-            });
-        });
 
 
 
@@ -2137,139 +2275,6 @@
         
         } // Close initializeCharts function
     </script>
-
-    <!-- Profile Picture AJAX Upload -->
-    <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            const profilePictureInput = document.getElementById('profilePictureInput');
-            const profileImage = document.getElementById('profileImage');
-            const profileForm = document.getElementById('profileForm');
-            const profilePicture = document.querySelector('.profile-picture');
-            
-            if (!profilePictureInput || !profileImage || !profileForm || !profilePicture) {
-                return;
-            }
-            
-            // Click handler
-            profilePicture.addEventListener('click', function(e) {
-                e.preventDefault();
-                e.stopPropagation();
-                profilePictureInput.click();
-            });
-            
-            // AJAX file upload handler
-            profilePictureInput.addEventListener('change', function(e) {
-                const file = e.target.files[0];
-                if (!file) return;
-                
-                // Validate file
-                if (!file.type.startsWith('image/')) {
-                    alert('Please select an image file');
-                    this.value = '';
-                    return;
-                }
-                
-                if (file.size > 5 * 1024 * 1024) {
-                    alert('File size must be less than 5MB');
-                    this.value = '';
-                    return;
-                }
-                
-                // Show loading state
-                profilePicture.style.opacity = '0.6';
-                profilePicture.style.filter = 'blur(1px)';
-                
-                // Show preview immediately
-                const reader = new FileReader();
-                reader.onload = function(e) {
-                    profileImage.src = e.target.result;
-                };
-                reader.readAsDataURL(file);
-                
-                // Create FormData for AJAX upload
-                const formData = new FormData();
-                formData.append('profile_picture', file);
-                formData.append('_token', document.querySelector('meta[name="csrf-token"]').getAttribute('content'));
-                
-                // AJAX upload
-                fetch(profileForm.action, {
-                    method: 'POST',
-                    body: formData,
-                    headers: {
-                        'X-Requested-With': 'XMLHttpRequest'
-                    }
-                })
-                .then(response => {
-                    if (response.ok) {
-                        return response.json();
-                    } else {
-                        return response.json().then(errorData => {
-                            throw new Error(errorData.message || 'Upload failed');
-                        });
-                    }
-                })
-                .then(data => {
-                    // Remove loading state
-                    profilePicture.style.opacity = '1';
-                    profilePicture.style.filter = 'none';
-
-                    // INSTANT IMAGE UPDATE: Force reload with cache busting
-                    if (data.new_url) {
-                        // Add aggressive cache busting
-                        const cacheBust = Date.now() + '_' + Math.random();
-                        profileImage.src = data.new_url + '?cb=' + cacheBust + '&t=' + Date.now();
-
-                        // Force browser to reload the image
-                        profileImage.style.display = 'none';
-                        profileImage.offsetHeight; // Trigger reflow
-                        profileImage.style.display = 'block';
-                    }
-
-                    // Show success message
-                    showSuccessMessage(data.message || 'Profile picture updated successfully!');
-
-                    // Clear the file input
-                    profilePictureInput.value = '';
-                })
-                .catch(error => {
-                    // Remove loading state
-                    profilePicture.style.opacity = '1';
-                    profilePicture.style.filter = 'none';
-                    
-                    // Show error message
-                    alert('Upload failed: ' + error.message);
-                    
-                    // Clear the file input
-                    profilePictureInput.value = '';
-                });
-            });
-            
-            // Success message function
-            function showSuccessMessage(message) {
-                const notification = document.createElement('div');
-                notification.style.cssText = `
-                    position: fixed;
-                    top: 20px;
-                    right: 20px;
-                    background: #28a745;
-                    color: white;
-                    padding: 15px 20px;
-                    border-radius: 5px;
-                    z-index: 9999;
-                    font-family: 'Poppins', sans-serif;
-                    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-                `;
-                notification.textContent = message;
-                
-                document.body.appendChild(notification);
-                
-                setTimeout(() => {
-                    notification.remove();
-                }, 3000);
-            }
-        });
-    </script>
-
 
 </body>
 </html>

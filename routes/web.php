@@ -29,20 +29,6 @@ use Illuminate\Support\Facades\DB;
 // Public routes
 Route::get('/', [HomeController::class, 'index'])->name('home');
 
-    // Profile picture serving route (PUBLIC ACCESS)
-    Route::get('/uploads/profile-pictures/{path}', function ($path) {
-        $fullPath = storage_path('app/public/profile_pictures/' . $path);
-
-        if (!file_exists($fullPath)) {
-            abort(404);
-        }
-
-        $mimeType = mime_content_type($fullPath);
-        return response()->file($fullPath, [
-            'Content-Type' => $mimeType,
-            'Cache-Control' => 'public, max-age=31536000',
-        ]);
-    })->where('path', '.*');
 
 
 
@@ -393,9 +379,10 @@ Route::get('/test/search-users-bypass', function() {
         Route::post('/profile/update-picture', [ProfileController::class, 'updateProfilePicture'])->name('profile.update-picture');
     });
 
-    // Profile picture serving route (public access for uploaded images)
+    // Profile picture serving route (FIXED: Use correct storage location for secure_uploads disk)
     Route::get('/uploads/profile-pictures/{path}', function ($path) {
-        $fullPath = storage_path('app/public/profile_pictures/' . $path);
+        // Handle both direct filename and full path structure
+        $fullPath = storage_path('app/uploads/profile-pictures/' . $path);
 
         if (!file_exists($fullPath)) {
             abort(404);
@@ -404,7 +391,8 @@ Route::get('/test/search-users-bypass', function() {
         $mimeType = mime_content_type($fullPath);
         return response()->file($fullPath, [
             'Content-Type' => $mimeType,
-            'Cache-Control' => 'public, max-age=31536000', // Cache for 1 year
+            'Cache-Control' => 'public, max-age=31536000',
+            'Access-Control-Allow-Origin' => '*',
         ]);
     })->where('path', '.*')->withoutMiddleware(['web', \App\Http\Middleware\SecurityHeaders::class]);
 

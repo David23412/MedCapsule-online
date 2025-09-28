@@ -1359,7 +1359,7 @@
                         <li class="nav-item">
                             <a href="{{ route('profile') }}" class="nav-link">
                                 <div class="profile-circle {{ !Auth::user()->profile_picture_url ? 'no-image' : '' }}" 
-                                     style="{{ Auth::user()->profile_picture_url ? 'background-image: url(' . Auth::user()->profile_picture_url . ');' : '' }}">
+                                     style="{{ Auth::user()->profile_picture_url ? 'background-image: url(' . Auth::user()->getProfileImageUrl() . ');' : '' }}">
                                     @if(!Auth::user()->profile_picture_url)
                                         {{ substr(Auth::user()->name, 0, 1) }}
                                     @endif
@@ -1425,7 +1425,7 @@
                                 @foreach($course->enrolled_preview as $user)
                                     <div class="profile-circle-small" 
                                          @if($user['profile_picture_url'])
-                                             style="background-image: url('{{ asset($user['profile_picture_url']) }}')"
+                                             style="background-image: url('{{ \App\Models\User::getProfileImageUrlFor((object)$user) }}')"
                                          @endif
                                          title="{{ $user['name'] }}">
                                         @if(!$user['profile_picture_url'])

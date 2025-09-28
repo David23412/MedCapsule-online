@@ -510,7 +510,7 @@
                     </li>
                     <li class="nav-item">
                         <a href="/profile" class="profile-circle {{ !Auth::user()->profile_picture_url ? 'no-image' : '' }}" 
-                           style="{{ Auth::user()->profile_picture_url ? 'background-image: url(' . secure_url(Auth::user()->profile_picture_url) . ');' : '' }}">
+                           style="{{ Auth::user()->profile_picture_url ? 'background-image: url(' . Auth::user()->getProfileImageUrl() . ');' : '' }}">
                             @if(!Auth::user()->profile_picture_url)
                                 {{ substr(Auth::user()->name, 0, 1) }}
                             @endif
@@ -652,7 +652,7 @@
                     <div class="student-header">
                         <div class="student-avatar">
                             @if($student->profile_picture_url)
-                                <img src="{{ secure_url($student->profile_picture_url) }}" 
+                                <img src="{{ \App\Models\User::getProfileImageUrlFor($student) }}" 
                                      alt="{{ $student->name }}" 
                                      class="avatar-img">
                             @else

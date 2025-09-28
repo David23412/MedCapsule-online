@@ -532,29 +532,29 @@ body {
 /* Mobile Course Header */
 @media (max-width: 768px) {
     .course-header {
-        padding: 5rem 1.5rem 3rem;
-        min-height: 200px;
+        padding: 4rem 1.5rem 2rem;
+        min-height: 150px;
         text-align: center;
     }
     
     .course-header h1 {
-        font-size: 2rem;
+        font-size: 1.8rem;
         line-height: 1.2;
-        margin-bottom: 1rem;
+        margin-bottom: 0.8rem;
     }
     
     .course-progress {
         flex-direction: column;
-        gap: 1rem;
-        padding: 1rem 1.25rem;
+        gap: 0.8rem;
+        padding: 0.8rem 1rem;
         max-width: 100%;
         margin: 0 auto;
     }
     
     .progress-circle {
-        width: 56px;
-        height: 56px;
-        font-size: 1.1rem;
+        width: 44px;
+        height: 44px;
+        font-size: 0.95rem;
     }
     
     .progress-text {
@@ -562,11 +562,11 @@ body {
     }
     
     .progress-text-title {
-        font-size: 1.2rem;
+        font-size: 1rem;
     }
     
     .progress-text-subtitle {
-        font-size: 0.9rem;
+        font-size: 0.85rem;
     }
     
     .particle {
@@ -1278,13 +1278,13 @@ body {
 .course-header {
     background: linear-gradient(135deg, #0072ff, #00c6ff);
     color: white;
-    padding: 4rem 3rem 4rem;
-    padding-top: 6rem;
+    padding: 2rem 3rem 1.5rem;
+    padding-top: 4.5rem;
     text-align: center;
     margin-bottom: 2rem;
     position: relative;
     overflow: hidden;
-    min-height: 280px;
+    min-height: 180px;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -1316,6 +1316,27 @@ body {
     cursor: pointer;
     max-width: 400px;
     margin: 0;
+    margin-top: -1rem;
+}
+
+/* Edge-specific adjustments */
+@supports (-ms-ime-align: auto) {
+    .course-progress {
+        margin-top: -1.5rem;
+    }
+}
+
+/* Safari-specific adjustments */
+@supports (-webkit-appearance: none) and (not (contain: paint)) {
+    .course-header {
+        padding: 0.75rem 3rem 0.25rem;
+        padding-top: 3.25rem;
+        min-height: 130px;
+    }
+    
+    .topics-container {
+        max-width: 1150px;
+    }
 }
 
 .course-progress:hover {

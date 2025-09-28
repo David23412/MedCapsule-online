@@ -138,6 +138,46 @@
             z-index: 1000;
         }
 
+        .navbar .container {
+            max-width: 100%;
+            padding-left: 2.5rem;
+            padding-right: 2.5rem;
+        }
+
+        .navbar-nav {
+            gap: 0.75rem;
+        }
+
+        .navbar-nav.ms-auto {
+            margin-left: auto !important;
+            margin-right: 1.25rem; /* Moved slightly more to the right */
+        }
+
+        .nav-item.dropdown {
+            position: relative;
+        }
+
+        .nav-item {
+            display: flex;
+            align-items: center;
+        }
+
+        .profile-circle {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+        }
+
+        .profile-image {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
         .navbar-brand {
             display: flex;
             align-items: center;
@@ -147,7 +187,7 @@
             text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
             position: relative;
             transition: all 0.3s ease;
-            margin-left: -60px;
+            margin-left: 1.75rem; /* Moved slightly more to the right */
         }
 
         .navbar-brand:hover {
@@ -181,21 +221,9 @@
         }
 
         .dropdown-menu-end {
-            transform: translateX(-450px) !important;
-        }
-
-        /* Adjust dropdown position for Edge and non-Safari browsers */
-        @supports (-ms-ime-align: auto) {
-            .dropdown-menu-end {
-                transform: translateX(-400px) !important;
-            }
-        }
-
-        /* Adjust dropdown position for non-Safari browsers */
-        @supports (not (-webkit-touch-callout: none)) {
-            .dropdown-menu-end {
-                transform: translateX(-400px) !important;
-            }
+            right: 0 !important;
+            left: auto !important;
+            transform: none !important;
         }
 
         .dropdown-menu.show {
@@ -2698,7 +2726,7 @@
                 <span class="navbar-toggler-icon"></span>
             </button>
             <div class="collapse navbar-collapse" id="navbarNav">
-                <ul class="navbar-nav ms-auto align-items-center" style="margin-right: -120px !important;"
+                <ul class="navbar-nav ms-auto align-items-center">
                     @guest
                         <li class="nav-item">
                             <a class="nav-link" href="{{ route('login') }}">Login</a>
@@ -2837,24 +2865,7 @@
                         
                         <li class="nav-item me-5">
                             @php
-                                $profileImageUrl = null;
-                                if (Auth::user() && Auth::user()->profile_picture_url) {
-                                    // Check if it's an external URL (starts with http/https)
-                                    if (filter_var(Auth::user()->profile_picture_url, FILTER_VALIDATE_URL)) {
-                                        $profileImageUrl = Auth::user()->profile_picture_url;
-                                    } else {
-                                        // Local file - use secure_url with cache busting
-                                        $localPath = storage_path('app/public/' . Auth::user()->profile_picture_url);
-                                        if (file_exists($localPath)) {
-                                            $profileImageUrl = secure_url(Auth::user()->profile_picture_url) . '?v=' . time();
-                                        }
-                                    }
-                                }
-
-                                // Fallback to UI Avatars if no valid image
-                                if (!$profileImageUrl) {
-                                    $profileImageUrl = 'https://ui-avatars.com/api/?name=' . urlencode(Auth::user()->name) . '&size=200&background=007bff&color=ffffff';
-                                }
+                                $profileImageUrl = Auth::user()->getProfileImageUrl();
                             @endphp
                             <a href="{{ route('profile') }}" class="profile-circle">
                                 <img src="{{ $profileImageUrl }}"
@@ -3062,7 +3073,7 @@
                                 @foreach($course->enrolled_preview as $user)
                                     <div class="profile-circle-small" 
                                          @if($user['profile_picture_url'])
-                                             style="background-image: url('{{ str_starts_with($user['profile_picture_url'], 'http') ? $user['profile_picture_url'] : '/' . $user['profile_picture_url'] }}'); background-size: cover; background-position: center; background-repeat: no-repeat;"
+                                             style="background-image: url('{{ \App\Models\User::getProfileImageUrlFor((object)$user) }}'); background-size: cover; background-position: center; background-repeat: no-repeat;"
                                          @else
                                              style="background: linear-gradient(135deg, #007bff, #00d4ff);"
                                          @endif

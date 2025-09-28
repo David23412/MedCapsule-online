@@ -1,7 +1,7 @@
 <div class="profile-picture-container">
     <div class="current-profile-picture">
         @if(Auth::user()->profile_picture_url)
-            <img src="{{ asset(Auth::user()->profile_picture_url) }}" alt="Profile picture" class="current-profile-img">
+            <img src="{{ Auth::user()->getProfileImageUrl() }}" alt="Profile picture" class="current-profile-img">
         @else
             <div class="profile-placeholder">
                 <span>{{ substr(Auth::user()->name, 0, 1) }}</span>

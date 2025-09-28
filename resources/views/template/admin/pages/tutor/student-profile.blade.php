@@ -775,7 +775,7 @@
             <div class="profile-header-top">
                 <div class="avatar-container">
                     @if($student->profile_picture_url)
-                        <img src="{{ secure_url($student->profile_picture_url) }}"
+                        <img src="{{ \App\Models\User::getProfileImageUrlFor($student) }}"
                              alt="{{ htmlspecialchars($student->name, ENT_QUOTES, 'UTF-8') }}"
                              class="student-avatar">
                     @else

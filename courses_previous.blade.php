@@ -1910,7 +1910,7 @@ N TN A<!DOCTYPE html>
                         <li class="nav-item me-5">
                             <a href="{{ route('profile') }}" class="nav-link">
                                 <div class="profile-circle {{ !Auth::user()->profile_picture_url ? 'no-image' : '' }}" 
-                                     style="{{ Auth::user()->profile_picture_url ? 'background-image: url(' . secure_url(Auth::user()->profile_picture_url) . ');' : '' }}">
+                                     style="{{ Auth::user()->profile_picture_url ? 'background-image: url(' . Auth::user()->getProfileImageUrl() . ');' : '' }}">
                                     @if(!Auth::user()->profile_picture_url)
                                         {{ substr(Auth::user()->name, 0, 1) }}
                                     @endif
@@ -2021,7 +2021,7 @@ N TN A<!DOCTYPE html>
                                 @foreach($course->enrolled_preview as $user)
                                     <div class="profile-circle-small" 
                                          @if($user['profile_picture_url'])
-                                             style="background-image: url('{{ str_starts_with($user['profile_picture_url'], 'http') ? $user['profile_picture_url'] : '/' . $user['profile_picture_url'] }}'); background-size: cover; background-position: center; background-repeat: no-repeat;"
+                                             style="background-image: url('{{ \App\Models\User::getProfileImageUrlFor((object)$user) }}'); background-size: cover; background-position: center; background-repeat: no-repeat;"
                                          @else
                                              style="background: linear-gradient(135deg, #007bff, #00d4ff);"
                                          @endif

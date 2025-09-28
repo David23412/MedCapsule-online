@@ -782,6 +782,108 @@ class User extends Authenticatable
     }
 
     /**
+     * Get the user's profile image URL with consistent formatting
+     * This ensures all views display the same image URL
+     * 
+     * @param bool $withCacheBust Whether to add cache busting parameter
+     * @return string The profile image URL or fallback avatar
+     */
+    public function getProfileImageUrl($withCacheBust = true): string
+    {
+        if (!$this->profile_picture_url) {
+            return 'https://ui-avatars.com/api/?name=' . urlencode($this->name) . '&size=200&background=007bff&color=ffffff';
+        }
+
+        // Check if it's an external URL (starts with http/https)
+        if (filter_var($this->profile_picture_url, FILTER_VALIDATE_URL)) {
+            return $this->profile_picture_url;
+        }
+
+        // Local file from secure_uploads disk
+        // Handle both storage formats:
+        // 1. uploads/profile-pictures/2025/09/18/fb5c90fb/filename.jpeg (newer format)
+        // 2. profile-pictures/2025/09/09/dec0984f/filename.jpeg (older format)
+        $storedPath = $this->profile_picture_url;
+        
+        // Normalize the path - ensure it starts with profile-pictures/
+        if (str_starts_with($storedPath, 'uploads/')) {
+            $cleanPath = str_replace('uploads/', '', $storedPath);
+        } else {
+            $cleanPath = $storedPath;
+        }
+        
+        // Check if file exists in storage (full path includes uploads/)
+        $localPath = storage_path('app/uploads/' . $cleanPath);
+        if (file_exists($localPath)) {
+            // Generate consistent URL that matches the route pattern: /uploads/profile-pictures/{path}
+            $url = url('/uploads/' . $cleanPath);
+            
+            if ($withCacheBust) {
+                $url .= '?v=' . time();
+            }
+            
+            return $url;
+        }
+
+        // Log missing file for debugging
+        \Log::warning('Profile picture file not found', [
+            'user_id' => $this->id,
+            'stored_path' => $storedPath,
+            'expected_file_path' => $localPath,
+            'clean_path' => $cleanPath
+        ]);
+
+        // Fallback to UI Avatars if file doesn't exist
+        return 'https://ui-avatars.com/api/?name=' . urlencode($this->name) . '&size=200&background=007bff&color=ffffff';
+    }
+
+    /**
+     * Get profile image URL for any user (static method for use in views)
+     * 
+     * @param User $user The user to get the profile image for
+     * @param bool $withCacheBust Whether to add cache busting parameter
+     * @return string The profile image URL or fallback avatar
+     */
+    public static function getProfileImageUrlFor($user, $withCacheBust = true): string
+    {
+        if (!$user || !$user->profile_picture_url) {
+            return 'https://ui-avatars.com/api/?name=' . urlencode($user->name ?? 'User') . '&size=200&background=007bff&color=ffffff';
+        }
+
+        // Check if it's an external URL (starts with http/https)
+        if (filter_var($user->profile_picture_url, FILTER_VALIDATE_URL)) {
+            return $user->profile_picture_url;
+        }
+
+        // Local file from secure_uploads disk
+        // Handle both storage formats
+        $storedPath = $user->profile_picture_url;
+        
+        // Normalize the path - ensure it starts with profile-pictures/
+        if (str_starts_with($storedPath, 'uploads/')) {
+            $cleanPath = str_replace('uploads/', '', $storedPath);
+        } else {
+            $cleanPath = $storedPath;
+        }
+        
+        // Check if file exists in storage (full path includes uploads/)
+        $localPath = storage_path('app/uploads/' . $cleanPath);
+        if (file_exists($localPath)) {
+            // Generate consistent URL that matches the route pattern: /uploads/profile-pictures/{path}
+            $url = url('/uploads/' . $cleanPath);
+            
+            if ($withCacheBust) {
+                $url .= '?v=' . time();
+            }
+            
+            return $url;
+        }
+
+        // Fallback to UI Avatars if file doesn't exist
+        return 'https://ui-avatars.com/api/?name=' . urlencode($user->name) . '&size=200&background=007bff&color=ffffff';
+    }
+
+    /**
      * Calculate total correct answers from all quiz types (Khan Academy style)
      * This ensures the milestone bar counts ALL correct answers from:
      * - Regular quizzes

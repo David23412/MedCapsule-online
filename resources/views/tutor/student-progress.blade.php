@@ -10,7 +10,7 @@
                     <div class="d-flex align-items-center">
                         <div class="me-3">
                             @if($student->profile_picture_url)
-                                <img src="{{ asset($student->profile_picture_url) }}" 
+                                <img src="{{ \App\Models\User::getProfileImageUrlFor($student) }}" 
                                      class="rounded-circle" 
                                      width="64" 
                                      height="64"

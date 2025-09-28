@@ -264,7 +264,7 @@
                     Back
                 </a>
                 <a href="{{ route('profile') }}" class="profile-circle {{ !Auth::user()->profile_picture_url ? 'no-image' : '' }}" 
-                     style="{{ Auth::user()->profile_picture_url ? 'background-image: url(' . url('/uploads/profile-pictures/' . basename(Auth::user()->profile_picture_url)) . ');' : '' }}">
+                     style="{{ Auth::user()->profile_picture_url ? 'background-image: url(' . Auth::user()->getProfileImageUrl() . ');' : '' }}">
                     @if(!Auth::user()->profile_picture_url)
                         {{ substr(Auth::user()->name, 0, 1) }}
                     @endif

@@ -351,10 +351,14 @@ use App\Services\SecureFileUploadService;
 
                     // Check if it's an AJAX request
                     if (request()->ajax() || request()->wantsJson()) {
+                        // Use the User model's consistent URL generation method
+                        $user->refresh(); // Refresh to get updated profile_picture_url
+                        $correctUrl = $user->getProfileImageUrl(true); // With cache bust
+
                         return response()->json([
                             'success' => true,
                             'message' => 'Profile picture updated successfully!',
-                            'new_url' => $uploadResult['public_url'] . '?v=' . $cacheBust,
+                            'new_url' => $correctUrl,
                             'timestamp' => $cacheBust,
                             'cache_bust' => $cacheBust
                         ]);

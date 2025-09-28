@@ -1321,24 +1321,7 @@
             <div class="nav-links">
                 <a href="javascript:history.back()" class="nav-link">← Back</a>
                 @php
-                    $profileImageUrl = null;
-                    if (Auth::user() && Auth::user()->profile_picture_url) {
-                        // Check if it's an external URL (starts with http/https)
-                        if (filter_var(Auth::user()->profile_picture_url, FILTER_VALIDATE_URL)) {
-                            $profileImageUrl = Auth::user()->profile_picture_url;
-                        } else {
-                            // Local file - use secure_url with cache busting
-                            $localPath = storage_path('app/public/' . Auth::user()->profile_picture_url);
-                            if (file_exists($localPath)) {
-                                $profileImageUrl = secure_url(Auth::user()->profile_picture_url) . '?v=' . time();
-                            }
-                        }
-                    }
-
-                    // Fallback to UI Avatars if no valid image
-                    if (!$profileImageUrl) {
-                        $profileImageUrl = 'https://ui-avatars.com/api/?name=' . urlencode(Auth::user()->name) . '&size=200&background=007bff&color=ffffff';
-                    }
+                    $profileImageUrl = Auth::user()->getProfileImageUrl();
                 @endphp
                 <a href="{{ route('profile') }}" class="profile-circle">
                     <img src="{{ $profileImageUrl }}"

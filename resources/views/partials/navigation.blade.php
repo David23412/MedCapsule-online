@@ -28,9 +28,12 @@
                     
                     <li class="nav-item pe-2">
                         <a href="{{ route('profile') }}" class="nav-link">
-                            <div class="profile-circle {{ !Auth::user()->profile_picture_url ? 'no-image' : '' }}" 
-                                 style="{{ Auth::user()->profile_picture_url ? 'background-image: url(' . secure_url(Auth::user()->profile_picture_url) . ');' : '' }}">
-                                @if(!Auth::user()->profile_picture_url)
+                            @php
+                                $navImageUrl = Auth::user()->getProfileImageUrl();
+                            @endphp
+                            <div class="profile-circle {{ !$navImageUrl ? 'no-image' : '' }}"
+                                 style="{{ $navImageUrl ? 'background-image: url(' . $navImageUrl . ');' : '' }}">
+                                @if(!$navImageUrl)
                                     {{ substr(Auth::user()->name, 0, 1) }}
                                 @endif
                             </div>
