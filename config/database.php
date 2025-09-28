@@ -155,9 +155,9 @@ return [
         'options' => [
             'cluster' => env('REDIS_CLUSTER', 'redis'),
             'prefix' => env('REDIS_PREFIX', 'medcapsule_database_'),
-            'serializer' => extension_loaded('igbinary') ? \Redis::SERIALIZER_IGBINARY : \Redis::SERIALIZER_JSON,
-            'compression' => extension_loaded('lz4') ? \Redis::COMPRESSION_LZ4 : \Redis::COMPRESSION_ZSTD,
-            'compression_level' => 6
+            // 'serializer' => extension_loaded('igbinary') ? \Redis::SERIALIZER_IGBINARY : \Redis::SERIALIZER_JSON,
+            // 'compression' => extension_loaded('lz4') ? \Redis::COMPRESSION_LZ4 : \Redis::COMPRESSION_ZSTD,
+            // 'compression_level' => 6  // Note: igbinary, lz4, zstd serialization disabled in build to avoid issues
         ],
 
         'default' => [
