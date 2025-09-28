@@ -14,6 +14,9 @@ RUN apt-get update && apt-get install -y \
     && docker-php-ext-configure gd --with-freetype --with-jpeg \
     && docker-php-ext-install pdo_pgsql pdo_mysql mbstring exif pcntl bcmath xml zip gd
 
+RUN pecl install redis \
+    && docker-php-ext-enable redis
+
 COPY . /var/www/html
 WORKDIR /var/www/html
 
