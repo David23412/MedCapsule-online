@@ -1,0 +1,14 @@
+.git
+.env*
+README.md
+storage/app/*
+storage/logs/*
+storage/framework/views/*
+storage/framework/cache/data/*
+node_modules/
+scripts/
+tests/
+docs/
+.gitattributes
+.gitignore
+.env.production
