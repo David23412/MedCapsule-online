@@ -168,9 +168,9 @@ return [
             'port' => env('REDIS_PORT', '6379'),
             'database' => env('REDIS_DB', '0'),
             'read_timeout' => 60,
-            'persistent' => true,
-            'tcp_keepalive' => 60,  // Keep connections alive
-            'retry_interval' => 100,  // Retry interval in milliseconds
+            'persistent' => false,  // Disabled for build stability
+            // 'tcp_keepalive' => 60,  // Keep connections alive (disabled during build)
+            // 'retry_interval' => 100,  // Retry interval in milliseconds (disabled during build)
         ],
 
         'cache' => [
