@@ -162,15 +162,14 @@ return [
 
         'default' => [
             'url' => env('REDIS_URL'),
-            'host' => env('REDIS_HOST', '127.0.0.1'),
+            'host' => env('REDIS_HOST', '10.0.0.1'),  // Non-existent host to prevent build-time connections
             'username' => env('REDIS_USERNAME'),
             'password' => env('REDIS_PASSWORD'),
             'port' => env('REDIS_PORT', '6379'),
             'database' => env('REDIS_DB', '0'),
-            'read_timeout' => 60,
-            'persistent' => false,  // Disabled for build stability
-            // 'tcp_keepalive' => 60,  // Keep connections alive (disabled during build)
-            // 'retry_interval' => 100,  // Retry interval in milliseconds (disabled during build)
+            'read_timeout' => 1,  // Fast timeout for non-existent hosts
+            'persistent' => false,
+            // 'retry_interval' => 100,
         ],
 
         'cache' => [
