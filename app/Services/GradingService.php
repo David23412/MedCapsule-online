@@ -282,7 +282,6 @@ class GradingService
                         'submitted_answer' => $actualAnswer,
                         'question_text' => $question->question,
                         'correct_answer' => $question->correct_answer,
-                        'image' => $question->image_url,
                         'last_attempt_date' => now()
                     ]
                 );
@@ -300,6 +299,11 @@ class GradingService
 
         $percentageGrade = $totalQuestions > 0 ? min(100, ($score / $totalQuestions) * 100) : 0;
         $totalCorrect = $score;
+
+        // 🔥 INSTANT CACHE CLEAR - Clear cache if any mistakes were recorded
+        if (!empty($mistakes)) {
+            \App\Http\Controllers\Quiz\QuizMistakeController::clearUserMistakeCaches($user->id);
+        }
 
         return [
             'score' => $score,
@@ -413,7 +417,7 @@ class GradingService
                             'submitted_answer' => $actualAnswer,
                             'question_text' => $question->question,
                             'correct_answer' => $question->correct_answer,
-                            'image' => $question->image_url,
+                            'image_path' => $question->image_url,
                             'last_attempt_date' => now()
                         ]
                     );
@@ -445,6 +449,11 @@ class GradingService
                 return ['score' => $data['score'], 'total' => $data['total']];
             }, $sourceData)
         ]);
+
+        // 🔥 INSTANT CACHE CLEAR - Clear cache if any mistakes were recorded
+        if (!empty($mistakes)) {
+            \App\Http\Controllers\Quiz\QuizMistakeController::clearUserMistakeCaches($user->id);
+        }
 
         return [
             'score' => $score,
@@ -870,10 +879,13 @@ class GradingService
                         'submitted_answer' => $answer,
                         'question_text' => $question->question,
                         'correct_answer' => $question->correct_answer,
-                        'image' => $question->image_url,
+                        'image_path' => $question->image_url,
                         'last_attempt_date' => now()
                     ]
                 );
+                
+                // 🔥 INSTANT CACHE CLEAR - Mistakes show up immediately!
+                \App\Http\Controllers\Quiz\QuizMistakeController::clearUserMistakeCaches($user->id);
             }
             $topic = $question->topic;
             if (!$topic) {

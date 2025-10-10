@@ -332,7 +332,8 @@ class QuizAttempt extends Model
         // Cache key for this specific user/topic/mode combination
         $cacheKey = "topic_progress_{$userId}_{$topicId}_{$studyMode}";
         
-        return \Illuminate\Support\Facades\Cache::remember($cacheKey, 300, function () use ($userId, $topicId, $studyMode) {
+        // 🔥 REDUCED CACHE: 10 seconds for instant updates
+        return \Illuminate\Support\Facades\Cache::remember($cacheKey, 10, function () use ($userId, $topicId, $studyMode) {
             return self::calculateTopicProgress($userId, $topicId, $studyMode);
         });
     }
@@ -439,7 +440,7 @@ class QuizAttempt extends Model
     }
 
     /**
-     * Get tutor mode source progress - ONLY for source modal updates
+     * Get tutor mode source progress - ONLY LATEST ATTEMPT PER SOURCE
      * Does NOT calculate overall progress - tutor mode is source-specific only
      */
     private static function getTutorSourceProgress($userId, $topicId)
@@ -459,65 +460,42 @@ class QuizAttempt extends Model
                 ];
             }
 
-            // Get tutor mode attempts only
+            // 🔥 FIX: Get ONLY the LATEST attempt for each source
+            $latestAttemptsBySource = [];
             $attempts = self::where('user_id', $userId)
                 ->where('topic_id', $topicId)
                 ->where('study_mode', 'tutor')
-                ->select(['source', 'question_data'])
-                ->get();
+                ->whereNotNull('source')
+                ->orderBy('created_at', 'desc')
+                ->get()
+                ->groupBy('source');
 
-            // Get question ID to source mapping
-            $questionSourceMap = \App\Models\Question::where('topic_id', $topicId)
-                ->pluck('source', 'id')
-                ->toArray();
-
-            // Process ALL questions by their actual source (correct and incorrect)
-            $correctQuestionsBySource = [];
-            $attemptedQuestionsBySource = [];
-            
-            foreach ($attempts as $attempt) {
-                if (is_array($attempt->question_data)) {
-                    foreach ($attempt->question_data as $questionData) {
-                        if (!empty($questionData['question_id'])) {
-                            
-                            $questionId = $questionData['question_id'];
-                            $actualSource = $questionSourceMap[$questionId] ?? 'General';
-                            
-                            // Track all attempted questions
-                            if (!isset($attemptedQuestionsBySource[$actualSource])) {
-                                $attemptedQuestionsBySource[$actualSource] = [];
-                            }
-                            $attemptedQuestionsBySource[$actualSource][$questionId] = true;
-                            
-                            // Track correct questions
-                            if (!empty($questionData['is_correct'])) {
-                                if (!isset($correctQuestionsBySource[$actualSource])) {
-                                    $correctQuestionsBySource[$actualSource] = [];
-                                }
-                                $correctQuestionsBySource[$actualSource][$questionId] = true;
-                            }
-                        }
-                    }
-                }
+            // Get the most recent attempt for each source
+            foreach ($attempts as $source => $sourceAttempts) {
+                $latestAttemptsBySource[$source] = $sourceAttempts->first();
             }
 
-            // Calculate progress for each source - TUTOR MODE ONLY
+            // Calculate progress for each source - USING LATEST ATTEMPT ONLY
             $sourceProgress = [];
             
             foreach ($totalQuestionsBySource as $source => $totalQuestions) {
-                $correctCount = isset($correctQuestionsBySource[$source]) 
-                    ? count($correctQuestionsBySource[$source]) 
-                    : 0;
-                
-                $attemptedCount = isset($attemptedQuestionsBySource[$source])
-                    ? count($attemptedQuestionsBySource[$source])
-                    : 0;
-                
-                $percentage = $attemptedCount > 0 ? ($correctCount / $attemptedCount) * 100 : 0;
+                $latestAttempt = $latestAttemptsBySource[$source] ?? null;
+
+                if ($latestAttempt) {
+                    // Use the latest attempt's score and total for this source
+                    $correctCount = $latestAttempt->score;
+                    $attemptedCount = $latestAttempt->total_questions;
+                    $percentage = $attemptedCount > 0 ? ($correctCount / $attemptedCount) * 100 : 0;
+                } else {
+                    // No attempts for this source yet
+                    $correctCount = 0;
+                    $attemptedCount = 0;
+                    $percentage = 0;
+                }
                 
                 $sourceProgress[$source] = [
                     'score' => $correctCount,
-                    'total' => $attemptedCount, // FIXED: Use attempted count, not available count
+                    'total' => $attemptedCount,
                     'percentage' => round($percentage, 2)
                 ];
             }
@@ -771,5 +749,31 @@ class QuizAttempt extends Model
         }
         
         return sprintf("%ds", $seconds);
+    }
+
+    /**
+     * 🔥 CLEAR PROGRESS CACHE - Call after quiz/tutor completion for instant updates
+     */
+    public static function clearProgressCache($userId, $topicId, $studyMode = null)
+    {
+        if ($studyMode) {
+            // Clear specific mode cache
+            $cacheKey = "topic_progress_{$userId}_{$topicId}_{$studyMode}";
+            \Illuminate\Support\Facades\Cache::forget($cacheKey);
+            \Log::info("🔥 Progress cache cleared", [
+                'user_id' => $userId,
+                'topic_id' => $topicId,
+                'study_mode' => $studyMode,
+                'cache_key' => $cacheKey
+            ]);
+        } else {
+            // Clear both quiz and tutor caches
+            \Illuminate\Support\Facades\Cache::forget("topic_progress_{$userId}_{$topicId}_quiz");
+            \Illuminate\Support\Facades\Cache::forget("topic_progress_{$userId}_{$topicId}_tutor");
+            \Log::info("🔥 All progress caches cleared", [
+                'user_id' => $userId,
+                'topic_id' => $topicId
+            ]);
+        }
     }
 }

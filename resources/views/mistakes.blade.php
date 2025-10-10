@@ -47,73 +47,66 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 3.5rem;
-            padding: 1.5rem 0;
+            margin-bottom: 2.5rem;
+            padding-bottom: 2rem;
             position: relative;
-        }
-
-        .header-section::after {
-            content: '';
-            position: absolute;
-            bottom: -10px;
-            left: 0;
-            right: 0;
-            height: 1px;
-            background: linear-gradient(90deg, 
-                rgba(0,0,0,0) 0%, 
-                rgba(0,0,0,0.1) 50%, 
-                rgba(0,0,0,0) 100%);
+            border-bottom: 2px solid #f1f5f9;
         }
 
         h1 {
-            color: #2c3e50;
-            font-weight: 800;
-            font-size: 2.75rem;
+            color: #0f172a;
+            font-weight: 700;
+            font-size: 2.5rem;
             margin: 0;
-            background: linear-gradient(135deg, #1e3a8a, #3b82f6);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-            letter-spacing: -0.5px;
+            letter-spacing: -0.8px;
             position: relative;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        h1::before {
+            content: '';
+            width: 4px;
+            height: 2.2rem;
+            background: linear-gradient(180deg, #3b82f6, #2563eb);
+            border-radius: 2px;
+            flex-shrink: 0;
         }
 
         .learn-mistakes-btn {
             background: #fef2f2;
             color: #b91c1c;
-            padding: 0.9rem 2.2rem;
-            border-radius: 9px;
+            padding: 0.7rem 1.4rem;
+            border-radius: 12px;
             text-decoration: none;
             font-weight: 500;
-            font-size: 1.05rem;
+            font-size: 1rem;
             display: flex;
             align-items: center;
-            gap: 0.7rem;
-            transition: all 0.25s ease;
-            border: 1px solid #fecaca;
+            gap: 0.5rem;
+            transition: all 0.3s ease;
+            border: 2px solid #fecaca;
+            white-space: nowrap;
         }
 
         .learn-mistakes-btn:hover {
             background: #fee2e2;
             border-color: #fca5a5;
             transform: translateY(-1px);
-            box-shadow: 0 3px 10px rgba(185, 28, 28, 0.08);
         }
 
         .learn-mistakes-btn:active {
             transform: translateY(0);
-            box-shadow: 0 2px 5px rgba(185, 28, 28, 0.05);
         }
 
         .learn-mistakes-btn i {
-            font-size: 1.05rem;
-            transition: all 0.25s ease;
-            opacity: 0.9;
+            font-size: 1.1rem;
+            transition: transform 0.3s ease;
         }
 
         .learn-mistakes-btn:hover i {
             transform: translateX(3px);
-            opacity: 1;
         }
 
         /* 🚀 OPTIMIZED: Reduced animation complexity for performance */
@@ -522,24 +515,37 @@
             border-left: 4px solid #ff4d4d;
         }
 
-        /* 🚀 OPTIMIZED: Simplified explanation toggle animations */
+        /* 🚀 ULTRA-SMOOTH: Professional explanation toggle - Icon only */
+        .explanation-wrapper {
+            margin-bottom: 0;
+            transition: margin-bottom 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .explanation-wrapper.expanded {
+            margin-bottom: 3rem;
+        }
+
         .explanation-toggle {
             display: inline-flex;
             align-items: center;
             background: none;
             border: none;
-            padding: 0;
+            padding: 0.5rem 0.75rem;
+            margin: -0.5rem -0.75rem;
             cursor: pointer;
             color: #0ea5e9;
-            transition: color 0.15s ease; /* Simplified transition */
+            transition: color 0.3s ease;
+            border-radius: 8px;
         }
 
         .explanation-toggle i {
             font-size: 1.1rem;
-            transition: transform 0.15s ease; /* Faster transition */
+            transition: transform 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+            will-change: transform;
         }
 
         .explanation-toggle:hover {
+            background: rgba(14, 165, 233, 0.08);
             color: #2563eb;
         }
 
@@ -551,26 +557,45 @@
             transform: rotate(180deg);
         }
 
+        /* Premium smooth collapse animation - GPU accelerated */
         .explanation-content {
-            background: #f8fafc;
-            border-radius: 8px;
-            font-size: 0.95rem;
-            line-height: 1.6;
-            color: #1e293b;
-            border-left: 3px solid #0ea5e9;
-            padding: 1rem;
-            margin-top: 0.75rem;
+            background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%);
+            border-radius: 12px;
+            font-size: 1.25rem;
+            line-height: 1.9;
+            color: #0f172a;
+            border: 2px solid #fde68a;
+            border-left: 5px solid #f59e0b;
+            padding: 0 1.5rem;
+            margin-top: 1rem;
             overflow: hidden;
-            transition: opacity 0.15s ease; /* Simplified transition */
-        }
-
-        .explanation-content.collapse:not(.show) {
-            display: none; /* Simple show/hide instead of complex animations */
+            max-height: 0;
+            opacity: 0;
+            transform: translateY(-15px) scale(0.95);
+            transition: max-height 0.5s cubic-bezier(0.4, 0, 0.2, 1),
+                        opacity 0.4s cubic-bezier(0.4, 0, 0.2, 1),
+                        transform 0.45s cubic-bezier(0.34, 1.56, 0.64, 1),
+                        padding 0.5s cubic-bezier(0.4, 0, 0.2, 1),
+                        border-color 0.3s ease;
+            will-change: max-height, opacity, transform;
+            box-shadow: 0 0 0 rgba(245, 158, 11, 0);
+            position: relative;
         }
 
         .explanation-content.show {
-            display: block;
+            max-height: 1200px;
             opacity: 1;
+            transform: translateY(0) scale(1);
+            padding: 1.5rem;
+            box-shadow: 0 4px 16px rgba(245, 158, 11, 0.15);
+        }
+
+        /* Enhanced readability */
+        .explanation-content p {
+            margin: 0;
+            font-weight: 500;
+            letter-spacing: 0.015em;
+            word-spacing: 0.05em;
         }
 
         @media (max-width: 768px) {
@@ -587,6 +612,15 @@
 
             .question-text {
                 padding-right: 3rem; /* Reduced padding for mobile */
+            }
+
+            .explanation-content {
+                font-size: 1rem;
+                line-height: 1.7;
+            }
+
+            .explanation-content.show {
+                padding: 1.2rem;
             }
         }
 
@@ -979,6 +1013,23 @@
                 padding: 1.5rem;
             }
         }
+
+        @media (max-width: 768px) {
+            .header-section {
+                flex-direction: column;
+                gap: 1rem;
+                text-align: center;
+            }
+
+            .learn-mistakes-btn {
+                width: 100%;
+                justify-content: center;
+            }
+
+            .question-text {
+                padding-right: 3rem; /* Reduced padding for mobile */
+            }
+        }
     </style>
     
     {{-- Desktop styles only --}}
@@ -1113,9 +1164,8 @@
                     <p>Fantastic work! You're crushing it with zero mistakes. Keep up the amazing progress!</p>
                 </div>
             @else
-{{-- 🚀 OPTIMIZED: Controller uses JOIN queries to eliminate N+1 queries --}}
                 @foreach($mistakes as $mistake)
-                    <div class="mistake-card" data-question-id="{{ $mistake->question_id }}">
+                        <div class="mistake-card" data-question-id="{{ $mistake->question_id }}">
                         <!-- Normal Mode Content -->
                         <div class="normal-mode-content">
                             <button class="remove-question" onclick="removeMistake({{ $mistake->question_id }})">
@@ -1186,11 +1236,11 @@
                                     </div>
                                 </div>
                                 @if($mistake->question->explanation)
-                                    <div class="mt-3">
-                                        <button class="explanation-toggle" type="button" data-bs-toggle="collapse" data-bs-target="#explanation-{{ $mistake->question_id }}">
+                                    <div class="mt-3 explanation-wrapper">
+                                        <button class="explanation-toggle" type="button" data-explanation-target="explanation-{{ $mistake->question_id }}">
                                             <i class="fas fa-lightbulb"></i>
                                         </button>
-                                        <div class="collapse explanation-content" id="explanation-{{ $mistake->question_id }}">
+                                        <div class="explanation-content" id="explanation-{{ $mistake->question_id }}">
                                             {{ $mistake->question->explanation }}
                                         </div>
                                     </div>
@@ -1461,18 +1511,43 @@
                 return;
             }
             sessionStorage.setItem('reviewPageLoaded', 'true');
-            // 🚀 OPTIMIZED: Simplified explanation toggle - no complex animations
-            const toggles = document.querySelectorAll('.explanation-toggle');
             
+            // 🚀 ULTRA-SMOOTH: Professional explanation toggle with engaging animations
+            const toggles = document.querySelectorAll('.explanation-toggle');
+
             toggles.forEach(toggle => {
-                const content = document.querySelector(toggle.getAttribute('data-bs-target'));
-                
-                if (content) {
-                    toggle.addEventListener('click', () => {
-                        toggle.classList.toggle('active');
-                        content.classList.toggle('show');
+                toggle.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    const targetId = toggle.getAttribute('data-explanation-target');
+                    const content = document.getElementById(targetId);
+                    const wrapper = toggle.closest('.explanation-wrapper');
+                    
+                    if (!content) return;
+                    
+                    // Use double requestAnimationFrame for ultra-smooth rendering
+                    requestAnimationFrame(() => {
+                        requestAnimationFrame(() => {
+                            // Toggle active state on button with smooth transition
+                            toggle.classList.toggle('active');
+                            
+                            // Toggle content visibility with premium animation
+                            content.classList.toggle('show');
+                            
+                            // Toggle expanded state on wrapper for spacing
+                            if (wrapper) {
+                                wrapper.classList.toggle('expanded');
+                            }
+                            
+                            // Add subtle haptic feedback effect (visual pulse)
+                            if (content.classList.contains('show')) {
+                                toggle.style.transform = 'scale(0.95)';
+                                setTimeout(() => {
+                                    toggle.style.transform = '';
+                                }, 100);
+                            }
+                        });
                     });
-                }
+                });
             });
 
             // 🚀 ULTRA-OPTIMIZED FILTER SYSTEM - Lightweight & Fast

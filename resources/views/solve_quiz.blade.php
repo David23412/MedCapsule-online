@@ -1122,26 +1122,33 @@
             text-shadow: 0 0 10px rgba(76, 175, 80, 0.3);
         }
 
-        /* MINIMAL BLUE SOURCE OUTLINE - CLEAN AND SEPARATE */
+        /* PROFESSIONAL MINIMAL SOURCE DISPLAY */
         .source-outline {
-            border: 1px solid #007bff;
-            border-radius: 3px;
-            padding: 0.25rem 0.5rem;
-            margin: 0.5rem 0;
-            background-color: #f8f9fa;
+            padding: 0.75rem 0;
+            margin: 0.5rem 0 1.5rem 0;
             position: relative;
-            display: inline-block;
-            width: auto;
+            display: block;
+            width: 100%;
+            text-align: center;
+        }
+
+        .source-outline small {
+            color: #3b82f6;
+            font-size: 0.85rem;
+            font-weight: 500;
+            letter-spacing: 0.02em;
         }
 
         .source-outline small strong {
-            color: #007bff;
-            font-weight: 500;
+            color: #2563eb;
+            font-weight: 600;
         }
 
         .source-outline i {
-            color: #007bff;
-            opacity: 0.7;
+            color: #3b82f6;
+            opacity: 0.85;
+            font-size: 0.8rem;
+            margin-right: 0.25rem;
         }
 
 

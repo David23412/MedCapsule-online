@@ -17,13 +17,13 @@ class Mistake extends Model
         'submitted_answer',
         'question_text',
         'correct_answer',
-        'image_path',
         'correct_streak',
         'last_attempt_date',
         'quick_correct_count',
         'quiz_correct_count',
         'mastered',
-        'skipped'
+        'skipped',
+        'is_bookmarked'
     ];
 
     protected $attributes = [

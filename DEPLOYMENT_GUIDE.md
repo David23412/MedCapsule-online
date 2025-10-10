@@ -108,9 +108,11 @@ So parse that.
 
 For quick start, set QUEUE_CONNECTION=sync to avoid Redis queues initially.
 
-Set CACHE_DRIVER=database or file.
+Set CACHE_STORE=file (to avoid connecting to Redis at build time - change to redis later after deployment).
 
-This way, you can be live in minutes with Render free tier.
+Set SESSION_DRIVER=cookie.
+
+This way, you can be live in minutes without Redis connection issues during build.
 
 ### Paid Option (when Hetzner ready): Follow the sections below.
 

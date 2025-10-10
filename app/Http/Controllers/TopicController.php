@@ -184,10 +184,37 @@ class TopicController extends Controller
                 });
             }
 
+        // Get available courses for random quiz modal
+        if ($user->isAdmin()) {
+            $availableCourses = \App\Models\Course::orderBy('name')->get();
+        } else {
+            // Get courses the user has ACCESS to (enrolled AND paid/free)
+            $availableCourses = \App\Models\Course::where(function($query) use ($user) {
+                // User must be enrolled
+                $query->whereHas('users', function($subQuery) use ($user) {
+                    $subQuery->where('user_id', $user->id)
+                            ->where('is_enrolled', true);
+                })
+                // AND user has paid successfully OR course is free
+                ->where(function($accessQuery) use ($user) {
+                    // Either course is free
+                    $accessQuery->where(function($freeQuery) {
+                        $freeQuery->where('price', 0)->orWhereNull('price');
+                    })
+                    // OR user has completed payment
+                    ->orWhereHas('payments', function($paymentQuery) use ($user) {
+                        $paymentQuery->where('user_id', $user->id)
+                                   ->where('status', 'completed');
+                    });
+                });
+            })->orderBy('name')->get();
+        }
+
         return view('topics_for_course', [
             'course' => $course,
             'topics' => $topics,
-            'assignments' => $assignments
+            'assignments' => $assignments,
+            'availableCourses' => $availableCourses
         ]);
     }
 

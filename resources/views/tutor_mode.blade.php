@@ -15,78 +15,6 @@
 
     
 
-    <!-- 💀 LETHAL AUDIO POOL SYSTEM - 5 READY ELEMENTS PER SOUND 💀 -->
-    <div id="audio-pool" style="display: none;">
-        <!-- CORRECT SOUND POOL -->
-        <audio class="audio-pool-correct" preload="auto" volume="0.7">
-            <source src="/sounds/Single-correct.mp3" type="audio/mpeg">
-        </audio>
-        <audio class="audio-pool-correct" preload="auto" volume="0.7">
-            <source src="/sounds/Single-correct.mp3" type="audio/mpeg">
-        </audio>
-        <audio class="audio-pool-correct" preload="auto" volume="0.7">
-            <source src="/sounds/Single-correct.mp3" type="audio/mpeg">
-        </audio>
-        <audio class="audio-pool-correct" preload="auto" volume="0.7">
-            <source src="/sounds/Single-correct.mp3" type="audio/mpeg">
-        </audio>
-        <audio class="audio-pool-correct" preload="auto" volume="0.7">
-            <source src="/sounds/Single-correct.mp3" type="audio/mpeg">
-        </audio>
-        
-        <!-- WRONG SOUND POOL -->
-        <audio class="audio-pool-wrong" preload="auto" volume="0.7">
-            <source src="/sounds/quiz-wrong.mp3" type="audio/mpeg">
-        </audio>
-        <audio class="audio-pool-wrong" preload="auto" volume="0.7">
-            <source src="/sounds/quiz-wrong.mp3" type="audio/mpeg">
-        </audio>
-        <audio class="audio-pool-wrong" preload="auto" volume="0.7">
-            <source src="/sounds/quiz-wrong.mp3" type="audio/mpeg">
-        </audio>
-        <audio class="audio-pool-wrong" preload="auto" volume="0.7">
-            <source src="/sounds/quiz-wrong.mp3" type="audio/mpeg">
-        </audio>
-        <audio class="audio-pool-wrong" preload="auto" volume="0.7">
-            <source src="/sounds/quiz-wrong.mp3" type="audio/mpeg">
-        </audio>
-        
-        <!-- PERFECT SOUND POOL -->
-        <audio class="audio-pool-perfect" preload="auto" volume="0.7">
-            <source src="/sounds/quiz-perfect.mp3" type="audio/mpeg">
-        </audio>
-        <audio class="audio-pool-perfect" preload="auto" volume="0.7">
-            <source src="/sounds/quiz-perfect.mp3" type="audio/mpeg">
-        </audio>
-        <audio class="audio-pool-perfect" preload="auto" volume="0.7">
-            <source src="/sounds/quiz-perfect.mp3" type="audio/mpeg">
-        </audio>
-        <audio class="audio-pool-perfect" preload="auto" volume="0.7">
-            <source src="/sounds/quiz-perfect.mp3" type="audio/mpeg">
-        </audio>
-        <audio class="audio-pool-perfect" preload="auto" volume="0.7">
-            <source src="/sounds/quiz-perfect.mp3" type="audio/mpeg">
-        </audio>
-        
-        <!-- PARTIAL SOUND POOL -->
-        <audio class="audio-pool-partial" preload="auto" volume="0.7">
-            <source src="/sounds/quiz-partial.mp3" type="audio/mpeg">
-        </audio>
-        <audio class="audio-pool-partial" preload="auto" volume="0.7">
-            <source src="/sounds/quiz-partial.mp3" type="audio/mpeg">
-        </audio>
-        <audio class="audio-pool-partial" preload="auto" volume="0.7">
-            <source src="/sounds/quiz-partial.mp3" type="audio/mpeg">
-        </audio>
-        <audio class="audio-pool-partial" preload="auto" volume="0.7">
-            <source src="/sounds/quiz-partial.mp3" type="audio/mpeg">
-        </audio>
-        <audio class="audio-pool-partial" preload="auto" volume="0.7">
-            <source src="/sounds/quiz-partial.mp3" type="audio/mpeg">
-        </audio>
-        
-
-    </div>
 
     <!-- Favicon -->
     <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 50'%3E%3Crect fill='%23007bff' x='10' y='15' width='80' height='20' rx='10' ry='10' /%3E%3Crect x='50' y='15' width='40' height='20' fill='%23ff0000' rx='0 10 10 0' ry='10'/%3E%3Cline x1='50' y1='15' x2='50' y2='35' stroke='white' stroke-width='1.5' stroke-dasharray='2,1'/%3E%3C/svg%3E">
@@ -505,6 +433,7 @@
             border-radius: 8px;
             padding: 1.5rem;
             margin-top: 1rem;
+            position: relative;
         }
 
         .answer-feedback .alert.alert-success {
@@ -517,6 +446,33 @@
             background-color: #f8d7da;
             border-color: #f5c6cb;
             color: #721c24;
+        }
+
+        /* Doctor icon styles for explanation */
+        .explanation-with-icon {
+            display: flex;
+            gap: 1rem;
+            align-items: flex-start;
+            padding: 0.5rem 0;
+        }
+
+        .doctor-icon {
+            flex-shrink: 0;
+            width: 64px;
+            height: 64px;
+            align-self: flex-start;
+            margin-top: 0.1rem;
+            filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.1));
+        }
+
+        .explanation-text {
+            flex: 1;
+            line-height: 1.6;
+        }
+
+        .explanation-text strong {
+            display: inline;
+            margin-right: 0.5rem;
         }
 
         .question-content {
@@ -1308,9 +1264,286 @@
             box-shadow: 0 6px 12px rgba(40, 167, 69, 0.2);
             text-decoration: none !important;
         }
+
+        /* Question Navigation Sidebar */
+        .question-sidebar {
+            position: fixed;
+            left: 0;
+            top: 80px;
+            bottom: 0;
+            width: 80px;
+            background: white;
+            box-shadow: 2px 0 8px rgba(0, 0, 0, 0.1);
+            z-index: 999;
+            overflow-y: auto;
+            padding: 1rem 0.5rem;
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+        }
+
+        .question-sidebar::-webkit-scrollbar {
+            width: 4px;
+        }
+
+        .question-sidebar::-webkit-scrollbar-thumb {
+            background: #007bff;
+            border-radius: 2px;
+        }
+
+        .question-circle {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+            font-size: 1.1rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border: 3px solid #e9ecef;
+            background: white;
+            color: #495057;
+            margin: 0 auto;
+        }
+
+        .question-circle:hover {
+            transform: scale(1.1);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+        }
+
+        .question-circle.active {
+            border-color: #007bff;
+            background: #e3f2fd;
+            color: #007bff;
+            box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.2);
+        }
+
+        .question-circle.correct {
+            border-color: #28a745;
+            background: #d4edda;
+            color: #28a745;
+        }
+
+        .question-circle.incorrect {
+            border-color: #dc3545;
+            background: #f8d7da;
+            color: #dc3545;
+        }
+
+        .question-circle.answered {
+            border-color: #6c757d;
+            background: #f8f9fa;
+            color: #6c757d;
+        }
+
+        /* Main content adjustment for sidebar */
+        .main-content {
+            margin-left: 80px;
+        }
+
+        /* Navigation arrows - minimal clean style */
+        .question-nav-arrows {
+            display: flex;
+            gap: 0.5rem;
+            margin-top: 1rem;
+            justify-content: center;
+        }
+
+.nav-arrow-btn {
+    width: 36px;
+    height: 36px;
+    padding: 0;
+    background: transparent;
+    color: #adb5bd;
+    border: 2px solid #007bff;
+    border-radius: 50%;
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+        .nav-arrow-btn:hover:not(:disabled) {
+            background: #f8f9fa;
+            border-color: #6c757d;
+            color: #6c757d;
+            transform: scale(1.08);
+        }
+
+        .nav-arrow-btn:disabled {
+            opacity: 0.3;
+            cursor: not-allowed;
+        }
+
+        .nav-arrow-btn i {
+            margin: 0;
+        }
+
+        /* I Don't Know button - minimal icon style, lower right */
+.btn-dont-know {
+    width: 32px;
+    height: 32px;
+    padding: 0;
+    background: transparent;
+    border: 2px solid #dc3545;
+    border-radius: 50%;
+    color: #dc3545;
+    font-size: 0.95rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+        .btn-dont-know:hover {
+            background: #f8f9fa;
+            border-color: #6c757d;
+            color: #6c757d;
+            transform: scale(1.08);
+        }
+
+        .btn-dont-know i {
+            margin: 0;
+        }
+
+        .question-card {
+            position: relative;
+        }
+
+        /* Actions layout with button on right */
+        .actions {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .actions-left {
+            display: flex;
+            gap: 1rem;
+            flex: 1;
+        }
+
+        /* Mobile responsive sidebar */
+        @media (max-width: 768px) {
+            .question-sidebar {
+                width: 60px;
+                padding: 0.75rem 0.25rem;
+                gap: 0.5rem;
+            }
+
+            .question-circle {
+                width: 40px;
+                height: 40px;
+                font-size: 0.9rem;
+                border-width: 2px;
+            }
+
+            .main-content {
+                margin-left: 60px;
+            }
+
+            .nav-arrow-btn {
+                padding: 0.625rem 1rem;
+                font-size: 0.9rem;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .question-sidebar {
+                width: 50px;
+                padding: 0.5rem 0.15rem;
+            }
+
+            .question-circle {
+                width: 35px;
+                height: 35px;
+                font-size: 0.85rem;
+            }
+
+            .main-content {
+                margin-left: 50px;
+                padding: 0.75rem 0.5rem;
+            }
+        }
     </style>
 </head>
 <body>
+    <!-- 💀 LETHAL AUDIO POOL SYSTEM - 5 READY ELEMENTS PER SOUND 💀 -->
+    <div id="audio-pool" style="display: none;">
+        <!-- CORRECT SOUND POOL -->
+        <audio class="audio-pool-correct" preload="auto" volume="0.7">
+            <source src="/sounds/Single-correct.mp3" type="audio/mpeg">
+        </audio>
+        <audio class="audio-pool-correct" preload="auto" volume="0.7">
+            <source src="/sounds/Single-correct.mp3" type="audio/mpeg">
+        </audio>
+        <audio class="audio-pool-correct" preload="auto" volume="0.7">
+            <source src="/sounds/Single-correct.mp3" type="audio/mpeg">
+        </audio>
+        <audio class="audio-pool-correct" preload="auto" volume="0.7">
+            <source src="/sounds/Single-correct.mp3" type="audio/mpeg">
+        </audio>
+        <audio class="audio-pool-correct" preload="auto" volume="0.7">
+            <source src="/sounds/Single-correct.mp3" type="audio/mpeg">
+        </audio>
+        
+        <!-- WRONG SOUND POOL -->
+        <audio class="audio-pool-wrong" preload="auto" volume="0.7">
+            <source src="/sounds/quiz-wrong.mp3" type="audio/mpeg">
+        </audio>
+        <audio class="audio-pool-wrong" preload="auto" volume="0.7">
+            <source src="/sounds/quiz-wrong.mp3" type="audio/mpeg">
+        </audio>
+        <audio class="audio-pool-wrong" preload="auto" volume="0.7">
+            <source src="/sounds/quiz-wrong.mp3" type="audio/mpeg">
+        </audio>
+        <audio class="audio-pool-wrong" preload="auto" volume="0.7">
+            <source src="/sounds/quiz-wrong.mp3" type="audio/mpeg">
+        </audio>
+        <audio class="audio-pool-wrong" preload="auto" volume="0.7">
+            <source src="/sounds/quiz-wrong.mp3" type="audio/mpeg">
+        </audio>
+        
+        <!-- PERFECT SOUND POOL -->
+        <audio class="audio-pool-perfect" preload="auto" volume="0.7">
+            <source src="/sounds/quiz-perfect.mp3" type="audio/mpeg">
+        </audio>
+        <audio class="audio-pool-perfect" preload="auto" volume="0.7">
+            <source src="/sounds/quiz-perfect.mp3" type="audio/mpeg">
+        </audio>
+        <audio class="audio-pool-perfect" preload="auto" volume="0.7">
+            <source src="/sounds/quiz-perfect.mp3" type="audio/mpeg">
+        </audio>
+        <audio class="audio-pool-perfect" preload="auto" volume="0.7">
+            <source src="/sounds/quiz-perfect.mp3" type="audio/mpeg">
+        </audio>
+        <audio class="audio-pool-perfect" preload="auto" volume="0.7">
+            <source src="/sounds/quiz-perfect.mp3" type="audio/mpeg">
+        </audio>
+        
+        <!-- PARTIAL SOUND POOL -->
+        <audio class="audio-pool-partial" preload="auto" volume="0.7">
+            <source src="/sounds/quiz-partial.mp3" type="audio/mpeg">
+        </audio>
+        <audio class="audio-pool-partial" preload="auto" volume="0.7">
+            <source src="/sounds/quiz-partial.mp3" type="audio/mpeg">
+        </audio>
+        <audio class="audio-pool-partial" preload="auto" volume="0.7">
+            <source src="/sounds/quiz-partial.mp3" type="audio/mpeg">
+        </audio>
+        <audio class="audio-pool-partial" preload="auto" volume="0.7">
+            <source src="/sounds/quiz-partial.mp3" type="audio/mpeg">
+        </audio>
+        <audio class="audio-pool-partial" preload="auto" volume="0.7">
+            <source src="/sounds/quiz-partial.mp3" type="audio/mpeg">
+        </audio>
+    </div>
+
     <!-- LIGHTNING-FAST FOUC ELIMINATOR -->
     @include('components.lightning-preloader')
 
@@ -1332,6 +1565,17 @@
             </div>
         </div>
     </nav>
+
+    <!-- Question Navigation Sidebar -->
+    <div class="question-sidebar" id="question-sidebar">
+        @foreach($questions as $index => $question)
+            <div class="question-circle {{ $index === 0 ? 'active' : '' }}" 
+                 data-question="{{ $index + 1 }}"
+                 onclick="jumpToQuestion({{ $index + 1 }})">
+                {{ $index + 1 }}
+            </div>
+        @endforeach
+    </div>
 
     <div class="main-content">
         <div class="container">
@@ -1410,14 +1654,29 @@
                     </div>
 
                     <div class="actions mt-4">
-                        <button class="btn btn-primary check-answer" onclick="checkAnswer({{ $index + 1 }}, {{ $qObj->id ?? '' }})">
-                            Check Answer
+                        <div class="actions-left">
+                            <button class="btn btn-primary check-answer" onclick="checkAnswer({{ $index + 1 }}, {{ $qObj->id ?? '' }})">
+                                Check Answer
+                            </button>
+                            <button class="btn btn-primary next-question" style="display: none;" onclick="showNextQuestion({{ $index + 1 }})">
+                                Next Question
+                            </button>
+                            <button class="btn btn-success view-results" style="display: none;" onclick="showFinalResults()">
+                                View Results
+                            </button>
+                        </div>
+                        <button class="btn-dont-know" onclick="handleDontKnow({{ $index + 1 }}, {{ $qObj->id ?? '' }})" title="I Don't Know">
+                            <i class="fas fa-question-circle"></i>
                         </button>
-                        <button class="btn btn-primary next-question" style="display: none;" onclick="showNextQuestion({{ $index + 1 }})">
-                            Next Question
+                    </div>
+
+                    <!-- Navigation Arrows -->
+                    <div class="question-nav-arrows">
+                        <button class="nav-arrow-btn" onclick="navigatePrevious({{ $index + 1 }})" {{ $index === 0 ? 'disabled' : '' }} title="Previous">
+                            <i class="fas fa-chevron-left"></i>
                         </button>
-                        <button class="btn btn-success view-results" style="display: none;" onclick="showFinalResults()">
-                            View Results
+                        <button class="nav-arrow-btn" onclick="navigateNext({{ $index + 1 }})" {{ $index === count($questions) - 1 ? 'disabled' : '' }} title="Next">
+                            <i class="fas fa-chevron-right"></i>
                         </button>
                     </div>
                 </div>
@@ -1450,7 +1709,8 @@
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js?v={{ time() }}"></script>
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js?v={{ time() }}"></script>
-    
+
+    <!-- 🚀 CRITICAL FIX: Move function declarations to HEAD for immediate availability 🚀 -->
     <script>
         // 💀 LETHAL AUDIO POOL SYSTEM - 0MS INSTANT PLAYBACK 💀
         let audioPool = {
@@ -1461,7 +1721,1072 @@
         };
         let poolReplenishmentTimer = null;
         let poolReplenishmentInterval = null;
-        
+
+        // Global variable declarations
+        let firstAttemptAnswers = {};
+        let questionStates = {};
+        let quizStartTime = new Date();
+        let currentQuestionIndex = 1;
+        let totalQuestions = {{ $questions->count() }};
+        let correctAnswers = 0;
+        let totalAnswers = 0;
+        let userAnswers = {};
+        let timerInterval;
+        let answerCache = {};
+        let questionData = {};
+
+        // LIGHTNING FAST FUNCTION DEFINITIONS 🚀
+        window.selectOption = function selectOption(element) {
+            try {
+                const container = element.closest('.options-container');
+                if (!container) return;
+
+                // OPTIMIZED: Remove selected from siblings only
+                const siblings = container.querySelectorAll('.option-card');
+                siblings.forEach(opt => opt.classList.remove('selected'));
+
+                // CLEAN SELECTION FEEDBACK
+                element.classList.add('selected');
+
+            } catch (error) {
+                console.error('selectOption error:', error);
+            }
+        };
+
+        // Jump to specific question from sidebar
+        window.jumpToQuestion = function(questionNumber) {
+            console.log(`🎯 Jumping to question ${questionNumber}`);
+
+            document.querySelectorAll('.question-card').forEach(card => {
+                card.style.display = 'none';
+            });
+
+            const targetQuestion = document.getElementById(`question-${questionNumber}`);
+            if (targetQuestion) {
+                targetQuestion.style.display = 'block';
+                currentQuestionIndex = questionNumber;
+                updateSidebarActiveState(questionNumber);
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+            }
+        };
+
+        // Navigate to previous question
+        window.navigatePrevious = function(currentNumber) {
+            if (currentNumber > 1) {
+                jumpToQuestion(currentNumber - 1);
+            }
+        };
+
+        // Navigate to next question
+        window.navigateNext = function(currentNumber) {
+            if (currentNumber < totalQuestions) {
+                jumpToQuestion(currentNumber + 1);
+            }
+        };
+
+        // Handle "I Don't Know" button
+        window.handleDontKnow = function(questionNumber, questionId) {
+            console.log(`❓ I Don't Know clicked for Q${questionNumber}`);
+
+            if (questionStates[questionNumber]) {
+                console.log(`⚠️ Question ${questionNumber} already answered, ignoring`);
+                return;
+            }
+
+            questionStates[questionNumber] = true;
+            firstAttemptAnswers[questionId] = 'Dont know';
+
+            const qData = questionData[questionId];
+            if (!qData) {
+                console.error(`❌ Question data not found for ID ${questionId}`);
+                return;
+            }
+
+            totalAnswers++;
+            userAnswers[questionId] = 'dont_know';
+
+            updateSidebarCircleState(questionNumber, false);
+
+            const questionCard = document.getElementById(`question-${questionNumber}`);
+            if (questionCard) {
+                const feedbackDiv = questionCard.querySelector('.answer-feedback');
+                const alertDiv = feedbackDiv.querySelector('.alert');
+
+                feedbackDiv.style.display = 'block';
+                alertDiv.className = 'alert alert-danger';
+                feedbackDiv.querySelector('.result-text').textContent = "Don't worry! Here's the answer:";
+                feedbackDiv.querySelector('.explanation-content').innerHTML = `
+                    <div class="explanation-with-icon">
+                        <img class="e0f0c237914d2b33--drIcon css-1x2z75v-StyledImg esvv5850 doctor-icon" alt="random doctor image" src="https://next.amboss.com/us/static/assets/33964f30ee687409.svg">
+                        <div class="explanation-text">
+                            <strong>Correct Answer: ${qData.correct_answer}</strong><br><br>
+                            ${qData.explanation || 'No explanation available.'}
+                        </div>
+                    </div>
+                `;
+
+                const checkBtn = questionCard.querySelector('.check-answer');
+                const dontKnowBtn = questionCard.querySelector('.btn-dont-know');
+                if (checkBtn) checkBtn.style.display = 'none';
+                if (dontKnowBtn) dontKnowBtn.style.display = 'none';
+
+                questionCard.querySelectorAll('.option-card').forEach(opt => {
+                    opt.style.pointerEvents = 'none';
+                    opt.style.opacity = '0.6';
+                });
+
+                const totalQs = {{ $questions->count() }};
+                if (questionNumber < totalQs) {
+                    const nextBtn = questionCard.querySelector('.next-question');
+                    if (nextBtn) nextBtn.style.display = 'inline-block';
+                } else {
+                    const resultsBtn = questionCard.querySelector('.view-results');
+                    if (resultsBtn) resultsBtn.style.display = 'inline-block';
+                }
+            }
+
+            updateProgress(totalAnswers, {{ $questions->count() }});
+            playSound('wrong');
+        };
+
+        window.checkAnswer = function checkAnswer(questionNumber, questionId) {
+            const startTime = performance.now();
+            console.log(`🚀 CHECKING ANSWER: Question ${questionNumber}, ID ${questionId}`);
+
+            // 💀 BULLETPROOF DUPLICATE PREVENTION - NO MULTIPLE PROCESSING 💀
+            const processingKey = `processing_${questionNumber}`;
+            if (checkAnswer[processingKey]) {
+                console.log(`🔇 BULLETPROOF: Question ${questionNumber} already being processed, skipping duplicate`);
+                return;
+            }
+            checkAnswer[processingKey] = true;
+
+            // INSTANT DOM ACCESS
+            const questionCard = document.getElementById(`question-${questionNumber}`);
+            if (!questionCard) {
+                console.error(`❌ Question card not found: question-${questionNumber}`);
+                return;
+            }
+
+            const writtenAnswer = questionCard.querySelector('.written-answer');
+            const selectedOption = questionCard.querySelector('.option-card.selected');
+            const checkBtn = questionCard.querySelector('.check-answer');
+
+            // INSTANT ANSWER EXTRACTION
+            let answer = '';
+            if (writtenAnswer) {
+                answer = writtenAnswer.value.trim();
+            } else if (selectedOption) {
+                answer = selectedOption.getAttribute('data-option');
+            }
+
+            if (!answer) {
+                console.warn('⚠️ No answer selected');
+
+                // Show user-friendly warning message
+                const questionCard = document.getElementById(`question-${questionNumber}`);
+                if (questionCard) {
+                    const feedbackDiv = questionCard.querySelector('.answer-feedback');
+
+                    // Hide any existing feedback first
+                    feedbackDiv.style.display = 'none';
+
+                    // Clear processing flag to allow retry
+                    delete checkAnswer[processingKey];
+
+                    // Show warning after a brief delay
+                    setTimeout(() => {
+                        feedbackDiv.style.display = 'block';
+                        const alertDiv = feedbackDiv.querySelector('.alert');
+                        alertDiv.className = 'alert alert-warning';
+                        feedbackDiv.querySelector('.result-text').textContent = 'Please select an answer first!';
+                feedbackDiv.querySelector('.explanation-content').innerHTML = `
+                    <div class="explanation-with-icon">
+                        <img class="e0f0c237914d2b33--drIcon css-1x2z75v-StyledImg esvv5850 doctor-icon" alt="random doctor image" src="https://next.amboss.com/us/static/assets/33964f30ee687409.svg">
+                        <div class="explanation-text">You need to choose an answer before checking. Select one of the options above and try again.</div>
+                    </div>
+                `;
+                    }, 300);
+                }
+
+                return;
+            }
+
+            console.log(`📝 Answer selected: "${answer}"`);
+
+            // 💀 INSTANT CLIENT-SIDE CHECKING - NO NETWORK DELAY 💀
+            if (questionData[questionId]) {
+                console.log(`⚡ INSTANT CLIENT-SIDE CHECK for Q${questionId}`);
+
+                const qData = questionData[questionId];
+                const isCorrect = answer.toLowerCase().trim() === qData.correct_answer.toLowerCase().trim();
+
+                const instantData = {
+                    success: true,
+                    is_correct: isCorrect,
+                    correct_answer: qData.correct_answer,
+                    explanation: qData.explanation
+                };
+
+                console.log(`✅ INSTANT RESULT: ${isCorrect ? 'CORRECT' : 'WRONG'} (0ms)`);
+
+                // TRACK PERFORMANCE
+                window.performanceStats.instantChecks++;
+                window.performanceStats.totalTime += (performance.now() - startTime);
+
+                // INSTANT PROCESSING
+                userAnswers[questionId] = answer;
+                totalAnswers++;
+                if (isCorrect) correctAnswers++;
+
+                // INSTANT UI UPDATE
+                processAnswerResult(questionNumber, questionId, instantData, checkBtn);
+                // Clear processing flag
+                delete checkAnswer[processingKey];
+                return;
+            }
+
+            // FALLBACK TO NETWORK REQUEST
+            console.warn(`⚠️ FALLBACK TO NETWORK for Q${questionId}`);
+
+            if (checkBtn) {
+                checkBtn.disabled = true;
+                checkBtn.textContent = 'Checking...';
+                checkBtn.style.background = '#6c757d';
+            }
+
+            const csrfToken = document.querySelector('meta[name="csrf-token"]').content;
+
+            fetch(`/quiz/tutor/check/${questionId}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': csrfToken,
+                    'Accept': 'application/json',
+                    'Cache-Control': 'no-cache',
+                    'Connection': 'keep-alive'
+                },
+                body: JSON.stringify({ answer })
+            })
+            .then(response => {
+                const responseTime = performance.now() - startTime;
+                console.log(`⚡ Server response in ${Math.round(responseTime)}ms (Status: ${response.status})`);
+
+                if (!response.ok) {
+                    throw new Error(`Server error: ${response.status} ${response.statusText}`);
+                }
+
+                return response.json();
+            })
+            .then(data => {
+                const totalTime = performance.now() - startTime;
+                console.log(`✅ Answer processed in ${Math.round(totalTime)}ms`);
+
+                if (!data.success) {
+                    throw new Error(data.message || 'Answer check failed');
+                }
+
+                // CACHE THE RESULT FOR FUTURE INSTANT ACCESS
+                answerCache[`${questionId}_${answer}`] = data;
+
+                // INSTANT ANSWER STORAGE
+                userAnswers[questionId] = answer;
+                totalAnswers++;
+                if (data.is_correct) correctAnswers++;
+
+                // PROCESS RESULT
+                processAnswerResult(questionNumber, questionId, data, checkBtn);
+                delete checkAnswer[processingKey];
+            })
+            .catch(error => {
+                console.log('ℹ️ Answer check encountered an issue, providing fallback response');
+
+                const fallbackData = {
+                    success: false,
+                    is_correct: false,
+                    error: 'Connection issue',
+                    correct_answer: 'Unable to determine',
+                    explanation: 'Please check your connection and try again'
+                };
+
+                totalAnswers++;
+                updateQuestionUI(questionNumber, {
+                    correct: fallbackData.is_correct,
+                    explanation: fallbackData.explanation,
+                    correctAnswer: fallbackData.correct_answer
+                });
+
+                questionCard.querySelectorAll('input, textarea, button').forEach(el => el.disabled = false);
+                delete checkAnswer[processingKey];
+            });
+        };
+
+        // Function to update sidebar active state
+        function updateSidebarActiveState(questionNumber) {
+            document.querySelectorAll('.question-circle').forEach(circle => {
+                circle.classList.remove('active');
+                if (parseInt(circle.dataset.question) === questionNumber) {
+                    circle.classList.add('active');
+                }
+            });
+        }
+
+        // Update sidebar circle state (correct/incorrect)
+        function updateSidebarCircleState(questionNumber, isCorrect) {
+            const circle = document.querySelector(`.question-circle[data-question="${questionNumber}"]`);
+            if (circle) {
+                circle.classList.remove('answered');
+                if (isCorrect) {
+                    circle.classList.add('correct');
+                    circle.classList.remove('incorrect');
+                } else {
+                    circle.classList.add('incorrect');
+                    circle.classList.remove('correct');
+                }
+            }
+        }
+
+        // Update progress bar
+        function updateProgress(completed, total) {
+            const progressFill = document.getElementById('progress-fill');
+            const progressText = document.getElementById('progress-text');
+            const timerElement = document.getElementById('timer');
+            const percentage = (completed / total) * 100;
+
+            if (progressFill) {
+                progressFill.style.width = `${percentage}%`;
+
+                if (timerElement) {
+                    if (timerElement.classList.contains('danger')) {
+                        progressFill.classList.add('danger');
+                        progressFill.classList.remove('warning');
+                    } else if (timerElement.classList.contains('warning')) {
+                        progressFill.classList.add('warning');
+                        progressFill.classList.remove('danger');
+                    } else {
+                        progressFill.classList.remove('warning', 'danger');
+                    }
+                }
+            }
+
+            if (progressText) {
+                progressText.textContent = `${completed} of ${total} questions completed`;
+            }
+        }
+
+        // Process answer result
+        function processAnswerResult(questionNumber, questionId, data, checkBtn) {
+            const resultKey = `result_processed_${questionNumber}`;
+            if (processAnswerResult[resultKey]) {
+                console.log(`🔇 BULLETPROOF: Result already processed for Q${questionNumber}, skipping duplicate`);
+                return;
+            }
+            processAnswerResult[resultKey] = true;
+
+            updateSidebarCircleState(questionNumber, data.is_correct);
+
+            if (totalAnswers === totalQuestions) {
+                console.log('🔥 LAST QUESTION ANSWERED: Showing View Results button instead of Next Question');
+
+                updateQuestionUI(questionNumber, {
+                    correct: data.is_correct,
+                    explanation: data.explanation,
+                    correctAnswer: data.correct_answer,
+                    showNextButton: false,
+                    showViewResultsButton: true
+                });
+
+                return;
+            }
+
+            console.log('🎓 TUTOR MODE: Showing explanation for Q${questionNumber}, total answered: ${totalAnswers}/${totalQuestions}');
+
+            updateQuestionUI(questionNumber, {
+                correct: data.is_correct,
+                explanation: data.explanation,
+                correctAnswer: data.correct_answer,
+                showNextButton: true
+            });
+        }
+
+        // Update question UI after checking answer
+        function updateQuestionUI(questionNumber, data) {
+            const questionCard = document.getElementById(`question-${questionNumber}`);
+            const feedbackDiv = questionCard.querySelector('.answer-feedback');
+            const optionsContainer = questionCard.querySelector('.options-container');
+
+            const soundKey = `sound_played_${questionNumber}`;
+            const hasPlayedSound = questionCard.dataset[soundKey];
+
+            feedbackDiv.style.display = 'block';
+            const alertDiv = feedbackDiv.querySelector('.alert');
+            alertDiv.className = `alert ${data.correct ? 'alert-success' : 'alert-danger'}`;
+
+            feedbackDiv.querySelector('.result-text').textContent = data.correct ? 'Correct! 🎉' : 'Incorrect';
+
+            if (totalAnswers < totalQuestions && !hasPlayedSound) {
+                console.log(`🔥 LETHAL AUDIO POOL: Playing instant sound for Q${questionNumber} (${data.correct ? 'correct' : 'wrong'}) - FIRST TIME ONLY`);
+                playInstantSound(data.correct);
+                questionCard.dataset[soundKey] = 'true';
+            } else if (hasPlayedSound) {
+                console.log(`🔇 LETHAL AUDIO POOL: Sound already played for Q${questionNumber}, skipping duplicate`);
+            } else {
+                console.log(`🔇 LETHAL AUDIO POOL: Skipping sound for final question Q${questionNumber} to prevent overlap with final grading sound`);
+            }
+
+            let explanationHtml = data.explanation || '';
+            if (!data.correct && data.correctAnswer) {
+                explanationHtml = `<strong>Correct Answer: ${data.correctAnswer}</strong><br><br>${explanationHtml}`;
+            }
+            // Add doctor icon wrapper
+            const explanationWithIcon = `
+                <div class="explanation-with-icon">
+                    <img class="e0f0c237914d2b33--drIcon css-1x2z75v-StyledImg esvv5850 doctor-icon" alt="random doctor image" src="https://next.amboss.com/us/static/assets/33964f30ee687409.svg">
+                    <div class="explanation-text">${explanationHtml}</div>
+                </div>
+            `;
+            feedbackDiv.querySelector('.explanation-content').innerHTML = explanationWithIcon;
+
+            const selectedOption = questionCard.querySelector('.option-card.selected');
+            const writtenAnswer = questionCard.querySelector('.written-answer');
+
+            if (writtenAnswer) {
+                writtenAnswer.disabled = true;
+                writtenAnswer.classList.add(data.correct ? 'correct' : 'incorrect');
+            } else if (selectedOption) {
+                const options = questionCard.querySelectorAll('.option-card');
+                options.forEach(option => {
+                    option.classList.remove('selected', 'correct', 'incorrect');
+                    if (option === selectedOption) {
+                        option.classList.add(data.correct ? 'correct' : 'incorrect');
+                    } else if (!data.correct && option.getAttribute('data-option') === data.correctAnswer) {
+                        option.classList.add('correct');
+                    }
+                });
+            }
+
+            const checkAnswerBtn = questionCard.querySelector('.check-answer');
+            const nextQuestionBtn = questionCard.querySelector('.next-question');
+            const viewResultsBtn = questionCard.querySelector('.view-results');
+
+            if (checkAnswerBtn) checkAnswerBtn.style.display = 'none';
+
+            if (data.showViewResultsButton) {
+                if (viewResultsBtn) {
+                    viewResultsBtn.style.display = 'block';
+                    viewResultsBtn.disabled = false;
+                    if (!viewResultsBtn) {
+                        const actionsDiv = questionCard.querySelector('.actions');
+                        const newViewResultsBtn = document.createElement('button');
+                        newViewResultsBtn.className = 'btn btn-success view-results';
+                        newViewResultsBtn.onclick = () => {
+                            const percentage = (correctAnswers / totalAnswers) * 100;
+                            showQuizResults({
+                                correct: correctAnswers,
+                                total: totalAnswers,
+                                percentage: percentage
+                            });
+                        };
+                        newViewResultsBtn.textContent = 'View Results';
+                        actionsDiv.appendChild(newViewResultsBtn);
+                    }
+                }
+            } else if (nextQuestionBtn) {
+                nextQuestionBtn.style.display = 'block';
+                nextQuestionBtn.disabled = false;
+            }
+
+            updateProgress(totalAnswers, totalQuestions);
+        }
+
+        // Function to show next question
+        function showNextQuestion(currentNumber) {
+            const currentQuestion = document.getElementById(`question-${currentNumber}`);
+            const nextQuestion = document.getElementById(`question-${currentNumber + 1}`);
+
+            if (currentQuestion) {
+                currentQuestion.style.display = 'none';
+            }
+
+            if (nextQuestion) {
+                nextQuestion.style.display = 'block';
+                currentQuestionIndex = currentNumber + 1;
+                updateProgress(currentNumber + 1, totalQuestions);
+            } else {
+                const percentage = (correctAnswers / totalAnswers) * 100;
+                showQuizResults({
+                    correct: correctAnswers,
+                    total: totalAnswers,
+                    percentage: percentage
+                });
+            }
+        }
+
+        // Function to show final results when "View Results" button is clicked
+        function showFinalResults() {
+            console.log('🎯 VIEW RESULTS: User clicked "View Results" button for final question');
+            const percentage = (correctAnswers / totalAnswers) * 100;
+
+            showQuizResults({
+                correct: correctAnswers,
+                total: totalAnswers,
+                percentage: percentage
+            });
+        }
+
+        // INSTANT RESULTS: Show popup immediately
+        function showQuizResults(results) {
+            console.log('🚀 INSTANT RESULTS: Starting immediate quiz completion process', results);
+            const completionStart = performance.now();
+
+            const popupOverlay = document.getElementById('popup-overlay');
+            const popup = document.getElementById('popup');
+            const gradeIcon = document.getElementById('grade-icon');
+            const popupTitle = document.getElementById('popup-title');
+            const popupScore = document.getElementById('popup-score');
+            const popupMessage = document.getElementById('popup-message');
+
+            popupScore.textContent = `${results.correct}/${results.total}`;
+
+            const percentage = (results.correct / results.total) * 100;
+            if (percentage === 100) {
+                gradeIcon.innerHTML = '<i class="fas fa-crown"></i>';
+                gradeIcon.className = 'grade-icon perfect';
+                popupTitle.textContent = 'Perfect Score!';
+                popupMessage.textContent = 'Outstanding! You\'ve mastered this topic!';
+
+                if (typeof confetti !== 'undefined') {
+                    const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+                    const originX = isSafari ? 0.48 : 0.62;
+
+                    setTimeout(() => {
+                        confetti({
+                            particleCount: 150,
+                            spread: 70,
+                            origin: { x: originX, y: 0.45 },
+                            colors: ['#FFD700', '#FFA500', '#FF69B4', '#00CED1', '#98FB98'],
+                            zIndex: 10000
+                        });
+                    }, 300);
+                }
+            } else if (percentage >= 70) {
+                gradeIcon.innerHTML = '<i class="fas fa-star"></i>';
+                gradeIcon.className = 'grade-icon good';
+                popupTitle.textContent = 'Well Done!';
+                popupMessage.textContent = 'Good progress! Keep up the great work!';
+            } else {
+                gradeIcon.innerHTML = '<i class="fas fa-book"></i>';
+                gradeIcon.className = 'grade-icon needs-improvement';
+                popupTitle.textContent = 'Keep Learning!';
+                popupMessage.textContent = 'Don\'t give up! Practice makes perfect!';
+            }
+
+            popupOverlay.classList.add('show');
+            setTimeout(() => popup.classList.add('show'), 100);
+
+            const uiTime = performance.now() - completionStart;
+            console.log(`⚡ INSTANT UI: Popup shown in ${(uiTime).toFixed(2)}ms - COMPLETING FUNCTION NOW`);
+
+            const isRandomQuiz = {{ isset($is_random_quiz) && $is_random_quiz ? 'true' : 'false' }};
+
+            if (!isRandomQuiz) {
+                recordTutorQuizAttempt(results);
+            } else {
+                console.log('🎓 TUTOR MODE: Skipping quiz attempt recording for learning mode');
+            }
+
+            playFinalGradingSound(results.correct, results.total);
+
+            console.log(`🎉 INSTANT RESULTS: Function completed in ${(performance.now() - completionStart).toFixed(2)}ms - background operations running independently`);
+
+            return;
+        }
+
+        // 💀 LETHAL AUDIO POOL - INSTANT SOUND PLAYBACK 💀
+        function playInstantSound(isCorrect) {
+            const startTime = performance.now();
+            const soundType = isCorrect ? 'correct' : 'wrong';
+
+            if (playInstantSound.isPlaying) {
+                console.log(`🔇 LETHAL AUDIO POOL: Sound already playing, skipping duplicate ${soundType} sound`);
+                return;
+            }
+
+            console.log(`🔥 LETHAL AUDIO POOL: Attempting 0ms playback for ${soundType} sound`);
+
+            let audio = null;
+            if (audioPool[soundType] && audioPool[soundType].length > 0) {
+                audio = audioPool[soundType].shift();
+                console.log(`🔥 LETHAL AUDIO POOL: Got ${soundType} audio from pool (${audioPool[soundType].length} remaining)`);
+            } else {
+                console.log(`🔥 LETHAL AUDIO POOL: Pool empty, creating fresh ${soundType} audio`);
+                createAudioElement(soundType);
+                audio = audioPool[soundType].shift();
+            }
+
+            if (!audio) {
+                console.log(`ℹ️ LETHAL AUDIO POOL: No audio available for ${soundType}, continuing silently`);
+                return;
+            }
+
+            try {
+                audio.currentTime = 0;
+                audio.volume = 0.7;
+
+                const endedHandler = () => {
+                    audio.removeEventListener('ended', endedHandler);
+                    playInstantSound.isPlaying = false;
+                    setTimeout(() => {
+                        returnToPool(audio, soundType);
+                    }, 100);
+                };
+                audio.addEventListener('ended', endedHandler);
+
+                playInstantSound.isPlaying = true;
+
+                const playPromise = audio.play();
+                if (playPromise !== undefined) {
+                    playPromise.then(() => {
+                        const playbackTime = performance.now() - startTime;
+                        console.log(`✅ LETHAL AUDIO POOL: ${soundType} sound started in ${playbackTime.toFixed(2)}ms - letting it play fully`);
+
+                    }).catch(error => {
+                        console.error(`❌ LETHAL AUDIO POOL: ${soundType} playback failed`, error);
+                        audio.removeEventListener('ended', endedHandler);
+                        returnToPool(audio, soundType);
+                        playInstantSound.isPlaying = false;
+                    });
+                }
+            } catch (error) {
+                console.error(`❌ LETHAL AUDIO POOL: ${soundType} audio error`, error);
+                returnToPool(audio, soundType);
+                playInstantSound.isPlaying = false;
+            }
+        }
+
+
+        // RECORD TUTOR QUIZ ATTEMPT - FIRE AND FORGET
+        function recordTutorQuizAttempt(results) {
+            const funcStart = performance.now();
+            console.log('📊 RECORDING TUTOR QUIZ ATTEMPT - FIRE AND FORGET');
+            
+            try {
+                const csrfToken = document.querySelector('meta[name="csrf-token"]').content;
+                const quizData = {
+                    results: {
+                        correct: results.correct,
+                        total: results.total,
+                        percentage: Math.round((results.correct / results.total) * 100)
+                    },
+                    user_answers: userAnswers || {},
+                    answered_questions: results.total,
+                    duration_seconds: Math.floor((new Date() - quizStartTime) / 1000),
+                    topic_id: {{ $topic->id ?? 1 }},
+                    course_id: {{ $course->id ?? 1 }}
+                };
+
+                // Fire and forget - don't await this
+                fetch('/quiz/tutor/complete-session', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': csrfToken,
+                        'Accept': 'application/json'
+                    },
+                    body: JSON.stringify(quizData)
+                }).then(response => {
+                    if (response.ok) {
+                        console.log(`✅ QUIZ ATTEMPT RECORDED in ${(performance.now() - funcStart).toFixed(2)}ms`);
+                    } else {
+                        console.warn(`⚠️ QUIZ ATTEMPT RECORDING FAILED: ${response.status}`);
+                    }
+                }).catch(error => {
+                    console.warn(`⚠️ QUIZ ATTEMPT RECORDING ERROR:`, error);
+                });
+
+                console.log(`📊 RECORDING INITIATED in ${(performance.now() - funcStart).toFixed(2)}ms - running in background`);
+            } catch (error) {
+                console.warn('⚠️ ERROR INITIATING QUIZ ATTEMPT RECORDING:', error);
+            }
+        }
+
+        // 💀 ULTRA-MEGA INSTANT GRADING SOUND - AUDIO POOL POWERED 💀
+        function playFinalGradingSound(score, total) {
+            const funcStart = performance.now();
+            console.log('🔥 PLAY FINAL GRADING SOUND - AUDIO POOL EDITION');
+
+            const percentage = (score / total) * 100;
+
+            // 💀 AUDIO POOL INSTANT SELECTION - NO DOWNLOAD DELAY 💀
+            let soundType = 'partial'; // Default to partial
+            if (percentage === 100) {
+                soundType = 'perfect';
+            } else if (percentage < 70) {
+                soundType = 'wrong';
+            }
+
+            console.log(`🎵 PLAYING INSTANT ${soundType.toUpperCase()} SOUND`);
+
+            // 💀 INSTANT AUDIO POOL ACCESS - ZERO DELAY 💀
+            let audio = null;
+            if (audioPool[soundType] && audioPool[soundType].length > 0) {
+                audio = audioPool[soundType].shift(); // Remove from pool
+                console.log(`🔥 LETHAL AUDIO POOL: Got ${soundType} audio from pool (${audioPool[soundType].length} remaining)`);
+            } else {
+                // 💀 FALLBACK: CREATE FRESH AUDIO 💀
+                console.log(`🔥 LETHAL AUDIO POOL: Pool empty, creating fresh ${soundType} audio`);
+                createAudioElement(soundType);
+                audio = audioPool[soundType].shift();
+            }
+
+            if (!audio) {
+                console.log(`ℹ️ LETHAL AUDIO POOL: No audio available for ${soundType}, continuing silently`);
+                return;
+            }
+
+            // 💀 INSTANT PLAYBACK WITH ERROR HANDLING 💀
+            try {
+                audio.currentTime = 0;
+                audio.volume = 0.7;
+
+                // Add a one-time ended listener to ensure proper cleanup
+                const endedHandler = () => {
+                    audio.removeEventListener('ended', endedHandler);
+                    setTimeout(() => {
+                        returnToPool(audio, soundType);
+                    }, 100); // Small delay to ensure full playback
+                };
+                audio.addEventListener('ended', endedHandler);
+
+                const playPromise = audio.play();
+                if (playPromise !== undefined) {
+                    playPromise.then(() => {
+                        const playbackTime = performance.now() - funcStart;
+                        console.log(`✅ LETHAL AUDIO POOL: ${soundType} sound started in ${playbackTime.toFixed(2)}ms - letting it play fully`);
+                    }).catch(error => {
+                        console.error(`❌ LETHAL AUDIO POOL: ${soundType} playback failed`, error);
+                        audio.removeEventListener('ended', endedHandler);
+                        returnToPool(audio, soundType);
+                    });
+                }
+            } catch (error) {
+                console.error(`❌ LETHAL AUDIO POOL: ${soundType} audio error`, error);
+                returnToPool(audio, soundType);
+            }
+        }
+
+        // Timer functionality - DIFFERENT MODES FOR RANDOM VS NORMAL TUTOR
+        let isRandomQuiz = {{ isset($is_random_quiz) && $is_random_quiz ? 'true' : 'false' }};
+        let initialDuration = {{ isset($duration_minutes) ? $duration_minutes * 60 : 0 }}; // Only for random quiz
+        let timeLeft = isRandomQuiz ? initialDuration : 0; // Start at 0 for normal tutor, duration for random
+        let warningThreshold = Math.floor(initialDuration * 0.3); // Warning at 30% time remaining (only for random)
+        let dangerThreshold = Math.floor(initialDuration * 0.1); // Danger at 10% time remaining (only for random)
+
+        function updateTimer() {
+            console.log('🕒 Timer tick - updating display');
+            const currentTime = new Date();
+            const elapsedSeconds = Math.floor((currentTime - quizStartTime) / 1000); // Ensure integer
+
+            if (initialDuration > 0) {
+                // Use countdown timer
+                timeLeft = Math.max(0, initialDuration - elapsedSeconds);
+            } else {
+                // Use elapsed timer
+                timeLeft = elapsedSeconds;
+            }
+
+            // Ensure timeLeft is always an integer
+            timeLeft = Math.floor(timeLeft);
+
+            const minutes = Math.floor(Math.abs(timeLeft) / 60);
+            const seconds = Math.floor(Math.abs(timeLeft) % 60); // Ensure seconds is integer
+            const timerElement = document.getElementById('timer');
+            console.log('🕒 Timer element found:', !!timerElement);
+
+            if (timerElement) {
+                let timeDisplay = '';
+                if (initialDuration > 0) {
+                    // Countdown format - always show integers
+                    timeDisplay = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+                } else {
+                    // Elapsed format - always show integers
+                    timeDisplay = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+                }
+
+                timerElement.textContent = timeDisplay;
+
+                // Apply color grading based on time remaining
+                updateTimerStyling(timerElement, timeLeft);
+            }
+
+            // Auto-submit when time runs out (only for countdown mode)
+            if (initialDuration > 0 && timeLeft <= 0) {
+                clearInterval(timerInterval);
+                console.log('⏰ TIME RAN OUT - AUTO-GRADING RANDOM QUIZ...');
+                submitQuizRandomTutor();
+                return;
+            }
+
+            timerInterval = setTimeout(updateTimer, 1000);
+        }
+
+        function updateTimerStyling(timerElement, remainingTime) {
+            // Remove existing classes
+            timerElement.classList.remove('warning', 'danger');
+
+            if (initialDuration <= 0) return; // No styling for elapsed timer
+
+            const percentageRemaining = (remainingTime / initialDuration) * 100;
+
+            if (percentageRemaining <= 10) {
+                // Danger: Red styling with animation
+                timerElement.classList.add('danger');
+            } else if (percentageRemaining <= 30) {
+                // Warning: Yellow styling
+                timerElement.classList.add('warning');
+            }
+        }
+
+        // LETHAL AUDIO POOL DEBUG FUNCTIONS
+        window.debugAudioPool = function() {
+            console.log('🔥 LETHAL AUDIO POOL DEBUG:');
+            console.log('Correct pool size:', audioPool.correct.length);
+            console.log('Wrong pool size:', audioPool.wrong.length);
+            console.log('Perfect pool size:', audioPool.perfect.length);
+            console.log('Partial pool size:', audioPool.partial.length);
+            console.log('Total pool elements:', audioPool.correct.length + audioPool.wrong.length + audioPool.perfect.length + audioPool.partial.length);
+        };
+
+        window.testAudioPool = function() {
+            console.log('🔥 LETHAL AUDIO POOL: Testing instant playback...');
+            setTimeout(() => playInstantSound(true), 100);
+            setTimeout(() => playInstantSound(false), 500);
+            setTimeout(() => playInstantSound(true), 1000);
+        };
+
+        // Helper functions to be fully available
+        function initializeAudioPools() {
+            const correctElements = document.querySelectorAll('.audio-pool-correct');
+            const wrongElements = document.querySelectorAll('.audio-pool-wrong');
+            const perfectElements = document.querySelectorAll('.audio-pool-perfect');
+            const partialElements = document.querySelectorAll('.audio-pool-partial');
+
+            correctElements.forEach(audio => {
+                audioPool.correct.push(audio);
+                setupAudioElement(audio);
+            });
+
+            wrongElements.forEach(audio => {
+                audioPool.wrong.push(audio);
+                setupAudioElement(audio);
+            });
+
+            perfectElements.forEach(audio => {
+                audioPool.perfect.push(audio);
+                setupAudioElement(audio);
+            });
+
+            partialElements.forEach(audio => {
+                audioPool.partial.push(audio);
+                setupAudioElement(audio);
+            });
+
+            console.log(`🔥 LETHAL AUDIO POOL: Initialized - Correct: ${audioPool.correct.length}, Wrong: ${audioPool.wrong.length}, Perfect: ${audioPool.perfect.length}, Partial: ${audioPool.partial.length}`);
+        }
+
+        function setupAudioElement(audio) {
+            audio.volume = 0.7;
+            audio.preload = 'auto';
+
+            audio.addEventListener('ended', function() {
+                setTimeout(() => {
+                    returnToPool(audio);
+                }, 200);
+            });
+
+            audio.addEventListener('error', function() {
+                console.log('ℹ️ Audio element error, returning to pool');
+                returnToPool(audio);
+            });
+        }
+
+        function startPoolReplenishment() {
+            poolReplenishmentInterval = setInterval(() => {
+                replenishPools();
+            }, 5000);
+
+            setTimeout(() => {
+                replenishPools();
+            }, 1000);
+        }
+
+        function replenishPools() {
+            const minPoolSize = 3;
+
+            // Replenish correct pool
+            if (audioPool.correct.length < minPoolSize) {
+                const needed = minPoolSize - audioPool.correct.length;
+                for (let i = 0; i < needed; i++) {
+                    createAudioElement('correct');
+                }
+                console.log(`🔥 LETHAL AUDIO POOL: Replenished correct pool with ${needed} elements`);
+            }
+
+            // Replenish wrong pool
+            if (audioPool.wrong.length < minPoolSize) {
+                const needed = minPoolSize - audioPool.wrong.length;
+                for (let i = 0; i < needed; i++) {
+                    createAudioElement('wrong');
+                }
+                console.log(`🔥 LETHAL AUDIO POOL: Replenished wrong pool with ${needed} elements`);
+            }
+
+            // Replenish perfect pool
+            if (audioPool.perfect.length < minPoolSize) {
+                const needed = minPoolSize - audioPool.perfect.length;
+                for (let i = 0; i < needed; i++) {
+                    createAudioElement('perfect');
+                }
+                console.log(`🔥 LETHAL AUDIO POOL: Replenished perfect pool with ${needed} elements`);
+            }
+
+            // Replenish partial pool
+            if (audioPool.partial.length < minPoolSize) {
+                const needed = minPoolSize - audioPool.partial.length;
+                for (let i = 0; i < needed; i++) {
+                    createAudioElement('partial');
+                }
+                console.log(`🔥 LETHAL AUDIO POOL: Replenished partial pool with ${needed} elements`);
+            }
+        }
+
+        function createAudioElement(type) {
+            const audio = new Audio();
+            let sourceUrl = '';
+
+            switch(type) {
+                case 'correct':
+                    sourceUrl = '/sounds/Single-correct.mp3';
+                    break;
+                case 'wrong':
+                    sourceUrl = '/sounds/quiz-wrong.mp3';
+                    break;
+                case 'perfect':
+                    sourceUrl = '/sounds/quiz-perfect.mp3';
+                    break;
+                case 'partial':
+                    sourceUrl = '/sounds/quiz-partial.mp3';
+                    break;
+            }
+
+            audio.src = sourceUrl;
+            audio.volume = 0.7;
+            audio.preload = 'auto';
+
+            audioPool[type].push(audio);
+
+            audio.addEventListener('ended', function() {
+                setTimeout(() => {
+                    returnToPool(audio, type);
+                }, 200);
+            });
+
+            audio.addEventListener('error', function() {
+                console.log(`ℹ️ Fresh audio element error for ${type}, removing from pool`);
+                removeFromPool(audio, type);
+            });
+
+            console.log(`🔥 LETHAL AUDIO POOL: Created fresh ${type} audio element`);
+        }
+
+        function returnToPool(audio, type = null) {
+            if (!type) {
+                if (audio.classList.contains('audio-pool-correct') || audio.src.includes('Single-correct')) {
+                    type = 'correct';
+                } else if (audio.classList.contains('audio-pool-wrong') || audio.src.includes('quiz-wrong')) {
+                    type = 'wrong';
+                } else if (audio.classList.contains('audio-pool-perfect') || audio.src.includes('quiz-perfect')) {
+                    type = 'perfect';
+                } else if (audio.classList.contains('audio-pool-partial') || audio.src.includes('quiz-partial')) {
+                    type = 'partial';
+                }
+            }
+
+            if (type && audioPool[type]) {
+                audio.currentTime = 0;
+                audio.pause();
+
+                try {
+                    audio.stop && audio.stop();
+                } catch (e) {
+                    // Ignore errors if stop method doesn't exist
+                }
+
+                if (!audioPool[type].includes(audio)) {
+                    audioPool[type].push(audio);
+                    console.log(`🔥 LETHAL AUDIO POOL: Returned ${type} audio to pool (${audioPool[type].length} available)`);
+                }
+            }
+        }
+
+        function removeFromPool(audio, type) {
+            if (audioPool[type]) {
+                const index = audioPool[type].indexOf(audio);
+                if (index > -1) {
+                    audioPool[type].splice(index, 1);
+                }
+            }
+        }
+
+        // Data and initialization
+        // PRELOAD ALL QUESTION DATA ON PAGE LOAD
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('🔥 PRELOADING QUESTION DATA FOR INSTANT CHECKING...');
+
+            // Extract question data from DOM
+            @foreach($questions as $index => $question)
+                @php $qObj = is_array($question) ? $question['question'] : $question; @endphp
+                questionData[{{ $qObj->id ?? 0 }}] = {
+                    correct_answer: '{{ $qObj->correct_answer ?? '' }}',
+                    explanation: `{{ addslashes($qObj->explanation ?? '') }}`,
+                    question_type: '{{ $qObj->question_type ?? 'multiple_choice' }}'
+                };
+            @endforeach
+
+            console.log('✅ Question data preloaded for', Object.keys(questionData).length, 'questions');
+
+            // PERFORMANCE MONITORING
+            window.performanceStats = {
+                instantChecks: 0,
+                cacheHits: 0,
+                networkRequests: 0,
+                totalTime: 0
+            };
+
+            window.getPerformanceStats = function() {
+                console.log('📊 PERFORMANCE STATS:', window.performanceStats);
+                const avgTime = window.performanceStats.totalTime / (window.performanceStats.instantChecks + window.performanceStats.cacheHits + window.performanceStats.networkRequests);
+                console.log(`📊 AVERAGE RESPONSE TIME: ${Math.round(avgTime)}ms`);
+                return window.performanceStats;
+            };
+
+            // Initialize audio system
+            initializeAudioPools();
+            startPoolReplenishment();
+
+            // Event delegation for option selection
+            document.addEventListener('click', function(e) {
+                if (e.target.closest('.option-card')) {
+                    selectOption(e.target.closest('.option-card'));
+                }
+            });
+
+            console.log('✅ LETHAL AUDIO POOL: System ready for 0ms instant playback');
+        });
+
+    </script>
+
+    <script>
         // LIGHTNING FAST FUNCTION DEFINITIONS 🚀
         function selectOption(element) {
             try {
@@ -1480,56 +2805,129 @@
             }
         }
 
-        // 💀 LETHAL AUDIO POOL INITIALIZATION 💀
-        document.addEventListener('DOMContentLoaded', function() {
-            console.log('🔥 LETHAL AUDIO POOL: Initializing bulletproof sound system...');
+        // Track first attempt answers and question states
+
+        // Jump to specific question from sidebar
+        window.jumpToQuestion = function(questionNumber) {
+            console.log(`🎯 Jumping to question ${questionNumber}`);
             
-            // Initialize audio pools
-            initializeAudioPools();
+            document.querySelectorAll('.question-card').forEach(card => {
+                card.style.display = 'none';
+            });
             
-            // Start pool replenishment
-            startPoolReplenishment();
-            
-            // Event delegation for option selection
-            document.addEventListener('click', function(e) {
-                if (e.target.closest('.option-card')) {
-                    selectOption(e.target.closest('.option-card'));
+            const targetQuestion = document.getElementById(`question-${questionNumber}`);
+            if (targetQuestion) {
+                targetQuestion.style.display = 'block';
+                currentQuestionIndex = questionNumber;
+                updateSidebarActiveState(questionNumber);
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+            }
+        };
+
+        // Navigate to previous question
+        window.navigatePrevious = function(currentNumber) {
+            if (currentNumber > 1) {
+                jumpToQuestion(currentNumber - 1);
+            }
+        };
+
+        // Navigate to next question
+        window.navigateNext = function(currentNumber) {
+            if (currentNumber < totalQuestions) {
+                jumpToQuestion(currentNumber + 1);
+            }
+        };
+
+        // Update sidebar active state
+        function updateSidebarActiveState(questionNumber) {
+            document.querySelectorAll('.question-circle').forEach(circle => {
+                circle.classList.remove('active');
+                if (parseInt(circle.dataset.question) === questionNumber) {
+                    circle.classList.add('active');
                 }
             });
-            
-            console.log('✅ LETHAL AUDIO POOL: System ready for 0ms instant playback');
-        });
-        
-        // 💀 AUDIO POOL INITIALIZATION 💀
-        function initializeAudioPools() {
-            // Load existing audio elements into pools
-            const correctElements = document.querySelectorAll('.audio-pool-correct');
-            const wrongElements = document.querySelectorAll('.audio-pool-wrong');
-            const perfectElements = document.querySelectorAll('.audio-pool-perfect');
-            const partialElements = document.querySelectorAll('.audio-pool-partial');
-            
-            correctElements.forEach(audio => {
-                audioPool.correct.push(audio);
-                setupAudioElement(audio);
-            });
-            
-            wrongElements.forEach(audio => {
-                audioPool.wrong.push(audio);
-                setupAudioElement(audio);
-            });
-            
-            perfectElements.forEach(audio => {
-                audioPool.perfect.push(audio);
-                setupAudioElement(audio);
-            });
-            
-            partialElements.forEach(audio => {
-                audioPool.partial.push(audio);
-                setupAudioElement(audio);
-            });
-            
-            console.log(`🔥 LETHAL AUDIO POOL: Initialized - Correct: ${audioPool.correct.length}, Wrong: ${audioPool.wrong.length}, Perfect: ${audioPool.perfect.length}, Partial: ${audioPool.partial.length}`);
         }
+
+        // Update sidebar circle state (correct/incorrect)
+        function updateSidebarCircleState(questionNumber, isCorrect) {
+            const circle = document.querySelector(`.question-circle[data-question="${questionNumber}"]`);
+            if (circle) {
+                circle.classList.remove('answered');
+                if (isCorrect) {
+                    circle.classList.add('correct');
+                    circle.classList.remove('incorrect');
+                } else {
+                    circle.classList.add('incorrect');
+                    circle.classList.remove('correct');
+                }
+            }
+        }
+
+        // Handle "I Don't Know" button
+        window.handleDontKnow = function(questionNumber, questionId) {
+            console.log(`❓ I Don't Know clicked for Q${questionNumber}`);
+            
+            if (questionStates[questionNumber]) {
+                console.log(`⚠️ Question ${questionNumber} already answered`);
+                return;
+            }
+            
+            questionStates[questionNumber] = true;
+            firstAttemptAnswers[questionId] = 'dont_know';
+            
+            const qData = questionData[questionId];
+            if (!qData) {
+                console.error(`❌ Question data not found for ID ${questionId}`);
+                return;
+            }
+            
+            totalAnswers++;
+            userAnswers[questionId] = 'dont_know';
+            
+            updateSidebarCircleState(questionNumber, false);
+            
+            const questionCard = document.getElementById(`question-${questionNumber}`);
+            if (questionCard) {
+                const feedbackDiv = questionCard.querySelector('.answer-feedback');
+                const alertDiv = feedbackDiv.querySelector('.alert');
+                
+                feedbackDiv.style.display = 'block';
+                alertDiv.className = 'alert alert-danger';
+                feedbackDiv.querySelector('.result-text').textContent = "Don't worry! Here's the answer:";
+                feedbackDiv.querySelector('.explanation-content').innerHTML = `
+                    <div class="explanation-with-icon">
+                        <img class="doctor-icon" alt="Doctor character" src="https://next.amboss.com/us/static/assets/33964f30ee687409.svg">
+                        <div class="explanation-text">
+                            <strong>Correct Answer: ${qData.correct_answer}</strong><br><br>
+                            ${qData.explanation || 'No explanation available.'}
+                        </div>
+                    </div>
+                `;
+                
+                const checkBtn = questionCard.querySelector('.check-answer');
+                const dontKnowBtn = questionCard.querySelector('.btn-dont-know');
+                if (checkBtn) checkBtn.style.display = 'none';
+                if (dontKnowBtn) dontKnowBtn.style.display = 'none';
+                
+                questionCard.querySelectorAll('.option-card').forEach(opt => {
+                    opt.style.pointerEvents = 'none';
+                    opt.style.opacity = '0.6';
+                });
+                
+                const totalQs = {{ $questions->count() }};
+                if (questionNumber < totalQs) {
+                    const nextBtn = questionCard.querySelector('.next-question');
+                    if (nextBtn) nextBtn.style.display = 'inline-block';
+                } else {
+                    const resultsBtn = questionCard.querySelector('.view-results');
+                    if (resultsBtn) resultsBtn.style.display = 'inline-block';
+                }
+            }
+            
+            updateProgress(totalAnswers, {{ $questions->count() }});
+            playSound('wrong');
+        };
+
         
         // 💀 AUDIO ELEMENT SETUP 💀
         function setupAudioElement(audio) {
@@ -1698,17 +3096,14 @@
         // if (window.performance && window.performance.navigation.type === window.performance.navigation.TYPE_RELOAD) {
         //     window.location.reload(true);
         // }
-
-        let quizStartTime = new Date();
-        let currentQuestionIndex = 1;
-        let totalQuestions = {{ $questions->count() }};
-        let correctAnswers = 0;
-        let totalAnswers = 0;
+        // let currentQuestionIndex = 1; // REMOVED: Already declared above
+        // let correctAnswers = 0; // REMOVED: Already declared above
+        // let totalAnswers = 0; // REMOVED: Already declared above
         let questionStartTime = new Date(); // Track time for each question
         let totalStudyTime = 0; // Track total study time
 
         // CRITICAL FIX: Track all user answers throughout the session
-        let userAnswers = {};
+        // let userAnswers = {}; // REMOVED: Already declared above
 
         // AUTO-GRADE RANDOM QUIZ WHEN TIME RUNS OUT (DEFINED FIRST)
         function autoGradeRandomQuiz() {
@@ -1757,77 +3152,6 @@
             });
         }
 
-        // Timer functionality - DIFFERENT MODES FOR RANDOM VS NORMAL TUTOR
-        let timerInterval;
-        let isRandomQuiz = {{ isset($is_random_quiz) && $is_random_quiz ? 'true' : 'false' }};
-        let initialDuration = {{ isset($duration_minutes) ? $duration_minutes * 60 : 0 }}; // Only for random quiz
-        let timeLeft = isRandomQuiz ? initialDuration : 0; // Start at 0 for normal tutor, duration for random
-        let warningThreshold = Math.floor(initialDuration * 0.3); // Warning at 30% time remaining (only for random)
-        let dangerThreshold = Math.floor(initialDuration * 0.1); // Danger at 10% time remaining (only for random)
-
-        function updateTimer() {
-            const currentTime = new Date();
-            const elapsedSeconds = Math.floor((currentTime - quizStartTime) / 1000); // Ensure integer
-
-            if (initialDuration > 0) {
-                // Use countdown timer
-                timeLeft = Math.max(0, initialDuration - elapsedSeconds);
-            } else {
-                // Use elapsed timer
-                timeLeft = elapsedSeconds;
-            }
-
-            // Ensure timeLeft is always an integer
-            timeLeft = Math.floor(timeLeft);
-
-            const minutes = Math.floor(Math.abs(timeLeft) / 60);
-            const seconds = Math.floor(Math.abs(timeLeft) % 60); // Ensure seconds is integer
-            const timerElement = document.getElementById('timer');
-
-            if (timerElement) {
-                let timeDisplay = '';
-                if (initialDuration > 0) {
-                    // Countdown format - always show integers
-                    timeDisplay = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
-                } else {
-                    // Elapsed format - always show integers
-                    timeDisplay = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
-                }
-
-                timerElement.textContent = timeDisplay;
-
-                // Apply color grading based on time remaining
-                updateTimerStyling(timerElement, timeLeft);
-            }
-
-            // Auto-submit when time runs out (only for countdown mode)
-            if (initialDuration > 0 && timeLeft <= 0) {
-                clearInterval(timerInterval);
-                console.log('⏰ TIME RAN OUT - AUTO-GRADING RANDOM QUIZ...');
-                submitQuizRandomTutor();
-                return;
-            }
-
-            timerInterval = setTimeout(updateTimer, 1000);
-        }
-
-        function updateTimerStyling(timerElement, remainingTime) {
-            // Remove existing classes
-            timerElement.classList.remove('warning', 'danger');
-
-            if (initialDuration <= 0) return; // No styling for elapsed timer
-
-            const percentageRemaining = (remainingTime / initialDuration) * 100;
-
-            if (percentageRemaining <= 10) {
-                // Danger: Red styling with animation
-                timerElement.classList.add('danger');
-            } else if (percentageRemaining <= 30) {
-                // Warning: Yellow styling with animation
-                timerElement.classList.add('warning');
-            }
-            // Normal: Default styling (no class needed)
-        }
 
         // SUBMIT QUIZ WHEN TIME RUNS OUT - TZAR TECHNIQUE FROM WORKING RANDOM QUIZ
         function submitQuizRandomTutor() {
@@ -1997,9 +3321,6 @@
             });
         }
 
-        // Start the timer
-        updateTimer();
-
         // Update progress bar with timer color integration
         function updateProgress(completed, total) {
             const progressFill = document.getElementById('progress-fill');
@@ -2032,8 +3353,6 @@
 
 
         // 💀 LETHAL CLIENT-SIDE ANSWER CHECKING 💀
-        let answerCache = {};
-        let questionData = {};
         
         // PRELOAD ALL QUESTION DATA ON PAGE LOAD
         document.addEventListener('DOMContentLoaded', function() {
@@ -2065,9 +3384,184 @@
                 console.log(`📊 AVERAGE RESPONSE TIME: ${Math.round(avgTime)}ms`);
                 return window.performanceStats;
             };
+            
+            // Initialize timer after everything is ready
+            console.log('🕒 Initializing timer...');
+            console.log('🕒 updateTimer function exists:', typeof updateTimer);
+            console.log('🕒 quizStartTime:', quizStartTime);
+            setTimeout(() => {
+                if (typeof updateTimer === 'function') {
+                    updateTimer();
+                    console.log('✅ Timer started successfully');
+                } else {
+                    console.error('❌ updateTimer function not found!');
+                }
+            }, 100);
         });
         
 
+
+        // Track first attempt answers for each question (already declared above)
+
+        // Jump to specific question from sidebar
+        window.jumpToQuestion = function(questionNumber) {
+            console.log(`🎯 Jumping to question ${questionNumber}`);
+            
+            // Hide all questions
+            document.querySelectorAll('.question-card').forEach(card => {
+                card.style.display = 'none';
+            });
+            
+            // Show target question
+            const targetQuestion = document.getElementById(`question-${questionNumber}`);
+            if (targetQuestion) {
+                targetQuestion.style.display = 'block';
+                currentQuestionIndex = questionNumber;
+                
+                // Update sidebar active state
+                updateSidebarActiveState(questionNumber);
+                
+                // Scroll to top
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+            }
+        };
+
+        // Navigate to previous question
+        window.navigatePrevious = function(currentNumber) {
+            if (currentNumber > 1) {
+                jumpToQuestion(currentNumber - 1);
+            }
+        };
+
+        // Navigate to next question
+        window.navigateNext = function(currentNumber) {
+            if (currentNumber < totalQuestions) {
+                jumpToQuestion(currentNumber + 1);
+            }
+        };
+
+        // Update sidebar active state
+        function updateSidebarActiveState(questionNumber) {
+            document.querySelectorAll('.question-circle').forEach(circle => {
+                circle.classList.remove('active');
+                if (parseInt(circle.dataset.question) === questionNumber) {
+                    circle.classList.add('active');
+                }
+            });
+        }
+
+        // Update sidebar circle state (correct/incorrect)
+        function updateSidebarCircleState(questionNumber, isCorrect) {
+            const circle = document.querySelector(`.question-circle[data-question="${questionNumber}"]`);
+            if (circle) {
+                circle.classList.remove('answered');
+                if (isCorrect) {
+                    circle.classList.add('correct');
+                    circle.classList.remove('incorrect');
+                } else {
+                    circle.classList.add('incorrect');
+                    circle.classList.remove('correct');
+                }
+            }
+        }
+
+        // Handle "I Don't Know" button
+        window.handleDontKnow = function(questionNumber, questionId) {
+            console.log(`❓ I Don't Know clicked for Q${questionNumber}`);
+
+            // Check if this question has already been answered
+            if (questionStates[questionNumber]) {
+                console.log(`⚠️ Question ${questionNumber} already answered, ignoring`);
+                return;
+            }
+
+            // Mark as answered (first attempt)
+            questionStates[questionNumber] = true;
+            firstAttemptAnswers[questionId] = 'Dont know';
+
+            // Get question data
+            const qData = questionData[questionId];
+            if (!qData) {
+                console.error(`❌ Question data not found for ID ${questionId}`);
+                return;
+            }
+
+            // Record as incorrect
+            totalAnswers++;
+            userAnswers[questionId] = 'Dont know';
+
+            // Update sidebar to red
+            updateSidebarCircleState(questionNumber, false);
+
+            // Log mistake to backend
+            logMistake(questionId, 'Dont know', qData.correct_answer);
+
+            // Show explanation briefly, then auto-advance
+            const questionCard = document.getElementById(`question-${questionNumber}`);
+            if (questionCard) {
+                const feedbackDiv = questionCard.querySelector('.answer-feedback');
+                const alertDiv = feedbackDiv.querySelector('.alert');
+
+                feedbackDiv.style.display = 'block';
+                alertDiv.className = 'alert alert-danger';
+                feedbackDiv.querySelector('.result-text').textContent = "Don't worry! Here's the answer:";
+                feedbackDiv.querySelector('.explanation-content').innerHTML = `
+                    <div class="explanation-with-icon">
+                        <img class="doctor-icon" alt="Doctor character" src="https://next.amboss.com/us/static/assets/33964f30ee687409.svg">
+                        <div class="explanation-text">
+                            <strong>Correct Answer: ${qData.correct_answer}</strong><br><br>
+                            ${qData.explanation || 'No explanation available.'}
+                        </div>
+                    </div>
+                `;
+
+                // Hide check answer and I don't know buttons
+                const checkBtn = questionCard.querySelector('.check-answer');
+                const dontKnowBtn = questionCard.querySelector('.btn-dont-know');
+                if (checkBtn) checkBtn.style.display = 'none';
+                if (dontKnowBtn) dontKnowBtn.style.display = 'none';
+
+                // Disable all options
+                questionCard.querySelectorAll('.option-card').forEach(opt => {
+                    opt.style.pointerEvents = 'none';
+                    opt.style.opacity = '0.6';
+                });
+            }
+
+            // Update progress
+            updateProgress(totalAnswers, totalQuestions);
+
+            // Play wrong sound
+            playInstantSound(false);
+
+            // Stay on current question - user can manually navigate if desired
+        };
+
+        // Log mistake to backend
+        function logMistake(questionId, userAnswer, correctAnswer) {
+            const csrfToken = document.querySelector('meta[name="csrf-token"]').content;
+            
+            fetch('/mistakes/log', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': csrfToken,
+                    'Accept': 'application/json'
+                },
+                body: JSON.stringify({
+                    question_id: questionId,
+                    user_answer: userAnswer,
+                    correct_answer: correctAnswer
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                console.log('✅ Mistake logged:', data);
+            })
+            .catch(error => {
+                console.log('ℹ️ Mistake logging issue (non-critical):', error.message);
+            });
+        }
 
         // EXTRACTED ANSWER PROCESSING FUNCTION FOR SPEED
         function processAnswerResult(questionNumber, questionId, data, checkBtn) {
@@ -2078,12 +3572,21 @@
                 return;
             }
             processAnswerResult[resultKey] = true;
+            
+            // Update sidebar circle state
+            updateSidebarCircleState(questionNumber, data.is_correct);
 
-            // FINAL RESULTS CHECK - IF THIS IS THE LAST QUESTION
+            // 🔥 UPDATE SOURCE PROGRESS IN MODAL IF AVAILABLE
+            if (data.source_progress) {
+                console.log('🎯 TUTOR MODE: Updating source progress from answer check:', data.source_progress);
+                updateSourceProgressDisplay(data.source_progress);
+            }
+
+            // 🎯 FINAL RESULTS CHECK - IF THIS IS THE LAST QUESTION, SHOW VIEW RESULTS BUTTON
             if (totalAnswers === totalQuestions) {
-                console.log('🔥 LAST QUESTION ANSWERED - SHOWING EXPLANATION FIRST');
+                console.log('🔥 LAST QUESTION ANSWERED: Showing View Results button instead of Next Question');
 
-                // 🎯 SHOW EXPLANATION FOR LAST QUESTION BEFORE FINAL GRADING
+                // 🎯 SHOW EXPLANATION FOR LAST QUESTION, THEN VIEW RESULTS BUTTON
                 updateQuestionUI(questionNumber, {
                     correct: data.is_correct,
                     explanation: data.explanation,
@@ -2092,8 +3595,11 @@
                     showViewResultsButton: true // Show "View Results" button instead
                 });
 
-                return; // DON'T show grading popup yet, let user read explanation
+                return; // DON'T show grading popup yet, let user read explanation and click View Results
             }
+
+            // 🎯 FOR NON-LAST QUESTIONS - SHOW EXPLANATION THEN NEXT BUTTON AS NORMAL
+            console.log('🎓 TUTOR MODE: Showing explanation for Q${questionNumber}, total answered: ${totalAnswers}/${totalQuestions}');
 
             // FOR NON-LAST QUESTIONS - SHOW NEXT BUTTON AS NORMAL
             updateQuestionUI(questionNumber, {
@@ -2102,6 +3608,35 @@
                 correctAnswer: data.correct_answer,
                 showNextButton: true // Flag to show next button for non-last questions
             });
+        }
+
+        // 🔥 UPDATE SOURCE PROGRESS DISPLAY IN MODAL
+        function updateSourceProgressDisplay(sourceProgress) {
+            console.log('📊 Updating source progress display:', sourceProgress);
+            
+            // Find the source progress element in the modal
+            const sourceElement = document.querySelector(`[data-source="${sourceProgress.source}"]`);
+            if (sourceElement) {
+                const percentage = Math.round(sourceProgress.percentage || 0);
+                const progressText = `${sourceProgress.correct}/${sourceProgress.total} (${percentage}%)`;
+                
+                // Update the progress text
+                const progressSpan = sourceElement.querySelector('.source-progress');
+                if (progressSpan) {
+                    progressSpan.textContent = progressText;
+                }
+                
+                // Update progress bar if exists
+                const progressBar = sourceElement.querySelector('.progress-bar');
+                if (progressBar) {
+                    progressBar.style.width = `${percentage}%`;
+                    progressBar.setAttribute('aria-valuenow', percentage);
+                }
+                
+                console.log(`✅ Updated ${sourceProgress.source} progress to ${progressText}`);
+            } else {
+                console.warn(`⚠️ Could not find source element for: ${sourceProgress.source}`);
+            }
         }
         
         window.checkAnswer = function checkAnswer(questionNumber, questionId) {
@@ -2155,7 +3690,12 @@
                         const alertDiv = feedbackDiv.querySelector('.alert');
                         alertDiv.className = 'alert alert-warning';
                         feedbackDiv.querySelector('.result-text').textContent = 'Please select an answer first!';
-                        feedbackDiv.querySelector('.explanation-content').innerHTML = 'You need to choose an answer before checking. Select one of the options above and try again.';
+                        feedbackDiv.querySelector('.explanation-content').innerHTML = `
+                            <div class="explanation-with-icon">
+                                <img class="doctor-icon" alt="Doctor character" src="https://next.amboss.com/us/static/assets/33964f30ee687409.svg">
+                                <div class="explanation-text">You need to choose an answer before checking. Select one of the options above and try again.</div>
+                            </div>
+                        `;
                     }, 300);
                 }
 
@@ -2383,7 +3923,14 @@
             alertDiv.className = `alert ${data.correct ? 'alert-success' : 'alert-danger'}`;
             
             // Update feedback text
-            feedbackDiv.querySelector('.result-text').textContent = data.correct ? 'Correct! 🎉' : 'Incorrect';
+            if (data.correct) {
+                feedbackDiv.querySelector('.result-text').textContent = 'Correct! 🎉';
+            } else {
+                // Show what was selected vs correct answer
+                const selectedOption = questionCard.querySelector('.option-card.selected');
+                const userAnswer = selectedOption ? selectedOption.getAttribute('data-option') : 'Unknown';
+                feedbackDiv.querySelector('.result-text').textContent = `You selected: ${userAnswer} | Correct: ${data.correctAnswer}`;
+            }
             
             // 💀 LETHAL AUDIO POOL - INSTANT SOUND FEEDBACK (ONCE ONLY) 💀
             // Skip individual question sounds for the last question to prevent overlap with final grading sound
@@ -2403,7 +3950,22 @@
             if (!data.correct && data.correctAnswer) {
                 explanationHtml = `<strong>Correct Answer: ${data.correctAnswer}</strong><br><br>${explanationHtml}`;
             }
-            feedbackDiv.querySelector('.explanation-content').innerHTML = explanationHtml;
+
+            // Create aligned result text with doctor icon
+            const resultText = data.correct ? 'Correct! 🎉' : 'Incorrect';
+            const explanationWithIcon = `
+                <div class="explanation-with-icon">
+                    <img class="doctor-icon" alt="random doctor image" src="https://next.amboss.com/us/static/assets/33964f30ee687409.svg">
+                    <div class="explanation-text">
+                        <strong class="result-text-inline">${resultText}</strong><br><br>
+                        ${explanationHtml}
+                    </div>
+                </div>
+            `;
+            feedbackDiv.querySelector('.explanation-content').innerHTML = explanationWithIcon;
+
+            // Hide the separate result text element since we now have it inline
+            feedbackDiv.querySelector('.result-text').style.display = 'none';
 
             // Update option styling
             const selectedOption = questionCard.querySelector('.option-card.selected');
@@ -2463,38 +4025,12 @@
             updateProgress(totalAnswers, totalQuestions);
         }
 
-        // 🎯 UNIFIED FUSION RESULTS: Streamlined and efficient (SKIP RECORDING FOR TUTOR MODE)
-        async function showQuizResults(results) {
-            console.log('🚀 FUSION: Starting unified quiz completion process', results);
+        // 🎯 INSTANT RESULTS: Show popup immediately, background operations are completely fire-and-forget
+        function showQuizResults(results) {
+            console.log('🚀 INSTANT RESULTS: Starting immediate quiz completion process', results);
             const completionStart = performance.now();
 
-            // ⚡ TUTOR MODE: Services learning sessions, DON'T record quiz attempts
-            const isRandomQuiz = {{ isset($is_random_quiz) && $is_random_quiz ? 'true' : 'false' }};
-
-            let recordingPromise;
-            if (isRandomQuiz) {
-                // 🎓 TUTOR MODE: Skip database recording, just show visual results
-                console.log('🎓 TUTOR MODE: Skipping quiz attempt recording for learning mode');
-                recordingPromise = Promise.resolve({ success: true, skipped: true });
-            } else {
-                // 📊 NORMAL QUIZ: Record attempt as usual
-                recordingPromise = recordTutorQuizAttempt(results);
-            }
-
-            // ⚡ NUCLEAR FUSION: Save data (if not tutor mode) AND play sound simultaneously
-            const [recordingResult, soundResult] = await Promise.all([
-                recordingPromise,
-                new Promise(resolve => {
-                    playFinalGradingSound(results.correct, results.total);
-                    resolve();
-                })
-            ]);
-
-            console.log('✅ FUSION: Database and sound completed in:', (performance.now() - completionStart).toFixed(2) + 'ms');
-            console.log('📊 Recording result:', recordingResult);
-            console.log('🔊 Sound triggered successfully');
-
-            // 🎯 CONTINUE WITH UI RENDERING
+            // ⚡ INSTANT UI RENDERING - SHOW POPUP IMMEDIATELY
             const popupOverlay = document.getElementById('popup-overlay');
             const popup = document.getElementById('popup');
             const gradeIcon = document.getElementById('grade-icon');
@@ -2540,116 +4076,90 @@
                 popupMessage.textContent = 'Don\'t give up! Practice makes perfect!';
             }
 
-            // Show success popup with animation
+            // Show success popup with animation IMMEDIATELY
             popupOverlay.classList.add('show');
             setTimeout(() => popup.classList.add('show'), 100);
 
-            console.log('🎉 FUSION: Complete quiz experience delivered in:', (performance.now() - completionStart).toFixed(2) + 'ms');
-        }
+            // 🎉 FUNCTION COMPLETES INSTANTLY HERE - NO AWAITS OR BLOCKING OPERATIONS
+            const uiTime = performance.now() - completionStart;
+            console.log(`⚡ INSTANT UI: Popup shown in ${(uiTime).toFixed(2)}ms - COMPLETING FUNCTION NOW`);
 
+            // 🔥 FIRE-AND-FORGET BACKGROUND OPERATIONS - NO AWAITING
+            const isRandomQuiz = {{ isset($is_random_quiz) && $is_random_quiz ? 'true' : 'false' }};
 
-
-        // 💀 LETHAL AUDIO POOL - INSTANT SOUND PLAYBACK 💀
-        function playInstantSound(isCorrect) {
-            const startTime = performance.now();
-            const soundType = isCorrect ? 'correct' : 'wrong';
-            
-            // 💀 BULLETPROOF DUPLICATE PREVENTION 💀
-            if (playInstantSound.isPlaying) {
-                console.log(`🔇 LETHAL AUDIO POOL: Sound already playing, skipping duplicate ${soundType} sound`);
-                return;
-            }
-            
-            console.log(`🔥 LETHAL AUDIO POOL: Attempting 0ms playback for ${soundType} sound`);
-            
-            // 💀 SHIFT FROM POOL - GET READY AUDIO ELEMENT 💀
-            let audio = null;
-            if (audioPool[soundType] && audioPool[soundType].length > 0) {
-                audio = audioPool[soundType].shift(); // Remove from pool
-                console.log(`🔥 LETHAL AUDIO POOL: Got ${soundType} audio from pool (${audioPool[soundType].length} remaining)`);
+            // Background database recording (completely fire-and-forget)
+            if (!isRandomQuiz) {
+                recordTutorQuizAttempt(results); // 🔥 NOT AWAITING THIS
             } else {
-                // 💀 FALLBACK: CREATE FRESH AUDIO 💀
-                console.log(`🔥 LETHAL AUDIO POOL: Pool empty, creating fresh ${soundType} audio`);
-                createAudioElement(soundType);
-                audio = audioPool[soundType].shift();
+                console.log('🎓 TUTOR MODE: Skipping quiz attempt recording for learning mode');
             }
-            
-            if (!audio) {
-                console.log(`ℹ️ LETHAL AUDIO POOL: No audio available for ${soundType}, continuing silently`);
-                return;
-            }
-            
-            // 💀 INSTANT PLAYBACK WITH ERROR HANDLING 💀
-            try {
-                audio.currentTime = 0;
-                audio.volume = 0.7;
-                
-                // Add a one-time ended listener to ensure proper cleanup
-                const endedHandler = () => {
-                    audio.removeEventListener('ended', endedHandler);
-                    // Reset playing flag when sound ends
-                    playInstantSound.isPlaying = false;
-                    setTimeout(() => {
-                        returnToPool(audio, soundType);
-                    }, 100); // Small delay to ensure full playback
-                };
-                audio.addEventListener('ended', endedHandler);
-                
-                // 💀 SET PLAYING FLAG TO PREVENT DUPLICATES 💀
-                playInstantSound.isPlaying = true;
-                
-                const playPromise = audio.play();
-                if (playPromise !== undefined) {
-                    playPromise.then(() => {
-                        const playbackTime = performance.now() - startTime;
-                        console.log(`✅ LETHAL AUDIO POOL: ${soundType} sound started in ${playbackTime.toFixed(2)}ms - letting it play fully`);
-                        
-                    }).catch(error => {
-                        console.error(`❌ LETHAL AUDIO POOL: ${soundType} playback failed`, error);
-                        audio.removeEventListener('ended', endedHandler);
-                        // Return to pool even on error
-                        returnToPool(audio, soundType);
-                        // Reset playing flag on error
-                        playInstantSound.isPlaying = false;
-                    });
-                }
-            } catch (error) {
-                console.error(`❌ LETHAL AUDIO POOL: ${soundType} audio error`, error);
-                // Return to pool even on error
-                returnToPool(audio, soundType);
-                // Reset playing flag on error
-                playInstantSound.isPlaying = false;
-            }
+
+            // Background sound playback (completely fire-and-forget)
+            playFinalGradingSound(results.correct, results.total); // 🔥 NOT AWAITING THIS
+
+            console.log(`🎉 INSTANT RESULTS: Function completed in ${(performance.now() - completionStart).toFixed(2)}ms - background operations running independently`);
+
+            // 🎯 RETURN IMMEDIATELY - NO CONTEXTWAITING
+            return;
         }
+
+
         
-        // 💀 NUCLEAR INSTANT GRADING SOUND - ZERO DELAY 💀
+        // 💀 ULTRA-MEGA INSTANT GRADING SOUND - AUDIO POOL POWERED 💀
         function playFinalGradingSound(score, total) {
             const funcStart = performance.now();
-            console.log('🔥 PLAY FINAL GRADING SOUND CALLED');
-            
+            console.log('🔥 PLAY FINAL GRADING SOUND - AUDIO POOL EDITION');
+
             const percentage = (score / total) * 100;
-            
-            // 💀 NUCLEAR SPEED - DIRECT AUDIO CREATION 💀
-            const audio = new Audio();
-            
+
+            // 💀 AUDIO POOL INSTANT SELECTION - NO DOWNLOAD DELAY 💀
+            let soundType = 'partial'; // Default to partial
             if (percentage === 100) {
-                audio.src = '/sounds/quiz-perfect.mp3';
-            } else if (percentage >= 70) {
-                audio.src = '/sounds/quiz-partial.mp3';
-            } else {
-                audio.src = '/sounds/quiz-wrong.mp3';
+                soundType = 'perfect';
+            } else if (percentage < 70) {
+                soundType = 'wrong';
             }
-            
-            audio.volume = 0.7;
-            
-            const playStart = performance.now();
-            audio.play().then(() => {
-                console.log(`✅ AUDIO PLAYED in ${(performance.now() - playStart).toFixed(2)}ms`);
-            }).catch((error) => {
-                console.log(`❌ AUDIO FAILED in ${(performance.now() - playStart).toFixed(2)}ms:`, error);
-            });
-            
-            console.log(`🔥 FUNCTION COMPLETED in ${(performance.now() - funcStart).toFixed(2)}ms`);
+
+            console.log(`🎵 PLAYING INSTANT ${soundType.toUpperCase()} SOUND`);
+
+            // 💀 INSTANT AUDIO POOL ACCESS - ZERO DELAY 💀
+            let audio = null;
+            if (audioPool[soundType] && audioPool[soundType].length > 0) {
+                audio = audioPool[soundType].shift();
+                console.log(`🔥 GOT PRE-LOADED ${soundType} AUDIO FROM POOL (${audioPool[soundType].length} remaining)`);
+            } else {
+                console.log(`⚠️ POOL EMPTY FOR ${soundType} - IMITATING POOL SPEED`);
+                createAudioElement(soundType);
+                if (audioPool[soundType] && audioPool[soundType].length > 0) {
+                    audio = audioPool[soundType].shift();
+                }
+            }
+
+            if (audio) {
+                // 💀 POOL POWERED INSTANT PLAYBACK 💀
+                audio.currentTime = 0;
+                audio.volume = 0.7;
+
+                const playStart = performance.now();
+                audio.play().then(() => {
+                    const playbackTime = performance.now() - playStart;
+                    console.log(`⚡ AUDIO POOL - INSTANT PLAYBACK in ${playbackTime.toFixed(2)}ms (should be <0.01ms)`);
+
+                    // Return to pool immediately after playing
+                    setTimeout(() => {
+                        returnToPool(audio, soundType);
+                    }, 100);
+
+                }).catch(error => {
+                    console.error(`❌ POOL AUDIO FAILED: ${error.message}`);
+                    // Still return to pool even on error
+                    returnToPool(audio, soundType);
+                });
+
+                console.log(`🔥 FUNCTION COMPLETED in ${(performance.now() - funcStart).toFixed(2)}ms`);
+            } else {
+                console.log(`ℹ️ NO AUDIO AVAILABLE FOR ${soundType}, SKIPPING SILENTLY`);
+            }
         }
         
         // 💀 LETHAL AUDIO POOL DEBUG FUNCTIONS 💀
@@ -2669,100 +4179,10 @@
             setTimeout(() => playInstantSound(true), 1000);  // Test correct again
         };
 
+
     </script>
 
     <script>
-        // 💀 NUCLEAR AUDIO PRELOADING SYSTEM 💀
-
-
-
-        // AUTO-GRADE RANDOM QUIZ WHEN TIME RUNS OUT
-        function autoGradeRandomQuiz() {
-            console.log('⏰ AUTO-GRADING: Time ran out, grading random quiz with current answers...');
-
-            // Check if we have any answers to grade
-            const hasAnswers = Object.keys(userAnswers).length > 0;
-
-            if (!hasAnswers) {
-                console.log('ℹ️ No answers provided, showing empty results');
-                // Show results with 0 correct answers
-                showQuizResults({
-                    correct: 0,
-                    total: totalQuestions,
-                    percentage: 0
-                });
-                return;
-            }
-
-            console.log(`📊 Grading ${Object.keys(userAnswers).length} answers out of ${totalQuestions} questions`);
-
-            // Calculate current score based on answered questions
-            let currentCorrect = 0;
-            let answeredCount = 0;
-
-            // Count correct answers from answered questions
-            for (const [questionId, answer] of Object.entries(userAnswers)) {
-                answeredCount++;
-                // FIXED: Use questionData instead of undefined 'questions' variable
-                const questionDataItem = questionData[questionId];
-                if (questionDataItem && answer.toLowerCase().trim() === questionDataItem.correct_answer.toLowerCase().trim()) {
-                    currentCorrect++;
-                }
-            }
-
-            console.log(`✅ Auto-grade results: ${currentCorrect}/${answeredCount} answered questions correct`);
-
-            // Calculate percentage based on answered questions only
-            const percentage = answeredCount > 0 ? Math.round((currentCorrect / answeredCount) * 100) : 0;
-
-            // Show results immediately
-            showQuizResults({
-                correct: currentCorrect,
-                total: answeredCount,
-                percentage: percentage
-            });
-        }
-
-        // 🎯 DIRECT APPROACH: Send all answers in simple format to backend
-        async function recordTutorQuizAttempt(results) {
-            console.log('🔥 DIRECT APPROACH: Sending all answers to backend for processing', results);
-
-            try {
-                // 🚀 SIMPLE PAYLOAD: Let backend handle the complexity
-                const payload = {
-                    results: results,
-                    user_answers: userAnswers,
-                    answered_questions: Object.keys(userAnswers).length
-                };
-
-                console.log('📤 SENDING PAYLOAD:', payload);
-
-                // 🚀 SINGLE CALL TO BACKEND - LET IT FIGURE OUT THE COMPLEXITY
-                const response = await fetch('/quiz/tutor/complete-session', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
-                        'Accept': 'application/json'
-                    },
-                    body: JSON.stringify(payload)
-                });
-
-                const result = await response.json();
-                console.log('📥 BACKEND RESPONSE:', result);
-
-                if (!response.ok) {
-                    return { success: false, error: result.message || 'Backend error' };
-                }
-
-                return result;
-
-            } catch (error) {
-                console.error('❌ DIRECT APPROACH ERROR:', error);
-                return { success: false, fallback: true, error: error.message };
-            }
-        }
-
         // Handle source progress updates from tutor quiz completion
         document.addEventListener('sourceProgressUpdated', function(e) {
             console.log('🔥 TUTOR MODE: Source progress update received:', e.detail);

@@ -7,6 +7,7 @@ use App\Models\Course;
 use App\Models\Topic;
 use App\Models\Question;
 use App\Services\QuizService;
+use App\Services\GradingService;
 use App\Services\Core\UltraConsolidatedCacheService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
@@ -20,12 +21,14 @@ class QuizTutorController extends Controller
 {
     protected $quizService;
     protected $cacheService;
+    protected $gradingService;
 
-    public function __construct(QuizService $quizService, UltraConsolidatedCacheService $cacheService)
+    public function __construct(QuizService $quizService, UltraConsolidatedCacheService $cacheService, GradingService $gradingService)
     {
         $this->middleware(['auth']);
         $this->quizService = $quizService;
         $this->cacheService = $cacheService;
+        $this->gradingService = $gradingService;
     }
 
     /**
@@ -98,23 +101,31 @@ class QuizTutorController extends Controller
     }
 
     /**
-     * 💀 LETHAL SPEED ANSWER CHECKING - BYPASS EVERYTHING 💀
+     * 🔥 TUTOR ANSWER CHECKING - WITH MISTAKE TRACKING & PROGRESS UPDATE
      */
     public function checkTutorAnswer(Request $request, Question $question)
     {
-        // INSTANT ANSWER EXTRACTION - NO VALIDATION
-        $answer = $request->input('answer', '');
-        
-        // INSTANT COMPARISON - NO CACHING OVERHEAD
-        $isCorrect = strtolower(trim($answer)) === strtolower(trim($question->correct_answer));
-        
-        // MINIMAL JSON RESPONSE - NO EXTRAS
-        return response()->json([
-            'success' => true,
-            'is_correct' => $isCorrect,
-            'correct_answer' => $question->correct_answer,
-            'explanation' => $question->explanation
-        ]);
+        try {
+            $user = auth()->user();
+            $answer = $request->input('answer', '');
+            
+            // Use GradingService to properly grade, track mistakes, and update progress
+            $result = $this->gradingService->gradeTutorAnswer($user, $question, $answer);
+            
+            return response()->json($result);
+            
+        } catch (\Exception $e) {
+            Log::error('Error in checkTutorAnswer:', [
+                'error' => $e->getMessage(),
+                'question_id' => $question->id,
+                'user_id' => auth()->id()
+            ]);
+            
+            return response()->json([
+                'success' => false,
+                'message' => 'Error checking answer: ' . $e->getMessage()
+            ], 500);
+        }
     }
 
     /**
@@ -185,6 +196,20 @@ class QuizTutorController extends Controller
                     $totalQuestions++;
                     if ($isCorrect) {
                         $totalCorrect++;
+                    } else {
+                        // 🔥 RECORD MISTAKE IMMEDIATELY - This was missing!
+                        \App\Models\Mistake::updateOrCreate(
+                            [
+                                'user_id' => $user->id,
+                                'question_id' => $question->id
+                            ],
+                            [
+                                'submitted_answer' => $userAnswer,
+                                'question_text' => $question->question,
+                                'correct_answer' => $question->correct_answer,
+                                'last_attempt_date' => now()
+                            ]
+                        );
                     }
                 }
 
@@ -259,6 +284,19 @@ class QuizTutorController extends Controller
             $course = Course::find($courseId);
             $topic = Topic::find($topicId);
 
+            // 🔥 CLEAR MISTAKE CACHE - Ensure mistakes show up instantly!
+            if ($totalQuestions > $totalCorrect) {
+                \App\Http\Controllers\Quiz\QuizMistakeController::clearUserMistakeCaches($user->id);
+                \Log::info('🔥 CACHE CLEARED: Mistakes will show instantly', ['user_id' => $user->id]);
+            }
+
+            // 🔥 CLEAR PROGRESS CACHE - Source modal updates instantly!
+            \App\Models\QuizAttempt::clearProgressCache($user->id, $topicId, 'tutor');
+            \Log::info('🔥 PROGRESS CACHE CLEARED: Source modal will update instantly', [
+                'user_id' => $user->id,
+                'topic_id' => $topicId
+            ]);
+
             // Trigger tutor mode completion notifications
             \App\Services\NotificationTriggerService::onQuizCompleted($user, [
                 'score' => $totalCorrect,
@@ -277,7 +315,8 @@ class QuizTutorController extends Controller
                 'course_id' => $courseId,
                 'topic_id' => $topicId,
                 'sources_processed' => count($createdAttempts),
-                'attempts_created' => count($createdAttempts)
+                'attempts_created' => count($createdAttempts),
+                'mistakes_recorded' => $totalQuestions - $totalCorrect
             ]);
 
             return response()->json([

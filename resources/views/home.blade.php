@@ -14,7 +14,6 @@
             background: #f8fafc;
             font-family: system-ui, -apple-system, sans-serif;
             overflow-x: hidden;
-            visibility: hidden; /* Hide until loaded */
         }
         .page-loaded { visibility: visible; }
 
@@ -105,6 +104,7 @@
         window.MedCapsule = {
             csrfToken: '{{ csrf_token() }}',
             baseUrl: '{{ url('/') }}',
+            profileRoute: '{{ route("profile") }}',
             user: @json(auth()->user() ? ['id' => auth()->id(), 'name' => auth()->user()->name] : null),
             performance: {
                 startTime: performance.now(),
@@ -143,8 +143,23 @@
         /* Navbar */
         .navbar {
             background-color: white;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-            padding: 1rem 0;
+            box-shadow: none;
+            padding: 0.6rem 0;
+            position: relative;
+            z-index: 1000;
+        }
+
+        /* Smooth transition overlay between navbar and hero */
+        .navbar::after {
+            content: '';
+            position: absolute;
+            bottom: -30px;
+            left: 0;
+            right: 0;
+            height: 30px;
+            background: linear-gradient(to bottom, rgba(255, 255, 255, 1), rgba(255, 255, 255, 0));
+            pointer-events: none;
+            z-index: 999;
         }
 
         /* MedCapsule Brand Styling */
@@ -215,6 +230,8 @@
             text-align: center;
             padding: 2rem;
             overflow: hidden;
+            margin-top: 0;
+            padding-top: 2rem;
         }
 
         .hero-section h1 {
@@ -398,23 +415,7 @@
             margin-bottom: 15px;
         }
 
-        /* Footer */
-        .footer {
-            background: #343a40;
-            color: white;
-            padding: 50px 0;
-            text-align: center;
-            animation: fadeSlideIn 1s ease-out;
-        }
 
-        .footer a {
-            color: #007bff;
-            text-decoration: none;
-        }
-
-        .footer a:hover {
-            text-decoration: underline;
-        }
 
         /* Animations */
         @keyframes fadeSlideIn {
@@ -580,17 +581,7 @@
             }
         }
 
-        /* Mobile Footer */
-        @media (max-width: 768px) {
-            .footer {
-                padding: 30px 0;
-                text-align: center;
-            }
-            
-            .footer .container {
-                padding: 0 1rem;
-            }
-        }
+
 
         /* Small Mobile Devices */
         @media (max-width: 480px) {
@@ -1291,6 +1282,7 @@
             border-radius: 10px;
             box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
             transition: transform 0.3s ease;
+            color: #333 !important;
         }
 
         .stat-item:hover {
@@ -2161,37 +2153,325 @@
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
         }
+
+        /* 🍎 APPLE-STYLE MINIMAL CONTACT BUTTON */
+        .floating-contact {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            z-index: 1000;
+        }
+
+        .contact-toggle {
+            width: 56px;
+            height: 56px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.95);
+            color: #2196f3;
+            border: 1.5px solid rgba(33, 150, 243, 0.2);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08), 0 2px 4px rgba(0, 0, 0, 0.04);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.4rem;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+        }
+
+        .contact-toggle:hover {
+            transform: scale(1.05);
+            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.12), 0 4px 6px rgba(0, 0, 0, 0.06);
+            border-color: rgba(33, 150, 243, 0.4);
+        }
+
+        .contact-toggle:active {
+            transform: scale(0.98);
+        }
+
+        .contact-options {
+            position: absolute;
+            bottom: 68px;
+            right: 0;
+            background: rgba(255, 255, 255, 0.98);
+            border-radius: 16px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12), 0 2px 8px rgba(0, 0, 0, 0.08);
+            padding: 8px;
+            opacity: 0;
+            visibility: hidden;
+            transform: scale(0.9) translateY(10px);
+            transform-origin: bottom right;
+            transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+            min-width: 200px;
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(0, 0, 0, 0.06);
+        }
+
+        .contact-options.show {
+            opacity: 1;
+            visibility: visible;
+            transform: scale(1) translateY(0);
+            animation: springIn 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+
+        @keyframes springIn {
+            0% {
+                transform: scale(0.8) translateY(10px);
+                opacity: 0;
+            }
+            50% {
+                transform: scale(1.02) translateY(-2px);
+            }
+            100% {
+                transform: scale(1) translateY(0);
+                opacity: 1;
+            }
+        }
+
+        .contact-option {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 16px;
+            color: #1d1d1f;
+            text-decoration: none;
+            border-radius: 12px;
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            font-weight: 500;
+            font-size: 15px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .contact-option::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.04);
+            opacity: 0;
+            transition: opacity 0.2s ease;
+        }
+
+        .contact-option:hover::before {
+            opacity: 1;
+        }
+
+        .contact-option:active {
+            transform: scale(0.98);
+        }
+
+        .contact-option i {
+            font-size: 20px;
+            width: 20px;
+            text-align: center;
+            transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+
+        .contact-option:hover i {
+            transform: scale(1.1);
+        }
+
+        .contact-option.telegram {
+            color: #0088cc;
+        }
+
+        .contact-option.telegram i {
+            animation: gentlePulse 2s ease-in-out infinite;
+        }
+
+        .contact-option.whatsapp {
+            color: #25D366;
+        }
+
+        .contact-option.whatsapp i {
+            animation: gentlePulse 2s ease-in-out infinite 0.5s;
+        }
+
+        @keyframes gentlePulse {
+            0%, 100% {
+                opacity: 1;
+                transform: scale(1);
+            }
+            50% {
+                opacity: 0.7;
+                transform: scale(0.95);
+            }
+        }
+
+
+
+        /* Mobile adjustments */
+        @media (max-width: 768px) {
+            .floating-contact {
+                bottom: 20px;
+                right: 20px;
+            }
+
+            .contact-toggle {
+                width: 50px;
+                height: 50px;
+                font-size: 1.3rem;
+            }
+
+            .contact-arrow {
+                bottom: 80px;
+                right: 15px;
+                font-size: 20px;
+            }
+        }
+
+        /* ✨ MINIMAL PROFESSIONAL ENHANCEMENTS */
+
+        /* 🔥 SCROLL REVEAL ANIMATIONS */
+        .reveal {
+            opacity: 1;
+            transform: translateY(0);
+            transition: all 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .reveal.active {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        /* ✨ SUBTLE CARD HOVER */
+        .course-card {
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .course-card:hover {
+            transform: translateY(-8px);
+            box-shadow: 0 12px 24px rgba(33, 150, 243, 0.15);
+        }
+
+        /* ✨ CLEAN BUTTON HOVER */
+        .btn-primary {
+            transition: all 0.3s ease;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 16px rgba(33, 150, 243, 0.3);
+        }
+
+        /* 🔥 STATS COUNTER ANIMATION */
+        .stat-item h4 {
+            font-size: 2.5rem;
+            font-weight: 800;
+            background: linear-gradient(135deg, #2196f3, #1976d2);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        /* 🔥 SMOOTH PAGE LOAD */
+        body {
+            animation: fadeIn 0.6s ease-in;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+            }
+            to {
+                opacity: 1;
+            }
+        }
+
+        /* 🔥 TOAST NOTIFICATIONS */
+        .toast-container {
+            position: fixed;
+            top: 80px;
+            right: 20px;
+            z-index: 9999;
+        }
+
+        .toast {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+            padding: 1rem 1.5rem;
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            min-width: 300px;
+            animation: slideInRight 0.4s ease-out;
+        }
+
+        @keyframes slideInRight {
+            from {
+                transform: translateX(400px);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+
+        .toast.success {
+            border-left: 4px solid #10b981;
+        }
+
+        .toast.error {
+            border-left: 4px solid #ef4444;
+        }
+
+        .toast.info {
+            border-left: 4px solid #3b82f6;
+        }
+
+        /* 🔥 FEATURE CARDS ENHANCEMENT */
+        .features .feature-box {
+            position: relative;
+            overflow: hidden;
+        }
+
+        .features .feature-box::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(33, 150, 243, 0.1), transparent);
+            transition: left 0.5s;
+        }
+
+        .features .feature-box:hover::before {
+            left: 100%;
+        }
+
+        /* 🔥 NAVBAR SCROLL EFFECT */
+        .navbar.scrolled {
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            background: rgba(255, 255, 255, 0.98);
+            backdrop-filter: blur(10px);
+        }
     </style>
     
     <!-- Capsule Logo Animation Styles -->
     <style>
         .capsule-logo {
-            width: 55px;
-            height: 30px;
+            width: 50px;
+            height: 28px;
             display: inline-block;
-            margin-right: 12px;
+            margin-right: 10px;
             vertical-align: middle;
-            filter: drop-shadow(0 3px 5px rgba(0, 123, 255, 0.25));
-            transition: all 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-            transform-style: preserve-3d;
-            perspective: 800px;
-            /* Add initial load animation */
-            animation: logo-bounce-in 1.2s cubic-bezier(0.36, 0.07, 0.19, 0.97) both;
+            filter: drop-shadow(0 2px 4px rgba(33, 150, 243, 0.15));
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
         }
         
-        /* Logo entrance animation */
-        @keyframes logo-bounce-in {
-            0% { transform: scale(0.3); opacity: 0; }
-            40% { transform: scale(1.1); }
-            60% { transform: scale(0.9); }
-            80% { transform: scale(1.03); }
-            100% { transform: scale(1); opacity: 1; }
-        }
-        
-        /* Enhanced hover effects with more depth */
+        /* Subtle hover effect */
         .navbar-brand:hover .capsule-logo {
-            transform: scale(1.15) rotateY(15deg) rotateZ(2deg);
-            filter: drop-shadow(0 5px 8px rgba(0, 123, 255, 0.6));
+            transform: translateY(-2px) scale(1.05);
+            filter: drop-shadow(0 4px 8px rgba(33, 150, 243, 0.25));
         }
         
         .capsule-pill {
@@ -2223,16 +2503,7 @@
             filter: blur(1px);
         }
         
-        /* Add a subtle pulsing effect to the main capsule */
-        @keyframes subtle-pulse {
-            0% { transform: scaleX(1) scaleY(1); }
-            50% { transform: scaleX(1.03) scaleY(1.06); }
-            100% { transform: scaleX(1) scaleY(1); }
-        }
-        
-        .capsule-pill {
-            animation: subtle-pulse 4s infinite ease-in-out;
-        }
+        /* Removed excessive animations for cleaner look */
         
         .capsule-shine {
             fill: rgba(255, 255, 255, 0.9);
@@ -2434,7 +2705,7 @@
     <nav class="navbar navbar-expand-lg navbar-light">
         <div class="container">
             <a class="navbar-brand" href="{{ route('home') }}">
-                <!-- Animated Capsule SVG Logo -->
+                <!-- Enhanced Minimal Capsule Logo -->
                 <svg class="capsule-logo" viewBox="0 0 100 50" xmlns="http://www.w3.org/2000/svg">
                     <!-- Filters and gradients -->
                     <defs>
@@ -2692,7 +2963,7 @@
         </div>
     </nav>
 
-    <main class="mt-4">
+    <main>
 
 
         <!-- Hero Section -->
@@ -2728,7 +2999,7 @@
                 <div class="row">
 {{-- 💀 N+1 FIX NEEDED: Eager load 'name' in controller --}}
                     @foreach($featuredCourses as $course)
-                        <div class="col-md-3 col-sm-6 mb-4">
+                        <div class="col-md-3 col-sm-6 mb-4 reveal">
                             <div class="course-card">
                                 <div class="course-header">
                                     <h4>
@@ -2768,33 +3039,33 @@
                 <!-- Add a marketing stats row -->
                 <div class="row mt-5">
                     <div class="col-12 text-center mb-4">
-                        <h3 class="text-primary">Why Medical Students Choose Us</h3>
+                        <h2 class="text-center mb-4" style="color: #2196f3 !important; font-weight: 700 !important; font-size: 2.2rem !important; text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.1) !important;">Why Medical Students Choose Us</h2>
                     </div>
-                    <div class="col-md-3">
+                    <div class="col-md-3 reveal">
                         <div class="stat-item text-center">
-                            <i class="fas fa-book-medical fa-3x mb-3 text-primary"></i>
-                            <h4 class="counter">{{ $statistics['quizzes'] }}</h4>
+                            <i class="fas fa-book-medical fa-3x mb-3 text-primary" style="color: #007bff !important;"></i>
+                            <h4 class="counter" data-target="26" style="color: #007bff !important;">26</h4>
                             <p>Comprehensive Quizzes</p>
                         </div>
                     </div>
-                    <div class="col-md-3">
+                    <div class="col-md-3 reveal">
                         <div class="stat-item text-center">
-                            <i class="fas fa-procedures fa-3x mb-3 text-danger"></i>
-                            <h4 class="counter">{{ $statistics['cases'] }}</h4>
+                            <i class="fas fa-procedures fa-3x mb-3 text-danger" style="color: #dc3545 !important;"></i>
+                            <h4 class="counter" data-target="26" style="color: #dc3545 !important;">26</h4>
                             <p>Real Clinical Cases</p>
                         </div>
                     </div>
-                    <div class="col-md-3">
+                    <div class="col-md-3 reveal">
                         <div class="stat-item text-center">
-                            <i class="fas fa-microscope fa-3x mb-3 text-success"></i>
-                            <h4 class="counter">{{ $statistics['practical'] }}</h4>
+                            <i class="fas fa-microscope fa-3x mb-3 text-success" style="color: #28a745 !important;"></i>
+                            <h4 class="counter" data-target="26" style="color: #28a745 !important;">26</h4>
                             <p>Practical Sessions</p>
                         </div>
                     </div>
-                    <div class="col-md-3">
+                    <div class="col-md-3 reveal">
                         <div class="stat-item text-center">
-                            <i class="fas fa-users fa-3x mb-3 text-warning"></i>
-                            <h4 class="counter">{{ $statistics['enrolled_students'] }}</h4>
+                            <i class="fas fa-users fa-3x mb-3 text-warning" style="color: #ffc107 !important;"></i>
+                            <h4 class="counter" data-target="0" style="color: #ffc107 !important;">0</h4>
                             <p>Active Medical Students</p>
                         </div>
                     </div>
@@ -2843,18 +3114,25 @@
         </div>
     </main>
 
-    <!-- Footer -->
-    <footer class="footer">
-        <div class="container">
-            <p>&copy; 2025 MedCapsule. All Rights Reserved.</p>
-            <p>
-                <a href="/about">About</a> | 
-                <a href="/contact">Contact</a> | 
-                <a href="/faq">FAQ</a> | 
-                <a href="/privacy">Privacy Policy</a>
-            </p>
+    <!-- 🔥 TOAST NOTIFICATION CONTAINER -->
+    <div class="toast-container" id="toastContainer"></div>
+
+    <!-- Floating Contact Button -->
+    <div class="floating-contact">
+        <div class="contact-options" id="contactOptions">
+            <a href="https://t.me/Medcapsule1" target="_blank" class="contact-option telegram">
+                <i class="fab fa-telegram"></i>
+                <span>Join Telegram</span>
+            </a>
+            <a href="https://wa.me/YOUR_WHATSAPP_NUMBER" target="_blank" class="contact-option whatsapp">
+                <i class="fab fa-whatsapp"></i>
+                <span>Join WhatsApp</span>
+            </a>
         </div>
-    </footer>
+        <button class="contact-toggle" id="contactToggle" aria-label="Contact Us">
+            <i class="fas fa-comments"></i>
+        </button>
+    </div>
 
     <!-- Bootstrap Bundle with Popper -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
@@ -2876,6 +3154,96 @@
         }
 
         document.addEventListener('DOMContentLoaded', function() {
+            // 🔥 SCROLL REVEAL ANIMATION
+            const revealElements = document.querySelectorAll('.reveal');
+            const revealOnScroll = () => {
+                revealElements.forEach(element => {
+                    const elementTop = element.getBoundingClientRect().top;
+                    const elementVisible = 150;
+                    if (elementTop < window.innerHeight - elementVisible) {
+                        element.classList.add('active');
+                    }
+                });
+            };
+            window.addEventListener('scroll', revealOnScroll);
+            revealOnScroll(); // Initial check
+
+            // 🔥 ANIMATED COUNTER
+            const counters = document.querySelectorAll('.counter');
+            let counterAnimated = false;
+            
+            const animateCounters = () => {
+                if (counterAnimated) return;
+                
+                const statsSection = document.querySelector('.stat-item');
+                if (!statsSection) return;
+                
+                const statsSectionTop = statsSection.getBoundingClientRect().top;
+                if (statsSectionTop < window.innerHeight - 100) {
+                    counterAnimated = true;
+                    counters.forEach(counter => {
+                        const target = parseInt(counter.getAttribute('data-target'));
+                        const duration = 2000;
+                        const increment = target / (duration / 16);
+                        let current = 0;
+                        
+                        const updateCounter = () => {
+                            current += increment;
+                            if (current < target) {
+                                counter.textContent = Math.floor(current);
+                                requestAnimationFrame(updateCounter);
+                            } else {
+                                counter.textContent = target;
+                            }
+                        };
+                        updateCounter();
+                    });
+                }
+            };
+            window.addEventListener('scroll', animateCounters);
+            animateCounters(); // Initial check
+
+            // 🔥 NAVBAR SCROLL EFFECT
+            const navbar = document.querySelector('.navbar');
+            window.addEventListener('scroll', () => {
+                if (window.scrollY > 50) {
+                    navbar.classList.add('scrolled');
+                } else {
+                    navbar.classList.remove('scrolled');
+                }
+            });
+
+            // 🔥 SMOOTH SCROLL FOR ANCHOR LINKS
+            document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+                anchor.addEventListener('click', function (e) {
+                    const href = this.getAttribute('href');
+                    if (href !== '#' && document.querySelector(href)) {
+                        e.preventDefault();
+                        document.querySelector(href).scrollIntoView({
+                            behavior: 'smooth'
+                        });
+                    }
+                });
+            });
+
+            // Contact button toggle
+            const contactToggle = document.getElementById('contactToggle');
+            const contactOptions = document.getElementById('contactOptions');
+            
+            if (contactToggle && contactOptions) {
+                contactToggle.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    contactOptions.classList.toggle('show');
+                });
+                
+                // Close when clicking outside
+                document.addEventListener('click', function(e) {
+                    if (!contactToggle.contains(e.target) && !contactOptions.contains(e.target)) {
+                        contactOptions.classList.remove('show');
+                    }
+                });
+            }
+
             // RUTHLESS: Batch DOM operations for performance
             requestAnimationFrame(() => {
                 // Update progress circle
@@ -3170,12 +3538,16 @@
                     });
                 }
                 
-                // Add click effect for better interactivity
+                // Add click effect and redirect to profile page
                 streakIndicator.addEventListener('click', () => {
+                    // First do the click effect
                     streakIndicator.style.transform = 'scale(0.95)';
                     setTimeout(() => {
                         streakIndicator.style.transform = 'scale(1)';
                     }, 150);
+
+                    // Then redirect to profile page
+                    window.location.href = window.MedCapsule.profileRoute;
                 });
             });
         });

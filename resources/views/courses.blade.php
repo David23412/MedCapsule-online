@@ -130,12 +130,25 @@
             background: #ffffff;
             border: none;
             box-shadow: none;
-            padding: 0.4rem 0;
+            padding: 0.3rem 0;
             position: fixed;
             top: 0;
             left: 0;
             right: 0;
             z-index: 1000;
+        }
+
+        /* Smooth transition overlay between navbar and content */
+        .navbar::after {
+            content: '';
+            position: absolute;
+            bottom: -30px;
+            left: 0;
+            right: 0;
+            height: 30px;
+            background: linear-gradient(to bottom, rgba(255, 255, 255, 1), rgba(255, 255, 255, 0));
+            pointer-events: none;
+            z-index: 999;
         }
 
         .navbar .container {
@@ -499,13 +512,13 @@
 
         .hero-section {
             background: white;
-            padding: 4rem 2rem 2rem; /* Much more compact padding */
+            padding: 5rem 2rem 2rem;
             text-align: center;
             position: relative;
-            margin-bottom: 1rem; /* Reduced margin */
+            margin-bottom: 1rem;
             overflow: hidden;
-            border: none; /* Remove all borders to create seamless illusion */
-            -webkit-text-size-adjust: 100%; /* Prevent Safari text auto-sizing */
+            border: none;
+            -webkit-text-size-adjust: 100%;
         }
 
         .floating-elements {
@@ -630,16 +643,13 @@
             border-radius: 16px;
             overflow: hidden;
             box-shadow: 0 3px 6px rgba(0, 0, 0, 0.08);
-            transition: transform 0.2s ease;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
             width: 435px;
             margin-bottom: 3rem;
             position: relative;
             border: 2px solid var(--course-color, #3b82f6);
             border-left: 8px solid var(--course-color, #3b82f6);
-            /* INSTANT VISIBILITY - NO LOADING DELAYS */
             opacity: 1;
-            transform: translate3d(0, 0, 0);
-            /* PERFORMANCE OPTIMIZATIONS */
             will-change: transform;
             contain: layout style paint;
         }
@@ -659,8 +669,8 @@
         }
 
         .course-card:hover {
-            transform: translate3d(0, -15px, 0); /* GPU-optimized - SAME VISUAL EFFECT */
-            box-shadow: 0 6px 16px rgba(0, 0, 0, 0.12);
+            transform: translateY(-8px) !important;
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.08) !important;
         }
 
         .course-image {
@@ -2713,9 +2723,242 @@
                 opacity: 1;
             }
         }
+
+        /* 🍎 APPLE-STYLE MINIMAL CONTACT BUTTON */
+        .floating-contact {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            z-index: 1000;
+        }
+
+        .contact-toggle {
+            width: 56px;
+            height: 56px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.95);
+            color: #2196f3;
+            border: 1.5px solid rgba(33, 150, 243, 0.2);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08), 0 2px 4px rgba(0, 0, 0, 0.04);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.4rem;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+        }
+
+        .contact-toggle:hover {
+            transform: scale(1.05);
+            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.12), 0 4px 6px rgba(0, 0, 0, 0.06);
+            border-color: rgba(33, 150, 243, 0.4);
+        }
+
+        .contact-toggle:active {
+            transform: scale(0.98);
+        }
+
+        .contact-options {
+            position: absolute;
+            bottom: 68px;
+            right: 0;
+            background: rgba(255, 255, 255, 0.98);
+            border-radius: 16px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12), 0 2px 8px rgba(0, 0, 0, 0.08);
+            padding: 8px;
+            opacity: 0;
+            visibility: hidden;
+            transform: scale(0.9) translateY(10px);
+            transform-origin: bottom right;
+            transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+            min-width: 200px;
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(0, 0, 0, 0.06);
+        }
+
+        .contact-options.show {
+            opacity: 1;
+            visibility: visible;
+            transform: scale(1) translateY(0);
+            animation: springIn 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+
+        @keyframes springIn {
+            0% {
+                transform: scale(0.8) translateY(10px);
+                opacity: 0;
+            }
+            50% {
+                transform: scale(1.02) translateY(-2px);
+            }
+            100% {
+                transform: scale(1) translateY(0);
+                opacity: 1;
+            }
+        }
+
+        .contact-option {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 16px;
+            color: #1d1d1f;
+            text-decoration: none;
+            border-radius: 12px;
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            font-weight: 500;
+            font-size: 15px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .contact-option::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.04);
+            opacity: 0;
+            transition: opacity 0.2s ease;
+        }
+
+        .contact-option:hover::before {
+            opacity: 1;
+        }
+
+        .contact-option:active {
+            transform: scale(0.98);
+        }
+
+        .contact-option i {
+            font-size: 20px;
+            width: 20px;
+            text-align: center;
+            transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+
+        .contact-option:hover i {
+            transform: scale(1.1);
+        }
+
+        .contact-option.telegram {
+            color: #0088cc;
+        }
+
+        .contact-option.telegram i {
+            animation: gentlePulse 2s ease-in-out infinite;
+        }
+
+        .contact-option.whatsapp {
+            color: #25D366;
+        }
+
+        .contact-option.whatsapp i {
+            animation: gentlePulse 2s ease-in-out infinite 0.5s;
+        }
+
+        @keyframes gentlePulse {
+            0%, 100% {
+                opacity: 1;
+                transform: scale(1);
+            }
+            50% {
+                opacity: 0.7;
+                transform: scale(0.95);
+            }
+        }
+
+        /* Mobile adjustments */
+        @media (max-width: 768px) {
+            .floating-contact {
+                bottom: 20px;
+                right: 20px;
+            }
+
+            .contact-toggle {
+                width: 50px;
+                height: 50px;
+                font-size: 1.3rem;
+            }
+        }
+
+        /* 🔥 EPIC SCROLL REVEAL */
+        .reveal {
+            opacity: 0;
+            transform: translateY(50px);
+            transition: all 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .reveal.active {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        /* 🔥 ENHANCED 3D CARD EFFECTS */
+        .course-card {
+            transform-style: preserve-3d;
+        }
+
+        .course-card:hover {
+            transform: translate3d(0, -8px, 0);
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.08);
+        }
+
+        /* 🔥 SMOOTH PAGE LOAD */
+        body {
+            animation: fadeIn 0.6s ease-in;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        /* 🔥 NAVBAR SCROLL EFFECT */
+        .navbar.scrolled {
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            background: rgba(255, 255, 255, 0.98);
+            backdrop-filter: blur(10px);
+        }
+
+        /* 🔥 HERO TITLE ANIMATION */
+        .hero-title {
+            animation: slideInDown 0.8s ease-out;
+        }
+
+        @keyframes slideInDown {
+            from {
+                opacity: 0;
+                transform: translateY(-50px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* 🔥 SCROLL PROGRESS BAR */
+        .scroll-progress {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 0;
+            height: 3px;
+            background: linear-gradient(90deg, #2196f3, #1976d2);
+            z-index: 9999;
+            transition: width 0.1s ease;
+        }
     </style>
 </head>
 <body>
+    <!-- 🔥 SCROLL PROGRESS BAR -->
+    <div class="scroll-progress" id="scrollProgress"></div>
+    
     <!-- SAFE PRELOADER - WON'T BREAK ANYTHING -->
     @include('components.lightning-preloader')
 
@@ -2748,23 +2991,25 @@
                             </a>
                             <ul class="dropdown-menu dropdown-menu-end">
                                 <li class="d-flex justify-content-center">
-                                    <div class="streak-indicator" data-streak="{{ Auth::user()->study_streak_days ?? 0 }}">
-                                        <div class="streak-circle">
-                                            <svg viewBox="0 0 100 100">
-                                                <circle class="streak-bg" cx="50" cy="50" r="40"></circle>
-                                                <circle class="streak-progress" cx="50" cy="50" r="40"></circle>
-                                            </svg>
-                                            <div class="streak-content">
-                                                <div class="streak-value">{{ Auth::user()->study_streak_days ?? 0 }}</div>
-                                                <div class="streak-label">Streak</div>
-                                            </div>
-                                            @if((Auth::user()->study_streak_days ?? 0) > 0)
-                                                <div class="streak-fire">
-                                                    <i class="fas fa-fire"></i>
+                                    <a href="{{ route('profile') }}" class="streak-indicator-link" style="text-decoration: none;">
+                                        <div class="streak-indicator" data-streak="{{ Auth::user()->study_streak_days ?? 0 }}">
+                                            <div class="streak-circle">
+                                                <svg viewBox="0 0 100 100">
+                                                    <circle class="streak-bg" cx="50" cy="50" r="40"></circle>
+                                                    <circle class="streak-progress" cx="50" cy="50" r="40"></circle>
+                                                </svg>
+                                                <div class="streak-content">
+                                                    <div class="streak-value">{{ Auth::user()->study_streak_days ?? 0 }}</div>
+                                                    <div class="streak-label">Streak</div>
                                                 </div>
-                                            @endif
+                                                @if((Auth::user()->study_streak_days ?? 0) > 0)
+                                                    <div class="streak-fire">
+                                                        <i class="fas fa-fire"></i>
+                                                    </div>
+                                                @endif
+                                            </div>
                                         </div>
-                                    </div>
+                                    </a>
                                 </li>
                                 <li><hr class="dropdown-divider"></li>
                                 <li>
@@ -4199,10 +4444,22 @@
                         card.style.opacity = '1';
                     });
                 }
-                
+
                 updateScrollArrows();
             });
         });
+
+        // Load critical data immediately
+        window.MedCapsule = {
+            csrfToken: document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
+            baseUrl: window.location.origin,
+            profileRoute: '{{ route("profile") }}',
+            user: @json(auth()->user() ? ['id' => auth()->id(), 'name' => auth()->user()->name] : null),
+            performance: {
+                startTime: performance.now(),
+                domReady: false
+            }
+        };
     </script>
 
     
@@ -4414,6 +4671,89 @@ ${generateOptimizationSuggestions(totalTime)}
                     circle.style.background = 'linear-gradient(135deg, #007bff, #00d4ff)';
                 }
             });
+        });
+    </script>
+
+    <!-- Floating Contact Button -->
+    <div class="floating-contact">
+        <div class="contact-options" id="contactOptions">
+            <a href="https://t.me/Medcapsule1" target="_blank" class="contact-option telegram">
+                <i class="fab fa-telegram"></i>
+                <span>Join Telegram</span>
+            </a>
+            <a href="https://wa.me/YOUR_WHATSAPP_NUMBER" target="_blank" class="contact-option whatsapp">
+                <i class="fab fa-whatsapp"></i>
+                <span>Join WhatsApp</span>
+            </a>
+        </div>
+            </div>
+
+    <script>
+        // 🔥 EPIC ENHANCEMENTS JAVASCRIPT
+        document.addEventListener('DOMContentLoaded', function() {
+            // 🔥 SCROLL PROGRESS BAR
+            const scrollProgress = document.getElementById('scrollProgress');
+            window.addEventListener('scroll', () => {
+                const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+                const scrollHeight = document.documentElement.scrollHeight - document.documentElement.clientHeight;
+                const progress = (scrollTop / scrollHeight) * 100;
+                scrollProgress.style.width = progress + '%';
+            });
+
+            // 🔥 SCROLL REVEAL ANIMATION
+            const revealElements = document.querySelectorAll('.reveal');
+            const revealOnScroll = () => {
+                revealElements.forEach(element => {
+                    const elementTop = element.getBoundingClientRect().top;
+                    const elementVisible = 150;
+                    if (elementTop < window.innerHeight - elementVisible) {
+                        element.classList.add('active');
+                    }
+                });
+            };
+            window.addEventListener('scroll', revealOnScroll);
+            revealOnScroll();
+
+            // 🔥 NAVBAR SCROLL EFFECT
+            const navbar = document.querySelector('.navbar');
+            window.addEventListener('scroll', () => {
+                if (window.scrollY > 50) {
+                    navbar.classList.add('scrolled');
+                } else {
+                    navbar.classList.remove('scrolled');
+                }
+            });
+
+            // 🔥 SMOOTH SCROLL
+            document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+                anchor.addEventListener('click', function (e) {
+                    const href = this.getAttribute('href');
+                    if (href !== '#' && document.querySelector(href)) {
+                        e.preventDefault();
+                        document.querySelector(href).scrollIntoView({
+                            behavior: 'smooth'
+                        });
+                    }
+                });
+            });
+
+            // Contact button toggle
+            const contactToggle = document.getElementById('contactToggle');
+            const contactOptions = document.getElementById('contactOptions');
+            
+            if (contactToggle && contactOptions) {
+                contactToggle.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    contactOptions.classList.toggle('show');
+                });
+                
+                // Close when clicking outside
+                document.addEventListener('click', function(e) {
+                    if (!contactToggle.contains(e.target) && !contactOptions.contains(e.target)) {
+                        contactOptions.classList.remove('show');
+                    }
+                });
+            }
         });
     </script>
 

@@ -29,7 +29,7 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" crossorigin="anonymous">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" crossorigin="anonymous">
     <link rel="stylesheet" href="/css/topics.css?v=1.8">
-    
+
     <!-- 🚀 CRITICAL CSS: Only essential styles for initial render -->
     <style>
         /* Only keep critical styles that aren't in the external CSS file */
@@ -193,9 +193,9 @@
     </style>
     
     {{-- Responsive Navigation CSS --}}
-    <link rel="stylesheet" href="{{ asset('css/responsive.css') }}">
-    <link rel="stylesheet" href="{{ asset('css/mobile-utils.css') }}">
-    <link rel="stylesheet" href="{{ asset('css/responsive-navigation.css') }}">
+    <link rel="stylesheet" href="/css/responsive.css">
+    <link rel="stylesheet" href="/css/mobile-utils.css">
+    <link rel="stylesheet" href="/css/responsive-navigation.css">
 </head>
 <body>
     {{-- Include Responsive Navigation --}}
@@ -248,35 +248,7 @@
                                 <label class="form-label mb-2">Select Courses</label>
                             </div>
                             <div class="courses-container">
-                                @php
-                                    $user = auth()->user();
-                                    if ($user->role === 'admin') {
-                                        $availableCourses = \App\Models\Course::orderBy('name')->get();
-                                    } else {
-                                        // Get courses the user has ACCESS to:
-                                        // 1. Courses where user is enrolled AND (paid successfully OR course is free)
-                                        $availableCourses = \App\Models\Course::where(function($query) use ($user) {
-                                            // User must be enrolled
-                                            $query->whereHas('users', function($subQuery) use ($user) {
-                                                $subQuery->where('user_id', $user->id)
-                                                        ->where('is_enrolled', true);
-                                            })
-                                            // AND user has paid successfully OR course is free
-                                            ->where(function($accessQuery) use ($user) {
-                                                // Either course is free
-                                                $accessQuery->where(function($freeQuery) {
-                                                    $freeQuery->where('price', 0)->orWhereNull('price');
-                                                })
-                                                // OR user has completed payment
-                                                ->orWhereHas('payments', function($paymentQuery) use ($user) {
-                                                    $paymentQuery->where('user_id', $user->id)
-                                                               ->where('status', 'completed');
-                                                });
-                                            });
-                                        })->orderBy('name')->get();
-                                    }
-                                @endphp
-                                @if($availableCourses->count() > 0)
+                                @if(isset($availableCourses) && $availableCourses->count() > 0)
 {{-- 💀 N+1 FIX NEEDED: Eager load 'name' in controller --}}
                                     @foreach($availableCourses as $availableCourse)
                                         <div class="form-check custom-checkbox">

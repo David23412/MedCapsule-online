@@ -41,12 +41,12 @@ class QuizMistakeController extends Controller
                 'course_filter' => $courseFilter
             ]);
 
-            // 🎯 SMART HYBRID: Short-lived cache (5 minutes) for performance
+            // 🎯 SMART HYBRID: Ultra-short cache (10 seconds) for near-instant updates
             // But with immediate invalidation on writes for accuracy
             $courseFilter = $courseFilter ?: ''; // Ensure empty string instead of null
             $cacheKey = "mistakes_smart_{$userId}_{$courseFilter}_v3";
             $cacheKey = trim($cacheKey, '_'); // Remove trailing underscore if no course filter
-            $mistakesData = Cache::remember($cacheKey, 300, function() use ($userId, $courseFilter) { // 5 minutes only
+            $mistakesData = Cache::remember($cacheKey, 10, function() use ($userId, $courseFilter) { // 10 seconds only
                 $query = DB::table('mistakes')
                     ->join('questions', 'mistakes.question_id', '=', 'questions.id')
                     ->join('topics', 'questions.topic_id', '=', 'topics.id')
@@ -123,8 +123,8 @@ class QuizMistakeController extends Controller
                 ];
             });
 
-            // 🎯 SMART HYBRID: Short-lived cache for supporting data (10 minutes)
-            $supportingData = Cache::remember("mistakes_support_smart_{$userId}", 600, function() use ($userId) {
+            // 🎯 SMART HYBRID: Ultra-short cache for supporting data (10 seconds)
+            $supportingData = Cache::remember("mistakes_support_smart_{$userId}", 10, function() use ($userId) {
                 $coursesWithCounts = DB::table('mistakes')
                     ->join('questions', 'mistakes.question_id', '=', 'questions.id')
                     ->join('topics', 'questions.topic_id', '=', 'topics.id')
@@ -186,7 +186,7 @@ class QuizMistakeController extends Controller
                 'request_id' => $requestId,
                 'execution_time_ms' => round($executionTime, 2),
                 'mistakes_count' => $mistakes->count(),
-                'cache_status' => 'SMART HYBRID - 5min cache with instant invalidation'
+                'cache_status' => 'SMART HYBRID - 10sec cache with instant invalidation'
             ]);
 
             return view('mistakes', [
@@ -201,7 +201,7 @@ class QuizMistakeController extends Controller
                     'execution_time_ms' => round($executionTime, 2),
                     'mistakes_count' => $mistakes->count(),
                     'courses_count' => $availableCourses->count(),
-                    'cache_status' => 'SMART HYBRID - Fast + Accurate'
+                    'cache_status' => 'SMART HYBRID - 10sec + Instant Clear'
                 ]
             ]);
 

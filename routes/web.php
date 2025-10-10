@@ -377,6 +377,14 @@ Route::get('/test/search-users-bypass', function() {
     Route::middleware('auth')->group(function () {
         Route::get('/profile', [ProfileController::class, 'show'])->name('profile');
         Route::post('/profile/update-picture', [ProfileController::class, 'updateProfilePicture'])->name('profile.update-picture');
+        Route::post('/profile/update-goal', [ProfileController::class, 'updateWeeklyGoal'])->name('profile.update-goal');
+        
+        // Study Planner routes
+        Route::get('/study-planner', [ProfileController::class, 'showStudyPlanner'])->name('study-planner');
+        Route::post('/study-planner/save', [ProfileController::class, 'saveStudyPlan'])->name('study-planner.save');
+        Route::get('/study-planner/month', [ProfileController::class, 'getMonthPlans'])->name('study-planner.month');
+        Route::get('/study-planner/weak-topics', [ProfileController::class, 'getWeakTopics'])->name('study-planner.weak-topics');
+        Route::delete('/study-planner/delete', [ProfileController::class, 'deleteStudyPlan'])->name('study-planner.delete');
     });
 
     // Profile picture serving route (FIXED: Use correct storage location for secure_uploads disk)

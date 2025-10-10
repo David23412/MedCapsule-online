@@ -31,6 +31,7 @@ class SecurityHeaders
 {
     /**
      * Content Security Policy directives
+     * Note: These are base directives. Dynamic domains (like ngrok) are added in applyCSPHeaders()
      */
     private const CSP_DIRECTIVES = [
         "default-src 'self' blob:",
@@ -186,8 +187,29 @@ class SecurityHeaders
     {
         $headers = $response->headers;
 
+        // Get current app URL (including ngrok domains)
+        $appUrl = config('app.url');
+        $parsedUrl = parse_url($appUrl);
+        $appDomain = ($parsedUrl['scheme'] ?? 'https') . '://' . ($parsedUrl['host'] ?? 'localhost');
+        
+        // Add current domain to CSP directives dynamically
+        $cspDirectives = self::CSP_DIRECTIVES;
+        
+        // Update style-src to include current domain (for ngrok support)
+        foreach ($cspDirectives as $key => $directive) {
+            if (strpos($directive, 'style-src') === 0) {
+                $cspDirectives[$key] = $directive . ' ' . $appDomain;
+            }
+            if (strpos($directive, 'script-src') === 0) {
+                $cspDirectives[$key] = $directive . ' ' . $appDomain;
+            }
+            if (strpos($directive, 'connect-src') === 0) {
+                $cspDirectives[$key] = $directive . ' ' . $appDomain;
+            }
+        }
+
         // Apply CSP directives
-        $cspValue = implode('; ', self::CSP_DIRECTIVES);
+        $cspValue = implode('; ', $cspDirectives);
         $headers->set('Content-Security-Policy', $cspValue);
 
         // Apply CSP report-only for monitoring (in development)

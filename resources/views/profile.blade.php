@@ -15,8 +15,8 @@
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <!-- RUTHLESS: Async loading for better performance -->
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js" defer></script>
-    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.bundle.min.js" defer></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
     <!-- Favicon -->
     <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 50'%3E%3Crect fill='%233579F6' x='10' y='15' width='80' height='20' rx='10' ry='10' /%3E%3Crect x='50' y='15' width='40' height='20' fill='%23ff0000' rx='0 10 10 0' ry='10'/%3E%3Cline x1='50' y1='15' x2='50' y2='35' stroke='white' stroke-width='1.5' stroke-dasharray='2,1'/%3E%3C/svg%3E">
     <link rel="shortcut icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 50'%3E%3Crect fill='%233579F6' x='10' y='15' width='80' height='20' rx='10' ry='10' /%3E%3Crect x='50' y='15' width='40' height='20' fill='%23ff0000' rx='0 10 10 0' ry='10'/%3E%3Cline x1='50' y1='15' x2='50' y2='35' stroke='white' stroke-width='1.5' stroke-dasharray='2,1'/%3E%3C/svg%3E">
@@ -328,16 +328,22 @@
         .streak-card {
             background: linear-gradient(135deg, #00d2ff, #3a7bd5);
             color: white;
+            position: relative;
+            overflow: hidden;
         }
 
         .accuracy-card {
             background: linear-gradient(135deg, #FF7043, #FF5252);
             color: white;
+            position: relative;
+            overflow: hidden;
         }
 
         .study-time-card {
             background: linear-gradient(135deg, #FF9A9E, #FAD0C4);
             color: white;
+            position: relative;
+            overflow: hidden;
         }
 
         .accuracy-card .stats-value,
@@ -1252,10 +1258,79 @@
     }
 
     .topic-review-item .btn-sm i {
-        font-size: 10px !important;
-        margin-left: 4px !important;
-        margin-right: 0 !important;
+    font-size: 10px !important;
+    margin-left: 4px !important;
+    margin-right: 0 !important;
     }
+
+        /* Study Goals Card Styling */
+        .study-goals-card {
+            background: white;
+            border: none;
+        }
+
+        /* Purple slash decoration */
+        .goal-decoration {
+            position: absolute;
+            right: 0;
+            top: 0;
+            bottom: 0;
+            width: 33.33%;
+            background: linear-gradient(135deg, rgba(139, 92, 246, 0.08) 0%, rgba(167, 139, 250, 0.12) 100%);
+            clip-path: polygon(20% 0%, 100% 0%, 100% 100%, 0% 100%);
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        .study-goals-card > * {
+            position: relative;
+            z-index: 1;
+        }
+
+        .goal-settings-btn {
+            border-radius: 6px;
+            transition: all 0.2s ease;
+        }
+
+        .goal-settings-btn:hover {
+            transform: translateY(-1px);
+        }
+
+        .goal-achieved-badge {
+            animation: celebrationPulse 1.5s ease-in-out infinite;
+        }
+
+        @keyframes celebrationPulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+        }
+
+        @keyframes sparkleFloat {
+            0%, 100% { transform: translateY(0px) rotate(0deg); }
+            50% { transform: translateY(-5px) rotate(180deg); }
+        }
+
+        /* Confetti effect */
+        .confetti-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            pointer-events: none;
+            overflow: hidden;
+        }
+
+        @keyframes confettiFall {
+            0% {
+                transform: translateY(0) rotate(0deg);
+                opacity: 1;
+            }
+            100% {
+                transform: translateY(400px) rotate(720deg);
+                opacity: 0;
+            }
+        }
 
 </style>
     </style>
@@ -1425,11 +1500,88 @@
             </div>
         </div>
 
+        <!-- Study Goals Widget -->
+        <div class="row mb-4">
+            <div class="col-md-12">
+                <div class="stats-card study-goals-card animate-fadeInUp" style="animation-delay: 0.5s; position: relative; overflow: hidden;">
+                    <!-- Purple slash decoration -->
+                    <div class="goal-decoration"></div>
+                    
+                    <div class="d-flex justify-content-between align-items-center mb-4">
+                        <h5 class="mb-0" style="font-weight: 600; font-size: 1.3rem; color: #0f172a; letter-spacing: -0.01em;">
+                            This Week's Goal
+                        </h5>
+                        <div class="d-flex gap-2">
+                            <button class="btn btn-sm btn-primary" onclick="openStudyPlanner()" style="font-size: 0.85rem; padding: 6px 16px;">
+                                <i class="fas fa-calendar-check me-1"></i>Study Planner
+                            </button>
+                            <button class="btn btn-sm btn-outline-primary goal-settings-btn" onclick="openGoalModal()" style="font-size: 0.85rem; padding: 6px 16px;">
+                                Edit Goal
+                            </button>
+                        </div>
+                    </div>
+                    
+                    @php
+                        // Calculate this week's progress
+                        $weekStart = now()->startOfWeek();
+                        $weekEnd = now()->endOfWeek();
+                        $weeklyQuestions = \App\Models\QuizAttempt::where('user_id', auth()->id())
+                            ->whereBetween('created_at', [$weekStart, $weekEnd])
+                            ->sum('total_questions');
+                        
+                        // Get user's goal (default 50)
+                        $weeklyGoal = auth()->user()->weekly_goal ?? 50;
+                        $progressPercent = min(100, ($weeklyQuestions / $weeklyGoal) * 100);
+                        
+                        // Determine color based on progress
+                        $progressColor = $progressPercent >= 100 ? '#10b981' : 
+                                        ($progressPercent >= 70 ? '#3b82f6' : 
+                                        ($progressPercent >= 40 ? '#f59e0b' : '#ef4444'));
+                    @endphp
+                    
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div style="flex: 1;">
+                            <div class="d-flex align-items-baseline gap-3 mb-3">
+                                <span style="font-size: 3rem; font-weight: 800; color: {{ $progressColor }}; line-height: 1;">{{ $weeklyQuestions }}</span>
+                                <span style="font-size: 1.5rem; font-weight: 600; color: #64748b;">/ {{ $weeklyGoal }}</span>
+                            </div>
+                            
+                            <div class="progress" style="height: 10px; border-radius: 10px; background: #e2e8f0; margin-bottom: 10px; box-shadow: inset 0 1px 2px rgba(0,0,0,0.08);">
+                                <div class="progress-bar" role="progressbar" 
+                                     style="width: {{ $progressPercent }}%; 
+                                            background: linear-gradient(90deg, {{ $progressColor }}, {{ $progressColor }}dd);
+                                            border-radius: 10px;
+                                            transition: width 0.6s ease;
+                                            box-shadow: 0 2px 4px {{ $progressColor }}40;">
+                                </div>
+                            </div>
+                            
+                            <div class="d-flex justify-content-between align-items-center">
+                                <span style="color: #64748b; font-size: 0.9rem;">{{ $weekStart->format('M d') }} - {{ $weekEnd->format('M d') }}</span>
+                                <span style="font-weight: 700; font-size: 1.1rem; color: {{ $progressColor }};">{{ number_format($progressPercent, 0) }}%</span>
+                            </div>
+                        </div>
+                        
+                        @if($progressPercent >= 100)
+                            <div class="ms-4" style="font-size: 3.5rem; animation: celebrationPulse 1.5s ease-in-out infinite;">
+                                🏆
+                            </div>
+                        @endif
+                    </div>
+                    
+                    @if($progressPercent >= 100)
+                        <div class="confetti-container"></div>
+                    @endif
+                </div>
+            </div>
+        </div>
+
+
         <!-- Charts Row -->
         <div class="row mt-4">
             <!-- Performance Over Time -->
             <div class="col-md-8">
-                <div class="stats-card animate-fadeInUp" style="animation-delay: 0.5s">
+                <div class="stats-card animate-fadeInUp" style="animation-delay: 0.6s">
                     <h5>Performance Over Time</h5>
                     <div class="chart-container">
                         <canvas id="performanceChart"></canvas>
@@ -1438,7 +1590,7 @@
             </div>
             <!-- Study Distribution -->
             <div class="col-md-4">
-                <div class="stats-card animate-fadeInUp" style="animation-delay: 0.6s">
+                <div class="stats-card animate-fadeInUp" style="animation-delay: 0.7s">
                     <h5>Performance Ratio</h5>
                     <div class="chart-container">
                         <canvas id="distributionChart"></canvas>
@@ -1588,29 +1740,15 @@
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
-        // RUTHLESS: Optimized chart initialization with deferred loading
-        document.addEventListener('DOMContentLoaded', function() {
-            // Check if Chart.js is loaded
-            if (typeof Chart === 'undefined') {
-                setTimeout(initializeCharts, 100);
-                return;
-            }
-            initializeCharts();
-        });
+        // Store chart instance globally
+        let performanceChart;
+        let distributionChart;
 
-        function initializeCharts() {
-            // Store chart instance globally
-            let performanceChart;
-            let distributionChart;
+        // Performance Chart
+        const performanceCtx = document.getElementById('performanceChart').getContext('2d');
 
-            // Performance Chart
-            const performanceCtx = document.getElementById('performanceChart').getContext('2d');
-            const gradient = performanceCtx.createLinearGradient(0, 0, 0, 300);
-            gradient.addColorStop(0, 'rgba(0, 123, 255, 0.4)');
-            gradient.addColorStop(1, 'rgba(0, 123, 255, 0.0)');
-
-            // Get the chart data
-            const chartData = @json($chartData);
+        // Get the chart data
+        const chartData = @json($chartData);
 
         // Sort data by timestamp for proper line connection
         const sortedChartData = chartData.sort((a, b) => a.x - b.x);
@@ -1634,13 +1772,32 @@
             return gradient;
         };
 
-        // Create vibrant color array for points based on performance ranges
-        const createPointColors = (dataPoints) => {
-            return dataPoints.map(point => {
-                if (point.y >= 90) return '#10B981';      // Emerald Green - excellent
-                if (point.y >= 50) return '#FFD700';     // Yellow - good to average (50-89%)
-                return '#EF4444';                        // Bright Red - needs improvement
+        // Create gradient line color based on performance ranges
+        const createGradientLineColor = (ctx, dataPoints) => {
+            if (dataPoints.length < 2) {
+                // Single point or no data - use performance-based color
+                const performance = dataPoints.length > 0 ? dataPoints[0].y : 0;
+                return performance >= 90 ? '#10B981' :
+                       performance >= 50 ? '#FFD700' : '#EF4444';
+            }
+
+            const gradient = ctx.createLinearGradient(0, 0, ctx.canvas.width, 0);
+            dataPoints.forEach((point, index) => {
+                const position = dataPoints.length > 1 ? index / (dataPoints.length - 1) : 0;
+                let color;
+
+                if (point.y >= 90) {
+                    color = '#10B981';  // Green
+                } else if (point.y >= 50) {
+                    color = '#FFD700';  // Yellow
+                } else {
+                    color = '#EF4444';  // Red
+                }
+
+                gradient.addColorStop(position, color);
             });
+
+            return gradient;
         };
 
         // Create clear, distinct color zones under the line
@@ -1676,34 +1833,6 @@
             return gradient;
         };
 
-        // Create gradient line color based on performance ranges
-        const createGradientLineColor = (ctx, dataPoints) => {
-            if (dataPoints.length < 2) {
-                // Single point or no data - use performance-based color
-                const performance = dataPoints.length > 0 ? dataPoints[0].y : 0;
-                return performance >= 90 ? '#10B981' :
-                       performance >= 50 ? '#FFD700' : '#EF4444';
-            }
-
-            const gradient = ctx.createLinearGradient(0, 0, ctx.canvas.width, 0);
-            dataPoints.forEach((point, index) => {
-                const position = dataPoints.length > 1 ? index / (dataPoints.length - 1) : 0;
-                let color;
-
-                if (point.y >= 90) {
-                    color = '#10B981';  // Green
-                } else if (point.y >= 50) {
-                    color = '#FFD700';  // Yellow
-                } else {
-                    color = '#EF4444';  // Red
-                }
-
-                gradient.addColorStop(position, color);
-            });
-
-            return gradient;
-        };
-
         // Initialize performance chart
         performanceChart = new Chart(performanceCtx, {
             type: 'line',
@@ -1713,7 +1842,7 @@
                     data: sortedChartData,
                     borderColor: createGradientLineColor(performanceCtx, sortedChartData),
                     backgroundColor: createSegmentedFill(performanceCtx, sortedChartData),
-                    tension: 0.4, // Optimized for smooth curves
+                    tension: 0.4,
                     fill: true,
                     pointBackgroundColor: (context) => {
                         const value = context.raw?.y || 0;
@@ -1738,24 +1867,21 @@
                                value >= 50 ? '#FFD700' : '#EF4444'; // Yellow : Bright Red
                     },
                     pointStyle: 'circle',
-                    // Advanced curve smoothing
-                    cubicInterpolationMode: 'monotone',
-                    spanGaps: true,
-                    // Performance optimizations
-                    borderWidth: 4,
-                    borderCapStyle: 'round',
-                    borderJoinStyle: 'round',
-                    // Animation settings
-                    animation: {
-                        duration: 2000,
-                        easing: 'easeInOutQuart'
+                    pointShadowBlur: 10,
+                    pointHoverShadowBlur: 20,
+                    pointShadowColor: 'rgba(58, 123, 213, 0.5)',
+                    pointHoverShadowColor: 'rgba(58, 123, 213, 0.8)',
+                    transition: {
+                        duration: 300
                     },
-                    transitions: {
-                        active: {
-                            animation: {
-                                duration: 300
-                            }
-                        }
+                    hoverBorderJoinStyle: 'round',
+                    hoverBackgroundColor: '#fff',
+                    hoverBorderColor: '#3a7bd5',
+                    pointHoverStyle: {
+                        shadowColor: 'rgba(58, 123, 213, 0.8)',
+                        shadowBlur: 20,
+                        shadowOffsetX: 0,
+                        shadowOffsetY: 5
                     }
                 }]
             },
@@ -1930,266 +2056,169 @@
                 plugins: {
                     legend: {
                         position: 'bottom'
-                    },
-                    tooltip: {
-                        callbacks: {
-                            label: function(context) {
-                                const value = context.raw;
-                                const total = context.dataset.data.reduce((a, b) => a + b, 0);
-                                const percentage = Math.round((value / total) * 100);
-                                return `${context.label}: ${value} (${percentage}%)`;
-                            }
-                        }
                     }
                 }
             }
         });
 
-        // Listen for quiz completion events
+        // Profile picture upload handling - wrapped in DOMContentLoaded
         document.addEventListener('DOMContentLoaded', function() {
-            // WebSocket or Server-Sent Events connection would go here
-            
-            // For now, listen for the quiz completion event
-            window.addEventListener('quizCompleted', function(event) {
-                console.log('Quiz completed event received:', event.detail);
-                const quizData = event.detail;
-                
-                // Add new data point with smooth animation
-                const newDataPoint = {
-                    x: Date.now(),
-                    y: quizData.percentage_grade,
-                    topic: quizData.topic_name || 'Random Quiz',
-                    date: new Date().toLocaleString()
-                };
-                
-                performanceChart.data.datasets[0].data.push(newDataPoint);
-                
-                // Animate the new point with smooth transition using performance-based colors
-                const lastPoint = performanceChart.data.datasets[0].data.length - 1;
-                const newPointColor = quizData.percentage_grade >= 90 ? '#10B981' :
-                                    quizData.percentage_grade >= 50 ? '#FFD700' : '#EF4444';
 
-                // Update all colors based on current data
-                const allData = performanceChart.data.datasets[0].data;
-                performanceChart.data.datasets[0].pointBackgroundColor = createPointColors(allData);
-                performanceChart.data.datasets[0].pointBorderColor = Array(allData.length).fill('#fff');
-                performanceChart.data.datasets[0].pointHoverBackgroundColor = Array(allData.length).fill('#fff');
-                performanceChart.data.datasets[0].pointHoverBorderColor = createPointColors(allData);
-                performanceChart.data.datasets[0].backgroundColor = createSegmentedFill(performanceCtx, allData);
-                performanceChart.data.datasets[0].borderColor = createGradientLineColor(performanceCtx, allData);
-
-                // Update with smooth animation
-                performanceChart.update('active');
-
-                // Reset to dynamic colors after animation
-                setTimeout(() => {
-                    const currentData = performanceChart.data.datasets[0].data;
-                    performanceChart.data.datasets[0].pointBackgroundColor = createPointColors(currentData);
-                    performanceChart.data.datasets[0].pointBorderColor = Array(currentData.length).fill('#fff');
-                    performanceChart.data.datasets[0].pointHoverBackgroundColor = Array(currentData.length).fill('#fff');
-                    performanceChart.data.datasets[0].pointHoverBorderColor = createPointColors(currentData);
-                    performanceChart.data.datasets[0].backgroundColor = createSegmentedFill(performanceCtx, currentData);
-                    performanceChart.update('none');
-                }, 2000);
-
-                // Update distribution chart
-                const currentCorrect = distributionChart.data.datasets[0].data[0];
-                const currentIncorrect = distributionChart.data.datasets[0].data[1];
-                
-                // Add the new correct and incorrect answers
-                const newCorrect = currentCorrect + quizData.correct_answers;
-                const newIncorrect = currentIncorrect + (quizData.total_questions - quizData.correct_answers);
-                const newTotal = newCorrect + newIncorrect;
-                
-                distributionChart.data.datasets[0].data = [newCorrect, newIncorrect];
-                distributionChart.data.labels = [
-                    `Correct (${Math.round(newCorrect/newTotal * 100)}%)`,
-                    `Incorrect (${Math.round(newIncorrect/newTotal * 100)}%)`
-                ];
-                
-                distributionChart.update('show');
-
-                // Update stats cards if they exist
-                const accuracyValue = document.querySelector('.accuracy-card .stats-value');
-                if (accuracyValue) {
-                    const newAccuracy = Math.round((newCorrect / newTotal) * 100);
-                    accuracyValue.textContent = `${newAccuracy}%`;
-                }
-
-                const questionsValue = document.querySelector('.stats-card:last-child .stats-value');
-                if (questionsValue) {
-                    questionsValue.textContent = newTotal;
-                }
-            });
-        });
-
-            // Profile picture upload handling - FIXED CLICK ISSUE
-            function initializeProfilePictureUpload() {
-                const profilePictureInput = document.getElementById('profilePictureInput');
-                const profileImage = document.getElementById('profileImage');
-                const profileForm = document.getElementById('profileForm');
-                const profilePicture = document.getElementById('profilePictureContainer');
-                const uploadOverlay = profilePicture ? profilePicture.querySelector('.upload-overlay') : null;
-
-                console.log('Initializing profile picture upload:', {
-                    profilePictureInput: !!profilePictureInput,
-                    profileImage: !!profileImage,
-                    profileForm: !!profileForm,
-                    profilePicture: !!profilePicture,
-                    uploadOverlay: !!uploadOverlay
+            // Profile picture upload
+            const profilePicInput = document.getElementById('profilePictureInput');
+            if (profilePicInput) {
+                document.getElementById('profilePictureContainer').addEventListener('click', function() {
+                    profilePicInput.click();
                 });
 
-                if (!profilePictureInput || !profileImage || !profileForm || !profilePicture) {
-                    console.error('Profile picture elements not found - retrying in 100ms...');
-                    setTimeout(initializeProfilePictureUpload, 100);
-                    return;
-                }
-
-                // Make the entire profile picture clickable (both container and overlay)
-                const clickHandler = function(e) {
-                    console.log('Profile picture clicked!', e.target);
-                    e.preventDefault();
-                    e.stopPropagation();
-                    profilePictureInput.click();
-                };
-
-                // Attach click handlers to both the container and overlay
-                profilePicture.addEventListener('click', clickHandler);
-
-                if (uploadOverlay) {
-                    uploadOverlay.addEventListener('click', clickHandler);
-                }
-
-                // Also make the image clickable
-                profileImage.addEventListener('click', clickHandler);
-
-                // Add visual feedback
-                profilePicture.addEventListener('mouseenter', function() {
-                    this.style.transform = 'scale(1.05)';
-                    this.style.transition = 'transform 0.2s ease';
-                });
-
-                profilePicture.addEventListener('mouseleave', function() {
-                    this.style.transform = 'scale(1)';
-                });
-
-                // Handle file selection with AJAX upload for instant update
-                profilePictureInput.addEventListener('change', function(e) {
+                profilePicInput.addEventListener('change', function(e) {
                     const file = e.target.files[0];
-                    console.log('File selected:', file);
                     if (!file) return;
 
-                    // Validate file type and size
-                    const validTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/jpg', 'image/webp'];
-                    const maxSize = 5 * 1024 * 1024; // 5MB
-
-                    if (!validTypes.includes(file.type)) {
-                        alert('Please select a valid image file (JPEG, PNG, GIF, or WebP)');
-                        this.value = '';
-                        return;
-                    }
-
-                    if (file.size > maxSize) {
-                        alert('File size must be less than 5MB');
-                        this.value = '';
-                        return;
-                    }
-
-                    // Show instant preview
-                    const reader = new FileReader();
-                    reader.onload = function(e) {
-                        profileImage.src = e.target.result;
-                    };
-                    reader.readAsDataURL(file);
-
-                    // Show loading state
-                    profilePicture.style.opacity = '0.6';
-                    profilePicture.style.pointerEvents = 'none';
-
-                    // Create FormData for AJAX upload
                     const formData = new FormData();
                     formData.append('profile_picture', file);
-                    formData.append('_token', document.querySelector('meta[name="csrf-token"]').getAttribute('content'));
+                    formData.append('_token', document.querySelector('meta[name="csrf-token"]').content);
 
-                    // AJAX upload with proper error handling
-                    fetch(profileForm.action, {
+                    fetch(document.getElementById('profileForm').action, {
                         method: 'POST',
-                        body: formData,
-                        headers: {
-                            'X-Requested-With': 'XMLHttpRequest',
-                            'Accept': 'application/json'
-                        }
-                    })
-                    .then(response => {
-                        console.log('Response received:', response.status);
-                        if (!response.ok) {
-                            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-                        }
-                        return response.json();
-                    })
-                    .then(data => {
-                        console.log('Upload successful:', data);
-
-                        // Remove loading state
-                        profilePicture.style.opacity = '1';
-                        profilePicture.style.pointerEvents = 'auto';
-
-                        // Update image with server response (includes cache busting)
-                        if (data.new_url) {
-                            // ULTRA AGGRESSIVE cache busting to force immediate update
-                            const cacheBust = Date.now() + '_' + Math.random().toString(36).substr(2, 9);
-                            const newImageUrl = data.new_url + '?cb=' + cacheBust + '&t=' + Date.now() + '&r=' + Math.random();
-
-                            // Force complete image reload
-                            profileImage.style.display = 'none';
-                            profileImage.src = '';
-                            profileImage.offsetHeight; // Trigger reflow
-                            
-                            // Set new source
-                            profileImage.src = newImageUrl;
-                            profileImage.style.display = 'block';
-
-                            // Also update any other profile circles on the page
-                            document.querySelectorAll('.profile-circle').forEach(circle => {
-                                if (circle.style.backgroundImage) {
-                                    circle.style.backgroundImage = `url(${newImageUrl})`;
-                                }
-                            });
-
-                            console.log('Image updated with URL:', newImageUrl);
-                        }
-
-                        // Show success message
-                        showSuccessMessage(data.message || 'Profile picture updated successfully!');
-
-                        // Refresh all profile images across the entire page
-                        setTimeout(() => {
-                            refreshAllProfileImages(data.new_url);
-                        }, 100);
-
-                        // Clear file input for next upload
-                        profilePictureInput.value = '';
-                    })
-                    .catch(error => {
-                        console.error('Upload failed:', error);
-
-                        // Remove loading state
-                        profilePicture.style.opacity = '1';
-                        profilePicture.style.pointerEvents = 'auto';
-
-                        // Show error message
-                        alert('Upload failed: ' + error.message);
-
-                        // Clear file input
-                        profilePictureInput.value = '';
-
-                        // Revert to original image if upload failed
-                        location.reload();
-                    });
+                        body: formData
+                    }).then(response => response.json())
+                      .then(data => {
+                          if (data.new_url) {
+                              document.getElementById('profileImage').src = data.new_url + '?t=' + Date.now();
+                          }
+                          if (data.message) alert(data.message);
+                      });
                 });
             }
+        });
 
-            function showSuccessMessage(message) {
+        // Confetti animation for goal achievement
+        function createConfetti() {
+            const container = document.querySelector('.confetti-container');
+            if (!container) return;
+            
+            const colors = ['#10b981', '#3b82f6', '#f59e0b', '#ef4444', '#8b5cf6'];
+            
+            for (let i = 0; i < 50; i++) {
+                const confetti = document.createElement('div');
+                confetti.style.cssText = `
+                    position: absolute;
+                    width: 8px;
+                    height: 8px;
+                    background: ${colors[Math.floor(Math.random() * colors.length)]};
+                    left: ${Math.random() * 100}%;
+                    top: -10px;
+                    border-radius: 50%;
+                    animation: confettiFall ${2 + Math.random() * 3}s linear infinite;
+                    animation-delay: ${Math.random() * 2}s;
+                    opacity: 0.8;
+                `;
+                container.appendChild(confetti);
+            }
+        }
+
+        // Initialize confetti if goal is achieved
+        document.addEventListener('DOMContentLoaded', function() {
+            if (document.querySelector('.confetti-container')) {
+                createConfetti();
+            }
+        });
+
+        // Study Goals Modal Functions
+        function openGoalModal() {
+            const currentGoal = {{ auth()->user()->weekly_goal ?? 50 }};
+            const modal = document.createElement('div');
+            modal.innerHTML = `
+                <div class="modal fade show" id="goalModal" style="display: block; background: rgba(0,0,0,0.6);" onclick="if(event.target === this) closeGoalModal()">
+                    <div class="modal-dialog modal-dialog-centered" style="max-width: 450px;">
+                        <div class="modal-content" style="border-radius: 15px; border: none; box-shadow: 0 20px 60px rgba(0,0,0,0.3);">
+                            <div class="modal-header" style="border-bottom: 1px solid #e2e8f0; padding: 1.5rem;">
+                                <h5 class="modal-title" style="font-weight: 700; font-size: 1.3rem; color: #1e293b;">
+                                    Set Weekly Goal
+                                </h5>
+                                <button type="button" class="btn-close" onclick="closeGoalModal()"></button>
+                            </div>
+                            <div class="modal-body" style="padding: 2rem;">
+                                <div class="mb-4">
+                                    <label class="form-label" style="font-weight: 600; color: #475569; font-size: 0.95rem;">Questions per week</label>
+                                    <input type="number" class="form-control" id="goalInput" value="${currentGoal}" 
+                                           min="10" max="500" step="5"
+                                           style="font-size: 1.5rem; padding: 1rem; border: 2px solid #cbd5e1; border-radius: 10px; text-align: center; font-weight: 700;">
+                                </div>
+                                <div class="d-grid gap-2">
+                                    <button class="btn btn-outline-primary" onclick="setQuickGoal(25)" style="padding: 0.75rem; font-weight: 600;">25 questions</button>
+                                    <button class="btn btn-outline-primary" onclick="setQuickGoal(50)" style="padding: 0.75rem; font-weight: 600;">50 questions</button>
+                                    <button class="btn btn-outline-primary" onclick="setQuickGoal(100)" style="padding: 0.75rem; font-weight: 600;">100 questions</button>
+                                    <button class="btn btn-outline-primary" onclick="setQuickGoal(150)" style="padding: 0.75rem; font-weight: 600;">150 questions</button>
+                                </div>
+                            </div>
+                            <div class="modal-footer" style="border-top: 1px solid #e2e8f0; padding: 1.5rem; gap: 10px;">
+                                <button type="button" class="btn btn-secondary" onclick="closeGoalModal()" style="flex: 1; padding: 0.75rem; font-weight: 600;">Cancel</button>
+                                <button type="button" class="btn btn-primary" onclick="saveGoal()" style="flex: 1; padding: 0.75rem; font-weight: 600; background: #007bff; border: none;">
+                                    Save Goal
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(modal);
+        }
+
+        function closeGoalModal() {
+            const modal = document.getElementById('goalModal');
+            if (modal) {
+                modal.closest('.modal').remove();
+            }
+        }
+
+        function setQuickGoal(value) {
+            document.getElementById('goalInput').value = value;
+        }
+
+        function saveGoal() {
+            const goal = parseInt(document.getElementById('goalInput').value);
+            
+            if (goal < 10 || goal > 500) {
+                alert('Please enter a goal between 10 and 500 questions');
+                return;
+            }
+
+            // Save via AJAX
+            fetch('{{ route("profile.update-goal") }}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+                },
+                body: JSON.stringify({ weekly_goal: goal })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    closeGoalModal();
+                    location.reload(); // Refresh to show new goal
+                } else {
+                    alert('Failed to save goal. Please try again.');
+                }
+            })
+            .catch(error => {
+                console.error('Error saving goal:', error);
+                alert('Failed to save goal. Please try again.');
+            });
+        }
+
+        // ==================== SMOOTH STUDY PLANNER - SINGLE VIEW ====================
+        let plannerDate = new Date();
+        let plans = {};
+        let selectedDate = null;
+        let weakTopicsCache = [];
+        let saveTimeout = null; // For debounced saving
+        
+        // Ensure showSuccessMessage is available
+        if (typeof showSuccessMessage === 'undefined') {
+            window.showSuccessMessage = function(message) {
                 const notification = document.createElement('div');
                 notification.style.cssText = `
                     position: fixed;
@@ -2206,74 +2235,482 @@
                     max-width: 300px;
                 `;
                 notification.textContent = message;
-
                 document.body.appendChild(notification);
+                setTimeout(() => notification.remove(), 3000);
+            };
+        }
 
-                setTimeout(() => {
-                    notification.remove();
-                }, 3000);
-            }
+        async function openStudyPlanner() {
+            await loadPlans();
+            showPlannerModal();
+        }
 
-            function refreshAllProfileImages(newUrl) {
-                // Ultra aggressive cache busting
-                const cacheBust = Date.now() + '_' + Math.random().toString(36).substr(2, 9);
-                const finalUrl = newUrl + '&refresh=' + cacheBust;
-
-                // Update all profile images (img tags)
-                document.querySelectorAll('img[alt*="Profile"], img[src*="profile"]').forEach(img => {
-                    if (img.src.includes('ui-avatars.com')) return; // Skip fallback avatars
-                    img.src = finalUrl;
-                });
-
-                // Update all profile circles with background images
-                document.querySelectorAll('.profile-circle').forEach(circle => {
-                    if (circle.style.backgroundImage && !circle.classList.contains('no-image')) {
-                        circle.style.backgroundImage = `url(${finalUrl})`;
-                    }
-                });
-
-                console.log('Refreshed all profile images with:', finalUrl);
-            }
-
-            // Initialize after a short delay to ensure DOM is ready
-            setTimeout(initializeProfilePictureUpload, 500);
-
-            // Force refresh profile images on page load to handle cache issues
-            window.addEventListener('load', function() {
-                const profileImage = document.getElementById('profileImage');
-                if (profileImage && profileImage.src && !profileImage.src.includes('ui-avatars.com')) {
-                    // Add cache busting to current image if it's not a fallback
-                    const currentSrc = profileImage.src.split('?')[0]; // Remove existing query params
-                    const cacheBust = Date.now() + '_' + Math.random().toString(36).substr(2, 9);
-                    profileImage.src = currentSrc + '?v=' + cacheBust;
+        async function loadPlans() {
+            const month = plannerDate.toISOString().slice(0, 7);
+            try {
+                const res = await fetch(`/study-planner/month?month=${month}`);
+                const data = await res.json();
+                if (data.success) {
+                    plans = {};
+                    data.plans.forEach(p => {
+                        const d = p.plan_date.split('T')[0];
+                        plans[d] = {
+                            daily_goal: p.daily_goal || 50,
+                            notes: p.notes || '',
+                            is_exam_day: p.is_exam_day === 1 || p.is_exam_day === true || p.is_exam_day === '1',
+                            is_committed: p.is_committed === 1 || p.is_committed === true || p.is_committed === '1',
+                            tasks: []
+                        };
+                        if (data.progress[d]) {
+                            plans[d].completed = data.progress[d];
+                            plans[d].done = p.daily_goal > 0 && data.progress[d] >= p.daily_goal;
+                        }
+                        if (p.tasks) {
+                            plans[d].tasks = typeof p.tasks === 'string' ? JSON.parse(p.tasks) : p.tasks;
+                        }
+                    });
                 }
-            });
-
-
-
-        // Wave emoji interaction
-        document.getElementById('waveEmoji').addEventListener('click', function() {
-            this.style.animation = 'none';
-            this.offsetHeight; // Trigger reflow
-            this.style.animation = 'quickWave 0.5s ease';
-            
-            // Reset to original animation after quick wave
-            setTimeout(() => {
-                this.style.animation = 'wave 2.5s ease infinite';
-            }, 500);
-        });
-
-        // Trigger notification refresh if a new notification was created
-        @if(session('notification_created'))
-        window.dispatchEvent(new CustomEvent('weakTopicAdded', {
-            detail: {
-                type: '{{ session('notification_type') }}',
-                count: {{ session('notification_count') }}
+            } catch (e) {
+                console.error('Error loading plans:', e);
             }
-        }));
-        @endif
-        
-        } // Close initializeCharts function
+        }
+
+        function showPlannerModal() {
+            const y = plannerDate.getFullYear();
+            const m = plannerDate.getMonth();
+            const first = new Date(y, m, 1).getDay();
+            const days = new Date(y, m + 1, 0).getDate();
+            const today = new Date();
+
+            let cal = '<div style="display:grid;grid-template-columns:repeat(7,1fr);gap:8px;margin-top:1rem;">';
+            ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].forEach(d => cal += `<div style="text-align:center;font-weight:600;color:#6b7280;padding:8px 0;">${d}</div>`);
+
+            for (let i = 0; i < first; i++) cal += '<div></div>';
+
+            for (let day = 1; day <= days; day++) {
+                const date = new Date(y, m, day);
+                const ds = `${y}-${String(m + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+                const isToday = date.toDateString() === today.toDateString();
+                const p = plans[ds];
+
+                let bg = '#ffffff', border = '#e5e7eb', hoverBorder = '#3b82f6';
+                const taskCount = p?.tasks?.length || 0;
+
+                if (p?.is_exam_day) {
+                    bg = '#fee2e2';
+                    border = '#ef4444';
+                    hoverBorder = '#dc2626'; // Darker red on hover
+                } else if (isToday) {
+                    bg = '#eff6ff';
+                    border = '#3b82f6';
+                    hoverBorder = '#2563eb'; // Darker blue on hover
+                }
+
+                cal += `<div onclick="selectDay('${ds}')" style="min-height:80px;border:2px solid ${border};border-radius:8px;padding:8px;cursor:pointer;background:${bg};transition:all 0.2s;" onmouseover="this.style.borderColor='${hoverBorder}';this.style.transform='scale(1.02)'" onmouseout="this.style.borderColor='${border}';this.style.transform='scale(1)'">
+                    <div style="font-weight:600;color:#374151;margin-bottom:4px;">${day}</div>
+                    ${taskCount > 0 ? `<div style="font-size:0.8rem;color:#6b7280;">${taskCount} tasks</div>` : ''}
+                </div>`;
+            }
+            cal += '</div>';
+
+            const modal = `<div class="modal fade show" id="plannerModal" style="display:block;background:rgba(0,0,0,0.4);">
+                <div class="modal-dialog modal-dialog-centered modal-lg" style="max-width:900px;max-height:80vh;">
+                    <div class="modal-content" style="border-radius:12px;">
+                        <div class="modal-header">
+                            <h5 class="modal-title" style="font-weight:600;">Study Planner</h5>
+                            <button type="button" class="btn-close" onclick="closePlanner()"></button>
+                        </div>
+                        <div class="modal-body" style="padding:0;max-height:calc(80vh - 80px);overflow:hidden;">
+                            <div style="display:flex;">
+                                <div style="flex:1;padding:1.5rem;border-right:1px solid #e5e7eb;overflow-y:auto;max-height:calc(80vh - 80px);">
+                                    <div class="d-flex justify-content-between align-items-center mb-3">
+                                        <button class="btn btn-sm btn-outline-secondary" onclick="prevMonth()"><i class="fas fa-chevron-left"></i></button>
+                                        <span style="font-weight:600;">${plannerDate.toLocaleDateString('en-US', {month:'long',year:'numeric'})}</span>
+                                        <button class="btn btn-sm btn-outline-secondary" onclick="nextMonth()"><i class="fas fa-chevron-right"></i></button>
+                                    </div>
+                                    ${cal}
+                                </div>
+                                <div id="detailsPanel" style="width:350px;padding:1.5rem;background:#f8f9fa;display:flex;align-items:center;justify-content:center;max-height:calc(80vh - 80px);overflow-y:auto;">
+                                    <div style="text-align:center;color:#6c757d;">
+                                        <i class="fas fa-calendar-day" style="font-size:2rem;margin-bottom:1rem;opacity:0.5;"></i>
+                                        <p>Select a day to manage tasks</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>`;
+            document.body.insertAdjacentHTML('beforeend', modal);
+        }
+
+        function selectDay(ds) {
+            selectedDate = ds;
+            const p = plans[ds] || { tasks: [], daily_goal: 50, notes: '', is_exam_day: false, is_committed: false };
+            if (!plans[ds]) {
+                plans[ds] = p;
+            }
+            
+            // Fix: Parse date correctly to avoid timezone offset issues
+            const [year, month, day] = ds.split('-').map(Number);
+            const dateObj = new Date(year, month - 1, day);
+            const tasks = p.tasks || [];
+            const completedCount = tasks.filter(t => t.completed).length;
+            const totalCount = tasks.length;
+            
+            let tasksHtml = '';
+            tasks.forEach((task, idx) => {
+                tasksHtml += `<div style="display:flex;align-items:center;gap:8px;padding:8px;background:white;border-radius:6px;margin-bottom:6px;border:1px solid ${task.completed ? '#10b981' : '#e5e7eb'};">
+                    <input type="checkbox" ${task.completed ? 'checked' : ''} onchange="toggleTask(${idx})" style="width:18px;height:18px;cursor:pointer;accent-color:#10b981;">
+                    <input type="text" value="${task.text}" onchange="updateTaskText(${idx}, this.value)" style="flex:1;border:none;background:transparent;font-size:0.9rem;color:#374151;outline:none;${task.completed ? 'text-decoration:line-through;color:#9ca3af;' : ''}" placeholder="Task...">
+                    <button onclick="removeTask(${idx})" style="background:none;border:none;color:#9ca3af;cursor:pointer;padding:4px;" onmouseover="this.style.color='#ef4444'" onmouseout="this.style.color='#9ca3af'">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>`;
+            });
+            
+            const detailsHtml = `
+                <div style="width:100%;height:100%;">
+                    <div style="margin-bottom:1rem;padding-bottom:1rem;border-bottom:1px solid #e5e7eb;">
+                        <div style="font-weight:600;font-size:1.1rem;color:#111827;margin-bottom:0.5rem;">${dateObj.toLocaleDateString('en-US', {weekday:'short',month:'short',day:'numeric',year:'numeric'})}</div>
+                        ${totalCount > 0 ? `<div style="font-size:0.85rem;color:#6b7280;">${completedCount} of ${totalCount} completed</div>` : '<div style="font-size:0.85rem;color:#9ca3af;">No tasks</div>'}
+                    </div>
+                    
+                    <!-- Quick Add: Weak Topics -->
+                    <div id="quickAddTopics_${ds}" style="margin-bottom:1rem;"></div>
+                    
+                    <div style="margin-bottom:1rem;">
+                        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:0.75rem;">
+                            <label style="font-weight:600;color:#111827;font-size:0.95rem;margin:0;">Tasks</label>
+                            <button onclick="addTask('${ds}')" style="background:#3b82f6;color:white;border:none;border-radius:6px;padding:6px 14px;font-size:0.85rem;cursor:pointer;font-weight:500;" onmouseover="this.style.background='#2563eb'" onmouseout="this.style.background='#3b82f6'">
+                                <i class="fas fa-plus"></i> Add
+                            </button>
+                        </div>
+                        <div id="tasksList_${ds}" style="max-height:280px;overflow-y:auto;padding-right:4px;">
+                            ${tasksHtml || '<div style="text-align:center;padding:2rem 1rem;color:#d1d5db;font-size:0.85rem;"><i class="fas fa-tasks" style="font-size:2rem;margin-bottom:0.5rem;opacity:0.3;display:block;"></i>Click Add to create a task</div>'}
+                        </div>
+                    </div>
+                    
+                    <div style="margin-bottom:1.5rem;">
+                        <label style="display:flex;align-items:center;gap:10px;cursor:pointer;padding:12px;background:#fef2f2;border-radius:8px;border:1px solid #fecaca;transition:all 0.2s;" onmouseover="this.style.background='#fee2e2'" onmouseout="this.style.background='#fef2f2'">
+                            <input type="checkbox" id="examToggle_${ds}" ${p.is_exam_day ? 'checked' : ''} onchange="updateExamDayAndRefresh('${ds}');" style="width:18px;height:18px;cursor:pointer;accent-color:#ef4444;">
+                            <div style="flex:1;">
+                                <div style="font-size:0.9rem;color:#991b1b;font-weight:600;">Mark as Exam Day</div>
+                                <div style="font-size:0.75rem;color:#b91c1c;margin-top:2px;">Highlights day with red glow</div>
+                            </div>
+                        </label>
+                    </div>
+                    
+                    <button onclick="savePlan('${ds}')" style="width:100%;background:#10b981;color:white;border:none;border-radius:6px;padding:12px;font-weight:600;cursor:pointer;font-size:0.95rem;" onmouseover="this.style.background='#059669'" onmouseout="this.style.background='#10b981'">
+                        <i class="fas fa-check"></i> Save Plan
+                    </button>
+                </div>
+            `;
+            
+            document.getElementById('detailsPanel').innerHTML = detailsHtml;
+            
+            // Load quick add buttons for weak topics
+            loadQuickAddTopics(ds);
+        }
+
+        // Load quick add buttons for weak topics
+        async function loadQuickAddTopics(ds) {
+            // Early check for planner modal existence - prevent errors from stale modal references
+            if (!document.getElementById('plannerModal')) {
+                console.log('Planner modal not found, skipping weak topics load');
+                return;
+            }
+
+            try {
+                // Check cache first, but ensure it's an array
+                if (!Array.isArray(weakTopicsCache) || weakTopicsCache.length === 0) {
+                    try {
+                        const res = await fetch('/study-planner/weak-topics');
+                        if (!res.ok) {
+                            throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+                        }
+                        const data = await res.json();
+                        if (data.success && Array.isArray(data.weak_topics)) {
+                            weakTopicsCache = data.weak_topics;
+                        } else {
+                            // If no weak topics data, clear cache to indicate API not available
+                            weakTopicsCache = null;
+                        }
+                    } catch (error) {
+                        console.warn('Failed to load weak topics:', error.message);
+                        console.error('Error loading weak topics:', error);
+                        weakTopicsCache = null;
+                        const errorElement = document.getElementById(`quickAddTopics_${ds}`);
+                        if (errorElement) {
+                            errorElement.innerHTML = `
+                                <div style="background:linear-gradient(135deg, #fee2e2 0%, #fecaca 100%);border-radius:8px;padding:12px;border:2px solid #ef4444;">
+                                    <div style="display:flex;align-items:center;gap:8px;">
+                                        <i class="fas fa-exclamation-triangle" style="color:#dc2626;font-size:1rem;"></i>
+                                        <span style="font-size:0.9rem;font-weight:700;color:#b91c1c;">Weak topics unavailable</span>
+                                    </div>
+                                    <div style="font-size:0.75rem;color:#dc2626;margin-top:4px;">Unable to load weak topics. Please try again later.</div>
+                                </div>
+                            `;
+                        } else {
+                            console.warn(`Error element quickAddTopics_${ds} not found for error display`);
+                        }
+                        return;
+                    }
+                }
+
+                // Safety check - if cache is null or empty array, don't show anything
+                if (weakTopicsCache === null || !Array.isArray(weakTopicsCache) || weakTopicsCache.length === 0) {
+                    document.getElementById(`quickAddTopics_${ds}`).innerHTML = '';
+                    return;
+                }
+
+                // Filter out topics already in tasks with safe property access
+                const p = plans[ds];
+                const existingTaskTexts = (p && p.tasks) ? p.tasks.map(t => (t && t.text ? t.text.toLowerCase() : '')).filter(text => text) : [];
+                const availableTopics = weakTopicsCache.filter(topic => {
+                    // Safely check if topic exists and has required properties
+                    if (!topic || typeof topic !== 'object') return false;
+
+                    // Safely get topic name
+                    const topicName = topic.name || topic.topic_name || '';
+                    if (!topicName || typeof topicName !== 'string') return false;
+
+                    const topicLower = topicName.toLowerCase();
+                    const topicWithStudyPrefix = `study ${topicLower}`;
+
+                    // Check if this topic is already in existing tasks
+                    return !existingTaskTexts.includes(topicWithStudyPrefix) &&
+                           !existingTaskTexts.includes(topicLower);
+                }).slice(0, 5); // Show top 5
+
+                // Check if container element exists before setting content
+                const containerElement = document.getElementById(`quickAddTopics_${ds}`);
+                if (!containerElement) {
+                    console.warn(`Container element quickAddTopics_${ds} not found`);
+                    return;
+                }
+
+                if (availableTopics.length > 0) {
+                    let quickAddHtml = `
+                        <div style="background:linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);border-radius:8px;padding:12px;border:2px solid #fbbf24;">
+                            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+                                <div style="display:flex;align-items:center;gap:8px;">
+                                    <i class="fas fa-bolt" style="color:#b45309;font-size:1rem;"></i>
+                                    <span style="font-size:0.9rem;font-weight:700;color:#78350f;">Quick Add: Weak Topics</span>
+                                </div>
+                                <span style="font-size:0.7rem;color:#92400e;background:rgba(255,255,255,0.7);padding:2px 8px;border-radius:10px;font-weight:600;">Click to add</span>
+                            </div>
+                            <div style="display:flex;flex-wrap:wrap;gap:6px;">`;
+
+                    availableTopics.forEach(topic => {
+                        // Safely get topic properties
+                        const topicName = topic.name || topic.topic_name || 'Unknown Topic';
+                        const avgGrade = topic.avg_grade || topic.grade || topic.percentage || 0;
+                        const grade = Math.round(Number(avgGrade));
+
+                        if (isNaN(grade)) return; // Skip invalid grades
+
+                        const urgencyColor = grade < 40 ? '#dc2626' : grade < 55 ? '#ea580c' : '#f59e0b';
+
+                        // Escape single quotes for JavaScript
+                        const escapedTopicName = topicName.replace(/'/g, "\\'").replace(/"/g, '\\"');
+
+                        quickAddHtml += `
+                            <button onclick="addWeakTopicTask('${ds}', '${escapedTopicName}', ${grade})"
+                                style="background:white;border:2px solid ${urgencyColor};border-radius:20px;padding:6px 12px;cursor:pointer;transition:all 0.2s;display:flex;align-items:center;gap:6px;box-shadow:0 2px 4px rgba(0,0,0,0.1);"
+                                onmouseover="this.style.transform='translateY(-2px)';this.style.boxShadow='0 4px 8px rgba(0,0,0,0.15)';this.style.background='${urgencyColor}';this.style.color='white'"
+                                onmouseout="this.style.transform='translateY(0)';this.style.boxShadow='0 2px 4px rgba(0,0,0,0.1)';this.style.background='white';this.style.color='#374151'">
+                                <i class="fas fa-plus-circle" style="font-size:0.85rem;"></i>
+                                <span style="font-size:0.8rem;font-weight:600;">${topicName}</span>
+                                <span style="font-size:0.7rem;background:${urgencyColor};color:white;padding:2px 6px;border-radius:8px;font-weight:700;">${grade}%</span>
+                            </button>`;
+                    });
+
+                    quickAddHtml += `</div></div>`;
+                    if (containerElement) {
+                        containerElement.innerHTML = quickAddHtml;
+                    } else {
+                        console.warn(`Could not set quick add content for element quickAddTopics_${ds} - element not found`);
+                    }
+                } else {
+                    if (containerElement) {
+                        containerElement.innerHTML = '';
+                    }
+                }
+            } catch (e) {
+                console.error('Error loading weak topics:', e);
+                // Ensure we don't show any content on error
+                const elementId = `quickAddTopics_${ds}`;
+                const element = document.getElementById(elementId);
+                if (element) {
+                    element.innerHTML = '';
+                } else {
+                    console.warn(`Could not clear error content for element ${elementId} - element not found`);
+                }
+            }
+        }
+
+        // Add weak topic as task with one click
+        function addWeakTopicTask(ds, topicName, grade) {
+            const p = plans[ds];
+            if (!p.tasks) p.tasks = [];
+            p.tasks.push({ 
+                text: `Study ${topicName}`, 
+                completed: false 
+            });
+            selectDay(ds);
+            refreshCalendar();
+            showSuccessMessage(`✓ Added "${topicName}" to your plan!`);
+        }
+
+        function closePlanner() {
+            document.getElementById('plannerModal')?.remove();
+        }
+
+        function addTask(ds) {
+            const p = plans[ds];
+            if (!p.tasks) p.tasks = [];
+            p.tasks.push({ text: '', completed: false });
+            selectDay(ds);
+            refreshCalendar();
+            setTimeout(() => {
+                const inputs = document.querySelectorAll(`#tasksList_${ds} input[type="text"]`);
+                inputs[inputs.length - 1]?.focus();
+            }, 100);
+        }
+
+        async function refreshCalendar() {
+            // Force reload plans from server to sync with backend changes
+            await loadPlans();
+            // Re-render the calendar to show updated tasks
+            closePlanner();
+            showPlannerModal();
+            if (selectedDate) {
+                selectDay(selectedDate);
+            }
+        }
+
+        function toggleTask(idx) {
+            const p = plans[selectedDate];
+            if (p && p.tasks && p.tasks[idx]) {
+                p.tasks[idx].completed = !p.tasks[idx].completed;
+                selectDay(selectedDate);
+                refreshCalendar();
+            }
+        }
+
+        function updateTaskText(idx, text) {
+            const p = plans[selectedDate];
+            if (p && p.tasks && p.tasks[idx]) {
+                p.tasks[idx].text = text;
+                refreshCalendar();
+            }
+        }
+
+        function removeTask(idx) {
+            const p = plans[selectedDate];
+            if (p && p.tasks) {
+                p.tasks.splice(idx, 1);
+                selectDay(selectedDate);
+                // Auto-save silently
+                savePlan(selectedDate, true);
+            }
+        }
+
+        function updateExamDay(ds) {
+            plans[ds].is_exam_day = document.getElementById(`examToggle_${ds}`).checked;
+        }
+
+        function updateExamDayAndRefresh(ds) {
+            plans[ds].is_exam_day = document.getElementById(`examToggle_${ds}`).checked;
+            // Auto-save silently
+            savePlan(ds, true);
+        }
+
+        // Debounced save function - collects changes and saves after a delay
+        function savePlan(ds, silent = false) {
+            // Clear any existing timeout
+            if (saveTimeout) {
+                clearTimeout(saveTimeout);
+            }
+
+            // Set new timeout for debounced save
+            saveTimeout = setTimeout(async () => {
+                try {
+                    const p = plans[ds];
+                    if (!p) {
+                        console.error('No plan data for date:', ds);
+                        return;
+                    }
+
+                    const res = await fetch('/study-planner/save', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+                        },
+                        body: JSON.stringify({
+                            plan_date: ds,
+                            daily_goal: p.daily_goal || 50,
+                            notes: p.notes || '',
+                            topics: [],
+                            is_committed: p.is_committed || false,
+                            is_exam_day: p.is_exam_day || false,
+                            tasks: JSON.stringify(p.tasks || [])
+                        })
+                    });
+
+                    if (!res.ok) {
+                        throw new Error(`HTTP error! status: ${res.status}`);
+                    }
+
+                    const data = await res.json();
+            if (data.success) {
+                if (!silent) {
+                    showSuccessMessage('✓ Plan saved!');
+                    await loadPlans();
+                    closePlanner();
+                    openStudyPlanner();
+                } else {
+                    // For silent saves, update the local plan data without closing modal
+                    await loadPlans();
+                }
+            } else {
+                throw new Error(data.message || 'Failed to save plan');
+            }
+                } catch (e) {
+                    console.error('Error saving plan:', e);
+                    if (!silent) {
+                        alert('Failed to save. Please try again.');
+                    }
+                } finally {
+                    saveTimeout = null;
+                }
+            }, 300); // 300ms debounce delay
+        }
+
+        async function deletePlan(ds) {
+            if (!confirm('Delete this plan?')) return;
+            try {
+                const res = await fetch('/study-planner/delete', {
+                    method: 'DELETE',
+                    headers: {'Content-Type': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content},
+                    body: JSON.stringify({plan_date: ds})
+                });
+                if ((await res.json()).success) {
+                    delete plans[ds];
+                    showSuccessMessage('✓ Plan deleted!');
+                    closePlanner();
+                    openStudyPlanner();
+                }
+            } catch (e) {
+                alert('Failed to delete. Please try again.');
+            }
+        }
+
+        function prevMonth() { plannerDate.setMonth(plannerDate.getMonth() - 1); closePlanner(); openStudyPlanner(); }
+        function nextMonth() { plannerDate.setMonth(plannerDate.getMonth() + 1); closePlanner(); openStudyPlanner(); }
+
     </script>
 
 </body>
