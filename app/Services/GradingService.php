@@ -214,10 +214,6 @@ class GradingService
             throw new \InvalidArgumentException("Questions not found: " . implode(', ', $missingIds));
         }
         
-        // CACHE: Store questions for potential reuse
-        $cacheKey = 'questions_' . md5(implode(',', $questionIds));
-        Cache::put($cacheKey, $questions, 300); // Cache for 5 minutes
-        
         return $questions;
     }
 
@@ -831,9 +827,6 @@ class GradingService
             'overall_topic_progress' => $overallTopicProgress, // Overall progress including all attempts
             'overall_source_progress' => $overallSourceProgress, // Overall progress by source
             'correct_answers' => $questions->mapWithKeys(function ($question) {
-                return [$question->id => $question->correct_answer];
-            })->toArray(),
-            'correctAnswers' => $questions->mapWithKeys(function ($question) {
                 return [$question->id => $question->correct_answer];
             })->toArray(),
             'incorrect_answers' => $incorrectAnswers, // For review mode - shows which answers were wrong
