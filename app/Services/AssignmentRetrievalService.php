@@ -84,7 +84,7 @@ class AssignmentRetrievalService
     public function getAssignmentsData(int $userId, ?string $statusFilter, ?int $courseId): array
     {
         $user = User::with('courses')->findOrFail($userId);
-        $cacheKey = "assignments_data_{$userId}}_{$statusFilter}_{$courseId}";
+        $cacheKey = "assignments_data_{$userId}_{$statusFilter}_{$courseId}";
         $cacheTags = ['assignments', "user_{$userId}"];
 
         return Cache::tags($cacheTags)->remember($cacheKey, now()->addMinutes(5), function () use ($user, $statusFilter, $courseId) {

@@ -89,28 +89,31 @@ class ProfileController extends Controller
         // ULTRA-EFFICIENT: Group by attempt_id - multiple sources from same quiz = ONE point
         // REAL-TIME OPTIMIZATION: Reduced cache time for immediate chart updates
         $performanceData = Cache::remember("performance_data_optimized_{$user->id}", 30, function() use ($user) {
+            // FINAL OPTIMIZATION: Pre-compute CASE statement to reduce DB::raw overhead
+            $topicCase = DB::raw('CASE
+                WHEN quiz_attempts.study_mode = "random" THEN "Random Quiz"
+                WHEN quiz_attempts.quiz_type = "random" THEN "Random Quiz"
+                WHEN quiz_attempts.topic_id IS NULL THEN "Unknown Topic"
+                ELSE COALESCE(topics.name, "Unknown Topic")
+            END as topic');
+            
             // Get attempts grouped by attempt_id with combined scores
             $groupedAttempts = DB::table('quiz_attempts')
                 ->leftJoin('topics', 'quiz_attempts.topic_id', '=', 'topics.id')
                 ->where('quiz_attempts.user_id', $user->id)
                 ->where('quiz_attempts.quiz_type', '!=', 'mistake_review')
                 ->whereNotNull('quiz_attempts.attempt_id') // Only group attempts with attempt_id
-                ->select(
+                ->select([
                     'quiz_attempts.attempt_id',
                     DB::raw('MAX(quiz_attempts.created_at) as date'),
                     'quiz_attempts.topic_id',
                     'quiz_attempts.study_mode',
-                    'quiz_attempts.quiz_type', // Include quiz_type for random quiz detection
+                    'quiz_attempts.quiz_type',
                     DB::raw('SUM(quiz_attempts.score) as total_score'),
                     DB::raw('SUM(quiz_attempts.total_questions) as total_questions'),
                     DB::raw('COUNT(*) as attempts_count'),
-                    DB::raw('CASE
-                        WHEN quiz_attempts.study_mode = "random" THEN "Random Quiz"
-                        WHEN quiz_attempts.quiz_type = "random" THEN "Random Quiz"
-                        WHEN quiz_attempts.topic_id IS NULL THEN "Unknown Topic"
-                        ELSE COALESCE(topics.name, "Unknown Topic")
-                    END as topic')
-                )
+                    $topicCase
+                ])
                 ->groupBy('quiz_attempts.attempt_id', 'quiz_attempts.topic_id', 'quiz_attempts.study_mode', 'topics.name', 'quiz_attempts.quiz_type')
                 ->orderBy('date', 'desc')
                 ->take(7)
