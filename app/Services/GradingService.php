@@ -183,6 +183,28 @@ class GradingService
     }
 
     /**
+     * Check if answer was correct based on existing grading results (optimization helper)
+     *
+     * @param int $questionId
+     * @param array $gradingResult
+     * @return bool
+     */
+    private function isAnswerCorrectInGradingResult(int $questionId, array $gradingResult): bool
+    {
+        // Check through source data to find if this question was answered correctly
+        foreach ($gradingResult['sourceData'] as $sourceData) {
+            foreach ($sourceData['question_data'] as $questionData) {
+                if ($questionData['question_id'] === $questionId) {
+                    return $questionData['is_correct'];
+                }
+            }
+        }
+        
+        // If not found in source data, assume incorrect (conservative approach)
+        return false;
+    }
+
+    /**
      * Handle topic progress updates based on quiz type
      *
      * @param User $user
@@ -878,11 +900,14 @@ class GradingService
             }
         }
 
-        // Build incorrect_answers map for review mode
+        // Build incorrect_answers map for review mode - OPTIMIZED: Use existing results
         $incorrectAnswers = [];
         foreach ($questions as $question) {
             $submittedAnswer = $answers[$question->id] ?? null;
-            $isCorrect = $this->evaluateAnswer($question, $submittedAnswer ?? '');
+            
+            // OPTIMIZATION: Check if answer was marked as incorrect in grading results
+            // This avoids re-evaluating the answer (significant performance gain)
+            $isCorrect = $this->isAnswerCorrectInGradingResult($question->id, $gradingResult);
             
             if (!$isCorrect) {
                 $incorrectAnswers[$question->id] = [
