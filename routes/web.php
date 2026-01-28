@@ -103,6 +103,40 @@ Route::prefix('api/assignments')->middleware('auth')->group(function () {
 // Active users count API - Public endpoint for all users
 Route::get('/api/active-users', function() {
     try {
+        // Check if fake mode is enabled
+        $fakeEnabled = \App\Models\AdminSetting::get('fake_live_users_enabled', false);
+        
+        if ($fakeEnabled) {
+            // Generate believable fake count that fluctuates
+            $min = \App\Models\AdminSetting::get('fake_live_users_min', 87);
+            $max = \App\Models\AdminSetting::get('fake_live_users_max', 143);
+            
+            // Use time-based seed for consistent but changing values
+            $seed = floor(time() / 30); // Changes every 30 seconds
+            mt_srand($seed);
+            
+            // Generate base count
+            $baseCount = mt_rand($min, $max);
+            
+            // Round to nearest 10 for believability (e.g., 97, 107, 118)
+            $roundedCount = round($baseCount / 10) * 10;
+            
+            // Add small random offset (0-9) to make it look more natural
+            $offset = mt_rand(0, 9);
+            $finalCount = $roundedCount + $offset;
+            
+            // Ensure it stays within bounds
+            $finalCount = max($min, min($max, $finalCount));
+            
+            return response()->json([
+                'count' => $finalCount,
+                'visitors' => floor($finalCount * 0.7), // 70% visitors
+                'users' => floor($finalCount * 0.3), // 30% logged in
+                'fake_mode' => true
+            ]);
+        }
+        
+        // Real mode - count actual sessions
         $fiveMinutesAgo = now()->subMinutes(5)->timestamp;
         
         // Get count of unique visitors based on fingerprint
@@ -123,14 +157,16 @@ Route::get('/api/active-users', function() {
         return response()->json([
             'count' => $visitorCount + $loggedInCount,
             'visitors' => $visitorCount,
-            'users' => $loggedInCount
+            'users' => $loggedInCount,
+            'fake_mode' => false
         ]);
     } catch (\Exception $e) {
         // Return a default response instead of exposing the error
         return response()->json([
             'count' => 1,
             'visitors' => 0,
-            'users' => 1
+            'users' => 1,
+            'fake_mode' => false
         ]);
     }
 })->name('api.active-users');
@@ -144,6 +180,54 @@ Route::middleware(['auth', 'admin'])->group(function () {
     // Manage Access Routes - SECURE with CSRF protection
     Route::post('/manage-access/enroll', [UserCourseController::class, 'enroll'])->name('admin.user-course.enroll');
     Route::post('/manage-access/revoke', [UserCourseController::class, 'revoke'])->name('admin.user-course.revoke');
+    
+    // Admin Settings Routes
+    Route::post('/admin/settings/update', function(\Illuminate\Http\Request $request) {
+        $validated = $request->validate([
+            'key' => 'required|string',
+            'value' => 'required',
+            'type' => 'required|in:string,boolean,integer,float,json'
+        ]);
+        
+        \App\Models\AdminSetting::set($validated['key'], $validated['value'], $validated['type']);
+        
+        return response()->json(['success' => true, 'message' => 'Setting updated successfully']);
+    })->name('admin.settings.update');
+    
+    Route::get('/admin/settings/{key}', function(string $key) {
+        $value = \App\Models\AdminSetting::get($key);
+        return response()->json(['value' => $value]);
+    })->name('admin.settings.get');
+    
+    // Course Fake Enrolled Routes
+    Route::post('/admin/courses/{course}/fake-enrolled', function(\Illuminate\Http\Request $request, \App\Models\Course $course) {
+        $validated = $request->validate([
+            'fake_enrolled_enabled' => 'required|boolean',
+            'fake_enrolled_count' => 'required|integer|min:0|max:9999'
+        ]);
+        
+        $course->update($validated);
+        
+        return response()->json(['success' => true, 'message' => 'Course fake enrolled settings updated']);
+    })->name('admin.courses.fake-enrolled.update');
+    
+    Route::post('/admin/courses/fake-enrolled/bulk', function(\Illuminate\Http\Request $request) {
+        $validated = $request->validate([
+            'courses' => 'required|array',
+            'courses.*.id' => 'required|exists:courses,id',
+            'courses.*.fake_enrolled_enabled' => 'required|boolean',
+            'courses.*.fake_enrolled_count' => 'required|integer|min:0|max:9999'
+        ]);
+        
+        foreach ($validated['courses'] as $courseData) {
+            \App\Models\Course::where('id', $courseData['id'])->update([
+                'fake_enrolled_enabled' => $courseData['fake_enrolled_enabled'],
+                'fake_enrolled_count' => $courseData['fake_enrolled_count']
+            ]);
+        }
+        
+        return response()->json(['success' => true, 'message' => 'All courses updated successfully']);
+    })->name('admin.courses.fake-enrolled.bulk');
 });
 // Route removed - restore functionality is handled by revoke method (toggle)
 
@@ -189,9 +273,9 @@ Route::middleware(['web', SecurityHeaders::class])->group(function () {
     });
 
     
-
-// Search Users Route - Auth only (not admin)
-Route::get('/manage-access/search-users', [UserCourseController::class, 'searchUsers'])->name('admin.user-course.search')->withoutMiddleware([\App\Http\Middleware\VerifyCsrfToken::class]);
+    // FIXED: Search Users Route - Must be inside auth middleware
+    Route::get('/manage-access/search-users', [UserCourseController::class, 'searchUsers'])
+        ->name('admin.user-course.search');
 
 // Debug route to check authentication status
 Route::get('/debug/auth-status', function() {
@@ -380,11 +464,7 @@ Route::get('/test/search-users-bypass', function() {
         Route::post('/profile/update-goal', [ProfileController::class, 'updateWeeklyGoal'])->name('profile.update-goal');
         
         // Study Planner routes
-        Route::get('/study-planner', [ProfileController::class, 'showStudyPlanner'])->name('study-planner');
-        Route::post('/study-planner/save', [ProfileController::class, 'saveStudyPlan'])->name('study-planner.save');
-        Route::get('/study-planner/month', [ProfileController::class, 'getMonthPlans'])->name('study-planner.month');
-        Route::get('/study-planner/weak-topics', [ProfileController::class, 'getWeakTopics'])->name('study-planner.weak-topics');
-        Route::delete('/study-planner/delete', [ProfileController::class, 'deleteStudyPlan'])->name('study-planner.delete');
+
     });
 
     // Profile picture serving route (FIXED: Use correct storage location for secure_uploads disk)
@@ -459,6 +539,11 @@ Route::get('/test/search-users-bypass', function() {
     // Source progress endpoint
     Route::get('/topics/{topic}/source-progress', [TopicController::class, 'getSourceProgress'])
         ->name('topics.source-progress')
+        ->middleware('auth');
+
+    // Courses sources endpoint for random quiz filtering
+    Route::get('/api/courses-sources', [TopicController::class, 'getCoursesSources'])
+        ->name('api.courses-sources')
         ->middleware('auth');
 
     // Video page route - NO CSP RESTRICTIONS for YouTube functionality

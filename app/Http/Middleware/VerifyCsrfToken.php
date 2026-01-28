@@ -35,12 +35,7 @@ class VerifyCsrfToken extends Middleware
 
     /**
      * Determine if the request has a valid CSRF token.
-     *
-     * @param  \Illuminate\Http\Request  $request
-     * @return bool
-     */
-    /**
-     * Determine if the request has a valid CSRF token.
+     * CRITICAL FIX: Enhanced token validation with graceful handling
      *
      * @param  \Illuminate\Http\Request  $request
      * @return bool
@@ -52,6 +47,20 @@ class VerifyCsrfToken extends Middleware
             return true;
         }
         
+        // CRITICAL FIX: Check if session exists and is valid
+        if (!$request->hasSession() || !$request->session()->isStarted()) {
+            // Try to start the session
+            try {
+                $request->session()->start();
+            } catch (\Exception $e) {
+                \Log::warning('Failed to start session for CSRF check', [
+                    'error' => $e->getMessage(),
+                    'path' => $request->path()
+                ]);
+                return false;
+            }
+        }
+        
         // For ngrok development, be VERY lenient with CSRF (especially for Edge)
         if (str_contains($request->getHost(), 'ngrok') || str_contains($request->getHost(), 'ngrok-free.app')) {
             // Try multiple token sources
@@ -61,17 +70,28 @@ class VerifyCsrfToken extends Middleware
                 ?: $request->cookie('XSRF-TOKEN');
             
             if (!$token) {
-                // For ngrok, if no token found, just regenerate and accept
-                $request->session()->regenerateToken();
-                return true;
+                // CRITICAL FIX: For ngrok, regenerate token and accept
+                try {
+                    $request->session()->regenerateToken();
+                    return true;
+                } catch (\Exception $e) {
+                    \Log::warning('Failed to regenerate CSRF token', [
+                        'error' => $e->getMessage()
+                    ]);
+                    return false;
+                }
             }
             
             // More lenient token comparison for ngrok
             $sessionToken = $request->session()->token();
             if (!$sessionToken) {
                 // If no session token, regenerate and accept
-                $request->session()->regenerateToken();
-                return true;
+                try {
+                    $request->session()->regenerateToken();
+                    return true;
+                } catch (\Exception $e) {
+                    return false;
+                }
             }
             
             // For Edge compatibility, be more lenient
@@ -95,7 +115,13 @@ class VerifyCsrfToken extends Middleware
             $token = $request->header('X-CSRF-TOKEN');
         }
 
-        return is_string($token) && hash_equals($request->session()->token(), $token);
+        // CRITICAL FIX: Ensure session token exists before comparison
+        $sessionToken = $request->session()->token();
+        if (!$sessionToken) {
+            return false;
+        }
+
+        return is_string($token) && hash_equals($sessionToken, $token);
     }
 
     /**

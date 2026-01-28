@@ -10,6 +10,7 @@ use Illuminate\Validation\ValidationException as LaravelValidationException;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
 use Symfony\Component\HttpKernel\Exception\MethodNotAllowedHttpException;
+use Illuminate\Session\TokenMismatchException;
 use Throwable;
 use Illuminate\Support\Facades\Log;
 use App\Exceptions\QuizException;
@@ -59,6 +60,11 @@ class Handler extends ExceptionHandler
      */
     public function render($request, Throwable $e): Response|JsonResponse
     {
+        // Handle CSRF token mismatch (419 errors) - CRITICAL FIX
+        if ($e instanceof TokenMismatchException) {
+            return $this->handleTokenMismatchException($request, $e);
+        }
+
         // Handle custom exceptions
         if ($e instanceof QuizException) {
             return $this->handleQuizException($request, $e);
@@ -92,6 +98,42 @@ class Handler extends ExceptionHandler
 
         // Default exception handling
         return parent::render($request, $e);
+    }
+
+    /**
+     * Handle CSRF Token Mismatch (419 errors) - CRITICAL FIX
+     * Gracefully redirect users instead of showing error page
+     */
+    protected function handleTokenMismatchException(Request $request, TokenMismatchException $e)
+    {
+        // Log the CSRF error for monitoring
+        Log::warning('CSRF Token Mismatch - Redirecting user', [
+            'url' => $request->fullUrl(),
+            'method' => $request->method(),
+            'user_id' => auth()->id(),
+            'ip' => $request->ip(),
+            'user_agent' => $request->userAgent(),
+        ]);
+
+        // If it's an AJAX request, return JSON response
+        if ($request->expectsJson() || $request->ajax()) {
+            return response()->json([
+                'success' => false,
+                'error' => 'Session Expired',
+                'message' => 'Your session has expired. Please refresh the page.',
+                'code' => 'SESSION_EXPIRED',
+                'redirect' => route('home'),
+            ], 419);
+        }
+
+        // For regular requests, redirect to homepage with a friendly message
+        // Clear the session and regenerate token for fresh start
+        $request->session()->invalidate();
+        $request->session()->regenerateToken();
+
+        return redirect()->route('home')
+            ->with('warning', 'Your session expired. Please log in again if needed.')
+            ->with('session_expired', true);
     }
 
     /**

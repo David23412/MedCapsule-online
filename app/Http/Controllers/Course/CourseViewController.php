@@ -125,17 +125,55 @@ class CourseViewController extends Controller
             $course->completion_percentage = 0;
             $course->mastered_topics_count = 0;
             
-            // Format enrolled users for display - use eager loaded enrolledUsers
-            $enrolledUsers = $course->enrolledUsers ?? collect();
-            $course->enrolled_preview = $enrolledUsers->take(3)->map(function($user) {
-                return [
-                    'name' => $user->name,
-                    'profile_picture_url' => $user->profile_picture_url,
-                    'initial' => strtoupper(substr($user->name, 0, 1))
-                ];
-            });
-            $course->has_more = $enrolledUsers->count() > 3;
+            // Format enrolled users for display - use fake or real data
+            if ($course->fake_enrolled_enabled && $course->fake_enrolled_count > 0) {
+                // Generate fake enrolled users
+                $fakeUsers = $this->generateFakeEnrolledUsers($course->fake_enrolled_count);
+                $course->enrolled_preview = collect($fakeUsers)->take(3);
+                $course->has_more = $course->fake_enrolled_count > 3;
+                $course->enrolled_users_count = $course->fake_enrolled_count;
+            } else {
+                // Use real enrolled users
+                $enrolledUsers = $course->enrolledUsers ?? collect();
+                $course->enrolled_preview = $enrolledUsers->take(3)->map(function($user) {
+                    return [
+                        'name' => $user->name,
+                        'profile_picture_url' => $user->profile_picture_url,
+                        'initial' => strtoupper(substr($user->name, 0, 1))
+                    ];
+                });
+                $course->has_more = $enrolledUsers->count() > 3;
+                $course->enrolled_users_count = $enrolledUsers->count();
+            }
         }
+    }
+
+    /**
+     * Generate fake enrolled users with realistic names and initials
+     */
+    private function generateFakeEnrolledUsers(int $count): array
+    {
+        $firstNames = ['Ahmed', 'Mohamed', 'Fatima', 'Aisha', 'Omar', 'Sara', 'Ali', 'Nour', 'Hassan', 'Layla', 
+                       'Youssef', 'Mariam', 'Khaled', 'Hana', 'Mahmoud', 'Zainab', 'Amr', 'Dina', 'Karim', 'Salma',
+                       'Yasmin', 'Aya', 'Mostafa', 'Rana', 'Tarek', 'Nada', 'Waleed', 'Mona', 'Sherif', 'Dalia'];
+        $lastNames = ['Hassan', 'Ibrahim', 'Mohamed', 'Ali', 'Ahmed', 'Mahmoud', 'Youssef', 'Khaled', 'Omar', 'Said',
+                      'Farouk', 'Mostafa', 'Abdel', 'Sayed', 'Rashid', 'Nasser', 'Kamel', 'Fathy', 'Salah', 'Hamdy'];
+        
+        $fakeUsers = [];
+        // Generate only first 3 users for display (view will show +X for the rest)
+        for ($i = 0; $i < min($count, 3); $i++) {
+            $firstName = $firstNames[array_rand($firstNames)];
+            $lastName = $lastNames[array_rand($lastNames)];
+            $fullName = $firstName . ' ' . $lastName;
+            
+            $fakeUsers[] = [
+                'name' => $fullName,
+                'profile_picture_url' => null,
+                'initial' => strtoupper(substr($firstName, 0, 1))
+            ];
+        }
+        
+        return $fakeUsers;
     }
 
     /**
@@ -149,13 +187,9 @@ class CourseViewController extends Controller
                 ->where('name', 'NOT LIKE', '%cases%'),
             'cases_count' => Topic::selectRaw('COUNT(*)')
                 ->whereColumn('course_id', 'courses.id')
-                ->where('name', 'LIKE', '%cases%'),
-            DB::raw('(
-                SELECT COUNT(DISTINCT payments.user_id)
-                FROM payments
-                WHERE payments.course_id = courses.id
-                AND payments.status = "completed"
-            ) as enrolled_users_count')
+                ->where('name', 'LIKE', '%cases%')
+            // Removed enrolled_users_count subquery - it's now set manually in the loop
+            // to support both real and fake enrolled counts
         ];
 
         if ($isLoggedIn) {

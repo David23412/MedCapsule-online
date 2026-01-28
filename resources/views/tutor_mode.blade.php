@@ -29,6 +29,14 @@
     <link rel="dns-prefetch" href="{{ url('/') }}">
 
     <style>
+        :root {
+            --highlight-yellow: #fff59d;
+            --highlight-pink: #f8bbd0;
+            --highlight-blue: #b3e5fc;
+            --highlight-green: #c5e1a5;
+            --highlight-purple: #e1bee7;
+        }
+
         body {
             font-family: 'Poppins', sans-serif;
             background-color: #f8f9fa;
@@ -186,6 +194,111 @@
             color: #000000;
             margin-bottom: 1rem;
             line-height: 1.5;
+            user-select: text;
+            -webkit-user-select: text;
+            -moz-user-select: text;
+            -ms-user-select: text;
+        }
+
+        /* Highlight styles */
+        .question-text mark {
+            border-radius: 2px;
+            padding: 2px 0;
+            transition: background-color 0.2s ease;
+        }
+
+        .question-text mark.highlight-yellow { background-color: var(--highlight-yellow); }
+        .question-text mark.highlight-pink { background-color: var(--highlight-pink); }
+        .question-text mark.highlight-blue { background-color: var(--highlight-blue); }
+        .question-text mark.highlight-green { background-color: var(--highlight-green); }
+        .question-text mark.highlight-purple { background-color: var(--highlight-purple); }
+
+        /* Highlight toolbar */
+        .highlight-toolbar {
+            display: none;
+            position: absolute;
+            background: white;
+            border-radius: 8px;
+            padding: 6px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            z-index: 1000;
+            gap: 4px;
+            align-items: center;
+        }
+
+        .highlight-toolbar.show {
+            display: flex;
+        }
+
+        .highlight-btn {
+            width: 32px;
+            height: 32px;
+            border: 2px solid #e9ecef;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.15s ease;
+            flex-shrink: 0;
+        }
+
+        .highlight-btn:hover {
+            transform: scale(1.1);
+            border-color: #007bff;
+            box-shadow: 0 2px 8px rgba(0, 123, 255, 0.2);
+        }
+
+        .highlight-btn:active {
+            transform: scale(0.95);
+        }
+
+        .highlight-btn.yellow { background-color: var(--highlight-yellow); }
+        .highlight-btn.pink { background-color: var(--highlight-pink); }
+        .highlight-btn.blue { background-color: var(--highlight-blue); }
+        .highlight-btn.green { background-color: var(--highlight-green); }
+        .highlight-btn.purple { background-color: var(--highlight-purple); }
+
+        .highlight-btn.eraser {
+            background: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #6c757d;
+            font-size: 14px;
+        }
+
+        .highlight-btn.eraser:hover {
+            color: #dc3545;
+            border-color: #dc3545;
+        }
+
+        .toolbar-divider {
+            width: 1px;
+            height: 24px;
+            background: #e9ecef;
+            margin: 0 2px;
+        }
+
+        /* Mobile responsiveness for highlight toolbar */
+        @media (max-width: 768px) {
+            .highlight-toolbar {
+                padding: 4px;
+                gap: 3px;
+            }
+
+            .highlight-btn {
+                width: 28px;
+                height: 28px;
+            }
+
+            .toolbar-divider {
+                height: 20px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .highlight-btn {
+                width: 26px;
+                height: 26px;
+            }
         }
 
         .question-image {
@@ -240,6 +353,20 @@
         .option-card.incorrect {
             border-color: #dc3545;
             background: #f8d7da;
+        }
+
+        /* Disable blue highlight after checking answer */
+        .option-card[style*="pointer-events: none"] {
+            cursor: default !important;
+        }
+
+        .option-card[style*="pointer-events: none"]:hover {
+            outline: none !important;
+            border-color: inherit !important;
+            background-color: inherit !important;
+            transform: none !important;
+            box-shadow: none !important;
+            color: inherit !important;
         }
 
         .option-letter {
@@ -431,48 +558,102 @@
 
         .answer-feedback .alert {
             border-radius: 8px;
-            padding: 1.5rem;
+            padding: 1.25rem;
+            padding-left: 1.25rem;
             margin-top: 1rem;
             position: relative;
+            background-color: #f0f7ff;
+            border: none;
+            border-left: 4px solid #007bff;
+            color: #333;
         }
 
         .answer-feedback .alert.alert-success {
-            background-color: #d4edda;
-            border-color: #c3e6cb;
-            color: #155724;
+            background-color: #f0f7ff;
+            border-left: 4px solid #007bff;
+            color: #333;
         }
 
         .answer-feedback .alert.alert-danger {
-            background-color: #f8d7da;
-            border-color: #f5c6cb;
-            color: #721c24;
+            background-color: #f0f7ff;
+            border-left: 4px solid #007bff;
+            color: #333;
+        }
+
+        /* Explanation content wrapper */
+        .explanation-content {
+            padding: 0;
+            margin: 0;
         }
 
         /* Doctor icon styles for explanation */
         .explanation-with-icon {
+            display: block;
+            padding: 0;
+            margin: 0;
+        }
+
+        /* Inline layout for warning messages - doctor icon next to text */
+        .explanation-with-icon.warning-inline {
             display: flex;
+            align-items: center;
             gap: 1rem;
-            align-items: flex-start;
-            padding: 0.5rem 0;
+        }
+
+        /* Header with profile pic and correct answer on same line */
+        .answer-header {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            margin-bottom: 1rem;
         }
 
         .doctor-icon {
-            flex-shrink: 0;
-            width: 64px;
-            height: 64px;
-            align-self: flex-start;
-            margin-top: 0.1rem;
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            object-fit: cover;
             filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.1));
+            flex-shrink: 0;
+        }
+
+        .answer-header strong {
+            margin: 0;
+            font-weight: 600;
+            color: #28a745;
+            font-size: 1.1rem;
         }
 
         .explanation-text {
-            flex: 1;
-            line-height: 1.6;
+            padding: 0;
+            margin: 0;
+            line-height: 1.7;
+            color: #2c3e50;
+            font-size: 1.1rem;
         }
 
         .explanation-text strong {
-            display: inline;
-            margin-right: 0.5rem;
+            display: block;
+            margin: 0 0 1rem 0;
+            font-weight: 600;
+            color: #28a745;
+            background: none;
+            border: none;
+            padding: 0;
+            font-size: 1.1rem;
+        }
+
+        .result-text {
+            display: none !important;
+        }
+
+        .result-text-inline {
+            display: none !important;
+        }
+
+        /* Ensure explanation text has proper spacing */
+        .explanation-text > *:first-child {
+            margin-top: 0;
         }
 
         .question-content {
@@ -492,6 +673,19 @@
             margin-top: 1.5rem;
             display: flex;
             gap: 1rem;
+        }
+
+        /* Written answer feedback styling – match quiz mode for clarity */
+        .written-answer.correct {
+            border-color: #00a854 !important;
+            background-color: #e3fcef !important;
+            color: #00a854 !important;
+        }
+
+        .written-answer.incorrect {
+            border-color: #f5222d !important;
+            background-color: #fff1f0 !important;
+            color: #f5222d !important;
         }
 
         .btn {
@@ -1276,10 +1470,12 @@
             box-shadow: 2px 0 8px rgba(0, 0, 0, 0.1);
             z-index: 999;
             overflow-y: auto;
+            overflow-x: hidden;
             padding: 1rem 0.5rem;
             display: flex;
             flex-direction: column;
             gap: 0.75rem;
+            align-items: center;
         }
 
         .question-sidebar::-webkit-scrollbar {
@@ -1294,6 +1490,10 @@
         .question-circle {
             width: 50px;
             height: 50px;
+            min-width: 50px;
+            min-height: 50px;
+            max-width: 50px;
+            max-height: 50px;
             border-radius: 50%;
             display: flex;
             align-items: center;
@@ -1305,7 +1505,7 @@
             border: 3px solid #e9ecef;
             background: white;
             color: #495057;
-            margin: 0 auto;
+            flex-shrink: 0;
         }
 
         .question-circle:hover {
@@ -1327,6 +1527,27 @@
         }
 
         .question-circle.incorrect {
+            border-color: #dc3545;
+            background: #f8d7da;
+            color: #dc3545;
+        }
+
+        /* Remove blue highlight when already answered */
+        .question-circle.correct.active,
+        .question-circle.incorrect.active {
+            border-color: inherit;
+            background: inherit;
+            color: inherit;
+            box-shadow: none;
+        }
+
+        .question-circle.correct.active {
+            border-color: #28a745;
+            background: #d4edda;
+            color: #28a745;
+        }
+
+        .question-circle.incorrect.active {
             border-color: #dc3545;
             background: #f8d7da;
             color: #dc3545;
@@ -1356,10 +1577,9 @@
     height: 36px;
     padding: 0;
     background: transparent;
-    color: #adb5bd;
-    border: 2px solid #007bff;
-    border-radius: 50%;
-    font-size: 0.9rem;
+    color: #007bff;
+    border: none;
+    font-size: 1.2rem;
     cursor: pointer;
     transition: all 0.2s ease;
     display: inline-flex;
@@ -1368,10 +1588,8 @@
 }
 
         .nav-arrow-btn:hover:not(:disabled) {
-            background: #f8f9fa;
-            border-color: #6c757d;
-            color: #6c757d;
-            transform: scale(1.08);
+            color: #0056b3;
+            transform: scale(1.15);
         }
 
         .nav-arrow-btn:disabled {
@@ -1473,76 +1691,20 @@
     </style>
 </head>
 <body>
-    <!-- 💀 LETHAL AUDIO POOL SYSTEM - 5 READY ELEMENTS PER SOUND 💀 -->
-    <div id="audio-pool" style="display: none;">
-        <!-- CORRECT SOUND POOL -->
-        <audio class="audio-pool-correct" preload="auto" volume="0.7">
-            <source src="/sounds/Single-correct.mp3" type="audio/mpeg">
-        </audio>
-        <audio class="audio-pool-correct" preload="auto" volume="0.7">
-            <source src="/sounds/Single-correct.mp3" type="audio/mpeg">
-        </audio>
-        <audio class="audio-pool-correct" preload="auto" volume="0.7">
-            <source src="/sounds/Single-correct.mp3" type="audio/mpeg">
-        </audio>
-        <audio class="audio-pool-correct" preload="auto" volume="0.7">
-            <source src="/sounds/Single-correct.mp3" type="audio/mpeg">
-        </audio>
-        <audio class="audio-pool-correct" preload="auto" volume="0.7">
-            <source src="/sounds/Single-correct.mp3" type="audio/mpeg">
-        </audio>
-        
-        <!-- WRONG SOUND POOL -->
-        <audio class="audio-pool-wrong" preload="auto" volume="0.7">
-            <source src="/sounds/quiz-wrong.mp3" type="audio/mpeg">
-        </audio>
-        <audio class="audio-pool-wrong" preload="auto" volume="0.7">
-            <source src="/sounds/quiz-wrong.mp3" type="audio/mpeg">
-        </audio>
-        <audio class="audio-pool-wrong" preload="auto" volume="0.7">
-            <source src="/sounds/quiz-wrong.mp3" type="audio/mpeg">
-        </audio>
-        <audio class="audio-pool-wrong" preload="auto" volume="0.7">
-            <source src="/sounds/quiz-wrong.mp3" type="audio/mpeg">
-        </audio>
-        <audio class="audio-pool-wrong" preload="auto" volume="0.7">
-            <source src="/sounds/quiz-wrong.mp3" type="audio/mpeg">
-        </audio>
-        
-        <!-- PERFECT SOUND POOL -->
-        <audio class="audio-pool-perfect" preload="auto" volume="0.7">
-            <source src="/sounds/quiz-perfect.mp3" type="audio/mpeg">
-        </audio>
-        <audio class="audio-pool-perfect" preload="auto" volume="0.7">
-            <source src="/sounds/quiz-perfect.mp3" type="audio/mpeg">
-        </audio>
-        <audio class="audio-pool-perfect" preload="auto" volume="0.7">
-            <source src="/sounds/quiz-perfect.mp3" type="audio/mpeg">
-        </audio>
-        <audio class="audio-pool-perfect" preload="auto" volume="0.7">
-            <source src="/sounds/quiz-perfect.mp3" type="audio/mpeg">
-        </audio>
-        <audio class="audio-pool-perfect" preload="auto" volume="0.7">
-            <source src="/sounds/quiz-perfect.mp3" type="audio/mpeg">
-        </audio>
-        
-        <!-- PARTIAL SOUND POOL -->
-        <audio class="audio-pool-partial" preload="auto" volume="0.7">
-            <source src="/sounds/quiz-partial.mp3" type="audio/mpeg">
-        </audio>
-        <audio class="audio-pool-partial" preload="auto" volume="0.7">
-            <source src="/sounds/quiz-partial.mp3" type="audio/mpeg">
-        </audio>
-        <audio class="audio-pool-partial" preload="auto" volume="0.7">
-            <source src="/sounds/quiz-partial.mp3" type="audio/mpeg">
-        </audio>
-        <audio class="audio-pool-partial" preload="auto" volume="0.7">
-            <source src="/sounds/quiz-partial.mp3" type="audio/mpeg">
-        </audio>
-        <audio class="audio-pool-partial" preload="auto" volume="0.7">
-            <source src="/sounds/quiz-partial.mp3" type="audio/mpeg">
-        </audio>
+    <!-- Highlight Toolbar (Hidden by default, shown on text selection) -->
+    <div class="highlight-toolbar" id="highlight-toolbar">
+        <button class="highlight-btn yellow" onclick="applyHighlight('yellow')" title="Yellow" aria-label="Highlight Yellow"></button>
+        <button class="highlight-btn pink" onclick="applyHighlight('pink')" title="Pink" aria-label="Highlight Pink"></button>
+        <button class="highlight-btn blue" onclick="applyHighlight('blue')" title="Blue" aria-label="Highlight Blue"></button>
+        <button class="highlight-btn green" onclick="applyHighlight('green')" title="Green" aria-label="Highlight Green"></button>
+        <button class="highlight-btn purple" onclick="applyHighlight('purple')" title="Purple" aria-label="Highlight Purple"></button>
+        <div class="toolbar-divider"></div>
+        <button class="highlight-btn eraser" onclick="removeHighlight()" title="Remove Highlight" aria-label="Remove Highlight">
+            <i class="fas fa-eraser"></i>
+        </button>
     </div>
+
+
 
     <!-- LIGHTNING-FAST FOUC ELIMINATOR -->
     @include('components.lightning-preloader')
@@ -1628,13 +1790,32 @@
                         @endif
                     </div>
 
+                    @php
+                        // Build cleaned options array and count how many are real (non-empty, not "-")
+                        $rawOptions = [
+                            'A' => $qObj->option_a,
+                            'B' => $qObj->option_b,
+                            'C' => $qObj->option_c,
+                            'D' => $qObj->option_d,
+                        ];
+                        $cleanedOptions = [];
+                        $realOptionCount = 0;
+                        foreach ($rawOptions as $letter => $optText) {
+                            $clean = is_null($optText) ? '' : trim($optText);
+                            $cleanedOptions[$letter] = $clean;
+                            if ($clean !== '' && $clean !== '-') {
+                                $realOptionCount++;
+                            }
+                        }
+                    @endphp
+
                     <div class="options-container" data-question-id="{{ $qObj->id ?? '' }}">
                         @if(($qObj->question_type ?? null) === 'multiple_choice')
-                            @foreach(['A' => $qObj->option_a, 'B' => $qObj->option_b, 'C' => $qObj->option_c, 'D' => $qObj->option_d] as $letter => $option)
-                                @if($option)
+                            @foreach($cleanedOptions as $letter => $cleanOption)
+                                @if($cleanOption !== '' && $cleanOption !== '-')
                                     <div class="option-card" data-option="{{ $letter }}">
                                         <span class="option-letter">{{ $letter }}</span>
-                                        <div class="option-content">{{ $option }}</div>
+                                        <div class="option-content">{{ $cleanOption }}</div>
                                     </div>
                                 @endif
                             @endforeach
@@ -1710,6 +1891,9 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js?v={{ time() }}"></script>
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js?v={{ time() }}"></script>
 
+    <!-- UNIFIED GRADING AUDIO CONTROLLER -->
+    <script src="{{ asset('js/grading-audio-controller.js') }}"></script>
+
     <!-- 🚀 CRITICAL FIX: Move function declarations to HEAD for immediate availability 🚀 -->
     <script>
         // 💀 LETHAL AUDIO POOL SYSTEM - 0MS INSTANT PLAYBACK 💀
@@ -1725,7 +1909,10 @@
         // Global variable declarations
         let firstAttemptAnswers = {};
         let questionStates = {};
+        // Track when the quiz session started (used for duration + autosubmit)
         let quizStartTime = new Date();
+        // Ensure availability across any later scripts that might reference it
+        window.quizStartTime = quizStartTime;
         let currentQuestionIndex = 1;
         let totalQuestions = {{ $questions->count() }};
         let correctAnswers = 0;
@@ -1734,6 +1921,11 @@
         let timerInterval;
         let answerCache = {};
         let questionData = {};
+
+        // Highlighting system
+        let highlights = {};
+        let currentSelection = null;
+        let highlightToolbar = null;
 
         // LIGHTNING FAST FUNCTION DEFINITIONS 🚀
         window.selectOption = function selectOption(element) {
@@ -1817,36 +2009,44 @@
                 feedbackDiv.querySelector('.result-text').textContent = "Don't worry! Here's the answer:";
                 feedbackDiv.querySelector('.explanation-content').innerHTML = `
                     <div class="explanation-with-icon">
-                        <img class="e0f0c237914d2b33--drIcon css-1x2z75v-StyledImg esvv5850 doctor-icon" alt="random doctor image" src="https://next.amboss.com/us/static/assets/33964f30ee687409.svg">
+                        <div class="answer-header">
+                            <img class="doctor-icon" alt="Doctor character" src="/images/doctor.png">
+                            <strong>Correct Answer: ${qData.correct_answer}</strong>
+                        </div>
                         <div class="explanation-text">
-                            <strong>Correct Answer: ${qData.correct_answer}</strong><br><br>
                             ${qData.explanation || 'No explanation available.'}
                         </div>
                     </div>
                 `;
+
+                // Highlight the correct answer option in green
+                questionCard.querySelectorAll('.option-card').forEach(opt => {
+                    const optionLetter = opt.getAttribute('data-option');
+                    if (optionLetter === qData.correct_answer) {
+                        opt.classList.add('correct');
+                    }
+                    opt.style.pointerEvents = 'none';
+                    opt.style.opacity = '0.6';
+                });
 
                 const checkBtn = questionCard.querySelector('.check-answer');
                 const dontKnowBtn = questionCard.querySelector('.btn-dont-know');
                 if (checkBtn) checkBtn.style.display = 'none';
                 if (dontKnowBtn) dontKnowBtn.style.display = 'none';
 
-                questionCard.querySelectorAll('.option-card').forEach(opt => {
-                    opt.style.pointerEvents = 'none';
-                    opt.style.opacity = '0.6';
-                });
-
-                const totalQs = {{ $questions->count() }};
-                if (questionNumber < totalQs) {
-                    const nextBtn = questionCard.querySelector('.next-question');
-                    if (nextBtn) nextBtn.style.display = 'inline-block';
-                } else {
+                // Check if all questions are answered - if so, show View Results button
+                if (totalAnswers === {{ $questions->count() }}) {
+                    console.log('🔥 ALL QUESTIONS ANSWERED VIA I DONT KNOW: Showing View Results button');
                     const resultsBtn = questionCard.querySelector('.view-results');
                     if (resultsBtn) resultsBtn.style.display = 'inline-block';
+                } else {
+                    const nextBtn = questionCard.querySelector('.next-question');
+                    if (nextBtn) nextBtn.style.display = 'inline-block';
                 }
             }
 
             updateProgress(totalAnswers, {{ $questions->count() }});
-            playSound('wrong');
+            // 🎯 REMOVED INDIVIDUAL QUESTION SOUNDS - ONLY FINAL GRADING SOUND NOW
         };
 
         window.checkAnswer = function checkAnswer(questionNumber, questionId) {
@@ -1901,8 +2101,8 @@
                         alertDiv.className = 'alert alert-warning';
                         feedbackDiv.querySelector('.result-text').textContent = 'Please select an answer first!';
                 feedbackDiv.querySelector('.explanation-content').innerHTML = `
-                    <div class="explanation-with-icon">
-                        <img class="e0f0c237914d2b33--drIcon css-1x2z75v-StyledImg esvv5850 doctor-icon" alt="random doctor image" src="https://next.amboss.com/us/static/assets/33964f30ee687409.svg">
+                    <div class="explanation-with-icon warning-inline">
+                        <img class="doctor-icon" alt="Doctor character" src="/images/doctor.png">
                         <div class="explanation-text">You need to choose an answer before checking. Select one of the options above and try again.</div>
                     </div>
                 `;
@@ -2135,14 +2335,21 @@
             }
 
             let explanationHtml = data.explanation || '';
+            let correctAnswerHeader = '';
             if (!data.correct && data.correctAnswer) {
-                explanationHtml = `<strong>Correct Answer: ${data.correctAnswer}</strong><br><br>${explanationHtml}`;
+                correctAnswerHeader = `
+                    <div class="answer-header">
+                        <img class="doctor-icon" alt="Doctor character" src="/images/doctor.png">
+                        <strong>Correct Answer: ${data.correctAnswer}</strong>
+                    </div>`;
             }
             // Add doctor icon wrapper
             const explanationWithIcon = `
                 <div class="explanation-with-icon">
-                    <img class="e0f0c237914d2b33--drIcon css-1x2z75v-StyledImg esvv5850 doctor-icon" alt="random doctor image" src="https://next.amboss.com/us/static/assets/33964f30ee687409.svg">
-                    <div class="explanation-text">${explanationHtml}</div>
+                    ${correctAnswerHeader}
+                    <div class="explanation-text">
+                        ${explanationHtml}
+                    </div>
                 </div>
             `;
             feedbackDiv.querySelector('.explanation-content').innerHTML = explanationWithIcon;
@@ -2770,7 +2977,15 @@
                 return window.performanceStats;
             };
 
-            // Initialize audio system
+            // Initialize GradingAudioController FIRST (for individual question sounds)
+            if (typeof GradingAudioController !== 'undefined' && GradingAudioController.init) {
+                GradingAudioController.init();
+                console.log('✅ GradingAudioController initialized for individual question sounds');
+            } else {
+                console.warn('⚠️ GradingAudioController not available, falling back to old system');
+            }
+
+            // Initialize audio system (legacy system for final grading sound)
             initializeAudioPools();
             startPoolReplenishment();
 
@@ -2782,11 +2997,340 @@
             });
 
             console.log('✅ LETHAL AUDIO POOL: System ready for 0ms instant playback');
+
+            // Initialize highlighting system
+            initializeHighlighting();
         });
+
+        // ===== TEXT HIGHLIGHTING SYSTEM =====
+        function initializeHighlighting() {
+            highlightToolbar = document.getElementById('highlight-toolbar');
+            console.log('🎨 Highlighting system initialized');
+
+            // Load saved highlights from localStorage
+            const savedHighlights = localStorage.getItem('tutorModeHighlights');
+            if (savedHighlights) {
+                try {
+                    highlights = JSON.parse(savedHighlights);
+                    restoreHighlights();
+                    console.log('📚 Loaded saved highlights:', highlights);
+                } catch (e) {
+                    console.error('Failed to load highlights:', e);
+                }
+            }
+
+            // Handle text selection - add to question cards specifically
+            document.addEventListener('mouseup', function(e) {
+                console.log('🖱️ Mouse up detected');
+                handleTextSelection(e);
+            });
+            document.addEventListener('touchend', function(e) {
+                console.log('👆 Touch end detected');
+                handleTextSelection(e);
+            });
+
+            // Hide toolbar when clicking outside
+            document.addEventListener('mousedown', function(e) {
+                if (!highlightToolbar.contains(e.target) && !e.target.closest('.question-text')) {
+                    console.log('📋 Clicking outside toolbar - hiding');
+                    hideToolbar();
+                }
+            });
+        }
+
+        function handleTextSelection(e) {
+            console.log('📝 HANDLING TEXT SELECTION EVENT');
+
+            // Allow selection anywhere in document for now - we'll filter later
+            const selection = window.getSelection();
+            const selectedText = selection.toString().trim();
+
+            console.log('📝 Selected text length:', selectedText.length);
+
+            if (selectedText.length === 0) {
+                console.log('📝 No text selected, hiding toolbar');
+                hideToolbar();
+                return;
+            }
+
+            // Find the question text element containing the selection
+            const startElement = selection.getRangeAt(0).startContainer;
+            const questionElement = startElement.nodeType === Node.TEXT_NODE ?
+                startElement.parentElement.closest('.question-text') :
+                startElement.closest('.question-text');
+
+            console.log('📝 Found question element:', !!questionElement);
+
+            if (!questionElement) {
+                console.log('📝 Selection not within question text, hiding toolbar');
+                hideToolbar();
+                return;
+            }
+
+            // Store the complete selection details
+            currentSelection = {
+                text: selectedText,
+                range: selection.getRangeAt(0),
+                questionElement: questionElement,
+                startContainer: selection.getRangeAt(0).startContainer,
+                endContainer: selection.getRangeAt(0).endContainer,
+                startOffset: selection.getRangeAt(0).startOffset,
+                endOffset: selection.getRangeAt(0).endOffset
+            };
+
+            console.log('📝 Stored selection details:', currentSelection);
+
+            // Position and show toolbar
+            showToolbar(e);
+        }
+
+        function showToolbar(e) {
+            const selection = window.getSelection();
+            if (!selection.rangeCount) return;
+
+            const range = selection.getRangeAt(0);
+            const rect = range.getBoundingClientRect();
+
+            // Simple positioning: centered above selection
+            const toolbarWidth = 240;
+            const toolbarHeight = 44;
+
+            const scrollX = window.pageXOffset || document.documentElement.scrollLeft || document.body.scrollLeft || 0;
+            const scrollY = window.pageYOffset || document.documentElement.scrollTop || document.body.scrollTop || 0;
+
+            let left = rect.left + (rect.width / 2) - (toolbarWidth / 2);
+            let top = rect.top - toolbarHeight - 12;
+
+            // If too close to top, show below selection
+            if (top < 80) {
+                top = rect.bottom + 12;
+            }
+
+            // Keep within viewport bounds
+            left = Math.max(10, Math.min(left, window.innerWidth - toolbarWidth - 10));
+
+            highlightToolbar.style.left = (left + scrollX) + 'px';
+            highlightToolbar.style.top = (top + scrollY) + 'px';
+            highlightToolbar.classList.add('show');
+        }
+
+        function hideToolbar() {
+            if (highlightToolbar) {
+                highlightToolbar.classList.remove('show');
+            }
+            currentSelection = null;
+        }
+
+        window.applyHighlight = function(color) {
+            // Use the stored selection from currentSelection
+            if (!currentSelection || !currentSelection.range) {
+                console.error('No stored selection available for highlighting');
+                hideToolbar();
+                return;
+            }
+
+            const questionElement = currentSelection.questionElement;
+            const questionId = getQuestionId(questionElement);
+
+            // Only allow highlighting within question text elements
+            if (!questionElement) {
+                console.error('No question element found');
+                hideToolbar();
+                return;
+            }
+
+            // Create a fresh range from the stored selection
+            const range = document.createRange();
+            try {
+                range.setStart(currentSelection.range.startContainer, currentSelection.range.startOffset);
+                range.setEnd(currentSelection.range.endContainer, currentSelection.range.endOffset);
+            } catch (e) {
+                console.error('Failed to recreate range:', e);
+                hideToolbar();
+                return;
+            }
+
+            // Create highlight mark element
+            const mark = document.createElement('mark');
+            mark.className = `highlight-${color}`;
+
+            try {
+                // Use the most reliable method: surroundContents for simple text
+                // or extractContents + insertNode for complex selections
+                if (range.startContainer === range.endContainer) {
+                    // Simple text selection within one node
+                    range.surroundContents(mark);
+                } else {
+                    // Complex selection across multiple nodes
+                    const fragment = range.extractContents();
+                    mark.appendChild(fragment);
+                    range.insertNode(mark);
+                }
+
+                // Save highlight for persistence
+                saveHighlight(questionId, {
+                    text: currentSelection.text,
+                    color: color,
+                    offset: getTextOffset(questionElement, range.startContainer, range.startOffset)
+                });
+
+                console.log(`✅ SUCCESS: Applied ${color} highlight to "${currentSelection.text}"`);
+                hideToolbar();
+                window.getSelection().removeAllRanges();
+
+            } catch (e) {
+                console.error('Primary highlighting method failed:', e);
+
+                // Simplified fallback approach
+                try {
+                    // Create wrapper span for safer application
+                    const span = document.createElement('span');
+                    span.innerHTML = `<mark class="highlight-${color}">${currentSelection.text}</mark>`;
+
+                    // Replace the selected text with the highlighted version
+                    range.deleteContents();
+                    range.insertNode(span);
+
+                    // Save highlight for persistence
+                    saveHighlight(questionId, {
+                        text: currentSelection.text,
+                        color: color,
+                        offset: getTextOffset(questionElement, range.startContainer, range.startOffset)
+                    });
+
+                    console.log('✅ SUCCESS: Applied highlight using fallback method');
+                    hideToolbar();
+                    window.getSelection().removeAllRanges();
+
+                } catch (e2) {
+                    console.error('Fallback highlighting method also failed:', e2);
+                    hideToolbar();
+                }
+            }
+        };
+
+        window.removeHighlight = function() {
+            if (!currentSelection) return;
+
+            const selection = window.getSelection();
+            if (!selection.rangeCount) return;
+
+            const range = selection.getRangeAt(0);
+            const questionElement = currentSelection.questionElement;
+            const questionId = getQuestionId(questionElement);
+
+            // Find and remove highlight marks within selection
+            const marks = Array.from(questionElement.querySelectorAll('mark'));
+            marks.forEach(mark => {
+                if (selection.containsNode(mark, true)) {
+                    const parent = mark.parentNode;
+                    while (mark.firstChild) {
+                        parent.insertBefore(mark.firstChild, mark);
+                    }
+                    parent.removeChild(mark);
+                    parent.normalize();
+                }
+            });
+
+            // Update saved highlights
+            if (highlights[questionId]) {
+                highlights[questionId] = highlights[questionId].filter(h => 
+                    !currentSelection.text.includes(h.text)
+                );
+                localStorage.setItem('tutorModeHighlights', JSON.stringify(highlights));
+            }
+
+            hideToolbar();
+            window.getSelection().removeAllRanges();
+        };
+
+        function saveHighlight(questionId, highlightData) {
+            if (!highlights[questionId]) {
+                highlights[questionId] = [];
+            }
+            highlights[questionId].push(highlightData);
+            localStorage.setItem('tutorModeHighlights', JSON.stringify(highlights));
+        }
+
+        function restoreHighlights() {
+            Object.keys(highlights).forEach(questionId => {
+                const questionElement = document.querySelector(`[data-question-id="${questionId}"] .question-text`);
+                if (!questionElement) return;
+
+                highlights[questionId].forEach(highlight => {
+                    try {
+                        const textNode = findTextNode(questionElement, highlight.text, highlight.offset);
+                        if (textNode) {
+                            const range = document.createRange();
+                            range.setStart(textNode, highlight.offset.start);
+                            range.setEnd(textNode, highlight.offset.end);
+
+                            const mark = document.createElement('mark');
+                            mark.className = `highlight-${highlight.color}`;
+                            range.surroundContents(mark);
+                        }
+                    } catch (e) {
+                        console.error('Failed to restore highlight:', e);
+                    }
+                });
+            });
+        }
+
+        function getQuestionId(questionElement) {
+            const questionCard = questionElement.closest('.question-card');
+            return questionCard ? questionCard.id : null;
+        }
+
+        function getTextOffset(container, node, offset) {
+            let textOffset = 0;
+            const walker = document.createTreeWalker(
+                container,
+                NodeFilter.SHOW_TEXT,
+                null,
+                false
+            );
+
+            let currentNode;
+            while (currentNode = walker.nextNode()) {
+                if (currentNode === node) {
+                    return {
+                        start: textOffset + offset,
+                        end: textOffset + offset
+                    };
+                }
+                textOffset += currentNode.textContent.length;
+            }
+            return { start: 0, end: 0 };
+        }
+
+        function findTextNode(container, text, offset) {
+            const walker = document.createTreeWalker(
+                container,
+                NodeFilter.SHOW_TEXT,
+                null,
+                false
+            );
+
+            let currentNode;
+            let currentOffset = 0;
+            while (currentNode = walker.nextNode()) {
+                const nodeLength = currentNode.textContent.length;
+                if (currentOffset + nodeLength >= offset.start) {
+                    return currentNode;
+                }
+                currentOffset += nodeLength;
+            }
+            return null;
+        }
 
     </script>
 
     <script>
+        // NOTE: Core tutor-mode globals like questionData, userAnswers, correctAnswers,
+        // totalAnswers, totalQuestions and currentQuestionIndex are declared in the
+        // earlier script block to avoid duplicate variable declarations.
+        // This block only defines helper functions that use those globals.
+        
         // LIGHTNING FAST FUNCTION DEFINITIONS 🚀
         function selectOption(element) {
             try {
@@ -2810,16 +3354,27 @@
         // Jump to specific question from sidebar
         window.jumpToQuestion = function(questionNumber) {
             console.log(`🎯 Jumping to question ${questionNumber}`);
-            
+
             document.querySelectorAll('.question-card').forEach(card => {
                 card.style.display = 'none';
             });
-            
+
             const targetQuestion = document.getElementById(`question-${questionNumber}`);
             if (targetQuestion) {
                 targetQuestion.style.display = 'block';
                 currentQuestionIndex = questionNumber;
                 updateSidebarActiveState(questionNumber);
+
+                // Check if all questions are answered and show View Results button if needed
+                if (totalAnswers === {{ $questions->count() }}) {
+                    console.log('🔥 ALL QUESTIONS ANSWERED: Ensuring View Results button is visible');
+                    const viewResultsBtn = targetQuestion.querySelector('.view-results');
+                    if (viewResultsBtn) {
+                        viewResultsBtn.style.display = 'inline-block';
+                        viewResultsBtn.disabled = false;
+                    }
+                }
+
                 window.scrollTo({ top: 0, behavior: 'smooth' });
             }
         };
@@ -2866,66 +3421,74 @@
         // Handle "I Don't Know" button
         window.handleDontKnow = function(questionNumber, questionId) {
             console.log(`❓ I Don't Know clicked for Q${questionNumber}`);
-            
+
             if (questionStates[questionNumber]) {
-                console.log(`⚠️ Question ${questionNumber} already answered`);
+                console.log(`⚠️ Question ${questionNumber} already answered, ignoring`);
                 return;
             }
-            
+
             questionStates[questionNumber] = true;
-            firstAttemptAnswers[questionId] = 'dont_know';
-            
+            firstAttemptAnswers[questionId] = 'Dont know';
+
             const qData = questionData[questionId];
             if (!qData) {
                 console.error(`❌ Question data not found for ID ${questionId}`);
                 return;
             }
-            
+
             totalAnswers++;
             userAnswers[questionId] = 'dont_know';
-            
+
             updateSidebarCircleState(questionNumber, false);
-            
+
             const questionCard = document.getElementById(`question-${questionNumber}`);
             if (questionCard) {
                 const feedbackDiv = questionCard.querySelector('.answer-feedback');
                 const alertDiv = feedbackDiv.querySelector('.alert');
-                
+
                 feedbackDiv.style.display = 'block';
                 alertDiv.className = 'alert alert-danger';
                 feedbackDiv.querySelector('.result-text').textContent = "Don't worry! Here's the answer:";
                 feedbackDiv.querySelector('.explanation-content').innerHTML = `
                     <div class="explanation-with-icon">
-                        <img class="doctor-icon" alt="Doctor character" src="https://next.amboss.com/us/static/assets/33964f30ee687409.svg">
+                        <div class="answer-header">
+                            <img class="doctor-icon" alt="Doctor character" src="/images/doctor.png">
+                            <strong>Correct Answer: ${qData.correct_answer}</strong>
+                        </div>
                         <div class="explanation-text">
-                            <strong>Correct Answer: ${qData.correct_answer}</strong><br><br>
                             ${qData.explanation || 'No explanation available.'}
                         </div>
                     </div>
                 `;
-                
+
+                // Highlight the correct answer option in green
+                questionCard.querySelectorAll('.option-card').forEach(opt => {
+                    const optionLetter = opt.getAttribute('data-option');
+                    if (optionLetter === qData.correct_answer) {
+                        opt.classList.add('correct');
+                    }
+                    opt.style.pointerEvents = 'none';
+                    opt.style.opacity = '0.6';
+                });
+
                 const checkBtn = questionCard.querySelector('.check-answer');
                 const dontKnowBtn = questionCard.querySelector('.btn-dont-know');
                 if (checkBtn) checkBtn.style.display = 'none';
                 if (dontKnowBtn) dontKnowBtn.style.display = 'none';
-                
-                questionCard.querySelectorAll('.option-card').forEach(opt => {
-                    opt.style.pointerEvents = 'none';
-                    opt.style.opacity = '0.6';
-                });
-                
-                const totalQs = {{ $questions->count() }};
-                if (questionNumber < totalQs) {
-                    const nextBtn = questionCard.querySelector('.next-question');
-                    if (nextBtn) nextBtn.style.display = 'inline-block';
-                } else {
+
+                // Check if all questions are answered - if so, show View Results button
+                if (totalAnswers === {{ $questions->count() }}) {
+                    console.log('🔥 ALL QUESTIONS ANSWERED VIA I DONT KNOW: Showing View Results button');
                     const resultsBtn = questionCard.querySelector('.view-results');
                     if (resultsBtn) resultsBtn.style.display = 'inline-block';
+                } else {
+                    const nextBtn = questionCard.querySelector('.next-question');
+                    if (nextBtn) nextBtn.style.display = 'inline-block';
                 }
             }
-            
+
             updateProgress(totalAnswers, {{ $questions->count() }});
-            playSound('wrong');
+            playInstantSound(false);
         };
 
         
@@ -3158,7 +3721,7 @@
             console.log('⏰ AUTO-SUBMIT: Time ran out, submitting tutor random quiz immediately');
 
             // 🚀 FORCE IMMEDIATE SUBMISSION - USE CORRECT ROUTE BASED ON QUIZ TYPE
-            const isRandomQuiz = {{ isset($is_random_quiz) && $is_random_quiz ? 'true' : 'false' }};ff57
+            const isRandomQuiz = {{ isset($is_random_quiz) && $is_random_quiz ? 'true' : 'false' }};
             const gradeUrl = isRandomQuiz
                 ? '/quiz/grade-random'
                 : '/quiz/{{ $course->id ?? 1 }}/{{ $topic->id ?? 1 }}/grade';
@@ -3465,77 +4028,7 @@
             }
         }
 
-        // Handle "I Don't Know" button
-        window.handleDontKnow = function(questionNumber, questionId) {
-            console.log(`❓ I Don't Know clicked for Q${questionNumber}`);
 
-            // Check if this question has already been answered
-            if (questionStates[questionNumber]) {
-                console.log(`⚠️ Question ${questionNumber} already answered, ignoring`);
-                return;
-            }
-
-            // Mark as answered (first attempt)
-            questionStates[questionNumber] = true;
-            firstAttemptAnswers[questionId] = 'Dont know';
-
-            // Get question data
-            const qData = questionData[questionId];
-            if (!qData) {
-                console.error(`❌ Question data not found for ID ${questionId}`);
-                return;
-            }
-
-            // Record as incorrect
-            totalAnswers++;
-            userAnswers[questionId] = 'Dont know';
-
-            // Update sidebar to red
-            updateSidebarCircleState(questionNumber, false);
-
-            // Log mistake to backend
-            logMistake(questionId, 'Dont know', qData.correct_answer);
-
-            // Show explanation briefly, then auto-advance
-            const questionCard = document.getElementById(`question-${questionNumber}`);
-            if (questionCard) {
-                const feedbackDiv = questionCard.querySelector('.answer-feedback');
-                const alertDiv = feedbackDiv.querySelector('.alert');
-
-                feedbackDiv.style.display = 'block';
-                alertDiv.className = 'alert alert-danger';
-                feedbackDiv.querySelector('.result-text').textContent = "Don't worry! Here's the answer:";
-                feedbackDiv.querySelector('.explanation-content').innerHTML = `
-                    <div class="explanation-with-icon">
-                        <img class="doctor-icon" alt="Doctor character" src="https://next.amboss.com/us/static/assets/33964f30ee687409.svg">
-                        <div class="explanation-text">
-                            <strong>Correct Answer: ${qData.correct_answer}</strong><br><br>
-                            ${qData.explanation || 'No explanation available.'}
-                        </div>
-                    </div>
-                `;
-
-                // Hide check answer and I don't know buttons
-                const checkBtn = questionCard.querySelector('.check-answer');
-                const dontKnowBtn = questionCard.querySelector('.btn-dont-know');
-                if (checkBtn) checkBtn.style.display = 'none';
-                if (dontKnowBtn) dontKnowBtn.style.display = 'none';
-
-                // Disable all options
-                questionCard.querySelectorAll('.option-card').forEach(opt => {
-                    opt.style.pointerEvents = 'none';
-                    opt.style.opacity = '0.6';
-                });
-            }
-
-            // Update progress
-            updateProgress(totalAnswers, totalQuestions);
-
-            // Play wrong sound
-            playInstantSound(false);
-
-            // Stay on current question - user can manually navigate if desired
-        };
 
         // Log mistake to backend
         function logMistake(questionId, userAnswer, correctAnswer) {
@@ -3642,7 +4135,7 @@
         window.checkAnswer = function checkAnswer(questionNumber, questionId) {
             const startTime = performance.now();
             console.log(`🚀 CHECKING ANSWER: Question ${questionNumber}, ID ${questionId}`);
-            
+
             // 💀 BULLETPROOF DUPLICATE PREVENTION - NO MULTIPLE PROCESSING 💀
             const processingKey = `processing_${questionNumber}`;
             if (checkAnswer[processingKey]) {
@@ -3650,6 +4143,9 @@
                 return;
             }
             checkAnswer[processingKey] = true;
+
+            // FIX: Set question state immediately to prevent "I Don't Know" button from being usable
+            questionStates[questionNumber] = true;
             
             // INSTANT DOM ACCESS
             const questionCard = document.getElementById(`question-${questionNumber}`);
@@ -3691,8 +4187,8 @@
                         alertDiv.className = 'alert alert-warning';
                         feedbackDiv.querySelector('.result-text').textContent = 'Please select an answer first!';
                         feedbackDiv.querySelector('.explanation-content').innerHTML = `
-                            <div class="explanation-with-icon">
-                                <img class="doctor-icon" alt="Doctor character" src="https://next.amboss.com/us/static/assets/33964f30ee687409.svg">
+                            <div class="explanation-with-icon warning-inline">
+                                <img class="doctor-icon" alt="Doctor character" src="/images/doctor.png">
                                 <div class="explanation-text">You need to choose an answer before checking. Select one of the options above and try again.</div>
                             </div>
                         `;
@@ -3932,32 +4428,36 @@
                 feedbackDiv.querySelector('.result-text').textContent = `You selected: ${userAnswer} | Correct: ${data.correctAnswer}`;
             }
             
-            // 💀 LETHAL AUDIO POOL - INSTANT SOUND FEEDBACK (ONCE ONLY) 💀
-            // Skip individual question sounds for the last question to prevent overlap with final grading sound
-            if (totalAnswers < totalQuestions && !hasPlayedSound) {
-                console.log(`🔥 LETHAL AUDIO POOL: Playing instant sound for Q${questionNumber} (${data.correct ? 'correct' : 'wrong'}) - FIRST TIME ONLY`);
-                playInstantSound(data.correct);
-                // Mark this question as having played sound
+            // 🎯 PLAY IMMEDIATE SOUND FOR ALL INDIVIDUAL ANSWERS USING UNIFIED CONTROLLER
+            if (!hasPlayedSound) {
+                console.log(`🔥 PLAYING IMMEDIATE SOUND: (${data.correct ? 'CORRECT' : 'WRONG'}) - FIRST TIME ONLY`);
+                if (data.correct) {
+                    GradingAudioController.playCorrectSound();
+                } else {
+                    GradingAudioController.playWrongSound();
+                }
                 questionCard.dataset[soundKey] = 'true';
-            } else if (hasPlayedSound) {
-                console.log(`🔇 LETHAL AUDIO POOL: Sound already played for Q${questionNumber}, skipping duplicate`);
             } else {
-                console.log(`🔇 LETHAL AUDIO POOL: Skipping sound for final question Q${questionNumber} to prevent overlap with final grading sound`);
+                console.log(`🔇 SOUND ALREADY PLAYED FOR Q${questionNumber}, skipping duplicate`);
             }
             
-            // Show explanation and correct answer if incorrect
+            // Show explanation and correct answer
             let explanationHtml = data.explanation || '';
-            if (!data.correct && data.correctAnswer) {
-                explanationHtml = `<strong>Correct Answer: ${data.correctAnswer}</strong><br><br>${explanationHtml}`;
+            let correctAnswerHeader = '';
+            if (data.correctAnswer) {
+                // Always show correct answer in green, regardless of whether user got it right or wrong
+                correctAnswerHeader = `
+                    <div class="answer-header">
+                        <img class="doctor-icon" alt="Doctor character" src="/images/doctor.png">
+                        <strong>Correct Answer: ${data.correctAnswer}</strong>
+                    </div>`;
             }
 
             // Create aligned result text with doctor icon
-            const resultText = data.correct ? 'Correct! 🎉' : 'Incorrect';
             const explanationWithIcon = `
                 <div class="explanation-with-icon">
-                    <img class="doctor-icon" alt="random doctor image" src="https://next.amboss.com/us/static/assets/33964f30ee687409.svg">
+                    ${correctAnswerHeader}
                     <div class="explanation-text">
-                        <strong class="result-text-inline">${resultText}</strong><br><br>
                         ${explanationHtml}
                     </div>
                 </div>
@@ -3991,8 +4491,10 @@
             const checkAnswerBtn = questionCard.querySelector('.check-answer');
             const nextQuestionBtn = questionCard.querySelector('.next-question');
             const viewResultsBtn = questionCard.querySelector('.view-results'); // Add View Results button
+            const dontKnowBtn = questionCard.querySelector('.btn-dont-know'); // FIX: Also hide "I Don't Know" button
 
             if (checkAnswerBtn) checkAnswerBtn.style.display = 'none';
+            if (dontKnowBtn) dontKnowBtn.style.display = 'none'; // FIX: Disable "I Don't Know" button after answer is checked
 
             // Handle final question differently - show "View Results" button
             if (data.showViewResultsButton) {
@@ -4105,61 +4607,18 @@
 
 
         
-        // 💀 ULTRA-MEGA INSTANT GRADING SOUND - AUDIO POOL POWERED 💀
+        // 🎯 UNIFIED GRADING SOUND USING GradingAudioController
         function playFinalGradingSound(score, total) {
             const funcStart = performance.now();
-            console.log('🔥 PLAY FINAL GRADING SOUND - AUDIO POOL EDITION');
+            console.log('🔥 PLAY FINAL GRADING SOUND - UNIFIED CONTROLLER');
 
             const percentage = (score / total) * 100;
+            console.log(`📊 FINAL SCORE: ${score}/${total} = ${percentage.toFixed(1)}%`);
 
-            // 💀 AUDIO POOL INSTANT SELECTION - NO DOWNLOAD DELAY 💀
-            let soundType = 'partial'; // Default to partial
-            if (percentage === 100) {
-                soundType = 'perfect';
-            } else if (percentage < 70) {
-                soundType = 'wrong';
-            }
+            // 🎯 USE UNIFIED CONTROLLER FOR CONSISTENT SOUND SELECTION
+            GradingAudioController.playGradingSound(percentage, total);
 
-            console.log(`🎵 PLAYING INSTANT ${soundType.toUpperCase()} SOUND`);
-
-            // 💀 INSTANT AUDIO POOL ACCESS - ZERO DELAY 💀
-            let audio = null;
-            if (audioPool[soundType] && audioPool[soundType].length > 0) {
-                audio = audioPool[soundType].shift();
-                console.log(`🔥 GOT PRE-LOADED ${soundType} AUDIO FROM POOL (${audioPool[soundType].length} remaining)`);
-            } else {
-                console.log(`⚠️ POOL EMPTY FOR ${soundType} - IMITATING POOL SPEED`);
-                createAudioElement(soundType);
-                if (audioPool[soundType] && audioPool[soundType].length > 0) {
-                    audio = audioPool[soundType].shift();
-                }
-            }
-
-            if (audio) {
-                // 💀 POOL POWERED INSTANT PLAYBACK 💀
-                audio.currentTime = 0;
-                audio.volume = 0.7;
-
-                const playStart = performance.now();
-                audio.play().then(() => {
-                    const playbackTime = performance.now() - playStart;
-                    console.log(`⚡ AUDIO POOL - INSTANT PLAYBACK in ${playbackTime.toFixed(2)}ms (should be <0.01ms)`);
-
-                    // Return to pool immediately after playing
-                    setTimeout(() => {
-                        returnToPool(audio, soundType);
-                    }, 100);
-
-                }).catch(error => {
-                    console.error(`❌ POOL AUDIO FAILED: ${error.message}`);
-                    // Still return to pool even on error
-                    returnToPool(audio, soundType);
-                });
-
-                console.log(`🔥 FUNCTION COMPLETED in ${(performance.now() - funcStart).toFixed(2)}ms`);
-            } else {
-                console.log(`ℹ️ NO AUDIO AVAILABLE FOR ${soundType}, SKIPPING SILENTLY`);
-            }
+            console.log(`🔥 UNIFIED GRADING SOUND COMPLETED in ${(performance.now() - funcStart).toFixed(2)}ms`);
         }
         
         // 💀 LETHAL AUDIO POOL DEBUG FUNCTIONS 💀

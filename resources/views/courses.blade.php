@@ -55,11 +55,11 @@
     @foreach ($courses->take(2) as $course)
         @php
             $imageUrl = $course->image_url;
-            // AGGRESSIVE image optimization
+            // AGGRESSIVE image optimization - updated dimensions
             if (str_contains($imageUrl, 'unsplash.com')) {
-                $imageUrl = str_replace('?', '?w=420&h=580&fit=crop&auto=format,compress&q=60&fm=webp&', $imageUrl);
+                $imageUrl = str_replace('?', '?w=465&h=670&fit=crop&auto=format,compress&q=60&fm=webp&', $imageUrl);
             } elseif (str_contains($imageUrl, 'picsum.photos')) {
-                $imageUrl = str_replace('picsum.photos/', 'picsum.photos/420/580/', $imageUrl) . '?blur=1';
+                $imageUrl = str_replace('picsum.photos/', 'picsum.photos/465/670/', $imageUrl) . '?blur=1';
             }
         @endphp
         <link rel="preload" as="image" href="{{ $imageUrl }}" fetchpriority="high">
@@ -123,7 +123,7 @@
             min-height: 100vh;
             overflow-x: hidden;
             line-height: 1.6;
-            zoom: 0.73; /* Add zoom out for better overall view */
+            zoom: 0.7; /* Zoom out to 70% for better overall view */
         }
 
         .navbar {
@@ -637,14 +637,14 @@
         }
 
         .course-card {
-            flex: 0 0 435px;
+            flex: 0 0 465px;
             scroll-snap-align: start;
             background: white;
             border-radius: 16px;
             overflow: hidden;
             box-shadow: 0 3px 6px rgba(0, 0, 0, 0.08);
             transition: transform 0.3s ease, box-shadow 0.3s ease;
-            width: 435px;
+            width: 465px;
             margin-bottom: 3rem;
             position: relative;
             border: 2px solid var(--course-color, #3b82f6);
@@ -675,7 +675,7 @@
 
         .course-image {
             position: relative;
-            height: 590px;
+            height: 670px;
             background-size: cover;
             background-position: center;
             background-repeat: no-repeat;
@@ -3013,11 +3013,6 @@
                                 </li>
                                 <li><hr class="dropdown-divider"></li>
                                 <li>
-                                    <a class="dropdown-item" href="{{ route('courses.index') }}">
-                                        <i class="fas fa-book me-2"></i>My Courses
-                                    </a>
-                                </li>
-                                <li>
                                     <a class="dropdown-item" href="{{ route('review.index') }}">
                                         <i class="fas fa-exclamation-circle me-2"></i>My Mistakes
                                     </a>
@@ -3088,11 +3083,6 @@
                                     </li>
                                 @endif
                                 <li><hr class="dropdown-divider"></li>
-                                <li>
-                                    <a class="dropdown-item" href="{{ route('profile') }}">
-                                        <i class="fas fa-user me-2"></i>Profile
-                                    </a>
-                                </li>
                                 <li>
                                     <form method="POST" action="{{ secure_url(route('logout', [], false)) }}" class="dropdown-item p-0">
                                         @csrf
@@ -3233,7 +3223,7 @@
 
     <div class="position-relative">
         <div class="semester-pills">
-            <select class="semester-dropdown" id="semesterDropdown" onchange="filterCoursesByAcademicYear()">
+            <select class="semester-dropdown" id="semesterDropdown" onchange="filterCoursesByAcademicYear()" aria-label="Filter courses by academic year">
                 <option value="">All Courses</option>
                 @php
                     // Get unique academic years directly from courses table
@@ -3259,12 +3249,7 @@
                 @endif
             </select>
 
-            {{-- Debug Script to show available academic years --}}
-            <script>
-                console.log('🔍 DEBUG: Available Academic Years:', @json($debugYears));
-                console.log('📋 DEBUG: Filtered Academic Years:', @json($academicYears->toArray()));
-                console.log('📊 DEBUG: Total Courses:', @json($courses->count()));
-            </script>
+            {{-- Debug removed for production performance --}}
         </div>
             
             @guest
@@ -3273,12 +3258,12 @@
         </div>
 
         <!-- Scroll Arrows -->
-        <button class="scroll-arrow scroll-left" onclick="scrollCourses('left')">
-            <i class="fas fa-chevron-left"></i>
+        <button class="scroll-arrow scroll-left" onclick="scrollCourses('left')" aria-label="Scroll courses left" title="Scroll left">
+            <i class="fas fa-chevron-left" aria-hidden="true"></i>
         </button>
         
         <div class="courses-grid">
-{{-- 💀 N+1 FIX NEEDED: Eager load 'topics_count' in controller --}}
+{{-- ✅ N+1 FIXED: topics_count eager loaded in CourseService --}}
             @foreach ($courses as $course)
                 <div class="course-card" 
                      style="--course-color: {{ $course->color }}; --course-title-color: {{ $course->title_color }}"
@@ -3287,19 +3272,21 @@
                      data-semester="{{ $course->semester }}">
                     @php
                         $optimizedImageUrl = $course->image_url;
-                        // Apply same optimization as preload
+                        // Apply same optimization as preload - updated dimensions
                         if (str_contains($optimizedImageUrl, 'unsplash.com')) {
-                            $optimizedImageUrl = str_replace('?', '?w=420&h=580&fit=crop&auto=format,compress&q=75&', $optimizedImageUrl);
+                            $optimizedImageUrl = str_replace('?', '?w=465&h=670&fit=crop&auto=format,compress&q=75&fm=webp&', $optimizedImageUrl);
                         } elseif (str_contains($optimizedImageUrl, 'picsum.photos')) {
-                            $optimizedImageUrl = str_replace('picsum.photos/', 'picsum.photos/420/580/', $optimizedImageUrl);
+                            $optimizedImageUrl = str_replace('picsum.photos/', 'picsum.photos/465/670/', $optimizedImageUrl);
                         }
                     @endphp
                     <div class="course-image"
+                         role="img"
+                         aria-label="{{ $course->name }} course image"
                          style="background-image: url('{{ $course->image_url }}');"
                          data-bg-image="{{ $course->image_url }}"
                          data-course-name="{{ $course->name }}">
-                        <div class="info-icon">
-                            <i class="fas fa-info"></i>
+                        <div class="info-icon" role="button" tabindex="0" aria-label="Course information">
+                            <i class="fas fa-info" aria-hidden="true"></i>
                             <div class="info-tooltip">
                                 {{ $course->description }}
                             </div>
@@ -3335,7 +3322,7 @@
                                 @endif
                             </div>
                         </div>
-                        <div class="progress-container">
+                        <div class="progress-container" role="progressbar" aria-valuenow="{{ $course->completion_percentage }}" aria-valuemin="0" aria-valuemax="100" aria-label="Course completion progress">
                             <div class="progress-bar">
                                 <div class="progress-fill" style="width: {{ $course->completion_percentage }}%">
                                     <span class="progress-percentage">{{ number_format($course->completion_percentage, 0) }}%</span>
@@ -3345,31 +3332,37 @@
                         @if (auth()->check())
                             @if (Auth::user()->isEnrolledInCourse($course->id))
                                 <!-- User is enrolled - show continue button -->
-                                <a href="{{ route('topics.forCourse', $course->id) }}" class="action-btn continue">
+                                <a href="{{ route('topics.forCourse', $course->id) }}" class="action-btn continue" aria-label="Continue learning {{ $course->name }}">
                                     <i class="fas fa-play"></i>
                                     Continue Learning
                                 </a>
+                            @elseif (!$course->price || $course->price <= 0)
+                                <!-- FIXED: Free course - show "Start Learning" button (will auto-enroll) -->
+                                <a href="{{ route('topics.forCourse', $course->id) }}" class="action-btn enroll free" aria-label="Start learning {{ $course->name }} (Free course)">
+                                    <i class="fas fa-play"></i>
+                                    <span>Start Learning (Free)</span>
+                                </a>
                             @elseif ($course->hasUserPendingPayment(Auth::user()->id))
                                 <!-- User has pending payment - show pending button -->
-                                <button type="button" class="action-btn enroll" id="paymentBtn_{{ $course->id }}" disabled style="background: #fff7ed; border-color: #fed7aa; color: #ea580c; cursor: not-allowed;">
+                                <button type="button" class="action-btn enroll" id="paymentBtn_{{ $course->id }}" disabled style="background: #fff7ed; border-color: #fed7aa; color: #ea580c; cursor: not-allowed;" aria-label="Payment pending for {{ $course->name }}">
                                     <i class="fas fa-clock" style="color: #ea580c;"></i>
                                     <span style="color: #ea580c; font-weight: bold;">Payment Pending</span>
                                 </button>
                             @else
                                 <!-- User is not enrolled and no pending payment - show payment button -->
-                                <button type="button" class="action-btn enroll show-payment-modal" id="paymentBtn_{{ $course->id }}" data-course-id="{{ $course->id }}">
+                                <button type="button" class="action-btn enroll show-payment-modal" id="paymentBtn_{{ $course->id }}" data-course-id="{{ $course->id }}" aria-label="Unlock {{ $course->name }} course">
                                     <i class="fas fa-unlock"></i>
                                     <span>Unlock</span>
                                 </button>
                             @endif
                         @else
                             @if (!$course->price || $course->price <= 0)
-                                <a href="{{ route('login') }}" class="action-btn enroll free">
+                                <a href="{{ route('login') }}" class="action-btn enroll free" aria-label="Sign in to start {{ $course->name }} (Free course)">
                                     <i class="fas fa-play"></i>
                                     Sign in to Start (Free)
                                 </a>
                             @else
-                                <a href="{{ route('login') }}" class="action-btn enroll">
+                                <a href="{{ route('login') }}" class="action-btn enroll" aria-label="Sign in to access {{ $course->name }}">
                                     <i class="fas fa-lock"></i>
                                     Sign in to Access
                                 </a>
@@ -3380,8 +3373,8 @@
             @endforeach
         </div>
 
-        <button class="scroll-arrow scroll-right" onclick="scrollCourses('right')">
-            <i class="fas fa-chevron-right"></i>
+        <button class="scroll-arrow scroll-right" onclick="scrollCourses('right')" aria-label="Scroll courses right" title="Scroll right">
+            <i class="fas fa-chevron-right" aria-hidden="true"></i>
         </button>
     </div>
 
@@ -3507,12 +3500,12 @@
             function loadImage(imageElement) {
                 const imageUrl = imageElement.dataset.bgImage;
                 
-                // OPTIMIZE IMAGE URL FOR SPEED
+                // OPTIMIZE IMAGE URL FOR SPEED - updated dimensions
                 let optimizedUrl = imageUrl;
                 if (imageUrl.includes('unsplash.com')) {
-                    optimizedUrl = imageUrl.replace('?', '?w=420&h=580&fit=crop&auto=format,compress&q=60&fm=webp&');
+                    optimizedUrl = imageUrl.replace('?', '?w=465&h=670&fit=crop&auto=format,compress&q=60&fm=webp&');
                 } else if (imageUrl.includes('picsum.photos')) {
-                    optimizedUrl = imageUrl.replace('picsum.photos/', 'picsum.photos/420/580/');
+                    optimizedUrl = imageUrl.replace('picsum.photos/', 'picsum.photos/465/670/');
                 }
                 
                 const img = new Image();

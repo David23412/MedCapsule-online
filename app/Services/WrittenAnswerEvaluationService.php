@@ -247,6 +247,978 @@ class WrittenAnswerEvaluationService
     }
     
     /**
+     * Check if this appears to be a comparison question
+     *
+     * @param string $correctAnswer The correct answer text
+     * @return bool Whether this looks like a comparison question
+     */
+    private function isComparisonQuestion(string $correctAnswer): bool
+    {
+        $comparisonIndicators = [
+            ' vs ', ' vs. ', ' versus ', ' compared to ', ' comparison ',
+            ' difference ', ' differences ', ' unlike ', ' whereas ',
+            ' however ', ' while ', ' although ', ' but ', ' in contrast ',
+            ': ', ' - ', ' vs ' // Colon and dash often separate compared items
+        ];
+
+        $normalizedAnswer = strtolower($correctAnswer);
+
+        foreach ($comparisonIndicators as $indicator) {
+            if (strpos($normalizedAnswer, $indicator) !== false) {
+                return true;
+            }
+        }
+
+        // Check for paired terms that are often compared in medical contexts
+        $comparisonPairs = [
+            ['glycoproteins', 'proteoglycans'],
+            ['systolic', 'diastolic'],
+            ['arteries', 'veins'],
+            ['sympathetic', 'parasympathetic'],
+            ['aerobic', 'anaerobic'],
+            ['mitosis', 'meiosis'],
+            ['dna', 'rna'],
+            ['type 1', 'type 2'],
+            ['acute', 'chronic'],
+            ['innate', 'adaptive']
+        ];
+
+        foreach ($comparisonPairs as $pair) {
+            if (strpos($normalizedAnswer, $pair[0]) !== false &&
+                strpos($normalizedAnswer, $pair[1]) !== false) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Check if this appears to be a definition question
+     *
+     * @param string $correctAnswer The correct answer text
+     * @return bool Whether this looks like a definition question
+     */
+    private function isDefinitionQuestion(string $correctAnswer): bool
+    {
+        // Definition question indicators
+        $definitionIndicators = [
+            ' is ', ' are ', ' refers to ', ' means ', ' defined as ',
+            ' the term ', ' is defined as ', ' is known as ', ' represents ',
+            ' consists of ', ' composed of ', ' characterized by ', ' refers to ',
+            ' is a ', ' are a ', ' is an ', ' are an ', ' is the ', ' are the '
+        ];
+
+        $normalizedAnswer = strtolower($correctAnswer);
+
+        foreach ($definitionIndicators as $indicator) {
+            if (strpos($normalizedAnswer, $indicator) !== false) {
+                return true;
+            }
+        }
+
+        // Check for common definition patterns
+        $definitionPatterns = [
+            '/^[a-z]+(?:\s+[a-z]+)*\s+is\s+/i',  // "X is ..."
+            '/^[a-z]+(?:\s+[a-z]+)*\s+are\s+/i', // "X are ..."
+            '/^[a-z]+(?:\s+[a-z]+)*\s+refers?\s+to/i', // "X refers to ..."
+            '/^the\s+[a-z]+(?:\s+[a-z]+)*\s+is/i', // "The X is ..."
+            '/^the\s+[a-z]+(?:\s+[a-z]+)*\s+are/i', // "The X are ..."
+        ];
+
+        foreach ($definitionPatterns as $pattern) {
+            if (preg_match($pattern, $correctAnswer)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Evaluate definition questions with more lenient grading
+     *
+     * @param string $submittedAnswer The student's submitted answer
+     * @param string $correctAnswer The correct answer
+     * @param float $baseThreshold The base similarity threshold
+     * @return array Evaluation results for definition questions
+     */
+    private function evaluateDefinitionAnswer(string $submittedAnswer, string $correctAnswer, float $baseThreshold): array
+    {
+        $metrics = $this->calculateSimilarityMetrics($submittedAnswer, $correctAnswer);
+
+        // For definition questions, prioritize keyword overlap and conceptual similarity
+        // Be much more lenient since definitions can be phrased in many correct ways
+        $definitionScore = ($metrics['keyword'] * 0.5) + ($metrics['conceptual'] * 0.5);
+
+        // Boost for any reasonable keyword overlap in definitions
+        if ($metrics['keyword'] >= 0.3) {
+            $definitionScore = min(1.0, $definitionScore + 0.2);
+        }
+
+        // Definitions should pass if they capture the essence with reasonable keyword overlap
+        $isCorrect = $definitionScore >= 0.4 || ($metrics['keyword'] >= 0.4 && $metrics['conceptual'] >= 0.3);
+
+        return [
+            'isCorrect' => $isCorrect,
+            'similarity' => max($definitionScore, 0.5), // Ensure it's above threshold if correct
+            'metrics' => [
+                'definition_score' => $definitionScore,
+                'weighted' => $definitionScore,
+                'definition_boost' => true
+            ],
+            'reason' => 'Definition question - core concepts identified',
+            'courseTopic' => $this->identifyCourseTopic($correctAnswer),
+            'feedback' => $this->generateDefinitionFeedback($submittedAnswer, $correctAnswer, $metrics, $isCorrect)
+        ];
+    }
+
+    /**
+     * Generate feedback specific to definition questions
+     *
+     * @param string $submitted Submitted answer
+     * @param string $correct Correct answer
+     * @param array $metrics Similarity metrics
+     * @param bool $isCorrect Whether the answer is correct
+     * @return string Feedback message
+     */
+    private function generateDefinitionFeedback(string $submitted, string $correct, array $metrics, bool $isCorrect): string
+    {
+        if ($isCorrect) {
+            if ($metrics['keyword'] >= 0.8) {
+                return "Excellent! Your definition is very accurate and uses appropriate terminology.";
+            } else {
+                return "Good job! Your definition captures the essential concepts, even with different wording.";
+            }
+        } else {
+            if ($metrics['keyword'] < 0.4) {
+                return "Your definition is missing key terms. Review the definition and identify the essential components that characterize this concept.";
+            } elseif ($metrics['conceptual'] < 0.4) {
+                return "Your definition doesn't fully capture the concept. Focus on the core characteristics and functions of the term being defined.";
+            } else {
+                return "Your definition is close but needs refinement. Compare your answer with standard definitions and note the differences in scope and detail.";
+            }
+        }
+    }
+
+    /**
+     * Check if this appears to be a matching question
+     *
+     * @param string $correctAnswer The correct answer text
+     * @return bool Whether this looks like a matching question
+     */
+    private function isMatchingQuestion(string $correctAnswer): bool
+    {
+        // Matching question indicators
+        $matchingIndicators = [
+            'match:', 'match the', 'matches which', 'corresponds to',
+            'is associated with', 'is linked to', 'relates to', 'connects to',
+            'paired with', 'coupled with', 'goes with', 'belongs to',
+            ': ', ' - ', ' → ', ' ==> '
+        ];
+
+        $normalizedAnswer = strtolower($correctAnswer);
+
+        foreach ($matchingIndicators as $indicator) {
+            if (strpos($normalizedAnswer, $indicator) !== false) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Check if this appears to be a numerical value question
+     *
+     * @param string $correctAnswer The correct answer text
+     * @return bool Whether this looks like a numerical value question
+     */
+    private function isNumericalValueQuestion(string $correctAnswer): bool
+    {
+        // Look for patterns typical of numerical values
+        $numericalPatterns = [
+            '/\d+[\.\-\–]\d+/',  // Ranges like 3.5-5.0 or 3.5–5.0
+            '/\d+\s*[\-\–]\s*\d+/',  // Ranges with spaces
+            '/\d+[\.,]\d+/',  // Decimals
+            '/\d+\s*\/\s*\d+/',  // Fractions
+            '/\d+[\.,]\d+\s*(g|mg|µg|ng|kg)\/(dL|L|ml|mL)/i',  // Lab values with units
+            '/\d+[\.,]\d+\s*(mmol|µmol|nmol)\/L/i',  // SI units
+            '/\d+[\.,]\d+\s*°[CF]/i',  // Temperatures
+            '/\d+[\.,]\d+\s*(mmHg|kPa|atm)/i',  // Pressures
+            '/\d+\s*%\s*(to|‑|–|-)\s*\d+%?/i',  // Percentage ranges like "75-80%" or "75‑80%"
+            '/\d+\s*‑\s*\d+\s*%/',  // Percentage ranges with en dash
+            '/\d+[\.,]\d+\s*%/',  // Single percentages like "75.5%"
+            '/~\s*\d+[\.,]\d+/',  // Approximate values like "~75.5"
+            '/approximately\s+\d+[\.,]\d+/',  // "approximately 75.5"
+            '/about\s+\d+[\.,]\d+/',  // "about 75.5"
+        ];
+
+        foreach ($numericalPatterns as $pattern) {
+            if (preg_match($pattern, $correctAnswer)) {
+                return true;
+            }
+        }
+
+        // Check for common medical numerical terms
+        $numericalTerms = [
+            'normal', 'range', 'level', 'concentration', 'value', 'reference',
+            'g/dl', 'g/l', 'mg/dl', 'mmol/l', 'µmol/l', 'meq/l',
+            'percent', 'percentage', '%', 'constitutes', 'makes up', 'accounts for'
+        ];
+
+        $normalizedAnswer = strtolower($correctAnswer);
+        foreach ($numericalTerms as $term) {
+            if (strpos($normalizedAnswer, $term) !== false) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Evaluate matching questions with flexible grading
+     *
+     * @param string $submittedAnswer The student's submitted answer
+     * @param string $correctAnswer The correct answer
+     * @param float $baseThreshold The base similarity threshold
+     * @return array Evaluation results for matching questions
+     */
+    private function evaluateMatchingAnswer(string $submittedAnswer, string $correctAnswer, float $baseThreshold): array
+    {
+        // Extract key matching elements from correct answer
+        $correctMatches = $this->extractMatchingPairs($correctAnswer);
+        $submittedMatches = $this->extractMatchingPairs($submittedAnswer);
+
+        // Calculate similarity between matching pairs
+        $matchSimilarity = $this->calculateMatchingSimilarity($submittedMatches, $correctMatches);
+
+        // For matching questions, be lenient - accept if core matches are present
+        $isCorrect = $matchSimilarity['overall_similarity'] >= 0.5 ||
+                    ($matchSimilarity['pair_similarity'] >= 0.4 && $matchSimilarity['key_matches'] > 0);
+
+        return [
+            'isCorrect' => $isCorrect,
+            'similarity' => max($matchSimilarity['overall_similarity'], 0.6), // Ensure above threshold if correct
+            'metrics' => [
+                'matching_similarity' => $matchSimilarity,
+                'weighted' => $matchSimilarity['overall_similarity'],
+                'matching_boost' => true
+            ],
+            'reason' => 'Matching question - key associations identified',
+            'courseTopic' => $this->identifyCourseTopic($correctAnswer),
+            'feedback' => $this->generateMatchingFeedback($submittedAnswer, $correctAnswer, $matchSimilarity, $isCorrect)
+        ];
+    }
+
+    /**
+     * Extract matching pairs from answer text
+     *
+     * @param string $answer The answer text
+     * @return array Extracted matching pairs
+     */
+    private function extractMatchingPairs(string $answer): array
+    {
+        $pairs = [];
+
+        // Look for colon-separated pairs (item: description)
+        if (preg_match_all('/([^:]+):\s*([^:]+)(?:\s*-|$)/', $answer, $matches)) {
+            foreach ($matches[0] as $i => $match) {
+                $item = trim($matches[1][$i]);
+                $description = trim($matches[2][$i]);
+                $pairs[] = [
+                    'item' => $item,
+                    'description' => $description,
+                    'type' => 'colon_pair'
+                ];
+            }
+        }
+
+        // Look for dash-separated pairs (item - description)
+        if (preg_match_all('/([^-\n]+)\s*-\s*([^\n-]+)/', $answer, $matches)) {
+            foreach ($matches[0] as $i => $match) {
+                $item = trim($matches[1][$i]);
+                $description = trim($matches[2][$i]);
+                $pairs[] = [
+                    'item' => $item,
+                    'description' => $description,
+                    'type' => 'dash_pair'
+                ];
+            }
+        }
+
+        return $pairs;
+    }
+
+    /**
+     * Calculate similarity between matching pairs
+     *
+     * @param array $submittedPairs Pairs from submitted answer
+     * @param array $correctPairs Pairs from correct answer
+     * @return array Similarity metrics
+     */
+    private function calculateMatchingSimilarity(array $submittedPairs, array $correctPairs): array
+    {
+        if (empty($correctPairs)) {
+            return ['overall_similarity' => 0, 'pair_similarity' => 0, 'key_matches' => 0];
+        }
+
+        $totalSimilarity = 0;
+        $keyMatches = 0;
+
+        foreach ($correctPairs as $correctPair) {
+            $bestSimilarity = 0;
+            $matchedSubmitted = null;
+
+            foreach ($submittedPairs as $submittedPair) {
+                $itemSimilarity = $this->calculateSimilarityMetrics($correctPair['item'], $submittedPair['item'])['weighted'];
+                $descSimilarity = $this->calculateSimilarityMetrics($correctPair['description'], $submittedPair['description'])['weighted'];
+
+                $pairSimilarity = ($itemSimilarity + $descSimilarity) / 2;
+
+                if ($pairSimilarity > $bestSimilarity) {
+                    $bestSimilarity = $pairSimilarity;
+                    $matchedSubmitted = $submittedPair;
+                }
+
+                // If both item and description match well, count as key match
+                if ($itemSimilarity >= 0.7 && $descSimilarity >= 0.7) {
+                    $keyMatches++;
+                }
+            }
+
+            $totalSimilarity += $bestSimilarity;
+        }
+
+        $overallSimilarity = count($correctPairs) > 0 ? $totalSimilarity / count($correctPairs) : 0;
+        $pairSimilarity = $totalSimilarity / max(count($submittedPairs), count($correctPairs));
+
+        return [
+            'overall_similarity' => $overallSimilarity,
+            'pair_similarity' => $pairSimilarity,
+            'key_matches' => $keyMatches,
+            'total_correct_pairs' => count($correctPairs),
+            'total_submitted_pairs' => count($submittedPairs)
+        ];
+    }
+
+    /**
+     * Generate feedback specific to matching questions
+     *
+     * @param string $submitted Submitted answer
+     * @param string $correct Correct answer
+     * @param array $matchSimilarity Similarity metrics
+     * @param bool $isCorrect Whether the answer is correct
+     * @return string Feedback message
+     */
+    private function generateMatchingFeedback(string $submitted, string $correct, array $matchSimilarity, bool $isCorrect): string
+    {
+        if ($isCorrect) {
+            if ($matchSimilarity['overall_similarity'] >= 0.8) {
+                return "Excellent! You've correctly matched the key associations. Your understanding of these relationships is strong.";
+            } else {
+                return "Good job! You've identified the main matching relationships. Consider reviewing the specific details for each association.";
+            }
+        } else {
+            $missingPairs = $matchSimilarity['total_correct_pairs'] - $matchSimilarity['key_matches'];
+            if ($missingPairs > 0) {
+                return "Your answer is missing some key associations. Review each item and ensure you've correctly matched it with its corresponding description or function.";
+            } else {
+                return "Some of your matches need refinement. Compare your associations with the correct pairings and note the differences in specificity or terminology.";
+            }
+        }
+    }
+
+    /**
+     * Evaluate numerical value questions with flexible grading
+     *
+     * @param string $submittedAnswer The student's submitted answer
+     * @param string $correctAnswer The correct answer
+     * @param float $baseThreshold The base similarity threshold
+     * @return array Evaluation results for numerical questions
+     */
+    private function evaluateNumericalValueAnswer(string $submittedAnswer, string $correctAnswer, float $baseThreshold): array
+    {
+        // Extract numerical values from both answers
+        $correctNumbers = $this->extractNumericalValues($correctAnswer);
+        $submittedNumbers = $this->extractNumericalValues($submittedAnswer);
+
+        // Check if the core numerical values match
+        $numericalMatch = $this->compareNumericalValues($submittedNumbers, $correctNumbers);
+
+        // For numerical questions, be more lenient - if we have any numerical matches, boost the score
+        if ($numericalMatch['total_matches'] > 0) {
+            // We have numerical matches - this is a numerical question and student got the numbers right
+            $numericalScore = max($numericalMatch['score'], 0.6); // At least 0.6 for having correct numbers
+
+            return [
+                'isCorrect' => true,
+                'similarity' => $numericalScore,
+                'metrics' => [
+                    'numerical_match' => $numericalMatch,
+                    'weighted' => $numericalScore,
+                    'numerical_boost' => true
+                ],
+                'reason' => 'Numerical value question - correct values identified',
+                'courseTopic' => $this->identifyCourseTopic($correctAnswer),
+                'feedback' => $this->generateNumericalFeedback($submittedAnswer, $correctAnswer, $numericalMatch)
+            ];
+        }
+
+        // No numerical matches found - fall back to regular evaluation but with lower threshold
+        $regularResult = $this->performRegularEvaluation($submittedAnswer, $correctAnswer, min($baseThreshold, 0.5));
+
+        // If regular evaluation also fails, provide specific numerical feedback
+        if (!$regularResult['isCorrect']) {
+            $regularResult['feedback'] = $this->generateNumericalFeedback($submittedAnswer, $correctAnswer, $numericalMatch);
+        }
+
+        return $regularResult;
+    }
+
+    /**
+     * Extract numerical values from text
+     *
+     * @param string $text The text to analyze
+     * @return array Extracted numerical values with context
+     */
+    private function extractNumericalValues(string $text): array
+    {
+        $values = [];
+
+        // Extract ranges like "3.5–5.0" or "3.5-5.0" or "3.5 to 5.0"
+        if (preg_match_all('/(\d+[\.,]\d+)\s*[\-\–]\s*(\d+[\.,]\d+)/', $text, $matches)) {
+            foreach ($matches[0] as $i => $match) {
+                $values[] = [
+                    'type' => 'range',
+                    'min' => (float) str_replace(',', '.', $matches[1][$i]),
+                    'max' => (float) str_replace(',', '.', $matches[2][$i]),
+                    'text' => $match,
+                    'unit' => $this->extractUnit($match)
+                ];
+            }
+        }
+
+        // Extract single values like "3.5 g/dL"
+        if (preg_match_all('/(\d+[\.,]\d+)\s*([a-zA-Zµ°\/]+)?/', $text, $matches)) {
+            foreach ($matches[0] as $i => $match) {
+                $value = (float) str_replace(',', '.', $matches[1][$i]);
+                $unit = isset($matches[2][$i]) ? trim($matches[2][$i]) : '';
+
+                // Skip if this is part of a range we already captured
+                $alreadyCaptured = false;
+                foreach ($values as $existing) {
+                    if (strpos($existing['text'], $match) !== false) {
+                        $alreadyCaptured = true;
+                        break;
+                    }
+                }
+
+                if (!$alreadyCaptured) {
+                    $values[] = [
+                        'type' => 'single',
+                        'value' => $value,
+                        'text' => $match,
+                        'unit' => $this->normalizeUnit($unit)
+                    ];
+                }
+            }
+        }
+
+        return $values;
+    }
+
+    /**
+     * Extract unit from numerical text
+     *
+     * @param string $text The numerical text
+     * @return string The extracted unit
+     */
+    private function extractUnit(string $text): string
+    {
+        // Extract everything after the numbers
+        if (preg_match('/[\d\.\-\–]+\s*(.+)$/', $text, $match)) {
+            return trim($match[1]);
+        }
+        return '';
+    }
+
+    /**
+     * Normalize unit for comparison
+     *
+     * @param string $unit The unit to normalize
+     * @return string Normalized unit
+     */
+    private function normalizeUnit(string $unit): string
+    {
+        $unit = strtolower(trim($unit));
+
+        // Common unit normalizations
+        $normalizations = [
+            'g/dl' => 'g/dl',
+            'g/dL' => 'g/dl',
+            'grams per deciliter' => 'g/dl',
+            'g/l' => 'g/l',
+            'g/L' => 'g/l',
+            'grams per liter' => 'g/l',
+            'mg/dl' => 'mg/dl',
+            'mmol/l' => 'mmol/l',
+            'mmHg' => 'mmhg',
+            '°c' => 'celsius',
+            '°f' => 'fahrenheit'
+        ];
+
+        return $normalizations[$unit] ?? $unit;
+    }
+
+    /**
+     * Compare numerical values between submitted and correct answers
+     *
+     * @param array $submittedNumbers Numbers from submitted answer
+     * @param array $correctNumbers Numbers from correct answer
+     * @return array Comparison results
+     */
+    private function compareNumericalValues(array $submittedNumbers, array $correctNumbers): array
+    {
+        if (empty($correctNumbers)) {
+            return ['score' => 0, 'matches' => [], 'reason' => 'No numerical values in correct answer'];
+        }
+
+        if (empty($submittedNumbers)) {
+            return ['score' => 0, 'matches' => [], 'reason' => 'No numerical values in submitted answer'];
+        }
+
+        $matches = [];
+        $totalScore = 0;
+
+        foreach ($correctNumbers as $correctNum) {
+            $bestMatch = ['score' => 0, 'submitted' => null];
+
+            foreach ($submittedNumbers as $submittedNum) {
+                $score = $this->calculateNumericalSimilarity($correctNum, $submittedNum);
+                if ($score > $bestMatch['score']) {
+                    $bestMatch = ['score' => $score, 'submitted' => $submittedNum];
+                }
+            }
+
+            if ($bestMatch['score'] > 0.7) { // Good match
+                $matches[] = [
+                    'correct' => $correctNum,
+                    'submitted' => $bestMatch['submitted'],
+                    'score' => $bestMatch['score']
+                ];
+                $totalScore += $bestMatch['score'];
+            }
+        }
+
+        $averageScore = count($matches) > 0 ? $totalScore / count($matches) : 0;
+
+        return [
+            'score' => $averageScore,
+            'matches' => $matches,
+            'total_matches' => count($matches),
+            'reason' => count($matches) > 0 ? 'Numerical values matched' : 'No numerical values matched'
+        ];
+    }
+
+    /**
+     * Calculate similarity between two numerical values
+     *
+     * @param array $num1 First numerical value
+     * @param array $num2 Second numerical value
+     * @return float Similarity score (0.0 to 1.0)
+     */
+    private function calculateNumericalSimilarity(array $num1, array $num2): float
+    {
+        // Same units get bonus
+        $unitBonus = ($num1['unit'] === $num2['unit']) ? 0.2 : 0;
+
+        if ($num1['type'] === 'range' && $num2['type'] === 'range') {
+            // Both are ranges - check if they overlap or are very close
+            $overlap = min($num1['max'], $num2['max']) - max($num1['min'], $num2['min']);
+            $totalRange = max($num1['max'], $num2['max']) - min($num1['min'], $num2['min']);
+
+            if ($totalRange > 0) {
+                $overlapScore = max(0, $overlap / $totalRange);
+                return min(1.0, $overlapScore + $unitBonus);
+            }
+        }
+
+        if ($num1['type'] === 'single' && $num2['type'] === 'single') {
+            // Both are single values - check if they're close
+            $diff = abs($num1['value'] - $num2['value']);
+            $avg = ($num1['value'] + $num2['value']) / 2;
+
+            if ($avg > 0) {
+                $relativeDiff = $diff / $avg;
+                $similarity = max(0, 1.0 - $relativeDiff);
+                return min(1.0, $similarity + $unitBonus);
+            }
+        }
+
+        if ($num1['type'] === 'range' && $num2['type'] === 'single') {
+            // Range vs single - check if single is within range
+            if ($num2['value'] >= $num1['min'] && $num2['value'] <= $num1['max']) {
+                return 0.9 + $unitBonus; // Very good - exact value in range
+            }
+            // Check if close to range bounds
+            $distanceToMin = abs($num2['value'] - $num1['min']);
+            $distanceToMax = abs($num2['value'] - $num1['max']);
+            $minDistance = min($distanceToMin, $distanceToMax);
+            $rangeSize = $num1['max'] - $num1['min'];
+
+            if ($rangeSize > 0) {
+                $relativeDistance = $minDistance / $rangeSize;
+                return max(0, 0.8 - $relativeDistance) + $unitBonus;
+            }
+        }
+
+        if ($num1['type'] === 'single' && $num2['type'] === 'range') {
+            // Single vs range - delegate to range vs single
+            return $this->calculateNumericalSimilarity($num2, $num1);
+        }
+
+        // Different types or no match
+        return $unitBonus; // Only unit bonus if units match
+    }
+
+    /**
+     * Generate feedback specific to numerical questions
+     *
+     * @param string $submitted Submitted answer
+     * @param string $correct Correct answer
+     * @param array $numericalMatch Numerical comparison results
+     * @return string Feedback message
+     */
+    private function generateNumericalFeedback(string $submitted, string $correct, array $numericalMatch): string
+    {
+        if ($numericalMatch['score'] >= 0.9) {
+            return "Excellent! Your numerical values are very accurate.";
+        } elseif ($numericalMatch['score'] >= 0.7) {
+            return "Good job! Your numerical values are close to the correct range. Check the exact formatting and units.";
+        } else {
+            if ($numericalMatch['total_matches'] > 0) {
+                return "You have some correct numerical elements, but check the exact values and units. Medical reference ranges must be precise.";
+            } else {
+                return "Your answer doesn't contain the correct numerical values. Check the reference ranges and units carefully.";
+            }
+        }
+    }
+
+    /**
+     * Evaluate comparison-style questions with more flexible grading
+     *
+     * @param string $submittedAnswer The student's submitted answer
+     * @param string $correctAnswer The correct answer
+     * @param float $baseThreshold The base similarity threshold
+     * @return array Evaluation results for comparison questions
+     */
+    private function evaluateComparisonAnswer(string $submittedAnswer, string $correctAnswer, float $baseThreshold): array
+    {
+        // Extract key comparison elements from correct answer
+        $correctElements = $this->extractComparisonElements($correctAnswer);
+        $submittedElements = $this->extractComparisonElements($submittedAnswer);
+
+        // Calculate similarity between key elements
+        $elementSimilarity = $this->calculateComparisonElementSimilarity($submittedElements, $correctElements);
+
+        // For comparison questions, if core comparison is excellent, mark as correct
+        // This prioritizes conceptual understanding over exact wording
+        if ($elementSimilarity['core_comparison_score'] >= 0.8) {
+            // Perfect core comparison - student got the key distinctions right
+            return [
+                'isCorrect' => true,
+                'similarity' => max($elementSimilarity['core_comparison_score'], 0.85), // Ensure it's above default threshold
+                'metrics' => [
+                    'comparison_elements' => $elementSimilarity,
+                    'weighted' => $elementSimilarity['core_comparison_score'],
+                    'comparison_boost' => true
+                ],
+                'reason' => 'Comparison question - core concepts correctly identified',
+                'courseTopic' => $this->identifyCourseTopic($correctAnswer),
+                'feedback' => $this->generateComparisonFeedback($submittedAnswer, $correctAnswer, $elementSimilarity)
+            ];
+        }
+
+        // If core comparison is good but not perfect, use a hybrid approach
+        if ($elementSimilarity['core_comparison_score'] >= 0.6) {
+            $adjustedThreshold = min($baseThreshold, 0.5); // Reduce threshold to 50% for comparison questions
+            $regularSimilarity = $this->calculateSimilarityMetrics($submittedAnswer, $correctAnswer)['weighted'];
+
+            // Weight core comparison more heavily for final decision
+            $finalSimilarity = ($elementSimilarity['core_comparison_score'] * 0.7) + ($regularSimilarity * 0.3);
+
+            return [
+                'isCorrect' => $finalSimilarity >= $adjustedThreshold,
+                'similarity' => $finalSimilarity,
+                'metrics' => [
+                    'comparison_elements' => $elementSimilarity,
+                    'weighted' => $finalSimilarity,
+                    'comparison_boost' => true
+                ],
+                'reason' => 'Comparison question - core concepts identified',
+                'courseTopic' => $this->identifyCourseTopic($correctAnswer),
+                'feedback' => $this->generateComparisonFeedback($submittedAnswer, $correctAnswer, $elementSimilarity)
+            ];
+        }
+
+        // Fall back to regular evaluation if comparison elements aren't strong enough
+        return $this->performRegularEvaluation($submittedAnswer, $correctAnswer, $baseThreshold);
+    }
+
+    /**
+     * Extract key comparison elements from an answer
+     *
+     * @param string $answer The answer text
+     * @return array Extracted comparison elements
+     */
+    private function extractComparisonElements(string $answer): array
+    {
+        $normalized = strtolower($answer);
+
+        // Split by common comparison separators
+        $parts = preg_split('/(?:vs\.?|versus|compared to|in contrast|however|while|although|but|unlike|whereas|:|-|;)/i', $normalized);
+
+        $elements = [];
+        foreach ($parts as $part) {
+            $part = trim($part);
+            if (empty($part)) continue;
+
+            // Extract key terms from each part
+            $terms = $this->extractKeyTerms($part);
+            $elements[] = [
+                'text' => $part,
+                'terms' => $terms,
+                'length' => strlen($part)
+            ];
+        }
+
+        return $elements;
+    }
+
+    /**
+     * Extract key medical terms from text
+     *
+     * @param string $text The text to analyze
+     * @return array Key terms found
+     */
+    private function extractKeyTerms(string $text): array
+    {
+        $terms = [];
+
+        // Common medical term patterns
+        $patterns = [
+            // Specific medical terms (customize based on domain)
+            '/\b(glycoproteins?|proteoglycans?|oligosaccharides?|glycosaminoglycans?)\b/i',
+            '/\b(branched|linear|uronic|uronic acid|sulfate|sulfated?)\b/i',
+            '/\b(mucins?|antigens?|receptors?|hormones?|enzymes?|antibodies?)\b/i',
+            '/\b(cartilage|bone|ground substance|cell membrane)\b/i',
+            '/\b(\d+[-\s]?\d+\s+units?|>\s*\d+\s+units?|<.*units?)\b/i',
+
+            // General medical patterns
+            '/\b[a-z]+(?:ic|al|ous|ive|tion|ment|sis|emia|itis|osis|pathy|ology)\b/i',
+            '/\b[a-z]{4,}\b/i' // Words 4+ characters
+        ];
+
+        foreach ($patterns as $pattern) {
+            if (preg_match_all($pattern, $text, $matches)) {
+                $terms = array_merge($terms, $matches[0]);
+            }
+        }
+
+        return array_unique(array_map('strtolower', $terms));
+    }
+
+    /**
+     * Calculate similarity between comparison elements
+     *
+     * @param array $submittedElements Elements from submitted answer
+     * @param array $correctElements Elements from correct answer
+     * @return array Similarity metrics
+     */
+    private function calculateComparisonElementSimilarity(array $submittedElements, array $correctElements): array
+    {
+        if (empty($correctElements)) {
+            return ['overall_similarity' => 0, 'core_similarity' => 0, 'element_matches' => []];
+        }
+
+        $totalCorrectTerms = 0;
+        $matchedTerms = 0;
+
+        // For comparison questions, focus on key distinguishing features
+        // Core comparison requires identifying the main items being compared and their key characteristics
+        $coreComparisonScore = $this->calculateCoreComparisonScore($submittedElements, $correctElements);
+
+        foreach ($correctElements as $correctElement) {
+            $correctTerms = $correctElement['terms'];
+            $totalCorrectTerms += count($correctTerms);
+
+            // Find best matching submitted element
+            $bestMatch = 0;
+            $bestTerms = [];
+
+            foreach ($submittedElements as $submittedElement) {
+                $submittedTerms = $submittedElement['terms'];
+                $commonTerms = array_intersect($correctTerms, $submittedTerms);
+                $similarity = count($commonTerms) / max(1, count($correctTerms));
+
+                if ($similarity > $bestMatch) {
+                    $bestMatch = $similarity;
+                    $bestTerms = $commonTerms;
+                }
+            }
+
+            $matchedTerms += count($bestTerms);
+        }
+
+        $overallSimilarity = $totalCorrectTerms > 0 ? $matchedTerms / $totalCorrectTerms : 0;
+
+        return [
+            'overall_similarity' => $overallSimilarity,
+            'core_similarity' => $coreComparisonScore,
+            'total_terms' => $totalCorrectTerms,
+            'matched_terms' => $matchedTerms,
+            'core_comparison_score' => $coreComparisonScore
+        ];
+    }
+
+    /**
+     * Calculate core comparison score - focuses on the essential distinguishing features
+     *
+     * @param array $submittedElements Elements from submitted answer
+     * @param array $correctElements Elements from correct answer
+     * @return float Core comparison score (0.0 to 1.0)
+     */
+    private function calculateCoreComparisonScore(array $submittedElements, array $correctElements): float
+    {
+        // Extract all terms from both answers for comparison analysis
+        $allCorrectTerms = [];
+        $allSubmittedTerms = [];
+
+        foreach ($correctElements as $element) {
+            $allCorrectTerms = array_merge($allCorrectTerms, $element['terms']);
+        }
+
+        foreach ($submittedElements as $element) {
+            $allSubmittedTerms = array_merge($allSubmittedTerms, $element['terms']);
+        }
+
+        $allCorrectTerms = array_unique($allCorrectTerms);
+        $allSubmittedTerms = array_unique($allSubmittedTerms);
+
+        // Define comparison-critical term pairs (things that must be distinguished)
+        $criticalPairs = [
+            // Glycoproteins vs Proteoglycans
+            ['glycoproteins', 'proteoglycans'],
+            ['glycoprotein', 'proteoglycan'],
+
+            // Carbohydrate types
+            ['oligosaccharides', 'glycosaminoglycans'],
+            ['oligosaccharide', 'glycosaminoglycan'],
+
+            // Other common comparison pairs in biochemistry
+            ['dna', 'rna'],
+            ['aerobic', 'anaerobic'],
+            ['mitosis', 'meiosis'],
+            ['systolic', 'diastolic'],
+            ['arteries', 'veins'],
+            ['sympathetic', 'parasympathetic'],
+        ];
+
+        $pairsRecognized = 0;
+        $totalPairs = 0;
+
+        foreach ($criticalPairs as $pair) {
+            $correctHasBoth = in_array($pair[0], $allCorrectTerms) && in_array($pair[1], $allCorrectTerms);
+            $submittedHasBoth = in_array($pair[0], $allSubmittedTerms) && in_array($pair[1], $allSubmittedTerms);
+
+            if ($correctHasBoth) {
+                $totalPairs++;
+                if ($submittedHasBoth) {
+                    $pairsRecognized++;
+                }
+            }
+        }
+
+        // If no critical pairs found in correct answer, fall back to general term matching
+        if ($totalPairs === 0) {
+            // Check for general comparison indicators
+            $comparisonTerms = ['branched', 'linear', 'uronic', 'sulfate', 'cartilage', 'bone'];
+            $correctComparisonTerms = array_intersect($allCorrectTerms, $comparisonTerms);
+            $submittedComparisonTerms = array_intersect($allSubmittedTerms, $comparisonTerms);
+
+            if (!empty($correctComparisonTerms)) {
+                $recognized = count(array_intersect($submittedComparisonTerms, $correctComparisonTerms));
+                $total = count($correctComparisonTerms);
+                return $total > 0 ? $recognized / $total : 0;
+            }
+
+            return 0;
+        }
+
+        $pairScore = $totalPairs > 0 ? $pairsRecognized / $totalPairs : 0;
+
+        // Bonus for recognizing the key distinguishing carbohydrate types
+        $keyDistinguishingTerms = ['oligosaccharides', 'glycosaminoglycans'];
+        $correctHasDistinguishing = !empty(array_intersect($allCorrectTerms, $keyDistinguishingTerms));
+        $submittedHasDistinguishing = !empty(array_intersect($allSubmittedTerms, $keyDistinguishingTerms));
+
+        $distinguishingBonus = 0;
+        if ($correctHasDistinguishing && $submittedHasDistinguishing) {
+            $distinguishingBonus = 0.3; // Significant bonus for getting the key difference right
+        } elseif ($correctHasDistinguishing && !$submittedHasDistinguishing) {
+            $distinguishingBonus = -0.2; // Penalty for missing key distinguishing features
+        }
+
+        $finalScore = min(1.0, max(0, $pairScore + $distinguishingBonus));
+
+        return $finalScore;
+    }
+
+    /**
+     * Generate feedback specific to comparison questions
+     *
+     * @param string $submitted Submitted answer
+     * @param string $correct Correct answer
+     * @param array $elementSimilarity Similarity metrics
+     * @return string Feedback message
+     */
+    private function generateComparisonFeedback(string $submitted, string $correct, array $elementSimilarity): string
+    {
+        if ($elementSimilarity['core_similarity'] >= 0.8) {
+            return "Excellent! You've identified the key differences in this comparison. Consider adding more specific details for a complete answer.";
+        } elseif ($elementSimilarity['core_similarity'] >= 0.6) {
+            return "Good job! You've captured the main comparison points. Review the specific characteristics and functions mentioned in the correct answer.";
+        } else {
+            return "You've started to identify some comparison elements, but focus on the key differences between the terms being compared. Review the specific characteristics that distinguish them.";
+        }
+    }
+
+    /**
+     * Perform regular evaluation as fallback
+     *
+     * @param string $submittedAnswer Submitted answer
+     * @param string $correctAnswer Correct answer
+     * @param float $threshold Similarity threshold
+     * @return array Regular evaluation results
+     */
+    private function performRegularEvaluation(string $submittedAnswer, string $correctAnswer, float $threshold): array
+    {
+        $metrics = $this->calculateSimilarityMetrics($submittedAnswer, $correctAnswer);
+        $isCorrect = $metrics['weighted'] >= $threshold;
+
+        return [
+            'isCorrect' => $isCorrect,
+            'similarity' => $metrics['weighted'],
+            'metrics' => $metrics,
+            'reason' => $isCorrect ? 'Regular evaluation - sufficient similarity' : 'Regular evaluation - insufficient similarity',
+            'courseTopic' => $this->identifyCourseTopic($correctAnswer),
+            'feedback' => $this->generateDetailedFeedback($submittedAnswer, $correctAnswer, $metrics, $isCorrect, $metrics['weighted'], $threshold, null)
+        ];
+    }
+
+    /**
      * SMART GRADING ALGORITHM - The Sweet Spot Between Accuracy and Intelligence
      * This system finds the optimal balance for medical education grading
      *
@@ -323,13 +1295,37 @@ class WrittenAnswerEvaluationService
         $submittedAnswer = $this->preprocessSymbols($submittedAnswer);
         $correctAnswer = $this->preprocessSymbols($correctAnswer);
         $alternativeAnswers = array_map([$this, 'preprocessSymbols'], $alternativeAnswers);
-        
+
         // DEBUG: Log after preprocessing
         Log::debug('WrittenAnswerEvaluationService::evaluateAnswer - After preprocessing', [
             'submitted_answer' => $submittedAnswer,
             'correct_answer' => $correctAnswer,
             'alternative_answers' => $alternativeAnswers
         ]);
+
+        // Check if this is a comparison question and handle it specially
+        if ($this->isComparisonQuestion($correctAnswer)) {
+            Log::debug('WrittenAnswerEvaluationService::evaluateAnswer - Detected comparison question, using specialized evaluation');
+            return $this->evaluateComparisonAnswer($submittedAnswer, $correctAnswer, $similarityThreshold);
+        }
+
+        // Check if this is a numerical value question and handle it specially
+        if ($this->isNumericalValueQuestion($correctAnswer)) {
+            Log::debug('WrittenAnswerEvaluationService::evaluateAnswer - Detected numerical value question, using specialized evaluation');
+            return $this->evaluateNumericalValueAnswer($submittedAnswer, $correctAnswer, $similarityThreshold);
+        }
+
+        // Check if this is a definition question and handle it specially
+        if ($this->isDefinitionQuestion($correctAnswer)) {
+            Log::debug('WrittenAnswerEvaluationService::evaluateAnswer - Detected definition question, using specialized evaluation');
+            return $this->evaluateDefinitionAnswer($submittedAnswer, $correctAnswer, $similarityThreshold);
+        }
+
+        // Check if this is a matching question and handle it specially
+        if ($this->isMatchingQuestion($correctAnswer)) {
+            Log::debug('WrittenAnswerEvaluationService::evaluateAnswer - Detected matching question, using specialized evaluation');
+            return $this->evaluateMatchingAnswer($submittedAnswer, $correctAnswer, $similarityThreshold);
+        }
         
         $cacheKey = "evaluate:{$submittedAnswer}:{$correctAnswer}:" . implode('|', $alternativeAnswers) . ":{$similarityThreshold}";
         
@@ -2536,7 +3532,7 @@ class WrittenAnswerEvaluationService
     
     /**
      * Calculate pattern similarity between normalized texts
-     * 
+     *
      * @param string $normalizedSubmitted Normalized submitted answer
      * @param string $normalizedCorrect Normalized correct answer
      * @return array Pattern similarity metrics
@@ -2544,6 +3540,38 @@ class WrittenAnswerEvaluationService
     private function calculatePatternSimilarity(string $normalizedSubmitted, string $normalizedCorrect): array
     {
         return $this->getPatternMatches($normalizedSubmitted, $normalizedCorrect);
+    }
+
+    /**
+     * Add lenient grading mode for better student experience
+     * This reduces strictness and gives more partial credit
+     */
+    private function applyLenientGrading(array $result, string $submittedAnswer, string $correctAnswer): array
+    {
+        // Only apply lenient grading if answer is currently failing but close
+        if ($result['isCorrect'] || $result['similarity'] < 0.3) {
+            return $result;
+        }
+
+        // Check if this looks like a good effort with partial understanding
+        $metrics = $this->calculateSimilarityMetrics($submittedAnswer, $correctAnswer);
+
+        // Lenient criteria: if keyword similarity > 0.4 OR conceptual similarity > 0.6
+        if (($metrics['keyword'] ?? 0) > 0.4 || ($metrics['conceptual'] ?? 0) > 0.6) {
+            // Give partial credit - mark as correct but with feedback
+            $result['isCorrect'] = true;
+            $result['similarity'] = max($result['similarity'], 0.7); // Boost similarity
+            $result['lenient_grading'] = true;
+
+            // Add encouraging feedback
+            $result['feedback'] = "Good effort! You've captured some key concepts. " .
+                                ($result['feedback'] ?? "Consider reviewing the material for more complete understanding.");
+
+            // Add metrics
+            $result['metrics']['lenient_boost'] = true;
+        }
+
+        return $result;
     }
     
     /**

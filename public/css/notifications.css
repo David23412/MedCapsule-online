@@ -113,6 +113,55 @@
     background-color: #fff5f5;
 }
 
+/* 🎨 COLOR PRIORITY BORDERS */
+.notification-orange {
+    border-left-color: #ff9800 !important;
+}
+
+.notification-orange.notification-unread {
+    background-color: #fff8f0;
+}
+
+.notification-green {
+    border-left-color: #4caf50 !important;
+}
+
+.notification-green.notification-unread {
+    background-color: #f1f8f4;
+}
+
+.notification-blue {
+    border-left-color: #2196f3 !important;
+}
+
+.notification-blue.notification-unread {
+    background-color: #f0f7ff;
+}
+
+.notification-purple {
+    border-left-color: #9c27b0 !important;
+}
+
+.notification-purple.notification-unread {
+    background-color: #f8f0ff;
+}
+
+.notification-red {
+    border-left-color: #f44336 !important;
+}
+
+.notification-red.notification-unread {
+    background-color: #fff5f5;
+}
+
+.notification-yellow {
+    border-left-color: #ffc107 !important;
+}
+
+.notification-yellow.notification-unread {
+    background-color: #fffbf0;
+}
+
 .notification-icon {
     width: 36px;
     height: 36px;

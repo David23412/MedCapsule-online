@@ -4,6 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="theme-color" content="#2196f3">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
+    <meta name="session-start" content="{{ auth()->check() ? session()->get('auth.logged_in_at', time()) : time() }}">
     <meta name="description" content="MedCapsule - Your ultimate study companion for medical topics">
     <title>MedCapsule</title>
 
@@ -19,12 +21,17 @@
 
         /* ⚡ CRITICAL ABOVE-FOLD ELEMENTS - INSTANT RENDER ⚡ */
         .navbar {
-            background: white;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-            padding: 0.75rem 0;
-            position: sticky;
+            background: transparent;
+            backdrop-filter: none;
+            -webkit-backdrop-filter: none;
+            box-shadow: none;
+            padding: 0.6rem 0;
+            position: absolute;
             top: 0;
+            left: 0;
+            right: 0;
             z-index: 1000;
+            width: 100%;
         }
         .navbar-brand {
             display: flex;
@@ -142,24 +149,22 @@
 
         /* Navbar */
         .navbar {
-            background-color: white;
+            background: transparent;
+            backdrop-filter: none;
+            -webkit-backdrop-filter: none;
             box-shadow: none;
             padding: 0.6rem 0;
-            position: relative;
-            z-index: 1000;
-        }
-
-        /* Smooth transition overlay between navbar and hero */
-        .navbar::after {
-            content: '';
             position: absolute;
-            bottom: -30px;
+            top: 0;
             left: 0;
             right: 0;
-            height: 30px;
-            background: linear-gradient(to bottom, rgba(255, 255, 255, 1), rgba(255, 255, 255, 0));
-            pointer-events: none;
-            z-index: 999;
+            z-index: 1000;
+            width: 100%;
+        }
+
+        /* Remove transition overlay since navbar is now transparent */
+        .navbar::after {
+            display: none;
         }
 
         /* MedCapsule Brand Styling */
@@ -2749,7 +2754,7 @@
                     </defs>
                     
                     <!-- Enhanced bottom shadow for 3D effect -->
-                    <ellipse class="capsule-bottom-shadow" cx="50" cy="40" rx="35" ry="3.5" filter="blur(2px)" />
+                    <ellipse class="capsule-bottom-shadow" cx="50" cy="40" rx="35" ry="3.5" filter="blur(1.5px)" />
                     
                     <!-- Main capsule shape with shadow filter -->
                     <rect class="capsule-pill" x="10" y="15" width="80" height="20" rx="10" ry="10" filter="url(#capsule-shadow)" />
@@ -2768,7 +2773,7 @@
                     <rect class="capsule-liquid capsule-liquid-right" x="51" y="23" width="35" height="12" rx="6" ry="6" />
                     
                     <!-- Add a subtle glow to red side -->
-                    <rect x="51" y="23" width="35" height="12" rx="6" ry="6" fill="red" opacity="0.08" filter="blur(1.5px)"/>
+                    <rect x="51" y="23" width="35" height="12" rx="6" ry="6" fill="red" opacity="0.08" filter="blur(1px)"/>
                     
                     <!-- Inner light reflection for 3D feel -->
                     <path class="capsule-inner-light" d="M10,25 Q25,20 50,20 Q75,20 90,25" />
@@ -3023,10 +3028,6 @@
                                         <i class="fas fa-question-circle"></i>
                                         <span><strong>{{ $course->question_count }}</strong> Questions</span>
                                     </div>
-                                    <div class="detail-item">
-                                        <i class="fas fa-users text-success"></i>
-                                        <span class="text-success"><strong>{{ $course->enrolled_count }}</strong> Medical Students Enrolled</span>
-                                    </div>
                                 </div>
                                 <div class="course-footer text-center mt-3">
                                     <!-- Removed High-Yield Content and Evidence-Based badges as requested -->
@@ -3065,7 +3066,7 @@
                     <div class="col-md-3 reveal">
                         <div class="stat-item text-center">
                             <i class="fas fa-users fa-3x mb-3 text-warning" style="color: #ffc107 !important;"></i>
-                            <h4 class="counter" data-target="0" style="color: #ffc107 !important;">0</h4>
+                            <h4 class="counter" data-target="{{ \App\Models\AdminSetting::get('fake_students_enabled', false) ? \App\Models\AdminSetting::get('fake_students_count', 0) : \App\Models\User::where('role', 0)->count() }}" style="color: #ffc107 !important;">{{ \App\Models\AdminSetting::get('fake_students_enabled', false) ? \App\Models\AdminSetting::get('fake_students_count', 0) : \App\Models\User::where('role', 0)->count() }}</h4>
                             <p>Active Medical Students</p>
                         </div>
                     </div>
@@ -3137,6 +3138,7 @@
     <!-- Bootstrap Bundle with Popper -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="{{ asset('js/session-handler.js') }}"></script>
 
     <script>
         // Add this to your existing JavaScript
@@ -3335,8 +3337,8 @@
             });
         });
 
-        // NUCLEAR SPEED NOTIFICATION BELL - ZERO POLLING, INSTANT UPDATES
-        // Performance gain: 95% faster updates, 90% less server load
+        // NUCLEAR SPEED NOTIFICATION BELL - POLLING ONLY (WebSocket disabled)
+        // Since BROADCAST_CONNECTION=null, we use polling for notifications
         function notificationBell() {
             return {
                 notifications: [],
@@ -3348,6 +3350,8 @@
                 prevUnreadCount: 0,
 
                 init() {
+                    console.log('🔔 Notification system initialized (polling mode - WebSocket disabled)');
+
                     // Preload the notification sound
                     this.notificationSound.load();
 
@@ -3359,46 +3363,19 @@
                         this.prevUnreadCount = this.unreadCount;
                     });
 
-                    // Use simple polling for notifications
+                    // Use polling for notifications (no WebSocket available)
                     this.initializePolling();
-                    
-                    // Play notification sound on new notifications
-                    this.$watch('unreadCount', (newCount, oldCount) => {
-                        // Only play sound if count increases
-                        if (newCount > oldCount && oldCount !== 0) {
-                                    this.playNotificationSound();
-                            
-                            // Add bell animation
-                            const bellIcon = this.$el.querySelector('i.fa-bell');
-                            if (bellIcon) {
-                                bellIcon.style.animation = 'none';
-                                // Force reflow
-                                void bellIcon.offsetWidth;
-                                bellIcon.style.animation = 'bellRing 1s';
-                            }
-                        }
-                    });
                 },
-                
-                // Simple polling for notifications - no WebSocket needed
+
+                // Polling for notifications - no WebSocket fallback needed
                 initializePolling() {
+                    console.log('📡 Starting notification polling (60 second intervals)');
                     // Poll every 60 seconds for notifications
                     setInterval(() => {
                         this.fetchNotifications();
                     }, 60000);
                 },
-                
-                // Polling fallback maintains same functionality
-                initializePollingFallback() {
-                    console.log('📡 Using polling fallback for notifications');
-                    setInterval(() => {
-                        this.fetchNotifications();
-                    }, 30000); // Poll every 30 seconds
-                },
-                
-                // ELIMINATE POLLING - Remove all setTimeout and setInterval
-                // No more polling delays - WebSocket handles everything
-                
+
                 // Track user interaction to allow audio playback
                 setUserInteractionFlag() {
                     window.addEventListener('click', () => {
@@ -3407,8 +3384,8 @@
                         }
                     });
                 },
-                
-                // Play notification sound instantly
+
+                // Play notification sound
                 playNotificationSound() {
                     if (window.hasUserInteraction && this.notificationSound) {
                         this.notificationSound.currentTime = 0;
@@ -3417,78 +3394,91 @@
                         });
                     }
                 },
-                
-                // Fetch notifications from server with aggressive caching
+
+                // Fetch notifications from server
                 async fetchNotifications() {
                     try {
-                    this.loading = true;
+                        this.loading = true;
                         const response = await fetch('/notifications', {
-                        method: 'GET',
-                        headers: {
-                            'X-Requested-With': 'XMLHttpRequest',
+                            method: 'GET',
+                            headers: {
+                                'X-Requested-With': 'XMLHttpRequest',
                                 'Accept': 'application/json',
                                 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
                             },
                             credentials: 'same-origin'
                         });
+
+                        if (!response.ok) {
+                            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                        }
+
                         const data = await response.json();
-                        
+
                         if (data.success) {
                             this.notifications = data.notifications || [];
                             this.unreadCount = data.unread_count || 0;
                             this.lastFetched = Date.now();
+
+                            // Update badge if it exists
+                            this.updateBadge();
                         }
                     } catch (error) {
-                            console.error('Error fetching notifications:', error);
+                        console.error('❌ Error fetching notifications:', error);
                     } finally {
-                            this.loading = false;
+                        this.loading = false;
                     }
                 },
-                
-                // Update badge with instant animation
+
+                // Update badge with animation
                 updateBadge() {
                     const badge = document.getElementById('notificationBadge');
                     const displayCount = Math.min(this.unreadCount, 99);
-                    
+
                     if (displayCount > 0) {
                         if (badge) {
                             const oldCount = parseInt(badge.textContent) || 0;
                             if (oldCount !== displayCount) {
                                 badge.classList.add('badge-count-change');
-                                // INSTANT UPDATE - No setTimeout delay
-                                badge.textContent = displayCount;
-                                badge.setAttribute('aria-label', `${displayCount} unread notifications`);
-                                
-                                // Remove animation class after brief delay
-                                requestAnimationFrame(() => {
+                                setTimeout(() => {
+                                    badge.textContent = displayCount;
+                                    badge.setAttribute('aria-label', `${displayCount} unread notifications`);
+                                }, 150);
+                                setTimeout(() => {
                                     badge.classList.remove('badge-count-change');
-                                });
+                                }, 300);
                             }
                         } else {
-                            // Create badge instantly
+                            // Create badge with entrance animation
                             const newBadge = document.createElement('span');
                             newBadge.id = 'notificationBadge';
                             newBadge.className = 'clean-notification-badge badge-appear';
                             newBadge.textContent = displayCount;
                             newBadge.setAttribute('aria-label', `${displayCount} unread notifications`);
-                            
+
                             const bell = document.querySelector('.notification-bell');
                             if (bell) {
                                 bell.appendChild(newBadge);
                             }
                         }
                     } else if (badge) {
-                        badge.remove();
+                        badge.classList.add('badge-disappear');
+                        setTimeout(() => {
+                            if (badge.parentNode) {
+                                badge.remove();
+                            }
+                        }, 300);
                     }
                 },
-                
+
                 // Cleanup function
                 cleanup() {
-                    // No WebSocket to cleanup - using polling
+                    // No WebSocket connections to cleanup
+                    console.log('🧹 Notification system cleaned up');
                 }
             };
         }
-        
+
         // Auto-cleanup on page unload
         window.addEventListener('beforeunload', () => {
             if (window.notificationBellInstance) {

@@ -319,6 +319,15 @@
             transform: translateY(-1px);
             box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
         }
+        
+        /* FIXED: Keep yellow background on completed payments even on hover */
+        .table tbody tr[data-payment-status="completed"] {
+            background-color: #fffbeb !important;
+        }
+        
+        .table tbody tr[data-payment-status="completed"]:hover {
+            background-color: #fef3c7 !important;
+        }
 
         .table .fw-medium {
             color: #2c3e50;
@@ -506,6 +515,7 @@
             color: var(--danger-color);
         }
 
+
         .select2-container .select2-selection--single {
             height: 42px;
             border: 1px solid #ced4da;
@@ -524,7 +534,104 @@
 
         .select2-dropdown {
             border-radius: var(--border-radius-sm);
-            box-shadow: var(--shadow);
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+            border: 1px solid #e0e0e0;
+        }
+        
+        /* FIXED: Improved dropdown styling for better readability */
+        .select2-results__option {
+            padding: 12px 16px !important;
+            font-size: 0.95rem !important;
+            line-height: 1.5 !important;
+            border-bottom: 1px solid #f0f0f0 !important;
+            transition: all 0.2s ease !important;
+            background-color: white !important;
+        }
+        
+        .select2-results__option:last-child {
+            border-bottom: none !important;
+        }
+        
+        .select2-results__option--highlighted {
+            background-color: #f8f9fa !important;
+            color: #2c3e50 !important;
+        }
+        
+        .select2-results__option--highlighted .fw-medium {
+            color: #1976d2 !important;
+        }
+        
+        .select2-results__option--selected {
+            background-color: #e8f5e9 !important;
+            color: #2c3e50 !important;
+        }
+        
+        .select2-results__option--selected .fw-medium {
+            color: #2e7d32 !important;
+        }
+        
+        /* FIXED: Better styling for selected item in input box */
+        .select2-container--default .select2-selection--single .select2-selection__rendered {
+            color: #2c3e50 !important;
+            font-weight: 500 !important;
+            line-height: 40px !important;
+        }
+        
+        .select2-container--default .select2-selection--single {
+            background-color: white !important;
+            border: 2px solid #ced4da !important;
+        }
+        
+        .select2-container--default.select2-container--focus .select2-selection--single {
+            border-color: #2196f3 !important;
+            box-shadow: 0 0 0 3px rgba(33, 150, 243, 0.1) !important;
+        }
+        
+        /* User name styling */
+        .select2-results__option .fw-medium {
+            font-size: 1rem !important;
+            font-weight: 600 !important;
+            color: #2c3e50 !important;
+            display: block !important;
+            margin-bottom: 4px !important;
+        }
+        
+        /* Email styling */
+        .select2-results__option .text-muted {
+            font-size: 0.85rem !important;
+            color: #6c757d !important;
+            display: block !important;
+        }
+        
+        /* Role badge styling */
+        .select2-results__option .badge {
+            font-size: 0.75rem !important;
+            padding: 4px 8px !important;
+            border-radius: 4px !important;
+            font-weight: 600 !important;
+            text-transform: uppercase !important;
+            letter-spacing: 0.5px !important;
+        }
+        
+        .select2-results__option .badge.bg-secondary {
+            background-color: #6c757d !important;
+            color: white !important;
+        }
+        
+        /* Search box styling */
+        .select2-search--dropdown .select2-search__field {
+            padding: 10px 12px !important;
+            font-size: 0.95rem !important;
+            border: 1px solid #e0e0e0 !important;
+            border-radius: 6px !important;
+            margin: 8px !important;
+            width: calc(100% - 16px) !important;
+        }
+        
+        .select2-search--dropdown .select2-search__field:focus {
+            border-color: #2196f3 !important;
+            outline: none !important;
+            box-shadow: 0 0 0 3px rgba(33, 150, 243, 0.1) !important;
         }
 
         .nav-tabs {
@@ -1041,6 +1148,11 @@
                     <i class="fas fa-video me-2"></i>Video Management
                 </button>
             </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="settings-tab" data-bs-toggle="tab" data-bs-target="#settings" type="button" role="tab">
+                    <i class="fas fa-cog me-2"></i>Settings
+                </button>
+            </li>
         </ul>
 
         <!-- Tab Content -->
@@ -1390,11 +1502,10 @@
                                         <th style="width: 100px; min-width: 100px;">Amount</th>
                                         <th style="width: 120px; min-width: 120px;">Method</th>
                                         <th style="width: 100px; min-width: 100px;">Status</th>
-                                        <th style="width: 180px; min-width: 180px;">Reference</th>
                                         <th style="width: 220px; min-width: 220px;">
-                                            <strong style="color: #dc3545; font-size: 0.9rem;">
-                                                <i class="fas fa-exchange-alt me-1"></i>
-                                                Provider Transaction
+                                            <strong style="color: #2196f3; font-size: 0.9rem;">
+                                                <i class="fas fa-receipt me-1"></i>
+                                                Transaction Code
                                             </strong>
                                         </th>
                                         <th style="width: 120px; min-width: 120px;">Date</th>
@@ -1423,6 +1534,323 @@
                             <nav id="payment-pagination" aria-label="Payment pagination">
                                 <!-- Pagination will be added here -->
                             </nav>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Settings Tab -->
+            <div class="tab-pane fade" id="settings" role="tabpanel">
+                <div class="row g-4">
+                    <div class="col-lg-8">
+                        <div class="card">
+                            <div class="card-header">
+                                <div>
+                                    <i class="fas fa-users-cog me-2"></i>Live User Counter Settings
+                                </div>
+                                <span class="badge bg-info">
+                                    <i class="fas fa-chart-line"></i> Social Proof
+                                </span>
+                            </div>
+                            <div class="card-body">
+                                <div class="alert alert-info">
+                                    <i class="fas fa-info-circle me-2"></i>
+                                    <strong>Social Proof Feature:</strong> Enable fake live user counts to show believable activity on your site. 
+                                    The counter will fluctuate naturally between your min/max range, updating every 30 seconds.
+                                </div>
+                                
+                                <div class="mb-4">
+                                    <div class="d-flex justify-content-between align-items-center mb-3">
+                                        <div>
+                                            <label class="form-label mb-0">
+                                                <i class="fas fa-toggle-on me-1"></i><strong>Enable Fake Live Users</strong>
+                                            </label>
+                                            <div class="small text-muted">Show fake user counts instead of real session data</div>
+                                        </div>
+                                        <div class="form-check form-switch" style="font-size: 1.5rem;">
+                                            <input class="form-check-input" type="checkbox" id="fakeLiveUsersToggle" style="cursor: pointer;">
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div id="fakeUserSettings" style="display: none;">
+                                    <div class="row g-3">
+                                        <div class="col-md-6">
+                                            <label class="form-label">
+                                                <i class="fas fa-arrow-down me-1"></i>Minimum Count
+                                            </label>
+                                            <div class="input-group">
+                                                <button class="btn btn-outline-secondary" type="button" onclick="adjustRange('min', -10)"><i class="fas fa-minus"></i></button>
+                                                <input type="number" class="form-control text-center" id="fakeUsersMin" min="1" max="999" value="87">
+                                                <button class="btn btn-outline-secondary" type="button" onclick="adjustRange('min', 10)"><i class="fas fa-plus"></i></button>
+                                            </div>
+                                            <div class="form-text">
+                                                Lowest number of "active users" to display
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <label class="form-label">
+                                                <i class="fas fa-arrow-up me-1"></i>Maximum Count
+                                            </label>
+                                            <div class="input-group">
+                                                <button class="btn btn-outline-secondary" type="button" onclick="adjustRange('max', -10)"><i class="fas fa-minus"></i></button>
+                                                <input type="number" class="form-control text-center" id="fakeUsersMax" min="1" max="999" value="143">
+                                                <button class="btn btn-outline-secondary" type="button" onclick="adjustRange('max', 10)"><i class="fas fa-plus"></i></button>
+                                            </div>
+                                            <div class="form-text">
+                                                Highest number of "active users" to display
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="mt-3 p-3 bg-light rounded">
+                                        <div class="small text-muted mb-2">
+                                            <i class="fas fa-lightbulb me-1"></i><strong>How it works:</strong>
+                                        </div>
+                                        <ul class="small mb-0">
+                                            <li>Numbers change every 30 seconds for natural variation</li>
+                                            <li>Counts are rounded to nearest 10 with small offsets (e.g., 97, 108, 123)</li>
+                                            <li>Believable ranges: 50-100 for small sites, 80-150 for medium, 100-300 for large</li>
+                                            <li>Only visible to regular users - admins can see real counts in System Health</li>
+                                        </ul>
+                                    </div>
+                                    
+                                    <div class="mt-3">
+                                        <button type="button" class="btn btn-success" id="saveFakeUserSettings">
+                                            <i class="fas fa-save me-2"></i>Save Settings
+                                        </button>
+                                        <button type="button" class="btn btn-outline-secondary" id="testFakeUsers">
+                                            <i class="fas fa-eye me-2"></i>Preview Current Count
+                                        </button>
+                                    </div>
+                                    
+                                    <div id="previewCount" class="mt-3" style="display: none;">
+                                        <div class="alert alert-success">
+                                            <strong>Current Preview:</strong> <span id="previewNumber" class="fs-4"></span> users active now
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="col-lg-4">
+                        <div class="card">
+                            <div class="card-header">
+                                <i class="fas fa-chart-bar me-2"></i>Quick Stats
+                            </div>
+                            <div class="card-body">
+                                <div class="mb-3">
+                                    <div class="d-flex justify-content-between align-items-center mb-2">
+                                        <span class="text-muted">Current Mode:</span>
+                                        <span class="badge bg-secondary" id="currentMode">Loading...</span>
+                                    </div>
+                                    <div class="d-flex justify-content-between align-items-center mb-2">
+                                        <span class="text-muted">Real Active Users:</span>
+                                        <strong id="realUserCount">{{ isset($userStats) ? ($userStats['active_users'] ?? 0) : 0 }}</strong>
+                                    </div>
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <span class="text-muted">Displayed Count:</span>
+                                        <strong id="displayedCount">-</strong>
+                                    </div>
+                                </div>
+                                
+                                <hr>
+                                
+                                <div class="small text-muted">
+                                    <i class="fas fa-shield-alt me-1"></i>
+                                    <strong>Admin Note:</strong> These settings only affect the public-facing live user counter. 
+                                    Real analytics and admin dashboards always show accurate data.
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="card mt-3">
+                            <div class="card-header">
+                                <i class="fas fa-history me-2"></i>Recommended Ranges
+                            </div>
+                            <div class="card-body">
+                                <div class="mb-2">
+                                    <strong>Small Site:</strong>
+                                    <div class="small text-muted">Min: 47, Max: 89</div>
+                                </div>
+                                <div class="mb-2">
+                                    <strong>Medium Site:</strong>
+                                    <div class="small text-muted">Min: 87, Max: 143</div>
+                                </div>
+                                <div class="mb-2">
+                                    <strong>Large Site:</strong>
+                                    <div class="small text-muted">Min: 127, Max: 287</div>
+                                </div>
+                                <div class="mt-3">
+                                    <button class="btn btn-sm btn-outline-primary w-100" onclick="applyPreset(87, 143)">
+                                        Apply Medium Preset
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Fake Students Counter Section -->
+                <div class="row g-4 mt-3">
+                    <div class="col-12">
+                        <div class="card">
+                            <div class="card-header">
+                                <div>
+                                    <i class="fas fa-user-graduate me-2"></i>Active Medical Students Counter
+                                </div>
+                                <span class="badge bg-warning text-dark">
+                                    <i class="fas fa-graduation-cap"></i> Homepage Stat
+                                </span>
+                            </div>
+                            <div class="card-body">
+                                <div class="alert alert-warning">
+                                    <i class="fas fa-info-circle me-2"></i>
+                                    <strong>Homepage Counter:</strong> Control the "Active Medical Students" number shown at the bottom of your homepage.
+                                </div>
+                                
+                                <div class="row align-items-center">
+                                    <div class="col-md-6">
+                                        <div class="d-flex justify-content-between align-items-center mb-3">
+                                            <div>
+                                                <label class="form-label mb-0">
+                                                    <i class="fas fa-toggle-on me-1"></i><strong>Enable Fake Students Count</strong>
+                                                </label>
+                                                <div class="small text-muted">Override real student count with custom number</div>
+                                            </div>
+                                            <div class="form-check form-switch" style="font-size: 1.5rem;">
+                                                <input class="form-check-input" type="checkbox" id="fakeStudentsToggle" style="cursor: pointer;">
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="col-md-6" id="fakeStudentsSettings" style="display: none;">
+                                        <label class="form-label">
+                                            <i class="fas fa-users me-1"></i>Student Count
+                                        </label>
+                                        <div class="input-group input-group-lg">
+                                            <button class="btn btn-outline-secondary" type="button" onclick="adjustStudentCount(-100)">
+                                                <i class="fas fa-minus"></i> 100
+                                            </button>
+                                            <button class="btn btn-outline-secondary" type="button" onclick="adjustStudentCount(-10)">
+                                                <i class="fas fa-minus"></i> 10
+                                            </button>
+                                            <input type="number" class="form-control text-center fw-bold" id="fakeStudentsCount" min="0" max="99999" value="2847" style="font-size: 1.5rem;">
+                                            <button class="btn btn-outline-secondary" type="button" onclick="adjustStudentCount(10)">
+                                                <i class="fas fa-plus"></i> 10
+                                            </button>
+                                            <button class="btn btn-outline-secondary" type="button" onclick="adjustStudentCount(100)">
+                                                <i class="fas fa-plus"></i> 100
+                                            </button>
+                                        </div>
+                                        <div class="form-text">
+                                            Displayed on homepage "Why Medical Students Choose Us" section
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div class="mt-3">
+                                    <button type="button" class="btn btn-success" id="saveFakeStudentsSettings">
+                                        <i class="fas fa-save me-2"></i>Save Student Count
+                                    </button>
+                                    <span class="ms-3 text-muted small">
+                                        <i class="fas fa-info-circle me-1"></i>Real count: <strong>{{ \App\Models\User::where('role', 0)->count() }}</strong> students
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Fake Enrolled Users Per Course Section -->
+                <div class="row g-4 mt-3">
+                    <div class="col-12">
+                        <div class="card">
+                            <div class="card-header">
+                                <div>
+                                    <i class="fas fa-users-cog me-2"></i>Fake Enrolled Users Per Course
+                                </div>
+                                <span class="badge bg-primary">
+                                    <i class="fas fa-id-card"></i> Profile Circles
+                                </span>
+                            </div>
+                            <div class="card-body">
+                                <div class="alert alert-info">
+                                    <i class="fas fa-info-circle me-2"></i>
+                                    <strong>Course Profile Circles:</strong> Control the fake enrolled user count displayed as profile circles on each course card. This shows social proof to encourage enrollment.
+                                </div>
+                                
+                                <div class="table-responsive">
+                                    <table class="table table-hover">
+                                        <thead>
+                                            <tr>
+                                                <th style="width: 40%;">Course Name</th>
+                                                <th style="width: 15%;" class="text-center">Real Enrolled</th>
+                                                <th style="width: 15%;" class="text-center">Fake Mode</th>
+                                                <th style="width: 20%;">Fake Count</th>
+                                                <th style="width: 10%;" class="text-center">Actions</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="courseFakeEnrolledTable">
+                                            @if(isset($courses) && $courses->count() > 0)
+                                                @foreach($courses as $course)
+                                                    <tr data-course-id="{{ $course->id }}">
+                                                        <td>
+                                                            <strong>{{ $course->name }}</strong>
+                                                        </td>
+                                                        <td class="text-center">
+                                                            <span class="badge bg-secondary">{{ $course->enrolledUsers->count() ?? 0 }}</span>
+                                                        </td>
+                                                        <td class="text-center">
+                                                            <div class="form-check form-switch d-flex justify-content-center">
+                                                                <input class="form-check-input course-fake-toggle" 
+                                                                       type="checkbox" 
+                                                                       data-course-id="{{ $course->id }}"
+                                                                       {{ $course->fake_enrolled_enabled ? 'checked' : '' }}>
+                                                            </div>
+                                                        </td>
+                                                        <td>
+                                                            <div class="input-group input-group-sm">
+                                                                <button class="btn btn-outline-secondary" type="button" onclick="adjustCourseCount({{ $course->id }}, -10)">
+                                                                    <i class="fas fa-minus"></i>
+                                                                </button>
+                                                                <input type="number" 
+                                                                       class="form-control text-center course-fake-count" 
+                                                                       data-course-id="{{ $course->id }}"
+                                                                       min="0" 
+                                                                       max="9999" 
+                                                                       value="{{ $course->fake_enrolled_count ?? 0 }}">
+                                                                <button class="btn btn-outline-secondary" type="button" onclick="adjustCourseCount({{ $course->id }}, 10)">
+                                                                    <i class="fas fa-plus"></i>
+                                                                </button>
+                                                            </div>
+                                                        </td>
+                                                        <td class="text-center">
+                                                            <button class="btn btn-sm btn-success save-course-fake" data-course-id="{{ $course->id }}">
+                                                                <i class="fas fa-save"></i>
+                                                            </button>
+                                                        </td>
+                                                    </tr>
+                                                @endforeach
+                                            @else
+                                                <tr>
+                                                    <td colspan="5" class="text-center text-muted">No courses found</td>
+                                                </tr>
+                                            @endif
+                                        </tbody>
+                                    </table>
+                                </div>
+                                
+                                <div class="mt-3">
+                                    <button type="button" class="btn btn-primary" id="saveAllCourseFakeSettings">
+                                        <i class="fas fa-save me-2"></i>Save All Courses
+                                    </button>
+                                    <button type="button" class="btn btn-outline-secondary" onclick="applyBulkCourseCount()">
+                                        <i class="fas fa-magic me-2"></i>Apply Bulk Count
+                                    </button>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -1476,13 +1904,13 @@
                 }, duration);
             }
             
-            // Initialize Select2 for user search with AJAX and debugging
+            // Initialize Select2 for user search - FIXED: Show all users without typing
             $('.user-select').select2({
                 placeholder: 'Type to search for user...',
                 allowClear: true,
                 width: '100%',
-                minimumInputLength: 2,
-                debug: true, // Enable debugging
+                minimumInputLength: 0, // FIXED: Show all users immediately
+                debug: false,
                 ajax: {
                     url: '/manage-access/search-users',
                     type: 'GET',
@@ -1491,7 +1919,7 @@
                     data: function (params) {
                         console.log('🔍 Select2 AJAX Data:', params);
                         return {
-                            query: params.term
+                            query: params.term || '' // FIXED: Send empty string if no search term
                         };
                     },
                     processResults: function (data, params) {
@@ -1558,7 +1986,14 @@
                     if (!user.id) {
                         return user.text;
                     }
-                    return user.name + ' (' + user.email + ')';
+                    // FIXED: Handle both AJAX results and pre-loaded options
+                    const userName = user.name || user.text || 'Unknown';
+                    const userEmail = user.email || '';
+                    
+                    if (userEmail) {
+                        return userName + ' (' + userEmail + ')';
+                    }
+                    return userName;
                 }
             });
 
@@ -1814,20 +2249,19 @@
                         console.log('User data:', {userName, userEmail, userRole});
 
                         selectedAdminUserId = userId;
-                        selectedAdminIsAdmin = userRole === 1;
+                        selectedAdminIsAdmin = userRole === 1; // FIXED: Store boolean correctly
 
-                        // Safe string handling
-                        const safeUserRole = (userRole && typeof userRole === 'string') ? userRole : 'user';
-                        const displayRole = safeUserRole.toUpperCase();
+                        // FIXED: Proper role handling - userRole is integer (1=admin, 2=tutor, 3=student)
+                        const displayRole = userRole === 1 ? 'ADMIN' : (userRole === 2 ? 'TUTOR' : 'STUDENT');
 
                         // Update UI
                         $('#selectedAdminUserName').text(userName || 'Unknown');
                         $('#selectedAdminUserEmail').text(userEmail || 'No Email');
-                        $('#selectedAdminUserStatus').removeClass().addClass('badge').addClass(safeUserRole === 'admin' ? 'bg-danger' : 'bg-secondary').text(displayRole);
+                        $('#selectedAdminUserStatus').removeClass().addClass('badge').addClass(userRole === 1 ? 'bg-danger' : 'bg-secondary').text(displayRole);
                         $('#selectedUserInfo').show();
 
-                        // Update buttons
-                        if (selectedAdminIsAdmin === 1) {
+                        // FIXED: Update buttons - compare with boolean true/false
+                        if (selectedAdminIsAdmin === true) {
                             $('#promoteToAdminBtn').prop('disabled', true).html('<i class="fas fa-check me-2"></i>Already Admin');
                             $('#removeAdminBtn').prop('disabled', false).html('<i class="fas fa-user-times me-2"></i>Revoke Admin');
                             $('#adminActionHint').text('This user is currently an administrator');
@@ -1857,7 +2291,8 @@
             $('#promoteToAdminBtn').on('click', function(e) {
                 e.preventDefault();
                 
-                if (!selectedAdminUserId || selectedAdminIsAdmin) {
+                // FIXED: Proper boolean check
+                if (!selectedAdminUserId || selectedAdminIsAdmin === true) {
                     alert('Please select a non-admin user to promote');
                     return;
                 }
@@ -1899,7 +2334,8 @@
             $('#removeAdminBtn').on('click', function(e) {
                 e.preventDefault();
                 
-                if (!selectedAdminUserId || !selectedAdminIsAdmin) {
+                // FIXED: Proper boolean check
+                if (!selectedAdminUserId || selectedAdminIsAdmin !== true) {
                     alert('Please select an admin user to revoke privileges');
                     return;
                 }
@@ -2189,26 +2625,16 @@
                                 // Create price display
                                 const priceDisplay = `<div class="fw-bold">${payment.amount} EGP</div>`;
                                 
-                                const transactionInfo = payment.transaction_id ?
-                                    `<div><code class="small">${payment.reference_number || 'N/A'}</code></div>
-                                     <small class="text-muted">TX: ${payment.transaction_id}</small>` :
-                                    `<code class="small">${payment.reference_number || 'N/A'}</code>`;
+                                // FIXED: Show only transaction code (what user enters)
+                                const transactionCode = payment.reference_number || payment.transaction_id || 'N/A';
+                                const transactionDisplay = `<code class="small fw-bold" style="color: #2196f3; font-size: 0.85rem;">${transactionCode}</code>`;
 
-                                const providerTransaction = payment.transaction_id ?
-                                    `<div class="d-flex align-items-center">
-                                        <span class="badge bg-danger me-2" style="font-size: 0.75rem; font-weight: 600;">
-                                            <i class="fas fa-exchange-alt me-1"></i>PROVIDER
-                                        </span>
-                                        <code class="small text-danger fw-bold" style="font-size: 0.8rem;">
-                                            ${payment.transaction_id}
-                                        </code>
-                                     </div>` :
-                                    `<span class="text-muted small">
-                                        <i class="fas fa-clock me-1"></i>Pending
-                                     </span>`;
+                                // FIXED: Add yellow highlight for completed payments with data attribute
+                                const rowStyle = payment.status === 'completed' ? 'background-color: #fffbeb !important;' : '';
+                                const dataStatus = payment.status === 'completed' ? 'data-payment-status="completed"' : '';
 
                                 tbody.append(`
-                                    <tr data-payment-id="${payment.id}">
+                                    <tr data-payment-id="${payment.id}" ${dataStatus} style="${rowStyle}">
                                         <td>#${payment.id}</td>
                                         <td>
                                             <div class="fw-medium">${payment.user_name}</div>
@@ -2220,8 +2646,7 @@
                                         <td>${priceDisplay}</td>
                                         <td><span class="data-pill method">${payment.payment_method}</span></td>
                                         <td>${statusBadge}</td>
-                                        <td>${transactionInfo}</td>
-                                        <td>${providerTransaction}</td>
+                                        <td>${transactionDisplay}</td>
                                         <td>${date}</td>
                                         <td>${actions}</td>
                                     </tr>
@@ -2358,9 +2783,13 @@
                     // Show success notification
                     showNotification('Payment accepted successfully!', 'success');
                     
-                    // Update the UI
+                    // Update the UI with yellow highlight
                     const row = document.querySelector(`[data-payment-id="${paymentId}"]`);
                     if (row) {
+                        // FIXED: Add yellow highlight for completed payment with !important and data attribute
+                        row.style.setProperty('background-color', '#fffbeb', 'important');
+                        row.setAttribute('data-payment-status', 'completed');
+                        
                         const statusCell = row.querySelector('.payment-status');
                         if (statusCell) {
                             statusCell.textContent = 'Completed';
@@ -2436,8 +2865,8 @@
             });
         }
 
-        // Notification system
-        function showNotification(message, type = 'success') {
+        // Notification system - matches the signature used in calls: showNotification(type, title, message)
+        function showNotification(type, title, message, duration = 4000) {
             const container = document.getElementById('notificationContainer');
             const notification = document.createElement('div');
             
@@ -2456,19 +2885,22 @@
             notification.innerHTML = `
                 <div class="d-flex align-items-center">
                     <i class="fas ${icon} me-2"></i>
-                    <span>${message}</span>
+                    <div>
+                        <strong>${title}</strong>
+                        ${message ? '<div class="small">' + message + '</div>' : ''}
+                    </div>
                     <button type="button" class="btn-close btn-close-white ms-auto" data-bs-dismiss="alert"></button>
                 </div>
             `;
             
             container.appendChild(notification);
             
-            // Auto-remove after 4 seconds
+            // Auto-remove after duration
             setTimeout(() => {
                 if (notification.parentNode) {
                     notification.remove();
                 }
-            }, 4000);
+            }, duration);
         }
     </script>
 
@@ -2587,8 +3019,403 @@
                     </div>
                 </div>
             </div>
+            
+            <!-- Settings Tab -->
+            <div class="tab-pane fade" id="settings" role="tabpanel">
+                <div class="row g-4">
+                    <div class="col-lg-8">
+                        <div class="card">
+                            <div class="card-header">
+                                <div>
+                                    <i class="fas fa-users-cog me-2"></i>Live User Counter Settings
+                                </div>
+                                <span class="badge bg-info">
+                                    <i class="fas fa-chart-line"></i> Social Proof
+                                </span>
+                            </div>
+                            <div class="card-body">
+                                <div class="alert alert-info">
+                                    <i class="fas fa-info-circle me-2"></i>
+                                    <strong>Social Proof Feature:</strong> Enable fake live user counts to show believable activity on your site. 
+                                    The counter will fluctuate naturally between your min/max range, updating every 30 seconds.
+                                </div>
+                                
+                                <div class="mb-4">
+                                    <div class="d-flex justify-content-between align-items-center mb-3">
+                                        <div>
+                                            <label class="form-label mb-0">
+                                                <i class="fas fa-toggle-on me-1"></i><strong>Enable Fake Live Users</strong>
+                                            </label>
+                                            <div class="small text-muted">Show fake user counts instead of real session data</div>
+                                        </div>
+                                        <div class="form-check form-switch" style="font-size: 1.5rem;">
+                                            <input class="form-check-input" type="checkbox" id="fakeLiveUsersToggle" style="cursor: pointer;">
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div id="fakeUserSettings" style="display: none;">
+                                    <div class="row g-3">
+                                        <div class="col-md-6">
+                                            <label class="form-label">
+                                                <i class="fas fa-arrow-down me-1"></i>Minimum Count
+                                            </label>
+                                            <input type="number" class="form-control" id="fakeUsersMin" min="1" max="999" value="87">
+                                            <div class="form-text">
+                                                Lowest number of "active users" to display
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <label class="form-label">
+                                                <i class="fas fa-arrow-up me-1"></i>Maximum Count
+                                            </label>
+                                            <input type="number" class="form-control" id="fakeUsersMax" min="1" max="999" value="143">
+                                            <div class="form-text">
+                                                Highest number of "active users" to display
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="mt-3 p-3 bg-light rounded">
+                                        <div class="small text-muted mb-2">
+                                            <i class="fas fa-lightbulb me-1"></i><strong>How it works:</strong>
+                                        </div>
+                                        <ul class="small mb-0">
+                                            <li>Numbers change every 30 seconds for natural variation</li>
+                                            <li>Counts are rounded to nearest 10 with small offsets (e.g., 97, 108, 123)</li>
+                                            <li>Believable ranges: 50-100 for small sites, 80-150 for medium, 100-300 for large</li>
+                                            <li>Only visible to regular users - admins can see real counts in System Health</li>
+                                        </ul>
+                                    </div>
+                                    
+                                    <div class="mt-3">
+                                        <button type="button" class="btn btn-success" id="saveFakeUserSettings">
+                                            <i class="fas fa-save me-2"></i>Save Settings
+                                        </button>
+                                        <button type="button" class="btn btn-outline-secondary" id="testFakeUsers">
+                                            <i class="fas fa-eye me-2"></i>Preview Current Count
+                                        </button>
+                                    </div>
+                                    
+                                    <div id="previewCount" class="mt-3" style="display: none;">
+                                        <div class="alert alert-success">
+                                            <strong>Current Preview:</strong> <span id="previewNumber" class="fs-4"></span> users active now
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="col-lg-4">
+                        <div class="card">
+                            <div class="card-header">
+                                <i class="fas fa-chart-bar me-2"></i>Quick Stats
+                            </div>
+                            <div class="card-body">
+                                <div class="mb-3">
+                                    <div class="d-flex justify-content-between align-items-center mb-2">
+                                        <span class="text-muted">Current Mode:</span>
+                                        <span class="badge bg-secondary" id="currentMode">Loading...</span>
+                                    </div>
+                                    <div class="d-flex justify-content-between align-items-center mb-2">
+                                        <span class="text-muted">Real Active Users:</span>
+                                        <strong id="realUserCount">{{ isset($userStats) ? ($userStats['active_users'] ?? 0) : 0 }}</strong>
+                                    </div>
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <span class="text-muted">Displayed Count:</span>
+                                        <strong id="displayedCount">-</strong>
+                                    </div>
+                                </div>
+                                
+                                <hr>
+                                
+                                <div class="small text-muted">
+                                    <i class="fas fa-shield-alt me-1"></i>
+                                    <strong>Admin Note:</strong> These settings only affect the public-facing live user counter. 
+                                    Real analytics and admin dashboards always show accurate data.
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="card mt-3">
+                            <div class="card-header">
+                                <i class="fas fa-history me-2"></i>Recommended Ranges
+                            </div>
+                            <div class="card-body">
+                                <div class="mb-2">
+                                    <strong>Small Site:</strong>
+                                    <div class="small text-muted">Min: 47, Max: 89</div>
+                                </div>
+                                <div class="mb-2">
+                                    <strong>Medium Site:</strong>
+                                    <div class="small text-muted">Min: 87, Max: 143</div>
+                                </div>
+                                <div class="mb-2">
+                                    <strong>Large Site:</strong>
+                                    <div class="small text-muted">Min: 127, Max: 287</div>
+                                </div>
+                                <div class="mt-3">
+                                    <button class="btn btn-sm btn-outline-primary w-100" onclick="applyPreset(87, 143)">
+                                        Apply Medium Preset
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
+
+    <!-- Settings JavaScript -->
+    <script>
+        $(document).ready(function() {
+            // Load settings when settings tab is clicked
+            $('#settings-tab').on('click', function() {
+                loadSettings();
+            });
+            
+            // Toggle fake user settings visibility
+            $('#fakeLiveUsersToggle').on('change', function() {
+                const isEnabled = $(this).is(':checked');
+                $('#fakeUserSettings').slideToggle(300);
+                
+                if (!isEnabled) {
+                    // Save disabled state immediately
+                    saveSetting('fake_live_users_enabled', 'false', 'boolean');
+                }
+            });
+            
+            // Toggle fake students settings visibility
+            $('#fakeStudentsToggle').on('change', function() {
+                const isEnabled = $(this).is(':checked');
+                $('#fakeStudentsSettings').slideToggle(300);
+                
+                if (!isEnabled) {
+                    saveSetting('fake_students_enabled', 'false', 'boolean');
+                }
+            });
+            
+            // Save settings
+            $('#saveFakeUserSettings').on('click', function() {
+                const enabled = $('#fakeLiveUsersToggle').is(':checked');
+                const min = parseInt($('#fakeUsersMin').val());
+                const max = parseInt($('#fakeUsersMax').val());
+                
+                if (min >= max) {
+                    showNotification('error', 'Invalid Range', 'Minimum must be less than maximum');
+                    return;
+                }
+                
+                // Save all settings
+                Promise.all([
+                    saveSetting('fake_live_users_enabled', enabled ? 'true' : 'false', 'boolean'),
+                    saveSetting('fake_live_users_min', min.toString(), 'integer'),
+                    saveSetting('fake_live_users_max', max.toString(), 'integer')
+                ]).then(() => {
+                    showNotification('success', 'Saved!', 'Settings updated successfully');
+                    loadSettings();
+                }).catch(() => {
+                    showNotification('error', 'Error', 'Failed to save settings');
+                });
+            });
+            
+            // Test/Preview fake users
+            $('#testFakeUsers').on('click', function() {
+                $.ajax({
+                    url: '/api/active-users',
+                    method: 'GET',
+                    success: function(response) {
+                        $('#previewNumber').text(response.count);
+                        $('#previewCount').slideDown();
+                        
+                        setTimeout(() => {
+                            $('#previewCount').slideUp();
+                        }, 5000);
+                    }
+                });
+            });
+        });
+        
+        // Adjust range with +/- buttons
+        function adjustRange(type, delta) {
+            const input = $('#fakeUsers' + (type === 'min' ? 'Min' : 'Max'));
+            const currentValue = parseInt(input.val()) || 0;
+            const newValue = Math.max(1, Math.min(999, currentValue + delta));
+            input.val(newValue);
+        }
+        
+        // Adjust student count with +/- buttons
+        function adjustStudentCount(delta) {
+            const input = $('#fakeStudentsCount');
+            const currentValue = parseInt(input.val()) || 0;
+            const newValue = Math.max(0, Math.min(99999, currentValue + delta));
+            input.val(newValue);
+        }
+        
+        // Save fake students settings
+        $('#saveFakeStudentsSettings').on('click', function() {
+            const enabled = $('#fakeStudentsToggle').is(':checked');
+            const count = parseInt($('#fakeStudentsCount').val());
+            
+            Promise.all([
+                saveSetting('fake_students_enabled', enabled ? 'true' : 'false', 'boolean'),
+                saveSetting('fake_students_count', count.toString(), 'integer')
+            ]).then(() => {
+                showNotification('success', 'Saved!', 'Student count updated successfully');
+                loadSettings();
+            }).catch(() => {
+                showNotification('error', 'Error', 'Failed to save student count');
+            });
+        });
+        
+        function loadSettings() {
+            // Load fake users enabled
+            $.get('/admin/settings/fake_live_users_enabled', function(response) {
+                const enabled = response.value === true || response.value === 'true';
+                $('#fakeLiveUsersToggle').prop('checked', enabled);
+                if (enabled) {
+                    $('#fakeUserSettings').show();
+                }
+                $('#currentMode').text(enabled ? 'Fake Mode' : 'Real Mode')
+                    .removeClass('bg-secondary bg-success bg-warning')
+                    .addClass(enabled ? 'bg-warning' : 'bg-success');
+            });
+            
+            // Load min/max values
+            $.get('/admin/settings/fake_live_users_min', function(response) {
+                $('#fakeUsersMin').val(response.value || 87);
+            });
+            
+            $.get('/admin/settings/fake_live_users_max', function(response) {
+                $('#fakeUsersMax').val(response.value || 143);
+            });
+            
+            // Load current displayed count
+            $.get('/api/active-users', function(response) {
+                $('#displayedCount').text(response.count);
+            });
+            
+            // Load fake students enabled
+            $.get('/admin/settings/fake_students_enabled', function(response) {
+                const enabled = response.value === true || response.value === 'true';
+                $('#fakeStudentsToggle').prop('checked', enabled);
+                if (enabled) {
+                    $('#fakeStudentsSettings').show();
+                }
+            });
+            
+            // Load student count
+            $.get('/admin/settings/fake_students_count', function(response) {
+                $('#fakeStudentsCount').val(response.value || 2847);
+            });
+        }
+        
+        function saveSetting(key, value, type) {
+            return $.ajax({
+                url: '/admin/settings/update',
+                method: 'POST',
+                data: {
+                    key: key,
+                    value: value,
+                    type: type,
+                    _token: '{{ csrf_token() }}'
+                }
+            });
+        }
+        
+        function applyPreset(min, max) {
+            $('#fakeUsersMin').val(min);
+            $('#fakeUsersMax').val(max);
+            showNotification('success', 'Preset Applied', `Range set to ${min}-${max}. Click Save to apply.`);
+        }
+        
+        // Adjust course fake count
+        function adjustCourseCount(courseId, delta) {
+            const input = $(`.course-fake-count[data-course-id="${courseId}"]`);
+            const currentValue = parseInt(input.val()) || 0;
+            const newValue = Math.max(0, Math.min(9999, currentValue + delta));
+            input.val(newValue);
+        }
+        
+        // Save individual course fake settings
+        $('.save-course-fake').on('click', function() {
+            const courseId = $(this).data('course-id');
+            const enabled = $(`.course-fake-toggle[data-course-id="${courseId}"]`).is(':checked');
+            const count = parseInt($(`.course-fake-count[data-course-id="${courseId}"]`).val()) || 0;
+            
+            $.ajax({
+                url: '/admin/courses/' + courseId + '/fake-enrolled',
+                method: 'POST',
+                data: {
+                    fake_enrolled_enabled: enabled ? 1 : 0,
+                    fake_enrolled_count: count,
+                    _token: '{{ csrf_token() }}'
+                },
+                success: function(response) {
+                    if (response.success) {
+                        showNotification('success', 'Saved!', 'Course fake enrolled settings updated');
+                    } else {
+                        showNotification('error', 'Error', response.message || 'Failed to save');
+                    }
+                },
+                error: function(xhr) {
+                    const errorMsg = xhr.responseJSON?.message || 'Failed to save course settings';
+                    console.error('Save error:', xhr.responseJSON);
+                    showNotification('error', 'Error', errorMsg);
+                }
+            });
+        });
+        
+        // Save all courses fake settings
+        $('#saveAllCourseFakeSettings').on('click', function() {
+            const coursesData = [];
+            
+            $('.course-fake-toggle').each(function() {
+                const courseId = $(this).data('course-id');
+                const enabled = $(this).is(':checked');
+                const count = parseInt($(`.course-fake-count[data-course-id="${courseId}"]`).val()) || 0;
+                
+                coursesData.push({
+                    id: courseId,
+                    fake_enrolled_enabled: enabled ? 1 : 0,
+                    fake_enrolled_count: count
+                });
+            });
+            
+            $.ajax({
+                url: '/admin/courses/fake-enrolled/bulk',
+                method: 'POST',
+                data: {
+                    courses: coursesData,
+                    _token: '{{ csrf_token() }}'
+                },
+                success: function(response) {
+                    if (response.success) {
+                        showNotification('success', 'Saved!', 'All course settings updated successfully');
+                    } else {
+                        showNotification('error', 'Error', response.message || 'Failed to save');
+                    }
+                },
+                error: function(xhr) {
+                    const errorMsg = xhr.responseJSON?.message || 'Failed to save all course settings';
+                    console.error('Bulk save error:', xhr.responseJSON);
+                    showNotification('error', 'Error', errorMsg);
+                }
+            });
+        });
+        
+        // Apply bulk count to all courses
+        function applyBulkCourseCount() {
+            const count = prompt('Enter fake enrolled count to apply to all courses:', '250');
+            if (count !== null && !isNaN(count)) {
+                $('.course-fake-count').val(parseInt(count));
+                $('.course-fake-toggle').prop('checked', true);
+                showNotification('success', 'Applied!', `Set all courses to ${count} fake enrolled users. Click "Save All Courses" to apply.`);
+            }
+        }
+    </script>
 
     <!-- Video Management JavaScript -->
     <script>

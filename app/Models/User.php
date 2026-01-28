@@ -373,9 +373,9 @@ class User extends Authenticatable
     public function enrollInAllFreeCourses()
     {
         try {
-            // 🔥 PHASE 1: Get courses with MC_PRICE <= 0 (price = 0 OR NULL)
+            // 🔥 PHASE 1: Get courses with price <= 0 (price = 0 OR NULL)
             $potentiallyFreeCourses = \App\Models\Course::where(function($query) {
-                $query->where('price', 0)
+                $query->where('price', '<=', 0)
                       ->orWhereNull('price');
             })->get(['id', 'price', 'updated_at']);
 
@@ -387,8 +387,10 @@ class User extends Authenticatable
                     ->where('id', $course->id)
                     ->value('price');
 
-                // Must be exactly $0.00 (not just <= 0 for safety)
-                if ($currentPrice !== 0.00 && $currentPrice !== null && $currentPrice !== 0) {
+                // FIXED: Check if price is actually free (0.00, '0.00', 0, or null)
+                $isActuallyFree = ($currentPrice == 0.00 || $currentPrice == 0 || $currentPrice === null || $currentPrice === '0.00');
+
+                if (!$isActuallyFree) {
                     \Illuminate\Support\Facades\Log::warning('🚨 BLOCKED RE-ENROLLMENT: Course price changed from free to paid', [
                         'course_id' => $course->id,
                         'current_price' => $currentPrice,
@@ -401,7 +403,8 @@ class User extends Authenticatable
                 // Ensure no recent price changes (last 30 minutes)
                 $freshCourse = \App\Models\Course::where('id', $course->id)
                     ->where(function($query) {
-                        $query->where('price', 0)->orWhereNull('price');
+                        $query->where('price', '<=', 0)
+                              ->orWhereNull('price');
                     })
                     ->first();
 
@@ -951,7 +954,7 @@ class User extends Authenticatable
         try {
             // 🔥 PHASE 1: Get potentially free courses
             $potentiallyFreeCourses = \App\Models\Course::where(function($query) {
-                $query->where('price', 0)
+                $query->where('price', '<=', 0)
                       ->orWhereNull('price');
             })->get(['id', 'price']);
 

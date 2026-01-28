@@ -1263,21 +1263,41 @@
                                          onerror="this.style.display='none'">
                                 @endif
 
+                                @php
+                                    $rawOptions = [
+                                        'A' => $question->option_a,
+                                        'B' => $question->option_b,
+                                        'C' => $question->option_c,
+                                        'D' => $question->option_d,
+                                    ];
+                                    $cleanedOptions = [];
+                                    $realOptionCount = 0;
+                                    foreach ($rawOptions as $letter => $optText) {
+                                        $clean = is_null($optText) ? '' : trim($optText);
+                                        $cleanedOptions[$letter] = $clean;
+                                        if ($clean !== '' && $clean !== '-') {
+                                            $realOptionCount++;
+                                        }
+                                    }
+                                @endphp
+
                                 <div class="options">
-                                    @foreach(['A', 'B', 'C', 'D'] as $option)
-                                        @php
-                                            $optionField = 'option_' . strtolower($option);
-                                        @endphp
-                                        <div class="form-check">
-                                            <input type="radio"
-                                                   name="answers[{{ $question->id }}]"
-                                                   value="{{ $option }}"
-                                                   id="q{{ $question->id }}_{{ strtolower($option) }}"
-                                                   class="form-check-input">
-                                            <label for="q{{ $question->id }}_{{ strtolower($option) }}" class="form-check-label">
-                                                {{ $option }}. {{ $question->$optionField }}
-                                            </label>
-                                        </div>
+                                    @foreach($cleanedOptions as $option => $cleanText)
+                                        @if($cleanText !== '' && $cleanText !== '-')
+                                            @php
+                                                $optionField = 'option_' . strtolower($option);
+                                            @endphp
+                                            <div class="form-check">
+                                                <input type="radio"
+                                                       name="answers[{{ $question->id }}]"
+                                                       value="{{ $option }}"
+                                                       id="q{{ $question->id }}_{{ strtolower($option) }}"
+                                                       class="form-check-input">
+                                                <label for="q{{ $question->id }}_{{ strtolower($option) }}" class="form-check-label">
+                                                    {{ $option }}. {{ $cleanText }}
+                                                </label>
+                                            </div>
+                                        @endif
                                     @endforeach
                                 </div>
                             </div>

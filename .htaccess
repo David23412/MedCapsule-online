@@ -25,6 +25,11 @@
     
     # Block access to Laravel specific files
     RewriteRule ^(artisan|composer\.(json|lock)|package\.(json|lock)|\.env.*|phpunit\.xml|webpack\.mix\.js)$ - [F,L]
+
+    # Handle OPTIONS for CORS preflight on static assets
+    RewriteCond %{REQUEST_METHOD} OPTIONS
+    RewriteCond %{REQUEST_URI} \.(png|jpg|jpeg|gif|svg|webp|ico|css|js)$ [NC]
+    RewriteRule ^ - [R=200,L]
 </IfModule>
 
 # Block access to backup directories with Apache directives
@@ -47,6 +52,14 @@
     Header always set X-Frame-Options SAMEORIGIN
     Header always set X-XSS-Protection "1; mode=block"
     Header always set Strict-Transport-Security "max-age=31536000; includeSubDomains"
+    # CORS headers for static assets - Handle origin dynamically
+    SetEnvIf Origin "^https?://(.+\.)?(ngrok-free\.app|ngrok\.io|localhost|127\.0\.0\.1)(:[0-9]+)?$" origin_is=$0
+    Header always set Access-Control-Allow-Origin %{origin_is}e env=origin_is
+    Header always set Access-Control-Allow-Methods "GET, POST, OPTIONS, PUT, DELETE"
+    Header always set Access-Control-Allow-Headers "Content-Type, Authorization, X-Requested-With, Accept, X-CSRF-TOKEN"
+    Header always set Access-Control-Allow-Credentials "true"
+    Header always set Access-Control-Max-Age "86400"
+
     Header always set Referrer-Policy "strict-origin-when-cross-origin"
     Header always set Content-Security-Policy "default-src 'self' https: blob: data: https://*.ngrok.io https://*.ngrok-free.app http://localhost:8000 https://localhost:8000 ws://localhost:443 wss://localhost:443; script-src 'self' 'unsafe-inline' 'unsafe-eval' https: blob: https://*.ngrok.io https://*.ngrok-free.app https://2927d6cb2150.ngrok-free.app http://localhost:8000 https://localhost:8000 https://cdn.jsdelivr.net https://code.jquery.com https://cdnjs.cloudflare.com ws://localhost:443 wss://localhost:443; style-src 'self' 'unsafe-inline' https: data: blob: https://*.ngrok.io https://*.ngrok-free.app https://2927d6cb2150.ngrok-free.app http://localhost:8000 https://localhost:8000 https://cdn.jsdelivr.net https://fonts.googleapis.com https://cdnjs.cloudflare.com https://fonts.gstatic.com; img-src 'self' https: data: blob: https://*.ngrok.io https://*.ngrok-free.app https://2927d6cb2150.ngrok-free.app http://localhost:8000 https://localhost:8000; font-src 'self' https: blob: data: https://*.ngrok.io https://*.ngrok-free.app https://2927d6cb2150.ngrok-free.app http://localhost:8000 https://localhost:8000 https://fonts.googleapis.com https://cdnjs.cloudflare.com https://fonts.gstatic.com https://cdn.jsdelivr.net; connect-src 'self' https: wss: ws: https://*.ngrok.io https://*.ngrok-free.app https://2927d6cb2150.ngrok-free.app http://localhost:8000 https://localhost:8000 http://localhost:443 https://localhost:443 ws://localhost:443 wss://localhost:443 https://fonts.googleapis.com https://fonts.gstatic.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; worker-src 'self' https: blob: https://*.ngrok.io https://*.ngrok-free.app https://2927d6cb2150.ngrok-free.app http://localhost:8000 https://localhost:8000 http://localhost:443 https://localhost:443 ws://localhost:443 wss://localhost:443; frame-ancestors 'none'"
 </IfModule>

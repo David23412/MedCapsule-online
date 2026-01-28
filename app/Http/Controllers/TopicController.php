@@ -273,6 +273,94 @@ class TopicController extends Controller
     }
 
     /**
+     * ✅ Get available sources for multiple courses (for random quiz filtering)
+     */
+    public function getCoursesSources(Request $request)
+    {
+        try {
+            $user = auth()->user();
+            $courseIds = $request->input('course_ids', []);
+
+            if (empty($courseIds)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'No course IDs provided'
+                ], 400);
+            }
+
+            // Get courses the user actually has access to
+            $accessibleCourses = collect();
+            if ($user->isAdmin()) {
+                $accessibleCourses = \App\Models\Course::whereIn('id', $courseIds)->get();
+            } else {
+                $accessibleCourses = \App\Models\Course::whereIn('id', $courseIds)
+                    ->where(function($query) use ($user) {
+                        // User must be enrolled
+                        $query->whereHas('users', function($subQuery) use ($user) {
+                            $subQuery->where('user_id', $user->id)
+                                    ->where('is_enrolled', true);
+                        })
+                        // AND user has paid successfully OR course is free
+                        ->where(function($accessQuery) use ($user) {
+                            // Either course is free
+                            $accessQuery->where(function($freeQuery) {
+                                $freeQuery->where('price', 0)->orWhereNull('price');
+                            })
+                            // OR user has completed payment
+                            ->orWhereHas('payments', function($paymentQuery) use ($user) {
+                                $paymentQuery->where('user_id', $user->id)
+                                           ->where('status', 'completed');
+                            });
+                        });
+                    })->get();
+            }
+
+            if ($accessibleCourses->isEmpty()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'No accessible courses found'
+                ], 403);
+            }
+
+            // Get all sources from these courses
+            $sources = \App\Models\Question::whereHas('topic', function($query) use ($accessibleCourses) {
+                $query->whereIn('course_id', $accessibleCourses->pluck('id'));
+            })
+            ->whereNotNull('source')
+            ->where('source', '!=', '')
+            ->selectRaw('source, COUNT(*) as question_count')
+            ->groupBy('source')
+            ->orderBy('source')
+            ->get()
+            ->map(function($source) {
+                return [
+                    'name' => $source->source,
+                    'question_count' => $source->question_count
+                ];
+            });
+
+            return response()->json([
+                'success' => true,
+                'sources' => $sources,
+                'courses_count' => $accessibleCourses->count()
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Error in getCoursesSources:', [
+                'error' => $e->getMessage(),
+                'user_id' => $user->id ?? null,
+                'course_ids' => $request->input('course_ids', []),
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to fetch course sources'
+            ], 500);
+        }
+    }
+
+    /**
      * ✅ Get source-specific progress for a topic - FIXED: Shows separate progress for each mode + SQL INJECTION PREVENTION
      */
     public function getSourceProgress(Topic $topic)

@@ -11,6 +11,7 @@ class AutoEnrollFreeCourses
 {
     /**
      * Handle an incoming request.
+     * FIXED: Auto-enroll ALL users in FREE courses, admins get ALL courses
      *
      * @param  \Illuminate\Http\Request  $request
      * @param  \Closure(\Illuminate\Http\Request): (\Illuminate\Http\Response|\Illuminate\Http\RedirectResponse)  $next
@@ -29,7 +30,12 @@ class AutoEnrollFreeCourses
         $courseIds = $this->extractCourseIdsFromRequest($request);
 
         if (!empty($courseIds)) {
-            $this->ensureUserEnrolledInFreeCourses($user, $courseIds);
+            // FIXED: Admins get ALL courses, regular users get FREE courses only
+            if ($user->isAdmin()) {
+                $this->ensureAdminEnrolledInAllCourses($user, $courseIds);
+            } else {
+                $this->ensureUserEnrolledInFreeCourses($user, $courseIds);
+            }
         }
 
         return $next($request);
@@ -72,12 +78,13 @@ class AutoEnrollFreeCourses
     }
 
     /**
-     * Ensure user is enrolled in free courses they're trying to access
+     * Ensure user is enrolled in FREE courses they're trying to access
+     * FIXED: Only enroll in courses with price = 0 or NULL
      */
     private function ensureUserEnrolledInFreeCourses($user, array $courseIds): void
     {
         try {
-            // 🔥 CRITICAL SECURITY FIX: Get courses that are CURRENTLY free and paid courses are blocked
+            // Get ONLY FREE courses (price = 0 or NULL)
             $freeCourses = \App\Models\Course::whereIn('id', $courseIds)
                 ->where(function($query) {
                     $query->where('price', 0)
@@ -87,19 +94,8 @@ class AutoEnrollFreeCourses
                 ->toArray();
 
             if (empty($freeCourses)) {
-                return; // No free courses to check
+                return; // No free courses to enroll
             }
-
-            // 🔥 DOUBLE-CHECK PAYMENT REQUIRED: Block any auto-enrollment for courses that require payment
-            $paidCourses = \App\Models\Course::whereIn('id', $freeCourses)
-                ->where(function($query) {
-                    $query->where('price', '>', 0);
-                })
-                ->pluck('id')
-                ->toArray();
-
-            // Remove paid courses from enrollment list - THEY REQUIRE PAYMENT!
-            $freeCourses = array_diff($freeCourses, $paidCourses);
 
             // Check which free courses user is not enrolled in
             $enrolledCourses = \Illuminate\Support\Facades\DB::table('course_user')
@@ -113,7 +109,6 @@ class AutoEnrollFreeCourses
 
             if (!empty($missingCourses)) {
                 // Auto-enroll in missing free courses
-                $enrolledCount = 0;
                 foreach ($missingCourses as $courseId) {
                     \Illuminate\Support\Facades\DB::table('course_user')->updateOrInsert(
                         [
@@ -126,23 +121,76 @@ class AutoEnrollFreeCourses
                             'updated_at' => now()
                         ]
                     );
-                    $enrolledCount++;
                 }
 
-                if ($enrolledCount > 0) {
-                    Log::info('Auto-enrolled user in free courses via middleware', [
-                        'user_id' => $user->id,
-                        'user_name' => $user->name,
-                        'courses_auto_enrolled' => $missingCourses,
-                        'enrollment_count' => $enrolledCount,
-                        'request_url' => request()->fullUrl()
-                    ]);
-                }
+                Log::info('Auto-enrolled user in FREE courses', [
+                    'user_id' => $user->id,
+                    'user_role' => $user->role,
+                    'courses_enrolled' => $missingCourses,
+                    'count' => count($missingCourses)
+                ]);
             }
 
         } catch (\Exception $e) {
-            // Log error but don't block the request
-            Log::error('Failed to auto-enroll user in free courses via middleware', [
+            Log::error('Failed to auto-enroll user in free courses', [
+                'user_id' => $user->id,
+                'course_ids' => $courseIds,
+                'error' => $e->getMessage()
+            ]);
+        }
+    }
+
+    /**
+     * Ensure ADMIN is enrolled in ALL courses (free and paid)
+     * FIXED: Admins bypass payment for all courses
+     */
+    private function ensureAdminEnrolledInAllCourses($user, array $courseIds): void
+    {
+        try {
+            // Admins get access to ALL courses
+            $allCourses = \App\Models\Course::whereIn('id', $courseIds)
+                ->pluck('id')
+                ->toArray();
+
+            if (empty($allCourses)) {
+                return;
+            }
+
+            // Check which courses admin is not enrolled in
+            $enrolledCourses = \Illuminate\Support\Facades\DB::table('course_user')
+                ->where('user_id', $user->id)
+                ->whereIn('course_id', $allCourses)
+                ->where('is_enrolled', true)
+                ->pluck('course_id')
+                ->toArray();
+
+            $missingCourses = array_diff($allCourses, $enrolledCourses);
+
+            if (!empty($missingCourses)) {
+                // Auto-enroll admin in ALL courses
+                foreach ($missingCourses as $courseId) {
+                    \Illuminate\Support\Facades\DB::table('course_user')->updateOrInsert(
+                        [
+                            'user_id' => $user->id,
+                            'course_id' => $courseId
+                        ],
+                        [
+                            'is_enrolled' => true,
+                            'enrolled_at' => now(),
+                            'updated_at' => now()
+                        ]
+                    );
+                }
+
+                Log::info('Auto-enrolled ADMIN in ALL courses', [
+                    'user_id' => $user->id,
+                    'courses_enrolled' => $missingCourses,
+                    'count' => count($missingCourses)
+                ]);
+            }
+
+        } catch (\Exception $e) {
+            Log::error('Failed to auto-enroll admin in courses', [
                 'user_id' => $user->id,
                 'course_ids' => $courseIds,
                 'error' => $e->getMessage()

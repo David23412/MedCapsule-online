@@ -93,6 +93,77 @@
             display: block;
         }
 
+        /* Search bar styles */
+        .search-container {
+            padding: 0.5rem 1rem 0 1rem;
+        }
+
+        .search-wrapper {
+            position: relative;
+            max-width: 910px;
+            margin: 0 auto;
+        }
+
+        .search-input {
+            width: 100%;
+            padding: 0.75rem 3rem 0.75rem 2.5rem;
+            border: 2px solid #e9ecef;
+            border-radius: 25px;
+            font-size: 0.95rem;
+            transition: all 0.2s ease;
+            background-color: #fff;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .search-input:focus {
+            outline: none;
+            border-color: #007bff;
+            box-shadow: 0 0 0 3px rgba(0,123,255,0.1);
+        }
+
+        .search-icon {
+            position: absolute;
+            left: 1rem;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #6c757d;
+            font-size: 0.9rem;
+            z-index: 1;
+        }
+
+        .clear-search-btn {
+            position: absolute;
+            right: 0.75rem;
+            top: 50%;
+            transform: translateY(-50%);
+            background: none;
+            border: none;
+            color: #6c757d;
+            cursor: pointer;
+            padding: 0.25rem;
+            border-radius: 50%;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 24px;
+            height: 24px;
+        }
+
+        .clear-search-btn:hover {
+            background-color: #f8f9fa;
+            color: #495057;
+        }
+
+        /* Search highlighting */
+        .search-highlight {
+            background-color: #fff3cd; /* Light yellow */
+            padding: 0 1px; /* Minimal padding */
+            border-radius: 1px; /* Smoother integration */
+            font-weight: inherit; /* Natural font weight */
+            box-shadow: none; /* Remove any box-shadow if present */
+        }
+
         /* Source selection modal styles from old.topics */
         #sourceSelectionModal .source-card {
             padding: 0.75rem 1rem;
@@ -288,6 +359,18 @@
                             </select>
                         </div>
                         
+                        <div class="mb-4">
+                            <div class="setting-header">
+                                <i class="fas fa-book text-warning"></i>
+                                <label for="sourceSelect" class="form-label mb-2">Select Sources</label>
+                            </div>
+                            <select class="form-select custom-select" id="sourceSelect" name="selected_sources[]" required>
+                                <option value="">Select sources</option>
+                                <!-- Sources will be loaded dynamically -->
+                                <option disabled>Loading sources...</option>
+                            </select>
+                        </div>
+
                         <div class="mb-4">
                             <div class="setting-header">
                                 <i class="fas fa-clock text-warning"></i>
@@ -542,6 +625,17 @@
         @endif
     </div>
 
+    <!-- Search Bar -->
+    <div class="search-container">
+        <div class="search-wrapper">
+            <i class="fas fa-search search-icon"></i>
+            <input type="text" id="topicSearch" placeholder="Search topics..." class="search-input">
+            <button type="button" id="clearSearch" class="clear-search-btn" style="display: none;">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+    </div>
+
     <!-- Topics List -->
     <div class="topics-container">
         {{-- 🚀 LETHAL ASSIGNMENT OPTIMIZATION: Pre-calculated data --}}
@@ -775,6 +869,108 @@
     </div>
 
 
+    <script src="/js/topics-optimized.js?v=2.1"></script>
+
+    {{-- REMOVED: quiz-modal.js to prevent conflicts - unified in main script --}}
+
+    {{-- 🚀 OPTIMIZED: Efficient Topic Search & Filtering --}}
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            // --- Element Caching --- //
+            const searchInput = document.getElementById('topicSearch');
+            const clearSearchBtn = document.getElementById('clearSearch');
+            const topicsContainer = document.querySelector('.topics-container');
+            const topicCards = topicsContainer.querySelectorAll('.topic-card');
+            const caseFiltersContainer = document.querySelector('.case-filters');
+
+            if (!searchInput || !topicsContainer || !caseFiltersContainer) {
+                console.error('Search components not found. Aborting search script.');
+                return;
+            }
+
+            // --- State Management --- //
+            let searchTerm = '';
+
+            // --- Utility Functions --- //
+            const debounce = (func, delay) => {
+                let timeoutId;
+                return (...args) => {
+                    clearTimeout(timeoutId);
+                    timeoutId = setTimeout(() => func.apply(this, args), delay);
+                };
+            };
+
+            // --- Core Logic --- //
+            const performSearch = () => {
+                const normalizedSearchTerm = searchTerm.toLowerCase().trim();
+                const activeFilter = caseFiltersContainer.querySelector('.case-filter.active');
+                const activeCategory = activeFilter ? activeFilter.dataset.filter : 'all';
+
+                let visibleTopics = 0;
+
+                topicCards.forEach(card => {
+                    const topicNameElement = card.querySelector('.topic-name');
+                    const originalText = topicNameElement?.textContent || '';
+                    const topicName = originalText.toLowerCase();
+                    const cardCategory = card.dataset.caseType;
+
+                    const categoryMatch = activeCategory === 'all' || cardCategory === activeCategory;
+                    const searchMatch = normalizedSearchTerm === '' || topicName.includes(normalizedSearchTerm);
+
+                    if (categoryMatch && searchMatch) {
+                        card.style.display = '';
+
+                        // Highlight matching text if there's a search term
+                        if (normalizedSearchTerm && topicNameElement) {
+                            const regex = new RegExp(`(${normalizedSearchTerm.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
+                            const highlightedText = originalText.replace(regex, '<mark class="search-highlight">$1</mark>');
+                            topicNameElement.innerHTML = highlightedText;
+                        } else if (topicNameElement) {
+                            // Remove highlighting if no search term
+                            topicNameElement.innerHTML = originalText;
+                        }
+
+                        visibleTopics++;
+                    } else {
+                        card.style.display = 'none';
+                        // Also remove highlighting when card is hidden
+                        if (topicNameElement) {
+                            topicNameElement.innerHTML = originalText;
+                        }
+                    }
+                });
+
+                // Optional: Handle no results found state
+                // You can add a message inside topicsContainer if visibleTopics === 0
+            };
+
+            const debouncedSearch = debounce(performSearch, 250);
+
+            // --- Event Listeners --- //
+            searchInput.addEventListener('input', () => {
+                searchTerm = searchInput.value;
+                clearSearchBtn.style.display = searchTerm ? 'flex' : 'none';
+                debouncedSearch();
+            });
+
+            clearSearchBtn.addEventListener('click', () => {
+                searchInput.value = '';
+                searchTerm = '';
+                clearSearchBtn.style.display = 'none';
+                performSearch(); // Perform search immediately on clear
+                searchInput.focus();
+            });
+
+            caseFiltersContainer.addEventListener('click', (e) => {
+                const target = e.target.closest('.case-filter');
+                if (target) {
+                    // When a filter is clicked, re-apply the current search term
+                    setTimeout(performSearch, 0); // Use setTimeout to allow the UI to update first
+                }
+            });
+        });
+    </script>
+
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js" crossorigin="anonymous"></script>
     <script src="https://cdn.jsdelivr.net/npm/alpinejs@2.8.2/dist/alpine.min.js" defer crossorigin="anonymous"></script>
     
@@ -801,36 +997,88 @@
             const timeLimit = document.getElementById('timeLimit');
             const courseCheckboxes = document.querySelectorAll('#randomQuizModal input[name="selected_courses[]"]');
             const modals = document.querySelectorAll('.modal');
+
+            // Search functionality elements
+            const topicSearch = document.getElementById('topicSearch');
+            const clearSearch = document.getElementById('clearSearch');
+
+            // Search functionality
+            function applyFiltersAndSearch() {
+                const searchTerm = topicSearch.value.toLowerCase().trim();
+                const activeFilter = document.querySelector('.case-filter.active')?.dataset.filter || 'all';
+                const isAssignmentsFilterActive = topicsContainer?.classList.contains('assignments-filter-active');
+
+                topicCards.forEach(card => {
+                    const caseType = card.dataset.caseType;
+                    const hasAssignment = card.dataset.hasAssignment === 'true';
+                    const topicName = card.querySelector('.topic-name')?.textContent.toLowerCase() || '';
+
+                    // First check filter criteria
+                    let passesFilter = false;
+                    if (isAssignmentsFilterActive) {
+                        passesFilter = hasAssignment;
+                    } else if (activeFilter === 'all') {
+                        passesFilter = !hasAssignment;
+                    } else {
+                        passesFilter = !hasAssignment && caseType && caseType.toLowerCase() === activeFilter.toLowerCase();
+                    }
+
+                    // Then check search criteria (only if passes filter)
+                    let passesSearch = true;
+                    if (passesFilter && searchTerm) {
+                        passesSearch = topicName.includes(searchTerm);
+                    }
+
+                    // Show/hide based on both filter and search
+                    if (passesFilter && passesSearch) {
+                        card.style.display = 'block';
+                        card.style.opacity = '1';
+                        card.style.transform = 'translateY(0)';
+                    } else {
+                        card.style.display = 'none';
+                    }
+                });
+            }
+
+            // Search input handler
+            if (topicSearch) {
+                topicSearch.addEventListener('input', function() {
+                    // Show/hide clear button
+                    clearSearch.style.display = this.value.trim() ? 'flex' : 'none';
+                    // Apply filters and search
+                    applyFiltersAndSearch();
+                });
+            }
+
+            // Clear search button handler
+            if (clearSearch) {
+                clearSearch.addEventListener('click', function() {
+                    topicSearch.value = '';
+                    this.style.display = 'none';
+                    applyFiltersAndSearch();
+                    topicSearch.focus();
+                });
+            }
             
             // 🚨 CRITICAL FIX: Assignment icon click handler with null safety
             if (assignmentIconCircle && assignmentCircle) {
                 assignmentIconCircle.addEventListener('click', function() {
                     // Remove active class from all filters
                     caseFilters.forEach(f => f.classList.remove('active'));
-                    
+
                     // Add active class to assignment circle
                     const circleElement = this.querySelector('.assignment-circle');
                     if (circleElement) {
                         circleElement.classList.add('active');
                     }
-                    
+
                     // Get the topics container
                     if (topicsContainer) {
                         topicsContainer.classList.add('assignments-filter-active');
                     }
-                    
-                    // Filter topic cards to show only assignments
-                    topicCards.forEach(card => {
-                        const hasAssignment = card.dataset.hasAssignment === 'true';
-                        
-                        if (hasAssignment) {
-                            card.style.display = 'block';
-                            card.style.opacity = '1';
-                            card.style.transform = 'translateY(0)';
-                        } else {
-                            card.style.display = 'none';
-                        }
-                    });
+
+                    // Apply filters and search
+                    applyFiltersAndSearch();
                 });
             }
 
@@ -839,51 +1087,27 @@
                 filter.addEventListener('click', function() {
                     // Remove active class from all filters
                     caseFilters.forEach(f => f.classList.remove('active'));
-                    
+
                     // Remove active class from assignment icon
                     if (assignmentCircle) {
                         assignmentCircle.classList.remove('active');
                     }
-                    
+
                     // Add active class to clicked filter
                     this.classList.add('active');
-                    
+
                     // Get the filter type
                     const filterType = this.dataset.filter || this.textContent.trim().toLowerCase();
-                    
+
                     // Add/remove assignments filter class
                     if (filterType === 'assignments') {
                         topicsContainer.classList.add('assignments-filter-active');
                     } else {
                         topicsContainer.classList.remove('assignments-filter-active');
                     }
-                    
-                    // Filter topic cards
-                    topicCards.forEach(card => {
-                        const caseType = card.dataset.caseType;
-                        const hasAssignment = card.dataset.hasAssignment === 'true';
-                        
-                        let shouldShow = false;
-                        
-                        if (filterType === 'assignments') {
-                            // Only show assignment cards
-                            shouldShow = hasAssignment;
-                        } else if (filterType === 'all') {
-                            // Show only regular topics, NOT assignment cards
-                            shouldShow = !hasAssignment;
-                        } else {
-                            // Dynamic filtering based on case type (exclude assignment cards)
-                            shouldShow = !hasAssignment && caseType && caseType.toLowerCase() === filterType.toLowerCase();
-                        }
-                        
-                        if (shouldShow) {
-                            card.style.display = 'block';
-                            card.style.opacity = '1';
-                            card.style.transform = 'translateY(0)';
-                        } else {
-                            card.style.display = 'none';
-                        }
-                    });
+
+                    // Apply filters and search
+                    applyFiltersAndSearch();
                 });
             });
 
@@ -1066,6 +1290,7 @@
             function getModal() {
                 if (!sourceSelectionModal && sourceModal) {
                     sourceSelectionModal = new bootstrap.Modal(sourceModal);
+                    console.log('🚨 Modal initialized successfully:', sourceSelectionModal);
                 }
                 return sourceSelectionModal;
             }
@@ -1249,17 +1474,33 @@
             
 
 
-            // ROBUST: Handle quiz button clicks with multiple prevention methods
-
+            // =====================================================================
+            // � UNIFIED QUIZ BUTTON HANDLER - THE ONLY HANDLER FOR QUIZ BUTTONS
+            // =====================================================================
+            // 
+            // PURPOSE: Prevent conflicts by having ONE single handler for all quiz buttons
+            // 
+            // WHY THIS EXISTS: Previously had 3 competing handlers:
+            // 1. topics-optimized.js (direct redirect - caused the bug)
+            // 2. quiz-modal.js (proper modal handling)  
+            // 3. Inline script in this file (also proper modal handling)
+            // 
+            // SOLUTION: Removed all conflicts and created this single, clean handler
+            // 
+            // LOGIC FLOW:
+            // - Assignment cards (data-has-assignment="true") -> Direct redirect
+            // - Regular topics -> Show source selection modal with Quiz/Tutor modes
+            // 
+            // ⚠️ IMPORTANT: If you need to modify quiz button behavior, 
+            // modify ONLY THIS SECTION. Do not add handlers elsewhere!
+            // =====================================================================
             
-            // 🚀 ULTRA-FAST: Optimized quiz button handler - single click, instant response
             document.addEventListener('click', function(e) {
-                // Use closest() to handle clicks on child elements (icons, spans)
                 const button = e.target.closest('.start-quiz-btn');
                 if (!button) return;
                 
                 e.preventDefault();
-                e.stopImmediatePropagation();
+                e.stopPropagation();
                 
                 // Prevent double-clicks
                 if (button.dataset.processing === 'true') return;
@@ -1269,26 +1510,49 @@
                 const courseId = button.dataset.courseId;
                 const originalHref = button.dataset.quizUrl;
                 
-                // Instant visual feedback
+                // Show loading state
                 const originalContent = button.innerHTML;
                 button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Loading...';
                 button.style.pointerEvents = 'none';
                 
-                // Check if assignments filter is active - direct redirect
-                const isAssignmentsFilterActive = topicsContainer?.classList.contains('assignments-filter-active');
+                // SIMPLIFIED LOGIC:
+                // 1. Assignment cards -> Direct redirect (no modal needed)
+                // 2. Regular topics -> Show modal for source/mode selection
                 
-                if (isAssignmentsFilterActive) {
+                const isAssignmentCard = button.closest('[data-has-assignment="true"]');
+                
+                if (isAssignmentCard) {
+                    // Assignment: Direct navigation
                     window.location.href = originalHref;
                     return;
                 }
                 
-                // For regular topics, check if modal is needed
+                // Regular topic: Show source selection modal
                 if (!topicId || !courseId) {
+                    // Fallback if data missing
                     window.location.href = originalHref;
                     return;
                 }
                 
-                // ALWAYS show modal for source/mode selection
+                // Show modal for regular topics
+                const modal = getModal();
+                if (!modal) {
+                    // Fallback if modal fails
+                    window.location.href = originalHref;
+                    return;
+                }
+                
+                // Reset button state
+                button.innerHTML = originalContent;
+                button.style.pointerEvents = '';
+                button.dataset.processing = 'false';
+                
+                // Configure and show modal
+                sourceTopicId.value = topicId;
+                sourceCourseId.value = courseId;
+                sourceSelectionForm.action = originalHref;
+                
+                // Load sources and show modal
                 fetch(`/topics/${topicId}/source-progress?mode=quiz`, {
                     method: 'GET',
                     headers: {
@@ -1298,36 +1562,14 @@
                 })
                 .then(response => response.json())
                 .then(data => {
-                    const availableSources = data.availableSources || [];
-
-                    // ALWAYS show the modal to let user choose between Quiz Mode and Tutor Mode
-                    const modal = getModal();
-                    if (!modal) {
-                        window.location.href = originalHref;
-                        return;
-                    }
-
-                    // Reset button
-                    button.innerHTML = originalContent;
-                    button.style.pointerEvents = '';
-                    button.dataset.processing = 'false';
-
-                    // Set form values
-                    sourceTopicId.value = topicId;
-                    sourceCourseId.value = courseId;
-                    sourceSelectionForm.action = originalHref;
-
-                    // Update sources immediately
                     if (typeof updateSourcesContainer === 'function') {
                         updateSourcesContainer(data);
                     }
-
-                    // Show modal - ALWAYS, so user can choose mode
-                    sourceSelectionModal.show();
+                    modal.show();
                 })
-                .catch(error => {
-                    // On error, fallback to direct redirect
-                    window.location.href = originalHref;
+                .catch(() => {
+                    // On error, still show modal with fallback
+                    modal.show();
                 });
             });
 
@@ -1355,6 +1597,98 @@
                 window.location.href = `${baseUrl}?${sourceParams}`;
             });
 
+            // Random Quiz Modal Event Handlers
+            if (randomQuizModal) {
+                // Load sources when modal is shown
+                randomQuizModal.addEventListener('show.bs.modal', function() {
+                    loadRandomQuizSources();
+                });
+
+                // Handle course selection changes
+                courseCheckboxes.forEach(checkbox => {
+                    checkbox.addEventListener('change', function() {
+                        loadRandomQuizSources();
+                    });
+                });
+            }
+
+            // Function to load sources for selected courses
+            async function loadRandomQuizSources() {
+                const selectedCourses = Array.from(courseCheckboxes)
+                    .filter(cb => cb.checked)
+                    .map(cb => cb.value);
+
+                const sourceSelect = document.getElementById('sourceSelect');
+
+                if (selectedCourses.length === 0) {
+                    // Clear options and show placeholder
+                    sourceSelect.innerHTML = '<option value="">Select courses first</option>';
+                    return;
+                }
+
+                // Clear current options and show loading
+                sourceSelect.innerHTML = '<option disabled selected>Loading sources...</option>';
+
+                try {
+                    const queryParams = new URLSearchParams();
+                    selectedCourses.forEach(courseId => {
+                        queryParams.append('course_ids[]', courseId);
+                    });
+
+                    const response = await fetch('/api/courses-sources?' + queryParams.toString(), {
+                        method: 'GET',
+                        headers: {
+                            'X-CSRF-TOKEN': csrfToken.content,
+                            'Accept': 'application/json'
+                        }
+                    });
+
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+
+                    const data = await response.json();
+
+                    if (data.success && data.sources && data.sources.length > 0) {
+                        renderRandomQuizSources(data.sources);
+                    } else {
+                        sourceSelect.innerHTML = '<option value="">No sources available</option>';
+                    }
+                } catch (error) {
+                    console.error('Error loading sources:', error);
+                    sourceSelect.innerHTML = '<option value="">Error loading sources</option>';
+                }
+            }
+
+            // Function to render sources in the random quiz modal
+            function renderRandomQuizSources(sources) {
+                const sourceSelect = document.getElementById('sourceSelect');
+                sourceSelect.innerHTML = '';
+
+                if (sources.length === 0) {
+                    const option = document.createElement('option');
+                    option.disabled = true;
+                    option.textContent = 'No sources available';
+                    sourceSelect.appendChild(option);
+                    return;
+                }
+
+                // Add "All Sources" option first
+                const allOption = document.createElement('option');
+                allOption.value = 'all';
+                allOption.textContent = 'All Sources';
+                allOption.selected = true; // Default to all sources
+                sourceSelect.appendChild(allOption);
+
+                // Add individual sources
+                sources.forEach(source => {
+                    const option = document.createElement('option');
+                    option.value = source.name;
+                    option.textContent = `${source.name} (${source.question_count} questions)`;
+                    sourceSelect.appendChild(option);
+                });
+            }
+
             // Random Quiz Modal Validation and Mode Handling
             if (randomQuizForm) {
                 randomQuizForm.addEventListener('submit', function(e) {
@@ -1365,6 +1699,15 @@
 
                     if (selectedCourses.length === 0) {
                         alert('Please select at least one course for the random quiz.');
+                        return false;
+                    }
+
+                    // Check if a source is selected
+                    const sourceSelect = document.getElementById('sourceSelect');
+                    const selectedSource = sourceSelect.value;
+
+                    if (!selectedSource || selectedSource === '') {
+                        alert('Please select a source for the random quiz.');
                         return false;
                     }
 
@@ -1397,6 +1740,8 @@
                     for (let [key, value] of formData.entries()) {
                         if (key === 'selected_courses[]') {
                             params.append('selected_courses[]', value);
+                        } else if (key === 'selected_sources[]') {
+                            params.append('selected_sources[]', value);
                         } else {
                             params.append(key, value);
                         }

@@ -9,6 +9,7 @@ use App\Models\User;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Redis;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Database\Eloquent\Collection;
 
 /**
@@ -200,10 +201,15 @@ class UltraFastQuizService
      */
     private function buildCacheKey(string $type, int $topicId, array $sources): string
     {
+        // Versioned cache: bumping this version immediately “invalidates” cached quiz questions for a topic
+        $versionKey = "quiz_questions_version:topic_{$topicId}";
+        $topicVersion = (int) (Cache::get($versionKey, 1));
+
         return sprintf(
-            'ultra_fast:%s:topic_%d:sources_%s',
+            'ultra_fast:%s:topic_%d:v_%d:sources_%s',
             $type,
             $topicId,
+            $topicVersion,
             md5(serialize($sources))
         );
     }

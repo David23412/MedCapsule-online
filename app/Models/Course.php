@@ -33,7 +33,8 @@ class Course extends Model
     ];
 
     protected $casts = [
-        'type' => 'string'
+        'type' => 'string',
+        'price' => 'decimal:2'
     ];
 
     const CACHE_TTL = 30; // 30 seconds for INSTANT updates
@@ -585,15 +586,15 @@ class Course extends Model
         if (!$this->image) {
             return null;
         }
-        
+
         // If it's already a full URL, return as is
         if (filter_var($this->image, FILTER_VALIDATE_URL)) {
             return $this->image;
         }
-        
+
         // If it's a local file path, construct the proper URL
-        $filename = basename($this->image);
-        return url('/uploads/course-images/' . $filename);
+        // Files are stored via secure_uploads disk, symlink: public/uploads -> storage/app/uploads
+        return url('/uploads/' . $this->image);
     }
 
     // Alias for backward compatibility - view expects image_url

@@ -70,7 +70,9 @@ class UserCourseController extends Controller
 
     public function searchUsers(SearchUsersRequest $request)
     {
-        $result = $this->userService->searchUsers($request->validated('query'));
+        // FIXED: Handle null query by converting to empty string
+        $query = $request->validated('query') ?? '';
+        $result = $this->userService->searchUsers($query);
 
         return response()->json($result, $result['success'] ? 200 : 400);
     }
@@ -134,6 +136,7 @@ class UserCourseController extends Controller
 
     /**
      * Get user enrollments for course dropdown
+     * FIXED: Use UserService method instead of UserCourseService
      */
     public function getUserEnrollments(\Illuminate\Http\Request $request)
     {
@@ -143,7 +146,8 @@ class UserCourseController extends Controller
             return response()->json(['success' => false, 'message' => 'User ID is required.'], 400);
         }
 
-        $result = $this->userCourseService->getCourseEnrollmentStatusForUser((int)$userId);
+        // FIXED: Use UserService which has the proper method
+        $result = $this->userService->getCourseEnrollmentStatusForUser((int)$userId);
 
         return response()->json($result, $result['success'] ? 200 : 500);
     }

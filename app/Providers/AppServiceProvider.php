@@ -8,6 +8,8 @@ use App\Services\PaymentService;
 use App\Services\PaymentSecurityService;
 use App\Services\AdvancedCacheService;
 use App\Services\PerformanceMonitorService;
+use App\Models\Question;
+use App\Observers\QuestionObserver;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -55,6 +57,9 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         Schema::defaultStringLength(191);
+
+        // Register model observers (cache invalidation, etc.)
+        Question::observe(QuestionObserver::class);
 
         // FIXED: Initialize performance monitoring on boot
         $this->initializePerformanceMonitoring();

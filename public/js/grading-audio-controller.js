@@ -6,11 +6,13 @@ class GradingAudioController {
     static SOUNDS = {
         PERFECT: '/sounds/quiz-perfect.mp3',
         PARTIAL: '/sounds/quiz-partial.mp3',
+        CORRECT: '/sounds/Single-correct.mp3',
         WRONG: '/sounds/quiz-wrong.mp3'
     };
 
-    static audioCache = new Map();
+    static audioPool = new Map();
     static isInitialized = false;
+    static POOL_SIZE = 10; // Number of audio instances per sound (increased for rapid answering)
 
     /**
      * Initialize the audio controller
@@ -18,16 +20,19 @@ class GradingAudioController {
     static init() {
         if (this.isInitialized) return;
         
-        // Preload all audio files
+        // Preload all audio files into a pool
         Object.values(this.SOUNDS).forEach(soundPath => {
-            const audio = new Audio(soundPath);
-            audio.preload = 'auto';
-            audio.volume = 0.6; // Set default volume to 60%
-            this.audioCache.set(soundPath, audio);
+            const pool = [];
+            for (let i = 0; i < this.POOL_SIZE; i++) {
+                const audio = new Audio(soundPath);
+                audio.preload = 'auto';
+                audio.volume = 0.6; // Set default volume to 60%
+                pool.push(audio);
+            }
+            this.audioPool.set(soundPath, pool);
         });
 
         this.isInitialized = true;
-// console.log('GradingAudioController initialized'); // Removed for production
     }
 
     /**
@@ -41,8 +46,8 @@ class GradingAudioController {
         }
 
         const sound = this.determineSound(scorePercentage);
-        this.playAudio(sound);
-        
+        this.playAudio(sound); // Fire-and-forget for final grading sounds too
+
         // Log for debugging
 // console.log(`Playing grading sound: ${sound} for score: ${scorePercentage}%`); // Removed for production
     }
@@ -63,45 +68,33 @@ class GradingAudioController {
     }
 
     /**
-     * Play audio with error handling
+     * Play audio with error handling (fire-and-forget for all sounds)
      * @param {string} soundPath - Path to sound file
      */
-    static async playAudio(soundPath) {
+    static playAudio(soundPath) {
         try {
-            const audio = this.audioCache.get(soundPath);
-            if (!audio) {
-// console.warn(`Audio not found in cache: ${soundPath}`); // Removed for production
+            const pool = this.audioPool.get(soundPath);
+            if (!pool) {
                 return;
             }
 
-            // Stop any currently playing audio first
-            this.audioCache.forEach(cachedAudio => {
-                if (!cachedAudio.paused) {
-                    cachedAudio.pause();
-                    cachedAudio.currentTime = 0;
-                }
-            });
+            // Find an available audio object in the pool
+            let audio = pool.find(a => a.paused || a.ended);
 
-            // Reset audio to beginning
-            audio.currentTime = 0;
-            
-            // Ensure audio is ready to play
-            if (audio.readyState >= 2) {
-                // Play with promise handling for better browser compatibility
-                const playPromise = audio.play();
-                
-                if (playPromise !== undefined) {
-                    await playPromise;
-                }
+            if (audio) {
+                audio.currentTime = 0;
+                // Fire-and-forget: don't wait for completion
+                audio.play().catch(e => {});
             } else {
-                // Wait for audio to load then play
-                audio.addEventListener('canplay', () => {
-// audio.play().catch(e => console.warn('Delayed audio play failed:', e)); // Removed for production
-                }, { once: true });
+                // If all are busy, just play the first one, cutting it off.
+                // This is a fallback and shouldn't happen with a large enough pool.
+                audio = pool[0];
+                audio.currentTime = 0;
+                // Fire-and-forget: don't wait for completion
+                audio.play().catch(e => {});
             }
         } catch (error) {
-// console.warn('Audio playback failed:', error); // Removed for production
-            // Fallback: try creating new audio instance
+            // Fallback for safety
             this.playAudioFallback(soundPath);
         }
     }
@@ -128,8 +121,10 @@ class GradingAudioController {
      */
     static setVolume(volume) {
         const clampedVolume = Math.max(0, Math.min(1, volume));
-        this.audioCache.forEach(audio => {
-            audio.volume = clampedVolume;
+        this.audioPool.forEach(pool => {
+            pool.forEach(audio => {
+                audio.volume = clampedVolume;
+            });
         });
     }
 
@@ -138,8 +133,10 @@ class GradingAudioController {
      * @param {boolean} muted - Whether to mute audio
      */
     static setMuted(muted) {
-        this.audioCache.forEach(audio => {
-            audio.muted = muted;
+        this.audioPool.forEach(pool => {
+            pool.forEach(audio => {
+                audio.muted = muted;
+            });
         });
     }
 
@@ -155,6 +152,13 @@ class GradingAudioController {
      */
     static playPartialSound() {
         this.playAudio(this.SOUNDS.PARTIAL);
+    }
+
+    /**
+     * Play sound for correct answer
+     */
+    static playCorrectSound() {
+        this.playAudio(this.SOUNDS.CORRECT);
     }
 
     /**

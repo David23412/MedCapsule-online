@@ -101,6 +101,15 @@ class RegisterController extends Controller
 
             // Log the user in
             Auth::login($user);
+            
+            // CRITICAL FIX: Regenerate session after registration
+            request()->session()->regenerate();
+            request()->session()->save();
+            
+            // CRITICAL FIX: Store authentication flag in session
+            request()->session()->put('auth.user_id', $user->id);
+            request()->session()->put('auth.logged_in_at', now()->timestamp);
+            request()->session()->save();
 
             Log::info('User logged in', ['user_id' => $user->id]);
 

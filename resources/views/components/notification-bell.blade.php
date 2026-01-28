@@ -168,7 +168,7 @@
         /* Position */
         position: absolute;
         top: calc(100% + 8px);
-        right: -190px;
+        right: -150px;
         z-index: 1070; /* Higher than responsive nav (1030-1050)
 
         /* Size - Wider and more spacious */
@@ -1584,12 +1584,18 @@ document.addEventListener('DOMContentLoaded', function() {
                 const priorityClass = notification.priority === 'urgent' ? 'urgent' : 
                                     notification.priority === 'high' ? 'high' : 'normal';
                 const readClass = notification.read ? 'read' : 'unread';
+                
+                // 🎨 COLOR PRIORITY CLASSES (orange, green, blue, purple, red, yellow)
+                const colorClass = ['orange', 'green', 'blue', 'purple', 'red', 'yellow'].includes(notification.priority) 
+                    ? `notification-${notification.priority}` 
+                    : '';
+                
                 const iconColor = getNotificationIconColor(notification.type);
                 const borderColor = getNotificationBorderColor(notification.priority, notification.type);
                 const isFireIcon = ['streak_milestone', 'study_streak', 'burning_streak'].includes(notification.type);
                 
                 notificationHTML += `
-                    <div class="notification-item ${priorityClass} ${readClass}" data-id="${notification.id}" style="border-left: 4px solid ${borderColor};">
+                    <div class="notification-item ${priorityClass} ${readClass} ${colorClass}" data-id="${notification.id}" style="border-left: 4px solid ${borderColor};">
                         <div class="notification-icon ${isFireIcon ? 'fire-icon' : ''}" style="background-color: ${iconColor}20; border: 1px solid ${iconColor}30;">
                             <i class="${getNotificationIcon(notification.type)}" style="color: ${iconColor};"></i>
                         </div>

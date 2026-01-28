@@ -83,9 +83,9 @@ class GradingService
 
             // Update user statistics
             $this->userStatsService->updateAfterQuizAttempt(
-                $user, 
-                $gradingResult['totalQuestions'], 
-                $gradingResult['totalCorrect'], 
+                $user,
+                $gradingResult['totalQuestions'],
+                $gradingResult['totalCorrect'],
                 $duration
             );
 
@@ -804,11 +804,26 @@ class GradingService
             }
         }
 
+        // Build incorrect_answers map for review mode
+        $incorrectAnswers = [];
+        foreach ($questions as $question) {
+            $submittedAnswer = $answers[$question->id] ?? null;
+            $isCorrect = $this->evaluateAnswer($question, $submittedAnswer ?? '');
+            
+            if (!$isCorrect) {
+                $incorrectAnswers[$question->id] = [
+                    'submitted_answer' => $submittedAnswer ?? 'unanswered',
+                    'correct_answer' => $question->correct_answer
+                ];
+            }
+        }
+
         return [
             'success' => true,
             'score' => $gradingResult['score'],
             'totalQuestions' => $gradingResult['totalQuestions'],
             'total_questions' => $gradingResult['totalQuestions'],
+            'total' => $gradingResult['totalQuestions'],
             'percentageGrade' => $gradingResult['percentageGrade'],
             'percentage_grade' => $gradingResult['percentageGrade'],
             'encouragement' => $this->getEncouragementMessage($gradingResult['percentageGrade']),
@@ -817,10 +832,11 @@ class GradingService
             'overall_source_progress' => $overallSourceProgress, // Overall progress by source
             'correct_answers' => $questions->mapWithKeys(function ($question) {
                 return [$question->id => $question->correct_answer];
-            }),
+            })->toArray(),
             'correctAnswers' => $questions->mapWithKeys(function ($question) {
                 return [$question->id => $question->correct_answer];
-            }),
+            })->toArray(),
+            'incorrect_answers' => $incorrectAnswers, // For review mode - shows which answers were wrong
             'xp_earned' => $xpResult['earnedXP'],
             'level_up' => $xpResult['levelUp'],
             'new_level' => $xpResult['newLevel'],
@@ -1100,6 +1116,8 @@ class GradingService
         ];
     }
 
+
+
     /**
      * Update study streak for user after quiz completion
      *
@@ -1110,10 +1128,10 @@ class GradingService
         try {
             // Store original streak for notification comparison
             $originalStreak = $user->study_streak_days ?? 0;
-            
+
             // Update the streak using the User model method
             $newStreak = $user->updateStudyStreak();
-            
+
             Log::info('Study streak updated after quiz', [
                 'user_id' => $user->id,
                 'original_streak' => $originalStreak,

@@ -85,10 +85,10 @@ class UserCourseService
     public function getEnrollmentDataForAjax(): array
     {
         try {
+            // FIXED: Show ALL enrollments (both active and revoked) for complete activity history
             $enrollments = DB::table('course_user')
                 ->join('users', 'course_user.user_id', '=', 'users.id')
                 ->join('courses', 'course_user.course_id', '=', 'courses.id')
-                ->where('course_user.is_enrolled', true) // Only show active enrollments
                 ->select(
                     'users.id as user_id',
                     'users.name as name',
@@ -96,9 +96,11 @@ class UserCourseService
                     'courses.id as course_id',
                     'courses.name as course_name',
                     'course_user.enrolled_at',
-                    'course_user.created_at'
+                    'course_user.created_at',
+                    'course_user.is_enrolled'
                 )
-                ->orderBy('course_user.created_at', 'desc')
+                ->orderBy('course_user.updated_at', 'desc')
+                ->limit(50)
                 ->get();
 
             return ['success' => true, 'enrollments' => $enrollments];

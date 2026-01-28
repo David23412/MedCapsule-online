@@ -35,13 +35,17 @@ class OptimizedRandomQuizController extends Controller
         $questionCount = (int) $request->input('question_limit', 10);
         $durationMinutes = (float) $request->input('duration_minutes', 15);
         $selectedCourseIds = $request->input('selected_courses', []);
+        $selectedSource = $request->input('selected_sources', 'all'); // Single source selection
+
+        // Convert single source to array format expected by QuizService
+        $selectedSources = $selectedSource === 'all' ? ['all'] : [$selectedSource];
 
         // Generate a random quiz for display
         $user = auth()->user();
 
         // Build options for quiz generation
         $options = [
-            'sources' => ['all'],
+            'sources' => $selectedSources,
             'course_ids' => $selectedCourseIds,
             'difficulty' => 'mixed'
         ];
@@ -91,13 +95,17 @@ class OptimizedRandomQuizController extends Controller
         $questionCount = (int) $request->input('question_limit', 10);
         $durationMinutes = (float) $request->input('duration_minutes', 15);
         $selectedCourseIds = $request->input('selected_courses', []);
+        $selectedSource = $request->input('selected_sources', 'all'); // Single source selection
+
+        // Convert single source to array format expected by QuizService
+        $selectedSources = $selectedSource === 'all' ? ['all'] : [$selectedSource];
 
         // Generate a random quiz for display
         $user = auth()->user();
 
         // Build options for quiz generation
         $options = [
-            'sources' => ['all'],
+            'sources' => $selectedSources,
             'course_ids' => $selectedCourseIds,
             'difficulty' => 'mixed'
         ];

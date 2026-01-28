@@ -4,6 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
+    <meta name="session-start" content="{{ auth()->check() ? session()->get('auth.logged_in_at', time()) : time() }}">
 
     <title>MedCapsule</title>
 
@@ -36,19 +37,19 @@
 <link rel="preload" as="style" onload="this.onload=null;this.rel='stylesheet'"  rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" />
     
     <!-- Custom Styles -->
-    <link rel="stylesheet" href="{{ secure_asset('css/app.css') }}">
-<link rel="preload" as="style" onload="this.onload=null;this.rel='stylesheet'"  rel="stylesheet" href="{{ secure_asset('css/app.css') }}">
-    <link rel="stylesheet" href="{{ secure_asset('css/notification-design-system.css') }}">
-<link rel="preload" as="style" onload="this.onload=null;this.rel='stylesheet'"  rel="stylesheet" href="{{ secure_asset('css/notification-design-system.css') }}">
-    <link rel="stylesheet" href="{{ secure_asset('css/notifications.css') }}">
-<link rel="preload" as="style" onload="this.onload=null;this.rel='stylesheet'"  rel="stylesheet" href="{{ secure_asset('css/notifications.css') }}">
+    <link rel="stylesheet" href="{{ asset('css/app.css') }}">
+<link rel="preload" as="style" onload="this.onload=null;this.rel='stylesheet'"  rel="stylesheet" href="{{ asset('css/app.css') }}">
+    <link rel="stylesheet" href="{{ asset('css/notification-design-system.css') }}">
+<link rel="preload" as="style" onload="this.onload=null;this.rel='stylesheet'"  rel="stylesheet" href="{{ asset('css/notification-design-system.css') }}">
+    <link rel="stylesheet" href="{{ asset('css/notifications.css') }}">
+<link rel="preload" as="style" onload="this.onload=null;this.rel='stylesheet'"  rel="stylesheet" href="{{ asset('css/notifications.css') }}">
 
     <!-- Scripts - OPTIMIZED LOADING -->
     <script src="https://code.jquery.com/jquery-3.6.0.min.js" defer></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js" defer></script>
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
-    <script src="{{ secure_asset('js/notification-fix.js') }}" defer></script>
-    <script src="{{ secure_asset('js/notification-bell.js') }}" defer></script>
+    <script src="{{ asset('js/session-handler.js') }}"></script>
+    <script src="{{ asset('js/notification-bell.js') }}" defer></script>
 
     <!-- Favicon -->
     <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 50'%3E%3Crect fill='%23007bff' x='10' y='15' width='80' height='20' rx='10' ry='10' /%3E%3Crect x='50' y='15' width='40' height='20' fill='%23ff0000' rx='0 10 10 0' ry='10'/%3E%3Cline x1='50' y1='15' x2='50' y2='35' stroke='white' stroke-width='1.5' stroke-dasharray='2,1'/%3E%3C/svg%3E">

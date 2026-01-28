@@ -12,9 +12,10 @@
  * - Performance optimization
  */
 
-const CACHE_NAME = 'medcapsule-v1.0.0';
-const DYNAMIC_CACHE_NAME = 'medcapsule-dynamic-v1.0.0';
-const API_CACHE_NAME = 'medcapsule-api-v1.0.0';
+// Bump versions to force clients to pick up caching rule changes immediately
+const CACHE_NAME = 'medcapsule-v1.0.1';
+const DYNAMIC_CACHE_NAME = 'medcapsule-dynamic-v1.0.1';
+const API_CACHE_NAME = 'medcapsule-api-v1.0.1';
 
 // Critical resources to cache immediately
 const CRITICAL_RESOURCES = [
@@ -52,7 +53,8 @@ const ROUTE_STRATEGIES = [
     { pattern: /\.(?:css|js|woff|woff2|ttf|otf)$/, strategy: CACHE_STRATEGIES.CACHE_FIRST },
     { pattern: /\.(?:png|jpg|jpeg|svg|gif|webp|avif)$/, strategy: CACHE_STRATEGIES.CACHE_FIRST },
     { pattern: /^\/courses/, strategy: CACHE_STRATEGIES.NETWORK_FIRST },
-    { pattern: /^\/quiz/, strategy: CACHE_STRATEGIES.NETWORK_FIRST },
+    // CRITICAL: Quiz/tutor pages must reflect DB edits immediately. Never serve HTML from cache.
+    { pattern: /^\/quiz/, strategy: CACHE_STRATEGIES.NETWORK_ONLY },
     { pattern: /^\/review/, strategy: CACHE_STRATEGIES.NETWORK_FIRST }
 ];
 
@@ -179,6 +181,16 @@ self.addEventListener('notificationclick', event => {
  * Cache Strategies Implementation
  */
 async function handleRequest(request, strategy) {
+    const url = new URL(request.url);
+
+    // Never cache HTML navigations for quiz/tutor flows (prevents “stuck” questions after edits)
+    if (
+        (request.mode === 'navigate' || request.destination === 'document') &&
+        (url.pathname.startsWith('/quiz') || url.pathname.startsWith('/tutor'))
+    ) {
+        return fetch(new Request(request, { cache: 'no-store' }));
+    }
+
     switch (strategy) {
         case CACHE_STRATEGIES.NETWORK_FIRST:
             return networkFirst(request);

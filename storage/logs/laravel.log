@@ -1,313 +1,684 @@
-[2025-10-10 11:10:31] local.INFO: UltraPerformanceOptimizer: All systems initialized for MAXIMUM PERFORMANCE!  
-[2025-10-10 11:10:31] local.INFO: UltraPerformanceServiceProvider: All duplicate services eliminated! Using ULTRA CONSOLIDATED CACHE SERVICE!  
-[2025-10-10 11:11:04] local.INFO: UltraPerformanceOptimizer: All systems initialized for MAXIMUM PERFORMANCE!  
-[2025-10-10 11:11:04] local.INFO: UltraPerformanceServiceProvider: All duplicate services eliminated! Using ULTRA CONSOLIDATED CACHE SERVICE!  
-[2025-10-10 11:11:07] local.INFO: UltraPerformanceOptimizer: All systems initialized for MAXIMUM PERFORMANCE!  
-[2025-10-10 11:11:07] local.INFO: UltraPerformanceServiceProvider: All duplicate services eliminated! Using ULTRA CONSOLIDATED CACHE SERVICE!  
-[2025-10-10 11:11:07] local.INFO: UltraPerformanceOptimizer: All systems initialized for MAXIMUM PERFORMANCE!  
-[2025-10-10 11:11:07] local.INFO: UltraPerformanceServiceProvider: All duplicate services eliminated! Using ULTRA CONSOLIDATED CACHE SERVICE!  
-[2025-10-10 11:11:08] local.INFO: UltraPerformanceOptimizer: All systems initialized for MAXIMUM PERFORMANCE!  
-[2025-10-10 11:11:08] local.INFO: UltraPerformanceServiceProvider: All duplicate services eliminated! Using ULTRA CONSOLIDATED CACHE SERVICE!  
-[2025-10-10 11:11:12] local.INFO: UltraPerformanceOptimizer: All systems initialized for MAXIMUM PERFORMANCE!  
-[2025-10-10 11:11:12] local.INFO: UltraPerformanceServiceProvider: All duplicate services eliminated! Using ULTRA CONSOLIDATED CACHE SERVICE!  
-[2025-10-10 11:11:16] local.INFO: UltraPerformanceOptimizer: All systems initialized for MAXIMUM PERFORMANCE!  
-[2025-10-10 11:11:16] local.INFO: UltraPerformanceServiceProvider: All duplicate services eliminated! Using ULTRA CONSOLIDATED CACHE SERVICE!  
-[2025-10-10 11:11:20] local.INFO: UltraPerformanceOptimizer: All systems initialized for MAXIMUM PERFORMANCE!  
-[2025-10-10 11:11:20] local.INFO: UltraPerformanceServiceProvider: All duplicate services eliminated! Using ULTRA CONSOLIDATED CACHE SERVICE!  
-[2025-10-10 11:11:21] local.WARNING: Slow query detected {"sql":"insert into `session_security_logs` (`user_id`, `event_type`, `ip_address`, `user_agent`, `device_fingerprint`, `security_data`, `risk_level`, `action_taken`, `updated_at`, `created_at`) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)","duration_ms":127.21,"bindings":[15,"login","156.209.113.219","Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36","5bc977d35b87c30d5a9ba72dea8874304e7649a132fa430198bb5e3a504c14e8","{\"risk_level\":\"medium\",\"flags\":[\"ip_change\",\"geo_change\"],\"fingerprint\":\"5bc977d35b87c30d5a9ba72dea8874304e7649a132fa430198bb5e3a504c14e8\",\"ip\":\"156.209.113.219\"}","medium",false,"2025-10-10 11:11:21","2025-10-10 11:11:21"]} 
-[2025-10-10 11:11:21] local.WARNING: Slow query detected {"sql":"insert into `session_security_logs` (`user_id`, `event_type`, `ip_address`, `user_agent`, `device_fingerprint`, `security_data`, `risk_level`, `action_taken`, `updated_at`, `created_at`) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)","duration_ms":127.21,"connection":"mysql"} 
-[2025-10-10 11:11:21] local.WARNING: 🚨 BLOCKED RE-ENROLLMENT: Course price changed from free to paid {"course_id":1,"current_price":"0.00","user_id":15,"user_name":"Dr.David"} 
-[2025-10-10 11:11:21] local.WARNING: 🚨 BLOCKED RE-ENROLLMENT: Course price changed from free to paid {"course_id":2,"current_price":"0.00","user_id":15,"user_name":"Dr.David"} 
-[2025-10-10 11:11:21] local.WARNING: 🚨 BLOCKED RE-ENROLLMENT: Course price changed from free to paid {"course_id":3,"current_price":"0.00","user_id":15,"user_name":"Dr.David"} 
-[2025-10-10 11:11:21] local.WARNING: 🚨 BLOCKED RE-ENROLLMENT: Course price changed from free to paid {"course_id":4,"current_price":"0.00","user_id":15,"user_name":"Dr.David"} 
-[2025-10-10 11:11:21] local.WARNING: 🚨 BLOCKED RE-ENROLLMENT: Course price changed from free to paid {"course_id":5,"current_price":"0.00","user_id":15,"user_name":"Dr.David"} 
-[2025-10-10 11:11:21] local.WARNING: 🚨 BLOCKED RE-ENROLLMENT: Course price changed from free to paid {"course_id":6,"current_price":"0.00","user_id":15,"user_name":"Dr.David"} 
-[2025-10-10 11:11:21] local.INFO: Login processed for welcome notification {"user_id":15,"welcome_sent":false} 
-[2025-10-10 11:11:22] local.INFO: UltraPerformanceOptimizer: All systems initialized for MAXIMUM PERFORMANCE!  
-[2025-10-10 11:11:22] local.INFO: UltraPerformanceServiceProvider: All duplicate services eliminated! Using ULTRA CONSOLIDATED CACHE SERVICE!  
-[2025-10-10 11:11:22] local.INFO: Security headers applied {"url":"https://c2d88cbaeb66.ngrok-free.app/profile","method":"GET","user_agent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36","ip":"156.209.113.219","user_id":15} 
-[2025-10-10 11:12:25] local.INFO: UltraConsolidatedCache: Cached result {"key":"total_users","duration_ms":15.41,"compressed":false} 
-[2025-10-10 11:12:25] local.INFO: UltraConsolidatedCache: Cached result {"key":"total_courses","duration_ms":2.29,"compressed":false} 
-[2025-10-10 11:12:25] local.INFO: UltraConsolidatedCache: Cached result {"key":"total_questions","duration_ms":0.73,"compressed":false} 
-[2025-10-10 11:12:25] local.INFO: UltraConsolidatedCache: Cached result {"key":"system_stats","duration_ms":2.02,"compressed":false} 
-[2025-10-10 11:12:25] local.INFO: UltraPerformanceOptimizer: All systems initialized for MAXIMUM PERFORMANCE!  
-[2025-10-10 11:12:25] local.INFO: UltraPerformanceServiceProvider: All duplicate services eliminated! Using ULTRA CONSOLIDATED CACHE SERVICE!  
-[2025-10-10 11:12:51] local.INFO: UltraPerformanceOptimizer: All systems initialized for MAXIMUM PERFORMANCE!  
-[2025-10-10 11:12:51] local.INFO: UltraPerformanceServiceProvider: All duplicate services eliminated! Using ULTRA CONSOLIDATED CACHE SERVICE!  
-[2025-10-10 11:12:51] local.INFO: Security headers applied {"url":"https://c2d88cbaeb66.ngrok-free.app/courses","method":"GET","user_agent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36","ip":"156.209.113.219","user_id":15} 
-[2025-10-10 11:12:53] local.INFO: UltraPerformanceOptimizer: All systems initialized for MAXIMUM PERFORMANCE!  
-[2025-10-10 11:12:53] local.INFO: UltraPerformanceServiceProvider: All duplicate services eliminated! Using ULTRA CONSOLIDATED CACHE SERVICE!  
-[2025-10-10 11:12:54] local.INFO: UltraPerformanceOptimizer: All systems initialized for MAXIMUM PERFORMANCE!  
-[2025-10-10 11:12:54] local.INFO: UltraPerformanceServiceProvider: All duplicate services eliminated! Using ULTRA CONSOLIDATED CACHE SERVICE!  
-[2025-10-10 11:13:09] local.INFO: UltraPerformanceOptimizer: All systems initialized for MAXIMUM PERFORMANCE!  
-[2025-10-10 11:13:09] local.INFO: UltraPerformanceServiceProvider: All duplicate services eliminated! Using ULTRA CONSOLIDATED CACHE SERVICE!  
-[2025-10-10 11:13:12] local.INFO: UltraPerformanceOptimizer: All systems initialized for MAXIMUM PERFORMANCE!  
-[2025-10-10 11:13:12] local.INFO: UltraPerformanceServiceProvider: All duplicate services eliminated! Using ULTRA CONSOLIDATED CACHE SERVICE!  
-[2025-10-10 11:13:15] local.INFO: UltraPerformanceOptimizer: All systems initialized for MAXIMUM PERFORMANCE!  
-[2025-10-10 11:13:15] local.INFO: UltraPerformanceServiceProvider: All duplicate services eliminated! Using ULTRA CONSOLIDATED CACHE SERVICE!  
-[2025-10-10 11:13:15] local.INFO: UltraPerformanceOptimizer: All systems initialized for MAXIMUM PERFORMANCE!  
-[2025-10-10 11:13:15] local.INFO: UltraPerformanceServiceProvider: All duplicate services eliminated! Using ULTRA CONSOLIDATED CACHE SERVICE!  
-[2025-10-10 11:13:15] local.INFO: UltraPerformanceOptimizer: All systems initialized for MAXIMUM PERFORMANCE!  
-[2025-10-10 11:13:15] local.INFO: UltraPerformanceServiceProvider: All duplicate services eliminated! Using ULTRA CONSOLIDATED CACHE SERVICE!  
-[2025-10-10 11:13:15] local.INFO: Security headers applied {"url":"https://c2d88cbaeb66.ngrok-free.app/courses","method":"GET","user_agent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36","ip":"156.209.113.219","user_id":15} 
-[2025-10-10 11:13:17] local.INFO: UltraPerformanceOptimizer: All systems initialized for MAXIMUM PERFORMANCE!  
-[2025-10-10 11:13:17] local.INFO: UltraPerformanceServiceProvider: All duplicate services eliminated! Using ULTRA CONSOLIDATED CACHE SERVICE!  
-[2025-10-10 11:13:17] local.INFO: UltraPerformanceOptimizer: All systems initialized for MAXIMUM PERFORMANCE!  
-[2025-10-10 11:13:17] local.INFO: UltraPerformanceServiceProvider: All duplicate services eliminated! Using ULTRA CONSOLIDATED CACHE SERVICE!  
-[2025-10-10 11:13:37] local.INFO: UltraPerformanceOptimizer: All systems initialized for MAXIMUM PERFORMANCE!  
-[2025-10-10 11:13:37] local.INFO: UltraPerformanceServiceProvider: All duplicate services eliminated! Using ULTRA CONSOLIDATED CACHE SERVICE!  
-[2025-10-10 11:14:07] local.INFO: UltraPerformanceOptimizer: All systems initialized for MAXIMUM PERFORMANCE!  
-[2025-10-10 11:14:07] local.INFO: UltraPerformanceServiceProvider: All duplicate services eliminated! Using ULTRA CONSOLIDATED CACHE SERVICE!  
-[2025-10-10 11:14:07] local.INFO: BULLETPROOF: Cache miss or unhealthy, fetching fresh data  
-[2025-10-10 11:14:09] local.INFO: UltraPerformanceOptimizer: All systems initialized for MAXIMUM PERFORMANCE!  
-[2025-10-10 11:14:09] local.INFO: UltraPerformanceServiceProvider: All duplicate services eliminated! Using ULTRA CONSOLIDATED CACHE SERVICE!  
-[2025-10-10 11:14:10] local.INFO: UltraPerformanceOptimizer: All systems initialized for MAXIMUM PERFORMANCE!  
-[2025-10-10 11:14:10] local.INFO: UltraPerformanceServiceProvider: All duplicate services eliminated! Using ULTRA CONSOLIDATED CACHE SERVICE!  
-[2025-10-10 11:14:17] local.INFO: UltraPerformanceOptimizer: All systems initialized for MAXIMUM PERFORMANCE!  
-[2025-10-10 11:14:17] local.INFO: UltraPerformanceServiceProvider: All duplicate services eliminated! Using ULTRA CONSOLIDATED CACHE SERVICE!  
-[2025-10-10 11:14:18] local.WARNING: 🚨 BLOCKED RE-ENROLLMENT: Course price changed from free to paid {"course_id":1,"current_price":"0.00","user_id":2,"user_name":"David George"} 
-[2025-10-10 11:14:18] local.WARNING: 🚨 BLOCKED RE-ENROLLMENT: Course price changed from free to paid {"course_id":2,"current_price":"0.00","user_id":2,"user_name":"David George"} 
-[2025-10-10 11:14:18] local.WARNING: 🚨 BLOCKED RE-ENROLLMENT: Course price changed from free to paid {"course_id":3,"current_price":"0.00","user_id":2,"user_name":"David George"} 
-[2025-10-10 11:14:18] local.WARNING: 🚨 BLOCKED RE-ENROLLMENT: Course price changed from free to paid {"course_id":4,"current_price":"0.00","user_id":2,"user_name":"David George"} 
-[2025-10-10 11:14:18] local.WARNING: 🚨 BLOCKED RE-ENROLLMENT: Course price changed from free to paid {"course_id":5,"current_price":"0.00","user_id":2,"user_name":"David George"} 
-[2025-10-10 11:14:18] local.WARNING: 🚨 BLOCKED RE-ENROLLMENT: Course price changed from free to paid {"course_id":6,"current_price":"0.00","user_id":2,"user_name":"David George"} 
-[2025-10-10 11:14:18] local.INFO: 🐆 NOTIFICATION CREATED: medcapsule_welcome for user 2 in 4.51ms  
-[2025-10-10 11:14:18] local.INFO: Welcome notification sent {"user_id":2} 
-[2025-10-10 11:14:18] local.INFO: Login processed for welcome notification {"user_id":2,"welcome_sent":true} 
-[2025-10-10 11:14:18] local.INFO: UltraPerformanceOptimizer: All systems initialized for MAXIMUM PERFORMANCE!  
-[2025-10-10 11:14:18] local.INFO: UltraPerformanceServiceProvider: All duplicate services eliminated! Using ULTRA CONSOLIDATED CACHE SERVICE!  
-[2025-10-10 11:14:19] local.INFO: UltraPerformanceOptimizer: All systems initialized for MAXIMUM PERFORMANCE!  
-[2025-10-10 11:14:19] local.INFO: UltraPerformanceServiceProvider: All duplicate services eliminated! Using ULTRA CONSOLIDATED CACHE SERVICE!  
-[2025-10-10 11:14:19] local.INFO: UltraPerformanceOptimizer: All systems initialized for MAXIMUM PERFORMANCE!  
-[2025-10-10 11:14:19] local.INFO: UltraPerformanceServiceProvider: All duplicate services eliminated! Using ULTRA CONSOLIDATED CACHE SERVICE!  
-[2025-10-10 11:14:21] local.INFO: UltraPerformanceOptimizer: All systems initialized for MAXIMUM PERFORMANCE!  
-[2025-10-10 11:14:21] local.INFO: UltraPerformanceServiceProvider: All duplicate services eliminated! Using ULTRA CONSOLIDATED CACHE SERVICE!  
-[2025-10-10 11:14:23] local.INFO: UltraPerformanceOptimizer: All systems initialized for MAXIMUM PERFORMANCE!  
-[2025-10-10 11:14:23] local.INFO: UltraPerformanceServiceProvider: All duplicate services eliminated! Using ULTRA CONSOLIDATED CACHE SERVICE!  
-[2025-10-10 11:14:23] local.INFO: Security headers applied {"url":"https://c2d88cbaeb66.ngrok-free.app/courses","method":"GET","user_agent":"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36 Edg/139.0.0.0","ip":"197.164.45.169","user_id":2} 
-[2025-10-10 11:14:24] local.INFO: UltraPerformanceOptimizer: All systems initialized for MAXIMUM PERFORMANCE!  
-[2025-10-10 11:14:24] local.INFO: UltraPerformanceServiceProvider: All duplicate services eliminated! Using ULTRA CONSOLIDATED CACHE SERVICE!  
-[2025-10-10 11:14:26] local.INFO: UltraPerformanceOptimizer: All systems initialized for MAXIMUM PERFORMANCE!  
-[2025-10-10 11:14:26] local.INFO: UltraPerformanceServiceProvider: All duplicate services eliminated! Using ULTRA CONSOLIDATED CACHE SERVICE!  
-[2025-10-10 11:14:50] local.INFO: UltraPerformanceOptimizer: All systems initialized for MAXIMUM PERFORMANCE!  
-[2025-10-10 11:14:50] local.INFO: UltraPerformanceServiceProvider: All duplicate services eliminated! Using ULTRA CONSOLIDATED CACHE SERVICE!  
-[2025-10-10 11:14:50] local.INFO: UltraPerformanceOptimizer: All systems initialized for MAXIMUM PERFORMANCE!  
-[2025-10-10 11:14:50] local.INFO: UltraPerformanceServiceProvider: All duplicate services eliminated! Using ULTRA CONSOLIDATED CACHE SERVICE!  
-[2025-10-10 11:14:58] local.INFO: UltraPerformanceOptimizer: All systems initialized for MAXIMUM PERFORMANCE!  
-[2025-10-10 11:14:58] local.INFO: UltraPerformanceServiceProvider: All duplicate services eliminated! Using ULTRA CONSOLIDATED CACHE SERVICE!  
-[2025-10-10 11:14:58] local.INFO: Security headers applied {"url":"https://c2d88cbaeb66.ngrok-free.app/profile","method":"GET","user_agent":"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36 Edg/139.0.0.0","ip":"197.164.45.169","user_id":2} 
-[2025-10-10 11:15:02] local.INFO: UltraPerformanceOptimizer: All systems initialized for MAXIMUM PERFORMANCE!  
-[2025-10-10 11:15:02] local.INFO: UltraPerformanceServiceProvider: All duplicate services eliminated! Using ULTRA CONSOLIDATED CACHE SERVICE!  
-[2025-10-10 11:15:02] local.INFO: UltraPerformanceOptimizer: All systems initialized for MAXIMUM PERFORMANCE!  
-[2025-10-10 11:15:02] local.INFO: UltraPerformanceServiceProvider: All duplicate services eliminated! Using ULTRA CONSOLIDATED CACHE SERVICE!  
-[2025-10-10 11:15:14] local.INFO: UltraPerformanceOptimizer: All systems initialized for MAXIMUM PERFORMANCE!  
-[2025-10-10 11:15:14] local.INFO: UltraPerformanceServiceProvider: All duplicate services eliminated! Using ULTRA CONSOLIDATED CACHE SERVICE!  
-[2025-10-10 11:15:14] local.WARNING: Slow query detected {"sql":"select `courses`.*, (select count(*) from `topics` where `courses`.`id` = `topics`.`course_id` and `name` NOT LIKE ?) as `topics_count`, (select count(*) from `topics` where `courses`.`id` = `topics`.`course_id` and `name` LIKE ?) as `cases_count`, (select count(*) from `users` inner join `course_user` on `users`.`id` = `course_user`.`user_id` where `courses`.`id` = `course_user`.`course_id` and `course_user`.`is_enrolled` = ?) as `enrolled_users_count` from `courses`","duration_ms":456.04,"bindings":["%cases%","%cases%",true]} 
-[2025-10-10 11:15:14] local.WARNING: Slow query detected {"sql":"select `courses`.*, (select count(*) from `topics` where `courses`.`id` = `topics`.`course_id` and `name` NOT LIKE ?) as `topics_count`, (select count(*) from `topics` where `courses`.`id` = `topics`.`course_id` and `name` LIKE ?) as `cases_count`, (select count(*) from `users` inner join `course_user` on `users`.`id` = `course_user`.`user_id` where `courses`.`id` = `course_user`.`course_id` and `course_user`.`is_enrolled` = ?) as `enrolled_users_count` from `courses`","duration_ms":456.04,"connection":"mysql"} 
-[2025-10-10 11:15:15] local.WARNING: Slow query detected {"sql":"select * from (select `users`.`id`, `users`.`name`, `users`.`email`, `users`.`profile_picture_url`, `course_user`.`course_id` as `pivot_course_id`, `course_user`.`user_id` as `pivot_user_id`, row_number() over (partition by `course_user`.`course_id`) as `laravel_row` from `users` inner join `course_user` on `users`.`id` = `course_user`.`user_id` where `course_user`.`is_enrolled` = ? and `course_user`.`course_id` in (1, 2, 3, 4, 5, 6)) as `laravel_table` where `laravel_row` <= 6 order by `laravel_row`","duration_ms":226.76,"bindings":[true]} 
-[2025-10-10 11:15:15] local.WARNING: Slow query detected {"sql":"select * from (select `users`.`id`, `users`.`name`, `users`.`email`, `users`.`profile_picture_url`, `course_user`.`course_id` as `pivot_course_id`, `course_user`.`user_id` as `pivot_user_id`, row_number() over (partition by `course_user`.`course_id`) as `laravel_row` from `users` inner join `course_user` on `users`.`id` = `course_user`.`user_id` where `course_user`.`is_enrolled` = ? and `course_user`.`course_id` in (1, 2, 3, 4, 5, 6)) as `laravel_table` where `laravel_row` <= 6 order by `laravel_row`","duration_ms":226.76,"connection":"mysql"} 
-[2025-10-10 11:15:15] local.WARNING: Performance Alert Generated {"operation":"course_index_service","alert_type":"slow_response","severity":"critical","message":"Slow response: 821.64ms for course_index_service","threshold":200,"actual_value":821.64,"context":[],"created_at":"2025-10-10T08:15:15.311044Z"} 
-[2025-10-10 11:15:15] local.CRITICAL: Critical Performance Alert {"title":"🚨 Critical Performance Alert","message":"Slow response: 821.64ms for course_index_service","severity":"critical","operation":"course_index_service","timestamp":"2025-10-10T08:15:15.311044Z"} 
-[2025-10-10 11:15:15] local.INFO: Security headers applied {"url":"https://c2d88cbaeb66.ngrok-free.app/courses","method":"GET","user_agent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36","ip":"156.209.113.219","user_id":15} 
-[2025-10-10 11:15:15] local.WARNING: Slow query detected {"sql":"update `sessions` set `payload` = ?, `last_activity` = ?, `user_id` = ?, `ip_address` = ?, `user_agent` = ? where `id` = ?","duration_ms":148.42,"bindings":["ZXlKcGRpSTZJbk0yYVdsbVJqRlpUWGRWSzNsS1ZIbDVaVE4yTDFFOVBTSXNJblpoYkhWbElqb2lha1ZJUTFkVU0yVnZOWEppWjNWSVFsazRXbE51WTNnMlkwOUlTRlpHTUdwYWJFRTJLM0ZWZUdaV2MySjRUVzQ1UzFsRGRVazVkekF2WWk5UmREbGlaRE5zTTA5dVZuVjNiQzlJTW5oNEswOU9hVEU0V2pSWFdrZFNhRXBRTkZVelVFZHhja0ZvYzJKYVJGbE5lRVk0WlVWQ1pubzBVVll3V1hkQ0wybFRZWFJYVjI1MlFtdGhibVp0UnpSQ2MwbFVNalJ5UjFoblpWbHFlRmRFZW01UWJYTXZhMEo0VVZJMFVqaGhWemM0VkRKNlUzTm1hMVkzU0dGV2IwcHJkM0ZHWjFNMFVqTmtORVJQUzNOSlVtTlliV3RQWVZSUlVHUlpTVlpJWTBvNWJVeEdiMVZOYXk5aU9FZ3paRlZ1V0c4Mk9UVXZTVEZqT1ZKU2IxQlpNRUY0V210SlZVcDJUV3RMYkNzeWVIQkVjV1JZVG1wYU5saHhNMHQ2VERkTE5EYzFRMWhwWTNGUGNXaFJhR2h5VDFod01HWjZUVUV2TkRGb05HdHJWSGxYYTNNNU0wOVdja050TW5wSE9YbEplVW94YkZoaWFHVlVRUzlCY1VwVVVrWlhlV0prTVhKRVdsYzNkM0I1U3pkc2VFMXRVbGRHUW5keFpVaEdWR2cxZWxWMFJrUkxjSGx6WVVsM09DdHBUbE5ETlZOUVlXVXpVVDA5SWl3aWJXRmpJam9pTXprelkyRXlOVEkwWlRneFpXWmlNbVJtWTJFME5UVmpOR0V5TldJM01tUTRZV0UwWW1Gall6WTNOV0ZpTlRJd04yVm1ZelJsTVRNME9Ea3dNMk15WXlJc0luUmhaeUk2SWlKOQ==",1760084115,15,"156.209.113.219","Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36","ymlU3kHTZBybCSSCjo8Ju9F4FuBgJKNmLqCkDq9E"]} 
-[2025-10-10 11:15:15] local.WARNING: Slow query detected {"sql":"update `sessions` set `payload` = ?, `last_activity` = ?, `user_id` = ?, `ip_address` = ?, `user_agent` = ? where `id` = ?","duration_ms":148.42,"connection":"mysql"} 
-[2025-10-10 11:15:17] local.INFO: UltraPerformanceOptimizer: All systems initialized for MAXIMUM PERFORMANCE!  
-[2025-10-10 11:15:17] local.INFO: UltraPerformanceServiceProvider: All duplicate services eliminated! Using ULTRA CONSOLIDATED CACHE SERVICE!  
-[2025-10-10 11:15:17] local.INFO: UltraPerformanceOptimizer: All systems initialized for MAXIMUM PERFORMANCE!  
-[2025-10-10 11:15:17] local.INFO: UltraPerformanceServiceProvider: All duplicate services eliminated! Using ULTRA CONSOLIDATED CACHE SERVICE!  
-[2025-10-10 11:15:22] local.INFO: UltraPerformanceOptimizer: All systems initialized for MAXIMUM PERFORMANCE!  
-[2025-10-10 11:15:22] local.INFO: UltraPerformanceServiceProvider: All duplicate services eliminated! Using ULTRA CONSOLIDATED CACHE SERVICE!  
-[2025-10-10 11:15:22] local.INFO: Security headers applied {"url":"https://c2d88cbaeb66.ngrok-free.app/courses","method":"GET","user_agent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36","ip":"156.209.113.219","user_id":15} 
-[2025-10-10 11:15:24] local.INFO: UltraPerformanceOptimizer: All systems initialized for MAXIMUM PERFORMANCE!  
-[2025-10-10 11:15:24] local.INFO: UltraPerformanceServiceProvider: All duplicate services eliminated! Using ULTRA CONSOLIDATED CACHE SERVICE!  
-[2025-10-10 11:15:24] local.INFO: UltraPerformanceOptimizer: All systems initialized for MAXIMUM PERFORMANCE!  
-[2025-10-10 11:15:24] local.INFO: UltraPerformanceServiceProvider: All duplicate services eliminated! Using ULTRA CONSOLIDATED CACHE SERVICE!  
-[2025-10-10 11:15:24] local.INFO: Security headers applied {"url":"https://c2d88cbaeb66.ngrok-free.app/courses","method":"GET","user_agent":"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36 Edg/139.0.0.0","ip":"197.164.45.169","user_id":2} 
-[2025-10-10 11:15:25] local.INFO: UltraPerformanceOptimizer: All systems initialized for MAXIMUM PERFORMANCE!  
-[2025-10-10 11:15:25] local.INFO: UltraPerformanceServiceProvider: All duplicate services eliminated! Using ULTRA CONSOLIDATED CACHE SERVICE!  
-[2025-10-10 11:15:26] local.INFO: UltraPerformanceOptimizer: All systems initialized for MAXIMUM PERFORMANCE!  
-[2025-10-10 11:15:26] local.INFO: UltraPerformanceServiceProvider: All duplicate services eliminated! Using ULTRA CONSOLIDATED CACHE SERVICE!  
-[2025-10-10 11:15:26] local.INFO: UltraPerformanceOptimizer: All systems initialized for MAXIMUM PERFORMANCE!  
-[2025-10-10 11:15:26] local.INFO: UltraPerformanceServiceProvider: All duplicate services eliminated! Using ULTRA CONSOLIDATED CACHE SERVICE!  
-[2025-10-10 11:15:27] local.INFO: UltraPerformanceOptimizer: All systems initialized for MAXIMUM PERFORMANCE!  
-[2025-10-10 11:15:27] local.INFO: UltraPerformanceServiceProvider: All duplicate services eliminated! Using ULTRA CONSOLIDATED CACHE SERVICE!  
-[2025-10-10 11:15:27] local.INFO: Security headers applied {"url":"https://c2d88cbaeb66.ngrok-free.app/courses","method":"GET","user_agent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36","ip":"156.209.113.219","user_id":15} 
-[2025-10-10 11:15:28] local.INFO: UltraPerformanceOptimizer: All systems initialized for MAXIMUM PERFORMANCE!  
-[2025-10-10 11:15:28] local.INFO: UltraPerformanceServiceProvider: All duplicate services eliminated! Using ULTRA CONSOLIDATED CACHE SERVICE!  
-[2025-10-10 11:15:29] local.INFO: UltraPerformanceOptimizer: All systems initialized for MAXIMUM PERFORMANCE!  
-[2025-10-10 11:15:29] local.INFO: UltraPerformanceServiceProvider: All duplicate services eliminated! Using ULTRA CONSOLIDATED CACHE SERVICE!  
-[2025-10-10 11:15:29] local.INFO: UltraPerformanceOptimizer: All systems initialized for MAXIMUM PERFORMANCE!  
-[2025-10-10 11:15:29] local.INFO: UltraPerformanceServiceProvider: All duplicate services eliminated! Using ULTRA CONSOLIDATED CACHE SERVICE!  
-[2025-10-10 11:15:29] local.INFO: Security headers applied {"url":"https://c2d88cbaeb66.ngrok-free.app/courses","method":"GET","user_agent":"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36 Edg/139.0.0.0","ip":"197.164.45.169","user_id":2} 
-[2025-10-10 11:15:30] local.INFO: UltraPerformanceOptimizer: All systems initialized for MAXIMUM PERFORMANCE!  
-[2025-10-10 11:15:30] local.INFO: UltraPerformanceServiceProvider: All duplicate services eliminated! Using ULTRA CONSOLIDATED CACHE SERVICE!  
-[2025-10-10 11:15:31] local.INFO: UltraPerformanceOptimizer: All systems initialized for MAXIMUM PERFORMANCE!  
-[2025-10-10 11:15:31] local.INFO: UltraPerformanceServiceProvider: All duplicate services eliminated! Using ULTRA CONSOLIDATED CACHE SERVICE!  
-[2025-10-10 11:15:52] local.INFO: UltraPerformanceOptimizer: All systems initialized for MAXIMUM PERFORMANCE!  
-[2025-10-10 11:15:52] local.INFO: UltraPerformanceServiceProvider: All duplicate services eliminated! Using ULTRA CONSOLIDATED CACHE SERVICE!  
-[2025-10-10 11:15:52] local.INFO: 🎯 Loading mistakes with SMART HYBRID caching {"request_id":"mistakes_68e8c0b8c9bd2","user_id":15,"course_filter":null} 
-[2025-10-10 11:15:52] local.INFO: 🎯 SMART HYBRID mistakes loaded {"request_id":"mistakes_68e8c0b8c9bd2","execution_time_ms":21.86,"mistakes_count":1,"cache_status":"SMART HYBRID - 10sec cache with instant invalidation"} 
-[2025-10-10 11:15:52] local.INFO: Security headers applied {"url":"https://c2d88cbaeb66.ngrok-free.app/review","method":"GET","user_agent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36","ip":"156.209.113.219","user_id":15} 
-[2025-10-10 11:15:57] local.INFO: UltraPerformanceOptimizer: All systems initialized for MAXIMUM PERFORMANCE!  
-[2025-10-10 11:15:57] local.INFO: UltraPerformanceServiceProvider: All duplicate services eliminated! Using ULTRA CONSOLIDATED CACHE SERVICE!  
-[2025-10-10 11:16:42] local.INFO: UltraPerformanceOptimizer: All systems initialized for MAXIMUM PERFORMANCE!  
-[2025-10-10 11:16:42] local.INFO: UltraPerformanceServiceProvider: All duplicate services eliminated! Using ULTRA CONSOLIDATED CACHE SERVICE!  
-[2025-10-10 11:16:42] local.INFO: Security headers applied {"url":"https://c2d88cbaeb66.ngrok-free.app/topics/1","method":"GET","user_agent":"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36 Edg/139.0.0.0","ip":"197.164.45.169","user_id":2} 
-[2025-10-10 11:16:56] local.INFO: UltraPerformanceOptimizer: All systems initialized for MAXIMUM PERFORMANCE!  
-[2025-10-10 11:16:56] local.INFO: UltraPerformanceServiceProvider: All duplicate services eliminated! Using ULTRA CONSOLIDATED CACHE SERVICE!  
-[2025-10-10 11:17:08] local.INFO: UltraPerformanceOptimizer: All systems initialized for MAXIMUM PERFORMANCE!  
-[2025-10-10 11:17:08] local.INFO: UltraPerformanceServiceProvider: All duplicate services eliminated! Using ULTRA CONSOLIDATED CACHE SERVICE!  
-[2025-10-10 11:17:08] local.INFO: Security headers applied {"url":"https://c2d88cbaeb66.ngrok-free.app/courses","method":"GET","user_agent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36","ip":"156.209.113.219","user_id":15} 
-[2025-10-10 11:17:16] local.INFO: UltraPerformanceOptimizer: All systems initialized for MAXIMUM PERFORMANCE!  
-[2025-10-10 11:17:16] local.INFO: UltraPerformanceServiceProvider: All duplicate services eliminated! Using ULTRA CONSOLIDATED CACHE SERVICE!  
-[2025-10-10 11:17:16] local.INFO: UltraPerformanceOptimizer: All systems initialized for MAXIMUM PERFORMANCE!  
-[2025-10-10 11:17:16] local.INFO: UltraPerformanceServiceProvider: All duplicate services eliminated! Using ULTRA CONSOLIDATED CACHE SERVICE!  
-[2025-10-10 11:17:18] local.INFO: UltraPerformanceOptimizer: All systems initialized for MAXIMUM PERFORMANCE!  
-[2025-10-10 11:17:18] local.INFO: UltraPerformanceServiceProvider: All duplicate services eliminated! Using ULTRA CONSOLIDATED CACHE SERVICE!  
-[2025-10-10 11:17:18] local.INFO: Security headers applied {"url":"https://c2d88cbaeb66.ngrok-free.app/courses","method":"GET","user_agent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36","ip":"156.209.113.219","user_id":15} 
-[2025-10-10 11:17:22] local.INFO: UltraPerformanceOptimizer: All systems initialized for MAXIMUM PERFORMANCE!  
-[2025-10-10 11:17:22] local.INFO: UltraPerformanceServiceProvider: All duplicate services eliminated! Using ULTRA CONSOLIDATED CACHE SERVICE!  
-[2025-10-10 11:17:23] local.INFO: UltraPerformanceOptimizer: All systems initialized for MAXIMUM PERFORMANCE!  
-[2025-10-10 11:17:23] local.INFO: UltraPerformanceServiceProvider: All duplicate services eliminated! Using ULTRA CONSOLIDATED CACHE SERVICE!  
-[2025-10-10 11:17:26] local.INFO: UltraPerformanceOptimizer: All systems initialized for MAXIMUM PERFORMANCE!  
-[2025-10-10 11:17:26] local.INFO: UltraPerformanceServiceProvider: All duplicate services eliminated! Using ULTRA CONSOLIDATED CACHE SERVICE!  
-[2025-10-10 11:17:28] local.INFO: UltraPerformanceOptimizer: All systems initialized for MAXIMUM PERFORMANCE!  
-[2025-10-10 11:17:28] local.INFO: UltraPerformanceServiceProvider: All duplicate services eliminated! Using ULTRA CONSOLIDATED CACHE SERVICE!  
-[2025-10-10 11:17:28] local.INFO: UltraPerformanceOptimizer: All systems initialized for MAXIMUM PERFORMANCE!  
-[2025-10-10 11:17:28] local.INFO: UltraPerformanceServiceProvider: All duplicate services eliminated! Using ULTRA CONSOLIDATED CACHE SERVICE!  
-[2025-10-10 11:17:29] local.INFO: UltraPerformanceOptimizer: All systems initialized for MAXIMUM PERFORMANCE!  
-[2025-10-10 11:17:29] local.INFO: UltraPerformanceServiceProvider: All duplicate services eliminated! Using ULTRA CONSOLIDATED CACHE SERVICE!  
-[2025-10-10 11:17:30] local.INFO: UltraPerformanceOptimizer: All systems initialized for MAXIMUM PERFORMANCE!  
-[2025-10-10 11:17:30] local.INFO: UltraPerformanceServiceProvider: All duplicate services eliminated! Using ULTRA CONSOLIDATED CACHE SERVICE!  
-[2025-10-10 11:17:30] local.INFO: UltraPerformanceOptimizer: All systems initialized for MAXIMUM PERFORMANCE!  
-[2025-10-10 11:17:30] local.INFO: UltraPerformanceServiceProvider: All duplicate services eliminated! Using ULTRA CONSOLIDATED CACHE SERVICE!  
-[2025-10-10 11:17:30] local.INFO: UltraPerformanceOptimizer: All systems initialized for MAXIMUM PERFORMANCE!  
-[2025-10-10 11:17:30] local.INFO: UltraPerformanceServiceProvider: All duplicate services eliminated! Using ULTRA CONSOLIDATED CACHE SERVICE!  
-[2025-10-10 11:17:30] local.INFO: Security headers applied {"url":"https://c2d88cbaeb66.ngrok-free.app/courses","method":"GET","user_agent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36","ip":"156.209.113.219","user_id":15} 
-[2025-10-10 11:17:31] local.INFO: UltraPerformanceOptimizer: All systems initialized for MAXIMUM PERFORMANCE!  
-[2025-10-10 11:17:31] local.INFO: UltraPerformanceServiceProvider: All duplicate services eliminated! Using ULTRA CONSOLIDATED CACHE SERVICE!  
-[2025-10-10 11:17:31] local.INFO: Security headers applied {"url":"https://c2d88cbaeb66.ngrok-free.app/profile","method":"GET","user_agent":"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36 Edg/139.0.0.0","ip":"197.164.45.169","user_id":2} 
-[2025-10-10 11:17:37] local.INFO: UltraPerformanceOptimizer: All systems initialized for MAXIMUM PERFORMANCE!  
-[2025-10-10 11:17:37] local.INFO: UltraPerformanceServiceProvider: All duplicate services eliminated! Using ULTRA CONSOLIDATED CACHE SERVICE!  
-[2025-10-10 11:17:38] local.INFO: UltraPerformanceOptimizer: All systems initialized for MAXIMUM PERFORMANCE!  
-[2025-10-10 11:17:38] local.INFO: UltraPerformanceServiceProvider: All duplicate services eliminated! Using ULTRA CONSOLIDATED CACHE SERVICE!  
-[2025-10-10 11:17:40] local.INFO: UltraPerformanceOptimizer: All systems initialized for MAXIMUM PERFORMANCE!  
-[2025-10-10 11:17:40] local.INFO: UltraPerformanceServiceProvider: All duplicate services eliminated! Using ULTRA CONSOLIDATED CACHE SERVICE!  
-[2025-10-10 11:17:40] local.INFO: UltraPerformanceOptimizer: All systems initialized for MAXIMUM PERFORMANCE!  
-[2025-10-10 11:17:40] local.INFO: UltraPerformanceServiceProvider: All duplicate services eliminated! Using ULTRA CONSOLIDATED CACHE SERVICE!  
-[2025-10-10 11:17:41] local.INFO: UltraPerformanceOptimizer: All systems initialized for MAXIMUM PERFORMANCE!  
-[2025-10-10 11:17:41] local.INFO: UltraPerformanceServiceProvider: All duplicate services eliminated! Using ULTRA CONSOLIDATED CACHE SERVICE!  
-[2025-10-10 11:17:41] local.INFO: Security headers applied {"url":"https://c2d88cbaeb66.ngrok-free.app/courses","method":"GET","user_agent":"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36 Edg/139.0.0.0","ip":"197.164.45.169","user_id":2} 
-[2025-10-10 11:17:42] local.INFO: UltraPerformanceOptimizer: All systems initialized for MAXIMUM PERFORMANCE!  
-[2025-10-10 11:17:42] local.INFO: UltraPerformanceServiceProvider: All duplicate services eliminated! Using ULTRA CONSOLIDATED CACHE SERVICE!  
-[2025-10-10 11:17:43] local.INFO: UltraPerformanceOptimizer: All systems initialized for MAXIMUM PERFORMANCE!  
-[2025-10-10 11:17:43] local.INFO: UltraPerformanceServiceProvider: All duplicate services eliminated! Using ULTRA CONSOLIDATED CACHE SERVICE!  
-[2025-10-10 11:17:45] local.INFO: UltraPerformanceOptimizer: All systems initialized for MAXIMUM PERFORMANCE!  
-[2025-10-10 11:17:45] local.INFO: UltraPerformanceServiceProvider: All duplicate services eliminated! Using ULTRA CONSOLIDATED CACHE SERVICE!  
-[2025-10-10 11:17:45] local.INFO: Security headers applied {"url":"https://c2d88cbaeb66.ngrok-free.app/courses","method":"GET","user_agent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36","ip":"156.209.113.219","user_id":15} 
-[2025-10-10 11:17:54] local.INFO: UltraPerformanceOptimizer: All systems initialized for MAXIMUM PERFORMANCE!  
-[2025-10-10 11:17:54] local.INFO: UltraPerformanceServiceProvider: All duplicate services eliminated! Using ULTRA CONSOLIDATED CACHE SERVICE!  
-[2025-10-10 11:17:55] local.INFO: UltraPerformanceOptimizer: All systems initialized for MAXIMUM PERFORMANCE!  
-[2025-10-10 11:17:55] local.INFO: UltraPerformanceServiceProvider: All duplicate services eliminated! Using ULTRA CONSOLIDATED CACHE SERVICE!  
-[2025-10-10 11:17:57] local.INFO: UltraPerformanceOptimizer: All systems initialized for MAXIMUM PERFORMANCE!  
-[2025-10-10 11:17:57] local.INFO: UltraPerformanceServiceProvider: All duplicate services eliminated! Using ULTRA CONSOLIDATED CACHE SERVICE!  
-[2025-10-10 11:18:02] local.INFO: UltraPerformanceOptimizer: All systems initialized for MAXIMUM PERFORMANCE!  
-[2025-10-10 11:18:02] local.INFO: UltraPerformanceServiceProvider: All duplicate services eliminated! Using ULTRA CONSOLIDATED CACHE SERVICE!  
-[2025-10-10 11:18:02] local.INFO: UltraPerformanceOptimizer: All systems initialized for MAXIMUM PERFORMANCE!  
-[2025-10-10 11:18:02] local.INFO: UltraPerformanceServiceProvider: All duplicate services eliminated! Using ULTRA CONSOLIDATED CACHE SERVICE!  
-[2025-10-10 11:18:03] local.INFO: UltraPerformanceOptimizer: All systems initialized for MAXIMUM PERFORMANCE!  
-[2025-10-10 11:18:03] local.INFO: UltraPerformanceServiceProvider: All duplicate services eliminated! Using ULTRA CONSOLIDATED CACHE SERVICE!  
-[2025-10-10 11:18:03] local.INFO: Security headers applied {"url":"https://c2d88cbaeb66.ngrok-free.app/courses","method":"GET","user_agent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36","ip":"156.209.113.219","user_id":15} 
-[2025-10-10 11:18:04] local.INFO: UltraPerformanceOptimizer: All systems initialized for MAXIMUM PERFORMANCE!  
-[2025-10-10 11:18:04] local.INFO: UltraPerformanceServiceProvider: All duplicate services eliminated! Using ULTRA CONSOLIDATED CACHE SERVICE!  
-[2025-10-10 11:18:04] local.INFO: UltraPerformanceOptimizer: All systems initialized for MAXIMUM PERFORMANCE!  
-[2025-10-10 11:18:04] local.INFO: UltraPerformanceServiceProvider: All duplicate services eliminated! Using ULTRA CONSOLIDATED CACHE SERVICE!  
-[2025-10-10 11:18:05] local.INFO: UltraPerformanceOptimizer: All systems initialized for MAXIMUM PERFORMANCE!  
-[2025-10-10 11:18:05] local.INFO: UltraPerformanceServiceProvider: All duplicate services eliminated! Using ULTRA CONSOLIDATED CACHE SERVICE!  
-[2025-10-10 11:18:05] local.INFO: UltraPerformanceOptimizer: All systems initialized for MAXIMUM PERFORMANCE!  
-[2025-10-10 11:18:05] local.INFO: UltraPerformanceServiceProvider: All duplicate services eliminated! Using ULTRA CONSOLIDATED CACHE SERVICE!  
-[2025-10-10 11:18:07] local.INFO: UltraPerformanceOptimizer: All systems initialized for MAXIMUM PERFORMANCE!  
-[2025-10-10 11:18:07] local.INFO: UltraPerformanceServiceProvider: All duplicate services eliminated! Using ULTRA CONSOLIDATED CACHE SERVICE!  
-[2025-10-10 11:18:09] local.INFO: UltraPerformanceOptimizer: All systems initialized for MAXIMUM PERFORMANCE!  
-[2025-10-10 11:18:09] local.INFO: UltraPerformanceServiceProvider: All duplicate services eliminated! Using ULTRA CONSOLIDATED CACHE SERVICE!  
-[2025-10-10 11:18:09] local.INFO: UltraPerformanceOptimizer: All systems initialized for MAXIMUM PERFORMANCE!  
-[2025-10-10 11:18:09] local.INFO: UltraPerformanceServiceProvider: All duplicate services eliminated! Using ULTRA CONSOLIDATED CACHE SERVICE!  
-[2025-10-10 11:18:09] local.INFO: UltraPerformanceOptimizer: All systems initialized for MAXIMUM PERFORMANCE!  
-[2025-10-10 11:18:09] local.INFO: UltraPerformanceServiceProvider: All duplicate services eliminated! Using ULTRA CONSOLIDATED CACHE SERVICE!  
-[2025-10-10 11:18:09] local.INFO: Security headers applied {"url":"https://c2d88cbaeb66.ngrok-free.app/courses","method":"GET","user_agent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36","ip":"156.209.113.219","user_id":15} 
-[2025-10-10 11:18:11] local.INFO: UltraPerformanceOptimizer: All systems initialized for MAXIMUM PERFORMANCE!  
-[2025-10-10 11:18:11] local.INFO: UltraPerformanceServiceProvider: All duplicate services eliminated! Using ULTRA CONSOLIDATED CACHE SERVICE!  
-[2025-10-10 11:18:11] local.INFO: UltraPerformanceOptimizer: All systems initialized for MAXIMUM PERFORMANCE!  
-[2025-10-10 11:18:11] local.INFO: UltraPerformanceServiceProvider: All duplicate services eliminated! Using ULTRA CONSOLIDATED CACHE SERVICE!  
-[2025-10-10 11:18:18] local.INFO: UltraPerformanceOptimizer: All systems initialized for MAXIMUM PERFORMANCE!  
-[2025-10-10 11:18:18] local.INFO: UltraPerformanceServiceProvider: All duplicate services eliminated! Using ULTRA CONSOLIDATED CACHE SERVICE!  
-[2025-10-10 11:18:18] local.INFO: Security headers applied {"url":"https://c2d88cbaeb66.ngrok-free.app/profile","method":"GET","user_agent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36","ip":"156.209.113.219","user_id":15} 
-[2025-10-10 11:18:24] local.INFO: UltraPerformanceOptimizer: All systems initialized for MAXIMUM PERFORMANCE!  
-[2025-10-10 11:18:24] local.INFO: UltraPerformanceServiceProvider: All duplicate services eliminated! Using ULTRA CONSOLIDATED CACHE SERVICE!  
-[2025-10-10 11:18:31] local.INFO: UltraPerformanceOptimizer: All systems initialized for MAXIMUM PERFORMANCE!  
-[2025-10-10 11:18:31] local.INFO: UltraPerformanceServiceProvider: All duplicate services eliminated! Using ULTRA CONSOLIDATED CACHE SERVICE!  
-[2025-10-10 11:18:31] local.INFO: Security headers applied {"url":"https://c2d88cbaeb66.ngrok-free.app/profile","method":"GET","user_agent":"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36 Edg/139.0.0.0","ip":"197.164.45.169","user_id":2} 
-[2025-10-10 11:18:37] local.INFO: UltraPerformanceOptimizer: All systems initialized for MAXIMUM PERFORMANCE!  
-[2025-10-10 11:18:37] local.INFO: UltraPerformanceServiceProvider: All duplicate services eliminated! Using ULTRA CONSOLIDATED CACHE SERVICE!  
-[2025-10-10 11:18:37] local.INFO: Security headers applied {"url":"https://c2d88cbaeb66.ngrok-free.app/courses","method":"GET","user_agent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36","ip":"156.209.113.219","user_id":15} 
-[2025-10-10 11:18:45] local.INFO: UltraPerformanceOptimizer: All systems initialized for MAXIMUM PERFORMANCE!  
-[2025-10-10 11:18:45] local.INFO: UltraPerformanceServiceProvider: All duplicate services eliminated! Using ULTRA CONSOLIDATED CACHE SERVICE!  
-[2025-10-10 11:18:45] local.INFO: UltraPerformanceOptimizer: All systems initialized for MAXIMUM PERFORMANCE!  
-[2025-10-10 11:18:45] local.INFO: UltraPerformanceServiceProvider: All duplicate services eliminated! Using ULTRA CONSOLIDATED CACHE SERVICE!  
-[2025-10-10 11:18:47] local.INFO: UltraPerformanceOptimizer: All systems initialized for MAXIMUM PERFORMANCE!  
-[2025-10-10 11:18:47] local.INFO: UltraPerformanceServiceProvider: All duplicate services eliminated! Using ULTRA CONSOLIDATED CACHE SERVICE!  
-[2025-10-10 11:18:47] local.INFO: UltraPerformanceOptimizer: All systems initialized for MAXIMUM PERFORMANCE!  
-[2025-10-10 11:18:47] local.INFO: UltraPerformanceServiceProvider: All duplicate services eliminated! Using ULTRA CONSOLIDATED CACHE SERVICE!  
-[2025-10-10 11:18:48] local.INFO: UltraPerformanceOptimizer: All systems initialized for MAXIMUM PERFORMANCE!  
-[2025-10-10 11:18:48] local.INFO: UltraPerformanceServiceProvider: All duplicate services eliminated! Using ULTRA CONSOLIDATED CACHE SERVICE!  
-[2025-10-10 11:18:48] local.INFO: Security headers applied {"url":"https://c2d88cbaeb66.ngrok-free.app/courses","method":"GET","user_agent":"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36 Edg/139.0.0.0","ip":"197.164.45.169","user_id":2} 
-[2025-10-10 11:18:49] local.INFO: UltraPerformanceOptimizer: All systems initialized for MAXIMUM PERFORMANCE!  
-[2025-10-10 11:18:49] local.INFO: UltraPerformanceServiceProvider: All duplicate services eliminated! Using ULTRA CONSOLIDATED CACHE SERVICE!  
-[2025-10-10 11:18:50] local.INFO: UltraPerformanceOptimizer: All systems initialized for MAXIMUM PERFORMANCE!  
-[2025-10-10 11:18:50] local.INFO: UltraPerformanceServiceProvider: All duplicate services eliminated! Using ULTRA CONSOLIDATED CACHE SERVICE!  
-[2025-10-10 11:19:03] local.INFO: UltraPerformanceOptimizer: All systems initialized for MAXIMUM PERFORMANCE!  
-[2025-10-10 11:19:03] local.INFO: UltraPerformanceServiceProvider: All duplicate services eliminated! Using ULTRA CONSOLIDATED CACHE SERVICE!  
-[2025-10-10 11:19:03] local.INFO: Security headers applied {"url":"https://c2d88cbaeb66.ngrok-free.app/courses","method":"GET","user_agent":"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36 Edg/139.0.0.0","ip":"197.164.45.169","user_id":2} 
-[2025-10-10 11:19:05] local.INFO: UltraPerformanceOptimizer: All systems initialized for MAXIMUM PERFORMANCE!  
-[2025-10-10 11:19:05] local.INFO: UltraPerformanceServiceProvider: All duplicate services eliminated! Using ULTRA CONSOLIDATED CACHE SERVICE!  
-[2025-10-10 11:19:07] local.INFO: UltraPerformanceOptimizer: All systems initialized for MAXIMUM PERFORMANCE!  
-[2025-10-10 11:19:07] local.INFO: UltraPerformanceServiceProvider: All duplicate services eliminated! Using ULTRA CONSOLIDATED CACHE SERVICE!  
-[2025-10-10 11:19:07] local.INFO: Security headers applied {"url":"https://c2d88cbaeb66.ngrok-free.app/profile","method":"GET","user_agent":"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36 Edg/139.0.0.0","ip":"197.164.45.169","user_id":2} 
-[2025-10-10 11:19:07] local.INFO: UltraPerformanceOptimizer: All systems initialized for MAXIMUM PERFORMANCE!  
-[2025-10-10 11:19:07] local.INFO: UltraPerformanceServiceProvider: All duplicate services eliminated! Using ULTRA CONSOLIDATED CACHE SERVICE!  
-[2025-10-10 11:19:11] local.INFO: UltraPerformanceOptimizer: All systems initialized for MAXIMUM PERFORMANCE!  
-[2025-10-10 11:19:11] local.INFO: UltraPerformanceServiceProvider: All duplicate services eliminated! Using ULTRA CONSOLIDATED CACHE SERVICE!  
-[2025-10-10 11:19:12] local.INFO: UltraPerformanceOptimizer: All systems initialized for MAXIMUM PERFORMANCE!  
-[2025-10-10 11:19:12] local.INFO: UltraPerformanceServiceProvider: All duplicate services eliminated! Using ULTRA CONSOLIDATED CACHE SERVICE!  
-[2025-10-10 11:19:19] local.INFO: UltraPerformanceOptimizer: All systems initialized for MAXIMUM PERFORMANCE!  
-[2025-10-10 11:19:19] local.INFO: UltraPerformanceServiceProvider: All duplicate services eliminated! Using ULTRA CONSOLIDATED CACHE SERVICE!  
-[2025-10-10 11:19:19] local.INFO: UltraPerformanceOptimizer: All systems initialized for MAXIMUM PERFORMANCE!  
-[2025-10-10 11:19:19] local.INFO: UltraPerformanceServiceProvider: All duplicate services eliminated! Using ULTRA CONSOLIDATED CACHE SERVICE!  
-[2025-10-10 11:20:41] local.INFO: UltraPerformanceOptimizer: All systems initialized for MAXIMUM PERFORMANCE!  
-[2025-10-10 11:20:41] local.INFO: UltraPerformanceServiceProvider: All duplicate services eliminated! Using ULTRA CONSOLIDATED CACHE SERVICE!  
-[2025-10-10 11:20:42] local.INFO: UltraPerformanceOptimizer: All systems initialized for MAXIMUM PERFORMANCE!  
-[2025-10-10 11:20:42] local.INFO: UltraPerformanceServiceProvider: All duplicate services eliminated! Using ULTRA CONSOLIDATED CACHE SERVICE!  
-[2025-10-10 11:20:42] local.INFO: Security headers applied {"url":"https://c2d88cbaeb66.ngrok-free.app/courses","method":"GET","user_agent":"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36 Edg/139.0.0.0","ip":"197.164.45.169","user_id":2} 
-[2025-10-10 11:20:44] local.INFO: UltraPerformanceOptimizer: All systems initialized for MAXIMUM PERFORMANCE!  
-[2025-10-10 11:20:44] local.INFO: UltraPerformanceServiceProvider: All duplicate services eliminated! Using ULTRA CONSOLIDATED CACHE SERVICE!  
-[2025-10-10 11:20:44] local.INFO: UltraPerformanceOptimizer: All systems initialized for MAXIMUM PERFORMANCE!  
-[2025-10-10 11:20:44] local.INFO: UltraPerformanceServiceProvider: All duplicate services eliminated! Using ULTRA CONSOLIDATED CACHE SERVICE!  
-[2025-10-10 11:20:46] local.INFO: UltraPerformanceOptimizer: All systems initialized for MAXIMUM PERFORMANCE!  
-[2025-10-10 11:20:46] local.INFO: UltraPerformanceServiceProvider: All duplicate services eliminated! Using ULTRA CONSOLIDATED CACHE SERVICE!  
-[2025-10-10 11:20:46] local.INFO: Security headers applied {"url":"https://c2d88cbaeb66.ngrok-free.app/topics/1","method":"GET","user_agent":"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36 Edg/139.0.0.0","ip":"197.164.45.169","user_id":2} 
-[2025-10-10 11:20:49] local.INFO: UltraPerformanceOptimizer: All systems initialized for MAXIMUM PERFORMANCE!  
-[2025-10-10 11:20:49] local.INFO: UltraPerformanceServiceProvider: All duplicate services eliminated! Using ULTRA CONSOLIDATED CACHE SERVICE!  
-[2025-10-10 11:20:51] local.INFO: UltraPerformanceOptimizer: All systems initialized for MAXIMUM PERFORMANCE!  
-[2025-10-10 11:20:51] local.INFO: UltraPerformanceServiceProvider: All duplicate services eliminated! Using ULTRA CONSOLIDATED CACHE SERVICE!  
-[2025-10-10 11:20:52] local.INFO: UltraPerformanceOptimizer: All systems initialized for MAXIMUM PERFORMANCE!  
-[2025-10-10 11:20:52] local.INFO: UltraPerformanceServiceProvider: All duplicate services eliminated! Using ULTRA CONSOLIDATED CACHE SERVICE!  
-[2025-10-10 11:20:52] local.INFO: 📌 Tutor Quiz Start Attempt {"request_id":"tutor_start_68e8c1e465121","user_id":2,"course_id":1,"topic_id":1} 
-[2025-10-10 11:20:52] local.INFO: 📌 Quiz Initialization Attempt {"user_id":2,"user_name":"David George","is_admin":false,"course_id":1,"topic_id":1,"mode":"tutor","sources":["USMLE Step 1"],"request_url":"https://c2d88cbaeb66.ngrok-free.app/quiz/1/1/tutor?sources%5B0%5D=USMLE%20Step%201"} 
-[2025-10-10 11:20:52] local.INFO: Normalized sources for quiz {"sources":["USMLE Step 1"]} 
-[2025-10-10 11:20:52] local.INFO: UltraConsolidatedCache: Cached result {"key":"topic:1:questions:adcbcbb7214417c1a9e4278299ee2cbb","duration_ms":7.88,"compressed":false} 
-[2025-10-10 11:20:52] local.INFO: OPTIMIZED: Questions retrieved with smart caching {"topic_id":1,"questions_count":2,"sources":["USMLE Step 1"]} 
-[2025-10-10 11:20:52] local.INFO: ✅ Quiz initialized successfully {"topic_id":1,"questions_count":2,"course_id":1,"sources":["USMLE Step 1"],"mode":"tutor"} 
-[2025-10-10 11:20:52] local.INFO: ✅ Tutor quiz initialized successfully {"request_id":"tutor_start_68e8c1e465121","execution_time_ms":9.45,"questions_count":2} 
-[2025-10-10 11:20:52] local.INFO: Security headers applied {"url":"https://c2d88cbaeb66.ngrok-free.app/quiz/1/1/tutor?sources%5B0%5D=USMLE%20Step%201","method":"GET","user_agent":"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36 Edg/139.0.0.0","ip":"197.164.45.169","user_id":2} 
-[2025-10-10 11:20:55] local.INFO: UltraPerformanceOptimizer: All systems initialized for MAXIMUM PERFORMANCE!  
-[2025-10-10 11:20:55] local.INFO: UltraPerformanceServiceProvider: All duplicate services eliminated! Using ULTRA CONSOLIDATED CACHE SERVICE!  
+[2026-01-27 19:55:48] local.WARNING: Performance Alert Generated {"operation":"system_boot","alert_type":"slow_response","severity":"high","message":"Slow response: 363.46ms for system_boot","threshold":200,"actual_value":363.46,"context":{"timestamp":"2026-01-27T17:55:47.343806Z","environment":"local"},"created_at":"2026-01-27T17:55:48.148635Z"} 
+[2026-01-27 19:55:48] local.INFO: UltraPerformanceOptimizer: All systems initialized for MAXIMUM PERFORMANCE!  
+[2026-01-27 19:55:48] local.INFO: UltraPerformanceServiceProvider: All duplicate services eliminated! Using ULTRA CONSOLIDATED CACHE SERVICE!  
+[2026-01-27 19:55:48] local.INFO: 📌 Tutor Quiz Start Attempt {"request_id":"tutor_start_6978fc24403dc","user_id":15,"course_id":1,"topic_id":1} 
+[2026-01-27 19:55:48] local.INFO: 📌 Quiz Initialization Attempt {"user_id":15,"user_name":"Dr.David","is_admin":false,"course_id":1,"topic_id":1,"mode":"tutor","sources":["USMLE Step 1"],"request_url":"https://5c2f2414a8fa.ngrok-free.app/quiz/1/1/tutor?sources%5B0%5D=USMLE%20Step%201"} 
+[2026-01-27 19:55:48] local.INFO: Normalized sources for quiz {"sources":["USMLE Step 1"]} 
+[2026-01-27 19:55:48] local.INFO: OPTIMIZED: Questions retrieved with smart caching {"topic_id":1,"questions_count":2,"sources":["USMLE Step 1"]} 
+[2026-01-27 19:55:48] local.INFO: ✅ Quiz initialized successfully {"topic_id":1,"questions_count":2,"course_id":1,"sources":["USMLE Step 1"],"mode":"tutor"} 
+[2026-01-27 19:55:48] local.INFO: ✅ Tutor quiz initialized successfully {"request_id":"tutor_start_6978fc24403dc","execution_time_ms":36.41,"questions_count":2} 
+[2026-01-27 19:55:48] local.INFO: Security headers applied {"url":"https://5c2f2414a8fa.ngrok-free.app/quiz/1/1/tutor?sources%5B0%5D=USMLE%20Step%201","method":"GET","user_agent":"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.6 Safari/605.1.15","ip":"45.244.85.136","user_id":15} 
+[2026-01-27 19:55:48] local.WARNING: Slow query detected {"sql":"update `sessions` set `payload` = ?, `last_activity` = ?, `user_id` = ?, `ip_address` = ?, `user_agent` = ? where `id` = ?","duration_ms":129.58,"bindings":["ZXlKcGRpSTZJa3RLUTBOcFdsbElZVUZEV0N0SWVHaFJjWE5pYVhjOVBTSXNJblpoYkhWbElqb2lNVEUyVmpjdmMzUnNkVmhyWW1vekx5dHVXR3NyYUVWamNHVllWbTh3VkZSck56aDJXa3BPWlRsWlkyWkNNbmxtVVVVeWNUbGlhRE5CUTNCSWFYSlBhWHA0WkRaUWNuRjBiMjFtWVUxd1pHVjFabmRKUjFKUFIwUnpSWGhITjNCeVpsZFVOMFZKVEV4bE5sSkpSR3cyYVVWWVpIbHNObFZTTVZCRGRGZDVlbTFSYmt0SlkzQXlkSEZpTDNKRlZrVlRNRkZDYjFGbk1qQmFWMVJXWW1aTlR6Qm9VRFJPY2k5MmJsTnlRMlp3TDFWTlJVSkhUbFZUVXk5bE1uSjBWbEZWUjBOT04wWlBjRGg1VUZaUWFIWnpSMWhWV0hFdllqWnRORkpCVVdSTWVVaElLMnBYYTNWdWJFZGxLM1JQWVdVNU5uTlNZWGt2VG1GSk5qbEpOR0pIZWk5WGFXRlJOakZvT1VKelQzZHlhblYyUkhKbGFXazJlbkl2ZWpOcU5YYzBRMnhpVFVsQk1VTkZWVlY0Y0V4WFN6RjRMMUJyTjFwelpra3hObFEzTjBKblMxVjRRVVpGY0ROT1NsaHhVa3hyY1RSNU1GaFdaek5yV1dGYVVqRklObkp2U2xGSGJFTTNVekl2UlRjeFFYSndObGh1UkhKdVNpdFVOemhzT1ROU1ZsSXZTbXBKZUhWVGFFbGtWV2RYU0hSSmVpdHZURlpPYkRScGJUTXlRWEJ3VVdwaFRHSm9aa05uVWtwWGNVWjBlRFZCVlZSYVJtY3JiWFZYUXpSa1lrMWFUMnc0VmxReFpXTTVPVFpxYWtsTmJVOWxMMDVWZVVSNGJsZEhSRnBwU0hFeGJVTmtWa1V6ZVRSWVFVbDBURWhuT1ZKeGQyeFJjUzlMV1c1UWRHRkdXaXQyWkVWVU5qbHhhVUZ5TTFkS1oyNUZZbFJxWkN0aFJHUlFSMlpyTmpoQll6UTJOM1pTYkhWWFlrRkdSek12YW1ORWJqbDNWQ3QzT1hweFRFZHZObFJQTDNaSFdXcHpaR05JYWxoVU5VcGhTbFUwT0RONU9IQnBiWGxrTmxORUt6YzNUamwwTlM5c00wNDVhMlozTjFoUk9UUXlZMnhOVTNSdGFYWTFlRXhHVjFocmNXMUhMMDFJTXpsT1ZHWnFjVlk0YkZSeFVIUmhVRU5rVGk5VFpVTmpTa055VWxRM1NuTTlJaXdpYldGaklqb2labVkyWVRJeE5tSXhOR1poT0RjNU1ETXpNVGcwWVRaaVptVmpZVE13WlRFeU9ETXdZemMzTWpCak5EYzNNekk0Tm1WallXWmhNVFV3WW1NMlpEUXdPQ0lzSW5SaFp5STZJaUo5",1769536548,15,"45.244.85.136","Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.6 Safari/605.1.15","68pq4XukvxqlO42fXqV2WhVR3zsICK9JPSTnxEiz"]} 
+[2026-01-27 19:55:48] local.WARNING: Slow query detected {"sql":"update `sessions` set `payload` = ?, `last_activity` = ?, `user_id` = ?, `ip_address` = ?, `user_agent` = ? where `id` = ?","duration_ms":129.58,"connection":"mysql"} 
+[2026-01-27 19:58:06] local.INFO: UltraPerformanceOptimizer: All systems initialized for MAXIMUM PERFORMANCE!  
+[2026-01-27 19:58:06] local.INFO: UltraPerformanceServiceProvider: All duplicate services eliminated! Using ULTRA CONSOLIDATED CACHE SERVICE!  
+[2026-01-27 19:58:07] local.INFO: UltraConsolidatedCache: Cached result {"key":"total_users","duration_ms":81.72,"compressed":false} 
+[2026-01-27 19:58:07] local.INFO: UltraConsolidatedCache: Cached result {"key":"total_courses","duration_ms":3.87,"compressed":false} 
+[2026-01-27 19:58:07] local.INFO: UltraConsolidatedCache: Cached result {"key":"total_questions","duration_ms":2.7,"compressed":false} 
+[2026-01-27 19:58:07] local.INFO: UltraConsolidatedCache: Cached result {"key":"system_stats","duration_ms":20.67,"compressed":false} 
+[2026-01-27 19:58:07] local.INFO: UltraPerformanceOptimizer: All systems initialized for MAXIMUM PERFORMANCE!  
+[2026-01-27 19:58:07] local.INFO: UltraPerformanceServiceProvider: All duplicate services eliminated! Using ULTRA CONSOLIDATED CACHE SERVICE!  
+[2026-01-27 19:58:07] local.INFO: UltraPerformanceOptimizer: All systems initialized for MAXIMUM PERFORMANCE!  
+[2026-01-27 19:58:07] local.INFO: UltraPerformanceServiceProvider: All duplicate services eliminated! Using ULTRA CONSOLIDATED CACHE SERVICE!  
+[2026-01-27 19:58:09] local.INFO: UltraPerformanceOptimizer: All systems initialized for MAXIMUM PERFORMANCE!  
+[2026-01-27 19:58:09] local.INFO: UltraPerformanceServiceProvider: All duplicate services eliminated! Using ULTRA CONSOLIDATED CACHE SERVICE!  
+[2026-01-27 19:58:09] local.INFO: 📌 Tutor Quiz Start Attempt {"request_id":"tutor_start_6978fcb1a24dc","user_id":15,"course_id":1,"topic_id":1} 
+[2026-01-27 19:58:09] local.INFO: 📌 Quiz Initialization Attempt {"user_id":15,"user_name":"Dr.David","is_admin":false,"course_id":1,"topic_id":1,"mode":"tutor","sources":["USMLE Step 1"],"request_url":"https://5c2f2414a8fa.ngrok-free.app/quiz/1/1/tutor?sources%5B0%5D=USMLE%20Step%201"} 
+[2026-01-27 19:58:09] local.INFO: Normalized sources for quiz {"sources":["USMLE Step 1"]} 
+[2026-01-27 19:58:09] local.INFO: UltraConsolidatedCache: Cached result {"key":"topic:1:questions:adcbcbb7214417c1a9e4278299ee2cbb","duration_ms":47.07,"compressed":false} 
+[2026-01-27 19:58:09] local.INFO: OPTIMIZED: Questions retrieved with smart caching {"topic_id":1,"questions_count":2,"sources":["USMLE Step 1"]} 
+[2026-01-27 19:58:09] local.INFO: ✅ Quiz initialized successfully {"topic_id":1,"questions_count":2,"course_id":1,"sources":["USMLE Step 1"],"mode":"tutor"} 
+[2026-01-27 19:58:09] local.INFO: ✅ Tutor quiz initialized successfully {"request_id":"tutor_start_6978fcb1a24dc","execution_time_ms":52.3,"questions_count":2} 
+[2026-01-27 19:58:09] local.INFO: Security headers applied {"url":"https://5c2f2414a8fa.ngrok-free.app/quiz/1/1/tutor?sources%5B0%5D=USMLE%20Step%201","method":"GET","user_agent":"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.6 Safari/605.1.15","ip":"45.244.85.136","user_id":15} 
+[2026-01-27 19:58:30] local.INFO: UltraPerformanceOptimizer: All systems initialized for MAXIMUM PERFORMANCE!  
+[2026-01-27 19:58:30] local.INFO: UltraPerformanceServiceProvider: All duplicate services eliminated! Using ULTRA CONSOLIDATED CACHE SERVICE!  
+[2026-01-27 19:58:30] local.INFO: 📌 Tutor Quiz Start Attempt {"request_id":"tutor_start_6978fcc66b790","user_id":2,"course_id":1,"topic_id":1} 
+[2026-01-27 19:58:30] local.INFO: 📌 Quiz Initialization Attempt {"user_id":2,"user_name":"David George","is_admin":false,"course_id":1,"topic_id":1,"mode":"tutor","sources":["USMLE Step 1"],"request_url":"https://5c2f2414a8fa.ngrok-free.app/quiz/1/1/tutor?sources%5B0%5D=USMLE%20Step%201"} 
+[2026-01-27 19:58:30] local.INFO: Normalized sources for quiz {"sources":["USMLE Step 1"]} 
+[2026-01-27 19:58:30] local.INFO: OPTIMIZED: Questions retrieved with smart caching {"topic_id":1,"questions_count":2,"sources":["USMLE Step 1"]} 
+[2026-01-27 19:58:30] local.INFO: ✅ Quiz initialized successfully {"topic_id":1,"questions_count":2,"course_id":1,"sources":["USMLE Step 1"],"mode":"tutor"} 
+[2026-01-27 19:58:30] local.INFO: ✅ Tutor quiz initialized successfully {"request_id":"tutor_start_6978fcc66b790","execution_time_ms":7.95,"questions_count":2} 
+[2026-01-27 19:58:30] local.INFO: Security headers applied {"url":"https://5c2f2414a8fa.ngrok-free.app/quiz/1/1/tutor?sources%5B0%5D=USMLE%20Step%201","method":"GET","user_agent":"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36 Edg/143.0.0.0","ip":"45.244.85.136","user_id":2} 
+[2026-01-27 19:58:35] local.INFO: UltraPerformanceOptimizer: All systems initialized for MAXIMUM PERFORMANCE!  
+[2026-01-27 19:58:35] local.INFO: UltraPerformanceServiceProvider: All duplicate services eliminated! Using ULTRA CONSOLIDATED CACHE SERVICE!  
+[2026-01-27 19:58:37] local.INFO: UltraPerformanceOptimizer: All systems initialized for MAXIMUM PERFORMANCE!  
+[2026-01-27 19:58:37] local.INFO: UltraPerformanceServiceProvider: All duplicate services eliminated! Using ULTRA CONSOLIDATED CACHE SERVICE!  
+[2026-01-27 19:58:37] local.INFO: ⚡ ULTRA-FAST QUIZ STATS COMPLETE {"topic_id":1,"total_questions":2,"execution_ms":7.51,"queries_used":2,"cache_status":"stored"} 
+[2026-01-27 19:58:37] local.INFO: ⚡ ULTRA-FAST USER STATS COMPLETE {"topic_id":1,"user_id":2,"total_attempts":3,"execution_ms":3.5,"queries_used":2,"cache_status":"stored"} 
+[2026-01-27 19:58:37] local.INFO: ⚡ ULTRA-FAST QUIZ LOAD COMPLETE {"topic_id":1,"questions_count":2,"execution_ms":3.9,"queries_used":2,"cache_status":"stored"} 
+[2026-01-27 19:58:37] local.INFO: 🚀 ULTRA-FAST QUIZ DETAILS {"quiz_id":1,"topic_name":"Cardiovascular System","user_id":2,"execution_ms":23.4} 
+[2026-01-27 19:58:37] local.INFO: Security headers applied {"url":"https://5c2f2414a8fa.ngrok-free.app/quiz/1/1?sources%5B0%5D=USMLE%20Step%201","method":"GET","user_agent":"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36 Edg/143.0.0.0","ip":"45.244.85.136","user_id":2} 
+[2026-01-27 19:58:38] local.INFO: UltraPerformanceOptimizer: All systems initialized for MAXIMUM PERFORMANCE!  
+[2026-01-27 19:58:38] local.INFO: UltraPerformanceServiceProvider: All duplicate services eliminated! Using ULTRA CONSOLIDATED CACHE SERVICE!  
+[2026-01-27 19:58:55] local.INFO: UltraPerformanceOptimizer: All systems initialized for MAXIMUM PERFORMANCE!  
+[2026-01-27 19:58:55] local.INFO: UltraPerformanceServiceProvider: All duplicate services eliminated! Using ULTRA CONSOLIDATED CACHE SERVICE!  
+[2026-01-27 19:58:56] local.INFO: UltraPerformanceOptimizer: All systems initialized for MAXIMUM PERFORMANCE!  
+[2026-01-27 19:58:56] local.INFO: UltraPerformanceServiceProvider: All duplicate services eliminated! Using ULTRA CONSOLIDATED CACHE SERVICE!  
+[2026-01-27 19:58:56] local.INFO: UltraPerformanceOptimizer: All systems initialized for MAXIMUM PERFORMANCE!  
+[2026-01-27 19:58:56] local.INFO: UltraPerformanceServiceProvider: All duplicate services eliminated! Using ULTRA CONSOLIDATED CACHE SERVICE!  
+[2026-01-27 19:58:56] local.INFO: Security headers applied {"url":"https://5c2f2414a8fa.ngrok-free.app/courses","method":"GET","user_agent":"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36 Edg/143.0.0.0","ip":"45.244.85.136","user_id":2} 
+[2026-01-27 19:58:58] local.INFO: UltraPerformanceOptimizer: All systems initialized for MAXIMUM PERFORMANCE!  
+[2026-01-27 19:58:58] local.INFO: UltraPerformanceServiceProvider: All duplicate services eliminated! Using ULTRA CONSOLIDATED CACHE SERVICE!  
+[2026-01-27 19:59:00] local.INFO: UltraPerformanceOptimizer: All systems initialized for MAXIMUM PERFORMANCE!  
+[2026-01-27 19:59:00] local.INFO: UltraPerformanceServiceProvider: All duplicate services eliminated! Using ULTRA CONSOLIDATED CACHE SERVICE!  
+[2026-01-27 19:59:00] local.INFO: Security headers applied {"url":"https://5c2f2414a8fa.ngrok-free.app/topics/1","method":"GET","user_agent":"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36 Edg/143.0.0.0","ip":"45.244.85.136","user_id":2} 
+[2026-01-27 19:59:01] local.INFO: UltraPerformanceOptimizer: All systems initialized for MAXIMUM PERFORMANCE!  
+[2026-01-27 19:59:01] local.INFO: UltraPerformanceServiceProvider: All duplicate services eliminated! Using ULTRA CONSOLIDATED CACHE SERVICE!  
+[2026-01-27 19:59:02] local.INFO: UltraPerformanceOptimizer: All systems initialized for MAXIMUM PERFORMANCE!  
+[2026-01-27 19:59:02] local.INFO: UltraPerformanceServiceProvider: All duplicate services eliminated! Using ULTRA CONSOLIDATED CACHE SERVICE!  
+[2026-01-27 19:59:09] local.INFO: UltraPerformanceOptimizer: All systems initialized for MAXIMUM PERFORMANCE!  
+[2026-01-27 19:59:09] local.INFO: UltraPerformanceServiceProvider: All duplicate services eliminated! Using ULTRA CONSOLIDATED CACHE SERVICE!  
+[2026-01-27 19:59:09] local.INFO: OPTIMIZED LETHAL FIX: Generating random quiz with smart validation {"user_id":2,"question_count":5,"difficulty":"mixed","sources":[["Ain Shams University"]],"course_ids":["2","3","1","5","4","6","8","7"]} 
+[2026-01-27 19:59:09] local.INFO: OPTIMIZED LETHAL FIX: Random quiz generated with smart validation {"user_id":2,"questions_count":5,"topics_count":5,"validation_type":"smart_batch_check"} 
+[2026-01-27 19:59:09] local.INFO: Security headers applied {"url":"https://5c2f2414a8fa.ngrok-free.app/quiz/random/tutor?duration_minutes=0.167&question_limit=5&quiz_mode=tutor&selected_courses%5B0%5D=2&selected_courses%5B1%5D=3&selected_courses%5B2%5D=1&selected_courses%5B3%5D=5&selected_courses%5B4%5D=4&selected_courses%5B5%5D=6&selected_courses%5B6%5D=8&selected_courses%5B7%5D=7&selected_sources%5B0%5D=Ain%20Shams%20University","method":"GET","user_agent":"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36 Edg/143.0.0.0","ip":"45.244.85.136","user_id":2} 
+[2026-01-27 20:00:25] local.INFO: UltraPerformanceOptimizer: All systems initialized for MAXIMUM PERFORMANCE!  
+[2026-01-27 20:00:25] local.INFO: UltraPerformanceServiceProvider: All duplicate services eliminated! Using ULTRA CONSOLIDATED CACHE SERVICE!  
+[2026-01-27 20:00:25] local.INFO: OPTIMIZED LETHAL FIX: Generating random quiz with smart validation {"user_id":2,"question_count":5,"difficulty":"mixed","sources":[["Ain Shams University"]],"course_ids":["2","3","1","5","4","6","8","7"]} 
+[2026-01-27 20:00:25] local.INFO: OPTIMIZED LETHAL FIX: Random quiz generated with smart validation {"user_id":2,"questions_count":5,"topics_count":5,"validation_type":"smart_batch_check"} 
+[2026-01-27 20:00:25] local.INFO: Security headers applied {"url":"https://5c2f2414a8fa.ngrok-free.app/quiz/random?duration_minutes=0.167&question_limit=5&quiz_mode=quiz&selected_courses%5B0%5D=2&selected_courses%5B1%5D=3&selected_courses%5B2%5D=1&selected_courses%5B3%5D=5&selected_courses%5B4%5D=4&selected_courses%5B5%5D=6&selected_courses%5B6%5D=8&selected_courses%5B7%5D=7&selected_sources%5B0%5D=Ain%20Shams%20University","method":"GET","user_agent":"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36 Edg/143.0.0.0","ip":"45.244.85.136","user_id":2} 
+[2026-01-27 20:00:36] local.INFO: UltraPerformanceOptimizer: All systems initialized for MAXIMUM PERFORMANCE!  
+[2026-01-27 20:00:36] local.INFO: UltraPerformanceServiceProvider: All duplicate services eliminated! Using ULTRA CONSOLIDATED CACHE SERVICE!  
+[2026-01-27 20:00:36] local.INFO: 🎯 SMART cache invalidation completed {"user_id":2,"cache_keys_cleared":11,"strategy":"immediate_invalidation"} 
+[2026-01-27 20:00:36] local.INFO: QuizAttempt being created {"user_id":2,"topic_id":18,"quiz_type":"random","study_mode":"random","source":null,"score":3,"total_questions":5,"correct_answers":3} 
+[2026-01-27 20:00:36] local.INFO: Profile cache cleared after quiz attempt {"user_id":2,"quiz_type":"random","study_mode":"random","duration_seconds":10} 
+[2026-01-27 20:00:36] local.INFO: Smart cache invalidation completed {"type":"user_progress","id":2,"keys_invalidated":1} 
+[2026-01-27 20:00:36] local.INFO: 🚀 RANDOM QUIZ: Created attempt with attempt_id {"user_id":2,"topic_id":18,"attempt_id":10,"quiz_type":"random","study_mode":"random","chart_points":1} 
+[2026-01-27 20:00:36] local.INFO: User stats updated successfully {"user_id":2,"questionsAttempted":5,"correctAnswers":3,"durationSeconds":10,"study_streak_days":1,"last_study_date":"2026-01-27 00:00:00"} 
+[2026-01-27 20:00:36] local.INFO: XP Calculation: {"user_id":2,"score":3,"baseXP":30,"duration":10,"timeBonus":50.0,"percentageGrade":60.0,"accuracyBonus":30.0,"totalXP":110.0} 
+[2026-01-27 20:00:36] local.INFO: Study streak updated after quiz {"user_id":2,"original_streak":1,"new_streak":1,"streak_increased":false} 
+[2026-01-27 20:00:36] local.INFO: Non-regular quiz completed - skipping regular topic progress update {"assignment_id":null,"mode":"random","user_id":2,"topic_id":18} 
+[2026-01-27 20:00:36] local.INFO: Smart cache invalidation completed {"type":"user_progress","id":2,"keys_invalidated":1} 
+[2026-01-27 20:00:36] local.INFO: 🐆 NOTIFICATION CREATED: random_quiz_completed for user 2 in 0.47ms  
+[2026-01-27 20:00:36] local.INFO: 🐆 NUCLEAR NOTIFICATION: random_quiz_completed sent for random_quiz {"user_id":2,"score":60.0,"activity_type":"random_quiz","notification_type":"random_quiz_completed","result":{"id":"2_1769536836.6681_3500","type":"random_quiz_completed","title":"Random Quiz Completed","message":"You scored 60% on your random quiz from DR.HOSSAM","icon":"fas fa-dice","priority":"normal","read":false,"created_at":"2026-01-27T20:00:36+02:00","ts":1769536836.668092}} 
+[2026-01-27 20:02:03] local.INFO: UltraPerformanceOptimizer: All systems initialized for MAXIMUM PERFORMANCE!  
+[2026-01-27 20:02:03] local.INFO: UltraPerformanceServiceProvider: All duplicate services eliminated! Using ULTRA CONSOLIDATED CACHE SERVICE!  
+[2026-01-27 20:02:05] local.INFO: UltraPerformanceOptimizer: All systems initialized for MAXIMUM PERFORMANCE!  
+[2026-01-27 20:02:05] local.INFO: UltraPerformanceServiceProvider: All duplicate services eliminated! Using ULTRA CONSOLIDATED CACHE SERVICE!  
+[2026-01-27 20:02:06] local.INFO: UltraPerformanceOptimizer: All systems initialized for MAXIMUM PERFORMANCE!  
+[2026-01-27 20:02:06] local.INFO: UltraPerformanceServiceProvider: All duplicate services eliminated! Using ULTRA CONSOLIDATED CACHE SERVICE!  
+[2026-01-27 20:02:06] local.INFO: 📌 Tutor Quiz Start Attempt {"request_id":"tutor_start_6978fd9e536e4","user_id":2,"course_id":1,"topic_id":1} 
+[2026-01-27 20:02:06] local.INFO: 📌 Quiz Initialization Attempt {"user_id":2,"user_name":"David George","is_admin":false,"course_id":1,"topic_id":1,"mode":"tutor","sources":["USMLE Step 1"],"request_url":"https://5c2f2414a8fa.ngrok-free.app/quiz/1/1/tutor?sources%5B0%5D=USMLE%20Step%201"} 
+[2026-01-27 20:02:06] local.INFO: Normalized sources for quiz {"sources":["USMLE Step 1"]} 
+[2026-01-27 20:02:06] local.INFO: OPTIMIZED: Questions retrieved with smart caching {"topic_id":1,"questions_count":2,"sources":["USMLE Step 1"]} 
+[2026-01-27 20:02:06] local.INFO: ✅ Quiz initialized successfully {"topic_id":1,"questions_count":2,"course_id":1,"sources":["USMLE Step 1"],"mode":"tutor"} 
+[2026-01-27 20:02:06] local.INFO: ✅ Tutor quiz initialized successfully {"request_id":"tutor_start_6978fd9e536e4","execution_time_ms":1.99,"questions_count":2} 
+[2026-01-27 20:02:06] local.INFO: Security headers applied {"url":"https://5c2f2414a8fa.ngrok-free.app/quiz/1/1/tutor?sources%5B0%5D=USMLE%20Step%201","method":"GET","user_agent":"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36 Edg/143.0.0.0","ip":"45.244.85.136","user_id":2} 
+[2026-01-27 20:02:15] local.INFO: UltraPerformanceOptimizer: All systems initialized for MAXIMUM PERFORMANCE!  
+[2026-01-27 20:02:15] local.INFO: UltraPerformanceServiceProvider: All duplicate services eliminated! Using ULTRA CONSOLIDATED CACHE SERVICE!  
+[2026-01-27 20:02:15] local.INFO: 📌 Tutor Quiz Start Attempt {"request_id":"tutor_start_6978fda76d916","user_id":15,"course_id":1,"topic_id":1} 
+[2026-01-27 20:02:15] local.INFO: 📌 Quiz Initialization Attempt {"user_id":15,"user_name":"Dr.David","is_admin":false,"course_id":1,"topic_id":1,"mode":"tutor","sources":["USMLE Step 1"],"request_url":"https://5c2f2414a8fa.ngrok-free.app/quiz/1/1/tutor?sources%5B0%5D=USMLE%20Step%201"} 
+[2026-01-27 20:02:15] local.INFO: Normalized sources for quiz {"sources":["USMLE Step 1"]} 
+[2026-01-27 20:02:15] local.INFO: OPTIMIZED: Questions retrieved with smart caching {"topic_id":1,"questions_count":2,"sources":["USMLE Step 1"]} 
+[2026-01-27 20:02:15] local.INFO: ✅ Quiz initialized successfully {"topic_id":1,"questions_count":2,"course_id":1,"sources":["USMLE Step 1"],"mode":"tutor"} 
+[2026-01-27 20:02:15] local.INFO: ✅ Tutor quiz initialized successfully {"request_id":"tutor_start_6978fda76d916","execution_time_ms":3.15,"questions_count":2} 
+[2026-01-27 20:02:15] local.INFO: Security headers applied {"url":"https://5c2f2414a8fa.ngrok-free.app/quiz/1/1/tutor?sources%5B0%5D=USMLE%20Step%201","method":"GET","user_agent":"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.6 Safari/605.1.15","ip":"45.244.85.136","user_id":15} 
+[2026-01-27 20:03:14] local.INFO: UltraPerformanceOptimizer: All systems initialized for MAXIMUM PERFORMANCE!  
+[2026-01-27 20:03:14] local.INFO: UltraPerformanceServiceProvider: All duplicate services eliminated! Using ULTRA CONSOLIDATED CACHE SERVICE!  
+[2026-01-27 20:03:14] local.INFO: 📌 Tutor Quiz Start Attempt {"request_id":"tutor_start_6978fde255cf6","user_id":15,"course_id":1,"topic_id":1} 
+[2026-01-27 20:03:14] local.INFO: 📌 Quiz Initialization Attempt {"user_id":15,"user_name":"Dr.David","is_admin":false,"course_id":1,"topic_id":1,"mode":"tutor","sources":["USMLE Step 1"],"request_url":"https://5c2f2414a8fa.ngrok-free.app/quiz/1/1/tutor?sources%5B0%5D=USMLE%20Step%201"} 
+[2026-01-27 20:03:14] local.INFO: Normalized sources for quiz {"sources":["USMLE Step 1"]} 
+[2026-01-27 20:03:14] local.INFO: OPTIMIZED: Questions retrieved with smart caching {"topic_id":1,"questions_count":2,"sources":["USMLE Step 1"]} 
+[2026-01-27 20:03:14] local.INFO: ✅ Quiz initialized successfully {"topic_id":1,"questions_count":2,"course_id":1,"sources":["USMLE Step 1"],"mode":"tutor"} 
+[2026-01-27 20:03:14] local.INFO: ✅ Tutor quiz initialized successfully {"request_id":"tutor_start_6978fde255cf6","execution_time_ms":8.53,"questions_count":2} 
+[2026-01-27 20:03:14] local.INFO: Security headers applied {"url":"https://5c2f2414a8fa.ngrok-free.app/quiz/1/1/tutor?sources%5B0%5D=USMLE%20Step%201","method":"GET","user_agent":"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.6 Safari/605.1.15","ip":"45.244.85.136","user_id":15} 
+[2026-01-27 20:05:10] local.INFO: UltraPerformanceOptimizer: All systems initialized for MAXIMUM PERFORMANCE!  
+[2026-01-27 20:05:10] local.INFO: UltraPerformanceServiceProvider: All duplicate services eliminated! Using ULTRA CONSOLIDATED CACHE SERVICE!  
+[2026-01-27 20:05:10] local.INFO: 📌 Tutor Quiz Start Attempt {"request_id":"tutor_start_6978fe56ae57a","user_id":2,"course_id":1,"topic_id":1} 
+[2026-01-27 20:05:10] local.INFO: 📌 Quiz Initialization Attempt {"user_id":2,"user_name":"David George","is_admin":false,"course_id":1,"topic_id":1,"mode":"tutor","sources":["USMLE Step 1"],"request_url":"https://5c2f2414a8fa.ngrok-free.app/quiz/1/1/tutor?sources%5B0%5D=USMLE%20Step%201"} 
+[2026-01-27 20:05:10] local.INFO: Normalized sources for quiz {"sources":["USMLE Step 1"]} 
+[2026-01-27 20:05:10] local.INFO: OPTIMIZED: Questions retrieved with smart caching {"topic_id":1,"questions_count":2,"sources":["USMLE Step 1"]} 
+[2026-01-27 20:05:10] local.INFO: ✅ Quiz initialized successfully {"topic_id":1,"questions_count":2,"course_id":1,"sources":["USMLE Step 1"],"mode":"tutor"} 
+[2026-01-27 20:05:10] local.INFO: ✅ Tutor quiz initialized successfully {"request_id":"tutor_start_6978fe56ae57a","execution_time_ms":1.51,"questions_count":2} 
+[2026-01-27 20:05:10] local.INFO: Security headers applied {"url":"https://5c2f2414a8fa.ngrok-free.app/quiz/1/1/tutor?sources%5B0%5D=USMLE%20Step%201","method":"GET","user_agent":"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36 Edg/143.0.0.0","ip":"45.244.85.136","user_id":2} 
+[2026-01-27 20:05:22] local.INFO: UltraPerformanceOptimizer: All systems initialized for MAXIMUM PERFORMANCE!  
+[2026-01-27 20:05:22] local.INFO: UltraPerformanceServiceProvider: All duplicate services eliminated! Using ULTRA CONSOLIDATED CACHE SERVICE!  
+[2026-01-27 20:05:22] local.INFO: 📌 Tutor Quiz Start Attempt {"request_id":"tutor_start_6978fe620e919","user_id":2,"course_id":1,"topic_id":1} 
+[2026-01-27 20:05:22] local.INFO: 📌 Quiz Initialization Attempt {"user_id":2,"user_name":"David George","is_admin":false,"course_id":1,"topic_id":1,"mode":"tutor","sources":["USMLE Step 1"],"request_url":"https://5c2f2414a8fa.ngrok-free.app/quiz/1/1/tutor?sources%5B0%5D=USMLE%20Step%201"} 
+[2026-01-27 20:05:22] local.INFO: Normalized sources for quiz {"sources":["USMLE Step 1"]} 
+[2026-01-27 20:05:22] local.INFO: OPTIMIZED: Questions retrieved with smart caching {"topic_id":1,"questions_count":2,"sources":["USMLE Step 1"]} 
+[2026-01-27 20:05:22] local.INFO: ✅ Quiz initialized successfully {"topic_id":1,"questions_count":2,"course_id":1,"sources":["USMLE Step 1"],"mode":"tutor"} 
+[2026-01-27 20:05:22] local.INFO: ✅ Tutor quiz initialized successfully {"request_id":"tutor_start_6978fe620e919","execution_time_ms":2.99,"questions_count":2} 
+[2026-01-27 20:05:22] local.INFO: Security headers applied {"url":"https://5c2f2414a8fa.ngrok-free.app/quiz/1/1/tutor?sources%5B0%5D=USMLE%20Step%201","method":"GET","user_agent":"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36 Edg/143.0.0.0","ip":"45.244.85.136","user_id":2} 
+[2026-01-27 20:05:36] local.INFO: UltraPerformanceOptimizer: All systems initialized for MAXIMUM PERFORMANCE!  
+[2026-01-27 20:05:36] local.INFO: UltraPerformanceServiceProvider: All duplicate services eliminated! Using ULTRA CONSOLIDATED CACHE SERVICE!  
+[2026-01-27 20:05:36] local.INFO: UltraConsolidatedCache: Cached result {"key":"total_users","duration_ms":29.9,"compressed":false} 
+[2026-01-27 20:05:36] local.INFO: UltraConsolidatedCache: Cached result {"key":"total_courses","duration_ms":0.89,"compressed":false} 
+[2026-01-27 20:05:36] local.INFO: UltraConsolidatedCache: Cached result {"key":"total_questions","duration_ms":5.61,"compressed":false} 
+[2026-01-27 20:05:36] local.INFO: UltraConsolidatedCache: Cached result {"key":"system_stats","duration_ms":1.22,"compressed":false} 
+[2026-01-27 20:05:36] local.INFO: UltraPerformanceOptimizer: All systems initialized for MAXIMUM PERFORMANCE!  
+[2026-01-27 20:05:36] local.INFO: UltraPerformanceServiceProvider: All duplicate services eliminated! Using ULTRA CONSOLIDATED CACHE SERVICE!  
+[2026-01-27 20:05:36] local.INFO: UltraPerformanceOptimizer: All systems initialized for MAXIMUM PERFORMANCE!  
+[2026-01-27 20:05:36] local.INFO: UltraPerformanceServiceProvider: All duplicate services eliminated! Using ULTRA CONSOLIDATED CACHE SERVICE!  
+[2026-01-27 20:05:38] local.INFO: UltraPerformanceOptimizer: All systems initialized for MAXIMUM PERFORMANCE!  
+[2026-01-27 20:05:38] local.INFO: UltraPerformanceServiceProvider: All duplicate services eliminated! Using ULTRA CONSOLIDATED CACHE SERVICE!  
+[2026-01-27 20:05:38] local.INFO: 📌 Tutor Quiz Start Attempt {"request_id":"tutor_start_6978fe72a5753","user_id":2,"course_id":1,"topic_id":1} 
+[2026-01-27 20:05:38] local.INFO: 📌 Quiz Initialization Attempt {"user_id":2,"user_name":"David George","is_admin":false,"course_id":1,"topic_id":1,"mode":"tutor","sources":["USMLE Step 1"],"request_url":"https://5c2f2414a8fa.ngrok-free.app/quiz/1/1/tutor?sources%5B0%5D=USMLE%20Step%201"} 
+[2026-01-27 20:05:38] local.INFO: Normalized sources for quiz {"sources":["USMLE Step 1"]} 
+[2026-01-27 20:05:38] local.INFO: UltraConsolidatedCache: Cached result {"key":"topic:1:questions:adcbcbb7214417c1a9e4278299ee2cbb","duration_ms":7.99,"compressed":false} 
+[2026-01-27 20:05:38] local.INFO: OPTIMIZED: Questions retrieved with smart caching {"topic_id":1,"questions_count":2,"sources":["USMLE Step 1"]} 
+[2026-01-27 20:05:38] local.INFO: ✅ Quiz initialized successfully {"topic_id":1,"questions_count":2,"course_id":1,"sources":["USMLE Step 1"],"mode":"tutor"} 
+[2026-01-27 20:05:38] local.INFO: ✅ Tutor quiz initialized successfully {"request_id":"tutor_start_6978fe72a5753","execution_time_ms":10.05,"questions_count":2} 
+[2026-01-27 20:05:38] local.INFO: Security headers applied {"url":"https://5c2f2414a8fa.ngrok-free.app/quiz/1/1/tutor?sources%5B0%5D=USMLE%20Step%201","method":"GET","user_agent":"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36 Edg/143.0.0.0","ip":"45.244.85.136","user_id":2} 
+[2026-01-27 20:08:13] local.INFO: UltraPerformanceOptimizer: All systems initialized for MAXIMUM PERFORMANCE!  
+[2026-01-27 20:08:13] local.INFO: UltraPerformanceServiceProvider: All duplicate services eliminated! Using ULTRA CONSOLIDATED CACHE SERVICE!  
+[2026-01-27 20:08:13] local.INFO: 📌 Tutor Quiz Start Attempt {"request_id":"tutor_start_6978ff0d46b87","user_id":2,"course_id":1,"topic_id":1} 
+[2026-01-27 20:08:13] local.INFO: 📌 Quiz Initialization Attempt {"user_id":2,"user_name":"David George","is_admin":false,"course_id":1,"topic_id":1,"mode":"tutor","sources":["USMLE Step 1"],"request_url":"https://5c2f2414a8fa.ngrok-free.app/quiz/1/1/tutor?sources%5B0%5D=USMLE%20Step%201"} 
+[2026-01-27 20:08:13] local.INFO: Normalized sources for quiz {"sources":["USMLE Step 1"]} 
+[2026-01-27 20:08:13] local.INFO: OPTIMIZED: Questions retrieved with smart caching {"topic_id":1,"questions_count":2,"sources":["USMLE Step 1"]} 
+[2026-01-27 20:08:13] local.INFO: ✅ Quiz initialized successfully {"topic_id":1,"questions_count":2,"course_id":1,"sources":["USMLE Step 1"],"mode":"tutor"} 
+[2026-01-27 20:08:13] local.INFO: ✅ Tutor quiz initialized successfully {"request_id":"tutor_start_6978ff0d46b87","execution_time_ms":2.04,"questions_count":2} 
+[2026-01-27 20:08:13] local.INFO: Security headers applied {"url":"https://5c2f2414a8fa.ngrok-free.app/quiz/1/1/tutor?sources%5B0%5D=USMLE%20Step%201","method":"GET","user_agent":"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36 Edg/143.0.0.0","ip":"45.244.85.136","user_id":2} 
+[2026-01-27 20:08:17] local.INFO: UltraPerformanceOptimizer: All systems initialized for MAXIMUM PERFORMANCE!  
+[2026-01-27 20:08:17] local.INFO: UltraPerformanceServiceProvider: All duplicate services eliminated! Using ULTRA CONSOLIDATED CACHE SERVICE!  
+[2026-01-27 20:08:17] local.INFO: 📌 Tutor Quiz Start Attempt {"request_id":"tutor_start_6978ff113359a","user_id":15,"course_id":1,"topic_id":1} 
+[2026-01-27 20:08:17] local.INFO: 📌 Quiz Initialization Attempt {"user_id":15,"user_name":"Dr.David","is_admin":false,"course_id":1,"topic_id":1,"mode":"tutor","sources":["USMLE Step 1"],"request_url":"https://5c2f2414a8fa.ngrok-free.app/quiz/1/1/tutor?sources%5B0%5D=USMLE%20Step%201"} 
+[2026-01-27 20:08:17] local.INFO: Normalized sources for quiz {"sources":["USMLE Step 1"]} 
+[2026-01-27 20:08:17] local.INFO: OPTIMIZED: Questions retrieved with smart caching {"topic_id":1,"questions_count":2,"sources":["USMLE Step 1"]} 
+[2026-01-27 20:08:17] local.INFO: ✅ Quiz initialized successfully {"topic_id":1,"questions_count":2,"course_id":1,"sources":["USMLE Step 1"],"mode":"tutor"} 
+[2026-01-27 20:08:17] local.INFO: ✅ Tutor quiz initialized successfully {"request_id":"tutor_start_6978ff113359a","execution_time_ms":8.78,"questions_count":2} 
+[2026-01-27 20:08:17] local.INFO: Security headers applied {"url":"https://5c2f2414a8fa.ngrok-free.app/quiz/1/1/tutor?sources%5B0%5D=USMLE%20Step%201","method":"GET","user_agent":"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.6 Safari/605.1.15","ip":"45.244.85.136","user_id":15} 
+[2026-01-27 20:09:26] local.INFO: UltraPerformanceOptimizer: All systems initialized for MAXIMUM PERFORMANCE!  
+[2026-01-27 20:09:26] local.INFO: UltraPerformanceServiceProvider: All duplicate services eliminated! Using ULTRA CONSOLIDATED CACHE SERVICE!  
+[2026-01-27 20:09:26] local.INFO: 📌 Tutor Quiz Start Attempt {"request_id":"tutor_start_6978ff56f147d","user_id":2,"course_id":1,"topic_id":1} 
+[2026-01-27 20:09:26] local.INFO: 📌 Quiz Initialization Attempt {"user_id":2,"user_name":"David George","is_admin":false,"course_id":1,"topic_id":1,"mode":"tutor","sources":["USMLE Step 1"],"request_url":"https://5c2f2414a8fa.ngrok-free.app/quiz/1/1/tutor?sources%5B0%5D=USMLE%20Step%201"} 
+[2026-01-27 20:09:26] local.INFO: Normalized sources for quiz {"sources":["USMLE Step 1"]} 
+[2026-01-27 20:09:26] local.INFO: OPTIMIZED: Questions retrieved with smart caching {"topic_id":1,"questions_count":2,"sources":["USMLE Step 1"]} 
+[2026-01-27 20:09:26] local.INFO: ✅ Quiz initialized successfully {"topic_id":1,"questions_count":2,"course_id":1,"sources":["USMLE Step 1"],"mode":"tutor"} 
+[2026-01-27 20:09:26] local.INFO: ✅ Tutor quiz initialized successfully {"request_id":"tutor_start_6978ff56f147d","execution_time_ms":3.0,"questions_count":2} 
+[2026-01-27 20:09:27] local.INFO: Security headers applied {"url":"https://5c2f2414a8fa.ngrok-free.app/quiz/1/1/tutor?sources%5B0%5D=USMLE%20Step%201","method":"GET","user_agent":"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36 Edg/143.0.0.0","ip":"45.244.85.136","user_id":2} 
+[2026-01-27 20:09:43] local.INFO: UltraPerformanceOptimizer: All systems initialized for MAXIMUM PERFORMANCE!  
+[2026-01-27 20:09:43] local.INFO: UltraPerformanceServiceProvider: All duplicate services eliminated! Using ULTRA CONSOLIDATED CACHE SERVICE!  
+[2026-01-27 20:09:44] local.INFO: UltraPerformanceOptimizer: All systems initialized for MAXIMUM PERFORMANCE!  
+[2026-01-27 20:09:44] local.INFO: UltraPerformanceServiceProvider: All duplicate services eliminated! Using ULTRA CONSOLIDATED CACHE SERVICE!  
+[2026-01-27 20:09:45] local.INFO: ⚡ ULTRA-FAST QUIZ STATS COMPLETE {"topic_id":1,"total_questions":2,"execution_ms":21.49,"queries_used":2,"cache_status":"stored"} 
+[2026-01-27 20:09:45] local.INFO: ⚡ ULTRA-FAST USER STATS COMPLETE {"topic_id":1,"user_id":2,"total_attempts":3,"execution_ms":60.68,"queries_used":2,"cache_status":"stored"} 
+[2026-01-27 20:09:45] local.INFO: 🚀 ULTRA-FAST CACHE HIT {"topic_id":1,"cache_key":"ultra_fast:quiz_questions:topic_1:sources_adcbcbb7214417c1a9e4278299ee2cbb","execution_ms":0.13,"queries_used":0} 
+[2026-01-27 20:09:45] local.INFO: 🚀 ULTRA-FAST QUIZ DETAILS {"quiz_id":1,"topic_name":"Cardiovascular System","user_id":2,"execution_ms":113.66} 
+[2026-01-27 20:09:45] local.INFO: Security headers applied {"url":"https://5c2f2414a8fa.ngrok-free.app/quiz/1/1?sources%5B0%5D=USMLE%20Step%201","method":"GET","user_agent":"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36 Edg/143.0.0.0","ip":"45.244.85.136","user_id":2} 
+[2026-01-27 20:09:46] local.INFO: UltraPerformanceOptimizer: All systems initialized for MAXIMUM PERFORMANCE!  
+[2026-01-27 20:09:46] local.INFO: UltraPerformanceServiceProvider: All duplicate services eliminated! Using ULTRA CONSOLIDATED CACHE SERVICE!  
+[2026-01-27 20:09:53] local.INFO: UltraPerformanceOptimizer: All systems initialized for MAXIMUM PERFORMANCE!  
+[2026-01-27 20:09:53] local.INFO: UltraPerformanceServiceProvider: All duplicate services eliminated! Using ULTRA CONSOLIDATED CACHE SERVICE!  
+[2026-01-27 20:09:53] local.INFO: UltraConsolidatedCache: Cached result {"key":"total_users","duration_ms":6.79,"compressed":false} 
+[2026-01-27 20:09:53] local.INFO: UltraConsolidatedCache: Cached result {"key":"total_courses","duration_ms":1.05,"compressed":false} 
+[2026-01-27 20:09:53] local.INFO: UltraConsolidatedCache: Cached result {"key":"total_questions","duration_ms":0.96,"compressed":false} 
+[2026-01-27 20:09:53] local.INFO: UltraConsolidatedCache: Cached result {"key":"system_stats","duration_ms":0.99,"compressed":false} 
+[2026-01-27 20:09:53] local.INFO: UltraPerformanceOptimizer: All systems initialized for MAXIMUM PERFORMANCE!  
+[2026-01-27 20:09:53] local.INFO: UltraPerformanceServiceProvider: All duplicate services eliminated! Using ULTRA CONSOLIDATED CACHE SERVICE!  
+[2026-01-27 20:09:53] local.INFO: UltraPerformanceOptimizer: All systems initialized for MAXIMUM PERFORMANCE!  
+[2026-01-27 20:09:53] local.INFO: UltraPerformanceServiceProvider: All duplicate services eliminated! Using ULTRA CONSOLIDATED CACHE SERVICE!  
+[2026-01-27 20:09:58] local.INFO: UltraPerformanceOptimizer: All systems initialized for MAXIMUM PERFORMANCE!  
+[2026-01-27 20:09:58] local.INFO: UltraPerformanceServiceProvider: All duplicate services eliminated! Using ULTRA CONSOLIDATED CACHE SERVICE!  
+[2026-01-27 20:09:58] local.INFO: ⚡ ULTRA-FAST QUIZ STATS COMPLETE {"topic_id":1,"total_questions":2,"execution_ms":6.73,"queries_used":2,"cache_status":"stored"} 
+[2026-01-27 20:09:58] local.INFO: ⚡ ULTRA-FAST USER STATS COMPLETE {"topic_id":1,"user_id":2,"total_attempts":3,"execution_ms":6.56,"queries_used":2,"cache_status":"stored"} 
+[2026-01-27 20:09:58] local.INFO: 🚀 ULTRA-FAST CACHE HIT {"topic_id":1,"cache_key":"ultra_fast:quiz_questions:topic_1:sources_adcbcbb7214417c1a9e4278299ee2cbb","execution_ms":0.12,"queries_used":0} 
+[2026-01-27 20:09:58] local.INFO: 🚀 ULTRA-FAST QUIZ DETAILS {"quiz_id":1,"topic_name":"Cardiovascular System","user_id":2,"execution_ms":27.27} 
+[2026-01-27 20:09:58] local.INFO: Security headers applied {"url":"https://5c2f2414a8fa.ngrok-free.app/quiz/1/1?sources%5B0%5D=USMLE%20Step%201","method":"GET","user_agent":"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36 Edg/143.0.0.0","ip":"45.244.85.136","user_id":2} 
+[2026-01-27 20:10:01] local.INFO: UltraPerformanceOptimizer: All systems initialized for MAXIMUM PERFORMANCE!  
+[2026-01-27 20:10:01] local.INFO: UltraPerformanceServiceProvider: All duplicate services eliminated! Using ULTRA CONSOLIDATED CACHE SERVICE!  
+[2026-01-27 20:10:14] local.INFO: UltraPerformanceOptimizer: All systems initialized for MAXIMUM PERFORMANCE!  
+[2026-01-27 20:10:14] local.INFO: UltraPerformanceServiceProvider: All duplicate services eliminated! Using ULTRA CONSOLIDATED CACHE SERVICE!  
+[2026-01-27 20:10:14] local.INFO: ⚡ ULTRA-FAST QUIZ STATS COMPLETE {"topic_id":1,"total_questions":2,"execution_ms":4.83,"queries_used":2,"cache_status":"stored"} 
+[2026-01-27 20:10:14] local.INFO: ⚡ ULTRA-FAST USER STATS COMPLETE {"topic_id":1,"user_id":2,"total_attempts":3,"execution_ms":2.76,"queries_used":2,"cache_status":"stored"} 
+[2026-01-27 20:10:14] local.INFO: 🚀 ULTRA-FAST CACHE HIT {"topic_id":1,"cache_key":"ultra_fast:quiz_questions:topic_1:sources_adcbcbb7214417c1a9e4278299ee2cbb","execution_ms":0.12,"queries_used":0} 
+[2026-01-27 20:10:14] local.INFO: 🚀 ULTRA-FAST QUIZ DETAILS {"quiz_id":1,"topic_name":"Cardiovascular System","user_id":2,"execution_ms":12.84} 
+[2026-01-27 20:10:14] local.INFO: Security headers applied {"url":"https://5c2f2414a8fa.ngrok-free.app/quiz/1/1?sources%5B0%5D=USMLE%20Step%201","method":"GET","user_agent":"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36 Edg/143.0.0.0","ip":"45.244.85.136","user_id":2} 
+[2026-01-27 20:10:44] local.INFO: UltraPerformanceOptimizer: All systems initialized for MAXIMUM PERFORMANCE!  
+[2026-01-27 20:10:44] local.INFO: UltraPerformanceServiceProvider: All duplicate services eliminated! Using ULTRA CONSOLIDATED CACHE SERVICE!  
+[2026-01-27 20:10:44] local.INFO: Security headers applied {"url":"https://5c2f2414a8fa.ngrok-free.app/topics/1","method":"GET","user_agent":"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36 Edg/143.0.0.0","ip":"45.244.85.136","user_id":2} 
+[2026-01-27 20:10:45] local.INFO: UltraPerformanceOptimizer: All systems initialized for MAXIMUM PERFORMANCE!  
+[2026-01-27 20:10:45] local.INFO: UltraPerformanceServiceProvider: All duplicate services eliminated! Using ULTRA CONSOLIDATED CACHE SERVICE!  
+[2026-01-27 20:10:47] local.INFO: UltraPerformanceOptimizer: All systems initialized for MAXIMUM PERFORMANCE!  
+[2026-01-27 20:10:47] local.INFO: UltraPerformanceServiceProvider: All duplicate services eliminated! Using ULTRA CONSOLIDATED CACHE SERVICE!  
+[2026-01-27 20:10:49] local.INFO: UltraPerformanceOptimizer: All systems initialized for MAXIMUM PERFORMANCE!  
+[2026-01-27 20:10:49] local.INFO: UltraPerformanceServiceProvider: All duplicate services eliminated! Using ULTRA CONSOLIDATED CACHE SERVICE!  
+[2026-01-27 20:10:49] local.INFO: ⚡ ULTRA-FAST QUIZ STATS COMPLETE {"topic_id":1,"total_questions":2,"execution_ms":3.12,"queries_used":2,"cache_status":"stored"} 
+[2026-01-27 20:10:49] local.INFO: ⚡ ULTRA-FAST USER STATS COMPLETE {"topic_id":1,"user_id":2,"total_attempts":3,"execution_ms":10.81,"queries_used":2,"cache_status":"stored"} 
+[2026-01-27 20:10:49] local.INFO: 🚀 ULTRA-FAST CACHE HIT {"topic_id":1,"cache_key":"ultra_fast:quiz_questions:topic_1:sources_adcbcbb7214417c1a9e4278299ee2cbb","execution_ms":0.15,"queries_used":0} 
+[2026-01-27 20:10:49] local.INFO: 🚀 ULTRA-FAST QUIZ DETAILS {"quiz_id":1,"topic_name":"Cardiovascular System","user_id":2,"execution_ms":21.77} 
+[2026-01-27 20:10:49] local.INFO: Security headers applied {"url":"https://5c2f2414a8fa.ngrok-free.app/quiz/1/1?sources%5B0%5D=USMLE%20Step%201","method":"GET","user_agent":"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36 Edg/143.0.0.0","ip":"45.244.85.136","user_id":2} 
+[2026-01-27 20:10:50] local.INFO: UltraPerformanceOptimizer: All systems initialized for MAXIMUM PERFORMANCE!  
+[2026-01-27 20:10:50] local.INFO: UltraPerformanceServiceProvider: All duplicate services eliminated! Using ULTRA CONSOLIDATED CACHE SERVICE!  
+[2026-01-27 20:11:05] local.INFO: UltraPerformanceOptimizer: All systems initialized for MAXIMUM PERFORMANCE!  
+[2026-01-27 20:11:05] local.INFO: UltraPerformanceServiceProvider: All duplicate services eliminated! Using ULTRA CONSOLIDATED CACHE SERVICE!  
+[2026-01-27 20:11:05] local.INFO: UltraPerformanceOptimizer: All systems initialized for MAXIMUM PERFORMANCE!  
+[2026-01-27 20:11:05] local.INFO: UltraPerformanceServiceProvider: All duplicate services eliminated! Using ULTRA CONSOLIDATED CACHE SERVICE!  
+[2026-01-27 20:11:11] local.INFO: UltraPerformanceOptimizer: All systems initialized for MAXIMUM PERFORMANCE!  
+[2026-01-27 20:11:11] local.INFO: UltraPerformanceServiceProvider: All duplicate services eliminated! Using ULTRA CONSOLIDATED CACHE SERVICE!  
+[2026-01-27 20:11:11] local.INFO: 🐆 NOTIFICATION CREATED: medcapsule_welcome for user 2 in 1.99ms  
+[2026-01-27 20:11:11] local.INFO: Welcome notification sent {"user_id":2} 
+[2026-01-27 20:11:11] local.INFO: Login processed for welcome notification {"user_id":2,"welcome_sent":true} 
+[2026-01-27 20:11:11] local.INFO: UltraPerformanceOptimizer: All systems initialized for MAXIMUM PERFORMANCE!  
+[2026-01-27 20:11:11] local.INFO: UltraPerformanceServiceProvider: All duplicate services eliminated! Using ULTRA CONSOLIDATED CACHE SERVICE!  
+[2026-01-27 20:11:11] local.INFO: ⚡ ULTRA-FAST QUIZ STATS COMPLETE {"topic_id":1,"total_questions":2,"execution_ms":7.33,"queries_used":2,"cache_status":"stored"} 
+[2026-01-27 20:11:11] local.INFO: ⚡ ULTRA-FAST USER STATS COMPLETE {"topic_id":1,"user_id":2,"total_attempts":3,"execution_ms":2.06,"queries_used":2,"cache_status":"stored"} 
+[2026-01-27 20:11:11] local.INFO: 🚀 ULTRA-FAST CACHE HIT {"topic_id":1,"cache_key":"ultra_fast:quiz_questions:topic_1:sources_adcbcbb7214417c1a9e4278299ee2cbb","execution_ms":0.13,"queries_used":0} 
+[2026-01-27 20:11:11] local.INFO: 🚀 ULTRA-FAST QUIZ DETAILS {"quiz_id":1,"topic_name":"Cardiovascular System","user_id":2,"execution_ms":14.37} 
+[2026-01-27 20:11:11] local.INFO: Security headers applied {"url":"https://5c2f2414a8fa.ngrok-free.app/quiz/1/1?sources%5B0%5D=USMLE%20Step%201","method":"GET","user_agent":"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36 Edg/143.0.0.0","ip":"45.244.85.136","user_id":2} 
+[2026-01-27 20:11:12] local.INFO: UltraPerformanceOptimizer: All systems initialized for MAXIMUM PERFORMANCE!  
+[2026-01-27 20:11:12] local.INFO: UltraPerformanceServiceProvider: All duplicate services eliminated! Using ULTRA CONSOLIDATED CACHE SERVICE!  
+[2026-01-27 20:14:53] local.INFO: UltraPerformanceOptimizer: All systems initialized for MAXIMUM PERFORMANCE!  
+[2026-01-27 20:14:53] local.INFO: UltraPerformanceServiceProvider: All duplicate services eliminated! Using ULTRA CONSOLIDATED CACHE SERVICE!  
+[2026-01-27 20:14:53] local.INFO: ⚡ ULTRA-FAST QUIZ STATS COMPLETE {"topic_id":1,"total_questions":2,"execution_ms":9.95,"queries_used":2,"cache_status":"stored"} 
+[2026-01-27 20:14:53] local.INFO: ⚡ ULTRA-FAST USER STATS COMPLETE {"topic_id":1,"user_id":2,"total_attempts":3,"execution_ms":8.87,"queries_used":2,"cache_status":"stored"} 
+[2026-01-27 20:14:53] local.INFO: ⚡ ULTRA-FAST QUIZ LOAD COMPLETE {"topic_id":1,"questions_count":2,"execution_ms":8.55,"queries_used":2,"cache_status":"stored"} 
+[2026-01-27 20:14:53] local.INFO: 🚀 ULTRA-FAST QUIZ DETAILS {"quiz_id":1,"topic_name":"Cardiovascular System","user_id":2,"execution_ms":67.56} 
+[2026-01-27 20:14:53] local.INFO: Security headers applied {"url":"https://5c2f2414a8fa.ngrok-free.app/quiz/1/1?sources%5B0%5D=USMLE%20Step%201","method":"GET","user_agent":"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36 Edg/143.0.0.0","ip":"45.244.85.136","user_id":2} 
+[2026-01-27 20:14:53] local.INFO: UltraPerformanceOptimizer: All systems initialized for MAXIMUM PERFORMANCE!  
+[2026-01-27 20:14:53] local.INFO: UltraPerformanceServiceProvider: All duplicate services eliminated! Using ULTRA CONSOLIDATED CACHE SERVICE!  
+[2026-01-27 20:14:58] local.INFO: UltraPerformanceOptimizer: All systems initialized for MAXIMUM PERFORMANCE!  
+[2026-01-27 20:14:58] local.INFO: UltraPerformanceServiceProvider: All duplicate services eliminated! Using ULTRA CONSOLIDATED CACHE SERVICE!  
+[2026-01-27 20:15:02] local.INFO: UltraPerformanceOptimizer: All systems initialized for MAXIMUM PERFORMANCE!  
+[2026-01-27 20:15:02] local.INFO: UltraPerformanceServiceProvider: All duplicate services eliminated! Using ULTRA CONSOLIDATED CACHE SERVICE!  
+[2026-01-27 20:15:02] local.INFO: Security headers applied {"url":"https://5c2f2414a8fa.ngrok-free.app/topics/1","method":"GET","user_agent":"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36 Edg/143.0.0.0","ip":"45.244.85.136","user_id":2} 
+[2026-01-27 20:15:03] local.INFO: UltraPerformanceOptimizer: All systems initialized for MAXIMUM PERFORMANCE!  
+[2026-01-27 20:15:03] local.INFO: UltraPerformanceServiceProvider: All duplicate services eliminated! Using ULTRA CONSOLIDATED CACHE SERVICE!  
+[2026-01-27 20:15:05] local.INFO: UltraPerformanceOptimizer: All systems initialized for MAXIMUM PERFORMANCE!  
+[2026-01-27 20:15:05] local.INFO: UltraPerformanceServiceProvider: All duplicate services eliminated! Using ULTRA CONSOLIDATED CACHE SERVICE!  
+[2026-01-27 20:15:06] local.INFO: UltraPerformanceOptimizer: All systems initialized for MAXIMUM PERFORMANCE!  
+[2026-01-27 20:15:06] local.INFO: UltraPerformanceServiceProvider: All duplicate services eliminated! Using ULTRA CONSOLIDATED CACHE SERVICE!  
+[2026-01-27 20:15:06] local.INFO: ⚡ ULTRA-FAST QUIZ STATS COMPLETE {"topic_id":1,"total_questions":2,"execution_ms":4.81,"queries_used":2,"cache_status":"stored"} 
+[2026-01-27 20:15:06] local.INFO: ⚡ ULTRA-FAST USER STATS COMPLETE {"topic_id":1,"user_id":2,"total_attempts":3,"execution_ms":5.83,"queries_used":2,"cache_status":"stored"} 
+[2026-01-27 20:15:06] local.INFO: 🚀 ULTRA-FAST CACHE HIT {"topic_id":1,"cache_key":"ultra_fast:quiz_questions:topic_1:v_1:sources_adcbcbb7214417c1a9e4278299ee2cbb","execution_ms":0.25,"queries_used":0} 
+[2026-01-27 20:15:06] local.INFO: 🚀 ULTRA-FAST QUIZ DETAILS {"quiz_id":1,"topic_name":"Cardiovascular System","user_id":2,"execution_ms":15.21} 
+[2026-01-27 20:15:06] local.INFO: Security headers applied {"url":"https://5c2f2414a8fa.ngrok-free.app/quiz/1/1?sources%5B0%5D=USMLE%20Step%201","method":"GET","user_agent":"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36 Edg/143.0.0.0","ip":"45.244.85.136","user_id":2} 
+[2026-01-27 20:15:07] local.INFO: UltraPerformanceOptimizer: All systems initialized for MAXIMUM PERFORMANCE!  
+[2026-01-27 20:15:07] local.INFO: UltraPerformanceServiceProvider: All duplicate services eliminated! Using ULTRA CONSOLIDATED CACHE SERVICE!  
+[2026-01-27 20:15:13] local.INFO: UltraPerformanceOptimizer: All systems initialized for MAXIMUM PERFORMANCE!  
+[2026-01-27 20:15:13] local.INFO: UltraPerformanceServiceProvider: All duplicate services eliminated! Using ULTRA CONSOLIDATED CACHE SERVICE!  
+[2026-01-27 20:15:13] local.INFO: 🎯 SMART cache invalidation completed {"user_id":2,"cache_keys_cleared":11,"strategy":"immediate_invalidation"} 
+[2026-01-27 20:15:13] local.INFO: 🔥 DEBUG: createQuizAttempts called {"user_id":2,"source_count":1,"mode":"quiz","topic_id":1,"is_random":false,"is_tutor":false,"source_data_keys":["USMLE Step 1"],"transaction_active":2} 
+[2026-01-27 20:15:13] local.INFO: QuizAttempt being created {"user_id":2,"topic_id":1,"quiz_type":"normal","study_mode":"quiz","source":"USMLE Step 1","score":1,"total_questions":2,"correct_answers":1} 
+[2026-01-27 20:15:13] local.INFO: Profile cache cleared after quiz attempt {"user_id":2,"quiz_type":"normal","study_mode":"quiz","duration_seconds":0} 
+[2026-01-27 20:15:13] local.INFO: Smart cache invalidation completed {"type":"user_progress","id":2,"keys_invalidated":1} 
+[2026-01-27 20:15:13] local.INFO: 🚀 ULTRA EFFICIENT: Created quiz attempts with attempt_id grouping {"user_id":2,"topic_id":1,"mode":"quiz","attempt_id":10,"sources_grouped":1,"chart_points":1} 
+[2026-01-27 20:15:13] local.INFO: User stats updated successfully {"user_id":2,"questionsAttempted":2,"correctAnswers":1,"durationSeconds":0,"study_streak_days":1,"last_study_date":"2026-01-27 00:00:00"} 
+[2026-01-27 20:15:13] local.INFO: XP Calculation: {"user_id":2,"score":1,"baseXP":10,"duration":0,"timeBonus":50.0,"percentageGrade":50.0,"accuracyBonus":25.0,"totalXP":85.0} 
+[2026-01-27 20:15:13] local.INFO: Study streak updated after quiz {"user_id":2,"original_streak":1,"new_streak":1,"streak_increased":false} 
+[2026-01-27 20:15:13] local.INFO: Smart cache invalidation completed {"type":"user_progress","id":2,"keys_invalidated":1} 
+[2026-01-27 20:15:13] local.INFO: Performance tracked: quiz_submit {"value":0.001,"timestamp":"2026-01-27T18:15:13.171726Z"} 
+[2026-01-27 20:15:13] local.INFO: Quiz submitted and graded {"quiz_id":1,"user_id":2,"score":1} 
+[2026-01-27 20:15:19] local.INFO: UltraPerformanceOptimizer: All systems initialized for MAXIMUM PERFORMANCE!  
+[2026-01-27 20:15:19] local.INFO: UltraPerformanceServiceProvider: All duplicate services eliminated! Using ULTRA CONSOLIDATED CACHE SERVICE!  
+[2026-01-27 20:15:25] local.INFO: UltraPerformanceOptimizer: All systems initialized for MAXIMUM PERFORMANCE!  
+[2026-01-27 20:15:25] local.INFO: UltraPerformanceServiceProvider: All duplicate services eliminated! Using ULTRA CONSOLIDATED CACHE SERVICE!  
+[2026-01-27 20:15:25] local.INFO: OPTIMIZED LETHAL FIX: Generating random quiz with smart validation {"user_id":2,"question_count":5,"difficulty":"mixed","sources":[["Ain Shams University"]],"course_ids":["2","3","1","5","4","6","8","7"]} 
+[2026-01-27 20:15:25] local.INFO: OPTIMIZED LETHAL FIX: Random quiz generated with smart validation {"user_id":2,"questions_count":5,"topics_count":5,"validation_type":"smart_batch_check"} 
+[2026-01-27 20:15:25] local.INFO: Security headers applied {"url":"https://5c2f2414a8fa.ngrok-free.app/quiz/random?duration_minutes=0.167&question_limit=5&quiz_mode=quiz&selected_courses%5B0%5D=2&selected_courses%5B1%5D=3&selected_courses%5B2%5D=1&selected_courses%5B3%5D=5&selected_courses%5B4%5D=4&selected_courses%5B5%5D=6&selected_courses%5B6%5D=8&selected_courses%5B7%5D=7&selected_sources%5B0%5D=Ain%20Shams%20University","method":"GET","user_agent":"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36 Edg/143.0.0.0","ip":"45.244.85.136","user_id":2} 
+[2026-01-27 20:15:33] local.INFO: UltraPerformanceOptimizer: All systems initialized for MAXIMUM PERFORMANCE!  
+[2026-01-27 20:15:33] local.INFO: UltraPerformanceServiceProvider: All duplicate services eliminated! Using ULTRA CONSOLIDATED CACHE SERVICE!  
+[2026-01-27 20:15:33] local.INFO: 🎯 SMART cache invalidation completed {"user_id":2,"cache_keys_cleared":11,"strategy":"immediate_invalidation"} 
+[2026-01-27 20:15:33] local.INFO: QuizAttempt being created {"user_id":2,"topic_id":16,"quiz_type":"random","study_mode":"random","source":null,"score":1,"total_questions":5,"correct_answers":1} 
+[2026-01-27 20:15:33] local.INFO: Profile cache cleared after quiz attempt {"user_id":2,"quiz_type":"random","study_mode":"random","duration_seconds":7} 
+[2026-01-27 20:15:33] local.INFO: Smart cache invalidation completed {"type":"user_progress","id":2,"keys_invalidated":1} 
+[2026-01-27 20:15:33] local.INFO: 🚀 RANDOM QUIZ: Created attempt with attempt_id {"user_id":2,"topic_id":16,"attempt_id":10,"quiz_type":"random","study_mode":"random","chart_points":1} 
+[2026-01-27 20:15:33] local.INFO: User stats updated successfully {"user_id":2,"questionsAttempted":5,"correctAnswers":1,"durationSeconds":7,"study_streak_days":1,"last_study_date":"2026-01-27 00:00:00"} 
+[2026-01-27 20:15:33] local.INFO: XP Calculation: {"user_id":2,"score":1,"baseXP":10,"duration":7,"timeBonus":50.0,"percentageGrade":20.0,"accuracyBonus":10.0,"totalXP":70.0} 
+[2026-01-27 20:15:33] local.INFO: Study streak updated after quiz {"user_id":2,"original_streak":1,"new_streak":1,"streak_increased":false} 
+[2026-01-27 20:15:33] local.INFO: Non-regular quiz completed - skipping regular topic progress update {"assignment_id":null,"mode":"random","user_id":2,"topic_id":16} 
+[2026-01-27 20:15:33] local.INFO: Smart cache invalidation completed {"type":"user_progress","id":2,"keys_invalidated":1} 
+[2026-01-27 20:15:33] local.INFO: 🐆 NOTIFICATION CREATED: random_quiz_completed for user 2 in 1.25ms  
+[2026-01-27 20:15:33] local.INFO: 🐆 NUCLEAR NOTIFICATION: random_quiz_completed sent for random_quiz {"user_id":2,"score":20.0,"activity_type":"random_quiz","notification_type":"random_quiz_completed","result":{"id":"2_1769537733.6403_6217","type":"random_quiz_completed","title":"Random Quiz Completed","message":"You scored 20% on your random quiz from DR.HOSSAM","icon":"fas fa-dice","priority":"normal","read":false,"created_at":"2026-01-27T20:15:33+02:00","ts":1769537733.640328}} 
+[2026-01-27 20:17:06] local.INFO: UltraPerformanceOptimizer: All systems initialized for MAXIMUM PERFORMANCE!  
+[2026-01-27 20:17:06] local.INFO: UltraPerformanceServiceProvider: All duplicate services eliminated! Using ULTRA CONSOLIDATED CACHE SERVICE!  
+[2026-01-27 20:17:06] local.INFO: OPTIMIZED LETHAL FIX: Generating random quiz with smart validation {"user_id":2,"question_count":5,"difficulty":"mixed","sources":[["Ain Shams University"]],"course_ids":["2","3","1","5","4","6","8","7"]} 
+[2026-01-27 20:17:06] local.INFO: OPTIMIZED LETHAL FIX: Random quiz generated with smart validation {"user_id":2,"questions_count":5,"topics_count":5,"validation_type":"smart_batch_check"} 
+[2026-01-27 20:17:06] local.INFO: Security headers applied {"url":"https://5c2f2414a8fa.ngrok-free.app/quiz/random?duration_minutes=0.167&question_limit=5&quiz_mode=quiz&selected_courses%5B0%5D=2&selected_courses%5B1%5D=3&selected_courses%5B2%5D=1&selected_courses%5B3%5D=5&selected_courses%5B4%5D=4&selected_courses%5B5%5D=6&selected_courses%5B6%5D=8&selected_courses%5B7%5D=7&selected_sources%5B0%5D=Ain%20Shams%20University","method":"GET","user_agent":"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36 Edg/143.0.0.0","ip":"45.244.85.136","user_id":2} 
+[2026-01-27 20:17:17] local.INFO: UltraPerformanceOptimizer: All systems initialized for MAXIMUM PERFORMANCE!  
+[2026-01-27 20:17:17] local.INFO: UltraPerformanceServiceProvider: All duplicate services eliminated! Using ULTRA CONSOLIDATED CACHE SERVICE!  
+[2026-01-27 20:17:17] local.INFO: 🎯 SMART cache invalidation completed {"user_id":2,"cache_keys_cleared":11,"strategy":"immediate_invalidation"} 
+[2026-01-27 20:17:17] local.INFO: QuizAttempt being created {"user_id":2,"topic_id":22,"quiz_type":"random","study_mode":"random","source":null,"score":0,"total_questions":5,"correct_answers":0} 
+[2026-01-27 20:17:17] local.INFO: Profile cache cleared after quiz attempt {"user_id":2,"quiz_type":"random","study_mode":"random","duration_seconds":8} 
+[2026-01-27 20:17:17] local.INFO: Smart cache invalidation completed {"type":"user_progress","id":2,"keys_invalidated":1} 
+[2026-01-27 20:17:17] local.INFO: 🚀 RANDOM QUIZ: Created attempt with attempt_id {"user_id":2,"topic_id":22,"attempt_id":10,"quiz_type":"random","study_mode":"random","chart_points":1} 
+[2026-01-27 20:17:17] local.INFO: User stats updated successfully {"user_id":2,"questionsAttempted":5,"correctAnswers":0,"durationSeconds":8,"study_streak_days":1,"last_study_date":"2026-01-27 00:00:00"} 
+[2026-01-27 20:17:17] local.INFO: XP Calculation: {"user_id":2,"score":0,"baseXP":0,"duration":8,"timeBonus":50.0,"percentageGrade":0.0,"accuracyBonus":0.0,"totalXP":50.0} 
+[2026-01-27 20:17:17] local.INFO: Study streak updated after quiz {"user_id":2,"original_streak":1,"new_streak":1,"streak_increased":false} 
+[2026-01-27 20:17:17] local.INFO: Non-regular quiz completed - skipping regular topic progress update {"assignment_id":null,"mode":"random","user_id":2,"topic_id":22} 
+[2026-01-27 20:17:17] local.INFO: Smart cache invalidation completed {"type":"user_progress","id":2,"keys_invalidated":1} 
+[2026-01-27 20:17:17] local.INFO: ⚡ DUPLICATE BLOCKED: random_quiz_completed for user 2  
+[2026-01-27 20:17:17] local.INFO: 🐆 NUCLEAR NOTIFICATION: random_quiz_completed sent for random_quiz {"user_id":2,"score":0.0,"activity_type":"random_quiz","notification_type":"random_quiz_completed","result":{"id":"2_1769537733.6403_6217","type":"random_quiz_completed","title":"Random Quiz Completed","message":"You scored 20% on your random quiz from DR.HOSSAM","icon":"fas fa-dice","priority":"normal","read":false,"created_at":"2026-01-27T20:15:33+02:00","ts":1769537733.640328}} 
+[2026-01-27 20:17:24] local.INFO: UltraPerformanceOptimizer: All systems initialized for MAXIMUM PERFORMANCE!  
+[2026-01-27 20:17:24] local.INFO: UltraPerformanceServiceProvider: All duplicate services eliminated! Using ULTRA CONSOLIDATED CACHE SERVICE!  
+[2026-01-27 20:19:22] local.INFO: UltraPerformanceOptimizer: All systems initialized for MAXIMUM PERFORMANCE!  
+[2026-01-27 20:19:22] local.INFO: UltraPerformanceServiceProvider: All duplicate services eliminated! Using ULTRA CONSOLIDATED CACHE SERVICE!  
+[2026-01-27 20:19:22] local.INFO: BULLETPROOF: Cache miss or unhealthy, fetching fresh data  
+[2026-01-27 20:19:26] local.INFO: UltraPerformanceOptimizer: All systems initialized for MAXIMUM PERFORMANCE!  
+[2026-01-27 20:19:26] local.INFO: UltraPerformanceServiceProvider: All duplicate services eliminated! Using ULTRA CONSOLIDATED CACHE SERVICE!  
+[2026-01-27 20:19:27] local.INFO: UltraPerformanceOptimizer: All systems initialized for MAXIMUM PERFORMANCE!  
+[2026-01-27 20:19:27] local.INFO: UltraPerformanceServiceProvider: All duplicate services eliminated! Using ULTRA CONSOLIDATED CACHE SERVICE!  
+[2026-01-27 20:19:29] local.INFO: UltraPerformanceOptimizer: All systems initialized for MAXIMUM PERFORMANCE!  
+[2026-01-27 20:19:29] local.INFO: UltraPerformanceServiceProvider: All duplicate services eliminated! Using ULTRA CONSOLIDATED CACHE SERVICE!  
+[2026-01-27 20:19:32] local.INFO: UltraPerformanceOptimizer: All systems initialized for MAXIMUM PERFORMANCE!  
+[2026-01-27 20:19:32] local.INFO: UltraPerformanceServiceProvider: All duplicate services eliminated! Using ULTRA CONSOLIDATED CACHE SERVICE!  
+[2026-01-27 20:19:39] local.INFO: UltraPerformanceOptimizer: All systems initialized for MAXIMUM PERFORMANCE!  
+[2026-01-27 20:19:39] local.INFO: UltraPerformanceServiceProvider: All duplicate services eliminated! Using ULTRA CONSOLIDATED CACHE SERVICE!  
+[2026-01-27 20:19:39] local.WARNING: Slow query detected {"sql":"select `courses`.`id`, `courses`.`name`, `courses`.`price`, `course_user`.`user_id` as `pivot_user_id`, `course_user`.`course_id` as `pivot_course_id`, `course_user`.`is_enrolled` as `pivot_is_enrolled`, `course_user`.`created_at` as `pivot_created_at`, `course_user`.`updated_at` as `pivot_updated_at` from `courses` inner join `course_user` on `courses`.`id` = `course_user`.`course_id` where `course_user`.`is_enrolled` = ? and `course_user`.`user_id` in (2)","duration_ms":104.88,"bindings":[true]} 
+[2026-01-27 20:19:39] local.WARNING: Slow query detected {"sql":"select `courses`.`id`, `courses`.`name`, `courses`.`price`, `course_user`.`user_id` as `pivot_user_id`, `course_user`.`course_id` as `pivot_course_id`, `course_user`.`is_enrolled` as `pivot_is_enrolled`, `course_user`.`created_at` as `pivot_created_at`, `course_user`.`updated_at` as `pivot_updated_at` from `courses` inner join `course_user` on `courses`.`id` = `course_user`.`course_id` where `course_user`.`is_enrolled` = ? and `course_user`.`user_id` in (2)","duration_ms":104.88,"connection":"mysql"} 
+[2026-01-27 20:19:40] local.INFO: Login processed for welcome notification {"user_id":2,"welcome_sent":false} 
+[2026-01-27 20:19:40] local.INFO: UltraPerformanceOptimizer: All systems initialized for MAXIMUM PERFORMANCE!  
+[2026-01-27 20:19:40] local.INFO: UltraPerformanceServiceProvider: All duplicate services eliminated! Using ULTRA CONSOLIDATED CACHE SERVICE!  
+[2026-01-27 20:19:41] local.INFO: UltraPerformanceOptimizer: All systems initialized for MAXIMUM PERFORMANCE!  
+[2026-01-27 20:19:41] local.INFO: UltraPerformanceServiceProvider: All duplicate services eliminated! Using ULTRA CONSOLIDATED CACHE SERVICE!  
+[2026-01-27 20:19:43] local.INFO: UltraPerformanceOptimizer: All systems initialized for MAXIMUM PERFORMANCE!  
+[2026-01-27 20:19:43] local.INFO: UltraPerformanceServiceProvider: All duplicate services eliminated! Using ULTRA CONSOLIDATED CACHE SERVICE!  
+[2026-01-27 20:19:43] local.INFO: UltraPerformanceOptimizer: All systems initialized for MAXIMUM PERFORMANCE!  
+[2026-01-27 20:19:43] local.INFO: UltraPerformanceServiceProvider: All duplicate services eliminated! Using ULTRA CONSOLIDATED CACHE SERVICE!  
+[2026-01-27 20:19:44] local.INFO: UltraPerformanceOptimizer: All systems initialized for MAXIMUM PERFORMANCE!  
+[2026-01-27 20:19:44] local.INFO: UltraPerformanceServiceProvider: All duplicate services eliminated! Using ULTRA CONSOLIDATED CACHE SERVICE!  
+[2026-01-27 20:19:45] local.INFO: 🐆 NOTIFICATION CREATED: medcapsule_welcome for user 15 in 0.76ms  
+[2026-01-27 20:19:45] local.INFO: Welcome notification sent {"user_id":15} 
+[2026-01-27 20:19:45] local.INFO: Login processed for welcome notification {"user_id":15,"welcome_sent":true} 
+[2026-01-27 20:19:46] local.INFO: UltraPerformanceOptimizer: All systems initialized for MAXIMUM PERFORMANCE!  
+[2026-01-27 20:19:46] local.INFO: UltraPerformanceServiceProvider: All duplicate services eliminated! Using ULTRA CONSOLIDATED CACHE SERVICE!  
+[2026-01-27 20:19:49] local.INFO: UltraPerformanceOptimizer: All systems initialized for MAXIMUM PERFORMANCE!  
+[2026-01-27 20:19:49] local.INFO: UltraPerformanceServiceProvider: All duplicate services eliminated! Using ULTRA CONSOLIDATED CACHE SERVICE!  
+[2026-01-27 20:19:49] local.INFO: UltraPerformanceOptimizer: All systems initialized for MAXIMUM PERFORMANCE!  
+[2026-01-27 20:19:49] local.INFO: UltraPerformanceServiceProvider: All duplicate services eliminated! Using ULTRA CONSOLIDATED CACHE SERVICE!  
+[2026-01-27 20:19:51] local.INFO: UltraPerformanceOptimizer: All systems initialized for MAXIMUM PERFORMANCE!  
+[2026-01-27 20:19:51] local.INFO: UltraPerformanceServiceProvider: All duplicate services eliminated! Using ULTRA CONSOLIDATED CACHE SERVICE!  
+[2026-01-27 20:19:55] local.INFO: UltraPerformanceOptimizer: All systems initialized for MAXIMUM PERFORMANCE!  
+[2026-01-27 20:19:55] local.INFO: UltraPerformanceServiceProvider: All duplicate services eliminated! Using ULTRA CONSOLIDATED CACHE SERVICE!  
+[2026-01-27 20:19:55] local.INFO: Security headers applied {"url":"https://67a3246592c3.ngrok-free.app/courses","method":"GET","user_agent":"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.6 Safari/605.1.15","ip":"45.244.85.136","user_id":15} 
+[2026-01-27 20:19:57] local.INFO: UltraPerformanceOptimizer: All systems initialized for MAXIMUM PERFORMANCE!  
+[2026-01-27 20:19:57] local.INFO: UltraPerformanceServiceProvider: All duplicate services eliminated! Using ULTRA CONSOLIDATED CACHE SERVICE!  
+[2026-01-27 20:20:25] local.INFO: UltraPerformanceOptimizer: All systems initialized for MAXIMUM PERFORMANCE!  
+[2026-01-27 20:20:25] local.INFO: UltraPerformanceServiceProvider: All duplicate services eliminated! Using ULTRA CONSOLIDATED CACHE SERVICE!  
+[2026-01-27 20:20:25] local.INFO: Security headers applied {"url":"https://67a3246592c3.ngrok-free.app/courses","method":"GET","user_agent":"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36 Edg/143.0.0.0","ip":"45.244.85.136","user_id":2} 
+[2026-01-27 20:20:31] local.INFO: UltraPerformanceOptimizer: All systems initialized for MAXIMUM PERFORMANCE!  
+[2026-01-27 20:20:31] local.INFO: UltraPerformanceServiceProvider: All duplicate services eliminated! Using ULTRA CONSOLIDATED CACHE SERVICE!  
+[2026-01-27 20:20:32] local.WARNING: Slow query detected {"sql":"select * from `sessions` where `id` = ? limit 1","duration_ms":382.15,"bindings":["pv0qpH0CoTzuz23YWcaUASYf1E0qpB9F4JUJkXNB"]} 
+[2026-01-27 20:20:32] local.WARNING: Slow query detected {"sql":"select * from `sessions` where `id` = ? limit 1","duration_ms":382.15,"connection":"mysql"} 
+[2026-01-27 20:20:32] local.WARNING: Slow query detected {"sql":"update `sessions` set `payload` = ?, `last_activity` = ?, `user_id` = ?, `ip_address` = ?, `user_agent` = ? where `id` = ?","duration_ms":208.6,"bindings":["ZXlKcGRpSTZJa2t3WjJObk56QXdkM1Z0ZUM5aVRFMXlXVXhPVGxFOVBTSXNJblpoYkhWbElqb2lLemRPVm5kS2JqaFJVeXRZV0ZoTmJYZGlUMFE1VFU4NVVXRktVR1ZsSzJvMlZrMTBNbVpqU3psd01UUnVjMnRSUm1waFoxVndVRTVJY1dkalJVbExUa2RRVXpWbksyMVhRbWRHUWxoUkt6Qk5aWHBvU2tOSFVXbFZjSE5wZW5sNFpIZG5jMmhXWlhod00zbGFkVTVFWWk5NVJsQlNjSFpTVjJOT01XbEZjR2hDVTFoQ1JqTkVhVlpTVnlzcmIwWnpSVGswTUU4eFpFVmFUbFJDSzFZMFV6QjFaRmxwTVZoU2NTdDRNbVJYTWxaelUxb3liRkZZT1dzeU1HMXZNWFpaYzNGNFZFOHlZVU4yY1ZCNFRHOHpObVJaYkd4alRWTjJXREpyVDJ4RlIxZFVkRzlqUzBSUU5FeERkell3V0M5R2NtWTFOMkZpYjFGd2NYWnJUWGMwTnpselN6bHNabkZXZVdKUldqVjFjMUZJUkd0SmFGSlBSRlJoV0RaRUt6VlNkREpLVVVKRmRuSkZla0o2T1hWRVRrTXpibmQ2V0VaUmFVaGhOR2xPTmtjNFFrOUxUVmhSZFhsclUzTlpjVUpETW5wVlEzZ3lPVnAwYVU5cFRGUndiak5MVkVaV1pHUktUVWhqVTFweU5qRkdVbGxKUlhoaVdEaFRTbGMyY0U5SE4wTkZTSHByTTBwdlduYzRVVk5ZUWtoNldFMW1MM05ITUhjd05qQTRhbFF2YUd4MFdYSXpNVlZoYWxGQ2NubFdWRTF0WWtrd2NYUlVPRUZMZGpSTWJtbHNNMmh5WjB4cVNHdEtiVmx5T0ZwNE0xZ3ZTMmM5UFNJc0ltMWhZeUk2SWpOa04yUXhabVJpWVRabU1EWmtOVGMwWldOak1XTmtPRE0yTTJJNE5XTXlNbU5tTnpnMU1tWTFNemcwTnpOa05UYzRPV1ZrWldNNFltVXhaams0WXpFaUxDSjBZV2NpT2lJaWZRPT0=",1769538032,2,"45.244.85.136","Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36 Edg/143.0.0.0","pv0qpH0CoTzuz23YWcaUASYf1E0qpB9F4JUJkXNB"]} 
+[2026-01-27 20:20:32] local.WARNING: Slow query detected {"sql":"update `sessions` set `payload` = ?, `last_activity` = ?, `user_id` = ?, `ip_address` = ?, `user_agent` = ? where `id` = ?","duration_ms":208.6,"connection":"mysql"} 
+[2026-01-27 20:20:33] local.INFO: UltraPerformanceOptimizer: All systems initialized for MAXIMUM PERFORMANCE!  
+[2026-01-27 20:20:33] local.INFO: UltraPerformanceServiceProvider: All duplicate services eliminated! Using ULTRA CONSOLIDATED CACHE SERVICE!  
+[2026-01-27 20:20:33] local.INFO: Security headers applied {"url":"https://67a3246592c3.ngrok-free.app/topics/1","method":"GET","user_agent":"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36 Edg/143.0.0.0","ip":"45.244.85.136","user_id":2} 
+[2026-01-27 20:20:34] local.INFO: UltraPerformanceOptimizer: All systems initialized for MAXIMUM PERFORMANCE!  
+[2026-01-27 20:20:34] local.INFO: UltraPerformanceServiceProvider: All duplicate services eliminated! Using ULTRA CONSOLIDATED CACHE SERVICE!  
+[2026-01-27 20:22:24] local.INFO: UltraPerformanceOptimizer: All systems initialized for MAXIMUM PERFORMANCE!  
+[2026-01-27 20:22:24] local.INFO: UltraPerformanceServiceProvider: All duplicate services eliminated! Using ULTRA CONSOLIDATED CACHE SERVICE!  
+[2026-01-27 20:22:25] local.INFO: UltraPerformanceOptimizer: All systems initialized for MAXIMUM PERFORMANCE!  
+[2026-01-27 20:22:25] local.INFO: UltraPerformanceServiceProvider: All duplicate services eliminated! Using ULTRA CONSOLIDATED CACHE SERVICE!  
+[2026-01-27 20:22:25] local.INFO: ⚡ ULTRA-FAST QUIZ STATS COMPLETE {"topic_id":1,"total_questions":1,"execution_ms":3.07,"queries_used":2,"cache_status":"stored"} 
+[2026-01-27 20:22:25] local.INFO: ⚡ ULTRA-FAST USER STATS COMPLETE {"topic_id":1,"user_id":2,"total_attempts":4,"execution_ms":4.96,"queries_used":2,"cache_status":"stored"} 
+[2026-01-27 20:22:25] local.INFO: 🚀 ULTRA-FAST CACHE HIT {"topic_id":1,"cache_key":"ultra_fast:quiz_questions:topic_1:v_1:sources_adcbcbb7214417c1a9e4278299ee2cbb","execution_ms":0.54,"queries_used":0} 
+[2026-01-27 20:22:25] local.INFO: 🚀 ULTRA-FAST QUIZ DETAILS {"quiz_id":1,"topic_name":"Cardiovascular System","user_id":2,"execution_ms":17.09} 
+[2026-01-27 20:22:25] local.INFO: Security headers applied {"url":"https://67a3246592c3.ngrok-free.app/quiz/1/1?sources%5B0%5D=USMLE%20Step%201","method":"GET","user_agent":"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36 Edg/143.0.0.0","ip":"45.244.85.136","user_id":2} 
+[2026-01-27 20:22:26] local.INFO: UltraPerformanceOptimizer: All systems initialized for MAXIMUM PERFORMANCE!  
+[2026-01-27 20:22:26] local.INFO: UltraPerformanceServiceProvider: All duplicate services eliminated! Using ULTRA CONSOLIDATED CACHE SERVICE!  
+[2026-01-27 20:22:31] local.INFO: UltraPerformanceOptimizer: All systems initialized for MAXIMUM PERFORMANCE!  
+[2026-01-27 20:22:31] local.INFO: UltraPerformanceServiceProvider: All duplicate services eliminated! Using ULTRA CONSOLIDATED CACHE SERVICE!  
+[2026-01-27 20:22:32] local.INFO: UltraPerformanceOptimizer: All systems initialized for MAXIMUM PERFORMANCE!  
+[2026-01-27 20:22:32] local.INFO: UltraPerformanceServiceProvider: All duplicate services eliminated! Using ULTRA CONSOLIDATED CACHE SERVICE!  
+[2026-01-27 20:22:34] local.INFO: UltraPerformanceOptimizer: All systems initialized for MAXIMUM PERFORMANCE!  
+[2026-01-27 20:22:34] local.INFO: UltraPerformanceServiceProvider: All duplicate services eliminated! Using ULTRA CONSOLIDATED CACHE SERVICE!  
+[2026-01-27 20:22:35] local.INFO: UltraPerformanceOptimizer: All systems initialized for MAXIMUM PERFORMANCE!  
+[2026-01-27 20:22:35] local.INFO: UltraPerformanceServiceProvider: All duplicate services eliminated! Using ULTRA CONSOLIDATED CACHE SERVICE!  
+[2026-01-27 20:22:35] local.INFO: 📌 Tutor Quiz Start Attempt {"request_id":"tutor_start_6979026b53c7f","user_id":2,"course_id":1,"topic_id":1} 
+[2026-01-27 20:22:35] local.INFO: 📌 Quiz Initialization Attempt {"user_id":2,"user_name":"David George","is_admin":false,"course_id":1,"topic_id":1,"mode":"tutor","sources":["USMLE Step 1"],"request_url":"https://67a3246592c3.ngrok-free.app/quiz/1/1/tutor?sources%5B0%5D=USMLE%20Step%201"} 
+[2026-01-27 20:22:35] local.INFO: Normalized sources for quiz {"sources":["USMLE Step 1"]} 
+[2026-01-27 20:22:35] local.INFO: UltraConsolidatedCache: Cached result {"key":"topic:1:questions:adcbcbb7214417c1a9e4278299ee2cbb","duration_ms":1.87,"compressed":false} 
+[2026-01-27 20:22:35] local.INFO: OPTIMIZED: Questions retrieved with smart caching {"topic_id":1,"questions_count":1,"sources":["USMLE Step 1"]} 
+[2026-01-27 20:22:35] local.INFO: ✅ Quiz initialized successfully {"topic_id":1,"questions_count":1,"course_id":1,"sources":["USMLE Step 1"],"mode":"tutor"} 
+[2026-01-27 20:22:35] local.INFO: ✅ Tutor quiz initialized successfully {"request_id":"tutor_start_6979026b53c7f","execution_time_ms":3.4,"questions_count":1} 
+[2026-01-27 20:22:35] local.INFO: Security headers applied {"url":"https://67a3246592c3.ngrok-free.app/quiz/1/1/tutor?sources%5B0%5D=USMLE%20Step%201","method":"GET","user_agent":"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36 Edg/143.0.0.0","ip":"45.244.85.136","user_id":2} 
+[2026-01-27 20:23:19] local.INFO: UltraPerformanceOptimizer: All systems initialized for MAXIMUM PERFORMANCE!  
+[2026-01-27 20:23:19] local.INFO: UltraPerformanceServiceProvider: All duplicate services eliminated! Using ULTRA CONSOLIDATED CACHE SERVICE!  
+[2026-01-27 20:23:20] local.INFO: 📌 Tutor Quiz Start Attempt {"request_id":"tutor_start_697902980204b","user_id":2,"course_id":1,"topic_id":1} 
+[2026-01-27 20:23:20] local.INFO: 📌 Quiz Initialization Attempt {"user_id":2,"user_name":"David George","is_admin":false,"course_id":1,"topic_id":1,"mode":"tutor","sources":["USMLE Step 1"],"request_url":"https://67a3246592c3.ngrok-free.app/quiz/1/1/tutor?sources%5B0%5D=USMLE%20Step%201"} 
+[2026-01-27 20:23:20] local.INFO: Normalized sources for quiz {"sources":["USMLE Step 1"]} 
+[2026-01-27 20:23:20] local.INFO: OPTIMIZED: Questions retrieved with smart caching {"topic_id":1,"questions_count":1,"sources":["USMLE Step 1"]} 
+[2026-01-27 20:23:20] local.INFO: ✅ Quiz initialized successfully {"topic_id":1,"questions_count":1,"course_id":1,"sources":["USMLE Step 1"],"mode":"tutor"} 
+[2026-01-27 20:23:20] local.INFO: ✅ Tutor quiz initialized successfully {"request_id":"tutor_start_697902980204b","execution_time_ms":0.97,"questions_count":1} 
+[2026-01-27 20:23:20] local.INFO: Security headers applied {"url":"https://67a3246592c3.ngrok-free.app/quiz/1/1/tutor?sources%5B0%5D=USMLE%20Step%201","method":"GET","user_agent":"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36 Edg/143.0.0.0","ip":"45.244.85.136","user_id":2} 
+[2026-01-27 20:23:27] local.INFO: UltraPerformanceOptimizer: All systems initialized for MAXIMUM PERFORMANCE!  
+[2026-01-27 20:23:27] local.INFO: UltraPerformanceServiceProvider: All duplicate services eliminated! Using ULTRA CONSOLIDATED CACHE SERVICE!  
+[2026-01-27 20:23:28] local.INFO: Security headers applied {"url":"https://67a3246592c3.ngrok-free.app/topics/1","method":"GET","user_agent":"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.6 Safari/605.1.15","ip":"45.244.85.136","user_id":15} 
+[2026-01-27 20:23:31] local.INFO: UltraPerformanceOptimizer: All systems initialized for MAXIMUM PERFORMANCE!  
+[2026-01-27 20:23:31] local.INFO: UltraPerformanceServiceProvider: All duplicate services eliminated! Using ULTRA CONSOLIDATED CACHE SERVICE!  
+[2026-01-27 20:23:33] local.INFO: UltraPerformanceOptimizer: All systems initialized for MAXIMUM PERFORMANCE!  
+[2026-01-27 20:23:33] local.INFO: UltraPerformanceServiceProvider: All duplicate services eliminated! Using ULTRA CONSOLIDATED CACHE SERVICE!  
+[2026-01-27 20:23:35] local.INFO: UltraPerformanceOptimizer: All systems initialized for MAXIMUM PERFORMANCE!  
+[2026-01-27 20:23:35] local.INFO: UltraPerformanceServiceProvider: All duplicate services eliminated! Using ULTRA CONSOLIDATED CACHE SERVICE!  
+[2026-01-27 20:23:36] local.INFO: UltraPerformanceOptimizer: All systems initialized for MAXIMUM PERFORMANCE!  
+[2026-01-27 20:23:36] local.INFO: UltraPerformanceServiceProvider: All duplicate services eliminated! Using ULTRA CONSOLIDATED CACHE SERVICE!  
+[2026-01-27 20:23:36] local.INFO: UltraPerformanceOptimizer: All systems initialized for MAXIMUM PERFORMANCE!  
+[2026-01-27 20:23:36] local.INFO: UltraPerformanceServiceProvider: All duplicate services eliminated! Using ULTRA CONSOLIDATED CACHE SERVICE!  
+[2026-01-27 20:23:36] local.INFO: 📌 Tutor Quiz Start Attempt {"request_id":"tutor_start_697902a8ed571","user_id":15,"course_id":1,"topic_id":1} 
+[2026-01-27 20:23:36] local.INFO: 📌 Quiz Initialization Attempt {"user_id":15,"user_name":"Dr.David","is_admin":false,"course_id":1,"topic_id":1,"mode":"tutor","sources":["USMLE Step 1"],"request_url":"https://67a3246592c3.ngrok-free.app/quiz/1/1/tutor?sources%5B0%5D=USMLE%20Step%201"} 
+[2026-01-27 20:23:36] local.INFO: Normalized sources for quiz {"sources":["USMLE Step 1"]} 
+[2026-01-27 20:23:36] local.INFO: OPTIMIZED: Questions retrieved with smart caching {"topic_id":1,"questions_count":1,"sources":["USMLE Step 1"]} 
+[2026-01-27 20:23:36] local.INFO: ✅ Quiz initialized successfully {"topic_id":1,"questions_count":1,"course_id":1,"sources":["USMLE Step 1"],"mode":"tutor"} 
+[2026-01-27 20:23:36] local.INFO: ✅ Tutor quiz initialized successfully {"request_id":"tutor_start_697902a8ed571","execution_time_ms":4.15,"questions_count":1} 
+[2026-01-27 20:23:36] local.INFO: Security headers applied {"url":"https://67a3246592c3.ngrok-free.app/quiz/1/1/tutor?sources%5B0%5D=USMLE%20Step%201","method":"GET","user_agent":"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.6 Safari/605.1.15","ip":"45.244.85.136","user_id":15} 
+[2026-01-27 20:23:50] local.INFO: UltraPerformanceOptimizer: All systems initialized for MAXIMUM PERFORMANCE!  
+[2026-01-27 20:23:50] local.INFO: UltraPerformanceServiceProvider: All duplicate services eliminated! Using ULTRA CONSOLIDATED CACHE SERVICE!  
+[2026-01-27 20:23:50] local.INFO: 📌 Tutor Quiz Start Attempt {"request_id":"tutor_start_697902b6839c8","user_id":15,"course_id":1,"topic_id":1} 
+[2026-01-27 20:23:50] local.INFO: 📌 Quiz Initialization Attempt {"user_id":15,"user_name":"Dr.David","is_admin":false,"course_id":1,"topic_id":1,"mode":"tutor","sources":["USMLE Step 1"],"request_url":"https://67a3246592c3.ngrok-free.app/quiz/1/1/tutor?sources%5B0%5D=USMLE%20Step%201"} 
+[2026-01-27 20:23:50] local.INFO: Normalized sources for quiz {"sources":["USMLE Step 1"]} 
+[2026-01-27 20:23:50] local.INFO: OPTIMIZED: Questions retrieved with smart caching {"topic_id":1,"questions_count":1,"sources":["USMLE Step 1"]} 
+[2026-01-27 20:23:50] local.INFO: ✅ Quiz initialized successfully {"topic_id":1,"questions_count":1,"course_id":1,"sources":["USMLE Step 1"],"mode":"tutor"} 
+[2026-01-27 20:23:50] local.INFO: ✅ Tutor quiz initialized successfully {"request_id":"tutor_start_697902b6839c8","execution_time_ms":37.08,"questions_count":1} 
+[2026-01-27 20:23:50] local.INFO: Security headers applied {"url":"https://67a3246592c3.ngrok-free.app/quiz/1/1/tutor?sources%5B0%5D=USMLE%20Step%201","method":"GET","user_agent":"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.6 Safari/605.1.15","ip":"45.244.85.136","user_id":15} 
+[2026-01-27 20:23:50] local.WARNING: Slow query detected {"sql":"update `sessions` set `payload` = ?, `last_activity` = ?, `user_id` = ?, `ip_address` = ?, `user_agent` = ? where `id` = ?","duration_ms":125.6,"bindings":["ZXlKcGRpSTZJa05xT0RsdVlqUkNLek40ZFd0c05YSjVOU3ROWW1jOVBTSXNJblpoYkhWbElqb2lSa1YxVHpKd2MxcDBRa0pLVkVVNWRFZGtValZGUkhnMFVESTRhVmx2YzJwVmRYUlZkbEZHY2tJd1JIVTBUV3B5VFdKUVdIUmtRek16YTJsUVEwNUdSalJGV0hsNlkxRTBkbTFSYmxObWEwdDJNV2xHYW1ZMVNrdDFVa3RFTDJaQmRWQnJVVUZPVkdaaVRtdE5XR3h6TnpoWFIwWmpZWFZSVDJacWNGTktjbXRCY0UxSk4wUkdPVmhKZW5kUFRuWktiMVZTVWtsTWVHNUZRa2dyVDFOaU5WQXhOSGxYTW0wellXOW1ObkJhTURoTGRURlZSVVJIUjJoTloxQnRVVE5aYld3ME4xZFJhams0ZFhweE1HczBOMGxwTkdGS1owZG9UV3hMYjFJMFFVZ3JOM2hUU0hKa1pESXlkbGsySzB4RlpGWlhZMGhxVmtrcmFIVkNVVGxpWmtGdWVtSkRTemd6TXk5cWNreEZaVmxzWkhsU1dYbG9XR3h2T1Vwb1YwY3hia2RZUXpZeU5WTTVSVFZ0WTBsVWJrNTJlbGt3YVhwMVpVUlhVREZYUTNKSFZrcHdaVkVyY2preVJFWnhaRFZVYXk4MVZtUndXSEIxWW5ST1RFdG9VVEF2Y0V0R1NEbFZOalpZVmpkRUt6SnJXREpwVVRRNGNIRnNWelZ0ZGpaM1JtSjBSRGg2U2pCMlpHOTBabEZOWlU5ek9XSnRNVEk0YlZoNGJWZHNlV1p2WmtwMlp6Vk5UazlDZGxSV2JUVmtMMUYwTmlzNFRsQjJjMHN6ZEd4UFMwOVdNVGhxV25OMmJsQjZNbkUzVW1seFRUVlRSSFEzYjBOUlMwOVpjVmxEZEZObmNYRnROaTgwSzBSemFGUTVWM0JhTm5Ca09UTjRSMFF4Unl0cGVGVXZWVlY0VVdWR1YzRlJaRXByWnpWTFYyZFJXSGQzU0dJMmRTOUtXbGhvV2sxMmNTODJNVm95ZVdaWGIyeHBibGhxUVhsR1l5dFlWMFUwUkhVemIwUlVVVGMwYUdsSWNXTk5iMEZhUVhGUWRVeFhTRVp1V1dzME1VaFBTR2hrV2tzNFRYaGhRMlJHZFN0Qk9YTk9aVlZ0WW5Kd1lrOTBWVXB1VEU1RE1WRnNWblV6TVdGSGNXSnFaMjB3VGl0VFdERndWa1ZpY0RaYVpFZGxjV0kxTDBKNFdqaHBUMWRwVG1oMVF6QTlJaXdpYldGaklqb2laakUzTkdObU9HTmpObVU0WlRZMU9UVXhOekE1WkRaaFpHSm1aV0ptTURVMVl6WXhNV1F5TmprMU16TmlZekE1TnpVeVlURmxaakV3TjJObE16VXlZeUlzSW5SaFp5STZJaUo5",1769538230,15,"45.244.85.136","Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.6 Safari/605.1.15","ggZx9A9aKvHTa7Dp5hoXarYS3eEzbfU1ElWgVhmB"]} 
+[2026-01-27 20:23:50] local.WARNING: Slow query detected {"sql":"update `sessions` set `payload` = ?, `last_activity` = ?, `user_id` = ?, `ip_address` = ?, `user_agent` = ? where `id` = ?","duration_ms":125.6,"connection":"mysql"} 
+[2026-01-27 20:24:04] local.INFO: UltraPerformanceOptimizer: All systems initialized for MAXIMUM PERFORMANCE!  
+[2026-01-27 20:24:04] local.INFO: UltraPerformanceServiceProvider: All duplicate services eliminated! Using ULTRA CONSOLIDATED CACHE SERVICE!  
+[2026-01-27 20:24:04] local.INFO: UltraConsolidatedCache: Cached result {"key":"total_users","duration_ms":10.93,"compressed":false} 
+[2026-01-27 20:24:04] local.INFO: UltraConsolidatedCache: Cached result {"key":"total_courses","duration_ms":0.95,"compressed":false} 
+[2026-01-27 20:24:04] local.INFO: UltraConsolidatedCache: Cached result {"key":"total_questions","duration_ms":0.57,"compressed":false} 
+[2026-01-27 20:24:04] local.INFO: UltraConsolidatedCache: Cached result {"key":"system_stats","duration_ms":2.2,"compressed":false} 
+[2026-01-27 20:24:04] local.INFO: UltraPerformanceOptimizer: All systems initialized for MAXIMUM PERFORMANCE!  
+[2026-01-27 20:24:04] local.INFO: UltraPerformanceServiceProvider: All duplicate services eliminated! Using ULTRA CONSOLIDATED CACHE SERVICE!  
+[2026-01-27 20:24:05] local.INFO: UltraPerformanceOptimizer: All systems initialized for MAXIMUM PERFORMANCE!  
+[2026-01-27 20:24:05] local.INFO: UltraPerformanceServiceProvider: All duplicate services eliminated! Using ULTRA CONSOLIDATED CACHE SERVICE!  
+[2026-01-27 20:24:06] local.INFO: UltraPerformanceOptimizer: All systems initialized for MAXIMUM PERFORMANCE!  
+[2026-01-27 20:24:06] local.INFO: UltraPerformanceServiceProvider: All duplicate services eliminated! Using ULTRA CONSOLIDATED CACHE SERVICE!  
+[2026-01-27 20:24:06] local.INFO: 📌 Tutor Quiz Start Attempt {"request_id":"tutor_start_697902c62ca60","user_id":15,"course_id":1,"topic_id":1} 
+[2026-01-27 20:24:06] local.INFO: 📌 Quiz Initialization Attempt {"user_id":15,"user_name":"Dr.David","is_admin":false,"course_id":1,"topic_id":1,"mode":"tutor","sources":["USMLE Step 1"],"request_url":"https://67a3246592c3.ngrok-free.app/quiz/1/1/tutor?sources%5B0%5D=USMLE%20Step%201"} 
+[2026-01-27 20:24:06] local.INFO: Normalized sources for quiz {"sources":["USMLE Step 1"]} 
+[2026-01-27 20:24:06] local.INFO: UltraConsolidatedCache: Cached result {"key":"topic:1:questions:adcbcbb7214417c1a9e4278299ee2cbb","duration_ms":7.26,"compressed":false} 
+[2026-01-27 20:24:06] local.INFO: OPTIMIZED: Questions retrieved with smart caching {"topic_id":1,"questions_count":1,"sources":["USMLE Step 1"]} 
+[2026-01-27 20:24:06] local.INFO: ✅ Quiz initialized successfully {"topic_id":1,"questions_count":1,"course_id":1,"sources":["USMLE Step 1"],"mode":"tutor"} 
+[2026-01-27 20:24:06] local.INFO: ✅ Tutor quiz initialized successfully {"request_id":"tutor_start_697902c62ca60","execution_time_ms":11.47,"questions_count":1} 
+[2026-01-27 20:24:06] local.INFO: Security headers applied {"url":"https://67a3246592c3.ngrok-free.app/quiz/1/1/tutor?sources%5B0%5D=USMLE%20Step%201","method":"GET","user_agent":"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.6 Safari/605.1.15","ip":"45.244.85.136","user_id":15} 
+[2026-01-27 20:24:58] local.WARNING: Performance Alert Generated {"operation":"system_boot","alert_type":"slow_response","severity":"medium","message":"Slow response: 276.57ms for system_boot","threshold":200,"actual_value":276.57,"context":{"timestamp":"2026-01-27T18:24:58.614072Z","environment":"local"},"created_at":"2026-01-27T18:24:58.958193Z"} 
+[2026-01-27 20:24:59] local.INFO: UltraPerformanceOptimizer: All systems initialized for MAXIMUM PERFORMANCE!  
+[2026-01-27 20:24:59] local.INFO: UltraPerformanceServiceProvider: All duplicate services eliminated! Using ULTRA CONSOLIDATED CACHE SERVICE!  
+[2026-01-27 20:24:59] local.WARNING: Slow query detected {"sql":"select * from `sessions` where `id` = ? limit 1","duration_ms":238.41,"bindings":["ggZx9A9aKvHTa7Dp5hoXarYS3eEzbfU1ElWgVhmB"]} 
+[2026-01-27 20:24:59] local.WARNING: Slow query detected {"sql":"select * from `sessions` where `id` = ? limit 1","duration_ms":238.41,"connection":"mysql"} 
+[2026-01-27 20:24:59] local.INFO: 📌 Tutor Quiz Start Attempt {"request_id":"tutor_start_697902fbc13f4","user_id":15,"course_id":1,"topic_id":1} 
+[2026-01-27 20:24:59] local.INFO: 📌 Quiz Initialization Attempt {"user_id":15,"user_name":"Dr.David","is_admin":false,"course_id":1,"topic_id":1,"mode":"tutor","sources":["USMLE Step 1"],"request_url":"https://67a3246592c3.ngrok-free.app/quiz/1/1/tutor?sources%5B0%5D=USMLE%20Step%201"} 
+[2026-01-27 20:24:59] local.INFO: Normalized sources for quiz {"sources":["USMLE Step 1"]} 
+[2026-01-27 20:24:59] local.INFO: OPTIMIZED: Questions retrieved with smart caching {"topic_id":1,"questions_count":1,"sources":["USMLE Step 1"]} 
+[2026-01-27 20:24:59] local.INFO: ✅ Quiz initialized successfully {"topic_id":1,"questions_count":1,"course_id":1,"sources":["USMLE Step 1"],"mode":"tutor"} 
+[2026-01-27 20:24:59] local.INFO: ✅ Tutor quiz initialized successfully {"request_id":"tutor_start_697902fbc13f4","execution_time_ms":10.38,"questions_count":1} 
+[2026-01-27 20:24:59] local.INFO: Security headers applied {"url":"https://67a3246592c3.ngrok-free.app/quiz/1/1/tutor?sources%5B0%5D=USMLE%20Step%201","method":"GET","user_agent":"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.6 Safari/605.1.15","ip":"45.244.85.136","user_id":15} 
+[2026-01-27 20:25:11] local.INFO: UltraPerformanceOptimizer: All systems initialized for MAXIMUM PERFORMANCE!  
+[2026-01-27 20:25:11] local.INFO: UltraPerformanceServiceProvider: All duplicate services eliminated! Using ULTRA CONSOLIDATED CACHE SERVICE!  
+[2026-01-27 20:25:11] local.INFO: 📌 Tutor Quiz Start Attempt {"request_id":"tutor_start_697903075be17","user_id":15,"course_id":1,"topic_id":1} 
+[2026-01-27 20:25:11] local.INFO: 📌 Quiz Initialization Attempt {"user_id":15,"user_name":"Dr.David","is_admin":false,"course_id":1,"topic_id":1,"mode":"tutor","sources":["USMLE Step 1"],"request_url":"https://67a3246592c3.ngrok-free.app/quiz/1/1/tutor?sources%5B0%5D=USMLE%20Step%201"} 
+[2026-01-27 20:25:11] local.INFO: Normalized sources for quiz {"sources":["USMLE Step 1"]} 
+[2026-01-27 20:25:11] local.INFO: OPTIMIZED: Questions retrieved with smart caching {"topic_id":1,"questions_count":1,"sources":["USMLE Step 1"]} 
+[2026-01-27 20:25:11] local.INFO: ✅ Quiz initialized successfully {"topic_id":1,"questions_count":1,"course_id":1,"sources":["USMLE Step 1"],"mode":"tutor"} 
+[2026-01-27 20:25:11] local.INFO: ✅ Tutor quiz initialized successfully {"request_id":"tutor_start_697903075be17","execution_time_ms":5.39,"questions_count":1} 
+[2026-01-27 20:25:11] local.INFO: Security headers applied {"url":"https://67a3246592c3.ngrok-free.app/quiz/1/1/tutor?sources%5B0%5D=USMLE%20Step%201","method":"GET","user_agent":"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.6 Safari/605.1.15","ip":"45.244.85.136","user_id":15} 
+[2026-01-27 20:26:09] local.INFO: UltraPerformanceOptimizer: All systems initialized for MAXIMUM PERFORMANCE!  
+[2026-01-27 20:26:09] local.INFO: UltraPerformanceServiceProvider: All duplicate services eliminated! Using ULTRA CONSOLIDATED CACHE SERVICE!  
+[2026-01-27 20:26:09] local.INFO: 📌 Tutor Quiz Start Attempt {"request_id":"tutor_start_697903412e6dd","user_id":15,"course_id":1,"topic_id":1} 
+[2026-01-27 20:26:09] local.INFO: 📌 Quiz Initialization Attempt {"user_id":15,"user_name":"Dr.David","is_admin":false,"course_id":1,"topic_id":1,"mode":"tutor","sources":["USMLE Step 1"],"request_url":"https://67a3246592c3.ngrok-free.app/quiz/1/1/tutor?sources%5B0%5D=USMLE%20Step%201"} 
+[2026-01-27 20:26:09] local.INFO: Normalized sources for quiz {"sources":["USMLE Step 1"]} 
+[2026-01-27 20:26:09] local.INFO: OPTIMIZED: Questions retrieved with smart caching {"topic_id":1,"questions_count":1,"sources":["USMLE Step 1"]} 
+[2026-01-27 20:26:09] local.INFO: ✅ Quiz initialized successfully {"topic_id":1,"questions_count":1,"course_id":1,"sources":["USMLE Step 1"],"mode":"tutor"} 
+[2026-01-27 20:26:09] local.INFO: ✅ Tutor quiz initialized successfully {"request_id":"tutor_start_697903412e6dd","execution_time_ms":4.55,"questions_count":1} 
+[2026-01-27 20:26:09] local.INFO: Security headers applied {"url":"https://67a3246592c3.ngrok-free.app/quiz/1/1/tutor?sources%5B0%5D=USMLE%20Step%201","method":"GET","user_agent":"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.6 Safari/605.1.15","ip":"45.244.85.136","user_id":15} 
+[2026-01-27 20:40:47] local.INFO: UltraPerformanceOptimizer: All systems initialized for MAXIMUM PERFORMANCE!  
+[2026-01-27 20:40:47] local.INFO: UltraPerformanceServiceProvider: All duplicate services eliminated! Using ULTRA CONSOLIDATED CACHE SERVICE!  
+[2026-01-27 20:40:48] local.INFO: UltraPerformanceOptimizer: All systems initialized for MAXIMUM PERFORMANCE!  
+[2026-01-27 20:40:48] local.INFO: UltraPerformanceServiceProvider: All duplicate services eliminated! Using ULTRA CONSOLIDATED CACHE SERVICE!  
+[2026-01-27 20:40:48] local.INFO: UltraPerformanceServiceProvider: All duplicate services eliminated! Using ULTRA CONSOLIDATED CACHE SERVICE!  
+[2026-01-28 02:24:59] local.INFO: UltraConsolidatedCache: Cached result {"key":"total_users","duration_ms":27.08,"compressed":false} 
+[2026-01-28 02:24:59] local.INFO: UltraConsolidatedCache: Cached result {"key":"total_courses","duration_ms":4.3,"compressed":false} 
+[2026-01-28 02:24:59] local.INFO: UltraConsolidatedCache: Cached result {"key":"total_questions","duration_ms":3.66,"compressed":false} 
+[2026-01-28 02:25:00] local.INFO: UltraConsolidatedCache: Cached result {"key":"system_stats","duration_ms":47.8,"compressed":false} 
+[2026-01-28 02:25:00] local.INFO: UltraPerformanceOptimizer: All systems initialized for MAXIMUM PERFORMANCE!  
+[2026-01-28 02:25:00] local.INFO: UltraPerformanceServiceProvider: All duplicate services eliminated! Using ULTRA CONSOLIDATED CACHE SERVICE!  
+[2026-01-28 02:25:03] local.INFO: UltraPerformanceOptimizer: All systems initialized for MAXIMUM PERFORMANCE!  
+[2026-01-28 02:25:03] local.INFO: UltraPerformanceServiceProvider: All duplicate services eliminated! Using ULTRA CONSOLIDATED CACHE SERVICE!  
+[2026-01-28 02:25:03] local.INFO: BULLETPROOF: Cache miss or unhealthy, fetching fresh data  
+[2026-01-28 02:25:05] local.INFO: UltraPerformanceOptimizer: All systems initialized for MAXIMUM PERFORMANCE!  
+[2026-01-28 02:25:05] local.INFO: UltraPerformanceServiceProvider: All duplicate services eliminated! Using ULTRA CONSOLIDATED CACHE SERVICE!  
+[2026-01-28 02:25:06] local.WARNING: Slow query detected {"sql":"update `sessions` set `payload` = ?, `last_activity` = ?, `user_id` = ?, `ip_address` = ?, `user_agent` = ? where `id` = ?","duration_ms":199.27,"bindings":["ZXlKcGRpSTZJblJNU0RoMWVrWTBVa2xTVUZGcmJXWnphR3AyZEZFOVBTSXNJblpoYkhWbElqb2llR0ZUZWpJck5sZFFPVloyT1V0V00zUkRMMVY2WWxWS01UVlBZMkpuU3pSRWVXRmlSVEJ2WjAxU2EyVlJhRGRtS3poVWJGTmhNbWhJTUhwSGNrMXNSMVJOTUdKUE5uaFhhelpqTUV4cE5rRnplVzEzYTJSMEx6WjNXR0ZqUVdGTlpYUnViVnBIVW1sbGRuRnRUMDFPS3pjd2NUaG1NVXhVZEZFMWVYSllXbVIwTUcxWEwybDVPV2NyT0drclUxVTBla0kwVjJsTWFsbDBhVGhST0RCcFprMUlTMU01YW0wMUt6aG5hRXhQWW1ac09XUm1SbWh1WTFCTlNrTlBaMnc1ZG1reWExRjJTRVJtWWtwNlMwVnBaME5UVVZGV2MwTjJkMUEwZDFSa1Rra3pRVmRwUkUwNU5saGxUa3hoVTNOeWJHSkJiMWhQVkVOMFRHNW9hVVptYjFWSWRrRldZMHRtVDB0RFVqQXlURXdyVHpsTE9XeHNRMGxpTVVSRldXcE9SazVFY21aWVRrTjJTRTA5SWl3aWJXRmpJam9pTkRaak9UTTJNVE0zWVdRNU5EZzROakEwWmpjMlpXUTNPREEyT1RObU1ESmlPRE5tWm1GalltTmlOR1JtTUdFelpHSXlZMlpsTm1FNU9UUmxZbUk1T1NJc0luUmhaeUk2SWlKOQ==",1769559906,null,"45.244.85.136","Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36 Edg/143.0.0.0","R70YDue2Qhn9PfbgifAcoKszuO3jgFyOwWmO7cxH"]} 
+[2026-01-28 02:25:06] local.WARNING: Slow query detected {"sql":"update `sessions` set `payload` = ?, `last_activity` = ?, `user_id` = ?, `ip_address` = ?, `user_agent` = ? where `id` = ?","duration_ms":199.27,"connection":"mysql"} 
+[2026-01-28 02:25:09] local.INFO: UltraPerformanceOptimizer: All systems initialized for MAXIMUM PERFORMANCE!  
+[2026-01-28 02:25:09] local.INFO: UltraPerformanceServiceProvider: All duplicate services eliminated! Using ULTRA CONSOLIDATED CACHE SERVICE!  
+[2026-01-28 02:26:01] local.INFO: UltraPerformanceOptimizer: All systems initialized for MAXIMUM PERFORMANCE!  
+[2026-01-28 02:26:01] local.INFO: UltraPerformanceServiceProvider: All duplicate services eliminated! Using ULTRA CONSOLIDATED CACHE SERVICE!  
+[2026-01-28 02:26:02] local.INFO: 🐆 NOTIFICATION CREATED: medcapsule_welcome for user 2 in 1.9ms  
+[2026-01-28 02:26:02] local.INFO: Welcome notification sent {"user_id":2} 
+[2026-01-28 02:26:02] local.INFO: Login processed for welcome notification {"user_id":2,"welcome_sent":true} 
+[2026-01-28 02:26:02] local.INFO: UltraPerformanceOptimizer: All systems initialized for MAXIMUM PERFORMANCE!  
+[2026-01-28 02:26:02] local.INFO: UltraPerformanceServiceProvider: All duplicate services eliminated! Using ULTRA CONSOLIDATED CACHE SERVICE!  
+[2026-01-28 02:26:04] local.INFO: UltraPerformanceOptimizer: All systems initialized for MAXIMUM PERFORMANCE!  
+[2026-01-28 02:26:04] local.INFO: UltraPerformanceServiceProvider: All duplicate services eliminated! Using ULTRA CONSOLIDATED CACHE SERVICE!  
+[2026-01-28 02:26:04] local.INFO: UltraPerformanceOptimizer: All systems initialized for MAXIMUM PERFORMANCE!  
+[2026-01-28 02:26:04] local.INFO: UltraPerformanceServiceProvider: All duplicate services eliminated! Using ULTRA CONSOLIDATED CACHE SERVICE!  
+[2026-01-28 02:26:07] local.INFO: UltraPerformanceOptimizer: All systems initialized for MAXIMUM PERFORMANCE!  
+[2026-01-28 02:26:07] local.INFO: UltraPerformanceServiceProvider: All duplicate services eliminated! Using ULTRA CONSOLIDATED CACHE SERVICE!  
+[2026-01-28 02:26:07] local.INFO: Security headers applied {"url":"https://67a3246592c3.ngrok-free.app/courses","method":"GET","user_agent":"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36 Edg/143.0.0.0","ip":"45.244.85.136","user_id":2} 
+[2026-01-28 02:26:09] local.INFO: UltraPerformanceOptimizer: All systems initialized for MAXIMUM PERFORMANCE!  
+[2026-01-28 02:26:09] local.INFO: UltraPerformanceServiceProvider: All duplicate services eliminated! Using ULTRA CONSOLIDATED CACHE SERVICE!  
+[2026-01-28 02:26:10] local.INFO: UltraPerformanceOptimizer: All systems initialized for MAXIMUM PERFORMANCE!  
+[2026-01-28 02:26:10] local.INFO: UltraPerformanceServiceProvider: All duplicate services eliminated! Using ULTRA CONSOLIDATED CACHE SERVICE!  
+[2026-01-28 02:26:11] local.INFO: Security headers applied {"url":"https://67a3246592c3.ngrok-free.app/topics/1","method":"GET","user_agent":"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36 Edg/143.0.0.0","ip":"45.244.85.136","user_id":2} 
+[2026-01-28 02:26:11] local.INFO: UltraPerformanceOptimizer: All systems initialized for MAXIMUM PERFORMANCE!  
+[2026-01-28 02:26:11] local.INFO: UltraPerformanceServiceProvider: All duplicate services eliminated! Using ULTRA CONSOLIDATED CACHE SERVICE!  
+[2026-01-28 02:26:13] local.INFO: UltraPerformanceOptimizer: All systems initialized for MAXIMUM PERFORMANCE!  
+[2026-01-28 02:26:13] local.INFO: UltraPerformanceServiceProvider: All duplicate services eliminated! Using ULTRA CONSOLIDATED CACHE SERVICE!  
+[2026-01-28 02:26:17] local.INFO: UltraPerformanceOptimizer: All systems initialized for MAXIMUM PERFORMANCE!  
+[2026-01-28 02:26:17] local.INFO: UltraPerformanceServiceProvider: All duplicate services eliminated! Using ULTRA CONSOLIDATED CACHE SERVICE!  
+[2026-01-28 02:26:18] local.INFO: UltraPerformanceOptimizer: All systems initialized for MAXIMUM PERFORMANCE!  
+[2026-01-28 02:26:18] local.INFO: UltraPerformanceServiceProvider: All duplicate services eliminated! Using ULTRA CONSOLIDATED CACHE SERVICE!  
+[2026-01-28 02:26:18] local.INFO: 📌 Tutor Quiz Start Attempt {"request_id":"tutor_start_697957aa43464","user_id":2,"course_id":1,"topic_id":1} 
+[2026-01-28 02:26:18] local.INFO: 📌 Quiz Initialization Attempt {"user_id":2,"user_name":"David George","is_admin":false,"course_id":1,"topic_id":1,"mode":"tutor","sources":["USMLE Step 1"],"request_url":"https://67a3246592c3.ngrok-free.app/quiz/1/1/tutor?sources%5B0%5D=USMLE%20Step%201"} 
+[2026-01-28 02:26:18] local.INFO: Normalized sources for quiz {"sources":["USMLE Step 1"]} 
+[2026-01-28 02:26:18] local.INFO: UltraConsolidatedCache: Cached result {"key":"topic:1:questions:adcbcbb7214417c1a9e4278299ee2cbb","duration_ms":3.48,"compressed":false} 
+[2026-01-28 02:26:18] local.INFO: OPTIMIZED: Questions retrieved with smart caching {"topic_id":1,"questions_count":1,"sources":["USMLE Step 1"]} 
+[2026-01-28 02:26:18] local.INFO: ✅ Quiz initialized successfully {"topic_id":1,"questions_count":1,"course_id":1,"sources":["USMLE Step 1"],"mode":"tutor"} 
+[2026-01-28 02:26:18] local.INFO: ✅ Tutor quiz initialized successfully {"request_id":"tutor_start_697957aa43464","execution_time_ms":5.03,"questions_count":1} 
+[2026-01-28 02:26:18] local.INFO: Security headers applied {"url":"https://67a3246592c3.ngrok-free.app/quiz/1/1/tutor?sources%5B0%5D=USMLE%20Step%201","method":"GET","user_agent":"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36 Edg/143.0.0.0","ip":"45.244.85.136","user_id":2} 
+[2026-01-28 02:26:28] local.INFO: UltraPerformanceOptimizer: All systems initialized for MAXIMUM PERFORMANCE!  
+[2026-01-28 02:26:28] local.INFO: UltraPerformanceServiceProvider: All duplicate services eliminated! Using ULTRA CONSOLIDATED CACHE SERVICE!  
+[2026-01-28 02:26:28] local.INFO: 🔥 TUTOR COMPLETE SESSION: Received payload {"raw_data":{"results":{"correct":0,"total":1,"percentage":0},"user_answers":{"2":"who is you"},"answered_questions":1,"duration_seconds":9,"topic_id":1,"course_id":1},"user_id":2} 
+[2026-01-28 02:26:28] local.INFO: 📊 TUTOR SESSION DATA EXTRACTED {"results":{"correct":0,"total":1,"percentage":0},"user_answers_count":1,"answered_questions":1} 
+[2026-01-28 02:26:28] local.INFO: 🔍 RESOLVED IDs {"topic_id":1,"course_id":1} 
+[2026-01-28 02:26:28] local.INFO: 📊 SOURCE GROUPS PROCESSING COMPLETE {"sources_processed":1,"total_correct":0,"total_questions_processed":1,"source_data":{"USMLE Step 1":{"correct":0,"total":1,"question_data":[{"question_id":2,"user_answer":"who is you","is_correct":false}]}}} 
+[2026-01-28 02:26:28] local.INFO: QuizAttempt being created {"user_id":2,"topic_id":1,"quiz_type":"normal","study_mode":"tutor","source":"USMLE Step 1","score":0,"total_questions":1,"correct_answers":0} 
+[2026-01-28 02:26:28] local.INFO: Profile cache cleared after quiz attempt {"user_id":2,"quiz_type":"normal","study_mode":"tutor","duration_seconds":1} 
+[2026-01-28 02:26:28] local.INFO: Smart cache invalidation completed {"type":"user_progress","id":2,"keys_invalidated":1} 
+[2026-01-28 02:26:28] local.INFO: ✅ TUTOR MODE: Quiz attempt created for source {"user_id":2,"topic_id":1,"source":"USMLE Step 1","score":0,"total":1,"percentage":0,"attempt_id":179} 
+[2026-01-28 02:26:28] local.INFO: 🎯 SMART cache invalidation completed {"user_id":2,"cache_keys_cleared":11,"strategy":"immediate_invalidation"} 
+[2026-01-28 02:26:28] local.INFO: 🔥 CACHE CLEARED: Mistakes will show instantly {"user_id":2} 
+[2026-01-28 02:26:28] local.INFO: 🔥 Progress cache cleared {"user_id":2,"topic_id":1,"study_mode":"tutor","cache_key":"topic_progress_2_1_tutor"} 
+[2026-01-28 02:26:28] local.INFO: 🔥 PROGRESS CACHE CLEARED: Source modal will update instantly {"user_id":2,"topic_id":1} 
+[2026-01-28 02:26:28] local.INFO: 🐆 NOTIFICATION CREATED: tutor_quiz_completed for user 2 in 0.55ms  
+[2026-01-28 02:26:28] local.INFO: 🐆 NUCLEAR NOTIFICATION: tutor_quiz_completed sent for tutor_quiz {"user_id":2,"score":0.0,"activity_type":"tutor_quiz","notification_type":"tutor_quiz_completed","result":{"id":"2_1769559988.9516_2334","type":"tutor_quiz_completed","title":"Tutor Quiz Completed","message":"You scored 0% in tutor mode for Cardiovascular System","icon":"fas fa-bell","priority":"normal","read":false,"created_at":"2026-01-28T02:26:28+02:00","ts":1769559988.951574}} 
+[2026-01-28 02:26:28] local.INFO: 🎉 TUTOR SESSION COMPLETED SUCCESSFULLY {"user_id":2,"correct_answers":0,"total_questions":1,"course_id":1,"topic_id":1,"sources_processed":1,"attempts_created":1,"mistakes_recorded":1} 
+[2026-01-28 02:26:32] local.INFO: UltraPerformanceOptimizer: All systems initialized for MAXIMUM PERFORMANCE!  
+[2026-01-28 02:26:32] local.INFO: UltraPerformanceServiceProvider: All duplicate services eliminated! Using ULTRA CONSOLIDATED CACHE SERVICE!  
+[2026-01-28 02:26:32] local.INFO: 📌 Tutor Quiz Start Attempt {"request_id":"tutor_start_697957b8746ee","user_id":2,"course_id":1,"topic_id":1} 
+[2026-01-28 02:26:32] local.INFO: 📌 Quiz Initialization Attempt {"user_id":2,"user_name":"David George","is_admin":false,"course_id":1,"topic_id":1,"mode":"tutor","sources":["USMLE Step 1"],"request_url":"https://67a3246592c3.ngrok-free.app/quiz/1/1/tutor?sources%5B0%5D=USMLE%20Step%201"} 
+[2026-01-28 02:26:32] local.INFO: Normalized sources for quiz {"sources":["USMLE Step 1"]} 
+[2026-01-28 02:26:32] local.INFO: OPTIMIZED: Questions retrieved with smart caching {"topic_id":1,"questions_count":1,"sources":["USMLE Step 1"]} 
+[2026-01-28 02:26:32] local.INFO: ✅ Quiz initialized successfully {"topic_id":1,"questions_count":1,"course_id":1,"sources":["USMLE Step 1"],"mode":"tutor"} 
+[2026-01-28 02:26:32] local.INFO: ✅ Tutor quiz initialized successfully {"request_id":"tutor_start_697957b8746ee","execution_time_ms":1.55,"questions_count":1} 
+[2026-01-28 02:26:32] local.INFO: Security headers applied {"url":"https://67a3246592c3.ngrok-free.app/quiz/1/1/tutor?sources%5B0%5D=USMLE%20Step%201","method":"GET","user_agent":"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36 Edg/143.0.0.0","ip":"45.244.85.136","user_id":2} 
+[2026-01-28 02:26:53] local.INFO: UltraPerformanceOptimizer: All systems initialized for MAXIMUM PERFORMANCE!  
+[2026-01-28 02:26:53] local.INFO: UltraPerformanceServiceProvider: All duplicate services eliminated! Using ULTRA CONSOLIDATED CACHE SERVICE!  
+[2026-01-28 02:26:53] local.INFO: 🔥 TUTOR COMPLETE SESSION: Received payload {"raw_data":{"results":{"correct":0,"total":1,"percentage":0},"user_answers":{"2":"m3rf4"},"answered_questions":1,"duration_seconds":19,"topic_id":1,"course_id":1},"user_id":2} 
+[2026-01-28 02:26:53] local.INFO: 📊 TUTOR SESSION DATA EXTRACTED {"results":{"correct":0,"total":1,"percentage":0},"user_answers_count":1,"answered_questions":1} 
+[2026-01-28 02:26:53] local.INFO: 🔍 RESOLVED IDs {"topic_id":1,"course_id":1} 
+[2026-01-28 02:26:53] local.INFO: 📊 SOURCE GROUPS PROCESSING COMPLETE {"sources_processed":1,"total_correct":0,"total_questions_processed":1,"source_data":{"USMLE Step 1":{"correct":0,"total":1,"question_data":[{"question_id":2,"user_answer":"m3rf4","is_correct":false}]}}} 
+[2026-01-28 02:26:53] local.INFO: QuizAttempt being created {"user_id":2,"topic_id":1,"quiz_type":"normal","study_mode":"tutor","source":"USMLE Step 1","score":0,"total_questions":1,"correct_answers":0} 
+[2026-01-28 02:26:53] local.INFO: Profile cache cleared after quiz attempt {"user_id":2,"quiz_type":"normal","study_mode":"tutor","duration_seconds":1} 
+[2026-01-28 02:26:53] local.INFO: Smart cache invalidation completed {"type":"user_progress","id":2,"keys_invalidated":1} 
+[2026-01-28 02:26:53] local.INFO: ✅ TUTOR MODE: Quiz attempt created for source {"user_id":2,"topic_id":1,"source":"USMLE Step 1","score":0,"total":1,"percentage":0,"attempt_id":180} 
+[2026-01-28 02:26:53] local.INFO: 🎯 SMART cache invalidation completed {"user_id":2,"cache_keys_cleared":11,"strategy":"immediate_invalidation"} 
+[2026-01-28 02:26:53] local.INFO: 🔥 CACHE CLEARED: Mistakes will show instantly {"user_id":2} 
+[2026-01-28 02:26:53] local.INFO: 🔥 Progress cache cleared {"user_id":2,"topic_id":1,"study_mode":"tutor","cache_key":"topic_progress_2_1_tutor"} 
+[2026-01-28 02:26:53] local.INFO: 🔥 PROGRESS CACHE CLEARED: Source modal will update instantly {"user_id":2,"topic_id":1} 
+[2026-01-28 02:26:53] local.INFO: ⚡ DUPLICATE BLOCKED: tutor_quiz_completed for user 2  
+[2026-01-28 02:26:53] local.INFO: 🐆 NUCLEAR NOTIFICATION: tutor_quiz_completed sent for tutor_quiz {"user_id":2,"score":0.0,"activity_type":"tutor_quiz","notification_type":"tutor_quiz_completed","result":{"id":"2_1769559988.9516_2334","type":"tutor_quiz_completed","title":"Tutor Quiz Completed","message":"You scored 0% in tutor mode for Cardiovascular System","icon":"fas fa-bell","priority":"normal","read":false,"created_at":"2026-01-28T02:26:28+02:00","ts":1769559988.951574}} 
+[2026-01-28 02:26:53] local.INFO: 🎉 TUTOR SESSION COMPLETED SUCCESSFULLY {"user_id":2,"correct_answers":0,"total_questions":1,"course_id":1,"topic_id":1,"sources_processed":1,"attempts_created":1,"mistakes_recorded":1} 
+[2026-01-28 02:26:54] local.INFO: UltraPerformanceOptimizer: All systems initialized for MAXIMUM PERFORMANCE!  
+[2026-01-28 02:26:54] local.INFO: UltraPerformanceServiceProvider: All duplicate services eliminated! Using ULTRA CONSOLIDATED CACHE SERVICE!  
+[2026-01-28 02:26:54] local.INFO: 📌 Tutor Quiz Start Attempt {"request_id":"tutor_start_697957ce810a4","user_id":2,"course_id":1,"topic_id":1} 
+[2026-01-28 02:26:54] local.INFO: 📌 Quiz Initialization Attempt {"user_id":2,"user_name":"David George","is_admin":false,"course_id":1,"topic_id":1,"mode":"tutor","sources":["USMLE Step 1"],"request_url":"https://67a3246592c3.ngrok-free.app/quiz/1/1/tutor?sources%5B0%5D=USMLE%20Step%201"} 
+[2026-01-28 02:26:54] local.INFO: Normalized sources for quiz {"sources":["USMLE Step 1"]} 
+[2026-01-28 02:26:54] local.INFO: OPTIMIZED: Questions retrieved with smart caching {"topic_id":1,"questions_count":1,"sources":["USMLE Step 1"]} 
+[2026-01-28 02:26:54] local.INFO: ✅ Quiz initialized successfully {"topic_id":1,"questions_count":1,"course_id":1,"sources":["USMLE Step 1"],"mode":"tutor"} 
+[2026-01-28 02:26:54] local.INFO: ✅ Tutor quiz initialized successfully {"request_id":"tutor_start_697957ce810a4","execution_time_ms":1.12,"questions_count":1} 
+[2026-01-28 02:26:54] local.INFO: Security headers applied {"url":"https://67a3246592c3.ngrok-free.app/quiz/1/1/tutor?sources%5B0%5D=USMLE%20Step%201","method":"GET","user_agent":"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36 Edg/143.0.0.0","ip":"45.244.85.136","user_id":2} 
+[2026-01-28 02:27:30] local.INFO: UltraPerformanceOptimizer: All systems initialized for MAXIMUM PERFORMANCE!  
+[2026-01-28 02:27:30] local.INFO: UltraPerformanceServiceProvider: All duplicate services eliminated! Using ULTRA CONSOLIDATED CACHE SERVICE!  
+[2026-01-28 02:27:30] local.INFO: 📌 Tutor Quiz Start Attempt {"request_id":"tutor_start_697957f2409f5","user_id":2,"course_id":1,"topic_id":1} 
+[2026-01-28 02:27:30] local.INFO: 📌 Quiz Initialization Attempt {"user_id":2,"user_name":"David George","is_admin":false,"course_id":1,"topic_id":1,"mode":"tutor","sources":["USMLE Step 1"],"request_url":"https://67a3246592c3.ngrok-free.app/quiz/1/1/tutor?sources%5B0%5D=USMLE%20Step%201"} 
+[2026-01-28 02:27:30] local.INFO: Normalized sources for quiz {"sources":["USMLE Step 1"]} 
+[2026-01-28 02:27:30] local.INFO: OPTIMIZED: Questions retrieved with smart caching {"topic_id":1,"questions_count":1,"sources":["USMLE Step 1"]} 
+[2026-01-28 02:27:30] local.INFO: ✅ Quiz initialized successfully {"topic_id":1,"questions_count":1,"course_id":1,"sources":["USMLE Step 1"],"mode":"tutor"} 
+[2026-01-28 02:27:30] local.INFO: ✅ Tutor quiz initialized successfully {"request_id":"tutor_start_697957f2409f5","execution_time_ms":1.18,"questions_count":1} 
+[2026-01-28 02:27:30] local.INFO: Security headers applied {"url":"https://67a3246592c3.ngrok-free.app/quiz/1/1/tutor?sources%5B0%5D=USMLE%20Step%201","method":"GET","user_agent":"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36 Edg/143.0.0.0","ip":"45.244.85.136","user_id":2} 
+[2026-01-28 02:27:42] local.INFO: UltraPerformanceOptimizer: All systems initialized for MAXIMUM PERFORMANCE!  
+[2026-01-28 02:27:42] local.INFO: UltraPerformanceServiceProvider: All duplicate services eliminated! Using ULTRA CONSOLIDATED CACHE SERVICE!  
+[2026-01-28 02:27:42] local.INFO: 🔥 TUTOR COMPLETE SESSION: Received payload {"raw_data":{"results":{"correct":0,"total":1,"percentage":0},"user_answers":{"2":"washdfas"},"answered_questions":1,"duration_seconds":10,"topic_id":1,"course_id":1},"user_id":2} 
+[2026-01-28 02:27:42] local.INFO: 📊 TUTOR SESSION DATA EXTRACTED {"results":{"correct":0,"total":1,"percentage":0},"user_answers_count":1,"answered_questions":1} 
+[2026-01-28 02:27:42] local.INFO: 🔍 RESOLVED IDs {"topic_id":1,"course_id":1} 
+[2026-01-28 02:27:42] local.INFO: 📊 SOURCE GROUPS PROCESSING COMPLETE {"sources_processed":1,"total_correct":0,"total_questions_processed":1,"source_data":{"USMLE Step 1":{"correct":0,"total":1,"question_data":[{"question_id":2,"user_answer":"washdfas","is_correct":false}]}}} 
+[2026-01-28 02:27:42] local.INFO: QuizAttempt being created {"user_id":2,"topic_id":1,"quiz_type":"normal","study_mode":"tutor","source":"USMLE Step 1","score":0,"total_questions":1,"correct_answers":0} 
+[2026-01-28 02:27:42] local.INFO: Profile cache cleared after quiz attempt {"user_id":2,"quiz_type":"normal","study_mode":"tutor","duration_seconds":1} 
+[2026-01-28 02:27:42] local.INFO: Smart cache invalidation completed {"type":"user_progress","id":2,"keys_invalidated":1} 
+[2026-01-28 02:27:42] local.INFO: ✅ TUTOR MODE: Quiz attempt created for source {"user_id":2,"topic_id":1,"source":"USMLE Step 1","score":0,"total":1,"percentage":0,"attempt_id":181} 
+[2026-01-28 02:27:42] local.INFO: 🎯 SMART cache invalidation completed {"user_id":2,"cache_keys_cleared":11,"strategy":"immediate_invalidation"} 
+[2026-01-28 02:27:42] local.INFO: 🔥 CACHE CLEARED: Mistakes will show instantly {"user_id":2} 
+[2026-01-28 02:27:42] local.INFO: 🔥 Progress cache cleared {"user_id":2,"topic_id":1,"study_mode":"tutor","cache_key":"topic_progress_2_1_tutor"} 
+[2026-01-28 02:27:42] local.INFO: 🔥 PROGRESS CACHE CLEARED: Source modal will update instantly {"user_id":2,"topic_id":1} 
+[2026-01-28 02:27:42] local.INFO: ⚡ DUPLICATE BLOCKED: tutor_quiz_completed for user 2  
+[2026-01-28 02:27:42] local.INFO: 🐆 NUCLEAR NOTIFICATION: tutor_quiz_completed sent for tutor_quiz {"user_id":2,"score":0.0,"activity_type":"tutor_quiz","notification_type":"tutor_quiz_completed","result":{"id":"2_1769559988.9516_2334","type":"tutor_quiz_completed","title":"Tutor Quiz Completed","message":"You scored 0% in tutor mode for Cardiovascular System","icon":"fas fa-bell","priority":"normal","read":false,"created_at":"2026-01-28T02:26:28+02:00","ts":1769559988.951574}} 
+[2026-01-28 02:27:42] local.INFO: 🎉 TUTOR SESSION COMPLETED SUCCESSFULLY {"user_id":2,"correct_answers":0,"total_questions":1,"course_id":1,"topic_id":1,"sources_processed":1,"attempts_created":1,"mistakes_recorded":1} 
+[2026-01-28 02:27:43] local.INFO: UltraPerformanceOptimizer: All systems initialized for MAXIMUM PERFORMANCE!  
+[2026-01-28 02:27:43] local.INFO: UltraPerformanceServiceProvider: All duplicate services eliminated! Using ULTRA CONSOLIDATED CACHE SERVICE!  
+[2026-01-28 02:27:44] local.INFO: Security headers applied {"url":"https://67a3246592c3.ngrok-free.app/topics/1","method":"GET","user_agent":"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36 Edg/143.0.0.0","ip":"45.244.85.136","user_id":2} 
+[2026-01-28 02:27:44] local.INFO: UltraPerformanceOptimizer: All systems initialized for MAXIMUM PERFORMANCE!  
+[2026-01-28 02:27:44] local.INFO: UltraPerformanceServiceProvider: All duplicate services eliminated! Using ULTRA CONSOLIDATED CACHE SERVICE!  
+[2026-01-28 02:27:51] local.INFO: UltraPerformanceOptimizer: All systems initialized for MAXIMUM PERFORMANCE!  
+[2026-01-28 02:27:51] local.INFO: UltraPerformanceServiceProvider: All duplicate services eliminated! Using ULTRA CONSOLIDATED CACHE SERVICE!  
+[2026-01-28 02:27:51] local.INFO: Security headers applied {"url":"https://67a3246592c3.ngrok-free.app/courses","method":"GET","user_agent":"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36 Edg/143.0.0.0","ip":"45.244.85.136","user_id":2} 
+[2026-01-28 02:27:52] local.INFO: UltraPerformanceOptimizer: All systems initialized for MAXIMUM PERFORMANCE!  
+[2026-01-28 02:27:52] local.INFO: UltraPerformanceServiceProvider: All duplicate services eliminated! Using ULTRA CONSOLIDATED CACHE SERVICE!  
+[2026-01-28 02:27:54] local.INFO: UltraPerformanceOptimizer: All systems initialized for MAXIMUM PERFORMANCE!  
+[2026-01-28 02:27:54] local.INFO: UltraPerformanceServiceProvider: All duplicate services eliminated! Using ULTRA CONSOLIDATED CACHE SERVICE!  
+[2026-01-28 02:27:57] local.INFO: UltraPerformanceOptimizer: All systems initialized for MAXIMUM PERFORMANCE!  
+[2026-01-28 02:27:57] local.INFO: UltraPerformanceServiceProvider: All duplicate services eliminated! Using ULTRA CONSOLIDATED CACHE SERVICE!  
+[2026-01-28 02:27:57] local.INFO: Security headers applied {"url":"https://67a3246592c3.ngrok-free.app/profile","method":"GET","user_agent":"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36 Edg/143.0.0.0","ip":"45.244.85.136","user_id":2} 
+[2026-01-28 02:28:22] local.INFO: UltraPerformanceOptimizer: All systems initialized for MAXIMUM PERFORMANCE!  
+[2026-01-28 02:28:22] local.INFO: UltraPerformanceServiceProvider: All duplicate services eliminated! Using ULTRA CONSOLIDATED CACHE SERVICE!  
+[2026-01-28 02:28:22] local.INFO: ⚡ ULTRA-FAST QUIZ STATS COMPLETE {"topic_id":1,"total_questions":1,"execution_ms":5.68,"queries_used":2,"cache_status":"stored"} 
+[2026-01-28 02:28:22] local.INFO: ⚡ ULTRA-FAST USER STATS COMPLETE {"topic_id":1,"user_id":2,"total_attempts":7,"execution_ms":4.15,"queries_used":2,"cache_status":"stored"} 
+[2026-01-28 02:28:22] local.INFO: ⚡ ULTRA-FAST QUIZ LOAD COMPLETE {"topic_id":1,"questions_count":1,"execution_ms":1.78,"queries_used":2,"cache_status":"stored"} 
+[2026-01-28 02:28:22] local.INFO: 🚀 ULTRA-FAST QUIZ DETAILS {"quiz_id":1,"topic_name":"Cardiovascular System","user_id":2,"execution_ms":19.92} 
+[2026-01-28 02:28:22] local.INFO: Security headers applied {"url":"https://67a3246592c3.ngrok-free.app/quiz/1/1","method":"GET","user_agent":"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36 Edg/143.0.0.0","ip":"45.244.85.136","user_id":2} 
+[2026-01-28 02:28:22] local.INFO: UltraPerformanceOptimizer: All systems initialized for MAXIMUM PERFORMANCE!  
+[2026-01-28 02:28:22] local.INFO: UltraPerformanceServiceProvider: All duplicate services eliminated! Using ULTRA CONSOLIDATED CACHE SERVICE!  
+[2026-01-28 02:28:25] local.INFO: UltraPerformanceOptimizer: All systems initialized for MAXIMUM PERFORMANCE!  
+[2026-01-28 02:28:25] local.INFO: UltraPerformanceServiceProvider: All duplicate services eliminated! Using ULTRA CONSOLIDATED CACHE SERVICE!  
+[2026-01-28 02:28:25] local.INFO: Security headers applied {"url":"https://67a3246592c3.ngrok-free.app/profile","method":"GET","user_agent":"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36 Edg/143.0.0.0","ip":"45.244.85.136","user_id":2} 
+[2026-01-28 02:28:28] local.INFO: UltraPerformanceOptimizer: All systems initialized for MAXIMUM PERFORMANCE!  
+[2026-01-28 02:28:28] local.INFO: UltraPerformanceServiceProvider: All duplicate services eliminated! Using ULTRA CONSOLIDATED CACHE SERVICE!  
+[2026-01-28 02:28:28] local.INFO: UltraPerformanceOptimizer: All systems initialized for MAXIMUM PERFORMANCE!  
+[2026-01-28 02:28:28] local.INFO: UltraPerformanceServiceProvider: All duplicate services eliminated! Using ULTRA CONSOLIDATED CACHE SERVICE!  
+[2026-01-28 02:28:34] local.INFO: UltraPerformanceOptimizer: All systems initialized for MAXIMUM PERFORMANCE!  
+[2026-01-28 02:28:34] local.INFO: UltraPerformanceServiceProvider: All duplicate services eliminated! Using ULTRA CONSOLIDATED CACHE SERVICE!  
+[2026-01-28 02:28:34] local.INFO: Security headers applied {"url":"https://67a3246592c3.ngrok-free.app/courses","method":"GET","user_agent":"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36 Edg/143.0.0.0","ip":"45.244.85.136","user_id":2} 
+[2026-01-28 02:28:35] local.INFO: UltraPerformanceOptimizer: All systems initialized for MAXIMUM PERFORMANCE!  
+[2026-01-28 02:28:35] local.INFO: UltraPerformanceServiceProvider: All duplicate services eliminated! Using ULTRA CONSOLIDATED CACHE SERVICE!  

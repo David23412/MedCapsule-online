@@ -91,41 +91,35 @@ class UserService
                 ->orderBy('name', 'asc')
                 ->get();
 
-            // PERFORMANCE OPTIMIZATION: Get enrolled users for current page only with single query
-            $userIds = $users->pluck('id');
-            if ($userIds->isNotEmpty()) {
-                // Single optimized query to get all enrolled users for the current page
-                $enrolledUsersData = DB::table('course_user')
-                    ->join('users', 'course_user.user_id', '=', 'users.id')
-                    ->join('courses', 'course_user.course_id', '=', 'courses.id')
-                    ->whereIn('course_user.user_id', $userIds)
-                    ->where('course_user.is_enrolled', true) // Only active enrollments
-                    ->select(
-                        'users.id as user_id',
-                        'users.name',
-                        'users.email',
-                        'courses.name as course_name',
-                        'course_user.enrolled_at as created_at',
-                        'course_user.course_id'
-                    )
-                    ->orderBy('course_user.enrolled_at', 'desc')
-                    ->get();
+            // PERFORMANCE OPTIMIZATION: Get ALL enrollments (both active and revoked) for recent activity
+            $enrolledUsersData = DB::table('course_user')
+                ->join('users', 'course_user.user_id', '=', 'users.id')
+                ->join('courses', 'course_user.course_id', '=', 'courses.id')
+                ->select(
+                    'users.id as user_id',
+                    'users.name',
+                    'users.email',
+                    'courses.name as course_name',
+                    'course_user.enrolled_at as created_at',
+                    'course_user.course_id',
+                    'course_user.is_enrolled'
+                )
+                ->orderBy('course_user.updated_at', 'desc')
+                ->limit(50) // Show last 50 enrollment activities
+                ->get();
 
-                // Transform to the exact structure expected by the blade template
-                $enrolledUsers = $enrolledUsersData->map(function ($enrollment) {
-                    return (object) [
-                        'user_id' => $enrollment->user_id,
-                        'name' => $enrollment->name,
-                        'email' => $enrollment->email,
-                        'course_name' => $enrollment->course_name,
-                        'course_id' => $enrollment->course_id,
-                        'created_at' => $enrollment->created_at,
-                        'is_enrolled' => true // User is enrolled since we filtered by is_enrolled = true
-                    ];
-                });
-            } else {
-                $enrolledUsers = collect();
-            }
+            // Transform to the exact structure expected by the blade template
+            $enrolledUsers = $enrolledUsersData->map(function ($enrollment) {
+                return (object) [
+                    'user_id' => $enrollment->user_id,
+                    'name' => $enrollment->name,
+                    'email' => $enrollment->email,
+                    'course_name' => $enrollment->course_name,
+                    'course_id' => $enrollment->course_id,
+                    'created_at' => $enrollment->created_at,
+                    'is_enrolled' => (bool) $enrollment->is_enrolled
+                ];
+            });
 
             // PERFORMANCE OPTIMIZATION: Build user stats array from single query result
             $userStats = [
@@ -207,27 +201,70 @@ class UserService
 
     /**
      * Search for users by a query string.
+     * FIXED: Allow empty query to return all users
      *
-     * @param string $query
+     * @param string|null $query
      * @return array
      */
-    public function searchUsers(string $query): array
+    public function searchUsers(?string $query = ''): array
     {
-        if (strlen($query) < 2) {
-            return ['success' => false, 'message' => 'Search query must be at least 2 characters.'];
-        }
-
         try {
-            $users = User::where('name', 'like', "%{$query}%")
-                ->orWhere('email', 'like', "%{$query}%")
-                ->select('id', 'name', 'email', 'role')
-                ->limit(50)
-                ->get();
+            // FIXED: Handle null or empty query
+            $query = $query ?? '';
+            
+            // If query is empty, return all users
+            if (strlen(trim($query)) < 1) {
+                $users = User::select('id', 'name', 'email', 'role')
+                    ->orderBy('name', 'asc')
+                    ->limit(100) // Limit to prevent overwhelming the dropdown
+                    ->get();
+            } else {
+                $users = User::where('name', 'like', "%{$query}%")
+                    ->orWhere('email', 'like', "%{$query}%")
+                    ->select('id', 'name', 'email', 'role')
+                    ->orderBy('name', 'asc')
+                    ->limit(50)
+                    ->get();
+            }
 
             return ['success' => true, 'users' => $users];
         } catch (\Exception $e) {
             Log::error('User search failed in service: ' . $e->getMessage());
             return ['success' => false, 'message' => 'Failed to search for users.'];
+        }
+    }
+
+    /**
+     * Get course enrollment status for a specific user
+     * FIXED: Removed duplicate select and fixed ambiguous column
+     *
+     * @param int $userId
+     * @return array
+     */
+    public function getCourseEnrollmentStatusForUser(int $userId): array
+    {
+        try {
+            // FIXED: Use selectRaw only, removed duplicate select()
+            $courses = Course::leftJoin('course_user', function ($join) use ($userId) {
+                    $join->on('courses.id', '=', 'course_user.course_id')
+                         ->where('course_user.user_id', '=', $userId);
+                })
+                ->selectRaw('courses.id, courses.name, courses.price, COALESCE(course_user.is_enrolled, 0) as is_enrolled')
+                ->orderBy('courses.name', 'asc')
+                ->get()
+                ->map(function ($course) {
+                    return [
+                        'id' => $course->id,
+                        'name' => $course->name,
+                        'price' => $course->price,
+                        'is_enrolled' => (bool) $course->is_enrolled
+                    ];
+                });
+
+            return ['success' => true, 'courses' => $courses];
+        } catch (\Exception $e) {
+            Log::error('Failed to get course enrollment status: ' . $e->getMessage());
+            return ['success' => false, 'message' => 'Failed to get course enrollment status.'];
         }
     }
 }

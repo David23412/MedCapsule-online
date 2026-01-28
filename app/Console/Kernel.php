@@ -120,6 +120,14 @@ class Kernel extends ConsoleKernel
                 ->runInBackground()
                 ->appendOutputTo(storage_path('logs/mistake-reminders.log'));
 
+        // 🔔 Send comprehensive study reminders (weak topics, streaks, inactivity)
+        $schedule->command('notifications:send-reminders')
+                ->daily()
+                ->at('18:00') // 6 PM - good time for evening study reminder
+                ->withoutOverlapping()
+                ->runInBackground()
+                ->appendOutputTo(storage_path('logs/study-reminders.log'));
+
         // 🚀 AUTOMATIC ENROLLMENT MAINTENANCE - Keep all users enrolled in free courses
         $schedule->command('enroll:free-courses --force')
                 ->weekly()
@@ -127,7 +135,8 @@ class Kernel extends ConsoleKernel
                 ->at('03:30')
                 ->withoutOverlapping()
                 ->runInBackground()
-                ->appendOutputTo(storage_path('logs/free-course-enrollment.log'));}
+                ->appendOutputTo(storage_path('logs/free-course-enrollment.log'));
+    }
 
     /**
      * Register the commands for the application.
@@ -168,5 +177,7 @@ class Kernel extends ConsoleKernel
         Commands\TestAllNotifications::class,
         Commands\NuclearNotificationOptimization::class,
         Commands\EnrollUsersInFreeCourses::class, // 🚀 AUTOMATIC FREE COURSE ENROLLMENT
+        Commands\SendStudyReminders::class, // 🔔 COMPREHENSIVE STUDY REMINDERS
+        Commands\ImportQuestionsFromExcel::class, // 📊 EXCEL QUESTION IMPORT
     ];
 }

@@ -14,7 +14,6 @@ class OptimizedTopicsPage {
         this.init();
         this.setupEventDelegation();
         this.setupAssignmentCountdowns();
-        this.setupFilterSystem();
         this.setupModalOptimizations();
     }
 
@@ -70,13 +69,8 @@ class OptimizedTopicsPage {
         
         if (!topicCard) return;
 
-        // Handle quiz start button clicks
-        const startBtn = target.closest('.start-quiz-btn');
-        if (startBtn && !startBtn.disabled) {
-            event.preventDefault();
-            this.handleQuizStart(startBtn, topicCard);
-            return;
-        }
+        // NOTE: Quiz button handling is now unified in the main page script
+        // This prevents conflicts and ensures consistent behavior
 
         // Handle assignment interactions
         const assignmentBtn = target.closest('.assignment-start-btn');
@@ -268,39 +262,6 @@ class OptimizedTopicsPage {
             
             // Remove from active countdowns
             this.assignmentCountdowns.delete(element);
-        }
-    }
-
-    /**
-     * 🚀 QUIZ START: Optimized quiz start handling
-     */
-    handleQuizStart(button, topicCard) {
-        try {
-            // Get the closest parent with data attributes if button doesn't have them
-            const container = button.closest('[data-topic-id]') || topicCard;
-            const topicId = container.dataset.topicId || button.dataset.topicId;
-            const courseId = container.dataset.courseId || button.dataset.courseId;
-            let quizUrl = button.dataset.quizUrl || button.getAttribute('href');
-
-            // If href is javascript:void(0), use data attributes to construct URL
-            if ((!quizUrl || quizUrl === 'javascript:void(0)') && topicId && courseId) {
-                quizUrl = `/quiz/${courseId}/${topicId}`;
-            }
-
-            // Only navigate if we have a valid URL
-            if (quizUrl && quizUrl !== 'javascript:void(0)') {
-                window.location.href = quizUrl;
-            } else {
-                console.error('Missing required quiz URL or topic/course IDs');
-                // Fallback to showing the source selection modal if available
-                const sourceModal = document.getElementById('sourceSelectionModal');
-                if (sourceModal) {
-                    const bsModal = new bootstrap.Modal(sourceModal);
-                    bsModal.show();
-                }
-            }
-        } catch (error) {
-            console.error('Error starting quiz:', error);
         }
     }
 

@@ -197,7 +197,7 @@
 
         .container {
             width: 100%;
-            max-width: 1200px;
+            max-width: 1300px;
             margin: 80px auto 20px;
             padding: 2rem;
             display: grid;
@@ -303,7 +303,7 @@
             background: white;
             border-radius: 16px;
             border: 1px solid #e0e0e0;
-            padding: 30px;
+            padding: 40px;
             margin: 0;
             box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
             transition: all 0.3s ease;
@@ -317,28 +317,34 @@
         }
 
         .question {
-            font-size: 1.3em;
+            font-size: 1.85rem;
             color: #2c3e50;
-            margin-bottom: 25px;
-            line-height: 1.5;
+            margin-bottom: 30px;
+            line-height: 1.6;
             font-weight: 500;
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 2rem;
         }
 
         .options {
             display: flex;
             flex-direction: column;
-            gap: 12px;
+            gap: 15px;
+            margin-top: 20px;
         }
 
         .option {
-            padding: 15px 20px;
+            padding: 18px 24px;
             border: 2px solid #e0e0e0;
             border-radius: 12px;
             cursor: pointer;
             transition: all 0.3s ease;
-            font-size: 1.1em;
+            font-size: 1.35rem;
             background: white;
             color: #495057;
+            line-height: 1.5;
         }
 
         .option:hover {
@@ -631,14 +637,15 @@
         .progress-container {
             position: relative;
             width: 100%;
-            max-width: 800px;
+            max-width: 1000px;
             background: white;
-            padding: 15px 20px;
-            border-radius: 12px;
+            padding: 20px 25px;
+            border-radius: 16px;
             box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-            margin: 20px auto;
+            margin: 20px auto 30px;
             display: none;
             animation: slideDown 0.5s ease-out;
+            border: 1px solid #e2e8f0;
         }
 
         .progress-header {
@@ -649,9 +656,9 @@
         }
 
         .progress-title {
-            font-size: 1.1rem;
-            color: #495057;
-            font-weight: 500;
+            font-size: 1.2rem;
+            color: #2c3e50;
+            font-weight: 600;
         }
 
         .progress-text {
@@ -660,7 +667,7 @@
         }
 
         .progress-bar-container {
-            height: 10px;
+            height: 12px;
             background: #e9ecef;
             border-radius: 20px;
             overflow: hidden;
@@ -723,15 +730,48 @@
                 margin: 15px auto;
                 padding: 12px 15px;
             }
+
+            .question {
+                flex-direction: column;
+                gap: 1.5rem;
+                font-size: 1.4rem;
+            }
+
+            .question-text-content {
+                padding-right: 0;
+            }
+
+            .question-image {
+                width: 100%;
+                max-width: 100%;
+            }
+
+            .option {
+                font-size: 1.1rem;
+                padding: 15px 18px;
+            }
+
+            .card {
+                padding: 25px;
+            }
         }
 
         .question-image {
-            max-width: 300px;
-            max-height: 200px;
-            margin: 15px auto;
-            display: block;
-            border-radius: 8px;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            flex-shrink: 0;
+            width: 45%;
+            max-width: 500px;
+            height: auto;
+            max-height: 400px;
+            object-fit: contain;
+            border-radius: 12px;
+            margin: 0;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            border: 2px solid #e2e8f0;
+        }
+
+        .question-text-content {
+            flex: 1;
+            padding-right: 1rem;
         }
         
         /* Animation styles for the celebratory card */
@@ -1020,10 +1060,12 @@
                     <!-- Course: {{ $mistake->question->topic->course->name ?? 'Unknown' }} -->
 
                     <div class="question">
-                        @php
-                            $questionText = is_string($mistake->question) ? $mistake->question : json_decode($mistake->question)->question;
-                        @endphp
-                        {{ $questionText }}
+                        <div class="question-text-content">
+                            @php
+                                $questionText = is_string($mistake->question) ? $mistake->question : json_decode($mistake->question)->question;
+                            @endphp
+                            {{ $questionText }}
+                        </div>
                         @if($mistake->question && $mistake->question->image_url)
                             <img src="{{ asset($mistake->question->image_url) }}" alt="Question Image" class="question-image">
                         @endif

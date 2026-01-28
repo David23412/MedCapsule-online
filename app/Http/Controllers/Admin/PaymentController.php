@@ -9,6 +9,7 @@ use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use App\Services\NotificationTriggerService;
 
 class PaymentController extends Controller
 {
@@ -55,6 +56,13 @@ class PaymentController extends Controller
 
         // Enroll user in course
         $payment->user->enrollInCourse($payment->course_id);
+
+        // 🔔 TRIGGER PAYMENT ACCEPTED NOTIFICATION
+        NotificationTriggerService::onPaymentAccepted($payment->user, [
+            'amount' => $payment->amount,
+            'course_name' => $payment->course->name ?? 'Course',
+            'transaction_id' => $payment->reference_number
+        ]);
 
         return response()->json([
             'success' => true,
@@ -222,6 +230,14 @@ class PaymentController extends Controller
                 'amount' => $request->amount,
                 'payment_method' => $request->payment_method,
                 'transaction_id' => $request->transaction_id
+            ]);
+
+            // 🔔 TRIGGER PAYMENT SUBMITTED NOTIFICATION
+            NotificationTriggerService::onPaymentSubmitted($user, [
+                'amount' => $request->amount,
+                'course_name' => $course->name,
+                'transaction_id' => $request->transaction_id,
+                'payment_method' => $request->payment_method
             ]);
 
             return response()->json([

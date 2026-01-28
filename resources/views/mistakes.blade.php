@@ -559,13 +559,13 @@
 
         /* Premium smooth collapse animation - GPU accelerated */
         .explanation-content {
-            background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%);
+            background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
             border-radius: 12px;
             font-size: 1.25rem;
             line-height: 1.9;
             color: #0f172a;
-            border: 2px solid #fde68a;
-            border-left: 5px solid #f59e0b;
+            border: 2px solid #bae6fd;
+            border-left: 5px solid #0ea5e9;
             padding: 0 1.5rem;
             margin-top: 1rem;
             overflow: hidden;
@@ -587,7 +587,7 @@
             opacity: 1;
             transform: translateY(0) scale(1);
             padding: 1.5rem;
-            box-shadow: 0 4px 16px rgba(245, 158, 11, 0.15);
+            box-shadow: 0 4px 16px rgba(14, 165, 233, 0.15);
         }
 
         /* Enhanced readability */
@@ -976,27 +976,47 @@
         }
 
         .mistake-card.flashcard-mode .question-text {
-            text-align: center;
-            max-width: 90%;
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 2rem;
+            width: 100%;
+            max-width: 100%;
             margin: 0;
             padding: 0;
         }
 
         .mistake-card.flashcard-mode .question-text p {
-            font-size: 1.7rem;
+            flex: 1;
+            font-size: 1.9rem;
             font-weight: 500;
             color: #1e293b;
-            line-height: 1.5;
+            line-height: 1.7;
             margin: 0;
+            text-align: left;
+            padding-right: 1rem;
+        }
+
+        .mistake-card.flashcard-mode .question-text .question-image {
+            flex-shrink: 0;
+            width: 45%;
+            max-width: 500px;
+            height: auto;
+            max-height: 400px;
+            object-fit: contain;
+            border-radius: 12px;
+            margin: 0;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            border: 2px solid #e2e8f0;
         }
 
         .mistake-card.flashcard-mode .correct-answer {
-            font-size: 1.7rem;
-            font-weight: 500;
+            font-size: 2rem;
+            font-weight: 600;
             color: #16a34a;
             text-align: center;
             max-width: 90%;
-            line-height: 1.5;
+            line-height: 1.6;
         }
 
         @media (max-width: 768px) {
@@ -1004,8 +1024,22 @@
                 min-height: 250px;
             }
 
-        .mistake-card.flashcard-mode .question-text p,
-        .mistake-card.flashcard-mode .correct-answer {
+            .mistake-card.flashcard-mode .question-text {
+                flex-direction: column;
+                gap: 1rem;
+            }
+
+            .mistake-card.flashcard-mode .question-text p {
+                font-size: 1.6rem;
+                padding-right: 0;
+            }
+
+            .mistake-card.flashcard-mode .question-text .question-image {
+                width: 100%;
+                max-width: 100%;
+            }
+
+            .mistake-card.flashcard-mode .correct-answer {
                 font-size: 1.9rem;
             }
 
@@ -1315,7 +1349,7 @@
                     cardFront.innerHTML = `
                         <div class="question-text">
                             <p>${questionText}</p>
-                            ${questionImage ? `<img src="${questionImage.src}" alt="Question Image" class="question-image" style="max-width: 100%; height: auto; max-height: 200px; border-radius: 8px; margin: 1rem 0;">` : ''}
+                            ${questionImage ? `<img src="${questionImage.src}" alt="Question Image" class="question-image">` : ''}
                         </div>
                     `;
                     cardBack.innerHTML = `

@@ -30,14 +30,7 @@ class CourseController extends Controller
         protected CourseService $courseService
     ) {
         $this->middleware('auth');
-
-        // Admin-only routes
-        $this->middleware(function ($request, $next) {
-            if (!auth()->user() || auth()->user()->role !== 'admin') {
-                return redirect()->route('home')->with('error', 'Unauthorized access.');
-            }
-            return $next($request);
-        })->only(['showAddCourseForm', 'addCourse']);
+        $this->middleware('admin')->only(['showAddCourseForm', 'addCourse']);
     }
 
     /**
@@ -68,6 +61,14 @@ class CourseController extends Controller
         }
 
         abort(404, 'Course not found');
+    }
+
+    /**
+     * Show form for adding a new course (Admin only)
+     */
+    public function showAddCourseForm()
+    {
+        return view('admin.add-course');
     }
 
     /**

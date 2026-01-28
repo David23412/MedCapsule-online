@@ -83,12 +83,12 @@ use App\Services\SecureFileUploadService;
         // RUTHLESS OPTIMIZATION: Cached user rank with longer duration
         $userRank = null;
         if ($user->xp > 0) {
-            $userRank = Cache::remember("user_rank_optimized_{$user->id}", 1800, function() use ($user) { 
+            $userRank = Cache::remember("user_rank_optimized_{$user->id}", 1800, function() use ($user) {
                 return DB::table('users')
                     ->where('total_questions_attempted', '>', 0)
-                    ->where('role', 'student')
+                    ->where('role', 3) // 3 = student role (integer)
                     ->where('xp', '>', $user->xp)
-                    ->count() + 1; 
+                    ->count() + 1;
             });
         }
 
@@ -150,9 +150,15 @@ use App\Services\SecureFileUploadService;
         });
 
         // RUTHLESS OPTIMIZATION: Single JOIN query eliminating subqueries
+        // FIXED: Only show weak topics from courses user is currently enrolled in
         $weakTopicsData = DB::table('topics')
             ->join('user_topic_progress', 'topics.id', '=', 'user_topic_progress.topic_id')
             ->join('courses', 'topics.course_id', '=', 'courses.id')
+            ->join('course_user', function($join) use ($user) {
+                $join->on('courses.id', '=', 'course_user.course_id')
+                     ->where('course_user.user_id', '=', $user->id)
+                     ->where('course_user.is_enrolled', '=', true);
+            })
             ->where('user_topic_progress.user_id', $user->id)
             ->whereNotNull('user_topic_progress.percentage_grade')
             ->where('user_topic_progress.percentage_grade', '<', 100)
@@ -163,7 +169,7 @@ use App\Services\SecureFileUploadService;
                 'courses.name as course_name',
                 'user_topic_progress.percentage_grade',
                 DB::raw('
-                    CASE 
+                    CASE
                         WHEN user_topic_progress.percentage_grade <= 25 THEN 1
                         WHEN user_topic_progress.percentage_grade <= 49 THEN 2
                         WHEN user_topic_progress.percentage_grade <= 74 THEN 3
@@ -417,187 +423,11 @@ use App\Services\SecureFileUploadService;
         }
     }
 
-    /**
-     * Show study planner page
-     */
-    public function showStudyPlanner()
-    {
-        $user = auth()->user();
-        
-        // Get current month's plans
-        $startOfMonth = now()->startOfMonth();
-        $endOfMonth = now()->endOfMonth();
-        
-        $plans = \App\Models\StudyPlan::where('user_id', $user->id)
-            ->whereBetween('plan_date', [$startOfMonth, $endOfMonth])
-            ->get()
-            ->keyBy(function($plan) {
-                return $plan->plan_date->format('Y-m-d');
-            });
-        
-        // Get available topics for planning
-        $topics = \App\Models\Topic::whereHas('course', function($query) use ($user) {
-            if (!$user->isAdmin()) {
-                $query->where(function($q) use ($user) {
-                    $q->whereNull('price')
-                      ->orWhere('price', '<=', 0)
-                      ->orWhereHas('enrollments', function($eq) use ($user) {
-                          $eq->where('user_id', $user->id);
-                      });
-                });
-            }
-        })->with('course:id,name')->get();
-        
-        return view('study-planner', compact('plans', 'topics'));
-    }
 
-    /**
-     * Save or update study plan
-     */
-    public function saveStudyPlan(Request $request)
-    {
-        try {
-            $validated = $request->validate([
-                'plan_date' => 'required|date',
-                'daily_goal' => 'required|integer|min:0|max:200',
-                'notes' => 'nullable|string|max:500',
-                'topics' => 'nullable|array',
-                'tasks' => 'nullable|string',
-                'color' => 'nullable|string|max:20',
-                'exam_date' => 'nullable|date',
-                'is_exam_day' => 'boolean',
-                'is_committed' => 'boolean'
-            ]);
-
-            $plan = \App\Models\StudyPlan::updateOrCreate(
-                [
-                    'user_id' => auth()->id(),
-                    'plan_date' => $validated['plan_date']
-                ],
-                [
-                    'daily_goal' => $validated['daily_goal'],
-                    'notes' => $validated['notes'] ?? null,
-                    'topics' => $validated['topics'] ?? null,
-                    'tasks' => $validated['tasks'] ?? null,
-                    'color' => $validated['color'] ?? '#3b82f6',
-                    'exam_date' => $validated['exam_date'] ?? null,
-                    'is_exam_day' => $validated['is_exam_day'] ?? false,
-                    'is_committed' => $validated['is_committed'] ?? false
-                ]
-            );
-            
-            // Update user's exam date if provided
-            if (isset($validated['exam_date'])) {
-                $user = auth()->user();
-                $user->exam_date = $validated['exam_date'];
-                $user->save();
-            }
-
-            return response()->json([
-                'success' => true,
-                'message' => 'Study plan saved successfully',
-                'plan' => $plan
-            ]);
-        } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Failed to save study plan: ' . $e->getMessage()
-            ], 500);
-        }
-    }
     
-    /**
-     * Get weak topics for the user
-     */
-    public function getWeakTopics()
-    {
-        try {
-            $userId = auth()->id();
-            
-            // Get topics with low performance (< 60% accuracy)
-            $weakTopics = \App\Models\QuizAttempt::where('user_id', $userId)
-                ->where('percentage_grade', '<', 60)
-                ->with('topic:id,name')
-                ->select('topic_id', \DB::raw('AVG(percentage_grade) as avg_grade'), \DB::raw('COUNT(*) as attempts'))
-                ->groupBy('topic_id')
-                ->having('attempts', '>=', 2)
-                ->orderBy('avg_grade', 'asc')
-                ->limit(5)
-                ->get();
-            
-            return response()->json([
-                'success' => true,
-                'weak_topics' => $weakTopics
-            ]);
-        } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'weak_topics' => []
-            ]);
-        }
-    }
 
-    /**
-     * Get study plans for a specific month
-     */
-    public function getMonthPlans(Request $request)
-    {
-        try {
-            $month = $request->input('month', now()->format('Y-m'));
-            $date = \Carbon\Carbon::parse($month . '-01');
-            
-            $startOfMonth = $date->copy()->startOfMonth();
-            $endOfMonth = $date->copy()->endOfMonth();
-            
-            $plans = \App\Models\StudyPlan::where('user_id', auth()->id())
-                ->whereBetween('plan_date', [$startOfMonth, $endOfMonth])
-                ->get();
-            
-            // Get actual progress for each day
-            $progress = \App\Models\QuizAttempt::where('user_id', auth()->id())
-                ->whereBetween('created_at', [$startOfMonth, $endOfMonth])
-                ->selectRaw('DATE(created_at) as date, SUM(total_questions) as questions')
-                ->groupBy('date')
-                ->pluck('questions', 'date');
-            
-            return response()->json([
-                'success' => true,
-                'plans' => $plans,
-                'progress' => $progress
-            ]);
-        } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Failed to fetch plans: ' . $e->getMessage()
-            ], 500);
-        }
-    }
 
-    /**
-     * Delete study plan
-     */
-    public function deleteStudyPlan(Request $request)
-    {
-        try {
-            $validated = $request->validate([
-                'plan_date' => 'required|date'
-            ]);
 
-            \App\Models\StudyPlan::where('user_id', auth()->id())
-                ->where('plan_date', $validated['plan_date'])
-                ->delete();
-
-            return response()->json([
-                'success' => true,
-                'message' => 'Study plan deleted successfully'
-            ]);
-        } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Failed to delete study plan: ' . $e->getMessage()
-            ], 500);
-        }
-    }
 
     /**
      * Update user's weekly study goal
