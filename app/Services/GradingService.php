@@ -71,51 +71,20 @@ class GradingService
             // Get questions and validate they belong to the topic
             $questions = $this->getAndValidateQuestions($answers);
 
-            // LETHAL FIX: Use appropriate processing method based on mode
-            if ($mode === 'tutor') {
-                $gradingResult = $this->processTutorAnswers($user, $questions, $answers, $topic);
-            } else {
-                $gradingResult = $this->processAnswers($user, $questions, $answers, $topic);
-            }
+            // Process quiz based on mode and get grading results
+            $gradingResult = $this->processQuizByMode($user, $questions, $answers, $topic, $mode);
 
             // Check if this is an assignment quiz
             $isAssignment = $this->isAssignmentQuiz($user, $topic, $course, $assignmentId);
 
-            // Create quiz attempts - handle random mode differently
-            if ($mode === 'random') {
-                $this->createRandomQuizAttempt($user, $gradingResult, $duration, $mode, $topic, $isAssignment, $assignmentId);
-            } else { // Both tutor and quiz modes use createQuizAttempts
-                // For tutor mode, sourceData from processTutorAnswers contains the breakdown
-                // For quiz mode, sourceData from processAnswers contains the breakdown
-                $this->createQuizAttempts($user, $gradingResult['sourceData'], $duration, $mode, $topic, $isAssignment, $assignmentId);
-            }
+            // Create quiz attempts based on mode
+            $this->createQuizAttemptsByMode($user, $gradingResult, $duration, $mode, $topic, $isAssignment, $assignmentId);
 
-            // Update user statistics
-            $this->userStatsService->updateAfterQuizAttempt(
-                $user,
-                $gradingResult['totalQuestions'],
-                $gradingResult['totalCorrect'],
-                $duration
-            );
+            // Update user statistics and rewards
+            $xpResult = $this->updateUserStatsAndRewards($user, $gradingResult, $duration);
 
-            // Calculate and award XP
-            $xpResult = $this->calculateAndAwardXP($user, $gradingResult['score'], $duration, $gradingResult['percentageGrade']);
-
-            // Update study streak for ALL quiz types (including first quiz)
-            $this->updateStudyStreak($user);
-
-            // Update topic progress ONLY for regular quizzes, NOT assignments or tutor mode
-            if (!$assignmentId && $mode === 'quiz') {
-                $this->updateTopicProgress($user, $topic, $gradingResult['score'], $gradingResult['totalQuestions']);
-            } else {
-                // Assignment completion or tutor mode - don't update regular topic progress
-                Log::info('Non-regular quiz completed - skipping regular topic progress update', [
-                    'assignment_id' => $assignmentId,
-                    'mode' => $mode,
-                    'user_id' => $user->id,
-                    'topic_id' => $topic->id
-                ]);
-            }
+            // Handle topic progress updates
+            $this->handleProgressUpdate($user, $topic, $gradingResult, $mode, $assignmentId);
 
             // Clear relevant caches
             $this->cacheService->smartInvalidate('user_progress', $user->id, ['topic_id' => $topic->id]);
@@ -140,6 +109,101 @@ class GradingService
                 'trace' => $e->getTraceAsString()
             ]);
             throw $e;
+        }
+    }
+
+    /**
+     * Process quiz answers based on mode
+     *
+     * @param User $user
+     * @param mixed $questions
+     * @param array $answers
+     * @param Topic $topic
+     * @param string $mode
+     * @return array
+     */
+    private function processQuizByMode(User $user, $questions, array $answers, Topic $topic, string $mode): array
+    {
+        // LETHAL FIX: Use appropriate processing method based on mode
+        if ($mode === 'tutor') {
+            return $this->processTutorAnswers($user, $questions, $answers, $topic);
+        } else {
+            return $this->processAnswers($user, $questions, $answers, $topic);
+        }
+    }
+
+    /**
+     * Create quiz attempts based on mode
+     *
+     * @param User $user
+     * @param array $gradingResult
+     * @param int $duration
+     * @param string $mode
+     * @param Topic $topic
+     * @param bool $isAssignment
+     * @param int|null $assignmentId
+     */
+    private function createQuizAttemptsByMode(User $user, array $gradingResult, int $duration, string $mode, Topic $topic, bool $isAssignment, ?int $assignmentId): void
+    {
+        // Create quiz attempts - handle random mode differently
+        if ($mode === 'random') {
+            $this->createRandomQuizAttempt($user, $gradingResult, $duration, $mode, $topic, $isAssignment, $assignmentId);
+        } else { // Both tutor and quiz modes use createQuizAttempts
+            // For tutor mode, sourceData from processTutorAnswers contains the breakdown
+            // For quiz mode, sourceData from processAnswers contains the breakdown
+            $this->createQuizAttempts($user, $gradingResult['sourceData'], $duration, $mode, $topic, $isAssignment, $assignmentId);
+        }
+    }
+
+    /**
+     * Update user statistics and calculate rewards
+     *
+     * @param User $user
+     * @param array $gradingResult
+     * @param int $duration
+     * @return array
+     */
+    private function updateUserStatsAndRewards(User $user, array $gradingResult, int $duration): array
+    {
+        // Update user statistics
+        $this->userStatsService->updateAfterQuizAttempt(
+            $user,
+            $gradingResult['totalQuestions'],
+            $gradingResult['totalCorrect'],
+            $duration
+        );
+
+        // Calculate and award XP
+        $xpResult = $this->calculateAndAwardXP($user, $gradingResult['score'], $duration, $gradingResult['percentageGrade']);
+
+        // Update study streak for ALL quiz types (including first quiz)
+        $this->updateStudyStreak($user);
+
+        return $xpResult;
+    }
+
+    /**
+     * Handle topic progress updates based on quiz type
+     *
+     * @param User $user
+     * @param Topic $topic
+     * @param array $gradingResult
+     * @param string $mode
+     * @param int|null $assignmentId
+     */
+    private function handleProgressUpdate(User $user, Topic $topic, array $gradingResult, string $mode, ?int $assignmentId): void
+    {
+        // Update topic progress ONLY for regular quizzes, NOT assignments or tutor mode
+        if (!$assignmentId && $mode === 'quiz') {
+            $this->updateTopicProgress($user, $topic, $gradingResult['score'], $gradingResult['totalQuestions']);
+        } else {
+            // Assignment completion or tutor mode - don't update regular topic progress
+            Log::info('Non-regular quiz completed - skipping regular topic progress update', [
+                'assignment_id' => $assignmentId,
+                'mode' => $mode,
+                'user_id' => $user->id,
+                'topic_id' => $topic->id
+            ]);
         }
     }
 
