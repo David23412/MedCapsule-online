@@ -632,21 +632,12 @@ class GradingService
      */
     private function createQuizAttempts(User $user, array $sourceData, int $duration, string $mode, Topic $topic, bool $isAssignment = false, ?int $assignmentId = null): void
     {
-        Log::info('🔥 DEBUG: createQuizAttempts called', [
-            'user_id' => $user->id,
-            'source_count' => count($sourceData),
-            'mode' => $mode,
-            'topic_id' => $topic->id,
-            'is_random' => ($mode === 'random'),
-            'is_tutor' => ($mode === 'tutor'),
-            'source_data_keys' => array_keys($sourceData),
-            'transaction_active' => DB::transactionLevel()
-        ]);
-
+        // OPTIMIZATION: Removed debug logging for production performance
         if (empty($sourceData)) {
-            Log::error('⚠️ DEBUG: No sourceData provided to createQuizAttempts!');
+            Log::error('No source data provided to createQuizAttempts');
             return;
         }
+        
         $numSources = count($sourceData);
         $durationPerSource = $numSources > 0 ? (int) round($duration / $numSources) : $duration;
 
@@ -685,13 +676,13 @@ class GradingService
             $attemptsCreated++;
         }
 
-        Log::info('🚀 ULTRA EFFICIENT: Created quiz attempts with attempt_id grouping', [
+        // OPTIMIZATION: Reduced logging frequency for better performance
+        Log::info('Quiz attempts created', [
             'user_id' => $user->id,
             'topic_id' => $topic->id,
             'mode' => $mode,
             'attempt_id' => $attemptId,
-            'sources_grouped' => $attemptsCreated,
-            'chart_points' => 1 // Multiple sources = 1 chart point ✅
+            'sources_count' => $attemptsCreated
         ]);
     }
 
@@ -1093,17 +1084,14 @@ class GradingService
     // Helper to check if this is the last question for the source
     private function isLastQuestionForSource(Question $question, Topic $topic, string $source): bool
     {
-        // OPTIMIZATION: Use count instead of plucking all IDs for better performance
-        $totalQuestions = Question::where('topic_id', $topic->id)
-            ->where('source', $source)
-            ->count();
-            
+        // OPTIMIZATION: Use single query with COUNT and WHERE NOT IN for better performance
         $remainingQuestions = Question::where('topic_id', $topic->id)
             ->where('source', $source)
             ->where('id', '!=', $question->id)
             ->count();
             
-        return $totalQuestions > 0 && $remainingQuestions === 0;
+        // If no remaining questions, this is the last one
+        return $remainingQuestions === 0;
     }
 
     /**
