@@ -19,6 +19,20 @@ use Illuminate\Support\Facades\Cache;
 
 class GradingService
 {
+    // Quiz validation constants
+    private const MAX_ANSWER_LENGTH = 2000;
+    private const MAX_TOTAL_LENGTH = 20000;
+    
+    // XP calculation constants  
+    private const XP_PER_CORRECT_ANSWER = 10;
+    private const MAX_TIME_BONUS_XP = 50;
+    private const MAX_ACCURACY_BONUS_XP = 50;
+    private const ACCURACY_BONUS_DIVISOR = 10;
+    private const ACCURACY_BONUS_MULTIPLIER = 5;
+    
+    // Level calculation constants
+    private const XP_PER_LEVEL = 1000;
+    
     protected $cacheService;
     protected $userStatsService;
     protected $notificationService;
@@ -143,8 +157,6 @@ class GradingService
     private function validateQuizInputs(array $answers, int $duration, string $mode): void
     {
         // Validate answer payload size (but allow empty answers)
-        $maxAnswerLength = 2000;
-        $maxTotalLength = 20000;
         $totalLength = 0;
 
         foreach ($answers as $qid => $answer) {
@@ -153,16 +165,16 @@ class GradingService
                 continue;
             }
             
-            if (is_string($answer) && mb_strlen($answer) > $maxAnswerLength) {
-                throw new \InvalidArgumentException("Answer for question $qid exceeds maximum allowed length of $maxAnswerLength characters.");
+            if (is_string($answer) && mb_strlen($answer) > self::MAX_ANSWER_LENGTH) {
+                throw new \InvalidArgumentException("Answer for question $qid exceeds maximum allowed length of " . self::MAX_ANSWER_LENGTH . " characters.");
             }
             if (is_string($answer)) {
                 $totalLength += mb_strlen($answer);
             }
         }
 
-        if ($totalLength > $maxTotalLength) {
-            throw new \InvalidArgumentException("Total answer payload exceeds maximum allowed length of $maxTotalLength characters.");
+        if ($totalLength > self::MAX_TOTAL_LENGTH) {
+            throw new \InvalidArgumentException("Total answer payload exceeds maximum allowed length of " . self::MAX_TOTAL_LENGTH . " characters.");
         }
 
         // Allow empty answers array (user might not answer anything)
@@ -666,9 +678,9 @@ class GradingService
     private function calculateAndAwardXP(User $user, int $score, int $duration, float $percentageGrade): array
     {
         // Calculate XP based on score and time
-        $baseXP = $score * 10; // 10 XP per correct answer
-        $timeBonus = max(0, 50 - floor($duration / 60)); // Up to 50 bonus XP for fast completion
-        $accuracyBonus = floor($percentageGrade / 10) * 5; // Up to 50 bonus XP for high accuracy
+        $baseXP = $score * self::XP_PER_CORRECT_ANSWER; // XP per correct answer
+        $timeBonus = max(0, self::MAX_TIME_BONUS_XP - floor($duration / 60)); // Up to max time bonus XP for fast completion
+        $accuracyBonus = floor($percentageGrade / self::ACCURACY_BONUS_DIVISOR) * self::ACCURACY_BONUS_MULTIPLIER; // Up to max accuracy bonus XP for high accuracy
         $earnedXP = $baseXP + $timeBonus + $accuracyBonus;
 
         Log::info('XP Calculation:', [
@@ -704,7 +716,7 @@ class GradingService
     private function checkForLevelUp(User $user): array
     {
         $currentLevel = $user->getCurrentLevel();
-        $newLevel = floor($user->xp / 1000) + 1;
+        $newLevel = floor($user->xp / self::XP_PER_LEVEL) + 1;
 
         if ($newLevel > $currentLevel) {
             // Create level up notification
