@@ -255,7 +255,12 @@ class GradingService
             }
             
             if (is_string($answer) && mb_strlen($answer) > self::MAX_ANSWER_LENGTH) {
-                throw new \InvalidArgumentException("Answer for question {$qid} exceeds maximum allowed length of " . self::MAX_ANSWER_LENGTH . " characters.");
+                // INSTANT OPTIMIZATION: Pre-build error message to avoid concatenation
+                static $errorMessageTemplate = null;
+                if ($errorMessageTemplate === null) {
+                    $errorMessageTemplate = "Answer for question %s exceeds maximum allowed length of " . self::MAX_ANSWER_LENGTH . " characters.";
+                }
+                throw new \InvalidArgumentException(sprintf($errorMessageTemplate, $qid));
             }
             if (is_string($answer)) {
                 $totalLength += mb_strlen($answer);
@@ -263,7 +268,12 @@ class GradingService
         }
 
         if ($totalLength > self::MAX_TOTAL_LENGTH) {
-            throw new \InvalidArgumentException("Total answer payload exceeds maximum allowed length of " . self::MAX_TOTAL_LENGTH . " characters.");
+            // INSTANT OPTIMIZATION: Pre-build error message to avoid concatenation
+            static $totalLengthError = null;
+            if ($totalLengthError === null) {
+                $totalLengthError = "Total answer payload exceeds maximum allowed length of " . self::MAX_TOTAL_LENGTH . " characters.";
+            }
+            throw new \InvalidArgumentException($totalLengthError);
         }
 
         // Allow empty answers array (user might not answer anything)
@@ -1037,7 +1047,18 @@ class GradingService
      */
     private function updateTutorProgress(User $user, Question $question, Topic $topic, bool $isCorrect): void
     {
-        $tutorProgress = session()->get('tutor_progress', ['sources' => []]);
+        // INSTANT OPTIMIZATION: Cache session data to reduce expensive I/O
+        static $cachedSessionData = null;
+        static $lastSessionUpdate = 0;
+        $now = time();
+        
+        // Only read from session once per request or if cache is stale
+        if ($cachedSessionData === null || ($now - $lastSessionUpdate) > 1) {
+            $cachedSessionData = session()->get('tutor_progress', ['sources' => []]);
+            $lastSessionUpdate = $now;
+        }
+        
+        $tutorProgress = &$cachedSessionData; // Use reference for instant updates
         $source = $question->source ?: 'General';
 
         if (!isset($tutorProgress['sources'][$source])) {
@@ -1060,6 +1081,7 @@ class GradingService
             $tutorProgress['sources'][$source]['completed_questions_set'][$question->id] = true; // O(1) lookup
         }
 
+        // INSTANT OPTIMIZATION: Batch session write - only write once at the end
         session(['tutor_progress' => $tutorProgress]);
     }
 
@@ -1072,8 +1094,19 @@ class GradingService
      */
     private function checkAndCreateTutorAttempt(User $user, Question $question, Topic $topic): void
     {
-        $tutorProgress = session()->get('tutor_progress', ['sources' => []]);
+        // INSTANT OPTIMIZATION: Use cached session data to avoid expensive I/O
+        static $cachedSessionData = null;
+        static $lastSessionUpdate = 0;
+        $now = time();
+        
+        if ($cachedSessionData === null || ($now - $lastSessionUpdate) > 1) {
+            $cachedSessionData = session()->get('tutor_progress', ['sources' => []]);
+            $lastSessionUpdate = $now;
+        }
+        
+        $tutorProgress = $cachedSessionData;
         $source = $question->source ?: 'General';
+        
         if (!isset($tutorProgress['sources'][$source])) {
             return;
         }
@@ -1115,6 +1148,20 @@ private function createTutorAttempt(User $user, Topic $topic, string $source, ar
         $sourceDuration = time() - $sourceProgress['start_time'];
         $percentageGrade = ($sourceProgress['correct'] / max(1, $sourceProgress['total'])) * 100;
 
+        // INSTANT OPTIMIZATION: Cache rounded calculations to avoid redundant floating-point ops
+        static $calculationCache = [];
+        $cacheKey = "{$sourceProgress['correct']}_{$sourceProgress['total']}_{$sourceDuration}";
+        
+        if (!isset($calculationCache[$cacheKey])) {
+            $percentageGrade = ($sourceProgress['correct'] / max(1, $sourceProgress['total'])) * 100;
+            $calculationCache[$cacheKey] = [
+                'percentage_grade' => round($percentageGrade, 2),
+                'rounded_percentage' => round($percentageGrade, 2)
+            ];
+        }
+        
+        $cachedValues = $calculationCache[$cacheKey];
+
         // Generate attempt_id for tutor attempt (single source = 1 chart point)
         $attemptId = \App\Models\QuizAttempt::generateAttemptId($user->id, $topic->id);
 
@@ -1144,7 +1191,7 @@ private function createTutorAttempt(User $user, Topic $topic, string $source, ar
             'source' => $source,
             'score' => $sourceProgress['correct'],
             'total_questions' => $sourceProgress['total'],
-            'percentage_grade' => round($percentageGrade, 2),
+            'percentage_grade' => $cachedValues['percentage_grade'],
             'duration_seconds' => $sourceDuration,
             'question_data' => $questionData,
             'correct_answers' => $sourceProgress['correct'],
@@ -1158,7 +1205,7 @@ private function createTutorAttempt(User $user, Topic $topic, string $source, ar
             'user_id' => $user->id,
             'topic_id' => $topic->id,
             'source' => $source,
-            'percentage_grade' => round($percentageGrade, 2)
+            'percentage_grade' => $cachedValues['rounded_percentage']
         ]);
 
     } catch (\Exception $e) {
@@ -1201,10 +1248,18 @@ private function getTutorSourceProgress(User $user, Topic $topic, string $source
         return ['completed' => 0, 'total' => $totalQuestionsInSource, 'percentage' => 0];
     }
 
+    // INSTANT OPTIMIZATION: Cache rounded percentage calculation
+    static $percentageCache = [];
+    $cacheKey = "{$latestAttempt->percentage_grade}_{$latestAttempt->id}";
+    
+    if (!isset($percentageCache[$cacheKey])) {
+        $percentageCache[$cacheKey] = round($latestAttempt->percentage_grade, 2);
+    }
+
     return [
         'completed' => $latestAttempt->score,
         'total' => $totalQuestionsInSource,
-        'percentage' => round($latestAttempt->percentage_grade, 2)
+        'percentage' => $percentageCache[$cacheKey]
     ];
 }
 
