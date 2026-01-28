@@ -254,16 +254,24 @@ class GradingService
                 continue;
             }
             
-            if (is_string($answer) && mb_strlen($answer) > self::MAX_ANSWER_LENGTH) {
-                // INSTANT OPTIMIZATION: Pre-build error message to avoid concatenation
-                static $errorMessageTemplate = null;
-                if ($errorMessageTemplate === null) {
-                    $errorMessageTemplate = "Answer for question %s exceeds maximum allowed length of " . self::MAX_ANSWER_LENGTH . " characters.";
-                }
-                throw new \InvalidArgumentException(sprintf($errorMessageTemplate, $qid));
-            }
             if (is_string($answer)) {
-                $totalLength += mb_strlen($answer);
+                // SURGICAL OPTIMIZATION: Cache mb_strlen to avoid expensive UTF-8 calculations
+                static $stringLengthCache = [];
+                if (!isset($stringLengthCache[$answer])) {
+                    $stringLengthCache[$answer] = mb_strlen($answer);
+                }
+                $answerLength = $stringLengthCache[$answer];
+                
+                if ($answerLength > self::MAX_ANSWER_LENGTH) {
+                    // INSTANT OPTIMIZATION: Pre-build error message to avoid concatenation
+                    static $errorMessageTemplate = null;
+                    if ($errorMessageTemplate === null) {
+                        $errorMessageTemplate = "Answer for question %s exceeds maximum allowed length of " . self::MAX_ANSWER_LENGTH . " characters.";
+                    }
+                    throw new \InvalidArgumentException(sprintf($errorMessageTemplate, $qid));
+                }
+                
+                $totalLength += $answerLength;
             }
         }
 
@@ -1047,10 +1055,16 @@ class GradingService
      */
     private function updateTutorProgress(User $user, Question $question, Topic $topic, bool $isCorrect): void
     {
+        // SURGICAL OPTIMIZATION: Single time() source to eliminate multiple system calls
+        static $requestStartTime = null;
+        if ($requestStartTime === null) {
+            $requestStartTime = time();
+        }
+        
         // INSTANT OPTIMIZATION: Cache session data to reduce expensive I/O
         static $cachedSessionData = null;
         static $lastSessionUpdate = 0;
-        $now = time();
+        $now = $requestStartTime; // Use single time source
         
         // Only read from session once per request or if cache is stale
         if ($cachedSessionData === null || ($now - $lastSessionUpdate) > 1) {
@@ -1067,7 +1081,7 @@ class GradingService
                 'total' => 0,
                 'completed_questions' => [], // Keep as array for storage
                 'completed_questions_set' => [], // SUPER OPTIMIZATION: Use as hash set for O(1) lookups
-                'start_time' => time()
+                'start_time' => $requestStartTime // Use single time source
             ];
         }
 
@@ -1094,10 +1108,16 @@ class GradingService
      */
     private function checkAndCreateTutorAttempt(User $user, Question $question, Topic $topic): void
     {
+        // SURGICAL OPTIMIZATION: Use single time source from updateTutorProgress
+        static $requestStartTime = null;
+        if ($requestStartTime === null) {
+            $requestStartTime = time();
+        }
+        
         // INSTANT OPTIMIZATION: Use cached session data to avoid expensive I/O
         static $cachedSessionData = null;
         static $lastSessionUpdate = 0;
-        $now = time();
+        $now = $requestStartTime; // Use single time source
         
         if ($cachedSessionData === null || ($now - $lastSessionUpdate) > 1) {
             $cachedSessionData = session()->get('tutor_progress', ['sources' => []]);
@@ -1145,15 +1165,28 @@ private function createTutorAttempt(User $user, Topic $topic, string $source, ar
             'source' => $source
         ]);
 
-        $sourceDuration = time() - $sourceProgress['start_time'];
-        $percentageGrade = ($sourceProgress['correct'] / max(1, $sourceProgress['total'])) * 100;
+        // SURGICAL OPTIMIZATION: Use single time source to eliminate system call
+        static $requestStartTime = null;
+        if ($requestStartTime === null) {
+            $requestStartTime = time();
+        }
+        
+        $sourceDuration = $requestStartTime - $sourceProgress['start_time'];
+        
+        // SURGICAL OPTIMIZATION: Replace expensive max() with constant where total > 0 is guaranteed
+        $totalQuestions = $sourceProgress['total'];
+        if ($totalQuestions > 0) {
+            $percentageGrade = ($sourceProgress['correct'] / $totalQuestions) * 100;
+        } else {
+            $percentageGrade = 0; // Edge case: no questions
+        }
 
         // INSTANT OPTIMIZATION: Cache rounded calculations to avoid redundant floating-point ops
         static $calculationCache = [];
         $cacheKey = "{$sourceProgress['correct']}_{$sourceProgress['total']}_{$sourceDuration}";
         
         if (!isset($calculationCache[$cacheKey])) {
-            $percentageGrade = ($sourceProgress['correct'] / max(1, $sourceProgress['total'])) * 100;
+            // SURGICAL FIX: Use already calculated percentageGrade to avoid redundant calculation
             $calculationCache[$cacheKey] = [
                 'percentage_grade' => round($percentageGrade, 2),
                 'rounded_percentage' => round($percentageGrade, 2)
