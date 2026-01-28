@@ -163,7 +163,7 @@ class GradingService
             }
             
             if (is_string($answer) && mb_strlen($answer) > self::MAX_ANSWER_LENGTH) {
-                throw new \InvalidArgumentException("Answer for question $qid exceeds maximum allowed length of " . self::MAX_ANSWER_LENGTH . " characters.");
+                throw new \InvalidArgumentException("Answer for question {$qid} exceeds maximum allowed length of " . self::MAX_ANSWER_LENGTH . " characters.");
             }
             if (is_string($answer)) {
                 $totalLength += mb_strlen($answer);
@@ -176,11 +176,11 @@ class GradingService
 
         // Allow empty answers array (user might not answer anything)
         if (!is_array($answers)) {
-            throw new \InvalidArgumentException('Answers must be an array');
+            throw new \InvalidArgumentException('Answers must be provided as an array');
         }
 
         if (!is_numeric($duration) || $duration < 0) {
-            throw new \InvalidArgumentException('Invalid duration');
+            throw new \InvalidArgumentException('Duration must be a non-negative number');
         }
 
         // Default to 'quiz' mode if not valid
@@ -218,7 +218,7 @@ class GradingService
         if ($questions->count() !== count($questionIds)) {
             $foundIds = $questions->pluck('id')->toArray();
             $missingIds = array_diff($questionIds, $foundIds);
-            throw new \InvalidArgumentException("Questions not found: " . implode(', ', $missingIds));
+            throw new \InvalidArgumentException("Questions not found: " . implode(', ', $missingIds) . ". Please check question IDs and try again.");
         }
         
         return $questions;
@@ -824,10 +824,7 @@ class GradingService
             'success' => true,
             'score' => $gradingResult['score'],
             'totalQuestions' => $gradingResult['totalQuestions'],
-            'total_questions' => $gradingResult['totalQuestions'],
-            'total' => $gradingResult['totalQuestions'],
             'percentageGrade' => $gradingResult['percentageGrade'],
-            'percentage_grade' => $gradingResult['percentageGrade'],
             'encouragement' => $this->getEncouragementMessage($gradingResult['percentageGrade']),
             'source_progress' => $sourceProgress, // Current quiz attempt progress
             'overall_topic_progress' => $overallTopicProgress, // Overall progress including all attempts
