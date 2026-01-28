@@ -193,31 +193,50 @@ class MistakeService
      */
     public function clearUserMistakeCaches(int $userId): void
     {
-        // Clear OLD mistake caches (legacy)
-        Cache::forget("mistakes.user.{$userId}.filter.all");
-        Cache::forget("mistakes.user.{$userId}.filter.skipped");
-        Cache::forget("mistake_courses.user.{$userId}");
+        // SURGICAL OPTIMIZATION: Only clear specific user caches, not all courses
+        $cacheKeys = [
+            "mistakes.user.{$userId}.filter.all",
+            "mistakes.user.{$userId}.filter.skipped", 
+            "mistake_courses.user.{$userId}",
+            "mistakes_smart_{$userId}_v3",
+            "mistakes_smart_{$userId}_skipped_v3",
+            "mistakes_support_smart_{$userId}"
+        ];
 
-        // Clear caches for each course (legacy)
-        try {
-            $courseIds = $this->getCoursesForMistakeFilter($userId)->pluck('id');
-            foreach ($courseIds as $courseId) {
-                Cache::forget("mistakes.user.{$userId}.filter.{$courseId}");
-            }
-        } catch (\Exception $e) {
-            // Ignore errors if courses can't be fetched
+        // Clear only the specific user's cache keys (surgical precision)
+        foreach ($cacheKeys as $key) {
+            Cache::forget($key);
         }
 
-        // 🎯 CRITICAL FIX: Also clear NEW SMART HYBRID caches
+        // SURGICAL OPTIMIZATION: Only clear course caches for courses user actually has mistakes in
         try {
-            \App\Http\Controllers\Quiz\QuizMistakeController::clearUserMistakeCaches($userId);
+            // Get only courses with mistakes for this user (not all courses!)
+            $userCourseIds = DB::table('mistakes')
+                ->join('questions', 'mistakes.question_id', '=', 'questions.id')
+                ->join('topics', 'questions.topic_id', '=', 'topics.id')
+                ->where('mistakes.user_id', $userId)
+                ->distinct()
+                ->pluck('topics.course_id')
+                ->toArray();
+
+            // Clear only relevant course caches (surgical!)
+            foreach ($userCourseIds as $courseId) {
+                Cache::forget("mistakes.user.{$userId}.filter.{$courseId}");
+                Cache::forget("mistakes_smart_{$userId}_{$courseId}_v3");
+            }
         } catch (\Exception $e) {
-            Log::error('Failed to clear SMART HYBRID mistake caches', [
+            Log::warning('Failed to clear specific course caches', [
                 'user_id' => $userId,
                 'error' => $e->getMessage()
             ]);
         }
 
-        Log::info('Cleared ALL mistake caches for user (legacy + SMART HYBRID).', ['user_id' => $userId]);
+        // SURGICAL OPTIMIZATION: Reduced logging frequency for production
+        if (app()->environment('local', 'testing')) {
+            Log::info('Cleared surgical mistake caches for user', [
+                'user_id' => $userId,
+                'cache_keys_cleared' => count($cacheKeys) + count($userCourseIds ?? [])
+            ]);
+        }
     }
 }

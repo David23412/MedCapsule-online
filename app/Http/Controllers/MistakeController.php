@@ -25,10 +25,13 @@ class MistakeController extends Controller
 
         $data = $this->mistakeService->getMistakesForUser($userId, $courseFilter);
 
-        Log::info('Mistakes fetched for user.', [
-            'user_id' => $userId,
-            'mistake_count' => $data['mistakes']->count(),
-        ]);
+        // SURGICAL OPTIMIZATION: Only log in development for performance
+        if (app()->environment('local', 'testing')) {
+            Log::info('Mistakes fetched for user.', [
+                'user_id' => $userId,
+                'mistake_count' => $data['mistakes']->count(),
+            ]);
+        }
 
         return view('mistakes', [
             'mistakes' => $data['mistakes'],
@@ -52,10 +55,16 @@ class MistakeController extends Controller
         );
 
         if ($mistake) {
-            Log::info('Mistake recorded successfully.', ['mistake_id' => $mistake->id]);
+            // SURGICAL OPTIMIZATION: Only log in development
+            if (app()->environment('local', 'testing')) {
+                Log::info('Mistake recorded successfully.', ['mistake_id' => $mistake->id]);
+            }
             return response()->json(['message' => 'Mistake recorded.']);
         } else {
-            Log::info('Correct answer submitted, no mistake recorded.', ['question_id' => $validated['question_id']]);
+            // SURGICAL OPTIMIZATION: Only log in development
+            if (app()->environment('local', 'testing')) {
+                Log::info('Correct answer submitted, no mistake recorded.', ['question_id' => $validated['question_id']]);
+            }
             return response()->json(['message' => 'Correct answer, no mistake recorded.']);
         }
     }

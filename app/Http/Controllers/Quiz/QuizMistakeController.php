@@ -35,11 +35,10 @@ class QuizMistakeController extends Controller
             $userId = auth()->id();
             $courseFilter = $request->input('course');
             
-            Log::info('🎯 Loading mistakes with SMART HYBRID caching', [
-                'request_id' => $requestId,
-                'user_id' => $userId, 
-                'course_filter' => $courseFilter
-            ]);
+            // SURGICAL OPTIMIZATION: Only log in development
+            if (app()->environment('local', 'testing')) {
+                Log::info('Loading mistakes', ['user_id' => $userId, 'course_filter' => $courseFilter]);
+            }
 
             // 🎯 SMART HYBRID: Ultra-short cache (10 seconds) for near-instant updates
             // But with immediate invalidation on writes for accuracy
@@ -252,35 +251,49 @@ class QuizMistakeController extends Controller
     public static function clearUserMistakeCaches($userId)
     {
         try {
-            // Clear ALL possible cache key combinations with CORRECT format
+            // SURGICAL OPTIMIZATION: Only clear specific user cache keys, not all courses
             $cacheKeys = [
-                "mistakes_smart_{$userId}_v3",                    // No course filter (empty string becomes just userId_v3)
+                "mistakes_smart_{$userId}_v3",                    // No course filter
                 "mistakes_smart_{$userId}_skipped_v3",            // Skipped filter
                 "mistakes_support_smart_{$userId}",               // Supporting data cache
             ];
 
-            // Get all course IDs and clear their specific caches
-            $courseIds = \App\Models\Course::pluck('id')->toArray();
+            // SURGICAL OPTIMIZATION: Only get courses this user actually has mistakes in
+            $courseIds = DB::table('mistakes')
+                ->join('questions', 'mistakes.question_id', '=', 'questions.id')
+                ->join('topics', 'questions.topic_id', '=', 'topics.id')
+                ->where('mistakes.user_id', $userId)
+                ->distinct()
+                ->pluck('topics.course_id')
+                ->toArray();
+
+            // Clear only relevant course caches (surgical precision)
             foreach ($courseIds as $courseId) {
                 $cacheKeys[] = "mistakes_smart_{$userId}_{$courseId}_v3";
             }
 
-            // Clear all cache keys immediately
+            // Clear all surgical cache keys
             foreach ($cacheKeys as $key) {
                 Cache::forget($key);
             }
 
-            Log::info("🎯 SMART cache invalidation completed", [
-                'user_id' => $userId,
-                'cache_keys_cleared' => count($cacheKeys),
-                'strategy' => 'immediate_invalidation'
-            ]);
+            // SURGICAL OPTIMIZATION: Reduced logging for production performance
+            if (app()->environment('local', 'testing')) {
+                Log::info("🎯 Surgical cache invalidation completed", [
+                    'user_id' => $userId,
+                    'cache_keys_cleared' => count($cacheKeys),
+                    'strategy' => 'surgical_precision'
+                ]);
+            }
 
         } catch (\Exception $e) {
-            Log::error("❌ Error in smart cache invalidation", [
-                'user_id' => $userId,
-                'error' => $e->getMessage()
-            ]);
+            // SURGICAL OPTIMIZATION: Only log errors in development
+            if (app()->environment('local', 'testing')) {
+                Log::error("❌ Error in surgical cache invalidation", [
+                    'user_id' => $userId,
+                    'error' => $e->getMessage()
+                ]);
+            }
         }
     }
 }
