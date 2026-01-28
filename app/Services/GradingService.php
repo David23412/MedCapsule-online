@@ -15,8 +15,6 @@ use App\Services\NotificationService;
 use App\Services\WrittenAnswerEvaluationService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Http\Request;
-use Carbon\Carbon;
 use Illuminate\Support\Facades\Cache;
 
 class GradingService
@@ -743,7 +741,7 @@ class GradingService
     {
         // Clear cache first to ensure fresh calculation
         $cacheKey = "topic_progress_{$user->id}_{$topic->id}_quiz";
-        \Illuminate\Support\Facades\Cache::forget($cacheKey);
+        Cache::forget($cacheKey);
         
         // Use QuizAttempt::getTopicProgress to get the true overall progress
         $progress = \App\Models\QuizAttempt::getTopicProgress($user->id, $topic->id, 'quiz');

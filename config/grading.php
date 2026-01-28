@@ -140,18 +140,6 @@ return [
         ],
     ],
 
-    // Performance optimization
-    'performance' => [
-        'enable_async_processing' => false, // For future implementation
-        'batch_size' => 10, // Process evaluations in batches
-        'memory_limit' => '128M',
-        'max_execution_time' => 30, // seconds
-        'cache_warmup' => [
-            'enabled' => false,
-            'common_terms' => ['heart', 'blood', 'patient', 'treatment'],
-        ],
-    ],
-
     // Integration settings
     'integration' => [
         'existing_service_fallback' => true,
@@ -163,9 +151,6 @@ return [
     // Development and debugging
     'debug' => [
         'enabled' => env('APP_DEBUG', false),
-        'log_similarity_details' => false,
-        'log_cache_operations' => false,
         'log_performance_metrics' => true,
-        'profile_memory_usage' => false,
     ],
 ];
