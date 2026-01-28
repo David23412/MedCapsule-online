@@ -692,10 +692,11 @@ class GradingService
         // Generate attempt_id for random quiz (single attempt = 1 chart point)
         $attemptId = \App\Models\QuizAttempt::generateAttemptId($user->id, $topic->id);
 
-        // Consolidate all question data from all sources
+        // Consolidate all question data from all sources - OPTIMIZED for performance
         $allQuestionData = [];
         foreach ($gradingResult['sourceData'] as $sourceData) {
-            $allQuestionData = array_merge($allQuestionData, $sourceData['question_data']);
+            // Use array spread operator instead of array_merge for better performance
+            $allQuestionData = [...$allQuestionData, ...$sourceData['question_data']];
         }
 
         // Use createWithProgress to ensure attempt_id is set properly
@@ -1104,13 +1105,20 @@ class GradingService
             // Generate attempt_id for tutor attempt (single source = 1 chart point)
             $attemptId = \App\Models\QuizAttempt::generateAttemptId($user->id, $topic->id);
 
+            // OPTIMIZED: Build question data more efficiently - avoid array_unique() overhead
+            $completedQuestions = $sourceProgress['completed_questions'] ?? [];
+            $seenQuestions = []; // Track seen questions to avoid duplicates
             $questionData = [];
-            foreach (array_unique($sourceProgress['completed_questions']) as $questionId) {
-                $questionData[] = [
-                    'question_id' => $questionId,
-                    'user_answer' => null,
-                    'is_correct' => true
-                ];
+            
+            foreach ($completedQuestions as $questionId) {
+                if (!isset($seenQuestions[$questionId])) {
+                    $questionData[] = [
+                        'question_id' => $questionId,
+                        'user_answer' => null,
+                        'is_correct' => true
+                    ];
+                    $seenQuestions[$questionId] = true;
+                }
             }
 
             // Use createWithProgress to ensure attempt_id is set properly
