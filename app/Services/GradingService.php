@@ -1060,10 +1060,13 @@ class GradingService
         if (!isset($tutorProgress['sources'][$source])) {
             return;
         }
+        
+        // OPTIMIZATION: Get remaining questions count in single query
         $remainingQuestions = Question::where('topic_id', $topic->id)
             ->where('source', $source)
             ->whereNotIn('id', $tutorProgress['sources'][$source]['completed_questions'])
             ->count();
+            
         // Fallback: if this is the last question for the source, always create the attempt
         if ($remainingQuestions === 0 || $this->isLastQuestionForSource($question, $topic, $source)) {
             Log::info('Creating tutor attempt (all questions completed for source)', [
@@ -1072,146 +1075,121 @@ class GradingService
                 'source' => $source
             ]);
             $this->createTutorAttempt($user, $topic, $source, $tutorProgress['sources'][$source]);
-            unset($tutorProgress['sources'][$source]);
-            if (empty($tutorProgress['sources'])) {
-                session()->forget('tutor_progress');
-            } else {
-                session(['tutor_progress' => $tutorProgress]);
-            }
         }
     }
 
-    // Helper to check if this is the last question for the source
-    private function isLastQuestionForSource(Question $question, Topic $topic, string $source): bool
-    {
-        // OPTIMIZATION: Use single query with COUNT and WHERE NOT IN for better performance
-        $remainingQuestions = Question::where('topic_id', $topic->id)
-            ->where('source', $source)
-            ->where('id', '!=', $question->id)
-            ->count();
-            
-        // If no remaining questions, this is the last one
-        return $remainingQuestions === 0;
-    }
-
-    /**
-     * Create tutor attempt record with attempt_id for chart optimization
-     *
-     * @param User $user
-     * @param Topic $topic
-     * @param string $source
-     * @param array $sourceProgress
-     */
-    private function createTutorAttempt(User $user, Topic $topic, string $source, array $sourceProgress): void
-    {
-        try {
-            Log::info('Tutor quiz attempt creation', [
-                'user_id' => $user->id,
-                'topic_id' => $topic->id,
-                'source' => $source,
-                'progress' => $sourceProgress
-            ]);
-
-            $sourceDuration = time() - $sourceProgress['start_time'];
-            $percentageGrade = ($sourceProgress['correct'] / max(1, $sourceProgress['total'])) * 100;
-
-            // Generate attempt_id for tutor attempt (single source = 1 chart point)
-            $attemptId = \App\Models\QuizAttempt::generateAttemptId($user->id, $topic->id);
-
-            // OPTIMIZED: Build question data more efficiently - avoid array_unique() overhead
-            $completedQuestions = $sourceProgress['completed_questions'] ?? [];
-            $seenQuestions = []; // Track seen questions to avoid duplicates
-            $questionData = [];
-            
-            foreach ($completedQuestions as $questionId) {
-                if (!isset($seenQuestions[$questionId])) {
-                    $questionData[] = [
-                        'question_id' => $questionId,
-                        'user_answer' => null,
-                        'is_correct' => true
-                    ];
-                    $seenQuestions[$questionId] = true;
-                }
-            }
-
-            // Use createWithProgress to ensure attempt_id is set properly
-            $attemptData = [
-                'user_id' => $user->id,
-                'topic_id' => $topic->id,
-                'assignment_id' => null, // Tutor mode doesn't use assignments
-                'quiz_type' => 'normal',
-                'study_mode' => 'tutor',
-                'source' => $source,
-                'score' => $sourceProgress['correct'],
-                'total_questions' => $sourceProgress['total'],
-                'percentage_grade' => $percentageGrade,
-                'duration_seconds' => $sourceDuration,
-                'question_data' => $questionData,
-                'correct_answers' => $sourceProgress['correct'],
-                'attempt_id' => $attemptId // 🚀 CRITICAL: Set attempt_id for chart grouping
-            ];
-
-            $attempt = \App\Models\QuizAttempt::createWithProgress($attemptData);
-
-            $this->userStatsService->updateAfterQuizAttempt(
-                $user,
-                $sourceProgress['total'],
-                $sourceProgress['correct'],
-                $sourceDuration
-            );
-
-            Log::info('Tutor quiz attempt created successfully with attempt_id', [
-                'attempt_id' => $attemptId,
-                'user_id' => $user->id,
-                'topic_id' => $topic->id,
-                'source' => $source,
-                'chart_points' => 1 // Tutor attempt = 1 chart point ✅
-            ]);
-        } catch (\Exception $e) {
-            Log::error('Failed to create tutor quiz attempt', [
-                'user_id' => $user->id,
-                'topic_id' => $topic->id,
-                'source' => $source,
-                'error' => $e->getMessage()
-            ]);
-        }
-    }
-
-    /**
-     * Get tutor source progress
-     *
-     * @param User $user
-     * @param Topic $topic
-     * @param string $source
-     * @return array
-     */
-    private function getTutorSourceProgress(User $user, Topic $topic, string $source): array
-    {
-        // LETHAL FIX: Eliminated session dependency - now uses database exclusively
-        $source = $source ?: 'General';
-
-        // Get the latest tutor attempt for this source
-        $latestAttempt = QuizAttempt::where([
+/**
+ * Create tutor attempt record with attempt_id for chart optimization
+ *
+ * @param User $user
+ * @param Topic $topic
+ * @param string $source
+ * @param array $sourceProgress
+ */
+private function createTutorAttempt(User $user, Topic $topic, string $source, array $sourceProgress): void
+{
+    try {
+        Log::info('Tutor quiz attempt creation', [
             'user_id' => $user->id,
             'topic_id' => $topic->id,
-            'study_mode' => 'tutor',
             'source' => $source
-        ])->orderBy('created_at', 'desc')->first();
+        ]);
 
-        $totalQuestionsInSource = Question::where('topic_id', $topic->id)
-            ->where('source', $source)
-            ->count();
+        $sourceDuration = time() - $sourceProgress['start_time'];
+        $percentageGrade = ($sourceProgress['correct'] / max(1, $sourceProgress['total'])) * 100;
 
-        if (!$latestAttempt) {
-            return ['completed' => 0, 'total' => $totalQuestionsInSource, 'percentage' => 0];
+        // Generate attempt_id for tutor attempt (single source = 1 chart point)
+        $attemptId = \App\Models\QuizAttempt::generateAttemptId($user->id, $topic->id);
+
+        // OPTIMIZED: Build question data more efficiently - avoid array_unique() overhead
+        $completedQuestions = $sourceProgress['completed_questions'] ?? [];
+        $seenQuestions = []; // Track seen questions to avoid duplicates
+        $questionData = [];
+        
+        foreach ($completedQuestions as $questionId) {
+            if (!isset($seenQuestions[$questionId])) {
+                $questionData[] = [
+                    'question_id' => $questionId,
+                    'user_answer' => null,
+                    'is_correct' => true
+                ];
+                $seenQuestions[$questionId] = true;
+            }
         }
 
-        return [
-            'completed' => $latestAttempt->score,
-            'total' => $totalQuestionsInSource,
-            'percentage' => round($latestAttempt->percentage_grade, 2)
+        // Use createWithProgress to ensure attempt_id is set properly
+        $attemptData = [
+            'user_id' => $user->id,
+            'topic_id' => $topic->id,
+            'assignment_id' => null, // Tutor mode doesn't use assignments
+            'quiz_type' => 'normal',
+            'study_mode' => 'tutor',
+            'source' => $source,
+            'score' => $sourceProgress['correct'],
+            'total_questions' => $sourceProgress['total'],
+            'percentage_grade' => round($percentageGrade, 2),
+            'duration_seconds' => $sourceDuration,
+            'question_data' => $questionData,
+            'correct_answers' => $sourceProgress['correct'],
+            'attempt_id' => $attemptId
         ];
+
+        \App\Models\QuizAttempt::createWithProgress($attemptData);
+
+        Log::info('Tutor quiz attempt created successfully with attempt_id', [
+            'attempt_id' => $attemptId,
+            'user_id' => $user->id,
+            'topic_id' => $topic->id,
+            'source' => $source,
+            'percentage_grade' => round($percentageGrade, 2)
+        ]);
+
+    } catch (\Exception $e) {
+        Log::error('Failed to create tutor attempt', [
+            'user_id' => $user->id,
+            'topic_id' => $topic->id,
+            'source' => $source,
+            'error' => $e->getMessage()
+        ]);
     }
+}
+
+/**
+ * Get tutor source progress efficiently with optimized queries
+ *
+ * @param User $user
+ * @param Topic $topic
+ * @param string $source
+ * @return array
+ */
+private function getTutorSourceProgress(User $user, Topic $topic, string $source): array
+{
+    // LETHAL FIX: Eliminated session dependency - now uses database exclusively
+    $source = $source ?: 'General';
+
+    // Get the latest tutor attempt for this source
+    $latestAttempt = QuizAttempt::where([
+        'user_id' => $user->id,
+        'topic_id' => $topic->id,
+        'study_mode' => 'tutor',
+        'source' => $source
+    ])->orderBy('created_at', 'desc')->first();
+
+    // OPTIMIZATION: Get total questions count in same query batch if possible
+    $totalQuestionsInSource = Question::where('topic_id', $topic->id)
+        ->where('source', $source)
+        ->count();
+
+    if (!$latestAttempt) {
+        return ['completed' => 0, 'total' => $totalQuestionsInSource, 'percentage' => 0];
+    }
+
+    return [
+        'completed' => $latestAttempt->score,
+        'total' => $totalQuestionsInSource,
+        'percentage' => round($latestAttempt->percentage_grade, 2)
+    ];
+}
 
 
 
