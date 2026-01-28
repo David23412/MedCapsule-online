@@ -83,16 +83,16 @@ class GradingService
             // Update user statistics and rewards
             $xpResult = $this->updateUserStatsAndRewards($user, $gradingResult, $duration);
 
-            // Handle topic progress updates
-            $this->handleProgressUpdate($user, $topic, $gradingResult, $mode, $assignmentId);
+            // Get updated overall topic progress after quiz completion - OPTIMIZATION: Get once, reuse
+            $overallTopicProgress = QuizAttempt::getTopicProgress($user->id, $topic->id, $mode);
+
+            // Handle topic progress updates - OPTIMIZATION: Pass progress to avoid re-query
+            $this->handleProgressUpdate($user, $topic, $gradingResult, $mode, $assignmentId, $overallTopicProgress);
 
             // Clear relevant caches
             $this->cacheService->smartInvalidate('user_progress', $user->id, ['topic_id' => $topic->id]);
 
             DB::commit();
-
-            // Get updated overall topic progress after quiz completion
-            $overallTopicProgress = QuizAttempt::getTopicProgress($user->id, $topic->id, $mode);
 
             // Prepare response
             return $this->prepareGradingResponse($gradingResult, $questions, $answers, $xpResult, $overallTopicProgress);
@@ -212,12 +212,13 @@ class GradingService
      * @param array $gradingResult
      * @param string $mode
      * @param int|null $assignmentId
+     * @param array|null $overallTopicProgress - OPTIMIZATION: Pass progress to avoid re-query
      */
-    private function handleProgressUpdate(User $user, Topic $topic, array $gradingResult, string $mode, ?int $assignmentId): void
+    private function handleProgressUpdate(User $user, Topic $topic, array $gradingResult, string $mode, ?int $assignmentId, ?array $overallTopicProgress = null): void
     {
         // Update topic progress ONLY for regular quizzes, NOT assignments or tutor mode
         if (!$assignmentId && $mode === 'quiz') {
-            $this->updateTopicProgress($user, $topic, $gradingResult['score'], $gradingResult['totalQuestions']);
+            $this->updateTopicProgress($user, $topic, $gradingResult['score'], $gradingResult['totalQuestions'], $overallTopicProgress);
         } else {
             // Assignment completion or tutor mode - don't update regular topic progress
             Log::info('Non-regular quiz completed - skipping regular topic progress update', [
@@ -823,14 +824,21 @@ class GradingService
      * @param Topic $topic
      * @param int $score
      * @param int $totalQuestions
+     * @param array|null $overallTopicProgress - OPTIMIZATION: Use passed progress instead of re-querying
      */
-    private function updateTopicProgress(User $user, Topic $topic, int $score, int $totalQuestions): void
+    private function updateTopicProgress(User $user, Topic $topic, int $score, int $totalQuestions, ?array $overallTopicProgress = null): void
     {
         // Clear cache using the same smart invalidation approach for consistency
         $this->cacheService->smartInvalidate('user_progress', $user->id, ['topic_id' => $topic->id]);
         
-        // Use QuizAttempt::getTopicProgress to get the true overall progress
-        $progress = \App\Models\QuizAttempt::getTopicProgress($user->id, $topic->id, 'quiz');
+        // OPTIMIZATION: Use passed progress data instead of re-querying (major performance gain)
+        if ($overallTopicProgress !== null) {
+            $progress = $overallTopicProgress;
+        } else {
+            // Fallback: Only query if progress not provided
+            $progress = \App\Models\QuizAttempt::getTopicProgress($user->id, $topic->id, 'quiz');
+        }
+        
         $overallPercentage = $progress['overall']['percentage'] ?? 0;
 
         \App\Models\UserTopicProgress::updateOrCreate(
@@ -839,7 +847,9 @@ class GradingService
                 'topic_id' => $topic->id
             ],
             [
-                'percentage_grade' => $overallPercentage,
+                'total_questions_answered' => $progress['overall']['total'] ?? 0,
+                'correct_answers' => $progress['overall']['score'] ?? 0,
+                'percentage_completed' => $overallPercentage,
                 'last_attempt_date' => now()
             ]
         );
