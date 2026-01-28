@@ -15,7 +15,6 @@ use App\Services\NotificationService;
 use App\Services\WrittenAnswerEvaluationService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Cache;
 
 class GradingService
 {
@@ -82,14 +81,12 @@ class GradingService
             // Check if this is an assignment quiz
             $isAssignment = $this->isAssignmentQuiz($user, $topic, $course, $assignmentId);
 
-            // Create quiz attempts - handle random and tutor mode differently
+            // Create quiz attempts - handle random mode differently
             if ($mode === 'random') {
                 $this->createRandomQuizAttempt($user, $gradingResult, $duration, $mode, $topic, $isAssignment, $assignmentId);
-            } elseif ($mode === 'tutor') { // Explicitly handle tutor mode
-                // For tutor mode, we need to create an attempt based on the overall session data
-                // The sourceData from processTutorAnswers contains the breakdown
-                $this->createQuizAttempts($user, $gradingResult['sourceData'], $duration, $mode, $topic, $isAssignment, $assignmentId);
-            } else { // This covers 'quiz' mode (normal quizzes)
+            } else { // Both tutor and quiz modes use createQuizAttempts
+                // For tutor mode, sourceData from processTutorAnswers contains the breakdown
+                // For quiz mode, sourceData from processAnswers contains the breakdown
                 $this->createQuizAttempts($user, $gradingResult['sourceData'], $duration, $mode, $topic, $isAssignment, $assignmentId);
             }
 
@@ -751,9 +748,8 @@ class GradingService
      */
     private function updateTopicProgress(User $user, Topic $topic, int $score, int $totalQuestions): void
     {
-        // Clear cache first to ensure fresh calculation
-        $cacheKey = "topic_progress_{$user->id}_{$topic->id}_quiz";
-        Cache::forget($cacheKey);
+        // Clear cache using the same smart invalidation approach for consistency
+        $this->cacheService->smartInvalidate('user_progress', $user->id, ['topic_id' => $topic->id]);
         
         // Use QuizAttempt::getTopicProgress to get the true overall progress
         $progress = \App\Models\QuizAttempt::getTopicProgress($user->id, $topic->id, 'quiz');
