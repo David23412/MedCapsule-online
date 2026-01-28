@@ -191,17 +191,22 @@ class GradingService
      */
     private function isAnswerCorrectInGradingResult(int $questionId, array $gradingResult): bool
     {
-        // Check through source data to find if this question was answered correctly
-        foreach ($gradingResult['sourceData'] as $sourceData) {
-            foreach ($sourceData['question_data'] as $questionData) {
-                if ($questionData['question_id'] === $questionId) {
-                    return $questionData['is_correct'];
+        // SUPER OPTIMIZATION: Build hash map once for O(1) lookups instead of O(n²) nested loops
+        static $answerCache = [];
+        $cacheKey = md5(serialize(array_keys($gradingResult['sourceData'] ?? [])));
+        
+        if (!isset($answerCache[$cacheKey])) {
+            $answerCache[$cacheKey] = [];
+            // Build flat hash map: question_id => is_correct
+            foreach ($gradingResult['sourceData'] as $sourceData) {
+                foreach ($sourceData['question_data'] as $questionData) {
+                    $answerCache[$cacheKey][$questionData['question_id']] = $questionData['is_correct'];
                 }
             }
         }
         
-        // If not found in source data, assume incorrect (conservative approach)
-        return false;
+        // O(1) lookup instead of O(n²) search!
+        return $answerCache[$cacheKey][$questionId] ?? false;
     }
 
     /**
@@ -1039,25 +1044,27 @@ class GradingService
             $tutorProgress['sources'][$source] = [
                 'correct' => 0,
                 'total' => 0,
-                'completed_questions' => [],
+                'completed_questions' => [], // Keep as array for storage
+                'completed_questions_set' => [], // SUPER OPTIMIZATION: Use as hash set for O(1) lookups
                 'start_time' => time()
             ];
         }
 
-        // Only update progress if this question hasn't been completed yet
-        if (!in_array($question->id, $tutorProgress['sources'][$source]['completed_questions'])) {
+        // SUPER OPTIMIZATION: Use hash set for O(1) lookup instead of O(n) in_array
+        if (!isset($tutorProgress['sources'][$source]['completed_questions_set'][$question->id])) {
             $tutorProgress['sources'][$source]['total']++;
             if ($isCorrect) {
                 $tutorProgress['sources'][$source]['correct']++;
             }
             $tutorProgress['sources'][$source]['completed_questions'][] = $question->id;
+            $tutorProgress['sources'][$source]['completed_questions_set'][$question->id] = true; // O(1) lookup
         }
 
         session(['tutor_progress' => $tutorProgress]);
     }
 
     /**
-     * Check if source is complete and create tutor attempt
+     * Check if tutor attempt should be created for this source
      *
      * @param User $user
      * @param Question $question
