@@ -2,12 +2,10 @@
 
 namespace App\Http\Controllers;
 
-use App\Services\QuizCacheService;
 use App\Services\HomePageService;
 use Illuminate\Http\Request;
 use App\Http\Requests\HomeRequest;
 use Illuminate\Http\JsonResponse;
-use App\Services\QuizPerformanceService;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 

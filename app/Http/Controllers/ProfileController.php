@@ -3,10 +3,8 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
-use App\Services\QuizCacheService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Log;
-use App\Services\QuizPerformanceService;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -17,15 +15,11 @@ use App\Models\User;
 use App\Models\QuizAttempt;
 use App\Services\SecureFileUploadService;
 
-// TODO: Inject services in constructor
-    // TODO: Inject services in constructor
-    // TODO: Inject services in constructor
-    class ProfileController extends Controller
+class ProfileController extends Controller
 {
     public function __construct()
     {
-        // Don't call parent::__construct() to avoid double auth middleware
-        // Controller initialized log ANNIHILATED
+        // Apply auth middleware
         $this->middleware(['auth']);
     }
 
