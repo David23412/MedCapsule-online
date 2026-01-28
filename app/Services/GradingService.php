@@ -781,10 +781,17 @@ class GradingService
     {
         // Get updated progress for all sources
         $sourceProgress = [];
+        
+        // OPTIMIZATION: Get all source question counts in a single query to avoid N+1 problem
+        $topicId = $questions->first()->topic_id;
+        $sourceCounts = Question::where('topic_id', $topicId)
+            ->selectRaw('source, COUNT(*) as total_questions')
+            ->groupBy('source')
+            ->pluck('total_questions', 'source')
+            ->toArray();
+
         foreach ($gradingResult['sourceData'] as $source => $data) {
-            $totalSourceQuestions = Question::where('topic_id', $questions->first()->topic_id)
-                ->where('source', $source)
-                ->count();
+            $totalSourceQuestions = $sourceCounts[$source] ?? 0;
 
             $sourceProgress[$source] = [
                 'score' => $data['score'],
@@ -996,8 +1003,17 @@ class GradingService
     // Helper to check if this is the last question for the source
     private function isLastQuestionForSource(Question $question, Topic $topic, string $source): bool
     {
-        $allQuestions = Question::where('topic_id', $topic->id)->where('source', $source)->pluck('id')->toArray();
-        return count($allQuestions) > 0 && !array_diff($allQuestions, [ $question->id ]);
+        // OPTIMIZATION: Use count instead of plucking all IDs for better performance
+        $totalQuestions = Question::where('topic_id', $topic->id)
+            ->where('source', $source)
+            ->count();
+            
+        $remainingQuestions = Question::where('topic_id', $topic->id)
+            ->where('source', $source)
+            ->where('id', '!=', $question->id)
+            ->count();
+            
+        return $totalQuestions > 0 && $remainingQuestions === 0;
     }
 
     /**
