@@ -5,6 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=0.75, maximum-scale=1.0, user-scalable=yes">
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>MedCapsule</title>
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 50'%3E%3Crect fill='%233579F6' x='10' y='15' width='80' height='20' rx='10' ry='10' /%3E%3Crect x='50' y='15' width='40' height='20' fill='%23ff0000' rx='0 10 10 0' ry='10'/%3E%3Cline x1='50' y1='15' x2='50' y2='35' stroke='white' stroke-width='1.5' stroke-dasharray='2,1'/%3E%3C/svg%3E">
+    <link rel="shortcut icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 50'%3E%3Crect fill='%233579F6' x='10' y='15' width='80' height='20' rx='10' ry='10' /%3E%3Crect x='50' y='15' width='40' height='20' fill='%23ff0000' rx='0 10 10 0' ry='10'/%3E%3Cline x1='50' y1='15' x2='50' y2='35' stroke='white' stroke-width='1.5' stroke-dasharray='2,1'/%3E%3C/svg%3E">
+    <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 50'%3E%3Crect fill='%233579F6' x='10' y='15' width='80' height='20' rx='10' ry='10' /%3E%3Crect x='50' y='15' width='40' height='20' fill='%23ff0000' rx='0 10 10 0' ry='10'/%3E%3Cline x1='50' y1='15' x2='50' y2='35' stroke='white' stroke-width='1.5' stroke-dasharray='2,1'/%3E%3C/svg%3E">
     <!-- Optimized CSS Loading -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
@@ -84,7 +87,13 @@
 
     <nav class="navbar navbar-expand-lg navbar-light">
         <div class="container">
-            <a class="navbar-brand" href="/">MedCapsule</a>
+            <a class="navbar-brand" href="/" aria-label="MedCapsule">
+                <svg width="60" height="30" viewBox="0 0 100 50" xmlns="http://www.w3.org/2000/svg">
+                    <rect fill="#3579F6" x="10" y="15" width="80" height="20" rx="10" ry="10" />
+                    <rect x="50" y="15" width="40" height="20" fill="#ff0000" rx="0 10 10 0" ry="10"/>
+                    <line x1="50" y1="15" x2="50" y2="35" stroke="white" stroke-width="1.5" stroke-dasharray="2,1"/>
+                </svg>
+            </a>
             <div class="d-flex">
                 <a href="{{ route('login') }}" class="btn btn-outline-primary btn-sm">
                     Login
@@ -121,7 +130,14 @@
 
                             <div class="mb-3">
                                 <label for="university" class="form-label">University</label>
-                                <input id="university" type="text" class="form-control @error('university') is-invalid @enderror" name="university" value="{{ old('university') }}" required autocomplete="university">
+                                <select id="university" class="form-select @error('university') is-invalid @enderror" name="university" required autocomplete="university">
+                                    <option value="" disabled {{ old('university') ? '' : 'selected' }}>Select your university</option>
+                                    @foreach ($universities as $university)
+                                        <option value="{{ $university['value'] }}" {{ old('university') === $university['value'] ? 'selected' : '' }}>
+                                            {{ $university['label'] }}
+                                        </option>
+                                    @endforeach
+                                </select>
                                 @error('university')
                                     <div class="invalid-feedback">{{ $message }}</div>
                                 @enderror

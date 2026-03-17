@@ -14,1057 +14,7 @@
     <link rel="shortcut icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 50'%3E%3Crect fill='%23007bff' x='10' y='15' width='80' height='20' rx='10' ry='10' /%3E%3Crect x='50' y='15' width='40' height='20' fill='%23ff0000' rx='0 10 10 0' ry='10'/%3E%3Cline x1='50' y1='15' x2='50' y2='35' stroke='white' stroke-width='1.5' stroke-dasharray='2,1'/%3E%3C/svg%3E">
     <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 50'%3E%3Crect fill='%23007bff' x='10' y='15' width='80' height='20' rx='10' ry='10' /%3E%3Crect x='50' y='15' width='40' height='20' fill='%23ff0000' rx='0 10 10 0' ry='10'/%3E%3Cline x1='50' y1='15' x2='50' y2='35' stroke='white' stroke-width='1.5' stroke-dasharray='2,1'/%3E%3C/svg%3E">
 
-    <style>
-        /* Review mistakes page zoom fix - 80% scale */
-        html {
-            font-size: 12.8px; /* 80% of 16px */
-        }
-        
-        body {
-            font-family: 'Poppins', sans-serif;
-            background: linear-gradient(135deg, #f6f9fc, #f1f4f8);
-            margin: 0;
-            padding: 0;
-            min-height: 100vh;
-            zoom: 0.80; /* Zoom out 20% */
-            -webkit-text-size-adjust: 100%; /* Prevent Safari text auto-sizing */
-        }
-
-        /* No top indicator styles */
-
-        .main-content {
-            margin-top: 80px;
-            padding: 2rem;
-        }
-
-        .container {
-            max-width: 1200px;
-            margin: 0 auto;
-            padding: 0 2rem;
-        }
-
-        .header-section {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 2.5rem;
-            padding-bottom: 2rem;
-            position: relative;
-            border-bottom: 2px solid #f1f5f9;
-        }
-
-        h1 {
-            color: #0f172a;
-            font-weight: 700;
-            font-size: 2.5rem;
-            margin: 0;
-            letter-spacing: -0.8px;
-            position: relative;
-            display: flex;
-            align-items: center;
-            gap: 0.75rem;
-        }
-
-        h1::before {
-            content: '';
-            width: 4px;
-            height: 2.2rem;
-            background: linear-gradient(180deg, #3b82f6, #2563eb);
-            border-radius: 2px;
-            flex-shrink: 0;
-        }
-
-        .learn-mistakes-btn {
-            background: #fef2f2;
-            color: #b91c1c;
-            padding: 0.7rem 1.4rem;
-            border-radius: 12px;
-            text-decoration: none;
-            font-weight: 500;
-            font-size: 1rem;
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-            transition: all 0.3s ease;
-            border: 2px solid #fecaca;
-            white-space: nowrap;
-        }
-
-        .learn-mistakes-btn:hover {
-            background: #fee2e2;
-            border-color: #fca5a5;
-            transform: translateY(-1px);
-        }
-
-        .learn-mistakes-btn:active {
-            transform: translateY(0);
-        }
-
-        .learn-mistakes-btn i {
-            font-size: 1.1rem;
-            transition: transform 0.3s ease;
-        }
-
-        .learn-mistakes-btn:hover i {
-            transform: translateX(3px);
-        }
-
-        /* 🚀 OPTIMIZED: Reduced animation complexity for performance */
-        .mistake-card {
-            background: white;
-            border-radius: 24px;
-            padding: 3rem;
-            margin-bottom: 3rem;
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.06),
-                      0 0 0 1px rgba(0, 0, 0, 0.03);
-            transition: box-shadow 0.2s ease, transform 0.2s ease; /* Simplified transition */
-            position: relative;
-            overflow: hidden;
-        }
-
-        .mistake-card::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 5px;
-            background: linear-gradient(135deg, #2563eb, #1d4ed8);
-            opacity: 0;
-            transition: opacity 0.2s ease; /* Faster transition */
-        }
-
-        .mistake-card:hover {
-            transform: translateY(-2px); /* Reduced movement for performance */
-            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.08),
-                      0 0 0 1px rgba(0, 0, 0, 0.02);
-        }
-
-        .mistake-card:hover::before {
-            opacity: 1;
-        }
-
-        /* 🚀 PERFORMANCE: Removed complex gradient overlay */
-        .mistake-card::after {
-            display: none; /* Removed for performance */
-        }
-
-        .remove-question {
-            position: absolute;
-            top: 1.5rem;
-            right: 1.5rem;
-            background: white;
-            border: 2px solid #ff4d4d;
-            color: #ff4d4d;
-            font-size: 1rem;
-            cursor: pointer;
-            padding: 0.5rem;
-            border-radius: 12px;
-            width: 36px;
-            height: 36px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            transition: all 0.2s ease;
-            box-shadow: 0 2px 8px rgba(255, 77, 77, 0.1);
-            z-index: 10;
-        }
-
-        .remove-question:hover {
-            background-color: #ff4d4d;
-            color: white;
-            transform: scale(1.1) rotate(90deg);
-            box-shadow: 0 4px 12px rgba(255, 77, 77, 0.2);
-        }
-
-        .question-section {
-            border-bottom: 2px solid #f0f2f5;
-            padding-bottom: 2rem;
-            margin-right: 3rem;
-        }
-
-        .question-text {
-            font-size: 1.3rem;
-            color: #2c3e50;
-            font-weight: 600;
-            line-height: 1.6;
-            margin-bottom: 1.5rem;
-            padding-right: 4rem; /* Only add padding to prevent text from reaching button area */
-            word-wrap: break-word;
-        }
-
-        .answer-section {
-            margin-bottom: 0.75rem;
-        }
-
-        .answer-label {
-            font-size: 0.9rem;
-            font-weight: 700;
-            color: #000000;
-            margin-bottom: 0.35rem;
-            font-family: 'Poppins', sans-serif;
-        }
-
-        .answer-text {
-            flex: 1;
-            font-size: 1.1rem;
-            line-height: 1.5;
-        }
-
-        .info-boxes {
-            position: absolute;
-            bottom: 1.25rem;
-            right: 1.25rem;
-            display: flex;
-            gap: 0.5rem;
-            z-index: 1;
-        }
-
-        .info-box {
-            display: inline-flex;
-            align-items: center;
-            gap: 0.35rem;
-            padding: 0.25rem 0.6rem;
-            border: 1px solid #e2e8f0;
-            border-radius: 20px;
-            background-color: rgba(255, 255, 255, 0.9);
-            backdrop-filter: blur(8px);
-            transition: all 0.2s ease;
-            cursor: pointer;
-            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
-        }
-
-        .info-box:hover {
-            border-color: #3b82f6;
-            background-color: #fff;
-            transform: translateY(-1px);
-            box-shadow: 0 2px 4px rgba(59, 130, 246, 0.1);
-        }
-
-        .info-box-label {
-            font-size: 0.7rem;
-            font-weight: 600;
-            color: #64748b;
-        }
-
-        .info-box-value {
-            font-size: 0.75rem;
-            font-weight: 600;
-            color: #000000;
-        }
-
-        .info-box i {
-            font-size: 0.75rem;
-            color: #64748b;
-        }
-
-
-
-        .topic-badge, .time-badge {
-            display: inline-flex;
-            align-items: center;
-            padding: 0.8rem 1.5rem;
-            border-radius: 12px;
-            font-size: 1rem;
-            color: #4a5568;
-            background: #f8fafc;
-            border: 2px solid #e2e8f0;
-            font-weight: 500;
-            transition: all 0.3s ease;
-        }
-
-        .topic-badge:hover, .time-badge:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
-        }
-
-        .topic-badge i, .time-badge i {
-            margin-right: 0.8rem;
-            color: #3498db;
-            font-size: 1.1rem;
-        }
-
-        .question-image {
-            max-width: 100%;
-            height: auto;
-            max-height: 300px;
-            border-radius: 8px;
-            margin: 1rem 0;
-            display: block;
-        }
-
-        .options {
-            display: flex;
-            flex-direction: column;
-            gap: 0.75rem;
-            margin-top: 1rem;
-        }
-
-        .form-check {
-            margin: 0;
-            padding: 0;
-        }
-
-        .form-check input {
-            display: none;
-        }
-
-        .form-check label {
-            display: block;
-            padding: 0.75rem 1rem;
-            background-color: #fff;
-            border: 1px solid #e9ecef;
-            border-radius: 8px;
-            cursor: pointer;
-            transition: all 0.2s ease;
-            margin: 0;
-            font-weight: 500;
-            color: #000000;
-            font-size: 0.95rem;
-        }
-
-        .form-check label:hover {
-            background-color: #f8f9fa;
-            border-color: #dee2e6;
-            transform: translateY(-1px);
-        }
-
-        .form-check input:checked + label {
-            background-color: #e3f2fd;
-            border-color: #007bff;
-            color: #007bff;
-        }
-
-        .form-check label.correct {
-            background-color: #e3fcef !important;
-            border-color: #00a854 !important;
-            color: #000000 !important;
-        }
-
-        .form-check label.incorrect {
-            background-color: #fff1f0 !important;
-            border-color: #f5222d !important;
-            color: #000000 !important;
-        }
-
-        .empty-state {
-            text-align: center;
-            padding: 3rem;
-            background: white;
-            border-radius: 24px;
-            box-shadow: 0 4px 20px rgba(148, 163, 184, 0.08);
-            position: relative;
-            overflow: hidden;
-            border: 1px solid #e2e8f0;
-        }
-
-        .empty-state::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            height: 6px;
-            background: linear-gradient(90deg, #3b82f6, #2563eb);
-        }
-
-        .empty-state i {
-            font-size: 2.5rem;
-            color: #3b82f6;
-            margin-bottom: 1.5rem;
-            display: inline-flex;
-            padding: 1.2rem;
-            border-radius: 50%;
-            background: #eff6ff;
-            border: 2px solid #bfdbfe;
-            animation: float 3s ease-in-out infinite;
-        }
-
-        .empty-state h3 {
-            color: #1e293b;
-            font-size: 1.75rem;
-            font-weight: 600;
-            margin-bottom: 1rem;
-            letter-spacing: -0.02em;
-            background: linear-gradient(135deg, #1e3a8a, #3b82f6);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-        }
-
-        .empty-state p {
-            color: #64748b;
-            font-size: 1.1rem;
-            line-height: 1.6;
-            margin-bottom: 2rem;
-            max-width: 400px;
-            margin-left: auto;
-            margin-right: auto;
-        }
-
-        /* 🚀 OPTIMIZED: Removed CPU-intensive confetti animations */
-        .confetti {
-            position: absolute;
-            width: 10px;
-            height: 10px;
-            opacity: 0;
-            display: none; /* Disable confetti completely for performance */
-        }
-
-        .profile-circle {
-            width: 40px;
-            height: 40px;
-            background: linear-gradient(135deg, #007bff, #00d4ff);
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: white;
-            font-weight: 600;
-            text-decoration: none;
-            transition: all 0.2s ease; /* Reduced transition time */
-            box-shadow: 0 2px 8px rgba(0, 123, 255, 0.2);
-            background-size: cover;
-            background-position: center;
-            margin-left: 1rem;
-        }
-
-        /* Profile image styles */
-        .profile-circle .profile-image {
-            width: 100%;
-            height: 100%;
-            border-radius: 50%;
-            object-fit: cover;
-            display: block;
-        }
-
-        .profile-circle.no-image {
-            background: linear-gradient(135deg, #007bff, #00d4ff);
-        }
-
-        .profile-circle:hover {
-            transform: scale(1.05); /* Reduced scale for performance */
-            box-shadow: 0 4px 12px rgba(0, 123, 255, 0.3);
-            color: white;
-        }
-
-        /* 🚀 PERFORMANCE: Removed all confetti animations */
-        .confetti-1, .confetti-2, .confetti-3, .confetti-4, .confetti-5 {
-            display: none;
-        }
-
-        @keyframes float {
-            0%, 100% { transform: translateY(0); }
-            50% { transform: translateY(-8px); } /* Reduced movement for performance */
-        }
-
-        .empty-state .btn-primary {
-            background: #f0f9ff;
-            color: #0284c7;
-            padding: 0.6rem 1.4rem;
-            border-radius: 6px;
-            text-decoration: none;
-            font-weight: 500;
-            font-size: 0.95rem;
-            border: 1px solid #bae6fd;
-            transition: all 0.2s ease;
-            display: inline-block;
-            animation: buttonPulse 2s infinite;
-        }
-
-        .empty-state .btn-primary:hover {
-            background: #e0f2fe;
-            border-color: #7dd3fc;
-            transform: translateY(-1px);
-            animation: none;
-        }
-
-        .empty-state .btn-primary:active {
-            transform: translateY(0);
-        }
-
-        .toast-container {
-            position: fixed;
-            bottom: 2rem;
-            right: 2rem;
-            z-index: 1000;
-        }
-
-        .toast {
-            background: white;
-            border-radius: 8px;
-            padding: 1rem 1.5rem;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-            margin-bottom: 0.5rem;
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-            opacity: 0;
-            transition: opacity 0.3s ease;
-        }
-
-        .toast.show {
-            opacity: 1;
-        }
-
-        .toast.success {
-            border-left: 4px solid #dc2626;
-        }
-
-        .toast.error {
-            border-left: 4px solid #ff4d4d;
-        }
-
-        /* 🚀 ULTRA-SMOOTH: Professional explanation toggle - Icon only */
-        .explanation-wrapper {
-            margin-bottom: 0;
-            transition: margin-bottom 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-        }
-
-        .explanation-wrapper.expanded {
-            margin-bottom: 3rem;
-        }
-
-        .explanation-toggle {
-            display: inline-flex;
-            align-items: center;
-            background: none;
-            border: none;
-            padding: 0.5rem 0.75rem;
-            margin: -0.5rem -0.75rem;
-            cursor: pointer;
-            color: #0ea5e9;
-            transition: color 0.3s ease;
-            border-radius: 8px;
-        }
-
-        .explanation-toggle i {
-            font-size: 1.1rem;
-            transition: transform 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
-            will-change: transform;
-        }
-
-        .explanation-toggle:hover {
-            background: rgba(14, 165, 233, 0.08);
-            color: #2563eb;
-        }
-
-        .explanation-toggle.active {
-            color: #2563eb;
-        }
-
-        .explanation-toggle.active i {
-            transform: rotate(180deg);
-        }
-
-        /* Premium smooth collapse animation - GPU accelerated */
-        .explanation-content {
-            background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
-            border-radius: 12px;
-            font-size: 1.25rem;
-            line-height: 1.9;
-            color: #0f172a;
-            border: 2px solid #bae6fd;
-            border-left: 5px solid #0ea5e9;
-            padding: 0 1.5rem;
-            margin-top: 1rem;
-            overflow: hidden;
-            max-height: 0;
-            opacity: 0;
-            transform: translateY(-15px) scale(0.95);
-            transition: max-height 0.5s cubic-bezier(0.4, 0, 0.2, 1),
-                        opacity 0.4s cubic-bezier(0.4, 0, 0.2, 1),
-                        transform 0.45s cubic-bezier(0.34, 1.56, 0.64, 1),
-                        padding 0.5s cubic-bezier(0.4, 0, 0.2, 1),
-                        border-color 0.3s ease;
-            will-change: max-height, opacity, transform;
-            box-shadow: 0 0 0 rgba(245, 158, 11, 0);
-            position: relative;
-        }
-
-        .explanation-content.show {
-            max-height: 1200px;
-            opacity: 1;
-            transform: translateY(0) scale(1);
-            padding: 1.5rem;
-            box-shadow: 0 4px 16px rgba(14, 165, 233, 0.15);
-        }
-
-        /* Enhanced readability */
-        .explanation-content p {
-            margin: 0;
-            font-weight: 500;
-            letter-spacing: 0.015em;
-            word-spacing: 0.05em;
-        }
-
-        @media (max-width: 768px) {
-            .header-section {
-                flex-direction: column;
-                gap: 1rem;
-                text-align: center;
-            }
-
-            .learn-mistakes-btn {
-                width: 100%;
-                justify-content: center;
-            }
-
-            .question-text {
-                padding-right: 3rem; /* Reduced padding for mobile */
-            }
-
-            .explanation-content {
-                font-size: 1rem;
-                line-height: 1.7;
-            }
-
-            .explanation-content.show {
-                padding: 1.2rem;
-            }
-        }
-
-        .navbar {
-            background-color: white;
-            padding: 1rem 2rem;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            z-index: 1000;
-            backdrop-filter: blur(10px);
-            background-color: rgba(255, 255, 255, 0.95);
-        }
-
-        .navbar .container {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            width: 100%;
-            max-width: 1200px;
-            margin: 0 auto;
-            padding: 0;
-        }
-
-        .navbar-brand {
-            color: #007bff;
-            font-weight: 700;
-            font-size: 1.5rem;
-            text-decoration: none;
-            display: flex;
-            align-items: center;
-            transition: transform 0.3s ease;
-        }
-
-        .nav-links {
-            display: flex;
-            align-items: center;
-            gap: 1.5rem;
-        }
-
-        .nav-link {
-            color: #495057;
-            text-decoration: none;
-            font-weight: 500;
-            padding: 0.5rem 1rem;
-            border-radius: 6px;
-            transition: all 0.3s ease;
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-        }
-
-        .nav-link:hover {
-            color: #007bff;
-            background-color: #f8f9fa;
-            transform: translateY(-1px);
-        }
-
-        /* Filter dropdown styles */
-        .filter-section {
-            background: white;
-            border-radius: 16px;
-            padding: 16px 24px;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
-            display: flex;
-            align-items: center;
-            position: relative;
-            margin-bottom: 2rem;
-            transition: all 0.3s ease;
-            border: 1px solid rgba(0, 0, 0, 0.05);
-            animation: fadeIn 0.5s ease;
-        }
-
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(-10px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-
-        .filter-section:hover {
-            box-shadow: 0 6px 16px rgba(0, 0, 0, 0.08);
-        }
-
-        .filter-section label {
-            font-size: 1rem;
-            font-weight: 600;
-            color: #334155;
-            white-space: nowrap;
-            display: flex;
-            align-items: center;
-        }
-
-        .filter-section label i {
-            font-size: 1.1rem;
-        }
-
-        .filter-section .position-relative {
-            position: relative;
-        }
-
-        .filter-section select {
-            border-radius: 12px;
-            border: 1px solid rgba(0, 0, 0, 0.08);
-            padding: 10px 18px;
-            font-size: 1rem;
-            min-width: 280px;
-            background-color: #f8fafc;
-            color: #334155;
-            font-weight: 500;
-            box-shadow: none;
-            transition: all 0.3s ease;
-            cursor: pointer;
-        }
-
-        .filter-section select:focus {
-            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.25);
-            border-color: rgba(59, 130, 246, 0.5);
-            outline: none;
-        }
-
-        /* ROBUST FILTER LOADING STATES */
-        .filter-section select:disabled {
-            background-color: #e2e8f0 !important;
-            color: #64748b !important;
-            cursor: not-allowed !important;
-            opacity: 0.7;
-        }
-
-        .filter-section select.loading {
-            background-image: url("data:image/svg+xml,%3csvg width='20' height='20' viewBox='0 0 20 20' fill='none' xmlns='http://www.w3.org/2000/svg'%3e%3cpath d='M10 3V6M10 14V17M17 10H14M6 10H3M15.364 4.636L13.536 6.464M6.464 13.536L4.636 15.364M15.364 15.364L13.536 13.536M6.464 6.464L4.636 4.636' stroke='%233b82f6' stroke-width='2' stroke-linecap='round'/%3e%3c/svg%3e");
-            background-repeat: no-repeat;
-            background-position: right 12px center;
-            background-size: 16px 16px;
-            animation: spin 1s linear infinite;
-            padding-right: 40px !important;
-        }
-
-        @keyframes spin {
-            from { transform: rotate(0deg); }
-            to { transform: rotate(360deg); }
-        }
-
-        .filter-section select.loading::after {
-            content: '';
-            position: absolute;
-            right: 12px;
-            top: 50%;
-            transform: translateY(-50%);
-            width: 16px;
-            height: 16px;
-            border: 2px solid #3b82f6;
-            border-top: 2px solid transparent;
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
-        }
-
-        /* 🚀 OPTIMIZED: Simplified dropdown styles */
-        .filter-section select option {
-            padding: 8px;
-            font-size: 1rem;
-            background-color: white;
-            color: #334155;
-            font-weight: normal;
-        }
-
-        .filter-section select option:checked {
-            background-color: #3b82f6;
-            color: white;
-        }
-
-        .filter-section .btn-outline-secondary {
-            border-radius: 12px;
-            font-size: 0.9rem;
-            padding: 10px 16px;
-            background-color: white;
-            border-color: #e2e8f0;
-            color: #64748b;
-            transition: all 0.2s ease;
-            white-space: nowrap;
-            font-weight: 500;
-        }
-
-        .filter-section .btn-outline-secondary:hover {
-            background-color: #f1f5f9;
-            color: #475569;
-            border-color: #cbd5e1;
-            transform: translateY(-1px);
-        }
-
-        @media (max-width: 768px) {
-            .filter-section form {
-                flex-direction: column;
-                align-items: stretch;
-            }
-            
-            .filter-section label {
-                margin-bottom: 8px;
-            }
-            
-            .filter-section .btn-outline-secondary {
-                margin-top: 12px;
-                width: 100%;
-            }
-        }
-
-        /* Mistake counter styles */
-        .mistake-counter {
-            margin-top: 0.5rem;
-        }
-
-        .mistake-counter .badge {
-            background-color: #ef4444;
-            color: white;
-            font-size: 0.85rem;
-            padding: 0.35rem 0.8rem;
-            border-radius: 20px;
-            font-weight: 500;
-            box-shadow: 0 2px 5px rgba(239, 68, 68, 0.2);
-            display: inline-flex;
-            align-items: center;
-            gap: 0.4rem;
-        }
-
-        .mistake-counter .badge::before {
-            content: "•";
-            display: inline-block;
-            animation: pulse 1.5s infinite;
-            font-size: 1.2rem;
-            line-height: 0;
-            position: relative;
-            top: 1px;
-        }
-
-        @keyframes pulse {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.6; }
-        }
-
-        /* Flashcard Mode Styles */
-        .flashcard-mode-toggle {
-            background: #f8fafc;
-            border: 2px solid #e2e8f0;
-            color: #475569;
-            padding: 0.7rem 1.4rem;
-            border-radius: 12px;
-            font-weight: 500;
-            font-size: 1rem;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-            white-space: nowrap;
-        }
-
-        .flashcard-mode-toggle:hover {
-            background: #f1f5f9;
-            border-color: #cbd5e1;
-            transform: translateY(-1px);
-        }
-
-        .flashcard-mode-toggle.active {
-            background: #eff6ff;
-            border-color: #3b82f6;
-            color: #1d4ed8;
-        }
-
-        .flashcard-mode-toggle i {
-            font-size: 1.1rem;
-            transition: transform 0.4s ease;
-        }
-
-        .flashcard-mode-toggle.active i {
-            transform: rotate(180deg);
-        }
-
-        /* 🚀 ULTRA-SMOOTH 3D Flashcard Flipping Effect */
-        .mistake-card.flashcard-mode .normal-mode-content {
-            display: none;
-        }
-
-        .mistake-card.flashcard-mode .flashcard-content {
-            display: block;
-            cursor: pointer;
-            transform-style: preserve-3d;
-            transition: all 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94);
-            min-height: 450px;
-            perspective: 1000px;
-            position: relative;
-            border-radius: 16px;
-            overflow: visible;
-            will-change: transform;
-            backface-visibility: hidden;
-        }
-
-        .mistake-card.flashcard-mode::before {
-            display: none; /* Remove the blue hover effect at the top */
-        }
-
-        .mistake-card.flashcard-mode:hover::before {
-            display: none; /* Ensure hover effect stays removed */
-        }
-
-        .mistake-card.flashcard-mode .card-face {
-            position: absolute;
-            inset: 0;
-            backface-visibility: hidden;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            border-radius: 16px;
-            background: #ffffff;
-            padding: 3rem;
-            border: 2px solid #e2e8f0;
-            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-            overflow: hidden;
-            will-change: transform;
-            -webkit-backface-visibility: hidden;
-            -moz-backface-visibility: hidden;
-            -ms-backface-visibility: hidden;
-            transform-style: preserve-3d;
-        }
-
-        .mistake-card.flashcard-mode:hover .card-face {
-            border: 2px solid #e2e8f0;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-        }
-
-        .mistake-card.flashcard-mode:hover {
-            transform: none; /* Remove any hover transform */
-        }
-
-        .mistake-card.flashcard-mode .card-front {
-            transform: rotateY(0deg);
-            border: 2px solid #3b82f6 !important;
-            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.1) !important;
-        }
-
-        .mistake-card.flashcard-mode .card-back {
-            transform: rotateY(180deg);
-        }
-
-        .mistake-card.flashcard-mode.flipped .card-back {
-            border: 2px solid #16a34a;
-            box-shadow: 0 4px 12px rgba(22, 163, 74, 0.1);
-        }
-
-        .mistake-card.flashcard-mode.flipped .flashcard-content {
-            transform: rotateY(180deg);
-        }
-
-        .mistake-card.flashcard-mode .question-text {
-            display: flex;
-            align-items: flex-start;
-            justify-content: space-between;
-            gap: 2rem;
-            width: 100%;
-            max-width: 100%;
-            margin: 0;
-            padding: 0;
-        }
-
-        .mistake-card.flashcard-mode .question-text p {
-            flex: 1;
-            font-size: 1.9rem;
-            font-weight: 500;
-            color: #1e293b;
-            line-height: 1.7;
-            margin: 0;
-            text-align: left;
-            padding-right: 1rem;
-        }
-
-        .mistake-card.flashcard-mode .question-text .question-image {
-            flex-shrink: 0;
-            width: 45%;
-            max-width: 500px;
-            height: auto;
-            max-height: 400px;
-            object-fit: contain;
-            border-radius: 12px;
-            margin: 0;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-            border: 2px solid #e2e8f0;
-        }
-
-        .mistake-card.flashcard-mode .correct-answer {
-            font-size: 2rem;
-            font-weight: 600;
-            color: #16a34a;
-            text-align: center;
-            max-width: 90%;
-            line-height: 1.6;
-        }
-
-        @media (max-width: 768px) {
-            .mistake-card.flashcard-mode .flashcard-content {
-                min-height: 250px;
-            }
-
-            .mistake-card.flashcard-mode .question-text {
-                flex-direction: column;
-                gap: 1rem;
-            }
-
-            .mistake-card.flashcard-mode .question-text p {
-                font-size: 1.6rem;
-                padding-right: 0;
-            }
-
-            .mistake-card.flashcard-mode .question-text .question-image {
-                width: 100%;
-                max-width: 100%;
-            }
-
-            .mistake-card.flashcard-mode .correct-answer {
-                font-size: 1.9rem;
-            }
-
-            .mistake-card.flashcard-mode .card-face {
-                padding: 1.5rem;
-            }
-        }
-
-        @media (max-width: 768px) {
-            .header-section {
-                flex-direction: column;
-                gap: 1rem;
-                text-align: center;
-            }
-
-            .learn-mistakes-btn {
-                width: 100%;
-                justify-content: center;
-            }
-
-            .question-text {
-                padding-right: 3rem; /* Reduced padding for mobile */
-            }
-        }
-    </style>
+    <link rel="stylesheet" href="{{ asset('css/mistakes-page.css') }}?v={{ filemtime(public_path('css/mistakes-page.css')) }}">
     
     {{-- Desktop styles only --}}
 </head>
@@ -1072,35 +22,188 @@
     <!-- SAFE PRELOADER - WON'T BREAK ANYTHING -->
     @include('components.lightning-preloader')
 
-    {{-- Include Responsive Navigation --}}
-    <x-responsive-nav-integration mode="replace" />
+    @php
+        $profileImageUrl = $currentUserView['profile_image_url'] ?? Auth::user()->getProfileImageUrl();
+        $profileFallbackUrl = $currentUserView['profile_fallback_url'] ?? ('https://ui-avatars.com/api/?name=' . urlencode(Auth::user()->name) . '&size=200&background=007bff&color=ffffff');
+        $mistakeCollection = collect($mistakes ?? []);
+        $coursesCollection = collect($availableCourses ?? []);
+        $activeReviewLabel = 'All Courses';
+        $staleCount = $mistakeCollection->filter(fn ($mistake) => $mistake->last_attempt_date && $mistake->last_attempt_date->lt(now()->subDays(7)))->count();
+        $coldReviewCount = $mistakeCollection->filter(fn ($mistake) => (int) $mistake->correct_streak === 0)->count();
+        $closeReviewCount = $mistakeCollection->filter(fn ($mistake) => (int) $mistake->correct_streak >= 3)->count();
+        $writtenCount = $mistakeCollection->filter(fn ($mistake) => ($mistake->question->question_type ?? null) === 'written')->count();
+        $topWeakCourse = $coursesCollection->sortByDesc('mistake_count')->first();
+        $oldestMistake = $mistakeCollection->sortBy('last_attempt_date')->first();
 
-    <!-- Navigation Bar -->
-    <nav class="navbar">
-        <div class="container">
-            <a class="navbar-brand" href="/">MedCapsule</a>
-            <div class="nav-links">
-                @if(isset($recentCourse) && $recentCourse)
-                    <a href="{{ route('topics.forCourse', $recentCourse->id) }}" class="nav-link">
-                        <i class="fas fa-arrow-left"></i> Back to {{ $recentCourse->name }}
-                    </a>
-                @else
-                    <a href="{{ route('courses.index') }}" class="nav-link">
-                        <i class="fas fa-arrow-left"></i> Back to Courses
-                    </a>
-                @endif
-                @php
-                    $profileImageUrl = Auth::user()->getProfileImageUrl();
-                @endphp
-                <a href="{{ route('profile') }}" class="profile-circle">
-                    <img src="{{ $profileImageUrl }}"
-                         alt="Profile Picture"
-                         class="profile-image"
-                         onerror="this.src='https://ui-avatars.com/api/?name={{ urlencode(Auth::user()->name) }}&size=200&background=007bff&color=ffffff'">
+        if (($selectedCourse ?? '') === 'skipped') {
+            $activeReviewLabel = 'Skipped Questions';
+        } elseif (!empty($selectedCourse)) {
+            $activeReviewLabel = optional($coursesCollection->firstWhere('id', (int) $selectedCourse))->name ?? 'Filtered Course';
+        }
+    @endphp
+
+    <div class="sidebar">
+        <button type="button" class="sidebar-toggle" id="sidebarToggle" aria-label="Collapse sidebar" aria-expanded="true">
+            <i class="fas fa-chevron-left"></i>
+        </button>
+
+        <a href="{{ route('home') }}" class="sidebar-logo">
+            <div class="sidebar-logo-icon">
+                <svg width="52" height="26" viewBox="0 0 52 26" fill="none" xmlns="http://www.w3.org/2000/svg" aria-label="MedCapsule">
+                    <defs>
+                        <linearGradient id="reviewSidebarPillBody" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="0%" stop-color="#2563eb"></stop>
+                            <stop offset="45%" stop-color="#3b82f6"></stop>
+                            <stop offset="100%" stop-color="#1d4ed8"></stop>
+                        </linearGradient>
+                        <linearGradient id="reviewSidebarPillGloss" x1="0.1" y1="0" x2="0.9" y2="0">
+                            <stop offset="0%" stop-color="rgba(255,255,255,0)"></stop>
+                            <stop offset="30%" stop-color="rgba(255,255,255,0.6)"></stop>
+                            <stop offset="70%" stop-color="rgba(255,255,255,0.5)"></stop>
+                            <stop offset="100%" stop-color="rgba(255,255,255,0)"></stop>
+                        </linearGradient>
+                        <linearGradient id="reviewSidebarPillShadow" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="0%" stop-color="rgba(0,0,0,0)"></stop>
+                            <stop offset="100%" stop-color="rgba(10,20,80,0.28)"></stop>
+                        </linearGradient>
+                        <filter id="reviewSidebarPillDrop" x="-8%" y="-15%" width="116%" height="150%">
+                            <feDropShadow dx="0" dy="2.5" stdDeviation="2" flood-color="#1d4ed8" flood-opacity="0.38"></feDropShadow>
+                        </filter>
+                    </defs>
+                    <rect x="1" y="3" width="50" height="18" rx="9" fill="url(#reviewSidebarPillBody)" filter="url(#reviewSidebarPillDrop)"></rect>
+                    <rect x="1" y="3" width="50" height="18" rx="9" fill="url(#reviewSidebarPillShadow)"></rect>
+                    <rect x="4" y="4" width="44" height="7" rx="5" fill="url(#reviewSidebarPillGloss)" opacity="0.88"></rect>
+                    <ellipse cx="10" cy="8" rx="3.5" ry="2" fill="rgba(255,255,255,0.6)"></ellipse>
+                </svg>
+            </div>
+            <div class="sidebar-logo-copy">
+                <div class="sidebar-logo-text">MedCapsule</div>
+                <div class="sidebar-logo-sub">Review Mistakes</div>
+            </div>
+        </a>
+
+        <div class="sidebar-nav">
+            <span class="sidebar-section-label">Navigation</span>
+
+            @if(isset($recentCourse) && $recentCourse)
+                <a class="nav-link" href="{{ route('topics.forCourse', $recentCourse->id) }}">
+                    <i class="fas fa-arrow-left nav-icon"></i>
+                    <span class="nav-link-label">Back to {{ $recentCourse->name }}</span>
                 </a>
+            @else
+                <a class="nav-link" href="{{ route('courses.index') }}">
+                    <i class="fas fa-arrow-left nav-icon"></i>
+                    <span class="nav-link-label">Back to Courses</span>
+                </a>
+            @endif
+
+            <a class="nav-link" href="{{ route('home') }}">
+                <i class="fas fa-home nav-icon"></i>
+                <span class="nav-link-label">Home</span>
+            </a>
+            <a class="nav-link" href="{{ route('courses.index') }}">
+                <i class="fas fa-book-open nav-icon"></i>
+                <span class="nav-link-label">My Courses</span>
+            </a>
+            <a class="nav-link active" href="{{ route('review.index') }}">
+                <i class="fas fa-rotate-right nav-icon"></i>
+                <span class="nav-link-label">Review Mistakes</span>
+            </a>
+            <a class="nav-link" href="{{ route('review.learn') }}">
+                <i class="fas fa-bolt nav-icon"></i>
+                <span class="nav-link-label">Learn Mistakes</span>
+            </a>
+            <a class="nav-link" href="{{ route('profile') }}">
+                <i class="fas fa-gear nav-icon"></i>
+                <span class="nav-link-label">Profile Settings</span>
+            </a>
+
+            <span class="sidebar-section-label">Review Bank</span>
+
+            <div class="sidebar-insight-card sidebar-insight-card-primary">
+                <div class="sidebar-insight-head">
+                    <i class="fas fa-heart-pulse nav-icon"></i>
+                    <span class="nav-link-label">Bank Health</span>
+                </div>
+                <p class="sidebar-insight-copy">
+                    {{ $mistakeCollection->count() }} cards are active in {{ strtolower($activeReviewLabel) }}.
+                </p>
+                <div class="sidebar-chip-list">
+                    <span class="sidebar-chip">{{ $activeReviewLabel }}</span>
+                    <span class="sidebar-chip">{{ $totalMistakesCount ?? $mistakeCollection->count() }} total</span>
+                </div>
+            </div>
+
+            <div class="sidebar-stat-grid">
+                <div class="sidebar-stat-card sidebar-stat-card-loaded">
+                    <span class="sidebar-stat-label">Queue</span>
+                    <strong>{{ $mistakeCollection->count() }}</strong>
+                    <small>Visible now</small>
+                </div>
+                <div class="sidebar-stat-card sidebar-stat-card-skipped">
+                    <span class="sidebar-stat-label">Skipped</span>
+                    <strong>{{ $skippedCount ?? 0 }}</strong>
+                    <small>Need another pass</small>
+                </div>
+                <div class="sidebar-stat-card sidebar-stat-card-cold">
+                    <span class="sidebar-stat-label">Stale</span>
+                    <strong>{{ $staleCount }}</strong>
+                    <small>7 days+</small>
+                </div>
+                <div class="sidebar-stat-card sidebar-stat-card-ready">
+                    <span class="sidebar-stat-label">Close</span>
+                    <strong>{{ $closeReviewCount }}</strong>
+                    <small>Near clear</small>
+                </div>
+            </div>
+
+            <span class="sidebar-section-label">Priority</span>
+
+            <div class="sidebar-insight-card sidebar-insight-card-soft">
+                <div class="sidebar-insight-head">
+                    <i class="fas fa-bullseye nav-icon"></i>
+                    <span class="nav-link-label">Next Focus</span>
+                </div>
+                <p class="sidebar-insight-copy">
+                    @if($topWeakCourse)
+                        {{ $topWeakCourse->name }} is carrying the biggest review load.
+                    @else
+                        Your review queue is balanced across courses.
+                    @endif
+                </p>
+                <div class="sidebar-chip-list">
+                    @if($topWeakCourse)
+                        <span class="sidebar-chip">{{ $topWeakCourse->name }}</span>
+                        <span class="sidebar-chip">{{ $topWeakCourse->mistake_count }} flagged</span>
+                    @endif
+                    <span class="sidebar-chip">{{ $coldReviewCount }} cold</span>
+                    <span class="sidebar-chip">{{ $writtenCount }} written</span>
+                    @if($oldestMistake && $oldestMistake->last_attempt_date)
+                        <span class="sidebar-chip">Oldest {{ $oldestMistake->last_attempt_date->diffForHumans() }}</span>
+                    @endif
+                </div>
             </div>
         </div>
-    </nav>
+
+        <div class="sidebar-footer">
+            <a href="{{ route('profile') }}" class="sidebar-profile-link">
+                <span class="sidebar-profile-avatar">
+                    <img src="{{ $profileImageUrl }}" alt="Profile Picture" onerror="this.src='{{ $profileFallbackUrl }}'">
+                </span>
+                <span class="sidebar-profile-copy">
+                    <span class="sidebar-profile-name">{{ Auth::user()->name }}</span>
+                    <span class="sidebar-profile-meta">Study profile</span>
+                </span>
+            </a>
+            <form method="POST" action="{{ secure_url(route('logout', [], false)) }}">
+                @csrf
+                <button type="submit" class="nav-link border-0 bg-transparent w-100 text-start" style="cursor: pointer;">
+                    <i class="fas fa-arrow-right-from-bracket nav-icon"></i>
+                    <span class="nav-link-label">Sign Out</span>
+                </button>
+            </form>
+        </div>
+    </div>
 
     <div class="main-content">
         <div class="container">
@@ -1140,7 +243,7 @@
                         Flashcard Mode
                     </button>
                     @if($mistakes->isEmpty())
-                        <span class="learn-mistakes-btn disabled" style="cursor: not-allowed; opacity: 0.6;">
+                        <span class="learn-mistakes-btn disabled">
                             No Mistakes to Learn <i class="fas fa-check-circle"></i>
                         </span>
                     @else
@@ -1271,11 +374,13 @@
                                 </div>
                                 @if($mistake->question->explanation)
                                     <div class="mt-3 explanation-wrapper">
-                                        <button class="explanation-toggle" type="button" data-explanation-target="explanation-{{ $mistake->question_id }}">
+                                        <button class="explanation-toggle" type="button" data-explanation-target="explanation-{{ $mistake->question_id }}" aria-expanded="false" aria-controls="explanation-{{ $mistake->question_id }}">
                                             <i class="fas fa-lightbulb"></i>
                                         </button>
-                                        <div class="explanation-content" id="explanation-{{ $mistake->question_id }}">
-                                            {{ $mistake->question->explanation }}
+                                        <div class="explanation-panel" id="explanation-{{ $mistake->question_id }}">
+                                            <div class="explanation-content">
+                                                {{ $mistake->question->explanation }}
+                                            </div>
                                         </div>
                                     </div>
                                 @endif
@@ -1316,293 +421,15 @@
         </div>
     </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
-        // Flashcard Mode functionality
-        const flashcardModeToggle = document.getElementById('flashcardModeToggle');
-        const mistakeCards = document.querySelectorAll('.mistake-card');
-        let isFlashcardMode = false;
-
-        flashcardModeToggle.addEventListener('click', () => {
-            isFlashcardMode = !isFlashcardMode;
-            flashcardModeToggle.classList.toggle('active');
-            
-            mistakeCards.forEach(card => {
-                if (isFlashcardMode) {
-                    // Get content from original card
-                    const questionText = card.querySelector('.normal-mode-content .question-text p').textContent;
-                    const questionImage = card.querySelector('.normal-mode-content .question-image');
-                    let correctAnswer = '';
-                    // Prefer written-correct-answer if present
-                    const writtenCorrect = card.querySelector('.normal-mode-content .written-correct-answer');
-                    if (writtenCorrect) {
-                        correctAnswer = writtenCorrect.textContent;
-                    } else {
-                        const correctLabel = card.querySelector('.normal-mode-content .form-check-label.correct');
-                        correctAnswer = correctLabel ? correctLabel.textContent : '';
-                    }
-                    // Get flashcard faces
-                    const cardFront = card.querySelector('.flashcard-content .card-front');
-                    const cardBack = card.querySelector('.flashcard-content .card-back');
-                    
-                    // Update flashcard content
-                    cardFront.innerHTML = `
-                        <div class="question-text">
-                            <p>${questionText}</p>
-                            ${questionImage ? `<img src="${questionImage.src}" alt="Question Image" class="question-image">` : ''}
-                        </div>
-                    `;
-                    cardBack.innerHTML = `
-                        <div class="correct-answer">
-                            ${correctAnswer}
-                        </div>
-                    `;
-                } else {
-                    // Clean up flashcard content when turning mode off
-                    const cardFront = card.querySelector('.flashcard-content .card-front');
-                    const cardBack = card.querySelector('.flashcard-content .card-back');
-                    if (cardFront) cardFront.innerHTML = '';
-                    if (cardBack) cardBack.innerHTML = '';
-                    card.classList.remove('flipped');
-                }
-                
-                // Toggle flashcard mode
-                card.classList.toggle('flashcard-mode');
-            });
-
-            // Update button text
-            flashcardModeToggle.innerHTML = `
-                <i class="fas fa-sync-alt"></i>
-                Flashcard Mode ${isFlashcardMode ? 'ON' : 'OFF'}
-            `;
-        });
-
-        // 🚀 ULTRA-SMOOTH: Enhanced card flipping with better responsiveness
-        let isFlipping = false; // Prevent rapid clicking during flip
-
-        mistakeCards.forEach(card => {
-            card.addEventListener('click', (e) => {
-                if (isFlashcardMode && !isFlipping) {
-                    e.preventDefault();
-                    isFlipping = true;
-
-                    // Add visual feedback immediately
-                    card.style.transform = 'scale(0.98)';
-
-                    setTimeout(() => {
-                        card.classList.toggle('flipped');
-                        card.style.transform = '';
-
-                        // Reset flip prevention after animation completes
-                        setTimeout(() => {
-                            isFlipping = false;
-                        }, 600); // Match CSS transition duration
-                    }, 50);
-                }
-            });
-
-            // Add touch support for mobile devices
-            card.addEventListener('touchstart', (e) => {
-                if (isFlashcardMode) {
-                    e.preventDefault();
-                    // Add slight visual feedback for touch
-                    card.style.transform = 'scale(0.96)';
-                }
-            });
-
-            card.addEventListener('touchend', (e) => {
-                if (isFlashcardMode) {
-                    e.preventDefault();
-                    card.style.transform = '';
-
-                    if (!isFlipping) {
-                        isFlipping = true;
-                        setTimeout(() => {
-                            card.classList.toggle('flipped');
-                            setTimeout(() => {
-                                isFlipping = false;
-                            }, 600);
-                        }, 50);
-                    }
-                }
-            });
-        });
-
-        function showToast(message, type = 'success') {
-            const toastContainer = document.querySelector('.toast-container');
-            const toast = document.createElement('div');
-            toast.className = `toast ${type}`;
-            toast.innerHTML = `
-                <i class="fas ${type === 'success' ? 'fa-check-circle' : 'fa-exclamation-circle'}"></i>
-                ${message}
-            `;
-            toastContainer.appendChild(toast);
-            
-            // Trigger reflow to enable animation
-            toast.offsetHeight;
-            toast.classList.add('show');
-            
-            setTimeout(() => {
-                toast.classList.remove('show');
-                setTimeout(() => toast.remove(), 300);
-            }, 3000);
-        }
-
-        function removeMistake(questionId) {
-            // Get the card and show loading state
-            const card = document.querySelector(`[data-question-id="${questionId}"]`);
-            if (!card) {
-                console.error('Card not found for question ID:', questionId);
-                return;
-            }
-
-            // Show loading state
-            const removeButton = card.querySelector('.remove-question');
-            if (removeButton) {
-                removeButton.disabled = true;
-                removeButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
-                removeButton.style.opacity = '0.6';
-            }
-
-            // Make the API call FIRST
-            const token = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
-            
-            fetch(`/review/remove/${questionId}`, {
-                method: 'POST',
-                headers: {
-                    'X-CSRF-TOKEN': token,
-                    'X-Requested-With': 'XMLHttpRequest',
-                    'Content-Type': 'application/json'
-                }
-            })
-            .then(response => {
-                if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
-                }
-                return response.json();
-            })
-            .then(data => {
-                if (data.success) {
-                    // SUCCESS: Remove card with animation
-                    card.style.transition = 'all 0.3s ease';
-                    card.style.opacity = '0';
-                    card.style.transform = 'translateY(-20px)';
-                    
-                    setTimeout(() => {
-                        card.remove();
-                        
-                        // Check if we need to show empty state
-                        const remainingCards = document.querySelectorAll('.mistake-card');
-                        if (remainingCards.length === 0) {
-                            const mistakesContent = document.querySelector('#mistakes-content');
-                            if (mistakesContent) {
-                                mistakesContent.innerHTML = `
-                                    <div class="empty-state">
-                                        <i class="fas fa-check"></i>
-                                        <h3>No Mistakes!</h3>
-                                        <p>Fantastic work! You're crushing it with zero mistakes. Keep up the amazing progress!</p>
-                                    </div>
-                                `;
-                            }
-                        }
-                        
-                        showToast('Question removed successfully!', 'success');
-                    }, 300);
-                } else {
-                    // API returned error
-                    throw new Error(data.message || 'Failed to remove question');
-                }
-            })
-            .catch(error => {
-                console.error('Error removing mistake:', error);
-                
-                // RESTORE button state on error
-                if (removeButton) {
-                    removeButton.disabled = false;
-                    removeButton.innerHTML = '<i class="fas fa-times"></i>';
-                    removeButton.style.opacity = '1';
-                }
-                
-                showToast('Error removing question. Please try again.', 'error');
-            });
-        }
-
-        // GOLDEN STANDARD: Navigation data from backend
-        const recentCourse = @json($recentCourse ?? null);
-        const coursesIndexUrl = '{{ route("courses.index") }}';
-        
-        function getBackButtonHtml() {
-            return '';
-        }
-
-        document.addEventListener('DOMContentLoaded', function() {
-            console.log('Review mistakes page loaded successfully');
-            
-            // Check if we're in a reload loop
-            if (sessionStorage.getItem('reviewPageLoaded')) {
-                console.log('Page was already loaded, preventing reload loop');
-                sessionStorage.removeItem('reviewPageLoaded');
-                return;
-            }
-            sessionStorage.setItem('reviewPageLoaded', 'true');
-            
-            // 🚀 ULTRA-SMOOTH: Professional explanation toggle with engaging animations
-            const toggles = document.querySelectorAll('.explanation-toggle');
-
-            toggles.forEach(toggle => {
-                toggle.addEventListener('click', (e) => {
-                    e.preventDefault();
-                    const targetId = toggle.getAttribute('data-explanation-target');
-                    const content = document.getElementById(targetId);
-                    const wrapper = toggle.closest('.explanation-wrapper');
-                    
-                    if (!content) return;
-                    
-                    // Use double requestAnimationFrame for ultra-smooth rendering
-                    requestAnimationFrame(() => {
-                        requestAnimationFrame(() => {
-                            // Toggle active state on button with smooth transition
-                            toggle.classList.toggle('active');
-                            
-                            // Toggle content visibility with premium animation
-                            content.classList.toggle('show');
-                            
-                            // Toggle expanded state on wrapper for spacing
-                            if (wrapper) {
-                                wrapper.classList.toggle('expanded');
-                            }
-                            
-                            // Add subtle haptic feedback effect (visual pulse)
-                            if (content.classList.contains('show')) {
-                                toggle.style.transform = 'scale(0.95)';
-                                setTimeout(() => {
-                                    toggle.style.transform = '';
-                                }, 100);
-                            }
-                        });
-                    });
-                });
-            });
-
-            // 🚀 ULTRA-OPTIMIZED FILTER SYSTEM - Lightweight & Fast
-            const courseFilter = document.getElementById('courseFilter');
-            if (courseFilter) {
-                courseFilter.addEventListener('change', function(e) {
-                    const baseUrl = '{{ route("review.index") }}';
-                    const finalUrl = this.value ? `${baseUrl}?course=${encodeURIComponent(this.value)}` : baseUrl;
-                    window.location.href = finalUrl;
-                });
-            }
-
-            // Add error handling for flashcard mode toggle
-            if (flashcardModeToggle) {
-                flashcardModeToggle.addEventListener('click', (e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                });
-            }
-        });
+        window.MistakesPageConfig = {
+            recentCourse: @json($recentCourse ?? null),
+            coursesIndexUrl: @json(route('courses.index')),
+            reviewIndexUrl: @json(route('review.index'))
+        };
     </script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js" defer></script>
+    <script src="{{ asset('js/mistakes-page.js') }}?v={{ filemtime(public_path('js/mistakes-page.js')) }}" defer></script>
 
     {{-- No mobile JS --}}
 </body>

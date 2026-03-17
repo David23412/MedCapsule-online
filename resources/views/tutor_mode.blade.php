@@ -202,52 +202,82 @@
 
         /* Highlight styles */
         .question-text mark {
-            border-radius: 2px;
-            padding: 2px 0;
-            transition: background-color 0.2s ease;
+            border-radius: 6px;
+            padding: 0.08em 0.18em;
+            transition: background-color 0.18s ease, box-shadow 0.18s ease;
+            -webkit-box-decoration-break: clone;
+            box-decoration-break: clone;
         }
 
-        .question-text mark.highlight-yellow { background-color: var(--highlight-yellow); }
-        .question-text mark.highlight-pink { background-color: var(--highlight-pink); }
-        .question-text mark.highlight-blue { background-color: var(--highlight-blue); }
-        .question-text mark.highlight-green { background-color: var(--highlight-green); }
-        .question-text mark.highlight-purple { background-color: var(--highlight-purple); }
+        .question-text mark.highlight-yellow { background-color: var(--highlight-yellow); box-shadow: inset 0 -0.42em 0 rgba(255, 245, 157, 0.82); }
+        .question-text mark.highlight-pink { background-color: var(--highlight-pink); box-shadow: inset 0 -0.42em 0 rgba(248, 187, 208, 0.86); }
+        .question-text mark.highlight-blue { background-color: var(--highlight-blue); box-shadow: inset 0 -0.42em 0 rgba(179, 229, 252, 0.9); }
+        .question-text mark.highlight-green { background-color: var(--highlight-green); box-shadow: inset 0 -0.42em 0 rgba(197, 225, 165, 0.9); }
+        .question-text mark.highlight-purple { background-color: var(--highlight-purple); box-shadow: inset 0 -0.42em 0 rgba(225, 190, 231, 0.9); }
 
         /* Highlight toolbar */
         .highlight-toolbar {
-            display: none;
-            position: absolute;
-            background: white;
-            border-radius: 8px;
-            padding: 6px;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-            z-index: 1000;
-            gap: 4px;
+            position: fixed;
+            left: 0;
+            top: 0;
+            display: flex;
             align-items: center;
+            gap: 6px;
+            padding: 8px;
+            border-radius: 16px;
+            background: rgba(255, 255, 255, 0.96);
+            border: 1px solid rgba(203, 213, 225, 0.9);
+            box-shadow: 0 18px 40px rgba(15, 23, 42, 0.16);
+            backdrop-filter: blur(14px);
+            -webkit-backdrop-filter: blur(14px);
+            z-index: 1000;
+            opacity: 0;
+            visibility: hidden;
+            pointer-events: none;
+            transform: translateY(-10px) scale(0.96);
+            transition: opacity 0.14s ease, transform 0.18s cubic-bezier(0.22, 1, 0.36, 1), visibility 0.14s ease;
         }
 
         .highlight-toolbar.show {
-            display: flex;
+            opacity: 1;
+            visibility: visible;
+            pointer-events: auto;
+            transform: translateY(0) scale(1);
+        }
+
+        .highlight-toolbar[data-placement="bottom"] {
+            transform: translateY(10px) scale(0.96);
+        }
+
+        .highlight-toolbar.show[data-placement="bottom"] {
+            transform: translateY(0) scale(1);
         }
 
         .highlight-btn {
-            width: 32px;
-            height: 32px;
-            border: 2px solid #e9ecef;
-            border-radius: 6px;
+            width: 34px;
+            height: 34px;
+            border: 1px solid rgba(203, 213, 225, 0.95);
+            border-radius: 10px;
             cursor: pointer;
-            transition: all 0.15s ease;
+            transition: transform 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease, background-color 0.15s ease;
             flex-shrink: 0;
+            box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.32);
         }
 
         .highlight-btn:hover {
-            transform: scale(1.1);
-            border-color: #007bff;
-            box-shadow: 0 2px 8px rgba(0, 123, 255, 0.2);
+            transform: translateY(-1px);
+            border-color: rgba(59, 130, 246, 0.48);
+            box-shadow: 0 8px 18px rgba(59, 130, 246, 0.14);
         }
 
         .highlight-btn:active {
             transform: scale(0.95);
+        }
+
+        .highlight-btn:focus-visible {
+            outline: none;
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.18);
         }
 
         .highlight-btn.yellow { background-color: var(--highlight-yellow); }
@@ -257,47 +287,55 @@
         .highlight-btn.purple { background-color: var(--highlight-purple); }
 
         .highlight-btn.eraser {
-            background: white;
+            background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
             display: flex;
             align-items: center;
             justify-content: center;
-            color: #6c757d;
+            color: #64748b;
             font-size: 14px;
         }
 
         .highlight-btn.eraser:hover {
             color: #dc3545;
             border-color: #dc3545;
+            box-shadow: 0 8px 18px rgba(220, 53, 69, 0.12);
         }
 
         .toolbar-divider {
             width: 1px;
-            height: 24px;
-            background: #e9ecef;
-            margin: 0 2px;
+            height: 26px;
+            background: rgba(203, 213, 225, 0.88);
+            margin: 0 3px;
         }
 
         /* Mobile responsiveness for highlight toolbar */
         @media (max-width: 768px) {
             .highlight-toolbar {
-                padding: 4px;
-                gap: 3px;
+                gap: 5px;
+                padding: 7px;
+                border-radius: 14px;
+                max-width: calc(100vw - 20px);
             }
 
             .highlight-btn {
-                width: 28px;
-                height: 28px;
+                width: 32px;
+                height: 32px;
             }
 
             .toolbar-divider {
-                height: 20px;
+                height: 22px;
             }
         }
 
         @media (max-width: 480px) {
+            .highlight-toolbar {
+                gap: 4px;
+                padding: 6px;
+            }
+
             .highlight-btn {
-                width: 26px;
-                height: 26px;
+                width: 30px;
+                height: 30px;
             }
         }
 
@@ -1706,13 +1744,14 @@
             <div class="nav-links">
                 <a href="javascript:history.back()" class="nav-link">← Back</a>
                 @php
-                    $profileImageUrl = Auth::user()->getProfileImageUrl();
+                    $profileImageUrl = $currentUserView['profile_image_url'] ?? Auth::user()->getProfileImageUrl();
+                    $profileFallbackUrl = $currentUserView['profile_fallback_url'] ?? ('https://ui-avatars.com/api/?name=' . urlencode(Auth::user()->name) . '&size=200&background=007bff&color=ffffff');
                 @endphp
                 <a href="{{ route('profile') }}" class="profile-circle">
                     <img src="{{ $profileImageUrl }}"
                          alt="Profile Picture"
                          class="profile-image"
-                         onerror="this.src='https://ui-avatars.com/api/?name={{ urlencode(Auth::user()->name) }}&size=200&background=007bff&color=ffffff'">
+                         onerror="this.src='{{ $profileFallbackUrl }}'">
                 </a>
             </div>
         </div>
@@ -1878,8 +1917,8 @@
         </div>
     </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js?v={{ time() }}"></script>
-    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js?v={{ time() }}"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
 
     <!-- UNIFIED GRADING AUDIO CONTROLLER -->
     <script src="{{ asset('js/grading-audio-controller.js') }}"></script>
@@ -3026,6 +3065,18 @@
                     hideToolbar();
                 }
             });
+
+            window.addEventListener('resize', function() {
+                if (highlightToolbar && highlightToolbar.classList.contains('show') && currentSelection?.questionElement && currentSelection?.range) {
+                    positionToolbar(currentSelection.questionElement, currentSelection.range);
+                }
+            });
+
+            window.addEventListener('scroll', function() {
+                if (highlightToolbar && highlightToolbar.classList.contains('show') && currentSelection?.questionElement && currentSelection?.range) {
+                    positionToolbar(currentSelection.questionElement, currentSelection.range);
+                }
+            }, true);
         }
 
         function handleTextSelection(e) {
@@ -3071,42 +3122,71 @@
             console.log('📝 Stored selection details:', currentSelection);
 
             // Position and show toolbar
-            showToolbar(e);
+            showToolbar();
         }
 
-        function showToolbar(e) {
-            const selection = window.getSelection();
-            if (!selection.rangeCount) return;
+        function positionToolbar(questionElement, range) {
+            if (!highlightToolbar || !questionElement || !range) return;
 
-            const range = selection.getRangeAt(0);
-            const rect = range.getBoundingClientRect();
+            const bodyZoom = parseFloat(window.getComputedStyle(document.body).zoom) || 1;
+            const questionRect = questionElement.getBoundingClientRect();
+            const selectionRect = range.getBoundingClientRect();
+            const selectionRects = Array.from(range.getClientRects()).filter(function(rect) {
+                return rect.width > 0 || rect.height > 0;
+            });
+            const anchorRect = selectionRects.length > 0
+                ? selectionRects[Math.floor(selectionRects.length / 2)]
+                : selectionRect;
+            const viewportPadding = 12;
+            const questionPadding = 12;
+            const toolbarGap = 4;
 
-            // Simple positioning: centered above selection
-            const toolbarWidth = 240;
-            const toolbarHeight = 44;
+            highlightToolbar.classList.add('show');
+            highlightToolbar.dataset.placement = 'top';
 
-            const scrollX = window.pageXOffset || document.documentElement.scrollLeft || document.body.scrollLeft || 0;
-            const scrollY = window.pageYOffset || document.documentElement.scrollTop || document.body.scrollTop || 0;
+            const toolbarRect = highlightToolbar.getBoundingClientRect();
+            const toolbarWidth = toolbarRect.width || (highlightToolbar.offsetWidth * bodyZoom) || 250;
+            const toolbarHeight = toolbarRect.height || (highlightToolbar.offsetHeight * bodyZoom) || 52;
 
-            let left = rect.left + (rect.width / 2) - (toolbarWidth / 2);
-            let top = rect.top - toolbarHeight - 12;
+            let left = anchorRect.left + (anchorRect.width / 2) - (toolbarWidth / 2);
+            let top = selectionRect.top - toolbarHeight - toolbarGap;
+            let placement = 'top';
 
-            // If too close to top, show below selection
-            if (top < 80) {
-                top = rect.bottom + 12;
+            if (top < viewportPadding) {
+                top = selectionRect.bottom + toolbarGap;
+                placement = 'bottom';
             }
 
-            // Keep within viewport bounds
-            left = Math.max(10, Math.min(left, window.innerWidth - toolbarWidth - 10));
+            const minViewportLeft = viewportPadding;
+            const maxViewportLeft = window.innerWidth - toolbarWidth - viewportPadding;
+            const minQuestionLeft = questionRect.left + questionPadding;
+            const maxQuestionLeft = questionRect.right - toolbarWidth - questionPadding;
 
-            highlightToolbar.style.left = (left + scrollX) + 'px';
-            highlightToolbar.style.top = (top + scrollY) + 'px';
+            if (minQuestionLeft <= maxQuestionLeft) {
+                left = Math.max(minQuestionLeft, Math.min(left, maxQuestionLeft));
+            }
+
+            left = Math.max(minViewportLeft, Math.min(left, maxViewportLeft));
+            top = Math.max(viewportPadding, Math.min(top, window.innerHeight - toolbarHeight - viewportPadding));
+
+            highlightToolbar.dataset.placement = placement;
+            highlightToolbar.style.left = (left / bodyZoom) + 'px';
+            highlightToolbar.style.top = (top / bodyZoom) + 'px';
+        }
+
+        function showToolbar() {
+            const questionElement = currentSelection?.questionElement;
+            const range = currentSelection?.range;
+            if (!questionElement || !range) return;
+
+            positionToolbar(questionElement, range);
             highlightToolbar.classList.add('show');
         }
 
         function hideToolbar() {
             if (highlightToolbar) {
                 highlightToolbar.classList.remove('show');
+                highlightToolbar.dataset.placement = 'top';
             }
             currentSelection = null;
         }
