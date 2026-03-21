@@ -235,9 +235,11 @@ class WrittenAnswerEvaluationService
         }
         
         $cacheKey = 'answer_eval:' . md5($key);
-        
-        if (Cache::has($cacheKey)) {
-            return Cache::get($cacheKey);
+
+        $cacheMiss = new \stdClass();
+        $cachedResult = Cache::get($cacheKey, $cacheMiss);
+        if ($cachedResult !== $cacheMiss) {
+            return $cachedResult;
         }
         
         $result = $callback();

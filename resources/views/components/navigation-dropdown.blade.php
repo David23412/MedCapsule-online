@@ -310,10 +310,33 @@
         font-size: 1rem;
     }
 
+    .streak-fire.streak-fire-celebrate {
+        color: #ffb300;
+        animation: streakFireCelebrate 0.9s cubic-bezier(0.2, 0.8, 0.2, 1) 2;
+        filter: drop-shadow(0 0 12px rgba(255, 179, 0, 0.95));
+    }
+
+    .streak-indicator.streak-week-complete {
+        animation: streakWeekComplete 0.9s ease-out 1;
+    }
+
     @keyframes flame {
         0% { transform: scale(1) rotate(0deg); }
         50% { transform: scale(1.2) rotate(5deg); }
         100% { transform: scale(1) rotate(0deg); }
+    }
+
+    @keyframes streakFireCelebrate {
+        0% { transform: scale(1) rotate(0deg); }
+        35% { transform: scale(1.5) rotate(-14deg); }
+        70% { transform: scale(1.2) rotate(14deg); }
+        100% { transform: scale(1) rotate(0deg); }
+    }
+
+    @keyframes streakWeekComplete {
+        0% { transform: translateY(0) scale(1); }
+        35% { transform: translateY(-3px) scale(1.06); }
+        100% { transform: translateY(0) scale(1); }
     }
 
     .dropdown-header {
@@ -445,21 +468,46 @@
         if (streakIndicator) {
             const streakProgress = document.querySelector('.streak-progress');
             const streak = parseInt(streakIndicator.dataset.streak);
+            const streakFire = document.querySelector('.streak-fire');
             
-            // Calculate progress (assuming max streak of 30 days)
-            const maxStreak = 30;
-            const progress = Math.min(streak / maxStreak, 1);
-            const circumference = 2 * Math.PI * 40; // circle radius is 40
+            // A full loop represents one week of study streak.
+            const maxStreak = 7;
+            const cycleDay = streak % maxStreak;
+            const isWeeklyMilestone = streak > 0 && cycleDay === 0;
+            const progress = isWeeklyMilestone ? 1 : cycleDay / maxStreak;
+            const radius = parseFloat(streakProgress.getAttribute('r') || '40');
+            const circumference = 2 * Math.PI * radius;
             
             // Animate the progress
             setTimeout(() => {
                 streakProgress.style.strokeDasharray = circumference;
                 streakProgress.style.strokeDashoffset = circumference * (1 - progress);
             }, 100);
+
+            if (isWeeklyMilestone) {
+                setTimeout(() => {
+                    streakIndicator.classList.add('streak-week-complete');
+                    if (streakFire) {
+                        streakFire.classList.add('streak-fire-celebrate');
+                    }
+                    streakProgress.style.filter = 'drop-shadow(0 0 12px rgba(255, 179, 0, 0.95))';
+                }, 1450);
+
+                setTimeout(() => {
+                    streakProgress.style.strokeDashoffset = circumference;
+                }, 2200);
+
+                setTimeout(() => {
+                    streakIndicator.classList.remove('streak-week-complete');
+                    if (streakFire) {
+                        streakFire.classList.remove('streak-fire-celebrate');
+                    }
+                    streakProgress.style.filter = '';
+                }, 3000);
+            }
             
             // Add hover effect for the flame
             if (streak > 0) {
-                const streakFire = document.querySelector('.streak-fire');
                 if (streakFire) {
                     streakIndicator.addEventListener('mouseover', () => {
                         streakFire.style.transform = 'scale(1.2)';

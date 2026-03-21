@@ -17,15 +17,10 @@ class CourseObserver
     {
         $this->clearAllCourseCaches();
 
-        // 🚀 AUTOMATIC ENROLLMENT: If course is free, enroll all users
-        if ($this->isFreeCourse($course)) {
-            $this->autoEnrollAllUsersInFreeCourse($course);
-        }
-
         Log::info('Course created, caches cleared', [
             'course_id' => $course->id,
             'is_free' => $this->isFreeCourse($course),
-            'auto_enrollment_triggered' => $this->isFreeCourse($course)
+            'auto_enrollment_triggered' => false
         ]);
     }
 
@@ -48,10 +43,8 @@ class CourseObserver
             ]);
 
             if ($newPrice == 0 || $newPrice === null) {
-                // 🎊 PRICE NOW 0: AUTO-ENROLL ALL USERS
-                $this->autoEnrollAllUsersInCourse($course);
-                Log::info('✅ Auto-enrolled all users in now-free course', [
-                    'course_id' => $course->id
+                Log::info('✅ Course is now free; access will be granted through the free-course survey preview flow', [
+                    'course_id' => $course->id,
                 ]);
             } else {
                 // 💰 PRICE NOW > 0: REVOKE ALL ENROLLMENTS
@@ -127,24 +120,6 @@ class CourseObserver
     private function isFreeCourse(Course $course): bool
     {
         return $course->price === 0.0 || $course->price === null;
-    }
-
-    /**
-     * 🎯 SIMPLE: Auto-enroll ALL users in course (used for price changes)
-     */
-    private function autoEnrollAllUsersInCourse(Course $course): void
-    {
-        $allUsers = User::all();
-        foreach ($allUsers as $user) {
-            DB::table('course_user')->updateOrInsert([
-                'user_id' => $user->id,
-                'course_id' => $course->id
-            ], [
-                'is_enrolled' => true,
-                'enrolled_at' => now(),
-                'updated_at' => now()
-            ]);
-        }
     }
 
     /**
@@ -282,64 +257,4 @@ class CourseObserver
         }
     }
 
-    /**
-     * Automatically enroll all users in a free course
-     * This ensures instant access for all users to new free content
-     */
-    private function autoEnrollAllUsersInFreeCourse(Course $course): void
-    {
-        try {
-            // Get all user IDs
-            $userIds = User::pluck('id')->toArray();
-
-            if (empty($userIds)) {
-                Log::info('No users found for auto-enrollment', ['course_id' => $course->id]);
-                return;
-            }
-
-            $enrolledCount = 0;
-            $batchSize = 100; // Process in batches to avoid memory issues
-            $batches = array_chunk($userIds, $batchSize);
-
-            foreach ($batches as $batch) {
-                $enrollmentData = [];
-                foreach ($batch as $userId) {
-                    $enrollmentData[] = [
-                        'user_id' => $userId,
-                        'course_id' => $course->id,
-                        'is_enrolled' => true,
-                        'enrolled_at' => now(),
-                        'created_at' => now(),
-                        'updated_at' => now()
-                    ];
-                }
-
-                // Bulk insert/update enrollments
-                foreach ($enrollmentData as $enrollment) {
-                    DB::table('course_user')->updateOrInsert(
-                        [
-                            'user_id' => $enrollment['user_id'],
-                            'course_id' => $enrollment['course_id']
-                        ],
-                        $enrollment
-                    );
-                    $enrolledCount++;
-                }
-            }
-
-            Log::info('Auto-enrolled all users in free course', [
-                'course_id' => $course->id,
-                'course_name' => $course->name,
-                'users_enrolled' => $enrolledCount,
-                'total_users' => count($userIds)
-            ]);
-
-        } catch (\Exception $e) {
-            Log::error('Failed to auto-enroll users in free course', [
-                'course_id' => $course->id,
-                'course_name' => $course->name,
-                'error' => $e->getMessage()
-            ]);
-        }
-    }
 }

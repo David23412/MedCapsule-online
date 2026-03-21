@@ -120,6 +120,13 @@ class Kernel extends ConsoleKernel
                 ->runInBackground()
                 ->appendOutputTo(storage_path('logs/mistake-reminders.log'));
 
+        // Recalibrate spaced repetition from accumulated review outcomes.
+        $schedule->command('mistakes:calibrate-scheduler --mode=all --days=180')
+                ->twiceDaily(3, 15)
+                ->withoutOverlapping()
+                ->runInBackground()
+                ->appendOutputTo(storage_path('logs/mistake-scheduler-calibration.log'));
+
         // 🔔 Send comprehensive study reminders (weak topics, streaks, inactivity)
         $schedule->command('notifications:send-reminders')
                 ->daily()
@@ -179,5 +186,9 @@ class Kernel extends ConsoleKernel
         Commands\EnrollUsersInFreeCourses::class, // 🚀 AUTOMATIC FREE COURSE ENROLLMENT
         Commands\SendStudyReminders::class, // 🔔 COMPREHENSIVE STUDY REMINDERS
         Commands\ImportQuestionsFromExcel::class, // 📊 EXCEL QUESTION IMPORT
+        Commands\PerfSnapshot::class,
+        Commands\ToggleDesignProtection::class,
+        Commands\CalibrateMistakeSchedulerCommand::class,
+        Commands\BacktestMistakeSchedulerCommand::class,
     ];
 }

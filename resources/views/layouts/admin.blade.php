@@ -219,6 +219,13 @@
                 </a>
             </li>
             <li class="nav-item">
+                <a class="nav-link {{ request()->routeIs('admin.user-course') && request()->query('tab') == 'survey-results' ? 'active' : '' }}" 
+                   href="{{ route('admin.user-course', ['tab' => 'survey-results']) }}">
+                    <i class="fas fa-fw fa-chart-pie"></i>
+                    <span>Survey Results</span>
+                </a>
+            </li>
+            <li class="nav-item">
                 <a class="nav-link {{ request()->routeIs('admin.user-course') && request()->query('tab') == 'payment-settings' ? 'active' : '' }}" 
                    href="{{ route('admin.user-course', ['tab' => 'payment-settings']) }}">
                     <i class="fas fa-cog fa-fw mr-2"></i>
@@ -226,7 +233,6 @@
                 </a>
             </li>
         </ul>
-        
         <hr class="sidebar-divider d-none d-md-block">
         
         <ul class="nav flex-column mt-auto">
@@ -248,6 +254,7 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     
+    @include('partials.design-protection')
     @yield('scripts')
 </body>
 </html> 

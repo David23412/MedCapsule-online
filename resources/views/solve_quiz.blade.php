@@ -684,6 +684,23 @@
             color: #00a854 !important;
         }
 
+        .explanation-review-card {
+            margin-top: 12px;
+            padding: 12px 14px;
+            border-radius: 10px;
+            background: #eff6ff;
+            border: 1px solid #dbeafe;
+            color: #1e3a8a;
+            font-size: 0.95rem;
+            line-height: 1.55;
+            box-shadow: none;
+        }
+
+        .explanation-review-text {
+            margin-top: 6px;
+            color: #334155;
+        }
+
 
 
         .submit-btn:hover:not(:disabled) {
@@ -1113,6 +1130,23 @@
             font-weight: 500;
         }
 
+        .explanation-review-card {
+            margin-top: 12px;
+            padding: 12px 14px;
+            border-radius: 10px;
+            background: #eff6ff;
+            border: 1px solid #dbeafe;
+            color: #1e3a8a;
+            font-size: 0.95rem;
+            line-height: 1.55;
+            box-shadow: none;
+        }
+
+        .explanation-review-text {
+            margin-top: 6px;
+            color: #334155;
+        }
+
         .xp-total {
             font-size: 1.2em;
             font-weight: bold;
@@ -1170,13 +1204,14 @@
             <div class="nav-links">
                 <a href="javascript:history.back()" class="nav-link">← Back</a>
                 @php
-                    $profileImageUrl = Auth::user()->getProfileImageUrl();
+                    $profileImageUrl = $currentUserView['profile_image_url'] ?? Auth::user()->getProfileImageUrl();
+                    $profileFallbackUrl = $currentUserView['profile_fallback_url'] ?? ('https://ui-avatars.com/api/?name=' . urlencode(Auth::user()->name) . '&size=200&background=007bff&color=ffffff');
                 @endphp
                 <a href="{{ route('profile') }}" class="profile-circle">
                     <img src="{{ $profileImageUrl }}"
                          alt="Profile Picture"
                          class="profile-image"
-                         onerror="this.src='https://ui-avatars.com/api/?name={{ urlencode(Auth::user()->name) }}&size=200&background=007bff&color=ffffff'">
+                         onerror="this.src='{{ $profileFallbackUrl }}'">
                 </a>
             </div>
         </div>
@@ -1375,11 +1410,13 @@
             const popupTitle = document.getElementById("popup-title");
             const popupScore = document.getElementById("popup-score");
             const popupMessage = document.getElementById("popup-message");
+            const gradeIcon = document.getElementById("grade-icon");
             const reviewButton = document.getElementById("review-btn");
             const retryButton = document.getElementById("retry-btn");
             const viewProgressButton = document.getElementById("view-progress-btn");
 
             let selectedAnswers = {};
+            let latestReviewPayload = null;
             const totalQuestions = {{ $questions->count() }};
 
             // 💀 SIMPLIFIED PROGRESS BAR - NO OVERLAP COMPLEXITY 💀
@@ -1451,6 +1488,158 @@
             setTimeout(updateProgressBarVisibility, 100);
             
             console.log('✅ SIMPLIFIED Progress Bar System ACTIVATED');
+
+            function buildExplanationCard(explanation) {
+                if (!explanation) {
+                    return null;
+                }
+
+                const explanationCard = document.createElement('div');
+                explanationCard.className = 'explanation-review-card';
+
+                const title = document.createElement('strong');
+                title.textContent = 'Explanation:';
+
+                const body = document.createElement('div');
+                body.className = 'explanation-review-text';
+                body.textContent = explanation;
+
+                explanationCard.appendChild(title);
+                explanationCard.appendChild(body);
+
+                return explanationCard;
+            }
+
+            function resolveReviewData(payload) {
+                const quizData = payload?.data || payload || {};
+
+                return {
+                    correctAnswers: payload?.correct_answers ||
+                        quizData.correct_answers ||
+                        quizData.correctAnswers ||
+                        {},
+                    incorrectAnswers: payload?.incorrect_answers ||
+                        quizData.incorrect_answers ||
+                        {},
+                    questionExplanations: payload?.question_explanations ||
+                        quizData.question_explanations ||
+                        {}
+                };
+            }
+
+            function showReviewMode(payload) {
+                const { correctAnswers, incorrectAnswers, questionExplanations } = resolveReviewData(payload);
+
+                if (!correctAnswers || Object.keys(correctAnswers).length === 0) {
+                    console.log('❌ REVIEW MODE: No correct_answers data found in response');
+                    return;
+                }
+
+                console.log('🔍 REVIEW MODE: Processing correct answers for review', correctAnswers);
+
+                Object.keys(correctAnswers).forEach(questionId => {
+                    const correctAnswer = correctAnswers[questionId];
+                    const incorrectData = incorrectAnswers[questionId] || null;
+                    const submittedAnswer = Object.prototype.hasOwnProperty.call(selectedAnswers, questionId)
+                        ? selectedAnswers[questionId]
+                        : (incorrectData?.submitted_answer ?? '');
+                    const questionBox = document.querySelector(`[data-question-id="${questionId}"]`);
+                    const explanation = incorrectData?.explanation || questionExplanations[questionId] || '';
+
+                    if (!questionBox) {
+                        return;
+                    }
+
+                    const existingQuestionCard = questionBox.querySelector('.explanation-review-card');
+                    if (existingQuestionCard) {
+                        existingQuestionCard.remove();
+                    }
+
+                    const writtenAnswer = questionBox.querySelector('.written-answer');
+
+                    if (writtenAnswer) {
+                        const feedbackElement = questionBox.querySelector('.answer-feedback');
+
+                        if (!feedbackElement) {
+                            return;
+                        }
+
+                        writtenAnswer.disabled = true;
+                        writtenAnswer.classList.remove('correct', 'incorrect');
+                        feedbackElement.classList.remove('correct', 'incorrect');
+                        feedbackElement.textContent = '';
+
+                        const existingCorrectAnswerCard = feedbackElement.querySelector('.correct-answer-card');
+                        if (existingCorrectAnswerCard) {
+                            existingCorrectAnswerCard.remove();
+                        }
+
+                        const isCorrect = Boolean(correctAnswer) &&
+                            String(correctAnswer).trim().toLowerCase() === String(submittedAnswer || '').trim().toLowerCase();
+
+                        if (isCorrect) {
+                            writtenAnswer.classList.add('correct');
+                            feedbackElement.classList.add('correct');
+                            feedbackElement.textContent = 'Correct!';
+                        } else {
+                            writtenAnswer.classList.add('incorrect');
+                            feedbackElement.classList.add('incorrect');
+                            feedbackElement.textContent = 'Incorrect.';
+
+                            const correctAnswerCard = document.createElement('div');
+                            correctAnswerCard.className = 'correct-answer-card';
+                            correctAnswerCard.innerHTML = `Correct answer: <strong>${correctAnswer}</strong>`;
+                            feedbackElement.appendChild(correctAnswerCard);
+                        }
+
+                        const explanationCard = buildExplanationCard(explanation);
+                        if (explanationCard) {
+                            feedbackElement.appendChild(explanationCard);
+                        }
+
+                        return;
+                    }
+
+                    const labels = questionBox.querySelectorAll('.form-check label');
+                    const inputs = questionBox.querySelectorAll('.form-check input');
+                    inputs.forEach(input => {
+                        input.disabled = true;
+                    });
+
+                    labels.forEach(label => {
+                        const input = label.previousElementSibling;
+                        if (!input) {
+                            return;
+                        }
+
+                        const isCorrectAnswer = input.value === correctAnswer;
+                        const isSelectedAnswer = input.value === submittedAnswer;
+                        const isIncorrectSelection = isSelectedAnswer && !isCorrectAnswer;
+
+                        label.classList.remove('correct', 'incorrect');
+
+                        if (isCorrectAnswer) {
+                            label.classList.add('correct');
+                        } else if (isIncorrectSelection) {
+                            label.classList.add('incorrect');
+                        }
+                    });
+
+                    const optionsContainer = questionBox.querySelector('.options');
+                    const explanationCard = buildExplanationCard(explanation);
+
+                    if (optionsContainer && explanationCard) {
+                        optionsContainer.appendChild(explanationCard);
+                    }
+                });
+
+                const firstQuestion = document.querySelector('.question-box');
+                if (firstQuestion) {
+                    firstQuestion.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }
+
+                console.log('✅ REVIEW MODE: Answer marking completed');
+            }
 
             if (quizForm) {
                 // Handle multiple choice answers
@@ -1691,45 +1880,20 @@
                 
                 // Reset flag when quiz starts
                 soundPlayed = false;
-                
-                // Function to show quiz results popup
-                function showQuizResults(data) {
-                    const popupOverlay = document.getElementById('popup-overlay');
-                    const popupTitle = document.getElementById('popup-title');
-                    const popupScore = document.getElementById('popup-score');
-                    const popupMessage = document.getElementById('popup-message');
-                    const gradeIcon = document.getElementById('grade-icon');
-                    
-                    // Update popup content
-                    popupScore.textContent = `${data.score}/${data.total}`;
-                    
-                    // Set title and message based on performance
-                    if (data.percentage === 100) {
-                        popupTitle.textContent = 'Perfect Score!';
-                        popupMessage.textContent = 'Outstanding! You got everything right!';
-                        gradeIcon.innerHTML = '<i class="fas fa-star" style="color: #ffd700;"></i>';
-                    } else if (data.percentage >= 80) {
-                        popupTitle.textContent = 'Well Done!';
-                        popupMessage.textContent = 'Great job! You\'re making excellent progress!';
-                        gradeIcon.innerHTML = '<i class="fas fa-thumbs-up" style="color: #28a745;"></i>';
-                    } else if (data.percentage >= 60) {
-                        popupTitle.textContent = 'Good Effort!';
-                        popupMessage.textContent = 'You\'re on the right track! Keep practicing!';
-                        gradeIcon.innerHTML = '<i class="fas fa-check-circle" style="color: #17a2b8;"></i>';
-                    } else {
-                        popupTitle.textContent = 'Keep Learning!';
-                        popupMessage.textContent = 'Don\'t worry! Review the material and try again!';
-                        gradeIcon.innerHTML = '<i class="fas fa-lightbulb" style="color: #ffc107;"></i>';
-                    }
-                    
-                    // Show popup
-                    popupOverlay.classList.add('show');
-                    
-                    // LETHAL FIX: Play sound only once
-                    if (!soundPlayed) {
-                        playQuizCompletionSound(data.score, data.total);
-                        soundPlayed = true;
-                    }
+
+                function setPopupActionsDisabled(disabled) {
+                    [reviewButton, retryButton, viewProgressButton].forEach(action => {
+                        if (!action) {
+                            return;
+                        }
+
+                        if ('disabled' in action) {
+                            action.disabled = disabled;
+                        }
+
+                        action.style.pointerEvents = disabled ? 'none' : '';
+                        action.style.opacity = disabled ? '0.55' : '';
+                    });
                 }
 
                 // Function to update source progress
@@ -1803,13 +1967,7 @@
                     
                     console.log(`✅ GRADED in ${Math.round(gradingTime)}ms: ${score}/${totalQuestions} (${percentage}%)`);
                     
-                    // INSTANT RESULTS
-                    showQuizResults({
-                        score: score,
-                        total: totalQuestions,
-                        percentage: percentage,
-                        processing_time: gradingTime
-                    });
+                    primeQuizCompletionSounds();
                     
                     // LETHAL DATA PREPARATION - Ultra-fast
                     const formData = new FormData(this);
@@ -1961,6 +2119,8 @@
                         return response.json();
                     })
                     .then(data => {
+                        latestReviewPayload = data;
+
                         // LOCK SUBMIT BUTTON PERMANENTLY - NO RE-ENABLING
                         submitButton.disabled = true;
                         submitButton.innerHTML = 'Quiz Submitted';
@@ -1990,9 +2150,11 @@
 
                         // Use the correct message field
                         popupMessage.textContent = quizData.encouragement || quizData.message || data.message || 'Quiz completed!';
+                        setPopupActionsDisabled(false);
 
                         // Calculate percentage
                         const percentage = (score / total) * 100;
+                        playQuizCompletionSound(score, total);
 
                         // Update grade icon and title
                         if (percentage === 100) {
@@ -2144,110 +2306,6 @@
                         }
                         @endif
                         
-                        // Mark correct and incorrect answers only if we have the data
-                        console.log('🔍 REVIEW MODE: Full response data:', data);
-                        console.log('🔍 REVIEW MODE: Checking data.correct_answers:', data.correct_answers);
-                        console.log('🔍 REVIEW MODE: Checking data.data:', data.data);
-
-                        // Check for correct_answers in different possible locations
-                        let correctAnswers = null;
-                        if (data.correct_answers) {
-                            correctAnswers = data.correct_answers;
-                            console.log('🔍 REVIEW MODE: Found correct_answers in data.correct_answers', correctAnswers);
-                        } else if (data.data && data.data.correct_answers) {
-                            correctAnswers = data.data.correct_answers;
-                            console.log('🔍 REVIEW MODE: Found correct_answers in data.data.correct_answers', correctAnswers);
-                        } else if (data.data && data.data.correctAnswers) {
-                            correctAnswers = data.data.correctAnswers;
-                            console.log('🔍 REVIEW MODE: Found correct_answers in data.data.correctAnswers', correctAnswers);
-                        }
-
-                        if (correctAnswers) {
-                            console.log('🔍 REVIEW MODE: Processing correct answers for review', correctAnswers);
-
-                            Object.keys(correctAnswers).forEach(questionId => {
-                                const correctAnswer = correctAnswers[questionId];
-                                const submittedAnswer = selectedAnswers[questionId] || ''; // Use selectedAnswers object instead of formData
-                                const questionBox = document.querySelector(`[data-question-id="${questionId}"]`);
-
-                                console.log(`🔍 REVIEW MODE: Question ${questionId} - Correct: "${correctAnswer}", Submitted: "${submittedAnswer}"`);
-
-                                if (questionBox) {
-                                    // Check if this is a written question
-                                    const writtenAnswer = questionBox.querySelector('.written-answer');
-                                    if (writtenAnswer) {
-                                        // Handle written question
-                                        const feedbackElement = questionBox.querySelector('.answer-feedback');
-
-                                        // Disable the textarea
-                                        writtenAnswer.disabled = true;
-
-                                        // Store the correct answer for review
-                                        questionBox.setAttribute('data-correct-answer', correctAnswer);
-
-                                        // Check if answer was correct
-                                        const isCorrect = correctAnswer && submittedAnswer &&
-                                            correctAnswer.toLowerCase().trim() === submittedAnswer.toLowerCase().trim();
-
-                                        console.log(`🔍 REVIEW MODE: Written question ${questionId} - Is correct: ${isCorrect}`);
-
-                                        if (isCorrect) {
-                                            writtenAnswer.classList.add('correct');
-                                            feedbackElement.classList.add('correct');
-                                            feedbackElement.textContent = 'Correct!';
-                                        } else {
-                                            writtenAnswer.classList.add('incorrect');
-                                            feedbackElement.classList.add('incorrect');
-
-                                            // Create a card to show the correct answer
-                                            const correctAnswerCard = document.createElement('div');
-                                            correctAnswerCard.className = 'correct-answer-card';
-                                            correctAnswerCard.innerHTML = `Correct answer: <strong>${correctAnswer}</strong>`;
-                                            feedbackElement.appendChild(correctAnswerCard);
-                                        }
-                                    } else {
-                                        // Handle multiple choice question
-                                        const labels = questionBox.querySelectorAll('.form-check label');
-                                        const inputs = questionBox.querySelectorAll('.form-check input');
-
-                                        // First disable all inputs
-                                        inputs.forEach(input => input.disabled = true);
-
-                                        console.log(`🔍 REVIEW MODE: Multiple choice question ${questionId} - Processing ${labels.length} options`);
-
-                                        // ROBUST REVIEW LOGIC - Use CSS classes to override blue selection
-                                        labels.forEach(label => {
-                                            const input = label.previousElementSibling;
-                                            if (input) {
-                                                const isCorrectAnswer = input.value === correctAnswer;
-                                                const isSelectedAnswer = input.value === submittedAnswer;
-                                                const isIncorrectSelection = isSelectedAnswer && !isCorrectAnswer;
-
-                                                // Remove any existing classes first
-                                                label.classList.remove('correct', 'incorrect');
-
-                                                if (isCorrectAnswer) {
-                                                    // Always mark correct answer in green
-                                                    label.classList.add('correct');
-                                                } else if (isIncorrectSelection) {
-                                                    // Mark selected wrong answer in red
-                                                    label.classList.add('incorrect');
-                                                }
-
-                                                console.log(`🔍 REVIEW MODE: Question ${questionId} - Option "${input.value}": Correct=${isCorrectAnswer}, Selected=${isSelectedAnswer}, Incorrect=${isIncorrectSelection}`);
-                                            }
-                                        });
-                                    }
-                                }
-                            });
-
-                            console.log('✅ REVIEW MODE: Answer marking completed');
-                        } else {
-                            console.log('❌ REVIEW MODE: No correct_answers data found in response');
-                        }
-                        
-                        // LETHAL FIX: Sound already played in showQuizResults - no duplicate
-                        
                         // Show popup
                         popupOverlay.classList.add('show');
                         popup.classList.add('show');
@@ -2273,7 +2331,19 @@
                             errorMessage = 'Security token expired. Please refresh the page and try again.';
                         }
                         
-                        alert(errorMessage + '\n\nTechnical details: ' + error.message);
+                        gradeIcon.innerHTML = '<i class="fas fa-circle-exclamation"></i>';
+                        gradeIcon.className = 'grade-icon needs-improvement';
+                        popupTitle.textContent = 'Submission Failed';
+                        popupScore.textContent = '';
+                        popupMessage.textContent = errorMessage;
+                        popupOverlay.classList.add('show');
+                        popup.classList.add('show');
+                        setPopupActionsDisabled(false);
+                        if (reviewButton) {
+                            reviewButton.disabled = true;
+                            reviewButton.style.pointerEvents = 'none';
+                            reviewButton.style.opacity = '0.55';
+                        }
                     });
                 });
             }
@@ -2284,6 +2354,8 @@
                 setTimeout(() => {
                     popupOverlay.classList.remove('show');
                 }, 300);
+
+                showReviewMode(latestReviewPayload);
                 
                 // BRUTAL SUBMIT BUTTON LOCKDOWN IN REVIEW MODE
                 if (submitButton) {
@@ -2311,6 +2383,47 @@
 
         // LETHAL GLOBAL FLAG - Prevent any duplicate sound plays
         let globalSoundPlayed = false;
+        let globalSoundPrimed = false;
+
+        function primeQuizCompletionSounds() {
+            if (globalSoundPrimed) {
+                return;
+            }
+
+            globalSoundPrimed = true;
+
+            ['quizPerfectSound', 'quizPartialSound', 'quizWrongSound'].forEach((soundElementId) => {
+                const audioElement = document.getElementById(soundElementId);
+
+                if (!audioElement) {
+                    return;
+                }
+
+                try {
+                    audioElement.volume = 0.7;
+                    audioElement.muted = true;
+
+                    const playPromise = audioElement.play();
+
+                    if (playPromise && typeof playPromise.then === 'function') {
+                        playPromise.then(() => {
+                            audioElement.pause();
+                            audioElement.currentTime = 0;
+                            audioElement.muted = false;
+                        }).catch(() => {
+                            audioElement.muted = false;
+                            audioElement.load();
+                        });
+                    } else {
+                        audioElement.muted = false;
+                        audioElement.load();
+                    }
+                } catch (_error) {
+                    audioElement.muted = false;
+                    audioElement.load();
+                }
+            });
+        }
         
         // SIMPLE RELIABLE AUDIO SYSTEM
         function playQuizCompletionSound(score, total) {

@@ -25,7 +25,9 @@ class StudentAssignmentApiController extends Controller
      */
     public function getCountdownData(Assignment $assignment): JsonResponse
     {
-        Log::info('Method getCountdownData called', ['user_id' => auth()->id(), 'timestamp' => now()]);
+        if (app()->environment('local', 'testing')) {
+            Log::info('Method getCountdownData called', ['user_id' => auth()->id(), 'timestamp' => now()]);
+        }
         $this->authorize('view', $assignment);
 
         $timeRemaining = $assignment->getTimeRemaining();
@@ -48,7 +50,9 @@ class StudentAssignmentApiController extends Controller
      */
     public function getStats(): JsonResponse
     {
-        Log::info('Method getStats called', ['user_id' => auth()->id(), 'timestamp' => now()]);
+        if (app()->environment('local', 'testing')) {
+            Log::info('Method getStats called', ['user_id' => auth()->id(), 'timestamp' => now()]);
+        }
         $analytics = $this->assignmentService->getStudentPerformanceAnalytics(auth()->id());
         
         return response()->json($analytics);
@@ -59,30 +63,38 @@ class StudentAssignmentApiController extends Controller
      */
     public function getAssignmentsForCourse(Request $request): JsonResponse
     {
-        Log::info('Method getAssignmentsForCourse called', ['user_id' => auth()->id(), 'timestamp' => now()]);
+        if (app()->environment('local', 'testing')) {
+            Log::info('Method getAssignmentsForCourse called', ['user_id' => auth()->id(), 'timestamp' => now()]);
+        }
         $courseId = $request->input('course_id');
         
         if (!$courseId) {
             return response()->json(['assignments' => []]);
         }
 
-        // LETHAL EAGER LOADING: Load assignments with comprehensive related data
+        $currentUser = Auth::user();
+
         $assignments = Assignment::select('id', 'user_id', 'topic_id', 'course_id', 'title', 'deadline', 'created_at')
                                 ->with([
                                     'topic:id,name,course_id',
-                                    'topic.course:id,name',
-                                    'tutor:id,name,email',
-                                    'student:id,name,email'
                                 ])
-                                ->where('user_id', auth()->id())
+                                ->where('user_id', $currentUser->id)
                                 ->where('course_id', $courseId)
                                 ->get()
-                                ->filter(function($assignment) {
-                                    // Filter by computed status since status column doesn't exist
-                                    $status = $assignment->getStatusForUser(Auth::user());
-                                    return in_array($status, [Assignment::STATUS_ACTIVE, Assignment::STATUS_OVERDUE]);
+                                ->map(function($assignment) use ($currentUser) {
+                                    $status = $assignment->getStatusForUser($currentUser);
+
+                                    return [
+                                        'assignment' => $assignment,
+                                        'status' => $status,
+                                    ];
                                 })
-                                ->map(function($assignment) {
+                                ->filter(function($item) {
+                                    return in_array($item['status'], [Assignment::STATUS_ACTIVE, Assignment::STATUS_OVERDUE], true);
+                                })
+                                ->map(function($item) {
+                                    $assignment = $item['assignment'];
+
                                     return [
                                         'id' => $assignment->id,
                                         'title' => $assignment->title,
@@ -90,7 +102,7 @@ class StudentAssignmentApiController extends Controller
                                         'topic_id' => $assignment->topic_id,
                                         'deadline' => $assignment->deadline->toISOString(),
                                         'time_remaining_human' => $assignment->getTimeRemainingHuman(),
-                                        'status' => $assignment->status,
+                                        'status' => $item['status'],
                                         'difficulty_level' => $assignment->getDifficultyLevel(),
                                         'is_overdue' => $assignment->isOverdue(),
                                         'can_be_completed' => $assignment->canBeCompleted()
@@ -105,7 +117,9 @@ class StudentAssignmentApiController extends Controller
      */
     public function getProgressWidget(): JsonResponse
     {
-        Log::info('Method getProgressWidget called', ['user_id' => auth()->id(), 'timestamp' => now()]);
+        if (app()->environment('local', 'testing')) {
+            Log::info('Method getProgressWidget called', ['user_id' => auth()->id(), 'timestamp' => now()]);
+        }
         $assignments = $this->assignmentService->getStudentAssignments(auth()->id());
         
         $stats = [

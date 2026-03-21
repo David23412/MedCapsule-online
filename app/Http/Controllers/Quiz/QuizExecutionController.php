@@ -83,15 +83,24 @@ class QuizExecutionController extends Controller
             }
 
             return [
-                'has_access' => $user->isAdmin() || $user->hasAccessToCourse($course->id) || (!$course->price || $course->price <= 0),
+                'has_access' => $user->isAdmin() || $user->hasAccessToCourse($course->id),
                 'assignment' => $assignment,
                 'assignment_id' => $assignmentId
             ];
         });
 
         if (!$quizAccessData['has_access']) {
+            if ($user->requiresSurveyUnlockForCourse($course)) {
+                return redirect($user->freeCourseSurveyRedirectFor($course, request()->getRequestUri()));
+            }
+
             return redirect()->route('topics.forCourse', $course->id)
                 ->with('error', 'You must be granted access to this course to take quizzes.');
+        }
+
+        if (!$user->isAdmin() && $user->isTopicPreviewLocked($topic)) {
+            return redirect()->route('topics.forCourse', $course->id)
+                ->with('error', 'This topic is outside the free preview. Unlock the full course to continue.');
         }
 
         $assignment = $quizAccessData['assignment'];
@@ -146,7 +155,11 @@ class QuizExecutionController extends Controller
             'assignment' => $assignment,
             'mode' => $assignment ? 'assignment' : 'quiz',
             'user_id' => $user->id, // For security validation
-            'quiz_timestamp' => now()->toISOString() // For session validation
+            'quiz_timestamp' => now()->toISOString(), // For session validation
+            'currentUserView' => [
+                'profile_image_url' => $user->getProfileImageUrl(),
+                'profile_fallback_url' => 'https://ui-avatars.com/api/?name=' . urlencode($user->name) . '&size=200&background=007bff&color=ffffff',
+            ],
         ];
 
         return view('solve_quiz', $viewData);
@@ -221,10 +234,17 @@ class QuizExecutionController extends Controller
             $validated = $this->quizValidationService->validateQuizSubmission($validationRequest, $isAssignment, $userId, $requestId);
             
             // Access validation - check if user has access to course
-            if (!$user->isAdmin() && !$user->hasAccessToCourse($course->id) && $course->price && $course->price > 0) {
+            if (!$user->isAdmin() && !$user->hasAccessToCourse($course->id)) {
                 return response()->json([
                     'success' => false,
                     'error' => 'Access denied to this course.'
+                ], 403);
+            }
+
+            if (!$user->isAdmin() && $user->isTopicPreviewLocked($topic)) {
+                return response()->json([
+                    'success' => false,
+                    'error' => 'This topic is outside the free preview. Unlock the full course to continue.'
                 ], 403);
             }
             
@@ -318,12 +338,14 @@ class QuizExecutionController extends Controller
                 'encouragement' => $gradingResult['encouragement'],
                 'source_progress' => $gradingResult['source_progress'] ?? [],
                 'correct_answers' => $gradingResult['correct_answers'] ?? [],
+                'incorrect_answers' => $gradingResult['incorrect_answers'] ?? [],
+                'question_explanations' => $gradingResult['question_explanations'] ?? [],
                 'xp_earned' => $gradingResult['xp_earned'] ?? 0,
                 'level_up' => $gradingResult['level_up'] ?? false,
                 'new_level' => $gradingResult['new_level'] ?? null,
                 'assignment_completed' => $assignmentCompleted,
                 'assignment_id' => $assignmentId
-            ])->header('Content-Type', 'application/json')->header('Access-Control-Allow-Origin', '*');
+            ])->header('Content-Type', 'application/json');
             
         } catch (\Exception $e) {
             Log::error('Quiz grading failed', [
@@ -335,7 +357,7 @@ class QuizExecutionController extends Controller
             return response()->json([
                 'success' => false,
                 'error' => 'An error occurred while grading the quiz. Please try again.'
-            ], 500)->header('Content-Type', 'application/json')->header('Access-Control-Allow-Origin', '*');
+            ], 500)->header('Content-Type', 'application/json');
         }
     }
 

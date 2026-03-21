@@ -48,7 +48,9 @@ class QuizReadController extends Controller
                 ->with('topics')
                 ->get()
                 ->pluck('topics')
-                ->flatten();
+                ->flatten()
+                ->reject(fn ($topic) => $user->isTopicPreviewLocked($topic))
+                ->values();
 
             $quizzes = $accessibleTopics->map(function ($topic) {
                 return [
@@ -128,15 +130,37 @@ class QuizReadController extends Controller
             }
             $user = auth()->user();
 
-            // Check if user has access to this topic
-            // FIXED: Use isEnrolledInCourse method which properly handles admin access
-            if (!$user->isEnrolledInCourse($topicModel->course_id)) {
+            if (!$user->hasAccessToCourse($topicModel->course_id)) {
+                if ($user->requiresSurveyUnlockForCourse($topicModel->course_id)) {
+                    $surveyUrl = $user->freeCourseSurveyRedirectFor($topicModel->course_id, request()->getRequestUri());
+
+                    if ($request->expectsJson()) {
+                        return response()->json([
+                            'error' => 'Free course survey required',
+                            'survey_url' => $surveyUrl,
+                        ], 423);
+                    }
+
+                    return redirect($surveyUrl);
+                }
+
                 if ($request->expectsJson()) {
                     return response()->json([
                         'error' => 'Access denied to this quiz'
                     ], 403);
                 }
                 abort(403, 'Access denied to this quiz');
+            }
+
+            if ($user->isTopicPreviewLocked($topicModel)) {
+                if ($request->expectsJson()) {
+                    return response()->json([
+                        'error' => 'Preview limit reached for this course'
+                    ], 403);
+                }
+
+                return redirect()->route('topics.forCourse', $topicModel->course_id)
+                    ->with('error', 'This topic is outside the free preview. Unlock the full course to continue.');
             }
 
             // Get quiz statistics using UltraFastQuizService
@@ -218,7 +242,11 @@ class QuizReadController extends Controller
                     'correct' => $totalCorrectQuestions,
                     'total' => $totalQuestionsInTopic,
                     'percentage' => $totalQuestionsInTopic > 0 ? round(($totalCorrectQuestions / $totalQuestionsInTopic) * 100, 1) : 0
-                ]
+                ],
+                'currentUserView' => [
+                    'profile_image_url' => auth()->user()->getProfileImageUrl(),
+                    'profile_fallback_url' => 'https://ui-avatars.com/api/?name=' . urlencode(auth()->user()->name) . '&size=200&background=007bff&color=ffffff',
+                ],
             ];
 
             return view('solve_quiz', $viewData);
@@ -260,9 +288,7 @@ class QuizReadController extends Controller
             $topic = Topic::with('course')->findOrFail($id);
             $user = auth()->user();
 
-            // Check if user has access to this topic
-            // FIXED: Use isEnrolledInCourse method which properly handles admin access
-            if (!$user->isEnrolledInCourse($topic->course_id)) {
+            if (!$user->hasAccessToCourse($topic->course_id)) {
                 return response()->json([
                     'error' => 'Access denied to this quiz'
                 ], 403);

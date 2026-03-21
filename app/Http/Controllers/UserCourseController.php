@@ -10,8 +10,10 @@ use App\Http\Requests\SearchUsersRequest;
 use App\Models\User;
 use App\Models\Course;
 use App\Services\UserCourseService;
+use App\Services\FreeCourseSurveyService;
 use App\Services\PaymentService;
 use App\Services\UserService;
+use App\Services\Learning\SchedulerCalibrationCoverageService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use App\Http\Requests\UpdatePaymentSettingsRequest;
@@ -19,23 +21,30 @@ use Illuminate\Http\Request;
 
 class UserCourseController extends Controller
 {
-        protected $userCourseService;
+    protected $userCourseService;
     protected $paymentService;
     protected $userService;
+    protected $freeCourseSurveyService;
 
-    public function __construct(UserCourseService $userCourseService, PaymentService $paymentService, UserService $userService)
+    public function __construct(UserCourseService $userCourseService, PaymentService $paymentService, UserService $userService, FreeCourseSurveyService $freeCourseSurveyService)
     {
         $this->userCourseService = $userCourseService;
         $this->paymentService = $paymentService;
         $this->userService = $userService;
+        $this->freeCourseSurveyService = $freeCourseSurveyService;
     }
 
     public function index()
     {
         $data = $this->userService->getManageAccessPageData(15); // Default 15 users per page
+        $surveyInsights = $this->freeCourseSurveyService->adminInsights();
+        $schedulerCalibration = app(SchedulerCalibrationCoverageService::class)->buildDashboard();
 
         if (!$data['success']) {
-            return view('admin.manage-access')->with('error', $data['message']);
+            return view('admin.manage-access', [
+                'surveyInsights' => $surveyInsights,
+                'schedulerCalibration' => $schedulerCalibration,
+            ])->with('error', $data['message']);
         }
 
         return view('admin.manage-access', [
@@ -43,6 +52,8 @@ class UserCourseController extends Controller
             'courses' => $data['courses'],
             'enrolledUsers' => $data['enrolledUsers'],
             'userStats' => $data['userStats'],
+            'surveyInsights' => $surveyInsights,
+            'schedulerCalibration' => $schedulerCalibration,
         ]);
     }
 

@@ -50,7 +50,8 @@ class TrustProxies extends Middleware
     {
         $host = request()->getHost();
         
-        return str_contains($host, 'ngrok-free.app') ||
+        return str_contains($host, 'ngrok-free.dev') ||
+               str_contains($host, 'ngrok-free.app') ||
                str_contains($host, 'ngrok.io') ||
                str_contains($host, 'ngrok.com');
     }

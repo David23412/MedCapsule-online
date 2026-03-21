@@ -8,10 +8,7 @@ use App\Models\Assignment;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Http\Request;
-use App\Services\QuizCacheService;
-use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Log;
-use App\Services\QuizPerformanceService;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Http\Response;
 
@@ -54,24 +51,10 @@ use Illuminate\Http\Response;
             ]);
 
             return Cache::remember($cacheKey, 3600, function () use ($topic, $user) {
-                // Removed problematic eager loading - using lazy loading instead
-                $topic = $topic->load([
-                    'course:id,name,price',
-                    'course.users:id,name,email',
-                    'assignments:id,topic_id,user_id,status,deadline',
-                    'assignments.user:id,name,email',
-                    'questions:id,topic_id,difficulty,deleted'
-                ]);
-                
-                // Eager load user relationships for access check
-                $user = $user->load([
-                    'courses:id,name',
-                    'assignments:id,user_id,topic_id,status',
-                    'quizAttempts:id,user_id,topic_id,score,created_at'
-                ]);
-                
+                $topic = $this->loadTopicForAccess($topic->id);
+
                 // Admin users always have access
-                if ($user->role === 'admin') {
+                if ($user->isAdmin()) {
                     return [
                         'can_access' => true,
                         'is_admin' => true,
@@ -92,7 +75,7 @@ use Illuminate\Http\Response;
                 }
                 
                 // Check if user is enrolled in the course
-                $isEnrolled = $topic->course->isUserEnrolled($user->id);
+                $isEnrolled = $this->isUserEnrolledInTopicCourse($topic, $user);
                 if (!$isEnrolled) {
                     return [
                         'can_access' => false,
@@ -100,9 +83,19 @@ use Illuminate\Http\Response;
                         'status_code' => Response::HTTP_FORBIDDEN
                     ];
                 }
+
+                if ($user->isTopicPreviewLocked($topic)) {
+                    return [
+                        'can_access' => false,
+                        'reason' => 'This topic is locked in preview mode. Upgrade to unlock the full course.',
+                        'status_code' => Response::HTTP_FORBIDDEN
+                    ];
+                }
                 
-                // Check for active assignments
-                $activeAssignment = $this->getActiveAssignment($topic, $user);
+                [$activeAssignment, $inactiveAssignment] = $this->resolveTopicAssignments(
+                    $this->getAssignmentsForTopicAndUser($topic, $user),
+                    $user
+                );
 
                 if ($activeAssignment) {
                     // User has an active assignment for this topic
@@ -112,14 +105,11 @@ use Illuminate\Http\Response;
                         'assignment_id' => $activeAssignment->id,
                         'assignment_mode' => $activeAssignment->assignment_mode,
                         'assignment_deadline' => $activeAssignment->deadline->format('Y-m-d H:i:s'),
-                        'time_limit' => $activeAssignment->time_limit,
+                        'time_limit' => $activeAssignment->time_limit ?? $activeAssignment->duration_minutes,
                         'sources' => $this->getAssignmentSources($activeAssignment, $topic),
                         'status_code' => Response::HTTP_OK
                     ];
                 }
-
-                // Check for inactive (locked or completed) assignments to allow practice mode
-                $inactiveAssignment = $this->getInactiveAssignment($topic, $user);
 
                 if ($inactiveAssignment) {
                     // User has an inactive assignment but can still access in practice mode
@@ -195,6 +185,8 @@ use Illuminate\Http\Response;
     {
         return \App\Models\Question::select('source')
             ->where('topic_id', $topic->id)
+            ->whereNotNull('source')
+            ->where('source', '!=', '')
             ->distinct()
             ->pluck('source')
             ->toArray();
@@ -217,6 +209,94 @@ use Illuminate\Http\Response;
             return $this->getAllTopicSources($topic);
         }
     }
+
+    private function loadTopicForAccess(int $topicId): Topic
+    {
+        return Topic::query()
+            ->select([
+                'id',
+                'course_id',
+                'display_order',
+                'cache_version',
+                'is_locked',
+                'locked_by_tutor_id',
+                'lock_reason',
+                'locked_at',
+            ])
+            ->with([
+                'lockedByTutor:id,name',
+            ])
+            ->findOrFail($topicId);
+    }
+
+    private function isUserEnrolledInTopicCourse(Topic $topic, User $user): bool
+    {
+        return $user->hasAccessToCourse($topic->course_id);
+    }
+
+    private function getAssignmentsForTopicAndUser(Topic $topic, User $user)
+    {
+        return Assignment::query()
+            ->select([
+                'id',
+                'topic_id',
+                'deadline',
+                'duration_minutes',
+                'assignment_mode',
+                'assigned_source',
+                'submitted_at',
+                'created_at',
+            ])
+            ->where('topic_id', $topic->id)
+            ->whereExists(function ($query) use ($user) {
+                $query->select(DB::raw(1))
+                    ->from('assignment_user')
+                    ->whereColumn('assignment_user.assignment_id', 'assignments.id')
+                    ->where('assignment_user.user_id', $user->id);
+            })
+            ->with([
+                'attempts' => function ($query) use ($user) {
+                    $query->select([
+                        'id',
+                        'assignment_id',
+                        'user_id',
+                        'score',
+                        'total_questions',
+                        'created_at',
+                    ])->where('user_id', $user->id);
+                }
+            ])
+            ->orderBy('deadline')
+            ->get();
+    }
+
+    private function resolveTopicAssignments($assignments, User $user): array
+    {
+        $activeAssignment = null;
+        $inactiveAssignment = null;
+
+        foreach ($assignments as $assignment) {
+            $status = $assignment->getStatusForUser($user);
+
+            if ($status === Assignment::STATUS_ACTIVE && !$activeAssignment) {
+                $activeAssignment = $assignment;
+                continue;
+            }
+
+            if (
+                !$inactiveAssignment &&
+                in_array($status, [Assignment::STATUS_LOCKED, Assignment::STATUS_COMPLETED], true)
+            ) {
+                $inactiveAssignment = $assignment;
+            }
+
+            if ($activeAssignment && $inactiveAssignment) {
+                break;
+            }
+        }
+
+        return [$activeAssignment, $inactiveAssignment];
+    }
     
     /**
      * Get active assignment for a topic and user
@@ -227,16 +307,12 @@ use Illuminate\Http\Response;
      */
     private function getActiveAssignment(Topic $topic, User $user): ?Assignment
     {
-        $assignments = Assignment::where('topic_id', $topic->id)
-            ->whereHas('assignedUsers', function ($query) use ($user) {
-                $query->where('user_id', $user->id);
-            })
-            ->get();
+        [$activeAssignment] = $this->resolveTopicAssignments(
+            $this->getAssignmentsForTopicAndUser($topic, $user),
+            $user
+        );
 
-        // Filter by the dynamically computed status for the user
-        return $assignments->first(function ($assignment) use ($user) {
-            return $assignment->getStatusForUser($user) === Assignment::STATUS_ACTIVE;
-        });
+        return $activeAssignment;
     }
     
     /**
@@ -248,17 +324,12 @@ use Illuminate\Http\Response;
      */
     private function getInactiveAssignment(Topic $topic, User $user): ?Assignment
     {
-        $assignments = Assignment::where('topic_id', $topic->id)
-            ->whereHas('assignedUsers', function ($query) use ($user) {
-                $query->where('user_id', $user->id);
-            })
-            ->get();
+        [, $inactiveAssignment] = $this->resolveTopicAssignments(
+            $this->getAssignmentsForTopicAndUser($topic, $user),
+            $user
+        );
 
-        // Filter for assignments that are locked or completed for the user
-        return $assignments->first(function ($assignment) use ($user) {
-            $status = $assignment->getStatusForUser($user);
-            return in_array($status, [Assignment::STATUS_LOCKED, Assignment::STATUS_COMPLETED]);
-        });
+        return $inactiveAssignment;
     }
     
     /**
@@ -272,7 +343,7 @@ use Illuminate\Http\Response;
     {
         try {
 
-        $topic = Topic::findOrFail($topicId);
+        $topic = Topic::query()->select('id')->findOrFail($topicId);
         $accessResult = $this->checkAccess($topic);
         
         return response()->json($accessResult, $accessResult['status_code']);
@@ -293,7 +364,7 @@ use Illuminate\Http\Response;
     public function getSourcesApi(Request $request, int $topicId)
     {
         try {
-            $topic = Topic::findOrFail($topicId);
+            $topic = Topic::query()->select('id')->findOrFail($topicId);
             $accessResult = $this->checkAccess($topic);
             
             if (!$accessResult['can_access']) {

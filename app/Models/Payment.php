@@ -75,6 +75,14 @@ class Payment extends Model
     }
 
     /**
+     * Check if payment is finalized successfully.
+     */
+    public function isSuccessful(): bool
+    {
+        return $this->status === 'completed';
+    }
+
+    /**
      * Check if payment is rejected
      */
     public function isRejected(): bool

@@ -96,14 +96,10 @@ class UserManagementController extends Controller
             Cache::forget("user_search_*");
 
             Log::info('Admin status toggled', [
-        // Check authorization for role assignment
-        if (!auth()->user()->can('assign-roles')) {
-            abort(403, 'Unauthorized to assign roles');
-        }
-
                 'target_user_id' => $user->id,
                 'new_role' => $user->role,
-                'admin_id' => auth()->id()
+                'admin_id' => auth()->id(),
+                'authorized' => auth()->user()->can('assign-roles')
             ]);
 
             return response()->json([

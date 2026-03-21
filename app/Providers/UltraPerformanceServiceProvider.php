@@ -7,6 +7,8 @@ use App\Services\Core\UltraPerformanceOptimizer;
 use App\Services\Core\AsyncOperationManager;
 use App\Services\Core\UltraConsolidatedCacheService;
 use App\Services\Core\FileIOOptimizer;
+use App\Services\QuizUltraConsolidatedCacheService;
+use App\Services\ResilientUltraConsolidatedCacheService;
 
 class UltraPerformanceServiceProvider extends ServiceProvider
 {
@@ -15,6 +17,14 @@ class UltraPerformanceServiceProvider extends ServiceProvider
         // Register the ONE AND ONLY cache service
         $this->app->singleton(UltraConsolidatedCacheService::class, function ($app) {
             return new UltraConsolidatedCacheService();
+        });
+
+        $this->app->singleton(QuizUltraConsolidatedCacheService::class, function ($app) {
+            return new QuizUltraConsolidatedCacheService($app->make(UltraConsolidatedCacheService::class));
+        });
+
+        $this->app->singleton(ResilientUltraConsolidatedCacheService::class, function () {
+            return new ResilientUltraConsolidatedCacheService();
         });
 
         $this->app->singleton(UltraPerformanceOptimizer::class, function ($app) {
@@ -106,6 +116,8 @@ class UltraPerformanceServiceProvider extends ServiceProvider
             'performance.optimizer',
             'performance.async',
             'performance.fileio',
+            QuizUltraConsolidatedCacheService::class,
+            ResilientUltraConsolidatedCacheService::class,
             UltraConsolidatedCacheService::class,
             UltraPerformanceOptimizer::class,
             AsyncOperationManager::class,

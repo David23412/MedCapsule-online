@@ -31,11 +31,6 @@ return new class extends Migration
             $table->unique(['user_id', 'plan_date']);
             $table->index(['user_id', 'plan_date']);
         });
-        
-        // Add exam_date to users table
-        Schema::table('users', function (Blueprint $table) {
-            $table->date('exam_date')->nullable()->after('weekly_goal');
-        });
     }
 
     /**

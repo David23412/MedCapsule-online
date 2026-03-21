@@ -3,7 +3,9 @@
 namespace App\Services;
 
 use App\Models\Course;
+use App\Models\AdminSetting;
 use App\Models\Topic;
+use App\Models\User;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Cache;
@@ -47,6 +49,17 @@ class HomePageService
 
             return $this->getEmergencyFallbackData();
         }
+    }
+
+    public function getActiveStudentCount(): int
+    {
+        return Cache::remember('home_active_student_count', 300, function (): int {
+            if (AdminSetting::get('fake_students_enabled', false)) {
+                return (int) AdminSetting::get('fake_students_count', 0);
+            }
+
+            return User::where('role', 0)->count();
+        });
     }
 
     /**

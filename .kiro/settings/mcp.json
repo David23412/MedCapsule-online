@@ -2,35 +2,62 @@
   "mcpServers": {
     "filesystem": {
       "command": "npx",
-      "args": ["-y", "@modelcontextprotocol/server-filesystem", "/Users/davidgeorge/Documents/Medcapsule-online"]
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-filesystem",
+        "/Users/davidgeorge/Documents/Medcapsule-online"
+      ],
+      "autoApprove": [
+        "read_multiple_files"
+      ]
     },
     "fetch": {
       "command": "npx",
-      "args": ["-y", "@kazuph/mcp-fetch"]
+      "args": [
+        "-y",
+        "@kazuph/mcp-fetch"
+      ]
     },
     "playwright": {
       "command": "npx",
-      "args": ["-y", "@executeautomation/playwright-mcp-server"]
+      "args": [
+        "-y",
+        "@executeautomation/playwright-mcp-server"
+      ]
     },
     "puppeteer": {
       "command": "npx",
-      "args": ["-y", "@modelcontextprotocol/server-puppeteer"]
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-puppeteer"
+      ]
     },
     "memory": {
       "command": "npx",
-      "args": ["-y", "@modelcontextprotocol/server-memory"]
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-memory"
+      ]
     },
     "macShell": {
       "command": "npx",
-      "args": ["-y", "@mseep/mac-shell-mcp"]
+      "args": [
+        "-y",
+        "@mseep/mac-shell-mcp"
+      ]
     },
     "github": {
       "command": "npx",
-      "args": ["-y", "@modelcontextprotocol/server-github"]
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-github"
+      ]
     },
     "n8n-mcp": {
       "command": "npx",
-      "args": ["n8n-mcp"],
+      "args": [
+        "n8n-mcp"
+      ],
       "env": {
         "MCP_MODE": "stdio",
         "LOG_LEVEL": "error",

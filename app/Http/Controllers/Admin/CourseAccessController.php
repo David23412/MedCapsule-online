@@ -18,7 +18,7 @@ class CourseAccessController extends Controller
     {
         $this->middleware(['auth']);
         $this->middleware(function ($request, $next) {
-            if (!auth()->user()->isAdmin()) {
+            if (!optional(auth()->user())->isAdmin()) {
                 abort(403, 'Unauthorized access.');
             }
             return $next($request);

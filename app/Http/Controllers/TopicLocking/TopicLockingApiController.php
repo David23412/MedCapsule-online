@@ -35,16 +35,12 @@ class TopicLockingApiController extends Controller
      */
     public function getLockedTopics(Request $request, int $courseId): JsonResponse
     {
-        Log::info('Method getLockedTopics called', ['user_id' => auth()->id(), 'timestamp' => now()]);
+        if (app()->environment('local', 'testing')) {
+            Log::info('Method getLockedTopics called', ['user_id' => auth()->id(), 'timestamp' => now()]);
+        }
         try {
-            // LETHAL EAGER LOADING: Load course with comprehensive topic data
-            $course = \App\Models\Course::select('id', 'name', 'description')
-                ->with([
-                    'topics:id,course_id,name,is_locked,locked_by,locked_at,lock_reason',
-                    'topics.lockedByTutor:id,name,email',
-                    'topics.questions:id,topic_id,difficulty',
-                    'topics.assignments:id,topic_id,status,created_at'
-                ])
+            $course = \App\Models\Course::query()
+                ->select('id')
                 ->findOrFail($courseId);
                 
             $lockedTopics = $this->lockingService->getLockedTopics($course);
@@ -77,7 +73,9 @@ class TopicLockingApiController extends Controller
      */
     public function getMyLockedTopics(Request $request): JsonResponse
     {
-        Log::info('Method getMyLockedTopics called', ['user_id' => auth()->id(), 'timestamp' => now()]);
+        if (app()->environment('local', 'testing')) {
+            Log::info('Method getMyLockedTopics called', ['user_id' => auth()->id(), 'timestamp' => now()]);
+        }
         $user = $this->checkPermission();
         
         try {
@@ -108,7 +106,9 @@ class TopicLockingApiController extends Controller
      */
     public function getLockInfo(Request $request, int $topicId): JsonResponse
     {
-        Log::info('Method getLockInfo called', ['user_id' => auth()->id(), 'timestamp' => now()]);
+        if (app()->environment('local', 'testing')) {
+            Log::info('Method getLockInfo called', ['user_id' => auth()->id(), 'timestamp' => now()]);
+        }
         try {
             $topic = Topic::findOrFail($topicId);
             $lockInfo = $this->lockingService->getLockInfo($topic);

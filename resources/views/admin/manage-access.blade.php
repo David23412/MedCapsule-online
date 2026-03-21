@@ -1,3 +1,13 @@
+@php
+    $activeTab = match (request()->query('tab')) {
+        'payments' => 'payment-history',
+        'survey-results' => 'survey-results',
+        'scheduler-quality' => 'scheduler-quality',
+        'videos' => 'video-management',
+        'payment-settings', 'settings' => 'settings',
+        default => 'access',
+    };
+@endphp
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -5,9 +15,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>Manage Access - MedCapsule</title>
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 50'%3E%3Crect fill='%233579F6' x='10' y='15' width='80' height='20' rx='10' ry='10' /%3E%3Crect x='50' y='15' width='40' height='20' fill='%23ff0000' rx='0 10 10 0' ry='10'/%3E%3Cline x1='50' y1='15' x2='50' y2='35' stroke='white' stroke-width='1.5' stroke-dasharray='2,1'/%3E%3C/svg%3E">
+    <link rel="shortcut icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 50'%3E%3Crect fill='%233579F6' x='10' y='15' width='80' height='20' rx='10' ry='10' /%3E%3Crect x='50' y='15' width='40' height='20' fill='%23ff0000' rx='0 10 10 0' ry='10'/%3E%3Cline x1='50' y1='15' x2='50' y2='35' stroke='white' stroke-width='1.5' stroke-dasharray='2,1'/%3E%3C/svg%3E">
+    <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 50'%3E%3Crect fill='%233579F6' x='10' y='15' width='80' height='20' rx='10' ry='10' /%3E%3Crect x='50' y='15' width='40' height='20' fill='%23ff0000' rx='0 10 10 0' ry='10'/%3E%3Cline x1='50' y1='15' x2='50' y2='35' stroke='white' stroke-width='1.5' stroke-dasharray='2,1'/%3E%3C/svg%3E">
     
     <!-- Bootstrap CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
     <!-- Font Awesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <!-- Select2 CSS -->
@@ -769,6 +783,576 @@
             font-weight: 500;
         }
 
+        .survey-hero-card {
+            background:
+                radial-gradient(circle at top left, rgba(191, 219, 254, 0.42), transparent 34%),
+                radial-gradient(circle at bottom right, rgba(196, 181, 253, 0.22), transparent 30%),
+                linear-gradient(135deg, #f9fbff 0%, #f1f6ff 42%, #fcfaff 100%);
+            color: #20304a;
+            border: 1px solid rgba(148, 163, 184, 0.1);
+            overflow: hidden;
+            box-shadow: 0 18px 38px rgba(15, 23, 42, 0.05);
+            position: relative;
+        }
+
+        .survey-hero-card::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(120deg, transparent 0%, rgba(255, 255, 255, 0.28) 50%, transparent 100%);
+            transform: translateX(-100%);
+            animation: surveyHeroSheen 7s ease-in-out infinite;
+            pointer-events: none;
+        }
+
+        .survey-hero-card h3,
+        .survey-hero-card p,
+        .survey-hero-card span,
+        .survey-hero-card div,
+        .survey-hero-card small {
+            color: inherit !important;
+        }
+
+        .survey-highlight-chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.55rem 0.85rem;
+            border-radius: 999px;
+            background: rgba(255, 255, 255, 0.82);
+            color: #3d4f75;
+            border: 1px solid rgba(148, 163, 184, 0.12);
+            backdrop-filter: blur(14px);
+            font-weight: 600;
+            box-shadow: 0 10px 22px rgba(15, 23, 42, 0.035);
+        }
+
+        .survey-pane-shell {
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+        }
+
+        .survey-hero-layout {
+            position: relative;
+            z-index: 1;
+        }
+
+        .survey-hero-copy {
+            max-width: 720px;
+        }
+
+        .survey-hero-title {
+            font-size: clamp(1.75rem, 2.3vw, 2.5rem);
+            line-height: 1.08;
+            letter-spacing: -0.03em;
+            margin-bottom: 0.85rem;
+        }
+
+        .survey-hero-body {
+            max-width: 620px;
+            color: #60708a !important;
+            font-size: 1rem;
+            line-height: 1.7;
+        }
+
+        .survey-hero-orb {
+            position: absolute;
+            border-radius: 50%;
+            pointer-events: none;
+            filter: blur(2px);
+            opacity: 0.75;
+            animation: surveyOrbFloat 10s ease-in-out infinite;
+        }
+
+        .survey-hero-orb.orb-one {
+            width: 170px;
+            height: 170px;
+            top: -48px;
+            right: -20px;
+            background: radial-gradient(circle, rgba(59, 130, 246, 0.14) 0%, rgba(59, 130, 246, 0) 72%);
+        }
+
+        .survey-hero-orb.orb-two {
+            width: 120px;
+            height: 120px;
+            bottom: -34px;
+            left: 18%;
+            background: radial-gradient(circle, rgba(124, 58, 237, 0.1) 0%, rgba(124, 58, 237, 0) 70%);
+            animation-delay: -3s;
+        }
+
+        .survey-hero-mini-stats {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.75rem;
+            margin-top: 1.25rem;
+        }
+
+        .survey-hero-mini-stat {
+            min-width: 140px;
+            padding: 0.85rem 1rem;
+            border-radius: 18px;
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.9) 0%, rgba(239, 246, 255, 0.84) 100%);
+            border: 1px solid rgba(96, 165, 250, 0.18);
+            box-shadow: 0 16px 30px rgba(37, 99, 235, 0.08);
+            backdrop-filter: blur(12px);
+        }
+
+        .survey-hero-mini-stat strong {
+            display: block;
+            font-size: 1.1rem;
+            color: #1e3a8a;
+        }
+
+        .survey-hero-mini-stat span {
+            display: block;
+            font-size: 0.8rem;
+            color: #6b7a90 !important;
+            margin-top: 0.25rem;
+        }
+
+        .survey-metric-card {
+            height: 100%;
+            border: 1px solid rgba(148, 163, 184, 0.08);
+            background:
+                radial-gradient(circle at top right, rgba(219, 234, 254, 0.24), transparent 34%),
+                linear-gradient(180deg, rgba(255, 255, 255, 0.985) 0%, rgba(249, 250, 255, 1) 100%);
+            box-shadow: 0 12px 26px rgba(15, 23, 42, 0.04);
+            border-radius: 20px;
+            transition: transform 0.35s ease, box-shadow 0.35s ease;
+            opacity: 0;
+            transform: translateY(16px);
+            transition: opacity 0.65s ease, transform 0.65s ease, box-shadow 0.35s ease;
+        }
+
+        .survey-insight-card {
+            height: 100%;
+            border: 1px solid rgba(148, 163, 184, 0.08);
+            background:
+                radial-gradient(circle at top left, rgba(219, 234, 254, 0.22), transparent 30%),
+                radial-gradient(circle at bottom right, rgba(233, 213, 255, 0.14), transparent 28%),
+                linear-gradient(180deg, rgba(255, 255, 255, 0.99) 0%, rgba(249, 250, 255, 1) 100%);
+            box-shadow: 0 12px 28px rgba(15, 23, 42, 0.04);
+            border-radius: 22px;
+            opacity: 0;
+            transform: translateY(18px);
+            transition: opacity 0.7s ease, transform 0.7s ease, box-shadow 0.35s ease;
+        }
+
+        .survey-insight-value {
+            font-family: "Inter", sans-serif;
+            font-size: 2.2rem;
+            font-weight: 800;
+            line-height: 1;
+            letter-spacing: -0.02em;
+            color: #2a4dbf;
+            text-rendering: geometricPrecision;
+            text-shadow: 0 0 0 rgba(0, 0, 0, 0.01);
+        }
+
+        .survey-metric-value {
+            font-family: "Inter", sans-serif;
+            font-size: 2rem;
+            font-weight: 800;
+            line-height: 1;
+            letter-spacing: -0.02em;
+            color: var(--header-color);
+            text-rendering: geometricPrecision;
+            text-shadow: 0 0 0 rgba(0, 0, 0, 0.01);
+        }
+
+        .survey-question-card {
+            border: 1px solid rgba(148, 163, 184, 0.08);
+            background:
+                radial-gradient(circle at top right, rgba(219, 234, 254, 0.16), transparent 26%),
+                linear-gradient(180deg, rgba(255, 255, 255, 0.99) 0%, rgba(249, 250, 255, 1) 100%);
+            box-shadow: 0 12px 28px rgba(15, 23, 42, 0.04);
+            border-radius: 24px;
+            opacity: 0;
+            transform: translateY(20px);
+            transition: opacity 0.75s ease, transform 0.75s ease, box-shadow 0.35s ease;
+            position: relative;
+            overflow: hidden;
+            z-index: 1;
+        }
+
+        .survey-question-card::before {
+            content: '';
+            position: absolute;
+            inset: auto 18% 18% 18%;
+            height: 130px;
+            background:
+                radial-gradient(circle at 18% 50%, rgba(37, 99, 235, 0.04), transparent 35%),
+                radial-gradient(circle at 52% 40%, rgba(124, 58, 237, 0.035), transparent 30%),
+                radial-gradient(circle at 82% 54%, rgba(56, 189, 248, 0.03), transparent 32%);
+            filter: blur(32px);
+            opacity: 0.28;
+            transform: translate3d(0, 0, 0);
+            animation: surveyCardFlow 18s ease-in-out infinite;
+            pointer-events: none;
+        }
+
+        .survey-question-card .card-body,
+        .survey-insight-card .card-body,
+        .survey-metric-card .card-body {
+            padding: 1.35rem 1.4rem;
+            position: relative;
+            z-index: 1;
+        }
+
+        .survey-question-topline {
+            margin-bottom: 1.25rem;
+        }
+
+        .survey-question-main {
+            gap: 1.75rem !important;
+            align-items: center !important;
+        }
+
+        .survey-question-meta {
+            min-width: 92px;
+            padding: 0.7rem 0.85rem;
+            border-radius: 16px;
+            background: linear-gradient(180deg, rgba(240, 247, 255, 0.96) 0%, rgba(247, 242, 255, 0.88) 100%);
+            border: 1px solid rgba(96, 165, 250, 0.14);
+        }
+
+        .survey-chart-shell {
+            width: 190px;
+            min-width: 190px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+        }
+
+        .survey-chart-shell::before {
+            content: '';
+            position: absolute;
+            width: 220px;
+            height: 220px;
+            border-radius: 50%;
+            background:
+                radial-gradient(circle, rgba(37, 99, 235, 0.05) 0%, rgba(37, 99, 235, 0.01) 45%, transparent 70%);
+            animation: surveyPulseHalo 6.2s ease-in-out infinite;
+            pointer-events: none;
+        }
+
+        .survey-donut {
+            width: 182px;
+            height: 182px;
+            position: relative;
+            transform: scale(0.9) rotate(-12deg);
+            opacity: 0;
+            transition: transform 0.95s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.75s ease;
+        }
+
+        .survey-donut-svg {
+            width: 100%;
+            height: 100%;
+            overflow: visible;
+        }
+
+        .survey-donut-ring {
+            fill: none;
+            stroke: rgba(148, 163, 184, 0.08);
+            stroke-width: 18;
+        }
+
+        .survey-donut-segment {
+            fill: none;
+            stroke-linecap: butt;
+            cursor: pointer;
+            transition: stroke-width 0.22s ease, filter 0.22s ease, opacity 0.22s ease;
+        }
+
+        .survey-donut-segment:hover,
+        .survey-donut-segment.is-active {
+            stroke-width: 24;
+            filter:
+                drop-shadow(0 0 1px rgba(15, 23, 42, 0.22))
+                drop-shadow(0 0 6px rgba(96, 165, 250, 0.28))
+                drop-shadow(0 0 12px rgba(59, 130, 246, 0.16))
+                drop-shadow(0 6px 14px rgba(37, 99, 235, 0.14));
+        }
+
+        .survey-donut-core {
+            position: absolute;
+            inset: 20px;
+            background: rgba(255, 255, 255, 0.97);
+            border-radius: 50%;
+            box-shadow: inset 0 0 0 1px rgba(148, 163, 184, 0.1);
+        }
+
+        .survey-donut-center {
+            position: absolute;
+            inset: 0;
+            z-index: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            padding: 1.25rem;
+            pointer-events: none;
+            gap: 0.4rem;
+            transform: translateY(-3px);
+        }
+
+        .survey-donut-center::before {
+            content: '';
+            position: absolute;
+            width: 88px;
+            height: 88px;
+            border-radius: 50%;
+            background: radial-gradient(circle, rgba(255, 255, 255, 0.95) 0%, rgba(244, 247, 255, 0.75) 100%);
+            z-index: -1;
+        }
+
+        .survey-donut-center strong {
+            font-family: "Inter", sans-serif;
+            font-size: 1.85rem;
+            line-height: 0.9;
+            letter-spacing: -0.02em;
+            color: #1e3a8a;
+            font-weight: 800;
+            text-rendering: geometricPrecision;
+            text-shadow: 0 0 0 rgba(0, 0, 0, 0.01);
+            margin: 0;
+        }
+
+        .survey-donut-center span {
+            display: block;
+            color: #64748b;
+            font-size: 0.78rem;
+            font-weight: 600;
+            line-height: 1;
+            margin: 0;
+        }
+
+        .survey-donut-tooltip {
+            position: absolute;
+            top: 8px;
+            left: 50%;
+            transform: translate(-50%, -8px);
+            padding: 0.45rem 0.65rem;
+            border-radius: 12px;
+            background: rgba(255, 255, 255, 0.97);
+            border: 1px solid rgba(148, 163, 184, 0.12);
+            box-shadow: 0 10px 22px rgba(15, 23, 42, 0.08);
+            font-size: 0.78rem;
+            line-height: 1.35;
+            color: #334155;
+            white-space: nowrap;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.18s ease, transform 0.18s ease;
+            z-index: 3;
+        }
+
+        .survey-donut-tooltip.is-visible {
+            opacity: 1;
+            transform: translate(-50%, -14px);
+        }
+
+        .survey-donut-tooltip strong {
+            display: block;
+            font-family: "Inter", sans-serif;
+            font-weight: 800;
+            letter-spacing: -0.02em;
+            color: #1e3a8a;
+        }
+
+        .survey-question-kicker {
+            font-size: 0.78rem;
+            font-weight: 700;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            color: var(--primary-color);
+            margin-bottom: 0.35rem;
+        }
+
+        .survey-choice-row + .survey-choice-row {
+            margin-top: 0.9rem;
+        }
+
+        .survey-choice-track {
+            width: 100%;
+            height: 10px;
+            border-radius: 999px;
+            background: #e9eefb;
+            overflow: hidden;
+            margin-top: 0.35rem;
+        }
+
+        .survey-choice-bar {
+            height: 100%;
+            border-radius: inherit;
+            background: linear-gradient(90deg, #8ec5fc 0%, #3b82f6 100%);
+        }
+
+        .survey-choice-bar.is-top {
+            background: linear-gradient(90deg, #34d399 0%, #059669 100%);
+        }
+
+        .survey-legend-item {
+            display: flex;
+            align-items: flex-start;
+            gap: 0.75rem;
+            padding: 0.75rem 0;
+            border-bottom: 1px solid rgba(226, 232, 240, 0.75);
+            opacity: 0;
+            transform: translateX(10px);
+            transition: opacity 0.5s ease, transform 0.5s ease;
+        }
+
+        .survey-legend-item:last-child {
+            border-bottom: none;
+            padding-bottom: 0;
+        }
+
+        .survey-legend-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-top: 0.3rem;
+            flex-shrink: 0;
+            box-shadow: 0 0 0 4px rgba(255, 255, 255, 0.7);
+        }
+
+        .survey-legend-content {
+            flex: 1 1 auto;
+            min-width: 0;
+        }
+
+        .survey-legend-progress {
+            width: 100%;
+            height: 2px;
+            margin-top: 0.5rem;
+            border-radius: 999px;
+            background: rgba(148, 163, 184, 0.12);
+            overflow: hidden;
+        }
+
+        .survey-legend-progress-fill {
+            height: 100%;
+            border-radius: inherit;
+            transform-origin: left center;
+            transform: scaleX(0);
+            opacity: 1;
+            filter: saturate(1.22) contrast(1.02);
+            transition: transform 0.8s cubic-bezier(0.22, 1, 0.36, 1);
+        }
+
+        .survey-question-card.is-visible,
+        .survey-insight-card.is-visible,
+        .survey-metric-card.is-visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .survey-question-card.is-visible:hover,
+        .survey-insight-card.is-visible:hover,
+        .survey-metric-card:hover {
+            box-shadow: 0 16px 30px rgba(15, 23, 42, 0.05);
+            transform: translateY(-1px);
+        }
+
+        .survey-question-card.is-visible .survey-donut {
+            opacity: 1;
+            transform: scale(1) rotate(0deg);
+            animation: surveyDonutFloat 5.4s ease-in-out infinite;
+        }
+
+        .survey-question-card.is-visible .survey-legend-item {
+            opacity: 1;
+            transform: translateX(0);
+        }
+
+        .survey-question-card.is-visible .survey-legend-progress-fill {
+            transform: scaleX(1);
+        }
+
+        .survey-question-card.is-visible .survey-legend-item:nth-child(1) { transition-delay: 0.08s; }
+        .survey-question-card.is-visible .survey-legend-item:nth-child(2) { transition-delay: 0.14s; }
+        .survey-question-card.is-visible .survey-legend-item:nth-child(3) { transition-delay: 0.2s; }
+        .survey-question-card.is-visible .survey-legend-item:nth-child(4) { transition-delay: 0.26s; }
+        .survey-question-card.is-visible .survey-legend-item:nth-child(5) { transition-delay: 0.32s; }
+        .survey-question-card.is-visible .survey-legend-item:nth-child(6) { transition-delay: 0.38s; }
+        .survey-question-card.is-visible .survey-legend-item:nth-child(7) { transition-delay: 0.44s; }
+
+        .survey-premium-muted {
+            color: #6b7a90 !important;
+        }
+
+        .survey-sticky-column {
+            position: sticky;
+            top: 1.5rem;
+        }
+
+        .survey-sidebar-card {
+            border-radius: 22px;
+            border: 1px solid rgba(96, 165, 250, 0.14);
+            box-shadow: 0 18px 36px rgba(37, 99, 235, 0.06);
+            background:
+                radial-gradient(circle at top right, rgba(219, 234, 254, 0.45), transparent 28%),
+                linear-gradient(180deg, rgba(255, 255, 255, 0.98) 0%, rgba(246, 249, 255, 1) 100%);
+        }
+
+        @keyframes surveyHeroSheen {
+            0%, 68%, 100% { transform: translateX(-100%); }
+            84% { transform: translateX(100%); }
+        }
+
+        @keyframes surveyOrbFloat {
+            0%, 100% { transform: translate3d(0, 0, 0) scale(1); }
+            50% { transform: translate3d(0, 6px, 0) scale(1.01); }
+        }
+
+        @keyframes surveyDonutFloat {
+            0%, 100% { transform: scale(1) rotate(0deg) translateY(0); }
+            50% { transform: scale(1.006) rotate(0.6deg) translateY(-2px); }
+        }
+
+        @keyframes surveyCardFlow {
+            0%, 100% { transform: translate3d(0, 0, 0) scale(1); opacity: 0.22; }
+            33% { transform: translate3d(6px, -4px, 0) scale(1.015); opacity: 0.28; }
+            66% { transform: translate3d(-5px, 4px, 0) scale(0.995); opacity: 0.2; }
+        }
+
+        @keyframes surveyPulseHalo {
+            0%, 100% { transform: scale(0.94); opacity: 0.32; }
+            50% { transform: scale(1.02); opacity: 0.42; }
+        }
+
+        .survey-response-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.35rem;
+            padding: 0.35rem 0.7rem;
+            border-radius: 999px;
+            background: #f3f6ff;
+            color: #3154c9;
+            font-size: 0.82rem;
+            font-weight: 600;
+        }
+
+        .survey-response-pill + .survey-response-pill {
+            margin-top: 0.45rem;
+        }
+
+        .survey-feedback-card {
+            border-left: 4px solid var(--primary-color);
+            background: linear-gradient(180deg, rgba(13, 110, 253, 0.04) 0%, rgba(255, 255, 255, 1) 100%);
+        }
+
+        .survey-feedback-text {
+            color: #334155;
+            font-size: 0.95rem;
+            line-height: 1.55;
+        }
+
         /* Responsive Design */
         @media (max-width: 768px) {
             .main-header {
@@ -814,7 +1398,30 @@
             .quick-actions {
                 flex-direction: column;
             }
-            
+
+            .survey-chart-shell {
+                width: 100%;
+                min-width: 0;
+                margin-bottom: 1rem;
+            }
+
+            .survey-donut {
+                width: 156px;
+                height: 156px;
+            }
+
+            .survey-hero-mini-stats {
+                gap: 0.6rem;
+            }
+
+            .survey-hero-mini-stat {
+                min-width: calc(50% - 0.3rem);
+            }
+
+            .survey-sticky-column {
+                position: static;
+            }
+
             .quick-actions .btn {
                 width: 100%;
             }
@@ -1030,6 +1637,7 @@
                     </a>
                 </div>
             </div>
+
         </div>
     </div>
 
@@ -1134,22 +1742,32 @@
         <!-- Navigation Tabs -->
         <ul class="nav nav-tabs" id="manageTabs" role="tablist">
             <li class="nav-item" role="presentation">
-                <button class="nav-link active" id="access-tab" data-bs-toggle="tab" data-bs-target="#access" type="button" role="tab">
+                <button class="nav-link {{ $activeTab === 'access' ? 'active' : '' }}" id="access-tab" data-bs-toggle="tab" data-bs-target="#access" type="button" role="tab">
                     <i class="fas fa-users me-2"></i>User Access
                 </button>
             </li>
             <li class="nav-item" role="presentation">
-                <button class="nav-link" id="payment-tab" data-bs-toggle="tab" data-bs-target="#payment-history" type="button" role="tab">
+                <button class="nav-link {{ $activeTab === 'payment-history' ? 'active' : '' }}" id="payment-tab" data-bs-toggle="tab" data-bs-target="#payment-history" type="button" role="tab">
                     <i class="fas fa-credit-card me-2"></i>Payment History
                 </button>
             </li>
             <li class="nav-item" role="presentation">
-                <button class="nav-link" id="video-tab" data-bs-toggle="tab" data-bs-target="#video-management" type="button" role="tab">
+                <button class="nav-link {{ $activeTab === 'survey-results' ? 'active' : '' }}" id="survey-results-tab" data-bs-toggle="tab" data-bs-target="#survey-results" type="button" role="tab">
+                    <i class="fas fa-chart-pie me-2"></i>Survey Results
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link {{ $activeTab === 'scheduler-quality' ? 'active' : '' }}" id="scheduler-quality-tab" data-bs-toggle="tab" data-bs-target="#scheduler-quality" type="button" role="tab">
+                    <i class="fas fa-brain me-2"></i>Scheduler Quality
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link {{ $activeTab === 'video-management' ? 'active' : '' }}" id="video-tab" data-bs-toggle="tab" data-bs-target="#video-management" type="button" role="tab">
                     <i class="fas fa-video me-2"></i>Video Management
                 </button>
             </li>
             <li class="nav-item" role="presentation">
-                <button class="nav-link" id="settings-tab" data-bs-toggle="tab" data-bs-target="#settings" type="button" role="tab">
+                <button class="nav-link {{ $activeTab === 'settings' ? 'active' : '' }}" id="settings-tab" data-bs-toggle="tab" data-bs-target="#settings" type="button" role="tab">
                     <i class="fas fa-cog me-2"></i>Settings
                 </button>
             </li>
@@ -1158,7 +1776,7 @@
         <!-- Tab Content -->
         <div class="tab-content" id="manageTabContent">
             <!-- User Access Tab -->
-            <div class="tab-pane fade show active" id="access" role="tabpanel">
+            <div class="tab-pane fade {{ $activeTab === 'access' ? 'show active' : '' }}" id="access" role="tabpanel">
                 <div class="row g-4">
                     <!-- Enhanced Grant Access Form -->
                     <div class="col-lg-6">
@@ -1180,7 +1798,7 @@
                                         <option value="">Type to search for user...</option>
                                         @if(isset($users) && $users->count() > 0)
                                             @foreach($users as $user)
-                                                <option value="{{ $user->id }}" {{ old('user_id') == $user->id ? 'selected' : '' }} data-email="{{ $user->email ?? '' }}" data-role="{{ $user->role ?? 0 }}" data-name="{{ $user->name ?? '' }}">
+                                                <option value="{{ $user->id }}" {{ old('user_id') == $user->id ? 'selected' : '' }} data-email="{{ $user->email ?? '' }}" data-number="{{ $user->number ?? '' }}" data-role="{{ $user->role ?? 0 }}" data-name="{{ $user->name ?? '' }}">
                                                     {{ $user->name ?? 'Unknown' }} ({{ $user->email ?? 'No Email' }})
                                                 </option>
                                             @endforeach
@@ -1237,6 +1855,7 @@
                                         <div class="flex-grow-1">
                                             <div class="fw-bold" id="selectedUserName"></div>
                                             <div class="small text-muted" id="selectedUserEmail"></div>
+                                            <div class="small text-muted" id="selectedUserNumber"></div>
                                         </div>
                                         <span class="badge" id="selectedUserRole"></span>
                                     </div>
@@ -1265,7 +1884,7 @@
                                         <option value="">Type to search for user...</option>
                                         @if(isset($users) && $users->count() > 0)
                                             @foreach($users as $user)
-                                                <option value="{{ isset($user->id) ? $user->id : '' }}" data-email="{{ isset($user->email) ? $user->email : '' }}" data-role="{{ isset($user->role) ? $user->role : 0 }}" data-name="{{ isset($user->name) ? $user->name : '' }}">
+                                                <option value="{{ isset($user->id) ? $user->id : '' }}" data-email="{{ isset($user->email) ? $user->email : '' }}" data-number="{{ isset($user->number) ? $user->number : '' }}" data-role="{{ isset($user->role) ? $user->role : 0 }}" data-name="{{ isset($user->name) ? $user->name : '' }}">
                                                     {{ isset($user->name) ? $user->name : 'Unknown' }} ({{ isset($user->email) ? $user->email : 'No Email' }}) {{ (isset($user->role) && $user->role === \App\Models\User::ROLE_ADMIN) ? '- ADMIN' : '' }}
                                                 </option>
                                             @endforeach
@@ -1287,6 +1906,7 @@
                                             <span id="selectedAdminUserStatus" class="badge bg-secondary">STATUS</span>
                                         </div>
                                         <div class="small text-muted" id="selectedAdminUserEmail">user@example.com</div>
+                                        <div class="small text-muted" id="selectedAdminUserNumber"></div>
                                     </div>
                                     
                                     <div class="row g-2">
@@ -1450,7 +2070,7 @@
             </div>
 
             <!-- Payment History Tab -->
-            <div class="tab-pane fade" id="payment-history" role="tabpanel">       
+            <div class="tab-pane fade {{ $activeTab === 'payment-history' ? 'show active' : '' }}" id="payment-history" role="tabpanel">       
          <!-- Payment Stats -->
                 <div class="row g-3 mb-4">
                     <div class="col-md-3">
@@ -1540,7 +2160,7 @@
             </div>
             
             <!-- Settings Tab -->
-            <div class="tab-pane fade" id="settings" role="tabpanel">
+            <div class="tab-pane fade {{ $activeTab === 'settings' ? 'show active' : '' }}" id="settings" role="tabpanel">
                 <div class="row g-4">
                     <div class="col-lg-8">
                         <div class="card">
@@ -1855,6 +2475,111 @@
                     </div>
                 </div>
             </div>
+            
+            <!-- Video Management Tab -->
+            <div class="tab-pane fade {{ $activeTab === 'video-management' ? 'show active' : '' }}" id="video-management" role="tabpanel">
+                <div class="row g-4">
+                    <div class="col-lg-6">
+                        <div class="card">
+                            <div class="card-header">
+                                <div>
+                                    <i class="fas fa-video me-2"></i>Add Video to Topic
+                                </div>
+                                <span class="badge bg-info">
+                                    <i class="fas fa-youtube"></i> YouTube Integration
+                                </span>
+                            </div>
+                            <div class="card-body">
+                                <form id="addVideoForm">
+                                    @csrf
+                                    <div class="mb-3">
+                                        <label class="form-label">
+                                            <i class="fas fa-graduation-cap me-1"></i>Select Course
+                                        </label>
+                                        <select class="form-select" id="video_course_id" name="course_id">
+                                            <option value="">Choose course...</option>
+                                            @if(isset($courses) && $courses->count() > 0)
+                                                @foreach($courses as $course)
+                                                    <option value="{{ $course->id }}">{{ $course->name }}</option>
+                                                @endforeach
+                                            @endif
+                                        </select>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="form-label">
+                                            <i class="fas fa-book me-1"></i>Select Topic
+                                        </label>
+                                        <select class="form-select" id="video_topic_id" name="topic_id" disabled>
+                                            <option value="">First select a course...</option>
+                                        </select>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="form-label">
+                                            <i class="fab fa-youtube me-1"></i>YouTube URL
+                                        </label>
+                                        <input type="url" class="form-control" id="youtube_url" name="youtube_url" placeholder="https://youtu.be/VIDEO_ID or https://www.youtube.com/watch?v=VIDEO_ID">
+                                        <div class="form-text">
+                                            <i class="fas fa-lightbulb me-1"></i>
+                                            Paste any YouTube URL - we'll extract the video ID automatically
+                                        </div>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="form-label">
+                                            <i class="fas fa-tag me-1"></i>Video Title
+                                        </label>
+                                        <input type="text" class="form-control" id="video_title" name="title" placeholder="Enter video title">
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="form-label">
+                                            <i class="fas fa-align-left me-1"></i>Description (Optional)
+                                        </label>
+                                        <textarea class="form-control" id="video_description" name="description" rows="3" placeholder="Brief description of the video content"></textarea>
+                                    </div>
+                                    <button type="submit" class="btn btn-primary">
+                                        <i class="fas fa-plus me-2"></i>Add Video
+                                    </button>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-lg-6">
+                        <div class="card">
+                            <div class="card-header">
+                                <div>
+                                    <i class="fas fa-list me-2"></i>Existing Videos
+                                </div>
+                                <span class="badge bg-success" id="video-count">
+                                    <i class="fas fa-video"></i> Loading...
+                                </span>
+                            </div>
+                            <div class="card-body">
+                                <div class="table-responsive">
+                                    <table class="table table-sm">
+                                        <thead>
+                                            <tr>
+                                                <th>Topic</th>
+                                                <th>Video</th>
+                                                <th>Status</th>
+                                                <th>Actions</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="videos-table-body">
+                                            <tr>
+                                                <td colspan="4" class="text-center py-3">
+                                                    <i class="fas fa-spinner fa-spin"></i> Loading videos...
+                                                </td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            @include('admin.partials.survey-results', ['surveyInsights' => $surveyInsights ?? [], 'activeTab' => $activeTab])
+            @include('admin.partials.scheduler-calibration', ['schedulerCalibration' => $schedulerCalibration ?? [], 'activeTab' => $activeTab])
         </div>
     </div>
 
@@ -1932,6 +2657,7 @@
                                         text: user.name + ' (' + user.email + ')',
                                         name: user.name,
                                         email: user.email,
+                                        number: user.number,
                                         role: user.role
                                     };
                                 })
@@ -1975,6 +2701,9 @@
                     display += '<div class="flex-grow-1">';
                     display += '<div class="fw-medium">' + user.name + '</div>';
                     display += '<small class="text-muted">' + user.email + '</small>';
+                    if (user.number) {
+                        display += '<br><small class="text-muted">Number: ' + user.number + '</small>';
+                    }
                     display += '</div>';
                     display += '<span class="badge bg-secondary ms-2" style="font-size: 0.7rem;">' + roleName + '</span>';
                     display += '</div>';
@@ -1989,9 +2718,10 @@
                     // FIXED: Handle both AJAX results and pre-loaded options
                     const userName = user.name || user.text || 'Unknown';
                     const userEmail = user.email || '';
+                    const userNumber = user.number || '';
                     
                     if (userEmail) {
-                        return userName + ' (' + userEmail + ')';
+                        return userNumber ? userName + ' (' + userEmail + ' • ' + userNumber + ')' : userName + ' (' + userEmail + ')';
                     }
                     return userName;
                 }
@@ -2134,9 +2864,10 @@
                     if (userId) {
                         const userName = userOption.text();
                         const userEmail = userOption.data('email');
+                        const userNumber = userOption.data('number');
                         const userRole = userOption.data('role');
 
-                        console.log('User data:', {userName, userEmail, userRole, userRoleType: typeof userRole});
+                        console.log('User data:', {userName, userEmail, userNumber, userRole, userRoleType: typeof userRole});
 
                         // Safe integer handling for role
                         const safeUserRole = (userRole && typeof userRole === 'number') ? userRole : 0;
@@ -2149,6 +2880,7 @@
                         // Update UI with safe fallbacks
                         $('#selectedUserName').text(userName || 'Unknown');
                         $('#selectedUserEmail').text(userEmail || 'No Email');
+                        $('#selectedUserNumber').text(userNumber ? `Number: ${userNumber}` : '');
                         $('#selectedUserRole').removeClass().addClass('badge').addClass(safeUserRole === 1 ? 'bg-danger' : 'bg-secondary').text(displayRole);
                         $('#userInfoSection').show();
 
@@ -2156,6 +2888,7 @@
                         updateCourseDropdown(userId);
                     } else {
                         $('#userInfoSection').hide();
+                        $('#selectedUserNumber').text('');
                         // Reset course dropdown
                         resetCourseDropdown();
                     }
@@ -2244,9 +2977,10 @@
                     if (userId) {
                         const userName = userOption.data('name');
                         const userEmail = userOption.data('email');
+                        const userNumber = userOption.data('number');
                         const userRole = userOption.data('role');
 
-                        console.log('User data:', {userName, userEmail, userRole});
+                        console.log('User data:', {userName, userEmail, userNumber, userRole});
 
                         selectedAdminUserId = userId;
                         selectedAdminIsAdmin = userRole === 1; // FIXED: Store boolean correctly
@@ -2257,6 +2991,7 @@
                         // Update UI
                         $('#selectedAdminUserName').text(userName || 'Unknown');
                         $('#selectedAdminUserEmail').text(userEmail || 'No Email');
+                        $('#selectedAdminUserNumber').text(userNumber ? `Number: ${userNumber}` : '');
                         $('#selectedAdminUserStatus').removeClass().addClass('badge').addClass(userRole === 1 ? 'bg-danger' : 'bg-secondary').text(displayRole);
                         $('#selectedUserInfo').show();
 
@@ -2272,6 +3007,7 @@
                         }
                     } else {
                         $('#selectedUserInfo').hide();
+                        $('#selectedAdminUserNumber').text('');
                         $('#promoteToAdminBtn').prop('disabled', true).html('<i class="fas fa-user-shield me-2"></i>Promote to Admin');
                         $('#removeAdminBtn').prop('disabled', true).html('<i class="fas fa-user-times me-2"></i>Revoke Admin');
                         $('#adminActionHint').text('Select a user above to manage their admin privileges');
@@ -2477,9 +3213,8 @@
         loadPayments();
     });
             
-            // Auto-load payments when page loads (for admin users)
-            @if(Auth::user()->role === 'admin')
-            console.log('Admin user detected, auto-loading payments...');
+            @if($activeTab === 'payment-history')
+            console.log('Payment tab active on load, fetching payments...');
             loadPayments();
             @endif
             
@@ -2904,270 +3639,6 @@
         }
     </script>
 
-
-</body>
-</html>   
-         <!-- Video Management Tab -->
-            <div class="tab-pane fade" id="video-management" role="tabpanel">
-                <div class="row g-4">
-                    <!-- Add Video Form -->
-                    <div class="col-lg-6">
-                        <div class="card">
-                            <div class="card-header">
-                                <div>
-                                    <i class="fas fa-video me-2"></i>Add Video to Topic
-                                </div>
-                                <span class="badge bg-info">
-                                    <i class="fas fa-youtube"></i> YouTube Integration
-                                </span>
-                            </div>
-                            <div class="card-body">
-                                <form id="addVideoForm">
-                                    @csrf
-                                    <div class="mb-3">
-                                        <label class="form-label">
-                                            <i class="fas fa-graduation-cap me-1"></i>Select Course
-                                        </label>
-                                        <select class="form-select" id="video_course_id" name="course_id">
-                                            <option value="">Choose course...</option>
-                                            @if(isset($courses) && $courses->count() > 0)
-                                                @foreach($courses as $course)
-                                                    <option value="{{ $course->id }}">{{ $course->name }}</option>
-                                                @endforeach
-                                            @endif
-                                        </select>
-                                    </div>
-                                    
-                                    <div class="mb-3">
-                                        <label class="form-label">
-                                            <i class="fas fa-book me-1"></i>Select Topic
-                                        </label>
-                                        <select class="form-select" id="video_topic_id" name="topic_id" disabled>
-                                            <option value="">First select a course...</option>
-                                        </select>
-                                    </div>
-                                    
-                                    <div class="mb-3">
-                                        <label class="form-label">
-                                            <i class="fab fa-youtube me-1"></i>YouTube URL
-                                        </label>
-                                        <input type="url" class="form-control" id="youtube_url" name="youtube_url" 
-                                               placeholder="https://youtu.be/VIDEO_ID or https://www.youtube.com/watch?v=VIDEO_ID">
-                                        <div class="form-text">
-                                            <i class="fas fa-lightbulb me-1"></i>
-                                            Paste any YouTube URL - we'll extract the video ID automatically
-                                        </div>
-                                    </div>
-                                    
-                                    <div class="mb-3">
-                                        <label class="form-label">
-                                            <i class="fas fa-tag me-1"></i>Video Title
-                                        </label>
-                                        <input type="text" class="form-control" id="video_title" name="title" 
-                                               placeholder="Enter video title">
-                                    </div>
-                                    
-                                    <div class="mb-3">
-                                        <label class="form-label">
-                                            <i class="fas fa-align-left me-1"></i>Description (Optional)
-                                        </label>
-                                        <textarea class="form-control" id="video_description" name="description" 
-                                                  rows="3" placeholder="Brief description of the video content"></textarea>
-                                    </div>
-                                    
-                                    <button type="submit" class="btn btn-primary">
-                                        <i class="fas fa-plus me-2"></i>Add Video
-                                    </button>
-                                </form>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <!-- Video List -->
-                    <div class="col-lg-6">
-                        <div class="card">
-                            <div class="card-header">
-                                <div>
-                                    <i class="fas fa-list me-2"></i>Existing Videos
-                                </div>
-                                <span class="badge bg-success" id="video-count">
-                                    <i class="fas fa-video"></i> Loading...
-                                </span>
-                            </div>
-                            <div class="card-body">
-                                <div class="table-responsive">
-                                    <table class="table table-sm">
-                                        <thead>
-                                            <tr>
-                                                <th>Topic</th>
-                                                <th>Video</th>
-                                                <th>Status</th>
-                                                <th>Actions</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody id="videos-table-body">
-                                            <tr>
-                                                <td colspan="4" class="text-center py-3">
-                                                    <i class="fas fa-spinner fa-spin"></i> Loading videos...
-                                                </td>
-                                            </tr>
-                                        </tbody>
-                                    </table>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            
-            <!-- Settings Tab -->
-            <div class="tab-pane fade" id="settings" role="tabpanel">
-                <div class="row g-4">
-                    <div class="col-lg-8">
-                        <div class="card">
-                            <div class="card-header">
-                                <div>
-                                    <i class="fas fa-users-cog me-2"></i>Live User Counter Settings
-                                </div>
-                                <span class="badge bg-info">
-                                    <i class="fas fa-chart-line"></i> Social Proof
-                                </span>
-                            </div>
-                            <div class="card-body">
-                                <div class="alert alert-info">
-                                    <i class="fas fa-info-circle me-2"></i>
-                                    <strong>Social Proof Feature:</strong> Enable fake live user counts to show believable activity on your site. 
-                                    The counter will fluctuate naturally between your min/max range, updating every 30 seconds.
-                                </div>
-                                
-                                <div class="mb-4">
-                                    <div class="d-flex justify-content-between align-items-center mb-3">
-                                        <div>
-                                            <label class="form-label mb-0">
-                                                <i class="fas fa-toggle-on me-1"></i><strong>Enable Fake Live Users</strong>
-                                            </label>
-                                            <div class="small text-muted">Show fake user counts instead of real session data</div>
-                                        </div>
-                                        <div class="form-check form-switch" style="font-size: 1.5rem;">
-                                            <input class="form-check-input" type="checkbox" id="fakeLiveUsersToggle" style="cursor: pointer;">
-                                        </div>
-                                    </div>
-                                </div>
-                                
-                                <div id="fakeUserSettings" style="display: none;">
-                                    <div class="row g-3">
-                                        <div class="col-md-6">
-                                            <label class="form-label">
-                                                <i class="fas fa-arrow-down me-1"></i>Minimum Count
-                                            </label>
-                                            <input type="number" class="form-control" id="fakeUsersMin" min="1" max="999" value="87">
-                                            <div class="form-text">
-                                                Lowest number of "active users" to display
-                                            </div>
-                                        </div>
-                                        <div class="col-md-6">
-                                            <label class="form-label">
-                                                <i class="fas fa-arrow-up me-1"></i>Maximum Count
-                                            </label>
-                                            <input type="number" class="form-control" id="fakeUsersMax" min="1" max="999" value="143">
-                                            <div class="form-text">
-                                                Highest number of "active users" to display
-                                            </div>
-                                        </div>
-                                    </div>
-                                    
-                                    <div class="mt-3 p-3 bg-light rounded">
-                                        <div class="small text-muted mb-2">
-                                            <i class="fas fa-lightbulb me-1"></i><strong>How it works:</strong>
-                                        </div>
-                                        <ul class="small mb-0">
-                                            <li>Numbers change every 30 seconds for natural variation</li>
-                                            <li>Counts are rounded to nearest 10 with small offsets (e.g., 97, 108, 123)</li>
-                                            <li>Believable ranges: 50-100 for small sites, 80-150 for medium, 100-300 for large</li>
-                                            <li>Only visible to regular users - admins can see real counts in System Health</li>
-                                        </ul>
-                                    </div>
-                                    
-                                    <div class="mt-3">
-                                        <button type="button" class="btn btn-success" id="saveFakeUserSettings">
-                                            <i class="fas fa-save me-2"></i>Save Settings
-                                        </button>
-                                        <button type="button" class="btn btn-outline-secondary" id="testFakeUsers">
-                                            <i class="fas fa-eye me-2"></i>Preview Current Count
-                                        </button>
-                                    </div>
-                                    
-                                    <div id="previewCount" class="mt-3" style="display: none;">
-                                        <div class="alert alert-success">
-                                            <strong>Current Preview:</strong> <span id="previewNumber" class="fs-4"></span> users active now
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div class="col-lg-4">
-                        <div class="card">
-                            <div class="card-header">
-                                <i class="fas fa-chart-bar me-2"></i>Quick Stats
-                            </div>
-                            <div class="card-body">
-                                <div class="mb-3">
-                                    <div class="d-flex justify-content-between align-items-center mb-2">
-                                        <span class="text-muted">Current Mode:</span>
-                                        <span class="badge bg-secondary" id="currentMode">Loading...</span>
-                                    </div>
-                                    <div class="d-flex justify-content-between align-items-center mb-2">
-                                        <span class="text-muted">Real Active Users:</span>
-                                        <strong id="realUserCount">{{ isset($userStats) ? ($userStats['active_users'] ?? 0) : 0 }}</strong>
-                                    </div>
-                                    <div class="d-flex justify-content-between align-items-center">
-                                        <span class="text-muted">Displayed Count:</span>
-                                        <strong id="displayedCount">-</strong>
-                                    </div>
-                                </div>
-                                
-                                <hr>
-                                
-                                <div class="small text-muted">
-                                    <i class="fas fa-shield-alt me-1"></i>
-                                    <strong>Admin Note:</strong> These settings only affect the public-facing live user counter. 
-                                    Real analytics and admin dashboards always show accurate data.
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <div class="card mt-3">
-                            <div class="card-header">
-                                <i class="fas fa-history me-2"></i>Recommended Ranges
-                            </div>
-                            <div class="card-body">
-                                <div class="mb-2">
-                                    <strong>Small Site:</strong>
-                                    <div class="small text-muted">Min: 47, Max: 89</div>
-                                </div>
-                                <div class="mb-2">
-                                    <strong>Medium Site:</strong>
-                                    <div class="small text-muted">Min: 87, Max: 143</div>
-                                </div>
-                                <div class="mb-2">
-                                    <strong>Large Site:</strong>
-                                    <div class="small text-muted">Min: 127, Max: 287</div>
-                                </div>
-                                <div class="mt-3">
-                                    <button class="btn btn-sm btn-outline-primary w-100" onclick="applyPreset(87, 143)">
-                                        Apply Medium Preset
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
     <!-- Settings JavaScript -->
     <script>
         $(document).ready(function() {
@@ -3175,6 +3646,10 @@
             $('#settings-tab').on('click', function() {
                 loadSettings();
             });
+
+            @if($activeTab === 'settings')
+            loadSettings();
+            @endif
             
             // Toggle fake user settings visibility
             $('#fakeLiveUsersToggle').on('change', function() {
@@ -3420,18 +3895,19 @@
     <!-- Video Management JavaScript -->
     <script>
         $(document).ready(function() {
-            // Load videos when video tab is clicked
             $('#video-tab').on('click', function() {
                 loadVideos();
             });
-            
-            // Course selection handler for video form
+
+            @if($activeTab === 'video-management')
+            loadVideos();
+            @endif
+
             $('#video_course_id').on('change', function() {
                 const courseId = $(this).val();
                 const topicSelect = $('#video_topic_id');
-                
+
                 if (courseId) {
-                    // Load topics for selected course
                     $.ajax({
                         url: `/api/courses/${courseId}/topics`,
                         method: 'GET',
@@ -3450,11 +3926,10 @@
                     topicSelect.empty().append('<option value="">First select a course...</option>').prop('disabled', true);
                 }
             });
-            
-            // Add video form submission
+
             $('#addVideoForm').on('submit', function(e) {
                 e.preventDefault();
-                
+
                 const formData = {
                     topic_id: $('#video_topic_id').val(),
                     youtube_url: $('#youtube_url').val(),
@@ -3462,7 +3937,7 @@
                     description: $('#video_description').val(),
                     _token: '{{ csrf_token() }}'
                 };
-                
+
                 $.ajax({
                     url: '/admin/videos',
                     method: 'POST',
@@ -3484,12 +3959,8 @@
                 });
             });
         });
-        
-        // Load videos function
-        function loadVideos() {
-            console.log('Loading videos...');
 
-            // Show loading state
+        function loadVideos() {
             const tbody = $('#videos-table-body');
             tbody.html(`
                 <tr>
@@ -3509,15 +3980,12 @@
                     'X-Requested-With': 'XMLHttpRequest'
                 },
                 success: function(response) {
-                    console.log('Videos response:', response);
                     tbody.empty();
 
                     if (response.success && response.videos && response.videos.length > 0) {
                         $('#video-count').html(`<i class="fas fa-video"></i> ${response.videos.length}`);
 
                         response.videos.forEach(video => {
-                            const statusBadge = '<span class="badge bg-success">Active</span>';
-
                             tbody.append(`
                                 <tr>
                                     <td>
@@ -3531,7 +3999,7 @@
                                             ${video.youtube_video_id ? video.youtube_video_id.substring(0, 8) + '...' : 'N/A'}
                                         </small>
                                     </td>
-                                    <td>${statusBadge}</td>
+                                    <td><span class="badge bg-success">Active</span></td>
                                     <td>
                                         <div class="btn-group btn-group-sm">
                                             <button class="btn btn-outline-danger btn-sm" onclick="deleteVideo(${video.id})">
@@ -3542,8 +4010,6 @@
                                 </tr>
                             `);
                         });
-
-                        showNotification('Videos loaded successfully!', 'success');
                     } else {
                         $('#video-count').html('<i class="fas fa-video"></i> 0');
                         tbody.append(`
@@ -3558,7 +4024,6 @@
                     }
                 },
                 error: function(xhr, status, error) {
-                    console.error('Videos error:', xhr, status, error);
                     tbody.html(`
                         <tr>
                             <td colspan="4" class="text-center py-3 text-danger">
@@ -3572,10 +4037,7 @@
                 }
             });
         }
-        
 
-        
-        // Delete video
         function deleteVideo(videoId) {
             if (confirm('Are you sure you want to delete this video?')) {
                 $.ajax({
@@ -3598,8 +4060,113 @@
         }
     </script>
 
-    <!-- Notification Container -->
-    <div id="notificationContainer"></div>
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const surveyPane = document.getElementById('survey-results');
+
+            if (!surveyPane) {
+                return;
+            }
+
+            const animateNumber = (element) => {
+                if (!element || element.dataset.animated === 'true') {
+                    return;
+                }
+
+                const target = Number(element.dataset.target || 0);
+                if (Number.isNaN(target)) {
+                    return;
+                }
+
+                element.dataset.animated = 'true';
+
+                const hasPercentSuffix = element.textContent.trim().includes('%');
+                const duration = 900;
+                const start = performance.now();
+
+                const update = (timestamp) => {
+                    const progress = Math.min((timestamp - start) / duration, 1);
+                    const eased = 1 - Math.pow(1 - progress, 3);
+                    const value = target * eased;
+                    const numeric = Math.round(value).toString();
+                    const formatted = `${numeric}${hasPercentSuffix ? '%' : ''}`;
+
+                    element.textContent = formatted;
+
+                    if (progress < 1) {
+                        requestAnimationFrame(update);
+                    }
+                };
+
+                requestAnimationFrame(update);
+            };
+
+            const revealSurveyCard = (element) => {
+                if (!element || element.classList.contains('is-visible')) {
+                    return;
+                }
+
+                element.classList.add('is-visible');
+                element.querySelectorAll('.survey-animated-number').forEach(animateNumber);
+            };
+
+            surveyPane.querySelectorAll('.survey-donut').forEach((donut) => {
+                const tooltip = donut.querySelector('.survey-donut-tooltip');
+                const segments = donut.querySelectorAll('.survey-donut-segment');
+
+                if (!tooltip || !segments.length) {
+                    return;
+                }
+
+                segments.forEach((segment) => {
+                    segment.addEventListener('mouseenter', () => {
+                        segments.forEach((item) => item.classList.remove('is-active'));
+                        segment.classList.add('is-active');
+                        tooltip.innerHTML = `<strong>${segment.dataset.percent || ''}</strong><span>${segment.dataset.label || ''}</span>`;
+                        tooltip.classList.add('is-visible');
+                    });
+
+                    segment.addEventListener('mouseleave', () => {
+                        segment.classList.remove('is-active');
+                        tooltip.classList.remove('is-visible');
+                    });
+                });
+            });
+
+            const surveyCards = surveyPane.querySelectorAll('.survey-question-card, .survey-insight-card, .survey-metric-card');
+
+            if ('IntersectionObserver' in window) {
+                const observer = new IntersectionObserver((entries) => {
+                    entries.forEach((entry) => {
+                        if (!entry.isIntersecting) {
+                            return;
+                        }
+
+                        revealSurveyCard(entry.target);
+                        observer.unobserve(entry.target);
+                    });
+                }, {
+                    threshold: 0.22,
+                    rootMargin: '0px 0px -40px 0px'
+                });
+
+                surveyCards.forEach((card) => observer.observe(card));
+            } else {
+                surveyCards.forEach(revealSurveyCard);
+            }
+
+            if (surveyPane.classList.contains('show')) {
+                surveyCards.forEach(revealSurveyCard);
+            }
+
+            const surveyTab = document.getElementById('survey-results-tab');
+            if (surveyTab) {
+                surveyTab.addEventListener('shown.bs.tab', function () {
+                    surveyCards.forEach(revealSurveyCard);
+                });
+            }
+        });
+    </script>
 
     <!-- Bootstrap JS -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>

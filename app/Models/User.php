@@ -7,10 +7,17 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Schema;
 
 class User extends Authenticatable
 {
     use HasFactory, Notifiable;
+
+    protected array $profileImageUrlCache = [];
+
+    protected static array $profileImageUrlForCache = [];
+
+    protected static ?array $availableCourseUserPlannerPivotColumns = null;
 
     /**
      * The attributes that are mass assignable.
@@ -18,9 +25,17 @@ class User extends Authenticatable
     protected $fillable = [
         'name',
         'email',
+        'number',
         'university',
         'password',
         'role',
+        'weekly_goal',
+        'exam_date',
+        'target_score',
+        'daily_study_minutes',
+        'planner_focus',
+        'repair_mode',
+        'classic_repair_difficulty',
         'last_active_at',
         'profile_picture_url',
         'correct_answers_count',
@@ -36,9 +51,12 @@ class User extends Authenticatable
         'last_security_check',
         'concurrent_login_attempts',
         'last_suspicious_activity',
+        'survey_completed',
+        'free_courses_unlocked',
+        'survey_completed_at',
+        'free_courses_unlocked_at',
+        'has_sr_access',
     ];
-
-    protected $appends = ['course_progress'];
 
     /**
      * The attributes that should be hidden for serialization.
@@ -53,16 +71,29 @@ class User extends Authenticatable
      */
     protected $casts = [
         'email_verified_at' => 'datetime',
+        'number' => 'string',
+        'exam_date' => 'date',
         'last_active_at' => 'datetime',
         'session_created_at' => 'datetime',
         'last_security_check' => 'datetime',
         'last_suspicious_activity' => 'datetime',
         'password' => 'hashed',
         'role' => 'integer',
+        'weekly_goal' => 'integer',
+        'target_score' => 'integer',
+        'daily_study_minutes' => 'integer',
         'profile_picture_url' => 'string',
+        'repair_mode' => 'string',
+        'classic_repair_difficulty' => 'string',
         'correct_answers_count' => 'integer',
         'total_questions_attempted' => 'integer',
         'concurrent_login_attempts' => 'integer',
+        'survey_completed' => 'boolean',
+        'free_courses_unlocked' => 'boolean',
+        'planner_focus' => 'string',
+        'survey_completed_at' => 'datetime',
+        'free_courses_unlocked_at' => 'datetime',
+        'has_sr_access' => 'boolean',
     ];
 
     /**
@@ -73,6 +104,9 @@ class User extends Authenticatable
     const ROLE_TUTOR = 2;
     const ROLE_STUDENT = 3;
 
+    const COURSE_ACCESS_PREVIEW = 'preview';
+    const COURSE_ACCESS_FULL = 'full';
+
     /**
      * Define the relationship with courses (many-to-many).
      * Only returns enrolled courses (enrolled_at is not null).
@@ -81,7 +115,7 @@ class User extends Authenticatable
     {
         // Simple boolean check for enrollment
         return $this->belongsToMany(Course::class, 'course_user')
-                    ->withPivot('is_enrolled')
+                    ->withPivot($this->courseUserPivotColumns(['is_enrolled', 'access_level']))
                     ->where('course_user.is_enrolled', true)
                     ->withTimestamps();
     }
@@ -93,8 +127,41 @@ class User extends Authenticatable
     public function allCourseEnrollments()
     {
         return $this->belongsToMany(Course::class, 'course_user')
-                    ->withPivot('enrolled_at')
+                    ->withPivot($this->courseUserPivotColumns(['enrolled_at', 'access_level', 'is_enrolled']))
                     ->withTimestamps();
+    }
+
+    /**
+     * Avoid selecting planner pivot columns on databases that have not run the
+     * newer course_user schema yet.
+     */
+    protected function courseUserPivotColumns(array $baseColumns = []): array
+    {
+        return array_merge($baseColumns, self::availableCourseUserPlannerPivotColumns());
+    }
+
+    protected static function availableCourseUserPlannerPivotColumns(): array
+    {
+        if (self::$availableCourseUserPlannerPivotColumns !== null) {
+            return self::$availableCourseUserPlannerPivotColumns;
+        }
+
+        $plannerColumns = [
+            'planner_exam_date',
+            'planner_target_score',
+            'planner_daily_study_minutes',
+            'planner_focus',
+            'planner_preferred_source',
+            'planner_repair_mode',
+            'planner_classic_repair_difficulty',
+        ];
+
+        self::$availableCourseUserPlannerPivotColumns = array_values(array_filter(
+            $plannerColumns,
+            static fn (string $column): bool => Schema::hasColumn('course_user', $column)
+        ));
+
+        return self::$availableCourseUserPlannerPivotColumns;
     }
 
     /**
@@ -128,23 +195,6 @@ class User extends Authenticatable
             }
         });
 
-        static::created(function ($user) {
-            // Automatically enroll new users in all free courses
-            $user->enrollInAllFreeCourses();
-
-            Log::info('New user automatically enrolled in free courses', [
-                'user_id' => $user->id,
-                'user_name' => $user->name
-            ]);
-        });
-
-        // Ensure all users have access to free courses when they're loaded
-        static::retrieved(function ($user) {
-            // Only run this check occasionally to avoid performance issues
-            if (rand(1, 100) === 1) { // 1% chance on each user load
-                $user->ensureFreeCourseAccess();
-            }
-        });
     }
 
     /**
@@ -202,6 +252,16 @@ class User extends Authenticatable
     public function userTopicProgress()
     {
         return $this->hasMany(UserTopicProgress::class);
+    }
+
+    public function surveyResponses()
+    {
+        return $this->hasMany(SurveyResponse::class);
+    }
+
+    public function surveyDrafts()
+    {
+        return $this->hasMany(SurveyDraft::class);
     }
 
     /**
@@ -262,23 +322,116 @@ class User extends Authenticatable
             return [];
         }
 
-        // Get enrolled courses using simple boolean check
-        $enrolledCourses = DB::table('course_user')
-            ->where('user_id', $this->id)
-            ->whereIn('course_id', $courseIds)
-            ->where('is_enrolled', true)
-            ->pluck('course_id')
-            ->toArray();
+        return collect($this->getCourseAccessLevels($courseIds))
+            ->map(fn ($accessLevel) => $accessLevel !== null)
+            ->all();
+    }
 
-        // Create result array with all courses set to false initially
-        $result = array_fill_keys($courseIds, false);
+    public function getCourseAccessLevel(Course|int $course): ?string
+    {
+        $courseId = $course instanceof Course ? $course->id : (int) $course;
+        $accessMap = $this->getCourseAccessLevels([$courseId]);
 
-        // Set enrolled courses to true
-        foreach ($enrolledCourses as $courseId) {
-            $result[$courseId] = true;
+        return $accessMap[$courseId] ?? null;
+    }
+
+    public function getCourseAccessLevels(array $courseIds): array
+    {
+        if (empty($courseIds)) {
+            return [];
         }
 
-        return $result;
+        if ($this->isAdmin()) {
+            return array_fill_keys($courseIds, self::COURSE_ACCESS_FULL);
+        }
+
+        $normalizedCourseIds = collect($courseIds)
+            ->map(fn ($courseId) => (int) $courseId)
+            ->unique()
+            ->values()
+            ->all();
+
+        $accessMap = array_fill_keys($normalizedCourseIds, null);
+        $hasFreeSurveyUnlock = $this->hasUnlockedFreeCourses();
+
+        $rows = DB::table('courses')
+            ->leftJoin('course_user', function ($join) {
+                $join->on('courses.id', '=', 'course_user.course_id')
+                    ->where('course_user.user_id', '=', $this->id);
+            })
+            ->whereIn('courses.id', $normalizedCourseIds)
+            ->select(
+                'courses.id',
+                'courses.price',
+                'course_user.is_enrolled',
+                'course_user.access_level'
+            )
+            ->get();
+
+        foreach ($rows as $row) {
+            $courseId = (int) $row->id;
+            $isFreeCourse = $row->price === null || (float) $row->price <= 0;
+            $isEnrolled = (bool) ($row->is_enrolled ?? false);
+
+            if (!$isEnrolled) {
+                $accessMap[$courseId] = null;
+                continue;
+            }
+
+            if ($this->isTutor()) {
+                $accessMap[$courseId] = self::COURSE_ACCESS_FULL;
+                continue;
+            }
+
+            if ($isFreeCourse && !$hasFreeSurveyUnlock) {
+                $accessMap[$courseId] = null;
+                continue;
+            }
+
+            $storedLevel = is_string($row->access_level) ? trim($row->access_level) : null;
+            if (in_array($storedLevel, [self::COURSE_ACCESS_PREVIEW, self::COURSE_ACCESS_FULL], true)) {
+                $accessMap[$courseId] = $storedLevel;
+                continue;
+            }
+
+            $accessMap[$courseId] = $isFreeCourse
+                ? self::COURSE_ACCESS_PREVIEW
+                : self::COURSE_ACCESS_FULL;
+        }
+
+        return $accessMap;
+    }
+
+    public function hasFullAccessToCourse(Course|int $course): bool
+    {
+        if ($this->isAdmin() || $this->isTutor()) {
+            return true;
+        }
+
+        return $this->getCourseAccessLevel($course) === self::COURSE_ACCESS_FULL;
+    }
+
+    public function getPreviewTopicLimitForCourse(Course|int $course): ?int
+    {
+        return $this->getCourseAccessLevel($course) === self::COURSE_ACCESS_PREVIEW
+            ? (int) config('free_course_survey.preview_topics_count', 5)
+            : null;
+    }
+
+    public function isTopicPreviewLocked(Topic|int $topic): bool
+    {
+        $topicModel = $topic instanceof Topic
+            ? $topic
+            : Topic::query()->select('id', 'course_id', 'display_order')->find((int) $topic);
+
+        if (!$topicModel) {
+            return false;
+        }
+
+        $previewLimit = $this->getPreviewTopicLimitForCourse($topicModel->course_id);
+
+        return $previewLimit !== null
+            && (int) ($topicModel->display_order ?? 0) > $previewLimit;
     }
 
     /**
@@ -334,13 +487,95 @@ class User extends Authenticatable
             ->exists();
     }
 
+    public function hasCompletedFreeCourseSurvey(): bool
+    {
+        return (bool) $this->survey_completed || $this->hasStoredFreeCourseSurveyResponse();
+    }
+
+    public function hasUnlockedFreeCourses(): bool
+    {
+        if ($this->isAdmin()) {
+            return true;
+        }
+
+        if ((bool) $this->survey_completed && (bool) $this->free_courses_unlocked) {
+            return true;
+        }
+
+        if (!$this->hasStoredFreeCourseSurveyResponse()) {
+            return false;
+        }
+
+        $this->restoreFreeCourseSurveyUnlockState();
+
+        return true;
+    }
+
+    public function requiresSurveyUnlockForCourse(Course|int $course): bool
+    {
+        if ($this->isAdmin() || $this->hasUnlockedFreeCourses()) {
+            return false;
+        }
+
+        $courseModel = $course instanceof Course
+            ? $course
+            : Course::query()->select('id', 'price')->find($course);
+
+        if (!$courseModel) {
+            return false;
+        }
+
+        return $courseModel->isFree();
+    }
+
+    public function freeCourseSurveyRedirectFor(Course|int $course, ?string $fallback = null): string
+    {
+        $courseId = $course instanceof Course ? $course->id : (int) $course;
+        $redirectTo = $fallback ?? route('topics.forCourse', $courseId, false);
+        return route('courses.index', [
+            'survey' => 1,
+            'redirect_to' => $redirectTo,
+        ]);
+    }
+
+    protected function hasStoredFreeCourseSurveyResponse(): bool
+    {
+        return $this->surveyResponses()
+            ->where('survey_key', (string) config('free_course_survey.survey_key', 'free_course_unlock_v1'))
+            ->exists();
+    }
+
+    protected function restoreFreeCourseSurveyUnlockState(): void
+    {
+        $now = now();
+
+        $needsFlagSync = !(bool) $this->survey_completed
+            || !(bool) $this->free_courses_unlocked
+            || !$this->survey_completed_at
+            || !$this->free_courses_unlocked_at;
+
+        if ($needsFlagSync) {
+            $this->forceFill([
+                'survey_completed' => true,
+                'free_courses_unlocked' => true,
+                'survey_completed_at' => $this->survey_completed_at ?? $now,
+                'free_courses_unlocked_at' => $this->free_courses_unlocked_at ?? $now,
+            ])->saveQuietly();
+        }
+
+        $this->enrollInAllFreeCourses();
+    }
+
     /**
      * FIXED: Enroll a user in a course.
      * SQL injection vulnerability removed by using parameterized queries and type casting.
      */
-    public function enrollInCourse($courseId)
+    public function enrollInCourse($courseId, string $accessLevel = self::COURSE_ACCESS_FULL)
     {
         $courseId = (int) $courseId; // Cast to int for security
+        $accessLevel = in_array($accessLevel, [self::COURSE_ACCESS_PREVIEW, self::COURSE_ACCESS_FULL], true)
+            ? $accessLevel
+            : self::COURSE_ACCESS_FULL;
 
         // First, check if the relationship exists
         $existing = DB::table('course_user')
@@ -353,13 +588,20 @@ class User extends Authenticatable
             DB::table('course_user')
                 ->where('user_id', $this->id)
                 ->where('course_id', $courseId)
-                ->update(['is_enrolled' => true, 'updated_at' => now()]);
+                ->update([
+                    'is_enrolled' => true,
+                    'access_level' => $accessLevel,
+                    'enrolled_at' => now(),
+                    'updated_at' => now(),
+                ]);
         } else {
             // Create new record
             DB::table('course_user')->insert([
                 'user_id' => $this->id,
                 'course_id' => $courseId,
                 'is_enrolled' => true,
+                'access_level' => $accessLevel,
+                'enrolled_at' => now(),
                 'created_at' => now(),
                 'updated_at' => now()
             ]);
@@ -373,70 +615,59 @@ class User extends Authenticatable
     public function enrollInAllFreeCourses()
     {
         try {
-            // 🔥 PHASE 1: Get courses with price <= 0 (price = 0 OR NULL)
-            $potentiallyFreeCourses = \App\Models\Course::where(function($query) {
-                $query->where('price', '<=', 0)
-                      ->orWhereNull('price');
-            })->get(['id', 'price', 'updated_at']);
+            $now = now();
 
-            // 🔥 PHASE 2: DOUBLE-CHECK each course is ACTUALLY free and hasn't been recently changed
-            $trulyFreeCourseIds = [];
-            foreach ($potentiallyFreeCourses as $course) {
-                // DOUBLE-CHECK: Is price still 0? (not cached, fresh query)
-                $currentPrice = \Illuminate\Support\Facades\DB::table('courses')
-                    ->where('id', $course->id)
-                    ->value('price');
-
-                // FIXED: Check if price is actually free (0.00, '0.00', 0, or null)
-                $isActuallyFree = ($currentPrice == 0.00 || $currentPrice == 0 || $currentPrice === null || $currentPrice === '0.00');
-
-                if (!$isActuallyFree) {
-                    \Illuminate\Support\Facades\Log::warning('🚨 BLOCKED RE-ENROLLMENT: Course price changed from free to paid', [
-                        'course_id' => $course->id,
-                        'current_price' => $currentPrice,
-                        'user_id' => $this->id,
-                        'user_name' => $this->name
-                    ]);
-                    continue; // Skip this course - it's no longer free!
-                }
-
-                // Ensure no recent price changes (last 30 minutes)
-                $freshCourse = \App\Models\Course::where('id', $course->id)
-                    ->where(function($query) {
-                        $query->where('price', '<=', 0)
-                              ->orWhereNull('price');
-                    })
-                    ->first();
-
-                if ($freshCourse) {
-                    $trulyFreeCourseIds[] = $course->id;
-                }
-            }
+            $trulyFreeCourseIds = \App\Models\Course::query()
+                ->where(function ($query) {
+                    $query->where('price', '<=', 0)
+                        ->orWhereNull('price');
+                })
+                ->pluck('id')
+                ->all();
 
             if (empty($trulyFreeCourseIds)) {
                 return 0; // No truly free courses
             }
 
-            // 🔥 PHASE 3: Safe enrollment with safeguards
-            $enrolledCount = 0;
-            foreach ($trulyFreeCourseIds as $courseId) {
-                $existingEnrollment = DB::table('course_user')
-                    ->where('user_id', $this->id)
-                    ->where('course_id', $courseId)
-                    ->first();
+            $existingEnrollments = DB::table('course_user')
+                ->where('user_id', $this->id)
+                ->whereIn('course_id', $trulyFreeCourseIds)
+                ->get(['course_id', 'is_enrolled'])
+                ->keyBy('course_id');
 
-                if (!$existingEnrollment) {
-                    DB::table('course_user')->insert([
+            $missingCourseIds = array_values(array_diff($trulyFreeCourseIds, $existingEnrollments->keys()->all()));
+            $reactivateCourseIds = $existingEnrollments
+                ->filter(fn ($enrollment) => !(bool) $enrollment->is_enrolled)
+                ->keys()
+                ->all();
+
+            if (!empty($reactivateCourseIds)) {
+                DB::table('course_user')
+                    ->where('user_id', $this->id)
+                    ->whereIn('course_id', $reactivateCourseIds)
+                    ->update([
+                        'is_enrolled' => true,
+                        'access_level' => self::COURSE_ACCESS_PREVIEW,
+                        'enrolled_at' => $now,
+                        'updated_at' => $now,
+                    ]);
+            }
+
+            if (!empty($missingCourseIds)) {
+                DB::table('course_user')->insert(
+                    collect($missingCourseIds)->map(fn ($courseId) => [
                         'user_id' => $this->id,
                         'course_id' => $courseId,
                         'is_enrolled' => true,
-                        'enrolled_at' => now(),
-                        'created_at' => now(),
-                        'updated_at' => now()
-                    ]);
-                    $enrolledCount++;
-                }
+                        'access_level' => self::COURSE_ACCESS_PREVIEW,
+                        'enrolled_at' => $now,
+                        'created_at' => $now,
+                        'updated_at' => $now,
+                    ])->all()
+                );
             }
+
+            $enrolledCount = count($missingCourseIds) + count($reactivateCourseIds);
 
             if ($enrolledCount > 0) {
                 \Illuminate\Support\Facades\Log::info('✅ SAFE ENROLLMENT: User enrolled in confirmed free courses', [
@@ -562,6 +793,19 @@ class User extends Authenticatable
         return $this->belongsToMany(Course::class, 'tutor_course_assignments', 'tutor_id', 'course_id')
                     ->withPivot('assigned_at')
                     ->withTimestamps();
+    }
+
+    /**
+     * Check if user has access to Spaced Repetition features.
+     * Derived from tier/subscription (mocked for now).
+     */
+    public function getHasSrAccessAttribute(): bool
+    {
+        if ($this->isAdmin()) {
+            return true;
+        }
+
+        return (bool) ($this->attributes['has_sr_access'] ?? false);
     }
     // 💀 N+1 WARNING: This accessor accesses 'study_time_seconds' - consider eager loading
 
@@ -793,13 +1037,19 @@ class User extends Authenticatable
      */
     public function getProfileImageUrl($withCacheBust = true): string
     {
+        $cacheKey = $withCacheBust ? 'with_bust' : 'without_bust';
+
+        if (isset($this->profileImageUrlCache[$cacheKey])) {
+            return $this->profileImageUrlCache[$cacheKey];
+        }
+
         if (!$this->profile_picture_url) {
-            return 'https://ui-avatars.com/api/?name=' . urlencode($this->name) . '&size=200&background=007bff&color=ffffff';
+            return $this->profileImageUrlCache[$cacheKey] = 'https://ui-avatars.com/api/?name=' . urlencode($this->name) . '&size=200&background=007bff&color=ffffff';
         }
 
         // Check if it's an external URL (starts with http/https)
         if (filter_var($this->profile_picture_url, FILTER_VALIDATE_URL)) {
-            return $this->profile_picture_url;
+            return $this->profileImageUrlCache[$cacheKey] = $this->profile_picture_url;
         }
 
         // Local file from secure_uploads disk
@@ -825,7 +1075,7 @@ class User extends Authenticatable
                 $url .= '?v=' . time();
             }
             
-            return $url;
+            return $this->profileImageUrlCache[$cacheKey] = $url;
         }
 
         // Log missing file for debugging
@@ -837,7 +1087,7 @@ class User extends Authenticatable
         ]);
 
         // Fallback to UI Avatars if file doesn't exist
-        return 'https://ui-avatars.com/api/?name=' . urlencode($this->name) . '&size=200&background=007bff&color=ffffff';
+        return $this->profileImageUrlCache[$cacheKey] = 'https://ui-avatars.com/api/?name=' . urlencode($this->name) . '&size=200&background=007bff&color=ffffff';
     }
 
     /**
@@ -849,13 +1099,20 @@ class User extends Authenticatable
      */
     public static function getProfileImageUrlFor($user, $withCacheBust = true): string
     {
+        $userId = $user->id ?? spl_object_id((object) $user);
+        $cacheKey = $userId . ':' . ($withCacheBust ? 'with_bust' : 'without_bust');
+
+        if (isset(self::$profileImageUrlForCache[$cacheKey])) {
+            return self::$profileImageUrlForCache[$cacheKey];
+        }
+
         if (!$user || !$user->profile_picture_url) {
-            return 'https://ui-avatars.com/api/?name=' . urlencode($user->name ?? 'User') . '&size=200&background=007bff&color=ffffff';
+            return self::$profileImageUrlForCache[$cacheKey] = 'https://ui-avatars.com/api/?name=' . urlencode($user->name ?? 'User') . '&size=200&background=007bff&color=ffffff';
         }
 
         // Check if it's an external URL (starts with http/https)
         if (filter_var($user->profile_picture_url, FILTER_VALIDATE_URL)) {
-            return $user->profile_picture_url;
+            return self::$profileImageUrlForCache[$cacheKey] = $user->profile_picture_url;
         }
 
         // Local file from secure_uploads disk
@@ -879,11 +1136,11 @@ class User extends Authenticatable
                 $url .= '?v=' . time();
             }
             
-            return $url;
+            return self::$profileImageUrlForCache[$cacheKey] = $url;
         }
 
         // Fallback to UI Avatars if file doesn't exist
-        return 'https://ui-avatars.com/api/?name=' . urlencode($user->name) . '&size=200&background=007bff&color=ffffff';
+        return self::$profileImageUrlForCache[$cacheKey] = 'https://ui-avatars.com/api/?name=' . urlencode($user->name) . '&size=200&background=007bff&color=ffffff';
     }
 
     /**

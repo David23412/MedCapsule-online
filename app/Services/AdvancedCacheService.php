@@ -59,10 +59,12 @@ class AdvancedCacheService
     {
         $cacheKey = $this->optimizeCacheKey($key);
 
+        $cachedValue = $this->getCachedValueOrMiss($cacheKey);
+
         // Check cache first
-        if (Cache::has($cacheKey)) {
+        if (!$this->isCacheMiss($cachedValue)) {
             $this->recordCacheHit($cacheKey);
-            return Cache::get($cacheKey);
+            return $cachedValue;
         }
 
         // Cache miss - generate fresh data
@@ -121,7 +123,7 @@ class AdvancedCacheService
             foreach ($activeUserIds as $userId) {
                 // Warm user course enrollment cache
                 $cacheKey = self::generateCacheKey('user', "courses_{$userId}");
-                if (!Cache::has($cacheKey)) {
+                if ($this->isCacheMiss($this->getCachedValueOrMiss($cacheKey))) {
                     $courses = \App\Models\User::find($userId)?->courses ?? collect();
                     Cache::put($cacheKey, $courses, self::CACHE_TTL['user_data']);
                     $results['warmed']++;
@@ -156,7 +158,7 @@ class AdvancedCacheService
             foreach ($popularCourseIds as $courseId) {
                 // Warm course enrollment count cache
                 $cacheKey = self::generateCacheKey('course', "enrolled_count_{$courseId}");
-                if (!Cache::has($cacheKey)) {
+                if ($this->isCacheMiss($this->getCachedValueOrMiss($cacheKey))) {
                     $count = \Illuminate\Support\Facades\DB::table('course_user')
                         ->where('course_id', $courseId)
                         ->where('is_enrolled', true)
@@ -185,7 +187,7 @@ class AdvancedCacheService
         try {
             // Warm system statistics
             $statsCacheKey = self::generateCacheKey('system', 'stats');
-            if (!Cache::has($statsCacheKey)) {
+            if ($this->isCacheMiss($this->getCachedValueOrMiss($statsCacheKey))) {
                 $stats = [
                     'total_users' => \App\Models\User::count(),
                     'total_courses' => \App\Models\Course::count(),
@@ -214,7 +216,7 @@ class AdvancedCacheService
 
         // Invalidate primary cache
         $primaryKey = self::generateCacheKey($type, $identifier);
-        if (Cache::has($primaryKey)) {
+        if (!$this->isCacheMiss($this->getCachedValueOrMiss($primaryKey))) {
             Cache::forget($primaryKey);
             $invalidated++;
         }
@@ -222,7 +224,7 @@ class AdvancedCacheService
         // Invalidate related caches
         foreach ($relatedTypes as $relatedType => $relatedId) {
             $relatedKey = self::generateCacheKey($relatedType, $relatedId);
-            if (Cache::has($relatedKey)) {
+            if (!$this->isCacheMiss($this->getCachedValueOrMiss($relatedKey))) {
                 Cache::forget($relatedKey);
                 $invalidated++;
             }
@@ -498,6 +500,26 @@ class AdvancedCacheService
             'failed' => $base['failed'] + $additional['failed'],
             'skipped' => $base['skipped'] + $additional['skipped']
         ];
+    }
+
+    private function getCachedValueOrMiss(string $key): mixed
+    {
+        return Cache::get($key, $this->cacheMissSentinel());
+    }
+
+    private function isCacheMiss(mixed $value): bool
+    {
+        return $value === $this->cacheMissSentinel();
+    }
+
+    private function cacheMissSentinel(): \stdClass
+    {
+        static $sentinel = null;
+        if ($sentinel === null) {
+            $sentinel = new \stdClass();
+        }
+
+        return $sentinel;
     }
 
     /**

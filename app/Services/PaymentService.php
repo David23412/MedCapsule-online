@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\Payment;
 use App\Models\Course;
 use App\Models\User;
+use Illuminate\Support\Facades\Log;
 
 class PaymentService
 {
@@ -22,7 +23,7 @@ class PaymentService
         $payment = $this->createPayment($user, $course, $paymentData);
 
         // 🔔 TRIGGER PAYMENT SUBMITTED NOTIFICATION (ORANGE BORDER)
-        $this->triggerPaymentNotifications($user, $payment, $course, 'submitted');
+        $this->triggerPaymentNotifications($user, $payment, $course);
 
         return $payment;
     }
@@ -65,8 +66,8 @@ class PaymentService
             'payment_method' => $paymentData['payment_method'],
             // 🔥 PROVIDER TRANSACTION CODE ONLY (guaranteed unique)
             'transaction_id' => $paymentData['transaction_id'],
-            // 🔥 NO REDUNDANT REFERENCE CODE GENERATION
-            'reference_number' => null, // Remove this field or use provider code
+            // Keep a stable searchable reference without generating a second identifier.
+            'reference_number' => $paymentData['reference_number'] ?? $paymentData['transaction_id'],
             'paid_at' => null,
             'created_at' => now(),
             'updated_at' => now()
@@ -127,18 +128,55 @@ class PaymentService
             $query = Payment::with(['user', 'course']);
 
             // Apply search filter if provided
-            if ($search) {
-                $query->where(function ($q) use ($search) {
-                    $q->where('reference_number', 'like', "%{$search}%")
-                      ->orWhere('transaction_id', 'like', "%{$search}%")
-                      ->orWhere('payment_method', 'like', "%{$search}%")
-                      ->orWhereHas('user', function ($userQuery) use ($search) {
-                          $userQuery->where('name', 'like', "%{$search}%")
-                                   ->orWhere('email', 'like', "%{$search}%");
-                      })
-                      ->orWhereHas('course', function ($courseQuery) use ($search) {
-                          $courseQuery->where('name', 'like', "%{$search}%");
-                      });
+            $search = trim((string) $search);
+
+            if ($search !== '') {
+                $prefixSearch = $search . '%';
+                $containsSearch = '%' . $search . '%';
+
+                $matchingUserIds = User::query()
+                    ->where(function ($userQuery) use ($prefixSearch) {
+                        $userQuery->where('email', 'like', $prefixSearch)
+                            ->orWhere('number', 'like', $prefixSearch)
+                            ->orWhere('name', 'like', $prefixSearch);
+                    })
+                    ->limit(100)
+                    ->pluck('id');
+
+                $matchingCourseIds = Course::query()
+                    ->where('name', 'like', $prefixSearch)
+                    ->limit(100)
+                    ->pluck('id');
+
+                $query->where(function ($paymentQuery) use ($search, $prefixSearch, $containsSearch, $matchingUserIds, $matchingCourseIds) {
+                    $paymentQuery->where('reference_number', $search)
+                        ->orWhere('transaction_id', $search)
+                        ->orWhere('payment_method', $search)
+                        ->orWhere('reference_number', 'like', $prefixSearch)
+                        ->orWhere('transaction_id', 'like', $prefixSearch)
+                        ->orWhere('payment_method', 'like', $prefixSearch);
+
+                    if ($matchingUserIds->isNotEmpty()) {
+                        $paymentQuery->orWhereIn('user_id', $matchingUserIds);
+                    }
+
+                    if ($matchingCourseIds->isNotEmpty()) {
+                        $paymentQuery->orWhereIn('course_id', $matchingCourseIds);
+                    }
+
+                    $paymentQuery->orWhere(function ($fallbackQuery) use ($containsSearch) {
+                        $fallbackQuery->where('reference_number', 'like', $containsSearch)
+                            ->orWhere('transaction_id', 'like', $containsSearch)
+                            ->orWhere('payment_method', 'like', $containsSearch)
+                            ->orWhereHas('user', function ($userQuery) use ($containsSearch) {
+                                $userQuery->where('name', 'like', $containsSearch)
+                                    ->orWhere('email', 'like', $containsSearch)
+                                    ->orWhere('number', 'like', $containsSearch);
+                            })
+                            ->orWhereHas('course', function ($courseQuery) use ($containsSearch) {
+                                $courseQuery->where('name', 'like', $containsSearch);
+                            });
+                    });
                 });
             }
 
@@ -211,9 +249,9 @@ class PaymentService
                 return ['success' => false, 'message' => 'Payment not found'];
             }
 
-            // Update payment status to accepted
+            // Update payment status to completed
             $payment->update([
-                'status' => 'accepted',
+                'status' => 'completed',
                 'paid_at' => now()
             ]);
 

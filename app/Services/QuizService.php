@@ -53,6 +53,9 @@ class QuizService
             // Check user access to course
             $this->validateUserAccess($user, $course);
 
+            // Preview users can only open the first configured topics.
+            $this->validateTopicPreviewAccess($user, $topic);
+
             // Normalize and validate sources
             $sources = $this->normalizeSources($sources);
 
@@ -124,15 +127,36 @@ class QuizService
      */
     private function validateUserAccess(User $user, Course $course): void
     {
-        if ($user->role !== 'admin' && !$user->hasAccessToCourse($course->id) && $course->price && $course->price > 0) {
+        if (!$user->isAdmin() && !$user->hasAccessToCourse($course->id)) {
             Log::error('Access denied: User does not have access to course', [
                 'user_id' => $user->id,
                 'course_id' => $course->id,
-                'is_admin' => $user->role === 'admin',
+                'is_admin' => $user->isAdmin(),
                 'course_price' => $course->price
             ]);
+
+            if ($user->requiresSurveyUnlockForCourse($course)) {
+                throw new \InvalidArgumentException('Free course survey unlock is required before accessing this course.');
+            }
+
             throw new \InvalidArgumentException('You must be granted access to this course to take quizzes. Please contact an administrator.');
         }
+    }
+
+    private function validateTopicPreviewAccess(User $user, Topic $topic): void
+    {
+        if ($user->isAdmin() || !$user->isTopicPreviewLocked($topic)) {
+            return;
+        }
+
+        Log::warning('Preview access denied: topic is outside preview window', [
+            'user_id' => $user->id,
+            'topic_id' => $topic->id,
+            'course_id' => $topic->course_id,
+            'display_order' => $topic->display_order,
+        ]);
+
+        throw new \InvalidArgumentException('This topic is outside the free preview. Unlock the full course to continue.');
     }
 
     /**
@@ -196,8 +220,7 @@ class QuizService
      */
     private function getQuestionsFromDatabase(Topic $topic, array $sources): \Illuminate\Database\Eloquent\Collection
     {
-        // EFFICIENT QUERY: Build with minimal validation
-        $questionsQuery = Question::select([
+        return Question::select([
             'id', 'topic_id', 'question', 'question_type', 
             'option_a', 'option_b', 'option_c', 'option_d',
             'correct_answer', 'explanation', 'image_url', 'source',
@@ -206,37 +229,11 @@ class QuizService
         ->where('topic_id', $topic->id)
         ->whereNotNull('question') // Ensure question content exists
         ->where('question', '!=', '') // Ensure question is not empty
-        ->with(['topic:id,name,course_id']); // Eager load minimal topic data
-        
-        // Apply source filtering if specific sources are selected
-        if (!in_array('all', $sources)) {
-            $questionsQuery->whereIn('source', $sources);
-        }
-        
-        // EFFICIENT VALIDATION: Single query with EXISTS check
-        $questions = $questionsQuery->get();
-        
-        // OPTIMIZED VERIFICATION: Batch check for existence
-        $questionIds = $questions->pluck('id')->toArray();
-        $existingIds = Question::whereIn('id', $questionIds)
-            ->whereNotNull('question')
-            ->where('question', '!=', '')
-            ->pluck('id')
-            ->toArray();
-            
-        $validQuestions = $questions->filter(function ($question) use ($existingIds) {
-            return in_array($question->id, $existingIds);
-        });
-        
-        if ($validQuestions->count() !== $questions->count()) {
-            Log::warning('OPTIMIZED LETHAL FIX: Deleted questions filtered out', [
-                'original_count' => $questions->count(),
-                'valid_count' => $validQuestions->count(),
-                'filtered_count' => $questions->count() - $validQuestions->count()
-            ]);
-        }
-        
-        return $validQuestions;
+        ->with(['topic:id,name,course_id']) // Eager load minimal topic data
+        ->when(!in_array('all', $sources), function ($query) use ($sources) {
+            $query->whereIn('source', $sources);
+        })
+        ->get();
     }
 
     /**
@@ -360,15 +357,26 @@ class QuizService
      */
     public function getRandomQuestions(Topic $topic, int $count = 10, array $sources = ['all']): \Illuminate\Database\Eloquent\Collection
     {
-        $questionsQuery = Question::where('topic_id', $topic->id);
-        
+        $questionsQuery = Question::query()->where('topic_id', $topic->id);
+
         if (!in_array('all', $sources)) {
             $questionsQuery->whereIn('source', $sources);
         }
 
-        return $questionsQuery->inRandomOrder()
-            ->limit($count)
-            ->get();
+        $selectedIds = $this->sampleQuestionIds($questionsQuery, $count);
+        if ($selectedIds === []) {
+            return collect();
+        }
+
+        $idOrderMap = array_flip($selectedIds);
+
+        return Question::query()
+            ->whereIn('id', $selectedIds)
+            ->get()
+            ->sortBy(function ($question) use ($idOrderMap) {
+                return $idOrderMap[$question->id] ?? PHP_INT_MAX;
+            })
+            ->values();
     }
 
     /**
@@ -502,7 +510,7 @@ class QuizService
      * @param User $user
      * @return array
      */
-    public function generateQuizQuestions(Topic $topic, array $sources = ['all'], User $user = null): array
+    public function generateQuizQuestions(Topic $topic, array $sources = ['all'], ?User $user = null): array
     {
         try {
             Log::info('Generating quiz questions', [
@@ -599,11 +607,12 @@ class QuizService
                 'course_ids' => $courseIds
             ]);
 
-            // SECURITY FIX: Validate user access to specified courses
+            // SECURITY FIX: Validate user access to specified courses.
+            // Random quiz must only run on fully unlocked courses to prevent
+            // preview users from bypassing topic-lock progression.
             if (!empty($courseIds)) {
-                $accessibleCourses = $user->hasAccessToCourses($courseIds);
-                $inaccessibleCourses = array_filter($courseIds, function($courseId) use ($accessibleCourses) {
-                    return !($accessibleCourses[$courseId] ?? false);
+                $inaccessibleCourses = array_filter($courseIds, function($courseId) use ($user) {
+                    return !$user->hasFullAccessToCourse((int) $courseId);
                 });
 
                 if (!empty($inaccessibleCourses)) {
@@ -623,7 +632,12 @@ class QuizService
 
             // If no specific courses requested, use only accessible courses
             if (empty($courseIds)) {
-                $userCourses = $user->courses()->pluck('id')->toArray();
+                $userCourses = $user->courses()->pluck('courses.id')->toArray();
+                $userCourses = array_values(array_filter(
+                    $userCourses,
+                    fn ($courseId) => $user->hasFullAccessToCourse((int) $courseId)
+                ));
+
                 if (empty($userCourses)) {
                     Log::warning('User has no accessible courses for random quiz', [
                         'user_id' => $user->id
@@ -669,20 +683,31 @@ class QuizService
                 $questionsQuery->where('difficulty', $difficulty);
             }
 
-            // SMART VALIDATION: Get questions and verify efficiently
-            $questions = $questionsQuery->inRandomOrder()->limit($questionCount * 1.5)->get(); // Get extra to account for deletions
-            
-            // OPTIMIZED VERIFICATION: Batch check for existence
-            $questionIds = $questions->pluck('id')->toArray();
-            $existingIds = Question::whereIn('id', $questionIds)
-                ->whereNotNull('question')
-                ->where('question', '!=', '')
-                ->pluck('id')
-                ->toArray();
-                
-            $validQuestions = $questions->filter(function ($question) use ($existingIds) {
-                return in_array($question->id, $existingIds);
-            })->take($questionCount);
+            $selectedIds = $this->sampleQuestionIds($questionsQuery, $questionCount);
+
+            if ($selectedIds === []) {
+                return [
+                    'success' => false,
+                    'message' => 'No valid questions available for the specified criteria.',
+                    'questions' => []
+                ];
+            }
+
+            $idOrderMap = array_flip($selectedIds);
+
+            $validQuestions = Question::query()
+                ->select([
+                    'id', 'topic_id', 'question', 'question_type',
+                    'option_a', 'option_b', 'option_c', 'option_d',
+                    'correct_answer', 'explanation', 'image_url', 'source',
+                    'alternative_answers', 'similarity_threshold'
+                ])
+                ->whereIn('id', $selectedIds)
+                ->get()
+                ->sortBy(function ($question) use ($idOrderMap) {
+                    return $idOrderMap[$question->id] ?? PHP_INT_MAX;
+                })
+                ->values();
 
             if ($validQuestions->isEmpty()) {
                 return [
@@ -725,6 +750,50 @@ class QuizService
         }
     }
 
+    private function sampleQuestionIds($query, int $limit): array
+    {
+        $stats = (clone $query)
+            ->selectRaw('MIN(id) as min_id, MAX(id) as max_id, COUNT(*) as total')
+            ->first();
+
+        $total = (int) ($stats->total ?? 0);
+        if ($total === 0) {
+            return [];
+        }
+
+        if ($total <= $limit) {
+            return (clone $query)
+                ->orderBy('id')
+                ->pluck('id')
+                ->all();
+        }
+
+        $minId = (int) $stats->min_id;
+        $maxId = (int) $stats->max_id;
+        $startId = random_int($minId, $maxId);
+
+        $selectedIds = (clone $query)
+            ->where('id', '>=', $startId)
+            ->orderBy('id')
+            ->limit($limit)
+            ->pluck('id')
+            ->all();
+
+        if (count($selectedIds) < $limit) {
+            $selectedIds = array_merge(
+                $selectedIds,
+                (clone $query)
+                    ->where('id', '<', $startId)
+                    ->orderBy('id')
+                    ->limit($limit - count($selectedIds))
+                    ->pluck('id')
+                    ->all()
+            );
+        }
+
+        return array_values(array_unique($selectedIds));
+    }
+
     /**
      * Generate tutor mode quiz (one question at a time with immediate feedback)
      *
@@ -733,7 +802,7 @@ class QuizService
      * @param User $user
      * @return array
      */
-    public function generateTutorQuiz(Topic $topic, array $sources = ['all'], User $user = null): array
+    public function generateTutorQuiz(Topic $topic, array $sources = ['all'], ?User $user = null): array
     {
         Log::info('DEBUG: generateTutorQuiz called', [
             'topic_id' => $topic->id,
@@ -1041,7 +1110,7 @@ class QuizService
     /**
      * Process questions in chunks to manage memory
      */
-    public function processQuestionsInChunks(Topic $topic, array $sources, callable $processor, int $chunkSize = null): array
+    public function processQuestionsInChunks(Topic $topic, array $sources, callable $processor, ?int $chunkSize = null): array
     {
         $chunkSize = $chunkSize ?? self::CHUNK_SIZE;
         $results = [];

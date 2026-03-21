@@ -129,6 +129,11 @@ return new class extends Migration
             return;
         }
 
+        if ($this->hasEquivalentIndex($table, [$column])) {
+            echo "ℹ️  Equivalent index already exists on {$table}(" . $column . "), skipping {$indexName}\n";
+            return;
+        }
+
         if ($this->indexExists($table, $indexName)) {
             echo "ℹ️  Index {$indexName} already exists on {$table}\n";
             return;
@@ -162,6 +167,11 @@ return new class extends Migration
             }
         }
 
+        if ($this->hasEquivalentIndex($table, $columns)) {
+            echo "ℹ️  Equivalent composite index already exists on {$table}(" . implode(', ', $columns) . "), skipping {$indexName}\n";
+            return;
+        }
+
         if ($this->indexExists($table, $indexName)) {
             echo "ℹ️  Composite index {$indexName} already exists on {$table}\n";
             return;
@@ -182,16 +192,129 @@ return new class extends Migration
      */
     private function indexExists(string $table, string $indexName): bool
     {
-        try {
-            $indexes = DB::select("SHOW INDEX FROM `{$table}`");
-            foreach ($indexes as $index) {
-                if ($index->Key_name === $indexName) {
-                    return true;
-                }
+        return array_key_exists($indexName, $this->getIndexDefinitions($table));
+    }
+
+    /**
+     * Check whether an equivalent index definition already exists, regardless of name.
+     */
+    private function hasEquivalentIndex(string $table, array $columns): bool
+    {
+        foreach ($this->getIndexDefinitions($table) as $definition) {
+            if (array_slice($definition, 0, count($columns)) === $columns) {
+                return true;
             }
-            return false;
-        } catch (\Exception $e) {
-            return false;
         }
+
+        return false;
+    }
+
+    private function getIndexDefinitions(string $table): array
+    {
+        $connection = DB::connection();
+        $driver = $connection->getDriverName();
+
+        try {
+            return match ($driver) {
+                'sqlite' => $this->sqliteIndexDefinitions($table),
+                'pgsql' => $this->pgsqlIndexDefinitions($table),
+                default => $this->mysqlIndexDefinitions($table),
+            };
+        } catch (\Throwable $e) {
+            return [];
+        }
+    }
+
+    private function mysqlIndexDefinitions(string $table): array
+    {
+        $indexes = DB::select("SHOW INDEX FROM `{$table}`");
+        $definitions = [];
+
+        foreach ($indexes as $index) {
+            $keyName = $index->Key_name ?? null;
+            $seq = (int) ($index->Seq_in_index ?? 0);
+            $column = $index->Column_name ?? null;
+
+            if ($keyName === null || $seq < 1 || $column === null) {
+                continue;
+            }
+
+            $definitions[$keyName][$seq] = $column;
+        }
+
+        foreach ($definitions as &$definition) {
+            ksort($definition);
+            $definition = array_values($definition);
+        }
+
+        return $definitions;
+    }
+
+    private function sqliteIndexDefinitions(string $table): array
+    {
+        $tableLiteral = str_replace("'", "''", $table);
+        $indexes = DB::select("PRAGMA index_list('{$tableLiteral}')");
+        $definitions = [];
+
+        foreach ($indexes as $index) {
+            $indexName = $index->name ?? null;
+
+            if ($indexName === null) {
+                continue;
+            }
+
+            $indexLiteral = str_replace("'", "''", $indexName);
+            $columns = DB::select("PRAGMA index_info('{$indexLiteral}')");
+
+            foreach ($columns as $column) {
+                $seq = (int) (($column->seqno ?? 0) + 1);
+                $columnName = $column->name ?? null;
+
+                if ($columnName === null) {
+                    continue;
+                }
+
+                $definitions[$indexName][$seq] = $columnName;
+            }
+        }
+
+        foreach ($definitions as &$definition) {
+            ksort($definition);
+            $definition = array_values($definition);
+        }
+
+        return $definitions;
+    }
+
+    private function pgsqlIndexDefinitions(string $table): array
+    {
+        $indexes = DB::select(
+            "SELECT indexname, indexdef FROM pg_indexes WHERE schemaname = current_schema() AND tablename = ?",
+            [$table]
+        );
+
+        $definitions = [];
+
+        foreach ($indexes as $index) {
+            $indexName = $index->indexname ?? null;
+            $indexDef = $index->indexdef ?? null;
+
+            if ($indexName === null || !is_string($indexDef)) {
+                continue;
+            }
+
+            if (!preg_match('/\((.+)\)/', $indexDef, $matches)) {
+                continue;
+            }
+
+            $columns = array_map(
+                static fn (string $column): string => trim(str_replace('"', '', $column)),
+                explode(',', $matches[1])
+            );
+
+            $definitions[$indexName] = array_values(array_filter($columns));
+        }
+
+        return $definitions;
     }
 };

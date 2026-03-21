@@ -35,9 +35,7 @@
         $topWeakCourse = $coursesCollection->sortByDesc('mistake_count')->first();
         $oldestMistake = $mistakeCollection->sortBy('last_attempt_date')->first();
 
-        if (($selectedCourse ?? '') === 'skipped') {
-            $activeReviewLabel = 'Skipped Questions';
-        } elseif (!empty($selectedCourse)) {
+        if (!empty($selectedCourse)) {
             $activeReviewLabel = optional($coursesCollection->firstWhere('id', (int) $selectedCourse))->name ?? 'Filtered Course';
         }
     @endphp
@@ -269,9 +267,6 @@
                         <div class="position-relative flex-grow-1">
                             <select id="courseFilter" name="course" class="form-select">
                                 <option value="">All Courses ({{ $totalMistakesCount ?? 0 }})</option>
-                                <option value="skipped" {{ ($selectedCourse ?? '') == 'skipped' ? 'selected' : '' }}>
-                                    Skipped Questions ({{ $skippedCount ?? 0 }})
-                                </option>
                                 @foreach($availableCourses->sortBy('name') as $course)
                                     <option value="{{ $course->id }}" {{ $selectedCourse == $course->id ? 'selected' : '' }}>
                                         {{ $course->name }} ({{ $course->mistake_count ?? 0 }})

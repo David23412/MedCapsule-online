@@ -15,6 +15,8 @@ return new class extends Migration
             $table->id();
             $table->string('name'); // Name of the course
             $table->text('description')->nullable(); // Description of the course (optional)
+            $table->boolean('fake_enrolled_enabled')->default(false);
+            $table->integer('fake_enrolled_count')->default(0);
             $table->enum('type', ['medical', 'custom'])->default('medical'); // Course type
             $table->string('academic_year')->default('2024-1'); // Academic year and semester (e.g., 2024-1)
             $table->string('image')->nullable(); // Image URL for the course
@@ -24,6 +26,7 @@ return new class extends Migration
             $table->timestamps();
 
             // Indexes for performance
+            $table->index('name', 'idx_courses_name');
             $table->index('academic_year', 'idx_academic_year');
             $table->index(['academic_year', 'price'], 'idx_academic_year_price');
             $table->index('created_at', 'idx_courses_created_at');

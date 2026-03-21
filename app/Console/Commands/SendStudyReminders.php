@@ -3,17 +3,24 @@
 namespace App\Console\Commands;
 
 use App\Models\User;
-use App\Models\UserTopicProgress;
 use App\Models\QuizAttempt;
 use App\Services\NotificationTriggerService;
+use App\Services\PerformanceTrackingService;
 use Illuminate\Console\Command;
-use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
 
 class SendStudyReminders extends Command
 {
     protected $signature = 'notifications:send-reminders';
     protected $description = 'Send study reminders, weak topic alerts, and streak encouragements';
+
+    private PerformanceTrackingService $performanceTrackingService;
+
+    public function __construct(PerformanceTrackingService $performanceTrackingService)
+    {
+        $this->performanceTrackingService = $performanceTrackingService;
+        parent::__construct();
+    }
 
     public function handle()
     {
@@ -35,31 +42,27 @@ class SendStudyReminders extends Command
     {
         $this->info('📊 Checking for weak topics...');
 
-        $users = User::where('role', 'student')
-            ->whereHas('topicProgress')
+        $users = User::where('role', User::ROLE_STUDENT)
+            ->whereHas('topicProgress', function ($query) {
+                $query->whereNotNull('percentage_grade')
+                    ->where('percentage_grade', '<', 75);
+            })
             ->get();
 
         $remindersSent = 0;
 
         foreach ($users as $user) {
-            // Get topics with less than 50% grade
-            $weakTopics = UserTopicProgress::where('user_id', $user->id)
-                ->where('percentage_grade', '<', 50)
-                ->where('percentage_grade', '>', 0) // Has attempted
-                ->with('topic')
-                ->get()
-                ->map(function ($progress) {
-                    return [
-                        'id' => $progress->topic_id,
-                        'name' => $progress->topic->name ?? 'Unknown Topic',
-                        'grade' => $progress->percentage_grade
-                    ];
-                })
-                ->toArray();
+            $snapshot = $this->performanceTrackingService->getReminderSnapshot($user);
 
-            if (count($weakTopics) >= 3) {
-                // Only send if user has 3+ weak topics
-                NotificationTriggerService::onWeakTopicReminder($user, $weakTopics);
+            if ($snapshot['should_send_weak_topic_reminder']) {
+                NotificationTriggerService::onWeakTopicReminder(
+                    $user,
+                    ($snapshot['coach']['topics'] ?? collect())->toArray(),
+                    [
+                        'focus_topic' => $snapshot['coach']['focus_topic'],
+                        'priority' => $snapshot['weak_topic_priority'],
+                    ]
+                );
                 $remindersSent++;
             }
         }
@@ -74,27 +77,23 @@ class SendStudyReminders extends Command
     {
         $this->info('❌ Checking for mistakes to review...');
 
-        $users = User::where('role', 'student')
-            ->whereHas('quizAttempts')
+        $users = User::where('role', User::ROLE_STUDENT)
+            ->whereHas('mistakes', function ($query) {
+                $query->where('mastered', false)
+                    ->where('skipped', false);
+            })
             ->get();
 
         $remindersSent = 0;
 
         foreach ($users as $user) {
-            // Count incorrect answers from recent quizzes (last 7 days)
-            $mistakeCount = DB::table('quiz_attempts')
-                ->where('user_id', $user->id)
-                ->where('created_at', '>=', Carbon::now()->subDays(7))
-                ->whereRaw('JSON_LENGTH(question_data) > 0')
-                ->get()
-                ->sum(function ($attempt) {
-                    $questions = json_decode($attempt->question_data, true) ?? [];
-                    return collect($questions)->where('is_correct', false)->count();
-                });
+            $snapshot = $this->performanceTrackingService->getReminderSnapshot($user);
+            $mistakeCount = (int) ($snapshot['open_mistakes_count'] ?? 0);
 
-            if ($mistakeCount >= 10) {
-                // Send reminder if 10+ mistakes
-                NotificationTriggerService::onMistakesNeedReview($user, $mistakeCount);
+            if ($snapshot['should_send_mistake_reminder'] && $mistakeCount > 0) {
+                NotificationTriggerService::onMistakesNeedReview($user, $mistakeCount, [
+                    'priority' => $mistakeCount >= 15 ? 'high' : 'normal',
+                ]);
                 $remindersSent++;
             }
         }
@@ -109,7 +108,7 @@ class SendStudyReminders extends Command
     {
         $this->info('🔥 Checking study streaks...');
 
-        $users = User::where('role', 'student')->get();
+        $users = User::where('role', User::ROLE_STUDENT)->get();
         $encouragementsSent = 0;
 
         foreach ($users as $user) {
@@ -132,7 +131,7 @@ class SendStudyReminders extends Command
     {
         $this->info('💤 Checking for inactive users...');
 
-        $inactiveUsers = User::where('role', 'student')
+        $inactiveUsers = User::where('role', User::ROLE_STUDENT)
             ->whereDoesntHave('quizAttempts', function ($query) {
                 $query->where('created_at', '>=', Carbon::now()->subDays(3));
             })

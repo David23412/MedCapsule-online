@@ -82,7 +82,7 @@ class UserService
                 ->count();
 
             // PERFORMANCE OPTIMIZATION: Get users with pagination
-            $users = User::select('id', 'name', 'email', 'role')
+            $users = User::select('id', 'name', 'email', 'number', 'role')
                 ->orderBy('name', 'asc')
                 ->paginate($perPage);
 
@@ -210,21 +210,55 @@ class UserService
     {
         try {
             // FIXED: Handle null or empty query
-            $query = $query ?? '';
+            $query = trim((string) ($query ?? ''));
             
             // If query is empty, return all users
-            if (strlen(trim($query)) < 1) {
-                $users = User::select('id', 'name', 'email', 'role')
+            if ($query === '') {
+                $users = User::select('id', 'name', 'email', 'number', 'role')
                     ->orderBy('name', 'asc')
                     ->limit(100) // Limit to prevent overwhelming the dropdown
                     ->get();
             } else {
-                $users = User::where('name', 'like', "%{$query}%")
-                    ->orWhere('email', 'like', "%{$query}%")
-                    ->select('id', 'name', 'email', 'role')
+                $limit = 50;
+                $prefixSearch = $query . '%';
+                $containsSearch = '%' . $query . '%';
+
+                $users = User::select('id', 'name', 'email', 'number', 'role')
+                    ->where(function ($builder) use ($prefixSearch) {
+                        $builder->where('email', 'like', $prefixSearch)
+                            ->orWhere('number', 'like', $prefixSearch)
+                            ->orWhere('name', 'like', $prefixSearch);
+                    })
+                    ->orderByRaw(
+                        "CASE
+                            WHEN email = ? THEN 1
+                            WHEN number = ? THEN 2
+                            WHEN name = ? THEN 3
+                            WHEN email LIKE ? THEN 4
+                            WHEN number LIKE ? THEN 5
+                            WHEN name LIKE ? THEN 6
+                            ELSE 7
+                        END",
+                        [$query, $query, $query, $prefixSearch, $prefixSearch, $prefixSearch]
+                    )
                     ->orderBy('name', 'asc')
-                    ->limit(50)
+                    ->limit($limit)
                     ->get();
+
+                if ($users->count() < $limit) {
+                    $fallbackUsers = User::select('id', 'name', 'email', 'number', 'role')
+                        ->whereNotIn('id', $users->pluck('id'))
+                        ->where(function ($builder) use ($containsSearch) {
+                            $builder->where('name', 'like', $containsSearch)
+                                ->orWhere('email', 'like', $containsSearch)
+                                ->orWhere('number', 'like', $containsSearch);
+                        })
+                        ->orderBy('name', 'asc')
+                        ->limit($limit - $users->count())
+                        ->get();
+
+                    $users = $users->concat($fallbackUsers)->values();
+                }
             }
 
             return ['success' => true, 'users' => $users];

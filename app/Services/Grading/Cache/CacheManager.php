@@ -113,7 +113,7 @@ class CacheManager
     /**
      * Multi-level cache storage
      */
-    public function set(string $key, mixed $value, int $ttl = null): bool
+    public function set(string $key, mixed $value, ?int $ttl = null): bool
     {
         $fullKey = $this->config['prefix'] . $key;
         $ttl = $ttl ?? $this->config['default_ttl'];
@@ -362,12 +362,14 @@ class CacheManager
             $testKey = 'health_check_' . $type . '_' . time();
             $testValue = 'test_value';
 
+            $startTime = microtime(true);
             $cache->put($testKey, $testValue, 10);
             $retrieved = $cache->get($testKey);
             $cache->forget($testKey);
+            $responseTime = microtime(true) - $startTime;
 
             if ($retrieved === $testValue) {
-                return ['status' => 'healthy', 'response_time' => microtime(true) - $startTime ?? 0];
+                return ['status' => 'healthy', 'response_time' => $responseTime];
             } else {
                 return ['status' => 'error', 'error' => 'Read/write test failed'];
             }

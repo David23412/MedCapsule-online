@@ -6,10 +6,18 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\DB;
+use App\Services\Core\UltraConsolidatedCacheService;
+use App\Services\Learning\AdaptiveMistakeScheduler;
+use Carbon\Carbon;
+use Illuminate\Support\Str;
 
 class Mistake extends Model
 {
     use HasFactory;
+
+    protected static array $columnExistenceCache = [];
 
     protected $fillable = [
         'user_id',
@@ -21,9 +29,29 @@ class Mistake extends Model
         'last_attempt_date',
         'quick_correct_count',
         'quiz_correct_count',
+        'review_count',
+        'lapse_count',
+        'interval_days',
+        'ease_factor',
+        'difficulty',
+        'difficulty_baseline',
+        'stability',
+        'retrievability',
+        'skip_count',
+        'consecutive_skip_count',
+        'last_skipped_at',
+        'skip_until',
+        'last_response_seconds',
+        'last_review_rating',
+        'last_review_confidence',
+        'hesitation_score',
+        'learning_state',
+        'same_day_relearn_step',
+        'same_day_relearn_count',
+        'next_review_at',
+        'last_reviewed_at',
         'mastered',
-        'skipped',
-        'is_bookmarked'
+        'skipped'
     ];
 
     protected $attributes = [
@@ -31,15 +59,47 @@ class Mistake extends Model
         'submitted_answer' => '',  // Default empty string for submitted_answer
         'quick_correct_count' => 0,
         'quiz_correct_count' => 0,
+        'review_count' => 0,
+        'lapse_count' => 0,
+        'interval_days' => 0,
+        'ease_factor' => 2.3,
+        'difficulty' => 0.45,
+        'difficulty_baseline' => null,
+        'stability' => 0.5,
+        'retrievability' => 0.9,
+        'skip_count' => 0,
+        'consecutive_skip_count' => 0,
+        'learning_state' => null,
+        'same_day_relearn_step' => 0,
+        'same_day_relearn_count' => 0,
         'mastered' => false,
         'skipped' => false
     ];
 
     protected $casts = [
         'last_attempt_date' => 'datetime',
+        'next_review_at' => 'datetime',
+        'last_reviewed_at' => 'datetime',
         'correct_streak' => 'integer',
         'quick_correct_count' => 'integer',
         'quiz_correct_count' => 'integer',
+        'review_count' => 'integer',
+        'lapse_count' => 'integer',
+        'interval_days' => 'integer',
+        'ease_factor' => 'float',
+        'difficulty' => 'float',
+        'difficulty_baseline' => 'float',
+        'stability' => 'float',
+        'retrievability' => 'float',
+        'skip_count' => 'integer',
+        'consecutive_skip_count' => 'integer',
+        'last_skipped_at' => 'datetime',
+        'skip_until' => 'datetime',
+        'last_response_seconds' => 'integer',
+        'last_review_rating' => 'integer',
+        'hesitation_score' => 'float',
+        'same_day_relearn_step' => 'integer',
+        'same_day_relearn_count' => 'integer',
         'mastered' => 'boolean',
         'skipped' => 'boolean'
     ];
@@ -63,6 +123,21 @@ class Mistake extends Model
             // Initialize tracking fields
             $mistake->correct_streak = 0;
             $mistake->last_attempt_date = now();
+            $mistake->setColumnValue('next_review_at', $mistake->next_review_at ?: now());
+            $mistake->setColumnValue('last_reviewed_at', $mistake->last_reviewed_at ?: now());
+            $mistake->setColumnValue('review_count', $mistake->review_count ?? 0);
+            $mistake->setColumnValue('lapse_count', $mistake->lapse_count ?? 0);
+            $mistake->setColumnValue('interval_days', $mistake->interval_days ?? 0);
+            $mistake->setColumnValue('ease_factor', $mistake->ease_factor ?? 2.3);
+            $mistake->setColumnValue('difficulty', $mistake->difficulty ?? 0.45);
+            $mistake->setColumnValue('difficulty_baseline', $mistake->difficulty_baseline ?? null);
+            $mistake->setColumnValue('stability', $mistake->stability ?? 0.5);
+            $mistake->setColumnValue('retrievability', $mistake->retrievability ?? 0.9);
+            $mistake->setColumnValue('skip_count', $mistake->skip_count ?? 0);
+            $mistake->setColumnValue('consecutive_skip_count', $mistake->consecutive_skip_count ?? 0);
+            $mistake->setColumnValue('learning_state', $mistake->learning_state ?? null);
+            $mistake->setColumnValue('same_day_relearn_step', $mistake->same_day_relearn_step ?? 0);
+            $mistake->setColumnValue('same_day_relearn_count', $mistake->same_day_relearn_count ?? 0);
         });
 
         static::updating(function ($mistake) {
@@ -73,6 +148,14 @@ class Mistake extends Model
                 ]);
                 return false;
             }
+        });
+
+        static::created(function ($mistake) {
+            $mistake->clearCaches();
+        });
+
+        static::updated(function ($mistake) {
+            $mistake->clearCaches();
         });
 
         static::deleted(function ($mistake) {
@@ -96,13 +179,45 @@ class Mistake extends Model
         return $this->belongsTo(User::class);
     }
 
+    public function currentRetrievability(?Carbon $asOf = null): float
+    {
+        $asOf ??= now();
+        $lastReviewedAt = $this->last_reviewed_at instanceof Carbon
+            ? $this->last_reviewed_at
+            : ($this->last_attempt_date instanceof Carbon ? $this->last_attempt_date : null);
+
+        if (!$lastReviewedAt && $this->last_reviewed_at) {
+            $lastReviewedAt = Carbon::parse($this->last_reviewed_at);
+        } elseif (!$lastReviewedAt && $this->last_attempt_date) {
+            $lastReviewedAt = Carbon::parse($this->last_attempt_date);
+        }
+
+        $retrievabilitySeed = max(0.01, min(0.99, (float) ($this->retrievability ?? 0.9)));
+
+        if (!$lastReviewedAt || !static::hasColumn('stability')) {
+            return round($retrievabilitySeed, 4);
+        }
+
+        $stability = max(0.15, (float) ($this->stability ?? 0.5));
+        $elapsedDays = max(0.0, $lastReviewedAt->diffInSeconds($asOf) / 86400);
+        $retrievability = $retrievabilitySeed / (1.0 + ($elapsedDays / (9.0 * $stability)));
+
+        return round(max(0.01, min(0.99, $retrievability)), 4);
+    }
+
     /**
      * Check if the mistake is considered mastered based on mode
      */
     public function isMastered($mode = 'quiz'): bool
     {
-        $requiredStreak = ($mode === 'quick') ? 2 : 4;
-        return $this->correct_streak >= $requiredStreak;
+        $normalizedMode = $this->normalizeReviewMode((string) $mode);
+
+        if ($normalizedMode === 'spaced') {
+            return false;
+        }
+
+        $requiredStreak = ($normalizedMode === 'quick') ? 2 : 3;
+        return (bool) $this->mastered || $this->correct_streak >= $requiredStreak;
     }
 
     /**
@@ -110,16 +225,7 @@ class Mistake extends Model
      */
     public function updateTracking($isCorrect, $mode = 'quiz')
     {
-        // Update last attempt date
-        $this->last_attempt_date = now();
-
-        if ($isCorrect) {
-            $this->correct_streak++;
-        } else {
-            // Reset streak on incorrect answer
-            $this->correct_streak = 0;
-        }
-
+        $this->applyReviewOutcome((bool) $isCorrect, (string) $mode);
         $this->save();
         
         Log::info('Updated mistake tracking', [
@@ -131,13 +237,114 @@ class Mistake extends Model
         ]);
     }
 
+    public function applyReviewOutcome(bool $isCorrect, string $mode = 'quiz'): void
+    {
+        $rating = $isCorrect ? 4 : 1;
+        $this->applyRatedReview($rating, $mode);
+    }
+
+    public function applyRatedReview(
+        int $rating,
+        string $mode = 'quiz',
+        ?int $responseSeconds = null,
+        ?string $confidence = null,
+        array $interactionSignals = []
+    ): void
+    {
+        (new AdaptiveMistakeScheduler())->applyReview(
+            $this,
+            $rating,
+            $this->normalizeReviewMode($mode),
+            $responseSeconds,
+            $confidence,
+            $interactionSignals
+        );
+    }
+
+    public function markFailedAttempt(?string $submittedAnswer = null): void
+    {
+        (new AdaptiveMistakeScheduler())->initializeFromFailure($this, $submittedAnswer);
+    }
+
+    public function applySkip(string $mode = 'quiz'): void
+    {
+        (new AdaptiveMistakeScheduler())->applySkip($this, $this->normalizeReviewMode($mode));
+    }
+
+    public function getFocusConceptNameAttribute(): ?string
+    {
+        $question = $this->relationLoaded('question') ? $this->question : null;
+
+        if ($question && !$question->relationLoaded('topic')) {
+            $question->loadMissing('topic');
+        }
+
+        $concept = trim((string) ($question?->primary_concept_name ?? $question?->concept ?? ''));
+
+        if ($concept === '' && $question?->relationLoaded('topic')) {
+            $concept = trim((string) ($question->topic?->name ?? ''));
+        }
+
+        if ($concept !== '') {
+            return $concept;
+        }
+
+        return null;
+    }
+
+    public function getFocusConceptSlugAttribute(): ?string
+    {
+        $concept = $this->focus_concept_name;
+
+        if ($concept === null || $concept === '') {
+            return null;
+        }
+
+        return Str::slug($concept);
+    }
+
+    public static function recordFailure(int $userId, Question $question, ?string $submittedAnswer = null): self
+    {
+        return DB::transaction(function () use ($userId, $question, $submittedAnswer) {
+            $mistake = static::firstOrNew([
+                'user_id' => $userId,
+                'question_id' => $question->id,
+            ]);
+
+            $mistake->question_text = $question->question;
+            $mistake->correct_answer = $question->correct_answer;
+            $mistake->submitted_answer = $submittedAnswer !== null && trim($submittedAnswer) !== ''
+                ? $submittedAnswer
+                : 'unanswered';
+
+            if (!$mistake->exists) {
+                $mistake->save();
+            }
+
+            $mistake->setRelation('question', $question);
+            $mistake->markFailedAttempt($mistake->submitted_answer);
+            $mistake->save();
+            app(\App\Services\Learning\ConceptMemoryService::class)->syncFailure($mistake);
+
+            return $mistake;
+        });
+    }
+
     /**
      * Scope a query to only include mistakes that aren't mastered yet.
      */
     public function scopeNotMastered($query, $mode = 'quiz')
     {
-        $requiredStreak = ($mode === 'quick') ? 2 : 4;
-        return $query->where('correct_streak', '<', $requiredStreak);
+        $normalizedMode = $this->normalizeReviewMode((string) $mode);
+
+        if ($normalizedMode === 'spaced') {
+            return $query;
+        }
+
+        $requiredStreak = ($normalizedMode === 'quick') ? 2 : 3;
+        return $query
+            ->where('mastered', false)
+            ->where('correct_streak', '<', $requiredStreak);
     }
 
     /**
@@ -145,8 +352,79 @@ class Mistake extends Model
      */
     public function scopeMastered($query, $mode = 'quiz')
     {
-        $requiredStreak = ($mode === 'quick') ? 2 : 4;
-        return $query->where('correct_streak', '>=', $requiredStreak);
+        $normalizedMode = $this->normalizeReviewMode((string) $mode);
+
+        if ($normalizedMode === 'spaced') {
+            return $query->whereRaw('1 = 0');
+        }
+
+        $requiredStreak = ($normalizedMode === 'quick') ? 2 : 3;
+        return $query->where(function ($innerQuery) use ($requiredStreak) {
+            $innerQuery
+                ->where('mastered', true)
+                ->orWhere('correct_streak', '>=', $requiredStreak);
+        });
+    }
+
+    public function scopeDueForReview($query, $mode = 'quiz')
+    {
+        $query = $query
+            ->notMastered($mode);
+
+        if (static::hasColumn('skip_until')) {
+            $query->where(function ($innerQuery) {
+                $innerQuery
+                    ->where('skipped', false)
+                    ->orWhere(function ($skipQuery) {
+                        $skipQuery
+                            ->where('skipped', true)
+                            ->whereNotNull('skip_until')
+                            ->where('skip_until', '<=', now());
+                    });
+            });
+        } else {
+            $query->where('skipped', false);
+        }
+
+        if (!static::hasColumn('next_review_at')) {
+            return $query;
+        }
+
+        return $query->where(function ($innerQuery) {
+            $innerQuery
+                ->whereNull('next_review_at')
+                ->orWhere('next_review_at', '<=', now());
+        });
+    }
+
+    public static function hasColumn(string $column): bool
+    {
+        $column = static::normalizeColumnName($column);
+
+        if (!array_key_exists($column, static::$columnExistenceCache)) {
+            $instance = new static();
+            $table = $instance->getTable();
+
+            static::$columnExistenceCache[$column] = Schema::hasTable($table)
+                && Schema::hasColumn($table, $column);
+        }
+
+        return static::$columnExistenceCache[$column];
+    }
+
+    public static function availableColumns(array $columns): array
+    {
+        return array_values(array_filter($columns, fn (string $column) => static::hasColumn($column)));
+    }
+
+    public static function qualifiedColumns(array $columns): array
+    {
+        $table = (new static())->getTable();
+
+        return array_map(
+            fn (string $column) => str_contains($column, '.') ? $column : $table . '.' . $column,
+            static::availableColumns($columns)
+        );
     }
 
     /**
@@ -155,36 +433,8 @@ class Mistake extends Model
     protected function clearCaches()
     {
         try {
-            // Clear specific mistake cache
-            Cache::forget("mistake_{$this->user_id}_{$this->question_id}_progress");
-            
-            // Clear all mistake-related caches for this user
-            $cacheKeys = [
-                "mistake_courses_{$this->user_id}",
-                "mistakes_user_{$this->user_id}",
-                "mistakes_count_{$this->user_id}"
-            ];
-            
-            // Clear course-specific caches
-            $courses = \App\Models\Course::all();
-            foreach ($courses as $course) {
-                $cacheKeys[] = \App\Services\QuizUltraConsolidatedCacheService::generateCacheKey('mistakes_full', [
-                    'user_id' => $this->user_id, 
-                    'course_filter' => $course->id
-                ]);
-            }
-            
-            // Clear general mistake caches
-            $cacheKeys[] = \App\Services\QuizUltraConsolidatedCacheService::generateCacheKey('mistakes_full', [
-                'user_id' => $this->user_id, 
-                'course_filter' => 'all'
-            ]);
-            $cacheKeys[] = \App\Services\QuizUltraConsolidatedCacheService::generateCacheKey('mistakes_full', [
-                'user_id' => $this->user_id, 
-                'course_filter' => 'skipped'
-            ]);
-            
-            // Clear all cache keys
+            $cacheKeys = $this->getMistakeCacheKeys();
+
             foreach ($cacheKeys as $key) {
                 Cache::forget($key);
             }
@@ -202,5 +452,74 @@ class Mistake extends Model
                 'error' => $e->getMessage()
             ]);
         }
+    }
+
+    /**
+     * Build the targeted mistake cache keys that should be invalidated.
+     */
+    protected function getMistakeCacheKeys(): array
+    {
+        $cacheKeys = [
+            "mistake_{$this->user_id}_{$this->question_id}_progress",
+            "mistake_courses_{$this->user_id}",
+            "mistakes_user_{$this->user_id}",
+            "mistakes_count_{$this->user_id}",
+            "performance_tracking_coach_{$this->user_id}",
+            UltraConsolidatedCacheService::generateCacheKey('mistakes_full', [
+                'user_id' => $this->user_id,
+                'course_filter' => 'all'
+            ]),
+            UltraConsolidatedCacheService::generateCacheKey('mistakes_full', [
+                'user_id' => $this->user_id,
+                'course_filter' => 'skipped'
+            ]),
+        ];
+
+        $courseId = Question::query()
+            ->join('topics', 'questions.topic_id', '=', 'topics.id')
+            ->where('questions.id', $this->question_id)
+            ->value('topics.course_id');
+
+        if ($courseId !== null) {
+            $cacheKeys[] = UltraConsolidatedCacheService::generateCacheKey('mistakes_full', [
+                'user_id' => $this->user_id,
+                'course_filter' => $courseId
+            ]);
+        }
+
+        return array_values(array_unique($cacheKeys));
+    }
+
+    private function normalizeReviewMode(string $mode): string
+    {
+        return match ($mode) {
+            'quick' => 'quick',
+            'spaced' => 'spaced',
+            'review', 'mistake_review', 'quiz', 'practice', 'study', 'assignment', 'tutor', 'random' => 'quiz',
+            default => 'quiz',
+        };
+    }
+
+    private static function normalizeColumnName(string $column): string
+    {
+        if (!str_contains($column, '.')) {
+            return $column;
+        }
+
+        $segments = explode('.', $column);
+
+        return (string) end($segments);
+    }
+
+    private function setColumnValue(string $column, mixed $value): void
+    {
+        if (static::hasColumn($column)) {
+            $this->setAttribute($column, $value);
+        }
+    }
+
+    public function setAdaptiveColumnValue(string $column, mixed $value): void
+    {
+        $this->setColumnValue($column, $value);
     }
 }

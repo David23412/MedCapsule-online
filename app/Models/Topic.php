@@ -106,6 +106,11 @@ class Topic extends Model
     public function getCurrentUserProgressAttribute()
     {
         if (!auth()->check()) return null;
+
+        if ($this->relationLoaded('userProgress')) {
+            return $this->userProgress->first();
+        }
+
         return $this->userProgress()->where('user_id', auth()->id())->first();
     }
     // 💀 N+1 WARNING: This accessor accesses 'current_user_progress' - consider eager loading
@@ -121,6 +126,15 @@ class Topic extends Model
     public function getLastAttemptDateAttribute()
     {
         if (!auth()->check()) return null;
+
+        if (array_key_exists('last_attempt_date', $this->attributes)) {
+            return $this->attributes['last_attempt_date'];
+        }
+
+        if ($this->relationLoaded('userProgress')) {
+            return $this->userProgress->first()?->last_attempt_date;
+        }
+
         $progress = $this->current_user_progress;
         return $progress ? $progress->last_attempt_date : null;
     }
@@ -137,25 +151,28 @@ class Topic extends Model
     {
         if (!auth()->check()) return 0;
 
+        if (array_key_exists('completion_percentage', $this->attributes)) {
+            return (float) $this->attributes['completion_percentage'];
+        }
+
+        if ($this->relationLoaded('userProgress')) {
+            return (float) ($this->userProgress->first()?->percentage_grade ?? 0);
+        }
+
+        $progress = $this->getCurrentUserProgressAttribute();
+        if ($progress?->percentage_grade !== null) {
+            return (float) $progress->percentage_grade;
+        }
+
         $cacheKey = $this->getCacheKey(auth()->id(), 'completion');
 
         return Cache::remember($cacheKey, 3600, function () {
-            // Get total questions in topic
-            $totalQuestions = $this->questions()->count();
-            if ($totalQuestions === 0) return 0;
-
-            // Get the latest quiz attempt for this topic
-            $latestAttempt = QuizAttempt::where([
-                'user_id' => auth()->id(),
-                'topic_id' => $this->id,
-            ])
-            ->orderBy('created_at', 'desc')
-            ->first();
-
-            if (!$latestAttempt) return 0;
-
-            // Calculate percentage based on the latest attempt
-            return min(100, round(($latestAttempt->score / $totalQuestions) * 100, 2));
+            return (float) (
+                UserTopicProgress::query()
+                    ->where('user_id', auth()->id())
+                    ->where('topic_id', $this->id)
+                    ->value('percentage_grade') ?? 0
+            );
         });
     }
 
@@ -167,6 +184,10 @@ class Topic extends Model
      */
     public function getQuestionsCountAttribute(): int
     {
+        if (array_key_exists('questions_count', $this->attributes)) {
+            return (int) $this->attributes['questions_count'];
+        }
+
         return Cache::remember("topic:{$this->id}:questions_count", 3600, function () {
             return $this->questions()->count();
         });
@@ -247,49 +268,12 @@ class Topic extends Model
                 $topic->display_order = static::where('course_id', $topic->course_id)
                     ->max('display_order') + 1;
             }
+            
+            // Increment cache version on any save
+            $topic->cache_version = (int) ($topic->cache_version ?? 0) + 1;
         });
 
         // Clear the cache whenever a topic is updated or deleted
-        static::updated(function ($topic) {
-            if (auth()->check()) {
-                Cache::forget("topic:{$topic->id}:user:" . auth()->id() . ":completion");
-                Cache::forget("topic:{$topic->id}:sources");
-                Cache::forget("topic:{$topic->id}:v{$topic->cache_version}");
-                
-                // PHASE 2: Dispatch TopicCompleted event for cache invalidation
-                $userId = auth()->id();
-                $progress = $topic->getCurrentUserProgressAttribute();
-                if ($progress) {
-                    event(new \App\Events\TopicCompleted(
-                        $topic,
-                        $userId,
-                        $progress->percentage_grade ?? 0,
-                        $progress->source_progress ?? []
-                    ));
-                }
-            }
-        });
-
-        static::deleted(function ($topic) {
-            if (auth()->check()) {
-                Cache::forget("topic:{$topic->id}:user:" . auth()->id() . ":completion");
-                Cache::forget("topic:{$topic->id}:sources");
-                Cache::forget("topic:{$topic->id}:v{$topic->cache_version}");
-                
-                // PHASE 2: Dispatch TopicCompleted event for deletion
-                event(new \App\Events\TopicCompleted(
-                    $topic,
-                    auth()->id(),
-                    0,
-                    []
-                ));
-            }
-        });
-
-        // Increment cache version on any update
-        static::saved(function ($topic) {
-            $topic->increment('cache_version');
-        });
     }
 
     public function getCacheKey($userId, $suffix = '')
@@ -304,6 +288,10 @@ class Topic extends Model
     public function getTotalDurationAttribute(): int
     {
         if (!auth()->check()) return 0;
+
+        if (array_key_exists('total_duration', $this->attributes)) {
+            return (int) $this->attributes['total_duration'];
+        }
         
         return QuizAttempt::where('user_id', auth()->id())
             ->where('topic_id', $this->id)
@@ -328,11 +316,15 @@ class Topic extends Model
     public function getAllSourcesMasteredAttribute(): bool
     {
         if (!auth()->check()) return false;
+
+        if (array_key_exists('all_sources_mastered', $this->attributes)) {
+            return (bool) $this->attributes['all_sources_mastered'];
+        }
         
         $progress = QuizAttempt::getTopicProgress(auth()->id(), $this->id);
-        if (empty($progress['source_progress'])) return false;
+        if (empty($progress['sources'])) return false;
 
-        foreach ($progress['source_progress'] as $sourceProgress) {
+        foreach ($progress['sources'] as $sourceProgress) {
             if ($sourceProgress['percentage'] < 100) {
                 return false;
             }

@@ -10,6 +10,7 @@ use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Cache;
 use App\Services\NotificationService;
+use Illuminate\Support\Facades\Log;
 
 class AssignmentCreationService
 {
@@ -192,7 +193,14 @@ class AssignmentCreationService
         }
         
         // For non-admin tutors, verify they are assigned to teach this student in this course
-        if (!$tutor->isAdmin()) {
+        if (!$tutor->isAdmin() && isset($data['student_id'])) {
+            // Get the student user
+            $student = User::find($data['student_id']);
+            
+            if (!$student) {
+                throw new \InvalidArgumentException("Invalid student ID: {$data['student_id']}");
+            }
+            
             // Check if tutor is assigned to this student in the course
             $isAssigned = DB::table('tutor_student_relationships')
                 ->where('tutor_id', $tutor->id)

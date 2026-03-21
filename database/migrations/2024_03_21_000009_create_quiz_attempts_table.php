@@ -15,6 +15,7 @@ return new class extends Migration
             $table->foreignId('assignment_id')->nullable()->constrained()->onDelete('cascade'); // 🔥 CONSOLIDATED
             $table->string('quiz_type')->default('normal'); // normal, random, etc.
             $table->string('study_mode')->nullable(); // quiz or tutor, now nullable
+            $table->string('session_type', 32)->nullable();
             $table->string('source')->nullable(); // Which source this attempt is for (Assuit, Cairo, etc.)
             
             // Progress tracking
@@ -30,7 +31,9 @@ return new class extends Migration
             // 🚀 LEAN INDEXES: Only essential ones (detailed indexes in nuclear_performance_indexing)
             $table->index(['user_id', 'topic_id']); // Basic user-topic queries
             $table->index('created_at'); // Chronological ordering
-            $table->string('attempt_id')->nullable(); // Unique attempt identifier for tracking
+            $table->index(['user_id', 'created_at', 'id'], 'idx_quiz_attempts_user_created_id'); // Recent-attempt scans per user
+            $table->index(['user_id', 'topic_id', 'study_mode', 'source', 'id'], 'idx_qa_user_topic_mode_source_id'); // Latest-source progress lookups
+            $table->unsignedBigInteger('attempt_id')->nullable(); // Numeric group identifier for multi-source attempts
 
             $table->timestamps();
         });

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Http\Controllers\Controller;
+use App\Models\Topic;
 use App\Services\Learning\MistakeManagementService;
 use App\Services\Learning\StudyTrackingService;
 use Illuminate\Http\Request;
@@ -32,18 +33,37 @@ class LearnController extends Controller
         
         try {
             $userId = auth()->id();
-            $mode = session('learn_mode', 'quiz');
-            $validated = $request->validate(['course' => 'nullable|string']);
+            $validated = $request->validate([
+                'course' => 'nullable|string',
+                'mode' => 'nullable|string|in:practice,quiz,spaced',
+                'autostart' => 'nullable|boolean',
+                'topic_ids' => 'nullable|array',
+                'topic_ids.*' => 'integer|exists:topics,id',
+            ]);
+            $mode = $validated['mode'] ?? session('learn_mode', 'quiz');
             $courseFilter = $validated['course'] ?? null;
-            
-            $cachedData = $this->mistakeService->getMistakesForLearning($userId, $mode, $courseFilter);
+            if ($courseFilter === 'skipped') {
+                $courseFilter = null;
+            }
+            $autoStart = (bool) ($validated['autostart'] ?? false);
+            $topicIds = collect($validated['topic_ids'] ?? [])
+                ->map(fn ($topicId) => (int) $topicId)
+                ->filter()
+                ->values()
+                ->all();
+
+            session(['learn_mode' => $mode]);
+
+            $cachedData = $this->mistakeService->getMistakesForLearning($userId, $mode, $courseFilter, $topicIds);
 
             if ($cachedData === null) {
                 return redirect()->route('review.index')
                     ->with('error', 'Error loading questions. Please try again.');
             }
 
-            if (empty($cachedData['mistakes']) || $cachedData['mistakes']->isEmpty()) {
+            $totalMistakesCount = (int) ($cachedData['total_mistakes_count'] ?? 0);
+
+            if ($totalMistakesCount === 0) {
                 return redirect()->route('review.index')
                     ->with('success', '🎉 Excellent! You have no mistakes to review. Keep up the great work!');
             }
@@ -58,7 +78,25 @@ class LearnController extends Controller
                 'courses_count' => $courses->count()
             ]);
 
-            return view('mistakes.learn', compact('mistakes', 'courses', 'courseFilter'));
+            return view('mistakes.learn', [
+                'mistakes' => $mistakes,
+                'courses' => $courses,
+                'courseFilter' => $courseFilter,
+                'currentLearnMode' => $mode,
+                'autoStartLearnMode' => $autoStart ? $mode : null,
+                'selectedTopicIds' => $topicIds,
+                'selectedTopicNames' => !empty($topicIds)
+                    ? Topic::whereIn('id', $topicIds)->orderBy('name')->pluck('name')->values()
+                    : collect(),
+                'selectedTopicMistakeCount' => $mistakes->count(),
+                'totalMistakesCount' => $cachedData['total_mistakes_count'] ?? 0,
+                'skippedCount' => $cachedData['skipped_count'] ?? 0,
+                'courseCounts' => $cachedData['course_counts'] ?? [],
+                'currentUserView' => [
+                    'profile_image_url' => auth()->user()->getProfileImageUrl(),
+                    'profile_fallback_url' => 'https://ui-avatars.com/api/?name=' . urlencode(auth()->user()->name) . '&size=200&background=007bff&color=ffffff',
+                ],
+            ]);
         } catch (\Exception $e) {
             $executionTime = (microtime(true) - $startTime) * 1000;
             Log::error('Error in learnMistakes', [
@@ -82,7 +120,11 @@ class LearnController extends Controller
         
         try {
             $userId = auth()->id();
-            $result = $this->mistakeService->getUpdatedMistakesCount($userId);
+            $validated = $request->validate([
+                'mode' => 'nullable|string|in:quiz,review,random,tutor,study,assignment,practice,spaced,quick',
+            ]);
+            $mode = $validated['mode'] ?? session('learn_mode', 'quiz');
+            $result = $this->mistakeService->getUpdatedMistakesCount($userId, $mode);
 
             $executionTime = (microtime(true) - $startTime) * 1000;
             Log::info('Updated mistakes retrieved successfully', [
@@ -117,15 +159,30 @@ class LearnController extends Controller
         
         try {
             $userId = auth()->id();
+            
             $validated = $request->validate([
-                'mode' => 'nullable|string|in:quiz,review',
-                'selected_answer' => 'required|string|max:1000'
+                'mode' => 'nullable|string|in:quiz,review,random,tutor,study,assignment,practice,spaced',
+                'selected_answer' => 'required|string|max:1000',
+                'time_spent' => 'nullable|integer|min:0|max:3600',
+                'confidence' => 'nullable|string|in:guessed,unsure,knew',
             ]);
             
             $mode = $validated['mode'] ?? 'quiz';
             $selectedAnswer = $validated['selected_answer'];
+            $timeSpent = (int) ($validated['time_spent'] ?? 0);
+            $confidence = $validated['confidence'] ?? null;
+            $interactionSignals = [
+                'final_selected_answer' => $selectedAnswer,
+            ];
 
-            $result = $this->mistakeService->reviewMistake($userId, $questionId, $selectedAnswer, $mode);
+            if ($mode === 'spaced' && $confidence === null) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Pick your confidence before answering in spaced mode.',
+                ], 422);
+            }
+
+            $result = $this->mistakeService->reviewMistake($userId, $questionId, $selectedAnswer, $timeSpent, $mode, $confidence, $interactionSignals);
 
             $executionTime = (microtime(true) - $startTime) * 1000;
             Log::info('Review completed successfully', [

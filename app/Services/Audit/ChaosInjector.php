@@ -2794,7 +2794,7 @@ class ChaosInjector
         Log::info("🌐 Enhanced network partition for {$service} - Duration: {$duration}s");
         
         // Simulate service-specific partition
-        app('performance.async')->delayAsync($duration 000); // Convert to microseconds
+        app('performance.async')->delayAsync($duration * 1000); // Convert to microseconds
         
         return true;
     }

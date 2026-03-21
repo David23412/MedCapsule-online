@@ -10,9 +10,11 @@ use App\Models\QuizAttempt;
 use App\Models\Mistake;
 use App\Models\UserTopicProgress;
 use App\Services\Core\UltraConsolidatedCacheService;
+use App\Services\ProgressCacheInvalidator;
 use App\Services\UserStatsService;
 use App\Services\NotificationService;
 use App\Services\WrittenAnswerEvaluationService;
+use App\Services\Learning\UserMistakeMasteryService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
@@ -33,20 +35,26 @@ class GradingService
     private const XP_PER_LEVEL = 1000;
     
     protected $cacheService;
+    protected $progressCacheInvalidator;
     protected $userStatsService;
     protected $notificationService;
     protected $writtenAnswerEvaluationService;
+    protected $userMistakeMasteryService;
 
     public function __construct(
         UltraConsolidatedCacheService $cacheService,
+        ProgressCacheInvalidator $progressCacheInvalidator,
         UserStatsService $userStatsService,
         NotificationService $notificationService,
-        WrittenAnswerEvaluationService $writtenAnswerEvaluationService
+        WrittenAnswerEvaluationService $writtenAnswerEvaluationService,
+        ?UserMistakeMasteryService $userMistakeMasteryService = null
     ) {
         $this->cacheService = $cacheService;
+        $this->progressCacheInvalidator = $progressCacheInvalidator;
         $this->userStatsService = $userStatsService;
         $this->notificationService = $notificationService;
         $this->writtenAnswerEvaluationService = $writtenAnswerEvaluationService;
+        $this->userMistakeMasteryService = $userMistakeMasteryService ?? app(UserMistakeMasteryService::class);
     }
 
     /**
@@ -83,14 +91,17 @@ class GradingService
             // Update user statistics and rewards
             $xpResult = $this->updateUserStatsAndRewards($user, $gradingResult, $duration);
 
+            // Recompute topic progress from the attempts created above, not a warm cached snapshot.
+            $this->progressCacheInvalidator->invalidateUserTopicProgress($user->id, $topic->id, $mode, false);
+
             // Get updated overall topic progress after quiz completion - OPTIMIZATION: Get once, reuse
             $overallTopicProgress = QuizAttempt::getTopicProgress($user->id, $topic->id, $mode);
 
             // Handle topic progress updates - OPTIMIZATION: Pass progress to avoid re-query
             $this->handleProgressUpdate($user, $topic, $gradingResult, $mode, $assignmentId, $overallTopicProgress);
 
-            // Clear relevant caches
-            $this->cacheService->smartInvalidate('user_progress', $user->id, ['topic_id' => $topic->id]);
+            // Clear relevant caches through canonical helper
+            $this->progressCacheInvalidator->invalidateUserTopicProgress($user->id, $topic->id, null, true);
 
             DB::commit();
 
@@ -126,9 +137,9 @@ class GradingService
     {
         // LETHAL FIX: Use appropriate processing method based on mode
         if ($mode === 'tutor') {
-            return $this->processTutorAnswers($user, $questions, $answers, $topic);
+            return $this->processTutorAnswers($user, $questions, $answers, $topic, $mode);
         } else {
-            return $this->processAnswers($user, $questions, $answers, $topic);
+            return $this->processAnswers($user, $questions, $answers, $topic, $mode);
         }
     }
 
@@ -165,19 +176,23 @@ class GradingService
      */
     private function updateUserStatsAndRewards(User $user, array $gradingResult, int $duration): array
     {
+        // Calculate XP first so counters (including xp) can be updated in one atomic stats write.
+        $earnedXP = $this->calculateEarnedXP($gradingResult['score'], $duration, $gradingResult['percentageGrade']);
+
         // Update user statistics
         $this->userStatsService->updateAfterQuizAttempt(
             $user,
             $gradingResult['totalQuestions'],
             $gradingResult['totalCorrect'],
-            $duration
+            $duration,
+            $earnedXP
         );
 
-        // Calculate and award XP
-        $xpResult = $this->calculateAndAwardXP($user, $gradingResult['score'], $duration, $gradingResult['percentageGrade']);
+        // Handle level-up checks/notifications after the atomic stats write.
+        $xpResult = $this->finalizeXpAndLevel($user, $earnedXP);
 
-        // Update study streak for ALL quiz types (including first quiz)
-        $this->updateStudyStreak($user);
+        // Study streak is already updated atomically inside UserStatsService::updateAfterQuizAttempt().
+        // Avoid duplicate recalculation/queries here to keep grading hot-path lean and deterministic.
 
         return $xpResult;
     }
@@ -343,12 +358,19 @@ class GradingService
      * @param Topic $topic
      * @return array
      */
-    private function processAnswers(User $user, $questions, array $answers, Topic $topic): array
+    private function processAnswers(User $user, $questions, array $answers, Topic $topic, string $mode): array
     {
         $score = 0;
         $totalQuestions = $questions->count();
         $sourceData = [];
         $mistakes = [];
+        $existingMistakeQuestionIds = Mistake::query()
+            ->where('user_id', $user->id)
+            ->whereIn('question_id', $questions->pluck('id')->all())
+            ->pluck('question_id')
+            ->map(fn ($id) => (int) $id)
+            ->all();
+        $requiredStreak = $this->resolveRequiredStreakForSession($user, $mode);
 
         // 🚀 ULTRA-OPTIMIZED SINGLE-PASS PROCESSING
         foreach ($questions as $question) {
@@ -386,21 +408,18 @@ class GradingService
                 
 
                     
-                \App\Models\Mistake::updateOrCreate(
-                    [
-                        'user_id' => $user->id,
-                        'question_id' => $question->id
-                    ],
-                    [
-                        'submitted_answer' => $actualAnswer,
-                        'question_text' => $question->question,
-                        'correct_answer' => $question->correct_answer,
-                        'last_attempt_date' => now()
-                    ]
-                );
+                \App\Models\Mistake::recordFailure($user->id, $question, $actualAnswer);
                 
                 $mistakes[] = $question->id;
             }
+
+            $this->userMistakeMasteryService->recordAttempt(
+                $user,
+                $question,
+                $isCorrect,
+                $requiredStreak,
+                (int) $topic->course_id
+            );
 
             $sourceData[$source]['question_data'][] = [
                 'question_id' => $question->id,
@@ -414,7 +433,7 @@ class GradingService
         $totalCorrect = $score;
 
         // 🔥 INSTANT CACHE CLEAR - Clear cache if any mistakes were recorded
-        if (!empty($mistakes)) {
+        if (!empty($mistakes) || !empty($existingMistakeQuestionIds)) {
             \App\Http\Controllers\Quiz\QuizMistakeController::clearUserMistakeCaches($user->id);
         }
 
@@ -453,7 +472,7 @@ class GradingService
      * @param Topic $topic
      * @return array
      */
-    private function processTutorAnswers(User $user, $questions, array $answers, Topic $topic): array
+    private function processTutorAnswers(User $user, $questions, array $answers, Topic $topic, string $mode): array
     {
         // 🚀 ULTRA EFFICIENT: Single-pass evaluation with immediate processing
         $score = 0;
@@ -461,6 +480,13 @@ class GradingService
         $sourceData = [];
         $mistakes = [];
         $evaluations = [];
+        $existingMistakeQuestionIds = Mistake::query()
+            ->where('user_id', $user->id)
+            ->whereIn('question_id', $questions->pluck('id')->all())
+            ->pluck('question_id')
+            ->map(fn ($id) => (int) $id)
+            ->all();
+        $requiredStreak = $this->resolveRequiredStreakForSession($user, $mode);
 
         // Group questions by source for efficient processing
         $questionsBySource = $questions->groupBy(function($question) {
@@ -521,22 +547,18 @@ class GradingService
                         : 'unanswered';
                     
                     // Use updateOrCreate for efficiency
-                    \App\Models\Mistake::updateOrCreate(
-                        [
-                            'user_id' => $user->id,
-                            'question_id' => $question->id
-                        ],
-                        [
-                            'submitted_answer' => $actualAnswer,
-                            'question_text' => $question->question,
-                            'correct_answer' => $question->correct_answer,
-                            'image_path' => $question->image_url,
-                            'last_attempt_date' => now()
-                        ]
-                    );
+                    \App\Models\Mistake::recordFailure($user->id, $question, $actualAnswer);
                     
                     $mistakes[] = $question->id;
                 }
+
+                $this->userMistakeMasteryService->recordAttempt(
+                    $user,
+                    $question,
+                    $isCorrect,
+                    $requiredStreak,
+                    (int) $topic->course_id
+                );
 
                 // Build question data efficiently
                 $sourceData[$source]['question_data'][] = [
@@ -564,7 +586,7 @@ class GradingService
         ]);
 
         // 🔥 INSTANT CACHE CLEAR - Clear cache if any mistakes were recorded
-        if (!empty($mistakes)) {
+        if (!empty($mistakes) || !empty($existingMistakeQuestionIds)) {
             \App\Http\Controllers\Quiz\QuizMistakeController::clearUserMistakeCaches($user->id);
         }
 
@@ -673,31 +695,38 @@ class GradingService
         $attemptId = \App\Models\QuizAttempt::generateAttemptId($user->id, $topic->id);
 
         // 🚀 ULTRA EFFICIENT: Create attempts with shared attempt_id
+        // PERFORMANCE: Defer per-attempt invalidation to avoid duplicate cache fan-out for multi-source quizzes.
         $attemptsCreated = 0;
-        foreach ($sourceData as $source => $data) {
-            $score = $data['score'];
-            $totalQuestions = $data['total'];
-            $percentage = $totalQuestions > 0 ? min(100, ($score / $totalQuestions) * 100) : 0;
+        \App\Models\QuizAttempt::setProgressInvalidationDeferred(true);
+        try {
+            foreach ($sourceData as $source => $data) {
+                $score = $data['score'];
+                $totalQuestions = $data['total'];
+                $percentage = $totalQuestions > 0 ? min(100, ($score / $totalQuestions) * 100) : 0;
 
-            // Use createWithProgress to ensure attempt_id is auto-generated if not provided
-            $attemptData = [
-                'user_id' => $user->id,
-                'topic_id' => $topic->id,
-                'assignment_id' => $assignmentId,
-                'quiz_type' => $quizType,
-                'study_mode' => $mode,
-                'source' => $source,
-                'score' => $score,
-                'total_questions' => $totalQuestions,
-                'percentage_grade' => $percentage,
-                'duration_seconds' => $durationPerSource,
-                'question_data' => $data['question_data'],
-                'correct_answers' => $score,
-                'attempt_id' => $attemptId // 🚀 CRITICAL: Same ID for all sources in this quiz
-            ];
+                // Use createWithProgress to ensure attempt_id is auto-generated if not provided
+                $attemptData = [
+                    'user_id' => $user->id,
+                    'topic_id' => $topic->id,
+                    'assignment_id' => $assignmentId,
+                    'quiz_type' => $quizType,
+                    'study_mode' => $mode,
+                    'session_type' => null,
+                    'source' => $source,
+                    'score' => $score,
+                    'total_questions' => $totalQuestions,
+                    'percentage_grade' => $percentage,
+                    'duration_seconds' => $durationPerSource,
+                    'question_data' => $data['question_data'],
+                    'correct_answers' => $score,
+                    'attempt_id' => $attemptId // 🚀 CRITICAL: Same ID for all sources in this quiz
+                ];
 
-            \App\Models\QuizAttempt::createWithProgress($attemptData);
-            $attemptsCreated++;
+                \App\Models\QuizAttempt::createWithProgress($attemptData, false);
+                $attemptsCreated++;
+            }
+        } finally {
+            \App\Models\QuizAttempt::setProgressInvalidationDeferred(false);
         }
 
         // OPTIMIZATION: Reduced logging frequency for better performance
@@ -743,6 +772,7 @@ class GradingService
             'assignment_id' => $assignmentId,
             'quiz_type' => $quizType,
             'study_mode' => $mode,
+            'session_type' => 'random_quiz',
             'source' => null, // Random quizzes have no specific source
             'score' => $gradingResult['score'],
             'total_questions' => $gradingResult['totalQuestions'],
@@ -753,7 +783,7 @@ class GradingService
             'attempt_id' => $attemptId // 🚀 CRITICAL: Set attempt_id for chart grouping
         ];
 
-        \App\Models\QuizAttempt::createWithProgress($attemptData);
+        \App\Models\QuizAttempt::createWithProgress($attemptData, false);
 
         Log::info('🚀 RANDOM QUIZ: Created attempt with attempt_id', [
             'user_id' => $user->id,
@@ -765,6 +795,16 @@ class GradingService
         ]);
     }
 
+    private function resolveRequiredStreakForSession(User $user, string $mode): int
+    {
+        return match ($mode) {
+            'quick' => $this->userMistakeMasteryService->requiredStreakForMode('quick') ?? 2,
+            'quiz', 'tutor', 'random' => $this->userMistakeMasteryService->requiredStreakForUser($user),
+            default => $this->userMistakeMasteryService->requiredStreakForMode($mode)
+                ?? $this->userMistakeMasteryService->requiredStreakForUser($user),
+        };
+    }
+
     /**
      * Calculate and award XP to user
      *
@@ -774,7 +814,7 @@ class GradingService
      * @param float $percentageGrade
      * @return array
      */
-    private function calculateAndAwardXP(User $user, int $score, int $duration, float $percentageGrade): array
+    private function calculateEarnedXP(int $score, int $duration, float $percentageGrade): int
     {
         // Calculate XP based on score and time
         $baseXP = $score * self::XP_PER_CORRECT_ANSWER; // XP per correct answer
@@ -783,7 +823,6 @@ class GradingService
         $earnedXP = $baseXP + $timeBonus + $accuracyBonus;
 
         Log::info('XP Calculation:', [
-            'user_id' => $user->id,
             'score' => $score,
             'baseXP' => $baseXP,
             'duration' => $duration,
@@ -793,11 +832,24 @@ class GradingService
             'totalXP' => $earnedXP
         ]);
 
-        // Update user's XP
-        $user->increment('xp', $earnedXP);
+        return $earnedXP;
+    }
+
+    /**
+     * Finalize level-up workflow after XP has already been atomically written.
+     *
+     * @param User $user
+     * @param int $earnedXP
+     * @return array
+     */
+    private function finalizeXpAndLevel(User $user, int $earnedXP): array
+    {
+        // Compare previous vs current level using in-memory XP (already updated atomically in UserStatsService).
+        $previousXp = max(0, (int) $user->xp - $earnedXP);
+        $previousLevel = (int) floor($previousXp / self::XP_PER_LEVEL) + 1;
 
         // Check for level up
-        $levelUpResult = $this->checkForLevelUp($user);
+        $levelUpResult = $this->checkForLevelUp($user, $previousLevel);
 
         return [
             'earnedXP' => $earnedXP,
@@ -812,18 +864,17 @@ class GradingService
      * @param User $user
      * @return array
      */
-    private function checkForLevelUp(User $user): array
+    private function checkForLevelUp(User $user, int $previousLevel): array
     {
-        $currentLevel = $user->getCurrentLevel();
-        $newLevel = floor($user->xp / self::XP_PER_LEVEL) + 1;
+        $newLevel = $user->getCurrentLevel();
 
-        if ($newLevel > $currentLevel) {
+        if ($newLevel > $previousLevel) {
             // Create level up notification
-            $this->notificationService->createLevelUpNotification($user, $newLevel, $user->xp);
+            $this->notificationService->createLevelUpNotification($user, $newLevel, $user->getXPForNextLevel());
 
             Log::info('User leveled up', [
                 'user_id' => $user->id,
-                'old_level' => $currentLevel,
+                'old_level' => $previousLevel,
                 'new_level' => $newLevel,
                 'xp' => $user->xp
             ]);
@@ -836,7 +887,7 @@ class GradingService
 
         return [
             'levelUp' => false,
-            'newLevel' => $currentLevel
+            'newLevel' => $newLevel
         ];
     }
 
@@ -851,8 +902,9 @@ class GradingService
      */
     private function updateTopicProgress(User $user, Topic $topic, int $score, int $totalQuestions, ?array $overallTopicProgress = null): void
     {
-        // Clear cache using the same smart invalidation approach for consistency
-        $this->cacheService->smartInvalidate('user_progress', $user->id, ['topic_id' => $topic->id]);
+        // Keep fast mode-scoped cache clear for immediate UI freshness.
+        // NOTE: broad user_progress invalidation is executed once at gradeQuiz() end.
+        $this->progressCacheInvalidator->invalidateUserTopicProgress($user->id, $topic->id, 'quiz', false);
         
         // OPTIMIZATION: Use passed progress data instead of re-querying (major performance gain)
         if ($overallTopicProgress !== null) {
@@ -870,9 +922,9 @@ class GradingService
                 'topic_id' => $topic->id
             ],
             [
-                'total_questions_answered' => $progress['overall']['total'] ?? 0,
-                'correct_answers' => $progress['overall']['score'] ?? 0,
-                'percentage_completed' => $overallPercentage,
+                // NOTE: topics page reads percentage_grade from user_topic_progress
+                // Keep this mapped to QUIZ-MODE-only overall percentage.
+                'percentage_grade' => $overallPercentage,
                 'last_attempt_date' => now()
             ]
         );
@@ -892,14 +944,18 @@ class GradingService
     {
         // Get updated progress for all sources
         $sourceProgress = [];
-        
+
+        $sourceCounts = [];
+        $firstQuestion = $questions->first();
+
         // OPTIMIZATION: Get all source question counts in a single query to avoid N+1 problem
-        $topicId = $questions->first()->topic_id;
-        $sourceCounts = Question::where('topic_id', $topicId)
-            ->selectRaw('source, COUNT(*) as total_questions')
-            ->groupBy('source')
-            ->pluck('total_questions', 'source')
-            ->toArray();
+        if ($firstQuestion) {
+            $sourceCounts = Question::where('topic_id', $firstQuestion->topic_id)
+                ->selectRaw('source, COUNT(*) as total_questions')
+                ->groupBy('source')
+                ->pluck('total_questions', 'source')
+                ->toArray();
+        }
 
         foreach ($gradingResult['sourceData'] as $source => $data) {
             $totalSourceQuestions = $sourceCounts[$source] ?? 0;
@@ -936,7 +992,8 @@ class GradingService
             if (!$isCorrect) {
                 $incorrectAnswers[$question->id] = [
                     'submitted_answer' => $submittedAnswer ?? 'unanswered',
-                    'correct_answer' => $question->correct_answer
+                    'correct_answer' => $question->correct_answer,
+                    'explanation' => $question->explanation,
                 ];
             }
         }
@@ -944,7 +1001,9 @@ class GradingService
         return [
             'success' => true,
             'score' => $gradingResult['score'],
+            'total' => $gradingResult['totalQuestions'],
             'totalQuestions' => $gradingResult['totalQuestions'],
+            'percentage' => $gradingResult['percentageGrade'],
             'percentageGrade' => $gradingResult['percentageGrade'],
             'encouragement' => $this->getEncouragementMessage($gradingResult['percentageGrade']),
             'source_progress' => $sourceProgress, // Current quiz attempt progress
@@ -952,6 +1011,9 @@ class GradingService
             'overall_source_progress' => $overallSourceProgress, // Overall progress by source
             'correct_answers' => $questions->mapWithKeys(function ($question) {
                 return [$question->id => $question->correct_answer];
+            })->toArray(),
+            'question_explanations' => $questions->mapWithKeys(function ($question) {
+                return [$question->id => $question->explanation];
             })->toArray(),
             'incorrect_answers' => $incorrectAnswers, // For review mode - shows which answers were wrong
             'xp_earned' => $xpResult['earnedXP'],
@@ -1001,23 +1063,24 @@ class GradingService
                 'answer' => $answer
             ]);
             $isCorrect = $this->evaluateAnswer($question, $answer);
+            $hadExistingMistake = Mistake::query()
+                ->where('user_id', $user->id)
+                ->where('question_id', $question->id)
+                ->exists();
             if (!$isCorrect) {
 
-                \App\Models\Mistake::updateOrCreate(
-                    [
-                        'user_id' => $user->id,
-                        'question_id' => $question->id
-                    ],
-                    [
-                        'submitted_answer' => $answer,
-                        'question_text' => $question->question,
-                        'correct_answer' => $question->correct_answer,
-                        'image_path' => $question->image_url,
-                        'last_attempt_date' => now()
-                    ]
-                );
+                \App\Models\Mistake::recordFailure($user->id, $question, $answer);
                 
                 // 🔥 INSTANT CACHE CLEAR - Mistakes show up immediately!
+            }
+            $this->userMistakeMasteryService->recordAttempt(
+                $user,
+                $question,
+                $isCorrect,
+                $this->resolveRequiredStreakForSession($user, 'tutor'),
+                (int) ($question->topic?->course_id ?? $question->topic()->value('course_id'))
+            );
+            if (!$isCorrect || $hadExistingMistake) {
                 \App\Http\Controllers\Quiz\QuizMistakeController::clearUserMistakeCaches($user->id);
             }
             $topic = $question->topic;
@@ -1231,7 +1294,7 @@ private function createTutorAttempt(User $user, Topic $topic, string $source, ar
             'attempt_id' => $attemptId
         ];
 
-        \App\Models\QuizAttempt::createWithProgress($attemptData);
+        \App\Models\QuizAttempt::createWithProgress($attemptData, false);
 
         Log::info('Tutor quiz attempt created successfully with attempt_id', [
             'attempt_id' => $attemptId,

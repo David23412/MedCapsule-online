@@ -5,6 +5,7 @@ namespace Tests\Unit;
 use Tests\TestCase;
 use App\Services\GradingService;
 use App\Services\Core\UltraConsolidatedCacheService;
+use App\Services\ProgressCacheInvalidator;
 use App\Services\UserStatsService;
 use App\Services\NotificationService;
 use App\Services\WrittenAnswerEvaluationService;
@@ -14,9 +15,11 @@ use App\Models\Topic;
 use App\Models\Course;
 use App\Models\QuizAttempt;
 use App\Models\Mistake;
+use App\Models\UserMistakeMastery;
 use App\Models\UserTopicProgress;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Mockery;
 
 class GradingServiceTest extends TestCase
@@ -25,6 +28,7 @@ class GradingServiceTest extends TestCase
 
     protected $gradingService;
     protected $cacheService;
+    protected $progressCacheInvalidator;
     protected $userStatsService;
     protected $notificationService;
     protected $writtenAnswerEvaluationService;
@@ -32,14 +36,17 @@ class GradingServiceTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
+        UserMistakeMastery::clearTableExistenceCache();
         
         $this->cacheService = Mockery::mock(UltraConsolidatedCacheService::class);
+        $this->progressCacheInvalidator = Mockery::mock(ProgressCacheInvalidator::class);
         $this->userStatsService = Mockery::mock(UserStatsService::class);
         $this->notificationService = Mockery::mock(NotificationService::class);
         $this->writtenAnswerEvaluationService = Mockery::mock(WrittenAnswerEvaluationService::class);
         
         $this->gradingService = new GradingService(
             $this->cacheService,
+            $this->progressCacheInvalidator,
             $this->userStatsService,
             $this->notificationService,
             $this->writtenAnswerEvaluationService
@@ -52,18 +59,38 @@ class GradingServiceTest extends TestCase
         parent::tearDown();
     }
 
+    private function expectProgressInvalidation(int $userId, int $topicId, string $mode): void
+    {
+        $this->progressCacheInvalidator->shouldReceive('invalidateUserTopicProgress')
+            ->times($mode === 'quiz' ? 2 : 1)
+            ->with($userId, $topicId, $mode, false);
+
+        $this->progressCacheInvalidator->shouldReceive('invalidateUserTopicProgress')
+            ->once()
+            ->with($userId, $topicId, null, true);
+    }
+
     #[\PHPUnit\Framework\Attributes\Test]
     public function it_validates_quiz_inputs_correctly()
     {
         $user = User::factory()->create();
         $course = Course::factory()->create();
         $topic = Topic::factory()->create(['course_id' => $course->id]);
-        
-        // Test empty answers
-        $this->expectException(\InvalidArgumentException::class);
-        $this->expectExceptionMessage('No answers provided');
-        
-        $this->gradingService->gradeQuiz($user, [], 60, 'quiz', $topic, $course);
+
+        $this->userStatsService->shouldReceive('updateAfterQuizAttempt')
+            ->once()
+            ->with($user, 0, 0, 60, Mockery::any());
+
+        $this->expectProgressInvalidation($user->id, $topic->id, 'quiz');
+        $this->notificationService->shouldNotReceive('createLevelUpNotification');
+
+        $result = $this->gradingService->gradeQuiz($user, [], 60, 'quiz', $topic, $course);
+
+        $this->assertTrue($result['success']);
+        $this->assertSame(0, $result['score']);
+        $this->assertSame(0, $result['total']);
+        $this->assertSame(0, $result['percentage']);
+        $this->assertSame([], $result['mistakes']);
     }
 
     #[\PHPUnit\Framework\Attributes\Test]
@@ -74,7 +101,7 @@ class GradingServiceTest extends TestCase
         $topic = Topic::factory()->create(['course_id' => $course->id]);
         
         $this->expectException(\InvalidArgumentException::class);
-        $this->expectExceptionMessage('Invalid duration');
+        $this->expectExceptionMessage('Duration must be a non-negative number');
         
         $this->gradingService->gradeQuiz($user, ['1' => 'A'], -1, 'quiz', $topic, $course);
     }
@@ -118,15 +145,9 @@ class GradingServiceTest extends TestCase
         // Mock dependencies
         $this->userStatsService->shouldReceive('updateAfterQuizAttempt')
             ->once()
-            ->with($user, 2, 2, 60);
+            ->with($user, 2, 2, 60, Mockery::any());
         
-        $this->cacheService->shouldReceive('clearUserTopicProgressCache')
-            ->once()
-            ->with($user->id, $topic->id);
-        
-        $this->cacheService->shouldReceive('clearUserMistakesCache')
-            ->once()
-            ->with($user->id, $topic->id);
+        $this->expectProgressInvalidation($user->id, $topic->id, 'quiz');
         
         $this->notificationService->shouldNotReceive('createLevelUpNotification');
 
@@ -172,15 +193,9 @@ class GradingServiceTest extends TestCase
         // Mock dependencies
         $this->userStatsService->shouldReceive('updateAfterQuizAttempt')
             ->once()
-            ->with($user, 2, 1, 60);
+            ->with($user, 2, 1, 60, Mockery::any());
         
-        $this->cacheService->shouldReceive('clearUserTopicProgressCache')
-            ->once()
-            ->with($user->id, $topic->id);
-        
-        $this->cacheService->shouldReceive('clearUserMistakesCache')
-            ->once()
-            ->with($user->id, $topic->id);
+        $this->expectProgressInvalidation($user->id, $topic->id, 'quiz');
         
         $this->notificationService->shouldNotReceive('createLevelUpNotification');
 
@@ -217,15 +232,9 @@ class GradingServiceTest extends TestCase
         // Mock dependencies
         $this->userStatsService->shouldReceive('updateAfterQuizAttempt')
             ->once()
-            ->with($user, 1, 1, 60);
+            ->with($user, 1, 1, 60, Mockery::any());
         
-        $this->cacheService->shouldReceive('clearUserTopicProgressCache')
-            ->once()
-            ->with($user->id, $topic->id);
-        
-        $this->cacheService->shouldReceive('clearUserMistakesCache')
-            ->once()
-            ->with($user->id, $topic->id);
+        $this->expectProgressInvalidation($user->id, $topic->id, 'quiz');
         
         // No level up notification since user starts at level 1 and stays at level 1
         $this->notificationService->shouldNotReceive('createLevelUpNotification');
@@ -268,11 +277,7 @@ class GradingServiceTest extends TestCase
         $this->userStatsService->shouldReceive('updateAfterQuizAttempt')
             ->once();
         
-        $this->cacheService->shouldReceive('clearUserTopicProgressCache')
-            ->once();
-        
-        $this->cacheService->shouldReceive('clearUserMistakesCache')
-            ->once();
+        $this->expectProgressInvalidation($user->id, $topic->id, 'quiz');
         
         $this->notificationService->shouldNotReceive('createLevelUpNotification');
 
@@ -291,33 +296,132 @@ class GradingServiceTest extends TestCase
     }
 
     #[\PHPUnit\Framework\Attributes\Test]
+    public function it_persists_mastery_and_marks_random_quiz_attempts_with_session_type()
+    {
+        $user = User::factory()->create([
+            'classic_repair_difficulty' => 'easy',
+        ]);
+        $course = Course::factory()->create();
+        $topic = Topic::factory()->create(['course_id' => $course->id]);
+        $question = Question::factory()->create([
+            'topic_id' => $topic->id,
+            'question_type' => Question::TYPE_MULTIPLE_CHOICE,
+            'option_a' => 'A',
+            'option_b' => 'B',
+            'option_c' => 'C',
+            'option_d' => 'D',
+            'correct_answer' => 'A',
+            'source' => 'Test Source',
+        ]);
+
+        $this->userStatsService->shouldReceive('updateAfterQuizAttempt')
+            ->twice()
+            ->with($user, 1, 1, 60, Mockery::any());
+        $this->expectProgressInvalidation($user->id, $topic->id, 'random');
+        $this->expectProgressInvalidation($user->id, $topic->id, 'random');
+        $this->notificationService->shouldNotReceive('createLevelUpNotification');
+
+        $this->gradingService->gradeQuiz(
+            $user,
+            [$question->id => 'A'],
+            60,
+            'random',
+            $topic,
+            $course
+        );
+
+        $this->gradingService->gradeQuiz(
+            $user,
+            [$question->id => 'A'],
+            60,
+            'random',
+            $topic,
+            $course
+        );
+
+        $mastery = UserMistakeMastery::query()
+            ->where('user_id', $user->id)
+            ->where('question_id', $question->id)
+            ->first();
+
+        $this->assertNotNull($mastery);
+        $this->assertSame(2, $mastery->consecutive_correct);
+        $this->assertNotNull($mastery->graduated_at);
+        $this->assertSame('correct', $mastery->last_attempt_result);
+
+        $attempts = QuizAttempt::query()
+            ->where('user_id', $user->id)
+            ->where('topic_id', $topic->id)
+            ->orderBy('id')
+            ->get();
+
+        $this->assertCount(2, $attempts);
+        $this->assertTrue($attempts->every(fn (QuizAttempt $attempt) => $attempt->session_type === 'random_quiz'));
+    }
+
+    #[\PHPUnit\Framework\Attributes\Test]
+    public function it_grades_and_saves_quiz_attempts_when_mastery_table_is_missing()
+    {
+        $user = User::factory()->create([
+            'classic_repair_difficulty' => 'easy',
+            'xp' => 0,
+        ]);
+        $course = Course::factory()->create();
+        $topic = Topic::factory()->create(['course_id' => $course->id]);
+        $question = Question::factory()->create([
+            'topic_id' => $topic->id,
+            'question_type' => Question::TYPE_MULTIPLE_CHOICE,
+            'option_a' => 'A',
+            'option_b' => 'B',
+            'option_c' => 'C',
+            'option_d' => 'D',
+            'correct_answer' => 'A',
+            'source' => 'Test Source',
+        ]);
+
+        if (Schema::hasTable('user_mistake_mastery')) {
+            Schema::drop('user_mistake_mastery');
+            UserMistakeMastery::clearTableExistenceCache();
+        }
+
+        $this->userStatsService->shouldReceive('updateAfterQuizAttempt')
+            ->once()
+            ->with($user, 1, 1, 60, Mockery::any());
+        $this->expectProgressInvalidation($user->id, $topic->id, 'quiz');
+        $this->notificationService->shouldReceive('createLevelUpNotification')->zeroOrMoreTimes();
+
+        $result = $this->gradingService->gradeQuiz(
+            $user,
+            [$question->id => 'A'],
+            60,
+            'quiz',
+            $topic,
+            $course
+        );
+
+        $this->assertTrue($result['success']);
+        $this->assertSame(1, QuizAttempt::query()->count());
+        $this->assertDatabaseHas('quiz_attempts', [
+            'user_id' => $user->id,
+            'topic_id' => $topic->id,
+            'score' => 1,
+            'total_questions' => 1,
+        ]);
+    }
+
+    #[\PHPUnit\Framework\Attributes\Test]
     public function test_batch_database_operations()
     {
         // Mock dependencies
         $this->userStatsService->shouldReceive('updateAfterQuizAttempt')
             ->once()
-            ->with(Mockery::any(), Mockery::any(), Mockery::any(), Mockery::any());
-        
-        $this->cacheService->shouldReceive('clearUserTopicProgressCache')
-            ->once()
-            ->with(Mockery::any(), Mockery::any());
-        
-        $this->cacheService->shouldReceive('clearUserMistakesCache')
-            ->once()
-            ->with(Mockery::any(), Mockery::any());
-            
-        $this->cacheService->shouldReceive('clearTopicProgressCaches')
-            ->once()
-            ->with(Mockery::any(), Mockery::any(), Mockery::any());
-            
-        $this->cacheService->shouldReceive('invalidateUserCaches')
-            ->once()
-            ->with(Mockery::any(), Mockery::any());
+            ->with(Mockery::any(), Mockery::any(), Mockery::any(), Mockery::any(), Mockery::any());
         
         $this->notificationService->shouldNotReceive('createLevelUpNotification');
         
         $service = new GradingService(
             $this->cacheService,
+            $this->progressCacheInvalidator,
             $this->userStatsService,
             $this->notificationService,
             $this->writtenAnswerEvaluationService
@@ -330,6 +434,8 @@ class GradingServiceTest extends TestCase
         $user = User::factory()->create();
         $course = Course::factory()->create();
         $topic = Topic::factory()->create(['course_id' => $course->id]);
+
+        $this->expectProgressInvalidation($user->id, $topic->id, 'quiz');
         
         $answers = [];
         foreach ($questions as $index => $question) {
@@ -353,6 +459,7 @@ class GradingServiceTest extends TestCase
     {
         $service = new GradingService(
             $this->cacheService,
+            $this->progressCacheInvalidator,
             $this->userStatsService,
             $this->notificationService,
             $this->writtenAnswerEvaluationService
@@ -362,6 +469,12 @@ class GradingServiceTest extends TestCase
         $user = User::factory()->create();
         $course = Course::factory()->create();
         $topic = Topic::factory()->create(['course_id' => $course->id]);
+
+        $this->userStatsService->shouldReceive('updateAfterQuizAttempt')
+            ->once()
+            ->with(Mockery::any(), Mockery::any(), Mockery::any(), Mockery::any(), Mockery::any());
+        $this->expectProgressInvalidation($user->id, $topic->id, 'tutor');
+        $this->notificationService->shouldNotReceive('createLevelUpNotification');
         
         $answers = [];
         foreach ($questions as $question) {
@@ -403,11 +516,7 @@ class GradingServiceTest extends TestCase
         $this->userStatsService->shouldReceive('updateAfterQuizAttempt')
             ->once();
         
-        $this->cacheService->shouldReceive('clearUserTopicProgressCache')
-            ->once();
-        
-        $this->cacheService->shouldReceive('clearUserMistakesCache')
-            ->once();
+        $this->expectProgressInvalidation($user->id, $topic->id, 'quiz');
         
         $this->notificationService->shouldNotReceive('createLevelUpNotification');
 
@@ -487,11 +596,7 @@ class GradingServiceTest extends TestCase
         $this->userStatsService->shouldReceive('updateAfterQuizAttempt')
             ->once();
         
-        $this->cacheService->shouldReceive('clearUserTopicProgressCache')
-            ->once();
-        
-        $this->cacheService->shouldReceive('clearUserMistakesCache')
-            ->once();
+        $this->expectProgressInvalidation($user->id, $topic->id, 'quiz');
         
         $this->notificationService->shouldNotReceive('createLevelUpNotification');
 
@@ -530,11 +635,7 @@ class GradingServiceTest extends TestCase
         $this->userStatsService->shouldReceive('updateAfterQuizAttempt')
             ->once();
         
-        $this->cacheService->shouldReceive('clearUserTopicProgressCache')
-            ->once();
-        
-        $this->cacheService->shouldReceive('clearUserMistakesCache')
-            ->once();
+        $this->expectProgressInvalidation($user->id, $topic->id, 'quiz');
         
         $this->notificationService->shouldNotReceive('createLevelUpNotification');
 
@@ -574,11 +675,7 @@ class GradingServiceTest extends TestCase
         $this->userStatsService->shouldReceive('updateAfterQuizAttempt')
             ->once();
         
-        $this->cacheService->shouldReceive('clearUserTopicProgressCache')
-            ->once();
-        
-        $this->cacheService->shouldReceive('clearUserMistakesCache')
-            ->once();
+        $this->expectProgressInvalidation($user->id, $topic->id, 'quiz');
         
         $this->notificationService->shouldNotReceive('createLevelUpNotification');
 

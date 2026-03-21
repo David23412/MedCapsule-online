@@ -2,25 +2,19 @@
 
 namespace App\View\Components;
 
+use App\Services\LiveUserMetricsService;
 use Illuminate\View\Component;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Cache;
 
 class LiveUserCounter extends Component
 {
+    public function __construct(
+        private LiveUserMetricsService $liveUserMetricsService
+    ) {
+    }
+
     public function render()
     {
-        // Get the count from cache, with a 1-minute expiration
-        $count = Cache::remember('live_users_count', 60, function () {
-            try {
-                return DB::table('sessions')
-                    ->where('last_activity', '>=', now()->subMinutes(5)->getTimestamp())
-                    ->count();
-            } catch (\Exception $e) {
-                // If database is not available, return 0
-                return 0;
-            }
-        });
+        $count = $this->liveUserMetricsService->getTotalCount();
 
         $lastUpdated = now()->diffForHumans();
 

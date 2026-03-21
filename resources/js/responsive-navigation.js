@@ -68,7 +68,6 @@ class ResponsiveNavigation {
             this.state.isInitialized = true;
             
             this.emit('nav:initialized', { instance: this });
-            console.log('ResponsiveNavigation initialized successfully');
         } catch (error) {
             console.error('Failed to initialize ResponsiveNavigation:', error);
         }

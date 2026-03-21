@@ -487,7 +487,7 @@
             <div class="col-md-6 col-lg-4 col-xl-3 mb-3 student-item" 
                  data-name="{{ strtolower($student->name) }}"
                  data-status="{{ $student->last_active_at && $student->last_active_at->gte(now()->subDays(3)) ? 'active' : 'inactive' }}"
-                 data-performance="{{ $student->quizAttempts->avg('score') >= 80 ? 'excellent' : ($student->quizAttempts->avg('score') >= 70 ? 'good' : ($student->quizAttempts->avg('score') >= 60 ? 'average' : 'poor')) }}">
+                 data-performance="{{ $student->enhanced_metrics['score_class'] }}">
                 <div class="student-card" onclick="viewStudentProfile({{ $student->id }})">
                     <div class="student-header">
                         <div class="student-avatar">
@@ -521,14 +521,14 @@
                         <div class="stat-item">
                             <div class="stat-label">Quiz Average</div>
                             @php
-                                $avgScore = $student->quizAttempts->avg('score') ?? 0;
-                                $scoreClass = $avgScore >= 80 ? 'excellent' : ($avgScore >= 70 ? 'good' : ($avgScore >= 60 ? 'average' : 'poor'));
+                                $avgScore = $student->enhanced_metrics['average_score'] ?? 0;
+                                $scoreClass = $student->enhanced_metrics['score_class'] ?? 'poor';
                             @endphp
                             <div class="stat-value {{ $scoreClass }}">{{ number_format($avgScore, 1) }}%</div>
                         </div>
                         <div class="stat-item">
                             <div class="stat-label">Total Quizzes</div>
-                            <div class="stat-value">{{ $student->quizAttempts->count() }}</div>
+                            <div class="stat-value">{{ $student->enhanced_metrics['total_quizzes'] ?? 0 }}</div>
                         </div>
                         <div class="stat-item">
                             <div class="stat-label">Study Streak</div>
@@ -583,13 +583,13 @@
                         <div class="col-md-4">
                             <div class="summary-item">
                                 <span class="summary-label">Class Average</span>
-                                <span class="summary-value">{{ number_format($students->avg(function($s) { return $s->quizAttempts->avg('score') ?? 0; }), 1) }}%</span>
+                                <span class="summary-value">{{ number_format($students->avg(function($s) { return $s->enhanced_metrics['average_score'] ?? 0; }), 1) }}%</span>
                             </div>
                         </div>
                         <div class="col-md-4">
                             <div class="summary-item">
                                 <span class="summary-label">Quiz Attempts</span>
-                                <span class="summary-value">{{ $students->sum(function($s) { return $s->quizAttempts->count(); }) }}</span>
+                                <span class="summary-value">{{ $students->sum(function($s) { return $s->enhanced_metrics['total_quizzes'] ?? 0; }) }}</span>
                             </div>
                         </div>
                         <div class="col-md-4">

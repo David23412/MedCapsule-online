@@ -180,7 +180,7 @@ class PerformanceRateLimit
         
         foreach ($types as $type) {
             $pattern = "rate_limit:*:{$type}";
-            $keys = $redis->keys($pattern);
+            $keys = self::scanMatchingKeys($redis, $pattern);
             
             $stats[$type] = [
                 'active_limits' => count($keys),
@@ -189,5 +189,24 @@ class PerformanceRateLimit
         }
         
         return $stats;
+    }
+
+    private static function scanMatchingKeys($redis, string $pattern, int $count = 100): array
+    {
+        $matched = [];
+        $cursor = null;
+
+        do {
+            $keys = $redis->scan($cursor, $pattern, $count);
+            if ($keys === false) {
+                $keys = [];
+            }
+
+            foreach ($keys as $key) {
+                $matched[] = $key;
+            }
+        } while ((int) $cursor !== 0);
+
+        return $matched;
     }
 }

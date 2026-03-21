@@ -8,32 +8,43 @@ class QuestionRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return auth()->check() && (auth()->user()->hasRole('admin') || auth()->user()->hasRole('tutor'));
+        if (!auth()->check()) {
+            return false;
+        }
+
+        $role = (int) (auth()->user()->role ?? 0);
+
+        return in_array($role, [\App\Models\User::ROLE_ADMIN, \App\Models\User::ROLE_TUTOR], true);
     }
 
     public function rules(): array
     {
         return [
-            'question_text' => 'required|string|max:2000',
             'topic_id' => 'required|integer|exists:topics,id',
-            'difficulty' => 'required|in:easy,medium,hard',
-            'question_type' => 'required|in:multiple_choice,true_false,fill_blank',
-            'correct_answer' => 'required|string|max:500',
-            'wrong_answers' => 'required|array|min:1|max:4',
-            'wrong_answers.*' => 'required|string|max:500',
-            'explanation' => 'nullable|string|max:1000',
-            'points' => 'nullable|integer|min:1|max:10'
+            'question' => 'required|string|max:2000',
+            'question_type' => 'required|in:multiple_choice,written',
+            'explanation' => 'nullable|string|max:4000',
+            'question_image' => 'nullable|image|max:2048',
+            'image_url' => 'nullable|url|max:2000',
+            'option_a' => 'required_if:question_type,multiple_choice|nullable|string|max:1000',
+            'option_b' => 'required_if:question_type,multiple_choice|nullable|string|max:1000',
+            'option_c' => 'required_if:question_type,multiple_choice|nullable|string|max:1000',
+            'option_d' => 'required_if:question_type,multiple_choice|nullable|string|max:1000',
+            'correct_answer' => 'required_if:question_type,multiple_choice|nullable|in:A,B,C,D',
+            'written_correct_answer' => 'required_if:question_type,written|nullable|string|max:2000',
+            'alternative_answers' => 'nullable|string|max:4000',
+            'source' => 'required|string|max:255',
+            'concept_names' => 'nullable|string|max:4000',
         ];
     }
 
     public function messages(): array
     {
         return [
-            'question_text.required' => 'Question text is required',
             'topic_id.required' => 'Topic selection is required',
-            'correct_answer.required' => 'Correct answer is required',
-            'wrong_answers.required' => 'Wrong answers are required',
-            'wrong_answers.min' => 'At least one wrong answer is required'
+            'question.required' => 'Question text is required',
+            'correct_answer.required_if' => 'Correct answer is required for multiple choice questions',
+            'written_correct_answer.required_if' => 'Correct answer is required for written questions',
         ];
     }
 }

@@ -31,7 +31,7 @@ return [
         'quiz.random',
         'quiz.grade-random',
         'add-question',
-        'admin.delete.questions.bulk'
+        'admin.delete.questions.bulk',
     ],
 
     // Architectural Health Check
@@ -41,9 +41,13 @@ return [
     // Rollout Strategy
     'rollout_strategy' => env('FEATURE_ROLLOUT_STRATEGY', 'user_id'), // 'user_id', 'percentage', 'whitelist'
     'rollout_whitelist_users' => array_filter(explode(',', env('FEATURE_ROLLOUT_WHITELIST_USERS', ''))),
-    
+
     // Safety Settings
     'enable_fallback' => env('FEATURE_ENABLE_FALLBACK', true), // Always fallback to old services on error
     'log_feature_usage' => env('FEATURE_LOG_USAGE', true), // Log when new features are used
     'performance_comparison' => env('FEATURE_PERFORMANCE_COMPARISON', false), // Compare old vs new performance
+
+    // Frontend design protection
+    'design_protection_enabled' => env('DESIGN_PROTECTION_ENABLED', true),
+    'design_protection_devtools_threshold' => (int) env('DESIGN_PROTECTION_DEVTOOLS_THRESHOLD', 160),
 ];

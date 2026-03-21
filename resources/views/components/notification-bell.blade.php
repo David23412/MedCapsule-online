@@ -1,8 +1,5 @@
 @php
-    use App\Services\UniversalNotificationService;
-    
-    // PERFORMANCE OPTIMIZED - AUTO-CLEANUP ON EVERY ACCESS
-    $unreadCount = auth()->check() ? min(UniversalNotificationService::getUnreadCount(auth()->user()), 5) : 0;
+    $unreadCount = $unreadCount ?? ($navigationUnreadCount ?? 0);
 @endphp
 
 @if(auth()->check())
@@ -285,7 +282,7 @@
     display: flex;
     align-items: flex-start;
     gap: 12px;
-    padding: 16px 20px;
+    padding: 13px 20px;
     background: white;
     border-bottom: 1px solid #e5e7eb;
     transition: all 0.2s ease;
@@ -318,6 +315,8 @@
 
 .notification-icon i {
     font-size: 16px;
+    font-weight: 700;
+    filter: saturate(1.28) contrast(1.08);
 }
 
 /* CUSTOM COURSE FAVI ICON ENHANCEMENTS */
@@ -405,7 +404,7 @@
 
 .notification-item-title {
     font-size: 14px;
-    font-weight: 600;
+    font-weight: 700;
     color: #1f2937;
     margin: 0;
     line-height: 1.4;
@@ -422,6 +421,7 @@
 .notification-message {
     font-size: 13px;
     color: #4b5563;
+    font-weight: 500;
     line-height: 1.4;
     margin: 0;
     overflow: hidden;
@@ -431,10 +431,22 @@
     -webkit-box-orient: vertical;
 }
 
+.notification-action-hint {
+    margin-top: 8px;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    color: #2563eb;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
 .unread-indicator {
     position: absolute;
-    left: 8px;
-    top: 40%;
+    left: 9px;
+    /* Keep the dot between the left status border and the icon circle */
+    top: 34px;
     transform: translateY(-50%);
     width: 6px;
     height: 6px;
@@ -930,6 +942,18 @@ document.addEventListener('DOMContentLoaded', function() {
         // Prevent dropdown from closing when clicking inside
         notificationDropdown.addEventListener('click', function(e) {
             e.stopPropagation();
+
+            const notificationItem = e.target.closest('.notification-item[data-action-url]');
+            if (!notificationItem) {
+                return;
+            }
+
+            const actionUrl = notificationItem.getAttribute('data-action-url');
+            if (!actionUrl) {
+                return;
+            }
+
+            window.location.href = actionUrl;
         });
         
         // Keyboard navigation
@@ -977,11 +1001,12 @@ document.addEventListener('DOMContentLoaded', function() {
             notificationBell.classList.remove('has-new-notification');
         }, 800);
         
-        // Load fresh notifications
-        loadNotifications();
-        
-        // DISABLED: Don't automatically mark as read - let user see notifications
-        // markAllNotificationsAsRead();
+        // Load fresh notifications, then hide the in-list unread dots without clearing the bell badge.
+        loadNotifications().then((data) => {
+            if ((data?.unread_count || 0) > 0) {
+                syncNotificationsAsReadUI();
+            }
+        });
         
         // DISABLED: Don't auto-delete - let notifications stay visible
         // setTimeout(() => {
@@ -1012,7 +1037,7 @@ document.addEventListener('DOMContentLoaded', function() {
         // Show loading state
         showLoadingState();
         
-        fetch('/notifications', {
+        return fetch('/notifications', {
             method: 'GET',
             headers: {
                 'Accept': 'application/json',
@@ -1032,6 +1057,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 hideLoadingState();
                 // 🎨 CRITICAL FIX: Actually render the beautiful notifications!
                 renderNotifications(data.notifications, data.unread_count);
+                return data;
             } else {
                 throw new Error(data.message || 'Failed to load notifications');
             }
@@ -1039,6 +1065,47 @@ document.addEventListener('DOMContentLoaded', function() {
         .catch(error => {
             console.error('❌ Failed to load notifications:', error);
             showErrorState(error.message);
+            throw error;
+        });
+    }
+
+    function syncNotificationsAsReadUI() {
+        document.querySelectorAll('#notificationDropdown .notification-item').forEach((item) => {
+            item.classList.add('read');
+        });
+
+        document.querySelectorAll('#notificationDropdown .unread-indicator').forEach((dot) => {
+            dot.remove();
+        });
+    }
+
+    function markAllNotificationsAsRead() {
+        return fetch('/notifications/mark-all-read', {
+            method: 'POST',
+            headers: {
+                'Accept': 'application/json',
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || ''
+            },
+            body: JSON.stringify({})
+        })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            }
+            return response.json();
+        })
+        .then(data => {
+            if (!data.success) {
+                throw new Error(data.message || 'Failed to mark notifications as read');
+            }
+
+            syncNotificationsAsReadUI();
+            return data;
+        })
+        .catch(error => {
+            console.error('❌ Failed to mark notifications as read:', error);
+            return null;
         });
     }
     
@@ -1237,7 +1304,7 @@ document.addEventListener('DOMContentLoaded', function() {
         console.log('🎨 Rendering', notifications.length, 'notifications with beautiful design');
         
         // 🎨 COMPLETE NOTIFICATION ICON SYSTEM - ALL TYPES INCLUDING TUTOR & ASSIGNMENT
-        function getNotificationIcon(type) {
+        function getNotificationIcon(type, providedIcon = null) {
             const iconMap = {
                 // 🎓 ACADEMIC & LEARNING (6 icons)
                 'course_welcome': 'fas fa-graduation-cap',
@@ -1284,6 +1351,27 @@ document.addEventListener('DOMContentLoaded', function() {
                 
                 // 🔥 STREAKS & MOTIVATION (2 icons)
                 'streak_reset': 'fas fa-fire',
+                'streak_day_1': 'fas fa-seedling',
+                'streak_day_2': 'fas fa-rocket',
+                'streak_day_3': 'fas fa-bolt',
+                'streak_week_1': 'fas fa-bolt',
+                'streak_day_10': 'fas fa-bolt',
+                'streak_week_2': 'fas fa-bolt',
+                'streak_day_15': 'fas fa-bolt',
+                'streak_day_21': 'fas fa-bolt',
+                'streak_month_1': 'fas fa-bolt',
+                'streak_month_2': 'fas fa-bolt',
+                'streak_month_3': 'fas fa-bolt',
+                'streak_month_4': 'fas fa-bolt',
+                'streak_month_5': 'fas fa-bolt',
+                'streak_month_6': 'fas fa-bolt',
+                'streak_month_7': 'fas fa-bolt',
+                'streak_month_8': 'fas fa-bolt',
+                'streak_month_9': 'fas fa-bolt',
+                'streak_month_10': 'fas fa-bolt',
+                'streak_month_11': 'fas fa-bolt',
+                'streak_month_12': 'fas fa-bolt',
+                'streak_year_1': 'fas fa-bolt',
                 'burning_streak': 'fas fa-fire',
                 
                 // ⚠️ WARNINGS & REVIEWS (5 icons)
@@ -1365,7 +1453,13 @@ document.addEventListener('DOMContentLoaded', function() {
                 // 🎨 CUSTOM TYPES (1 icon) - REMOVED NON-EXISTENT FEATURES
                 'milestone_reached': 'fas fa-flag-checkered'
             };
-            return iconMap[type] || 'fas fa-bell';
+            const mappedIcon = iconMap[type] || null;
+
+            if (providedIcon && (providedIcon !== 'fas fa-bell' || !mappedIcon)) {
+                return providedIcon;
+            }
+
+            return mappedIcon || providedIcon || 'fas fa-bell';
         }
         
         // BEAUTIFUL SEMANTIC COLORS FOR NOTIFICATION TYPES
@@ -1403,8 +1497,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 'assignment_due_48h': '#6b7280',        // gray-500
                 
                 // 🏆 PROGRESS & MILESTONES - REAL FEATURES ONLY
-                'streak_day_1': '#10b981',              // emerald-500 (first quiz)
-                'streak_day_2': '#3b82f6',              // blue-500
+                'streak_day_1': '#fbbf24',              // amber-400
+                'streak_day_2': '#fbbf24',              // amber-400
                 'streak_day_3': '#fbbf24',              // amber-400
                 'streak_week_1': '#fbbf24',             // amber-400
                 'streak_day_10': '#fbbf24',             // amber-400
@@ -1430,6 +1524,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 
                 // 💳 PAYMENT & ACCESS
                 'payment_success': '#10b981',           // emerald-500
+                'payment_accepted': '#10b981',          // emerald-500
                 'payment_failed': '#ef4444',            // red-500
                 'course_access_granted': '#10b981',     // emerald-500
                 'course_access_denied': '#ef4444',      // red-500
@@ -1524,17 +1619,20 @@ document.addEventListener('DOMContentLoaded', function() {
             if (type === 'assignment_assigned') {
                 return '#3b82f6'; // BLUE BORDER for new assignments
             }
-            if (type === 'streak_day_1') {
-                return '#10b981'; // GREEN BORDER for first quiz
+            if (type.startsWith('streak_day_') || type.startsWith('streak_week_') || type.startsWith('streak_month_') || type === 'streak_year_1') {
+                return '#f59e0b'; // AMBER BORDER for streak milestones
             }
-            if (type === 'streak_milestone' || type === 'study_streak' || type === 'burning_streak') {
-                return '#f97316'; // FIERY ORANGE BORDER for streak notifications
+            if (type === 'streak_milestone' || type === 'study_streak' || type === 'burning_streak' || type === 'streak_reset') {
+                return '#f97316'; // ORANGE BORDER for streak notifications
             }
             if (type === 'assignment_due_1h' || type === 'assignment_due_3h' || type === 'assignment_overdue') {
                 return '#ef4444'; // RED BORDER for urgent deadlines
             }
             if (type === 'payment_failed') {
                 return '#ef4444'; // RED BORDER for payment failures
+            }
+            if (type === 'payment_success' || type === 'payment_accepted' || type === 'course_access_granted') {
+                return '#10b981'; // GREEN BORDER for successful/welcoming payment access states
             }
             
             // Default priority-based borders
@@ -1590,14 +1688,17 @@ document.addEventListener('DOMContentLoaded', function() {
                     ? `notification-${notification.priority}` 
                     : '';
                 
+                const iconClass = getNotificationIcon(notification.type, notification.icon);
                 const iconColor = getNotificationIconColor(notification.type);
                 const borderColor = getNotificationBorderColor(notification.priority, notification.type);
-                const isFireIcon = ['streak_milestone', 'study_streak', 'burning_streak'].includes(notification.type);
+                const isFireIcon = iconClass.includes('fa-fire');
+                const actionUrl = notification.data?.action_url || '';
+                const actionHint = actionUrl ? '<div class="notification-action-hint">Open recommendation <i class="fas fa-arrow-right"></i></div>' : '';
                 
                 notificationHTML += `
-                    <div class="notification-item ${priorityClass} ${readClass} ${colorClass}" data-id="${notification.id}" style="border-left: 4px solid ${borderColor};">
-                        <div class="notification-icon ${isFireIcon ? 'fire-icon' : ''}" style="background-color: ${iconColor}20; border: 1px solid ${iconColor}30;">
-                            <i class="${getNotificationIcon(notification.type)}" style="color: ${iconColor};"></i>
+                    <div class="notification-item ${priorityClass} ${readClass} ${colorClass}" data-id="${notification.id}" ${actionUrl ? `data-action-url="${actionUrl}"` : ''} style="border-left: 3px solid ${borderColor}; ${actionUrl ? 'cursor: pointer;' : ''}">
+                        <div class="notification-icon ${isFireIcon ? 'fire-icon' : ''}" style="background-color: ${iconColor}24; border: 1px solid ${iconColor}66; box-shadow: inset 0 0 0 1px ${iconColor}14;">
+                            <i class="${iconClass}" style="color: ${iconColor};"></i>
                         </div>
                         <div class="notification-content">
                             <div class="notification-header-row">
@@ -1605,6 +1706,7 @@ document.addEventListener('DOMContentLoaded', function() {
                                 <small class="notification-time">${timeAgo}</small>
                             </div>
                             <p class="notification-message">${notification.message}</p>
+                            ${actionHint}
                         </div>
                         ${!notification.read ? '<div class="unread-indicator"></div>' : ''}
                     </div>

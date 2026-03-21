@@ -14,7 +14,6 @@ use App\Http\Controllers\{
     UserCourseController,
     ProfileController,
     StudySessionController,
-    NotificationController,
     App\Http\Controllers\Admin\PaymentController,
     PaymentSettingsController,
     PaymentLogController,
@@ -23,11 +22,36 @@ use App\Http\Controllers\{
     StudentAssignmentController,
     TopicLockingController
 };
+use App\Http\Controllers\Api\StatusController;
+use App\Http\Controllers\FreeCourseSurveyController;
 use App\Http\Controllers\Notification\NotificationViewController;
+use App\Http\Controllers\Notification\NotificationActionController;
 use Illuminate\Support\Facades\DB;
 
+$serveStorageFile = function (string $basePath, string $path, array $headers = []) {
+    $baseDirectory = realpath($basePath);
+    abort_if($baseDirectory === false, 404);
+
+    $relativePath = ltrim($path, '/');
+    $requestedPath = realpath($baseDirectory . DIRECTORY_SEPARATOR . $relativePath);
+
+    abort_if($requestedPath === false || !is_file($requestedPath), 404);
+    abort_if(
+        $requestedPath !== $baseDirectory && !str_starts_with($requestedPath, $baseDirectory . DIRECTORY_SEPARATOR),
+        404
+    );
+
+    $mimeType = mime_content_type($requestedPath) ?: 'application/octet-stream';
+
+    return response()->file($requestedPath, array_merge([
+        'Content-Type' => $mimeType,
+        'Cache-Control' => 'public, max-age=31536000',
+    ], $headers));
+};
+
 // Public routes
-Route::get('/', [HomeController::class, 'index'])->name('home');
+Route::view('/', 'landing')->name('landing');
+Route::get('/home', [CourseController::class, 'index'])->name('home');
 
 
 
@@ -40,60 +64,10 @@ Route::prefix('api/progress')->middleware('auth')->group(function () {
 });
 
 // Real-time enrollment status check
-Route::post('/api/check-enrollment-status', function(Request $request) {
-    $courseIds = $request->input('course_ids', []);
-    $userId = auth()->id();
-    
-    if (!$userId || empty($courseIds)) {
-        return response()->json(['success' => false]);
-    }
-    
-    // Get current enrollment status for all courses
-    $enrollments = DB::table('course_user')
-        ->where('user_id', $userId)
-        ->whereIn('course_id', $courseIds)
-        ->whereNotNull('enrolled_at')
-        ->pluck('enrolled_at', 'course_id')
-        ->toArray();
-    
-    // Check for changes (this would need session storage in real implementation)
-    $changes = [];
-    foreach ($courseIds as $courseId) {
-        $isEnrolled = isset($enrollments[$courseId]);
-        // For now, we'll return all statuses - in production you'd compare with previous state
-        $changes[] = [
-            'course_id' => $courseId,
-            'is_enrolled' => $isEnrolled
-        ];
-    }
-    
-    return response()->json([
-        'success' => true,
-        'enrollment_changes' => $changes
-    ]);
-})->middleware('auth');
+Route::post('/api/check-enrollment-status', [StatusController::class, 'checkEnrollmentStatus'])->middleware('auth');
 
 // Real-time payment status check
-Route::post('/api/check-payment-status', function(Request $request) {
-    $courseIds = $request->input('course_ids', []);
-    $userId = auth()->id();
-    
-    if (!$userId || empty($courseIds)) {
-        return response()->json(['success' => false]);
-    }
-    
-    // Check which courses have completed payments
-    $completedCourses = \App\Models\Payment::where('user_id', $userId)
-        ->whereIn('course_id', $courseIds)
-        ->where('status', 'completed')
-        ->pluck('course_id')
-        ->toArray();
-    
-    return response()->json([
-        'success' => true,
-        'completed_courses' => $completedCourses
-    ]);
-})->middleware('auth');
+Route::post('/api/check-payment-status', [StatusController::class, 'checkPaymentStatus'])->middleware('auth');
 
 // Assignment progress API
 Route::prefix('api/assignments')->middleware('auth')->group(function () {
@@ -101,75 +75,7 @@ Route::prefix('api/assignments')->middleware('auth')->group(function () {
 });
 
 // Active users count API - Public endpoint for all users
-Route::get('/api/active-users', function() {
-    try {
-        // Check if fake mode is enabled
-        $fakeEnabled = \App\Models\AdminSetting::get('fake_live_users_enabled', false);
-        
-        if ($fakeEnabled) {
-            // Generate believable fake count that fluctuates
-            $min = \App\Models\AdminSetting::get('fake_live_users_min', 87);
-            $max = \App\Models\AdminSetting::get('fake_live_users_max', 143);
-            
-            // Use time-based seed for consistent but changing values
-            $seed = floor(time() / 30); // Changes every 30 seconds
-            mt_srand($seed);
-            
-            // Generate base count
-            $baseCount = mt_rand($min, $max);
-            
-            // Round to nearest 10 for believability (e.g., 97, 107, 118)
-            $roundedCount = round($baseCount / 10) * 10;
-            
-            // Add small random offset (0-9) to make it look more natural
-            $offset = mt_rand(0, 9);
-            $finalCount = $roundedCount + $offset;
-            
-            // Ensure it stays within bounds
-            $finalCount = max($min, min($max, $finalCount));
-            
-            return response()->json([
-                'count' => $finalCount,
-                'visitors' => floor($finalCount * 0.7), // 70% visitors
-                'users' => floor($finalCount * 0.3), // 30% logged in
-                'fake_mode' => true
-            ]);
-        }
-        
-        // Real mode - count actual sessions
-        $fiveMinutesAgo = now()->subMinutes(5)->timestamp;
-        
-        // Get count of unique visitors based on fingerprint
-        $visitorCount = DB::table('sessions')
-            ->where('last_activity', '>=', $fiveMinutesAgo)
-            ->where('is_visitor', true)
-            ->distinct('fingerprint')
-            ->count();
-
-        // Get count of unique logged-in users
-        $loggedInCount = DB::table('sessions')
-            ->where('last_activity', '>=', $fiveMinutesAgo)
-            ->where('is_visitor', false)
-            ->whereNotNull('user_id')
-            ->distinct('user_id')
-            ->count();
-
-        return response()->json([
-            'count' => $visitorCount + $loggedInCount,
-            'visitors' => $visitorCount,
-            'users' => $loggedInCount,
-            'fake_mode' => false
-        ]);
-    } catch (\Exception $e) {
-        // Return a default response instead of exposing the error
-        return response()->json([
-            'count' => 1,
-            'visitors' => 0,
-            'users' => 1,
-            'fake_mode' => false
-        ]);
-    }
-})->name('api.active-users');
+Route::get('/api/active-users', [StatusController::class, 'activeUsers'])->name('api.active-users');
 
 // ADMIN ROUTES - Protected with admin middleware
 Route::middleware(['auth', 'admin'])->group(function () {
@@ -235,12 +141,16 @@ Route::middleware(['auth', 'admin'])->group(function () {
 require __DIR__.'/auth.php';
 
 // 🔒 INTEGRATE SECURITY HEADERS MIDDLEWARE - MEGA LETHAL PROTECTION
-Route::middleware(['web', SecurityHeaders::class])->group(function () {
+Route::middleware(['web', SecurityHeaders::class])->group(function () use ($serveStorageFile) {
 
     // Protected routes
-    Route::middleware('auth')->group(function () {
+    Route::middleware('auth')->group(function () use ($serveStorageFile) {
     // User progress route
     Route::get('/profile/progress', [ProfileController::class, 'getProgress'])->name('user.progress');
+
+    Route::get('/free-courses/unlock', [FreeCourseSurveyController::class, 'show'])->name('free-course-survey.show');
+    Route::post('/free-courses/unlock/draft', [FreeCourseSurveyController::class, 'saveDraft'])->name('free-course-survey.draft');
+    Route::post('/free-courses/unlock/submit', [FreeCourseSurveyController::class, 'submit'])->name('free-course-survey.submit');
     
     // Course routes
     Route::get('/courses', [CourseController::class, 'index'])->name('courses.index');
@@ -248,7 +158,7 @@ Route::middleware(['web', SecurityHeaders::class])->group(function () {
     Route::get('/courses/{course}', [CourseController::class, 'show'])->name('courses.show');
 
     // Review routes with CSRF and rate limiting
-    Route::get('/review', [App\Http\Controllers\Quiz\QuizMistakeController::class, 'showMistakes'])->name('review.index')->withoutMiddleware('auth');
+    Route::get('/review', [App\Http\Controllers\Quiz\QuizMistakeController::class, 'showMistakes'])->name('review.index');
     Route::get('/review/learn', [LearnController::class, 'learnMistakes'])->name('review.learn');
     Route::post('/review/remove/{question_id}', [MistakeController::class, 'removeMistake'])
         ->name('review.remove');
@@ -277,40 +187,6 @@ Route::middleware(['web', SecurityHeaders::class])->group(function () {
     Route::get('/manage-access/search-users', [UserCourseController::class, 'searchUsers'])
         ->name('admin.user-course.search');
 
-// Debug route to check authentication status
-Route::get('/debug/auth-status', function() {
-    return response()->json([
-        'authenticated' => auth()->check(),
-        'user_id' => auth()->id(),
-        'user' => auth()->user(),
-        'session' => session()->all(),
-        'headers' => request()->headers->all(),
-        'cookies' => request()->cookies->all()
-    ]);
-})->withoutMiddleware([\App\Http\Middleware\VerifyCsrfToken::class]);
-
-// TEST ROUTE: Completely bypass all middleware for testing
-Route::get('/test/search-users-bypass', function() {
-    try {
-        // Test the UserService directly without User model serialization
-        $users = \DB::table('users')
-            ->where('name', 'like', '%' . 'Dr' . '%')
-            ->select('id', 'name', 'email', 'role')
-            ->get();
-
-        return response()->json([
-            'success' => true,
-            'users' => $users
-        ]);
-    } catch (\Exception $e) {
-        return response()->json([
-            'success' => false,
-            'message' => $e->getMessage(),
-            'trace' => $e->getTraceAsString()
-        ]);
-    }
-})->withoutMiddleware([\App\Http\Middleware\VerifyCsrfToken::class, \App\Http\Middleware\Authenticate::class]);
-
     // Manage Access Routes - Admin only
     Route::middleware('admin')->group(function () {
 
@@ -336,28 +212,6 @@ Route::get('/test/search-users-bypass', function() {
         Route::get('/manage-access/user-enrollments', [UserCourseController::class, 'getUserEnrollments'])->name('admin.user-course.user-enrollments');
         Route::post('/manage-access/payment-settings', [UserCourseController::class, 'updatePaymentSettings'])->name('admin.payment-settings.update');
     });
-
-    // 🔍 DEBUG: Temporary test route to check admin status (remove after debugging)
-    Route::get('/debug/admin-status', function() {
-        $user = auth()->user();
-        if (!$user) {
-            return response()->json(['error' => 'Not authenticated'], 401);
-        }
-
-        return response()->json([
-            'user_id' => $user->id,
-            'user_name' => $user->name,
-            'user_email' => $user->email,
-            'role_raw' => $user->role,
-            'role_type' => gettype($user->role),
-            'role_cast_to_int' => (int)($user->role ?? 0),
-            'expected_admin_role' => \App\Models\User::ROLE_ADMIN,
-            'is_admin_method' => $user->isAdmin(),
-            'role_comparison' => ((int)($user->role ?? 0) === \App\Models\User::ROLE_ADMIN),
-            'session_data' => session()->all(),
-            'middleware_check' => true
-        ]);
-    })->name('debug.admin-status');
 
     // ✅ FIXED: Payments route with proper admin protection
     Route::get('/manage-access/payments', [UserCourseController::class, 'payments'])
@@ -401,31 +255,31 @@ Route::get('/test/search-users-bypass', function() {
         
         // Course exists, proceed normally
         return app(TopicController::class)->forCourse($courseId);
-    })->name('topics.forCourse')->where('courseId', '[0-9]+');
-    Route::get('/topics/course/{courseId}', [TopicController::class, 'forCourse'])->name('topics.forCourseLegacy')->where('courseId', '[0-9]+');
-    Route::get('/courses/{course}/cases', [TopicController::class, 'casesForCourse'])->name('cases.forCourse');
-    Route::get('/courses/{course}/cases-count', [TopicController::class, 'casesCount'])->name('cases.count');
+    })->name('topics.forCourse')->where('courseId', '[0-9]+')->middleware('free.course.survey');
+    Route::get('/topics/course/{courseId}', [TopicController::class, 'forCourse'])->name('topics.forCourseLegacy')->where('courseId', '[0-9]+')->middleware('free.course.survey');
+    Route::get('/courses/{course}/cases', [TopicController::class, 'casesForCourse'])->name('cases.forCourse')->middleware('free.course.survey');
+    Route::get('/courses/{course}/cases-count', [TopicController::class, 'casesCount'])->name('cases.count')->middleware('free.course.survey');
 
     // 💀 NUCLEAR OPTIMIZED QUIZ ROUTES - SPLIT ARCHITECTURE 💀
     Route::prefix('quiz')->name('quiz.')->group(function () {
         // Quiz Execution - REFACTORED ARCHITECTURE
         Route::get('/{course}/{topic}', [App\Http\Controllers\Quiz\QuizReadController::class, 'show'])
             ->name('start')
-            ->where(['course' => '[0-9]+', 'topic' => '[0-9]+']);
+            ->where(['course' => '[0-9]+', 'topic' => '[0-9]+'])
+            ->middleware('free.course.survey');
         Route::post('/{course}/{topic}/grade', [App\Http\Controllers\Quiz\QuizGradingController::class, 'submit'])
             ->name('grade')
-            ->where(['course' => '[0-9]+', 'topic' => '[0-9]+'])
-            ->withoutMiddleware([\App\Http\Middleware\VerifyCsrfToken::class]);
+            ->where(['course' => '[0-9]+', 'topic' => '[0-9]+']);
             // THROTTLE REMOVED FOR F16 RAPTOR SPEED
             
         // Tutor Mode
         Route::get('/{course}/{topic}/tutor', [App\Http\Controllers\Quiz\QuizTutorController::class, 'startTutorQuiz'])
             ->name('tutor')
-            ->where(['course' => '[0-9]+', 'topic' => '[0-9]+']);
+            ->where(['course' => '[0-9]+', 'topic' => '[0-9]+'])
+            ->middleware('free.course.survey');
         Route::post('/tutor/check/{question}', [App\Http\Controllers\Quiz\QuizTutorController::class, 'checkTutorAnswer'])
             ->name('tutor.check-answer')
-            ->where(['question' => '[0-9]+'])
-            ->withoutMiddleware(['web']); // BYPASS ALL MIDDLEWARE FOR SPEED
+            ->where(['question' => '[0-9]+']);
         Route::post('/tutor/complete-session', [App\Http\Controllers\Quiz\QuizTutorController::class, 'completeTutorSession'])
             ->name('tutor.complete-session');
     });
@@ -462,57 +316,26 @@ Route::get('/test/search-users-bypass', function() {
         Route::get('/profile', [ProfileController::class, 'show'])->name('profile');
         Route::post('/profile/update-picture', [ProfileController::class, 'updateProfilePicture'])->name('profile.update-picture');
         Route::post('/profile/update-goal', [ProfileController::class, 'updateWeeklyGoal'])->name('profile.update-goal');
+        Route::post('/profile/update-course-planner-settings', [ProfileController::class, 'updateCoursePlannerSettings'])->name('profile.update-course-planner-settings');
         
         // Study Planner routes
 
     });
 
     // Profile picture serving route (FIXED: Use correct storage location for secure_uploads disk)
-    Route::get('/uploads/profile-pictures/{path}', function ($path) {
-        // Handle both direct filename and full path structure
-        $fullPath = storage_path('app/uploads/profile-pictures/' . $path);
-
-        if (!file_exists($fullPath)) {
-            abort(404);
-        }
-
-        $mimeType = mime_content_type($fullPath);
-        return response()->file($fullPath, [
-            'Content-Type' => $mimeType,
-            'Cache-Control' => 'public, max-age=31536000',
-            'Access-Control-Allow-Origin' => '*',
-        ]);
-    })->where('path', '.*')->withoutMiddleware(['web', \App\Http\Middleware\SecurityHeaders::class]);
+    Route::get('/uploads/profile-pictures/{path}', function ($path) use ($serveStorageFile) {
+        return $serveStorageFile(storage_path('app/uploads/profile-pictures'), $path);
+    })->where('path', '.*');
 
     // Course image serving route (public access)
-    Route::get('/uploads/course-images/{path}', function ($path) {
-        $fullPath = storage_path('app/public/course-images/' . $path);
-
-        if (!file_exists($fullPath)) {
-            abort(404);
-        }
-
-        $mimeType = mime_content_type($fullPath);
-        return response()->file($fullPath, [
-            'Content-Type' => $mimeType,
-            'Cache-Control' => 'public, max-age=31536000',
-        ]);
-    })->where('path', '.*')->withoutMiddleware(['web', \App\Http\Middleware\SecurityHeaders::class]);
+    Route::get('/uploads/course-images/{path}', function ($path) use ($serveStorageFile) {
+        return $serveStorageFile(storage_path('app/public/course-images'), $path);
+    })->where('path', '.*');
 
     // Question image serving route (public access)
-    Route::get('/uploads/questions/{path}', function ($path) {
-        $fullPath = storage_path('app/public/questions/' . $path);
-
-        if (!file_exists($fullPath)) {
-            abort(404);
-        }
-
-        $mimeType = mime_content_type($fullPath);
-        return response()->file($fullPath, [
-            'Content-Type' => $mimeType,
-            'Cache-Control' => 'public, max-age=31536000',
-        ]);
-    })->where('path', '.*')->withoutMiddleware(['web', \App\Http\Middleware\SecurityHeaders::class]);
+    Route::get('/uploads/questions/{path}', function ($path) use ($serveStorageFile) {
+        return $serveStorageFile(storage_path('app/public/questions'), $path);
+    })->where('path', '.*');
 
     // Dashboard redirect
     Route::get('/dashboard', function () {
@@ -546,12 +369,8 @@ Route::get('/test/search-users-bypass', function() {
         ->name('api.courses-sources')
         ->middleware('auth');
 
-    // Video page route - NO CSP RESTRICTIONS for YouTube functionality
-    Route::get('/video/{topic}', [TopicController::class, 'showVideo'])->name('video.show')->middleware('auth')->withoutMiddleware([
-        \App\Http\Middleware\ContentSecurityPolicy::class,
-        \App\Http\Middleware\SecurityHeaders::class,
-        \App\Http\Middleware\SecurityHeadersMiddleware::class
-    ]);
+    // Video page route
+    Route::get('/video/{topic}', [TopicController::class, 'showVideo'])->name('video.show')->middleware('auth');
     
     // Video progress routes
     Route::post('/api/video/progress', [App\Http\Controllers\VideoProgressController::class, 'updateProgress'])->name('video.progress.update')->middleware('auth');
@@ -696,7 +515,8 @@ Route::get('/test/search-users-bypass', function() {
 // Notification routes - simplified implementation
 Route::middleware(['auth'])->group(function () {
     Route::get('/notifications', [NotificationViewController::class, 'index'])->name('notifications.index');
-    // Additional notification routes can be added here if needed
+    Route::post('/notifications/mark-read', [NotificationActionController::class, 'markAsRead'])->name('notifications.mark-read');
+    Route::post('/notifications/mark-all-read', [NotificationActionController::class, 'markAllAsRead'])->name('notifications.mark-all-read');
 });
 
 // Keep this for backward compatibility, but we've moved the routes to standard auth middleware
@@ -708,37 +528,6 @@ Route::middleware('auth:sanctum')->group(function () {
 Route::get('/health', function() {
     return response()->json(['status' => 'ok'], 200);
 });
-
-// DEBUG: Test CSP headers
-Route::get('/test-csp', function() {
-    $response = response()->json(['csp_test' => 'ok']);
-    $csp = "default-src 'self'; " .
-           "script-src 'self' 'unsafe-inline' https://www.youtube.com https://youtube.com https://www.youtube-nocookie.com https://youtube-nocookie.com; " .
-           "style-src 'self' 'unsafe-inline'; " .
-           "img-src 'self' data: https: blob:; " .
-           "font-src 'self' https://fonts.googleapis.com https://fonts.gstatic.com; " .
-           "frame-src 'self' https://www.youtube.com https://youtube.com https://www.youtube-nocookie.com https://youtube-nocookie.com; " .
-           "connect-src 'self' https://www.youtube.com https://youtube.com https://www.youtube-nocookie.com https://youtube-nocookie.com https://www.googleapis.com https://fonts.googleapis.com https://fonts.gstatic.com;";
-    $response->headers->set('Content-Security-Policy', $csp);
-    return $response;
-});
-
-// Test route for debugging search-users endpoint
-Route::get('/test-search-users', function() {
-    try {
-        $userService = app(\App\Services\UserService::class);
-        $result = $userService->searchUsers('Dr');
-        return response()->json($result);
-    } catch (\Exception $e) {
-        return response()->json([
-            'success' => false,
-            'message' => $e->getMessage(),
-            'trace' => $e->getTraceAsString()
-        ]);
-    }
-});
-
-
 
 // Admin Tutor Management Routes (Admin & Tutor Access)
 Route::middleware(['auth', 'tutor'])->prefix('admin/tutors')->name('admin.tutors.')->group(function () {

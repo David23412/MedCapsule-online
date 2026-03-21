@@ -55,7 +55,7 @@ class PaymentController extends Controller
         ]);
 
         // Enroll user in course
-        $payment->user->enrollInCourse($payment->course_id);
+        $payment->user->enrollInCourse($payment->course_id, \App\Models\User::COURSE_ACCESS_FULL);
 
         // 🔔 TRIGGER PAYMENT ACCEPTED NOTIFICATION
         NotificationTriggerService::onPaymentAccepted($payment->user, [
@@ -97,7 +97,7 @@ class PaymentController extends Controller
      */
     public function getPaymentStats()
     {
-        if (!auth()->user()->isAdmin()) {
+        if (!optional(auth()->user())->isAdmin()) {
             return response()->json(['error' => 'Unauthorized'], 403);
         }
 

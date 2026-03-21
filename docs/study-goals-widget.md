@@ -90,7 +90,7 @@ $weeklyQuestions = \App\Models\QuizAttempt::where('user_id', auth()->id())
 1. `resources/views/profile.blade.php` - Widget UI
 2. `app/Http/Controllers/ProfileController.php` - Save goal endpoint
 3. `routes/web.php` - New route
-4. `database/migrations/2025_01_05_094000_add_weekly_goal_to_users_table.php` - DB schema
+4. `database/migrations/0001_01_01_000000_create_users_table.php` - DB schema
 
 ### **No Extra Tables**
 - Uses existing `quiz_attempts` table

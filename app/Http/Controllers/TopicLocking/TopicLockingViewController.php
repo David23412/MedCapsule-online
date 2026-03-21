@@ -43,25 +43,34 @@ class TopicLockingViewController extends Controller
      */
     public function index()
     {
-        Log::info('Method index called', ['user_id' => auth()->id(), 'timestamp' => now()]);
+        if (app()->environment('local', 'testing')) {
+            Log::info('Method index called', ['user_id' => auth()->id(), 'timestamp' => now()]);
+        }
         
         $user = $this->checkPermission();
         
         // LETHAL FIX: Course-based access control
-        if ($user->role === 'admin') {
+        if ($user->isAdmin()) {
             // Admins can see all courses
-            $courses = \App\Models\Course::with(['topics' => function($query) {
-                $query->select('id', 'course_id', 'name', 'is_locked')
-                      ->orderBy('name');
-            }])->orderBy('name')->get();
+            $courses = \App\Models\Course::query()
+                ->select('id', 'name')
+                ->with(['topics' => function($query) {
+                    $query->select('id', 'course_id', 'name', 'is_locked')
+                        ->orderBy('name');
+                }])
+                ->orderBy('name')
+                ->get();
             
-            Log::info('TopicLocking - Admin sees all courses', [
-                'course_count' => $courses->count(),
-                'course_names' => $courses->pluck('name')->toArray()
-            ]);
+            if (app()->environment('local', 'testing')) {
+                Log::info('TopicLocking - Admin sees all courses', [
+                    'course_count' => $courses->count(),
+                    'course_names' => $courses->pluck('name')->toArray()
+                ]);
+            }
         } else {
             // Tutors can only see courses they're enrolled in
             $courses = $user->courses()
+                ->select('courses.id', 'courses.name')
                 ->with(['topics' => function($query) {
                     $query->select('id', 'course_id', 'name', 'is_locked')
                           ->orderBy('name');
@@ -69,12 +78,14 @@ class TopicLockingViewController extends Controller
                 ->orderBy('name')
                 ->get();
                 
-            Log::info('TopicLocking - Tutor enrolled courses', [
-                'user_id' => $user->id,
-                'user_name' => $user->name,
-                'course_count' => $courses->count(),
-                'course_names' => $courses->pluck('name')->toArray()
-            ]);
+            if (app()->environment('local', 'testing')) {
+                Log::info('TopicLocking - Tutor enrolled courses', [
+                    'user_id' => $user->id,
+                    'user_name' => $user->name,
+                    'course_count' => $courses->count(),
+                    'course_names' => $courses->pluck('name')->toArray()
+                ]);
+            }
         }
         
         return view('topic-locking.index', compact('courses'));
@@ -85,11 +96,13 @@ class TopicLockingViewController extends Controller
      */
     public function courseTopics(\App\Models\Course $course)
     {
-        Log::info('Method courseTopics called', ['user_id' => auth()->id(), 'timestamp' => now()]);
+        if (app()->environment('local', 'testing')) {
+            Log::info('Method courseTopics called', ['user_id' => auth()->id(), 'timestamp' => now()]);
+        }
         $user = $this->checkPermission();
         
         // LETHAL FIX: Proper course access validation
-        if ($user->role !== 'admin') {
+        if (!$user->isAdmin()) {
             // Check if tutor is enrolled in this course
             $hasAccess = $user->courses()->where('courses.id', $course->id)->exists();
             if (!$hasAccess) {

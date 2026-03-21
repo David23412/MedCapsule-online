@@ -2,11 +2,15 @@
     "private": true,
     "type": "module",
     "scripts": {
+        "predev": "node scripts/patch-laravel-vite-plugin.mjs",
         "dev": "vite",
-        "build": "vite build"
+        "build": "vite build",
+        "postinstall": "node scripts/patch-laravel-vite-plugin.mjs"
     },
     "devDependencies": {
         "@tailwindcss/postcss": "^4.1.12",
+        "@types/react": "^19.2.14",
+        "@types/react-dom": "^19.2.3",
         "alpinejs": "^3.4.2",
         "autoprefixer": "^10.4.2",
         "axios": "^1.6.4",
@@ -21,6 +25,17 @@
         "sweetalert2": "^11.7.27",
         "tailwindcss": "^4.1.12",
         "terser": "^5.43.1",
+        "typescript": "^5.9.3",
         "vite": "^5.0.0"
+    },
+    "dependencies": {
+        "@gsap/react": "^2.1.2",
+        "@vitejs/plugin-react": "^5.1.4",
+        "clsx": "^2.1.1",
+        "gsap": "^3.14.2",
+        "lucide-react": "^0.577.0",
+        "react": "^19.2.4",
+        "react-dom": "^19.2.4",
+        "tailwind-merge": "^3.5.0"
     }
 }

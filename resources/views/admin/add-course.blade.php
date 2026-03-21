@@ -182,14 +182,22 @@
                                 Course Color
                                 <div class="color-preview" id="colorPreview"></div>
                             </label>
-                            <input type="color"
-                                   class="form-control form-control-color"
-                                   id="color"
-                                   name="color"
-                                   value="{{ old('color', '#007bff') }}"
-                                   title="Choose course accent color">
+                            <div class="color-field-controls">
+                                <input type="color"
+                                       class="form-control form-control-color"
+                                       id="color"
+                                       name="color"
+                                       value="{{ old('color', '#007bff') }}"
+                                       title="Choose course accent color">
+                                <button type="button"
+                                        class="btn btn-outline-secondary color-picker-trigger"
+                                        data-color-target="color"
+                                        data-default-label="Pick from screen">
+                                    Pick from screen
+                                </button>
+                            </div>
                             <div class="form-text text-muted">
-                                This color will be used as the accent color for the course card
+                                This color will be used as the accent color for the course card. The screen picker works in browsers that support it.
                             </div>
                         </div>
 
@@ -198,14 +206,22 @@
                                 Title Color
                                 <div class="color-preview" id="titleColorPreview"></div>
                             </label>
-                            <input type="color"
-                                   class="form-control form-control-color"
-                                   id="title_color"
-                                   name="title_color"
-                                   value="{{ old('title_color', '#FFFFFF') }}"
-                                   title="Choose course title color">
+                            <div class="color-field-controls">
+                                <input type="color"
+                                       class="form-control form-control-color"
+                                       id="title_color"
+                                       name="title_color"
+                                       value="{{ old('title_color', '#FFFFFF') }}"
+                                       title="Choose course title color">
+                                <button type="button"
+                                        class="btn btn-outline-secondary color-picker-trigger"
+                                        data-color-target="title_color"
+                                        data-default-label="Pick from screen">
+                                    Pick from screen
+                                </button>
+                            </div>
                             <div class="form-text text-muted">
-                                This color will be used for the course title text
+                                This color will be used for the course title text. The screen picker works in browsers that support it.
                             </div>
                         </div>
 
@@ -482,6 +498,21 @@
     transition: all 0.3s ease;
 }
 
+.color-field-controls {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+}
+
+.color-field-controls .form-control-color {
+    flex: 0 0 auto;
+}
+
+.color-picker-trigger {
+    white-space: nowrap;
+}
+
 .upload-area {
     border: 2px dashed #007bff;
     border-radius: 8px;
@@ -518,6 +549,7 @@ const previewActionBtn = document.getElementById('previewActionBtn');
 const previewActionText = document.getElementById('previewActionText');
 const colorPreview = document.getElementById('colorPreview');
 const titleColorPreview = document.getElementById('titleColorPreview');
+const colorPickerButtons = document.querySelectorAll('.color-picker-trigger');
 
 // Image upload elements
 const uploadArea = document.getElementById('uploadArea');
@@ -528,6 +560,58 @@ const fileName = document.getElementById('fileName');
 const removeImageBtn = document.getElementById('removeImage');
 
 let currentImageSource = null; // 'file' or 'url'
+
+function openNativeColorPicker(input) {
+    if (!input) {
+        return;
+    }
+
+    if (typeof input.showPicker === 'function') {
+        input.showPicker();
+        return;
+    }
+
+    input.click();
+}
+
+function applyPickedColor(input, value) {
+    if (!input || !/^#[0-9A-F]{6}$/i.test(value)) {
+        return;
+    }
+
+    input.value = value.toUpperCase();
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+}
+
+async function handleScreenColorPick(button) {
+    const input = document.getElementById(button.dataset.colorTarget);
+    if (!input) {
+        return;
+    }
+
+    if (typeof window.EyeDropper !== 'function') {
+        openNativeColorPicker(input);
+        return;
+    }
+
+    const defaultLabel = button.dataset.defaultLabel || button.textContent.trim();
+    button.disabled = true;
+    button.textContent = 'Pick a color...';
+
+    try {
+        const eyeDropper = new window.EyeDropper();
+        const { sRGBHex } = await eyeDropper.open();
+        applyPickedColor(input, sRGBHex);
+    } catch (error) {
+        if (error?.name !== 'AbortError') {
+            console.error('Screen color picker failed:', error);
+            openNativeColorPicker(input);
+        }
+    } finally {
+        button.disabled = false;
+        button.textContent = defaultLabel;
+    }
+}
 
 function updatePreview() {
     // Update title text
@@ -721,6 +805,12 @@ document.getElementById('url-tab').addEventListener('click', () => {
 // Add event listeners for real-time updates
 [nameInput, descriptionInput, imageUrlInput, colorInput, titleColorInput, priceInput].forEach(input => {
     input.addEventListener('input', updatePreview);
+});
+
+colorPickerButtons.forEach(button => {
+    button.addEventListener('click', () => {
+        handleScreenColorPick(button);
+    });
 });
 
 // Add specific listeners for image inputs

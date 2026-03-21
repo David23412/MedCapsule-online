@@ -23,12 +23,20 @@ class VideoProxyController extends Controller
         try {
             // Check user access
             $user = auth()->user();
+            $video->loadMissing('topic.course');
             $course = $video->topic->course;
             
-            if ($user->role !== 'admin' && !$user->hasAccessToCourse($course->id) && $course->price && $course->price > 0) {
+            if (!$user->isAdmin() && !$user->hasAccessToCourse($course->id)) {
                 return response()->json([
                     'success' => false,
                     'message' => 'Access denied.'
+                ], 403);
+            }
+
+            if (!$user->isAdmin() && $user->isTopicPreviewLocked($video->topic)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'This video is outside the free preview. Unlock the full course to continue.'
                 ], 403);
             }
 

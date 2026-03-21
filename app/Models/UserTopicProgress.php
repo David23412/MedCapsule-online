@@ -16,12 +16,18 @@ class UserTopicProgress extends Model
         'user_id',
         'topic_id',
         'percentage_grade',
-        'last_attempt_date'
+        'last_attempt_date',
+        'planner_tutor_cleared_at',
+        'planner_quiz_cleared_at',
+        'planner_cleared_at',
     ];
 
     protected $casts = [
         'percentage_grade' => 'float',
-        'last_attempt_date' => 'datetime'
+        'last_attempt_date' => 'datetime',
+        'planner_tutor_cleared_at' => 'datetime',
+        'planner_quiz_cleared_at' => 'datetime',
+        'planner_cleared_at' => 'datetime',
     ];
 
     public function user(): BelongsTo

@@ -1,0 +1,26 @@
+import { StrictMode } from 'react'
+import { createRoot } from 'react-dom/client'
+import '../css/landing-page.css'
+import App from './landing-page/App.tsx'
+
+type LandingConfig = {
+  isAuthenticated?: boolean
+  appUrl?: string
+}
+
+declare global {
+  interface Window {
+    __MEDCAPSULE_LANDING__?: LandingConfig
+  }
+}
+
+const landingConfig = window.__MEDCAPSULE_LANDING__ ?? {}
+
+createRoot(document.getElementById('root')!).render(
+  <StrictMode>
+    <App
+      appUrl={landingConfig.appUrl}
+      isAuthenticated={landingConfig.isAuthenticated}
+    />
+  </StrictMode>,
+)

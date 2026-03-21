@@ -13,10 +13,26 @@ return new class extends Migration
                 $table->id();
                 $table->string('name');
                 $table->string('email')->unique();
+                $table->string('number', 20)->nullable();
                 $table->timestamp('email_verified_at')->nullable();
                 $table->string('password');
                 $table->unsignedTinyInteger('role')->default(3); // 1=admin,2=tutor,3=student (SSOT)
+                $table->integer('weekly_goal')->default(50);
+                $table->date('exam_date')->nullable();
+                $table->unsignedTinyInteger('target_score')->default(80);
+                $table->unsignedSmallInteger('daily_study_minutes')->default(90);
+                $table->string('planner_focus')->default('balanced');
+                $table->string('repair_mode', 20)->nullable();
+                $table->string('classic_repair_difficulty', 20)->nullable();
                 $table->rememberToken();
+                $table->string('active_session_token')->nullable();
+                $table->timestamp('session_created_at')->nullable();
+                $table->string('device_fingerprint')->nullable();
+                $table->string('last_login_ip')->nullable();
+                $table->string('last_user_agent')->nullable();
+                $table->timestamp('last_security_check')->nullable();
+                $table->integer('concurrent_login_attempts')->default(0);
+                $table->timestamp('last_suspicious_activity')->nullable();
                 $table->string('university')->nullable();
                 $table->string('profile_picture_url')->nullable();
                 $table->timestamp('last_active_at')->nullable();
@@ -26,8 +42,23 @@ return new class extends Migration
                 $table->integer('level')->default(1);
                 $table->integer('study_streak_days')->default(0);
                 $table->unsignedBigInteger('study_time_seconds')->default(0);
+                $table->boolean('survey_completed')->default(false);
+                $table->boolean('free_courses_unlocked')->default(false);
+                $table->timestamp('survey_completed_at')->nullable();
+                $table->timestamp('free_courses_unlocked_at')->nullable();
                 $table->timestamp('last_study_date')->nullable();
                 $table->timestamps();
+
+                $table->index('role');
+                $table->index('xp');
+                $table->index('study_streak_days');
+                $table->index('name');
+                $table->index('number');
+                $table->index('last_active_at');
+                $table->index('created_at');
+                $table->index('active_session_token');
+                $table->index('last_login_ip');
+                $table->index('last_security_check');
             });
         }
 

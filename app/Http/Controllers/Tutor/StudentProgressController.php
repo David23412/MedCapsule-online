@@ -9,9 +9,13 @@ use App\Models\Course;
 use App\Models\QuizAttempt;
 use App\Services\QuizCacheService;
 use App\Services\QuizPerformanceService;
+use App\Services\QuizUltraConsolidatedCacheService;
 use App\Services\StudentProgressService;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Carbon\Carbon;
 
@@ -38,6 +42,7 @@ class StudentProgressController extends Controller
         return QuizPerformanceService::trackQuizGeneration($studentId, auth()->id(), function () use ($request, $studentId) {
             try {
                 $validatedData = $request->getValidatedWithDefaults();
+                $this->getAccessibleStudent($studentId);
                 
                 // Ultra-fast cache key generation
                 $cacheKey = QuizUltraConsolidatedCacheService::generateCacheKey('student_progress', [
@@ -46,23 +51,18 @@ class StudentProgressController extends Controller
                     'params' => $validatedData
                 ]);
                 
-                // Aggressive caching with intelligent TTL and eager loading
+                // Cache only the aggregate result; loading the full relationship graph here
+                // adds memory and query overhead without affecting the response payload.
                 $progressData = Cache::remember($cacheKey, 900, function () use ($studentId, $validatedData) {
-                    // Ultra-optimized eager loading for student data
-                    $student = User::with([
-                        'quizAttempts:id,user_id,topic_id,score,created_at,duration_seconds',
-                        'quizAttempts.topic:id,name,course_id',
-                        'quizAttempts.topic.course:id,name',
-                        'mistakes:id,user_id,question_id,mastered,created_at',
-                        'mistakes.question:id,topic_id,difficulty',
-                        'assignments:id,user_id,title,status,deadline,completed_at',
-                        'courses:id,name'
-                    ])->findOrFail($studentId);
                     return $this->studentProgressService->getComprehensiveProgress($studentId, $validatedData);
                 });
 
                 return $this->jsonResponse(true, 'Student progress retrieved successfully', $progressData);
 
+            } catch (AuthorizationException $e) {
+                return $this->jsonResponse(false, $e->getMessage(), [], 403);
+            } catch (ModelNotFoundException $e) {
+                return $this->jsonResponse(false, 'Student not found', [], 404);
             } catch (\Exception $e) {
                 Log::error('Student progress retrieval failed', [
                     'user_id' => $studentId,
@@ -145,34 +145,7 @@ class StudentProgressController extends Controller
         return QuizPerformanceService::trackQuizGeneration($studentId, auth()->id(), function () use ($request, $studentId) {
             try {
                 $validatedData = $request->getValidatedWithDefaults();
-                // LETHAL EAGER LOADING: Load student with all related progress data
-                $student = User::select('id', 'name', 'email', 'created_at', 'role')
-                    ->with([
-                        'courses:id,name,description',
-                        'courses.topics:id,course_id,name',
-                        'quizAttempts:id,user_id,topic_id,score,created_at,completed_at',
-                        'quizAttempts.topic:id,name,course_id',
-                        'quizAttempts.topic.course:id,name',
-                        'assignments:id,user_id,topic_id,status,score,created_at,deadline',
-                        'assignments.topic:id,name,course_id',
-                        'mistakes:id,user_id,question_id,mastered,created_at',
-                        'mistakes.question:id,topic_id,difficulty',
-                        'mistakes.question.topic:id,name,course_id'
-                    ])
-                    ->findOrFail($studentId);
-                
-                // Verify tutor access - check if student is in tutor's courses
-                if (!auth()->user()->isAdmin()) {
-                    $tutorCourseIds = auth()->user()->courses()->pluck('courses.id');
-                    $hasAccess = $student->courses()
-                        ->whereIn('courses.id', $tutorCourseIds)
-                        ->whereNotNull('course_user.enrolled_at')
-                        ->exists();
-                    
-                    if (!$hasAccess) {
-                        return $this->jsonResponse(false, 'Unauthorized access to student data', [], 403);
-                    }
-                }
+                $student = $this->getAccessibleStudent($studentId);
                 
                 // Cache key based on student and recent updates
                 $cacheKey = QuizUltraConsolidatedCacheService::generateCacheKey('student_dashboard', [
@@ -196,6 +169,10 @@ class StudentProgressController extends Controller
                     'cached_at' => now()->toISOString()
                 ]);
 
+            } catch (AuthorizationException $e) {
+                return $this->jsonResponse(false, $e->getMessage(), [], 403);
+            } catch (ModelNotFoundException $e) {
+                return $this->jsonResponse(false, 'Student not found', [], 404);
             } catch (\Exception $e) {
                 Log::error('Student dashboard failed', [
                     'user_id' => $studentId,
@@ -327,4 +304,29 @@ class StudentProgressController extends Controller
             return $this->jsonResponse(false, 'Failed to get progress summary', [], 500);
         }
     }
-} 
+
+    private function getAccessibleStudent(int $studentId): User
+    {
+        $student = User::query()
+            ->select('id', 'name', 'email', 'created_at', 'last_active_at', 'updated_at')
+            ->findOrFail($studentId);
+
+        $authUser = auth()->user();
+        if ($authUser && $authUser->isAdmin()) {
+            return $student;
+        }
+
+        $tutorCourseIds = $authUser?->courses()->pluck('courses.id') ?? collect();
+        $hasAccess = !$tutorCourseIds->isEmpty() && DB::table('course_user')
+            ->where('user_id', $studentId)
+            ->where('is_enrolled', true)
+            ->whereIn('course_id', $tutorCourseIds)
+            ->exists();
+
+        if (!$hasAccess) {
+            throw new AuthorizationException('Unauthorized access to student data');
+        }
+
+        return $student;
+    }
+}

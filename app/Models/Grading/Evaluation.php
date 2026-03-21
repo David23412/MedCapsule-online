@@ -268,7 +268,7 @@ class Evaluation extends Model
         $systemScores = $validatedEvaluations->pluck('similarity_score')->toArray();
         $humanScores = $validatedEvaluations->pluck('human_score')->toArray();
 
-        $correlation = $this->calculateCorrelation($systemScores, $humanScores);
+        $correlation = static::calculateCorrelation($systemScores, $humanScores);
 
         // Find common mistakes (where human score is much lower than system score)
         $mistakes = $validatedEvaluations->filter(function ($evaluation) {
@@ -277,7 +277,7 @@ class Evaluation extends Model
 
         $commonMistakes = [];
         foreach ($mistakes as $mistake) {
-            $key = $this->categorizeMistake($mistake);
+            $key = static::categorizeMistake($mistake);
             $commonMistakes[$key] = ($commonMistakes[$key] ?? 0) + 1;
         }
 
@@ -286,9 +286,9 @@ class Evaluation extends Model
         return [
             'total_validated' => $validatedEvaluations->count(),
             'system_vs_human_correlation' => round($correlation, 4),
-            'correlation_interpretation' => $this->interpretCorrelation($correlation),
+            'correlation_interpretation' => static::interpretCorrelation($correlation),
             'common_mistakes' => $commonMistakes,
-            'improvement_suggestions' => $this->generateImprovementSuggestions($commonMistakes),
+            'improvement_suggestions' => static::generateImprovementSuggestions($commonMistakes),
             'time_period' => $hours . ' hours'
         ];
     }

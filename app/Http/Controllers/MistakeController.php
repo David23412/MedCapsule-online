@@ -22,6 +22,9 @@ class MistakeController extends Controller
     {
         $userId = Auth::id();
         $courseFilter = $request->input('course');
+        if ($courseFilter === 'skipped') {
+            $courseFilter = null;
+        }
 
         $data = $this->mistakeService->getMistakesForUser($userId, $courseFilter);
 
@@ -37,6 +40,10 @@ class MistakeController extends Controller
             'mistakes' => $data['mistakes'],
             'courses' => $data['courses'],
             'selectedCourse' => $courseFilter,
+            'currentUserView' => [
+                'profile_image_url' => Auth::user()->getProfileImageUrl(),
+                'profile_fallback_url' => 'https://ui-avatars.com/api/?name=' . urlencode(Auth::user()->name) . '&size=200&background=007bff&color=ffffff',
+            ],
         ]);
     }
 
@@ -122,14 +129,22 @@ class MistakeController extends Controller
     /**
      * Skip a mistake question.
      */
-    public function skipMistake($question_id)
+    public function skipMistake(\Illuminate\Http\Request $request, $question_id)
     {
         $userId = Auth::id();
-        $mistake = $this->mistakeService->skipMistake($userId, $question_id);
+        $mode = $request->validate([
+            'mode' => 'nullable|string|in:quiz,practice,spaced,quick',
+        ])['mode'] ?? 'quiz';
+        $mistake = $this->mistakeService->skipMistake($userId, $question_id, $mode);
 
         if ($mistake) {
             Log::info('Mistake skipped successfully.', ['mistake_id' => $mistake->id]);
-            return response()->json(['success' => true, 'message' => 'Question skipped.']);
+            return response()->json([
+                'success' => true,
+                'message' => 'Question skipped for now.',
+                'skip_until' => optional($mistake->skip_until)->toIso8601String(),
+                'skip_count' => (int) ($mistake->skip_count ?? 0),
+            ]);
         } else {
             Log::warning('Attempted to skip a non-existent mistake.', ['user_id' => $userId, 'question_id' => $question_id]);
             return response()->json(['success' => false, 'message' => 'Mistake not found.'], 404);
@@ -150,7 +165,10 @@ class MistakeController extends Controller
             return response()->json([
                 'success' => true,
                 'message' => 'Mistake rated.',
-                'next_review_date' => $mistake->next_review_date,
+                'next_review_at' => optional($mistake->next_review_at)->toIso8601String(),
+                'interval_days' => (int) ($mistake->interval_days ?? 0),
+                'stability' => (float) ($mistake->stability ?? 0),
+                'difficulty' => (float) ($mistake->difficulty ?? 0),
             ]);
         } catch (\Exception $e) {
             Log::error('Failed to rate mistake.', [

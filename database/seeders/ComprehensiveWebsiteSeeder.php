@@ -23,7 +23,10 @@ class ComprehensiveWebsiteSeeder extends Seeder
         $this->command->info('SEEDING COMPREHENSIVE WEBSITE DATA...');
         
         // Clear existing data
-        DB::statement('SET FOREIGN_KEY_CHECKS=0;');
+        if (DB::getDriverName() === 'mysql') {
+            DB::statement('SET FOREIGN_KEY_CHECKS=0;');
+        }
+
         DB::table('users')->truncate();
         DB::table('courses')->truncate();
         DB::table('topics')->truncate();
@@ -32,9 +35,12 @@ class ComprehensiveWebsiteSeeder extends Seeder
         DB::table('quiz_attempts')->truncate();
         DB::table('user_topic_progress')->truncate();
         DB::table('course_user')->truncate();
-        // REMOVED: DB::table('notifications')->truncate(); - Table deleted for performance optimization
-        // REMOVED: DB::table('payments')->truncate(); - Payment tables deleted
-        DB::statement('SET FOREIGN_KEY_CHECKS=1;');
+        DB::table('survey_drafts')->truncate();
+        DB::table('survey_responses')->truncate();
+        
+        if (DB::getDriverName() === 'mysql') {
+            DB::statement('SET FOREIGN_KEY_CHECKS=1;');
+        }
 
         // 1. CREATE USERS
         $this->command->info('Creating users...');
@@ -55,6 +61,7 @@ class ComprehensiveWebsiteSeeder extends Seeder
             'study_time_seconds' => 432000, // 120 hours
             'last_active_at' => now()->subMinutes(5),
             'last_study_date' => now()->subHours(2),
+            'weekly_goal' => 70,
             'email_verified_at' => now(),
         ]);
 
@@ -74,6 +81,7 @@ class ComprehensiveWebsiteSeeder extends Seeder
             'study_time_seconds' => 720000, // 200 hours
             'last_active_at' => now()->subMinutes(2),
             'last_study_date' => now()->subMinutes(30),
+            'weekly_goal' => 80,
             'email_verified_at' => now(),
         ]);
 
@@ -93,6 +101,7 @@ class ComprehensiveWebsiteSeeder extends Seeder
             'study_time_seconds' => 288000, // 80 hours
             'last_active_at' => now()->subHours(1),
             'last_study_date' => now()->subHours(6),
+            'weekly_goal' => 60,
             'email_verified_at' => now(),
         ]);
 
@@ -133,6 +142,11 @@ class ComprehensiveWebsiteSeeder extends Seeder
                 'study_time_seconds' => rand(18000, 180000), // 5-50 hours
                 'last_active_at' => now()->subMinutes(rand(10, 1440)),
                 'last_study_date' => now()->subHours(rand(1, 48)),
+                'weekly_goal' => rand(35, 90),
+                'survey_completed' => true,
+                'free_courses_unlocked' => true,
+                'survey_completed_at' => now()->subDays(rand(1, 14)),
+                'free_courses_unlocked_at' => now()->subDays(rand(1, 14)),
                 'email_verified_at' => now(),
             ]);
         }
@@ -153,6 +167,11 @@ class ComprehensiveWebsiteSeeder extends Seeder
             'study_time_seconds' => 86400, // 24 hours
             'last_active_at' => now()->subMinutes(5),
             'last_study_date' => now()->subHours(1),
+            'weekly_goal' => 55,
+            'survey_completed' => true,
+            'free_courses_unlocked' => true,
+            'survey_completed_at' => now()->subDays(7),
+            'free_courses_unlocked_at' => now()->subDays(7),
             'email_verified_at' => now(),
         ]);
 
@@ -172,6 +191,11 @@ class ComprehensiveWebsiteSeeder extends Seeder
             'study_time_seconds' => 108000, // 30 hours
             'last_active_at' => now()->subMinutes(15),
             'last_study_date' => now()->subHours(3),
+            'weekly_goal' => 65,
+            'survey_completed' => true,
+            'free_courses_unlocked' => true,
+            'survey_completed_at' => now()->subDays(3),
+            'free_courses_unlocked_at' => now()->subDays(3),
             'email_verified_at' => now(),
         ]);
 
@@ -261,6 +285,8 @@ class ComprehensiveWebsiteSeeder extends Seeder
                     'user_id' => $student->id,
                     'course_id' => $course->id,
                     'is_enrolled' => true,
+                    'access_level' => $course->isFree() ? \App\Models\User::COURSE_ACCESS_PREVIEW : \App\Models\User::COURSE_ACCESS_FULL,
+                    'enrolled_at' => now(),
                     'created_at' => now(),
                     'updated_at' => now(),
                 ]);

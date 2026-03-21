@@ -30,10 +30,18 @@ class QuizMistakeController extends Controller
     {
         $startTime = microtime(true);
         $requestId = uniqid('mistakes_');
+        $user = auth()->user();
+
+        if (!$user) {
+            return redirect()->route('login')->with('error', 'Please sign in to review your mistakes.');
+        }
         
         try {
-            $userId = auth()->id();
+            $userId = (int) $user->id;
             $courseFilter = $request->input('course');
+            if ($courseFilter === 'skipped') {
+                $courseFilter = null;
+            }
             
             // SURGICAL OPTIMIZATION: Only log in development
             if (app()->environment('local', 'testing')) {
@@ -73,14 +81,7 @@ class QuizMistakeController extends Controller
                     ])
                     ->where('mistakes.user_id', $userId);
 
-                if ($courseFilter === 'skipped') {
-                    $query->where(function($q) {
-                        $q->where('mistakes.skipped', true)
-                          ->orWhere('mistakes.submitted_answer', 'unanswered')
-                          ->orWhere('mistakes.submitted_answer', '')
-                          ->orWhereNull('mistakes.submitted_answer');
-                    });
-                } elseif ($courseFilter) {
+                if ($courseFilter) {
                     $query->where('courses.id', $courseFilter);
                 }
 
@@ -196,6 +197,10 @@ class QuizMistakeController extends Controller
                 'recentCourse' => $recentCourse,
                 'totalMistakesCount' => $supportingData['total_count'],
                 'skippedCount' => $supportingData['skipped_count'],
+                'currentUserView' => [
+                    'profile_image_url' => $user->getProfileImageUrl(),
+                    'profile_fallback_url' => 'https://ui-avatars.com/api/?name=' . urlencode($user->name) . '&size=200&background=007bff&color=ffffff',
+                ],
                 'performance_metrics' => [
                     'execution_time_ms' => round($executionTime, 2),
                     'mistakes_count' => $mistakes->count(),
@@ -221,6 +226,10 @@ class QuizMistakeController extends Controller
                 'recentCourse' => null,
                 'totalMistakesCount' => 0,
                 'skippedCount' => 0,
+                'currentUserView' => [
+                    'profile_image_url' => $user->getProfileImageUrl(),
+                    'profile_fallback_url' => 'https://ui-avatars.com/api/?name=' . urlencode($user->name) . '&size=200&background=007bff&color=ffffff',
+                ],
                 'error' => 'An error occurred while loading your mistakes. Please try again.'
             ]);
         }

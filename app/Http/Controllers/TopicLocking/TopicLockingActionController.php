@@ -36,7 +36,9 @@ class TopicLockingActionController extends Controller
     public function lock(Request $request, int $topicId): JsonResponse
     {
         try {
-            Log::info('Method lock called', ['user_id' => auth()->id(), 'timestamp' => now()]);
+            if (app()->environment('local', 'testing')) {
+                Log::info('Method lock called', ['user_id' => auth()->id(), 'timestamp' => now()]);
+            }
             $user = $this->checkPermission();
             
             $validator = Validator::make($request->all(), [
@@ -100,7 +102,9 @@ class TopicLockingActionController extends Controller
      */
     public function unlock(Request $request, int $topicId): JsonResponse
     {
-        Log::info('Method unlock called', ['user_id' => auth()->id(), 'timestamp' => now()]);
+        if (app()->environment('local', 'testing')) {
+            Log::info('Method unlock called', ['user_id' => auth()->id(), 'timestamp' => now()]);
+        }
         $user = $this->checkPermission();
         
         try {
@@ -135,7 +139,9 @@ class TopicLockingActionController extends Controller
      */
     public function bulkLock(Request $request): JsonResponse
     {
-        Log::info('Method bulkLock called', ['user_id' => auth()->id(), 'timestamp' => now()]);
+        if (app()->environment('local', 'testing')) {
+            Log::info('Method bulkLock called', ['user_id' => auth()->id(), 'timestamp' => now()]);
+        }
         $user = $this->checkPermission();
         
         // COMPLEXITY REDUCTION: Extract validation
@@ -218,7 +224,9 @@ class TopicLockingActionController extends Controller
      */
     public function bulkUnlock(Request $request): JsonResponse
     {
-        Log::info('Method bulkUnlock called', ['user_id' => auth()->id(), 'timestamp' => now()]);
+        if (app()->environment('local', 'testing')) {
+            Log::info('Method bulkUnlock called', ['user_id' => auth()->id(), 'timestamp' => now()]);
+        }
         $user = $this->checkPermission();
         
         $validator = Validator::make($request->all(), [

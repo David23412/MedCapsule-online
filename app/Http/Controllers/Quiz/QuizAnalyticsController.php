@@ -32,7 +32,7 @@ class QuizAnalyticsController extends Controller
     {
         try {
             // Check admin permissions
-            if (!auth()->user()->isAdmin()) {
+            if (!optional(auth()->user())->isAdmin()) {
                 return response()->json([
                     'error' => 'Unauthorized'
                 ], 403);
@@ -106,7 +106,7 @@ class QuizAnalyticsController extends Controller
     {
         try {
             // Check permissions (admin or own history)
-            if (!auth()->user()->isAdmin() && auth()->id() !== $userId) {
+            if (!optional(auth()->user())->isAdmin() && auth()->id() !== $userId) {
                 return response()->json([
                     'error' => 'Unauthorized'
                 ], 403);
@@ -151,7 +151,7 @@ class QuizAnalyticsController extends Controller
     {
         try {
             // Check admin permissions
-            if (!auth()->user()->isAdmin()) {
+            if (!optional(auth()->user())->isAdmin()) {
                 return response()->json([
                     'error' => 'Unauthorized'
                 ], 403);
@@ -189,7 +189,7 @@ class QuizAnalyticsController extends Controller
     {
         try {
             // Check admin permissions
-            if (!auth()->user()->isAdmin()) {
+            if (!optional(auth()->user())->isAdmin()) {
                 return response()->json([
                     'error' => 'Unauthorized'
                 ], 403);

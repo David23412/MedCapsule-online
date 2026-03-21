@@ -7,6 +7,17 @@ use Illuminate\Foundation\Http\FormRequest;
 class QuizExecutionRequest extends FormRequest
 {
     /**
+     * Backward-compatible quiz mode aliases.
+     */
+    private const QUIZ_MODE_ALIASES = [
+        'practice' => 'quiz',
+        'exam' => 'quiz',
+        'quiz' => 'quiz',
+        'tutor' => 'tutor',
+        'random' => 'random',
+    ];
+
+    /**
      * Determine if the user is authorized to make this request.
      */
     public function authorize(): bool
@@ -23,9 +34,12 @@ class QuizExecutionRequest extends FormRequest
             'answers' => 'nullable|array',
             'answers.*' => 'nullable|string|max:1000',
             'time_taken' => 'nullable|integer|min:0|max:7200', // Max 2 hours
-            'quiz_mode' => 'nullable|string|in:practice,exam,tutor',
+            'duration_seconds' => 'nullable|integer|min:0|max:7200',
+            'quiz_mode' => 'nullable|string|in:practice,exam,quiz,tutor,random',
             'question_ids' => 'nullable|array',
-            'question_ids.*' => 'integer|exists:questions,id'
+            'question_ids.*' => 'integer|exists:questions,id',
+            'mode' => 'nullable|string|in:practice,exam,quiz,tutor,random',
+            'assignment_id' => 'nullable|integer|exists:assignments,id',
         ];
     }
 
@@ -50,14 +64,25 @@ class QuizExecutionRequest extends FormRequest
     public function getValidatedWithDefaults(): array
     {
         $validated = $this->validated();
+
+        $incomingMode = $validated['quiz_mode'] ?? $validated['mode'] ?? 'practice';
+        $normalizedMode = self::QUIZ_MODE_ALIASES[$incomingMode] ?? 'quiz';
+        $duration = $validated['duration_seconds'] ?? $validated['time_taken'] ?? 0;
         
         return array_merge([
             'answers' => [],
             'time_taken' => 0,
-            'quiz_mode' => 'practice',
+            'duration_seconds' => 0,
+            'quiz_mode' => 'quiz',
+            'mode' => 'quiz',
             'question_ids' => [],
             'user_id' => auth()->id(),
             'started_at' => now()
-        ], $validated);
+        ], $validated, [
+            'quiz_mode' => $normalizedMode,
+            'mode' => $normalizedMode,
+            'duration_seconds' => $duration,
+            'time_taken' => $duration,
+        ]);
     }
 }

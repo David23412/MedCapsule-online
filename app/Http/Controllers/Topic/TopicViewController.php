@@ -32,9 +32,7 @@ class TopicViewController extends Controller
         
         $data = Cache::remember($cacheKey, 3600, function () use ($course, $user) {
             // Check if user has access to the course
-            $hasAccess = $user->isAdmin() || 
-                        $user->hasAccessToCourse($course->id) || 
-                        (!$course->price || $course->price <= 0);
+            $hasAccess = $user->isAdmin() || $user->hasAccessToCourse($course->id);
 
             if (!$hasAccess) {
                 return ['error' => 'Access denied to this course'];

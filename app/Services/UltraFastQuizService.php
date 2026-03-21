@@ -220,7 +220,7 @@ class UltraFastQuizService
     public function clearQuizCache(Topic $topic): void
     {
         $pattern = $this->buildCacheKey('quiz_*', $topic->id, ['*']);
-        $keys = $this->redis->keys($pattern);
+        $keys = $this->scanMatchingKeys($pattern);
 
         if (!empty($keys)) {
             $this->redis->del($keys);
@@ -266,6 +266,25 @@ class UltraFastQuizService
     {
         // Implementation for query count distribution
         return ['1' => 85, '2' => 10, '3' => 4, '4' => 1, '5' => 0];
+    }
+
+    private function scanMatchingKeys(string $pattern, int $count = 100): array
+    {
+        $matched = [];
+        $cursor = null;
+
+        do {
+            $keys = $this->redis->scan($cursor, $pattern, $count);
+            if ($keys === false) {
+                $keys = [];
+            }
+
+            foreach ($keys as $key) {
+                $matched[] = $key;
+            }
+        } while ((int) $cursor !== 0);
+
+        return $matched;
     }
 
     /**

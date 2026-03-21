@@ -36,6 +36,7 @@ return [
     */
     'hosts' => [
         env('APP_URL'),
+        '*.ngrok-free.dev',
         '*.ngrok-free.app',
         '*.ngrok.io',
         'localhost',

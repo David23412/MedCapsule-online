@@ -24,7 +24,9 @@ class StudentAssignmentActionController extends Controller
      */
     public function complete(Assignment $assignment, Request $request): JsonResponse
     {
-        Log::info('Method complete called', ['user_id' => auth()->id(), 'timestamp' => now()]);
+        if (app()->environment('local', 'testing')) {
+            Log::info('Method complete called', ['user_id' => auth()->id(), 'timestamp' => now()]);
+        }
         $this->authorize('complete', $assignment);
 
         try {
@@ -70,7 +72,9 @@ class StudentAssignmentActionController extends Controller
      */
     public function requestExtension(Assignment $assignment, Request $request): JsonResponse
     {
-        Log::info('Method requestExtension called', ['user_id' => auth()->id(), 'timestamp' => now()]);
+        if (app()->environment('local', 'testing')) {
+            Log::info('Method requestExtension called', ['user_id' => auth()->id(), 'timestamp' => now()]);
+        }
         $this->authorize('view', $assignment);
 
         try {

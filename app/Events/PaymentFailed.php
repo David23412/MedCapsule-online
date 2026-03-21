@@ -21,15 +21,7 @@ class PaymentFailed
     /**
      * Create a new event instance.
      */
-        // Wrap payment processing in database transaction
-        DB::beginTransaction();
-        try {
-            public function __construct(Payment $payment, User $user, string $reason = 'Payment processing failed')
-            DB::commit();
-        } catch (Exception $e) {
-            DB::rollback();
-            throw $e;
-        }
+    public function __construct(Payment $payment, User $user, string $reason = 'Payment processing failed')
     {
         $this->payment = $payment;
         $this->user = $user;

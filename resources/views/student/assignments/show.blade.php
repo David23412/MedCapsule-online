@@ -95,7 +95,7 @@
                 <div class="col-md-8">
                     <h1 class="h2 mb-2">{{ $assignment->title }}</h1>
                     <p class="mb-0 opacity-75">
-                        <i class="fas fa-user me-2"></i>Assigned by {{ $assignment->tutor->name }}
+                        <i class="fas fa-user me-2"></i>Assigned by {{ $assignment->tutor ? $assignment->tutor->name : 'Unknown Tutor' }}
                     </p>
                 </div>
                 <div class="col-md-4 text-md-end">
@@ -126,11 +126,11 @@
                             <ul class="list-unstyled">
                                 <li class="mb-2">
                                     <strong><i class="fas fa-book me-2"></i>Course:</strong>
-                                    {{ $assignment->course->name }}
+                                    {{ $assignment->course ? $assignment->course->name : 'Unknown Course' }}
                                 </li>
                                 <li class="mb-2">
                                     <strong><i class="fas fa-bookmark me-2"></i>Topic:</strong>
-                                    {{ $assignment->topic->name }}
+                                    {{ $assignment->topic ? $assignment->topic->name : 'Unknown Topic' }}
                                 </li>
                                 <li class="mb-2">
                                     <strong><i class="fas fa-clock me-2"></i>Duration:</strong>
@@ -300,7 +300,7 @@
                         <a href="{{ route('student.assignments.history') }}" class="btn btn-outline-secondary btn-sm">
                             <i class="fas fa-history me-2"></i>Assignment History
                         </a>
-                        <a href="{{ route('courses.show', $assignment->course) }}" class="btn btn-outline-info btn-sm">
+                        <a href="{{ $assignment->course ? route('courses.show', $assignment->course) : '#' }}" class="btn btn-outline-info btn-sm {{ $assignment->course ? '' : 'disabled' }}">
                             <i class="fas fa-book me-2"></i>View Course
                         </a>
                     </div>

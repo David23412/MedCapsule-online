@@ -52,12 +52,21 @@ class QuizTutorController extends Controller
             // Check access with caching
             $accessKey = "user_access_{$user->id}_{$course->id}";
             $hasAccess = Cache::remember($accessKey, 300, function() use ($user, $course) {
-                return $user->isAdmin() || $user->hasAccessToCourse($course->id) || (!$course->price || $course->price <= 0);
+                return $user->isAdmin() || $user->hasAccessToCourse($course->id);
             });
 
             if (!$hasAccess) {
+                if ($user->requiresSurveyUnlockForCourse($course)) {
+                    return redirect($user->freeCourseSurveyRedirectFor($course, request()->getRequestUri()));
+                }
+
                 return redirect()->route('topics.forCourse', $course->id)
                     ->with('error', 'You must be granted access to this course to take quizzes.');
+            }
+
+            if (!$user->isAdmin() && $user->isTopicPreviewLocked($topic)) {
+                return redirect()->route('topics.forCourse', $course->id)
+                    ->with('error', 'This topic is outside the free preview. Unlock the full course to continue.');
             }
 
             // Get sources
@@ -85,7 +94,11 @@ class QuizTutorController extends Controller
                 'questions' => $quizData['questions'],
                 'course' => $quizData['course'],
                 'selected_sources' => $quizData['sources'],
-                'mode' => 'tutor'
+                'mode' => 'tutor',
+                'currentUserView' => [
+                    'profile_image_url' => $user->getProfileImageUrl(),
+                    'profile_fallback_url' => 'https://ui-avatars.com/api/?name=' . urlencode($user->name) . '&size=200&background=007bff&color=ffffff',
+                ],
             ]);
 
         } catch (\Exception $e) {
@@ -198,18 +211,7 @@ class QuizTutorController extends Controller
                         $totalCorrect++;
                     } else {
                         // 🔥 RECORD MISTAKE IMMEDIATELY - This was missing!
-                        \App\Models\Mistake::updateOrCreate(
-                            [
-                                'user_id' => $user->id,
-                                'question_id' => $question->id
-                            ],
-                            [
-                                'submitted_answer' => $userAnswer,
-                                'question_text' => $question->question,
-                                'correct_answer' => $question->correct_answer,
-                                'last_attempt_date' => now()
-                            ]
-                        );
+                        \App\Models\Mistake::recordFailure($user->id, $question, $userAnswer);
                     }
                 }
 
@@ -264,7 +266,7 @@ class QuizTutorController extends Controller
                     ];
 
                     // Create the quiz attempt using the optimized method
-                    $result = \App\Models\QuizAttempt::createWithProgress($quizAttemptData);
+                    $result = \App\Models\QuizAttempt::createWithProgress($quizAttemptData, false);
 
                     $createdAttempts[] = $result;
 

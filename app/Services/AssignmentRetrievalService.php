@@ -12,6 +12,10 @@ use Illuminate\Support\Facades\Cache;
 
 class AssignmentRetrievalService
 {
+    private const DASHBOARD_STATUS_ACTIVE = 'active';
+    private const DASHBOARD_STATUS_COMPLETED = 'completed';
+    private const DASHBOARD_STATUS_OVERDUE = 'overdue';
+
     /**
      * Get assignments for a tutor with filtering
      */
@@ -88,38 +92,19 @@ class AssignmentRetrievalService
         $cacheTags = ['assignments', "user_{$userId}"];
 
         return Cache::tags($cacheTags)->remember($cacheKey, now()->addMinutes(5), function () use ($user, $statusFilter, $courseId) {
-            // Base query with relationships
-            $assignmentsQuery = Assignment::with(['course', 'topic', 'assignedUsers', 'quizAttempts' => function ($query) use ($user) {
-                $query->where('user_id', $user->id);
-            }]);
-            
-            // If user is a student, only show their assigned assignments
-            if ($user->isStudent()) {
-                $assignmentsQuery->whereHas('assignedUsers', function ($query) use ($user) {
-                    $query->where('users.id', $user->id);
+            $assignmentsQuery = $this->buildDashboardAssignmentsQuery($user, $courseId, true);
+            $this->applyDashboardStatusFilter($assignmentsQuery, $statusFilter);
+
+            $assignments = $assignmentsQuery
+                ->orderBy('assignments.deadline')
+                ->get()
+                ->map(function ($assignment) use ($user) {
+                    $assignment->display_status = $assignment->getStatusForUser($user);
+                    $assignment->display_status_string = $this->mapDashboardStatusString($assignment);
+                    $assignment->status = $assignment->display_status_string;
+
+                    return $assignment;
                 });
-            } 
-            // If user is a tutor, show assignments for their courses
-            elseif ($user->isTutor()) {
-                $tutorCourseIds = $user->courses()->pluck('courses.id');
-                $assignmentsQuery->whereIn('course_id', $tutorCourseIds);
-            }
-            // If user is admin, show all assignments (no additional filtering needed)
-
-            if ($courseId) {
-                $assignmentsQuery->where('course_id', $courseId);
-            }
-
-            $assignments = $assignmentsQuery->get()->map(function ($assignment) use ($user) {
-                $assignment->status = $assignment->getStatusForUser($user);
-                return $assignment;
-            });
-
-            if ($statusFilter) {
-                $assignments = $assignments->filter(function ($assignment) use ($statusFilter) {
-                    return $assignment->status === $statusFilter;
-                });
-            }
 
             $students = collect();
             if ($user->isAdmin()) {
@@ -130,7 +115,7 @@ class AssignmentRetrievalService
                     ->join('course_user', 'users.id', '=', 'course_user.user_id')
                     ->where('users.role', User::ROLE_STUDENT)
                     ->whereIn('course_user.course_id', $tutorCourseIds)
-                    ->whereNotNull('course_user.enrolled_at')
+                    ->where('course_user.is_enrolled', true)
                     ->distinct()
                     ->orderBy('users.name')
                     ->get();
@@ -171,14 +156,16 @@ class AssignmentRetrievalService
                     ->join('course_user', 'users.id', '=', 'course_user.user_id')
                     ->where('users.role', User::ROLE_STUDENT)
                     ->whereIn('course_user.course_id', $tutorCourseIds)
-                    ->whereNotNull('course_user.enrolled_at')
+                    ->where('course_user.is_enrolled', true)
                     ->distinct()
                     ->orderBy('users.name')
                     ->get();
             }
 
             $allTopics = [];
-            $topicQuery = Topic::with('course')->withCount('questions');
+            $topicQuery = Topic::query()
+                ->select('id', 'name', 'course_id')
+                ->withCount('questions');
             if (!$user->isAdmin()) {
                 $tutorCourseIds = $user->courses()->pluck('courses.id');
                 $topicQuery->whereIn('course_id', $tutorCourseIds);
@@ -190,13 +177,21 @@ class AssignmentRetrievalService
             }
             
             $allSources = [];
-            foreach ($topics as $topic) {
-                $sources = DB::table('questions')
-                    ->where('topic_id', $topic->id)
-                    ->whereNotNull('source')->where('source', '!=', '')
-                    ->distinct()->pluck('source')->toArray();
-                if (!empty($sources)) {
-                    $allSources[$topic->id] = $sources;
+            $topicIds = $topics->pluck('id')->all();
+
+            if (!empty($topicIds)) {
+                $sourceRows = DB::table('questions')
+                    ->select('topic_id', 'source')
+                    ->whereIn('topic_id', $topicIds)
+                    ->whereNotNull('source')
+                    ->where('source', '!=', '')
+                    ->distinct()
+                    ->orderBy('topic_id')
+                    ->orderBy('source')
+                    ->get();
+
+                foreach ($sourceRows as $row) {
+                    $allSources[$row->topic_id][] = $row->source;
                 }
             }
 
@@ -206,8 +201,113 @@ class AssignmentRetrievalService
 
     public function getAssignmentStatusCounts(int $userId, ?int $courseId): array
     {
-        // This method is not defined in the original service, so we need to implement it here or move it.
-        // For now, returning a dummy array.
-        return ['active' => 0, 'completed' => 0, 'locked' => 0, 'overdue' => 0];
+        $user = User::with('courses')->findOrFail($userId);
+        $baseQuery = $this->buildDashboardAssignmentsQuery($user, $courseId, false);
+
+        $active = (clone $baseQuery);
+        $this->applyDashboardStatusFilter($active, self::DASHBOARD_STATUS_ACTIVE);
+
+        $completed = (clone $baseQuery);
+        $this->applyDashboardStatusFilter($completed, self::DASHBOARD_STATUS_COMPLETED);
+
+        $overdue = (clone $baseQuery);
+        $this->applyDashboardStatusFilter($overdue, self::DASHBOARD_STATUS_OVERDUE);
+
+        return [
+            'active' => $active->count(),
+            'completed' => $completed->count(),
+            'locked' => 0,
+            'overdue' => $overdue->count(),
+        ];
+    }
+
+    private function buildDashboardAssignmentsQuery(User $user, ?int $courseId, bool $withRelations): \Illuminate\Database\Eloquent\Builder
+    {
+        $attemptAggregate = DB::table('quiz_attempts')
+            ->selectRaw('assignment_id, COUNT(*) as attempt_count, SUM(score) as score_sum, SUM(total_questions) as total_questions_sum')
+            ->where('user_id', $user->id)
+            ->groupBy('assignment_id');
+
+        $query = Assignment::query()
+            ->select('assignments.*')
+            ->leftJoinSub($attemptAggregate, 'user_attempt_aggregate', function ($join) {
+                $join->on('user_attempt_aggregate.assignment_id', '=', 'assignments.id');
+            })
+            ->addSelect(DB::raw('COALESCE(user_attempt_aggregate.attempt_count, 0) as user_attempt_count'))
+            ->addSelect(DB::raw('COALESCE(user_attempt_aggregate.score_sum, 0) as user_score_sum'))
+            ->addSelect(DB::raw('COALESCE(user_attempt_aggregate.total_questions_sum, 0) as user_total_questions_sum'));
+
+        if ($withRelations) {
+            $query->with([
+                'course',
+                'topic',
+                'assignedUsers',
+                'quizAttempts' => function ($attemptQuery) use ($user) {
+                    $attemptQuery->where('user_id', $user->id);
+                },
+            ]);
+        }
+
+        if ($user->isStudent()) {
+            $query->whereHas('assignedUsers', function ($assignmentUserQuery) use ($user) {
+                $assignmentUserQuery->where('users.id', $user->id);
+            });
+        } elseif ($user->isTutor()) {
+            $query->whereIn('assignments.course_id', $user->courses->pluck('id'));
+        }
+
+        if ($courseId) {
+            $query->where('assignments.course_id', $courseId);
+        }
+
+        return $query;
+    }
+
+    private function applyDashboardStatusFilter(\Illuminate\Database\Eloquent\Builder $query, ?string $statusFilter): void
+    {
+        if (!$statusFilter) {
+            return;
+        }
+
+        $completionSql = 'COALESCE(user_attempt_aggregate.total_questions_sum, 0) > 0 AND (COALESCE(user_attempt_aggregate.score_sum, 0) * 100.0 / NULLIF(user_attempt_aggregate.total_questions_sum, 0)) >= 50';
+        $deadlineExpiredSql = 'assignments.deadline < NOW()';
+
+        if ($statusFilter === self::DASHBOARD_STATUS_COMPLETED) {
+            $query->whereRaw($completionSql);
+            return;
+        }
+
+        if ($statusFilter === self::DASHBOARD_STATUS_OVERDUE) {
+            $query->whereRaw("NOT ({$completionSql})")
+                ->whereRaw($deadlineExpiredSql);
+            return;
+        }
+
+        if ($statusFilter === self::DASHBOARD_STATUS_ACTIVE) {
+            $query->whereRaw("NOT ({$completionSql})")
+                ->whereRaw("NOT ({$deadlineExpiredSql})")
+                ->whereRaw('COALESCE(user_attempt_aggregate.attempt_count, 0) = 0');
+        }
+    }
+
+    private function mapDashboardStatusString(Assignment $assignment): string
+    {
+        $score = (float) ($assignment->user_score_sum ?? 0);
+        $totalQuestions = (float) ($assignment->user_total_questions_sum ?? 0);
+        $attemptCount = (int) ($assignment->user_attempt_count ?? 0);
+
+        if ($totalQuestions > 0 && (($score * 100.0) / $totalQuestions) >= 50) {
+            return self::DASHBOARD_STATUS_COMPLETED;
+        }
+
+        if ($assignment->deadline && now()->gt($assignment->deadline)) {
+            return self::DASHBOARD_STATUS_OVERDUE;
+        }
+
+        if ($attemptCount > 0) {
+            return 'locked';
+        }
+
+        return self::DASHBOARD_STATUS_ACTIVE;
     }
 }

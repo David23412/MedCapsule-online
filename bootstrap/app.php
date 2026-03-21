@@ -20,11 +20,13 @@ return Application::configure(basePath: dirname(__DIR__))
             'tutor' => \App\Http\Middleware\TutorMiddleware::class,
             'admin' => \App\Http\Middleware\AdminMiddleware::class,
             'ngrok.csrf' => \App\Http\Middleware\NgrokCsrfFix::class,
+            'free.course.survey' => \App\Http\Middleware\EnsureFreeCourseSurveyUnlocked::class,
         ]);
         
         // Add ngrok CSRF fix to web middleware group
         $middleware->web(append: [
             \App\Http\Middleware\NgrokCsrfFix::class,
+            \App\Http\Middleware\InjectDesignProtection::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {

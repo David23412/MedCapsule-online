@@ -117,17 +117,25 @@
                                     <div class="mb-3">
                                         <h6 class="mb-1">Course</h6>
                                         <p class="mb-0">
+                                            @if($payment->course)
                                             <a href="{{ route('admin.courses.edit', $payment->course_id) }}" class="fw-bold text-decoration-none">
                                                 {{ $payment->course->name }}
                                             </a>
+                                            @else
+                                            <span class="text-muted">Course not found</span>
+                                            @endif
                                         </p>
                                     </div>
                                     <div>
                                         <h6 class="mb-1">User</h6>
                                         <p class="mb-0">
+                                            @if($payment->user)
                                             <a href="{{ route('admin.users.show', $payment->user_id) }}" class="fw-bold text-decoration-none">
                                                 {{ $payment->user->name }} ({{ $payment->user->email }})
                                             </a>
+                                            @else
+                                            <span class="text-muted">User not found</span>
+                                            @endif
                                         </p>
                                     </div>
                                 </div>

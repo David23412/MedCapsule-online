@@ -2,13 +2,12 @@
 
 namespace App\Services;
 
-// REMOVED: use App\Models\Notification; - Using cache-based notifications instead
 use App\Models\User;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
 use Carbon\Carbon;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Schema;
 use App\Models\Payment;
 use App\Notifications\PaymentRequiresAttention;
 use Illuminate\Support\Facades\Notification as FacadeNotification;
@@ -268,17 +267,14 @@ class NotificationService
     /**
      * Create a level up notification.
      */
-    public function createLevelUpNotification(User $user, int $newLevel, int $xpNeeded): Notification
+    public function createLevelUpNotification(User $user, int $newLevel, int $xpNeeded): array
     {
-        // Check if we already sent a notification for this level
-        $existingNotification = Notification::where('user_id', $user->id)
-            ->where('type', 'level_up')
-            ->whereRaw("JSON_EXTRACT(data, '$.new_level') = ?", [$newLevel])
-            ->first();
-            
-        if ($existingNotification) {
-            // Return the existing notification instead of creating a duplicate
-            return $existingNotification;
+        // Lightweight duplicate guard for same level notification.
+        $dedupeKey = "level_up_notif_{$user->id}_{$newLevel}";
+        $cacheMiss = new \stdClass();
+        $cachedNotification = Cache::get($dedupeKey, $cacheMiss);
+        if ($cachedNotification !== $cacheMiss) {
+            return $cachedNotification;
         }
         
         $notification = $this->createNotification(
@@ -296,20 +292,8 @@ class NotificationService
                     : 0
             ]
         );
-        
-        // 🔥 LETHAL FIX: Also create cache notification for UI
-        UniversalNotificationService::create(
-            $user,
-            'level_up',
-            'Level Up!',
-            "Congratulations! You've reached level $newLevel",
-            [
-                'new_level' => $newLevel,
-                'xp_needed_for_next' => $xpNeeded,
-                'total_xp' => $user->calculateXP()
-            ],
-            UniversalNotificationService::PRIORITY_HIGH
-        );
+
+        Cache::put($dedupeKey, $notification, now()->addDays(30));
         
         // Clear notification cache to ensure immediate visibility
         $this->clearUserNotificationCache($user->id);
@@ -323,23 +307,13 @@ class NotificationService
     public function createTopicMasteryNotification(
         User $user,
         string $topicName
-    ): Notification {
+    ): array {
         $notification = $this->createNotification(
             $user->id,
             'topic_mastery',
             'Quiz Mastered!',
             "You've mastered the quiz for $topicName. Keep practicing with all sources to achieve full topic mastery!",
             ['topic_name' => $topicName]
-        );
-        
-        // 🔥 LETHAL FIX: Also create cache notification for UI
-        UniversalNotificationService::create(
-            $user,
-            'topic_mastery',
-            'Quiz Mastered!',
-            "You've mastered the quiz for $topicName. Keep practicing with all sources to achieve full topic mastery!",
-            ['topic_name' => $topicName],
-            UniversalNotificationService::PRIORITY_HIGH
         );
         
         return $notification;
@@ -352,7 +326,7 @@ class NotificationService
         User $user,
         string $achievement,
         string $description
-    ): Notification {
+    ): array {
         return $this->createNotification(
             $user->id,
             'milestone',
@@ -368,7 +342,7 @@ class NotificationService
     public function createReviewMistakesNotification(
         User $user,
         int $mistakeCount
-    ): Notification {
+    ): array {
         $message = $mistakeCount === 1
             ? "You have 1 mistake that needs review. Let's clear it up!"
             : "You have $mistakeCount mistakes that need review. Let's clear them up!";
@@ -381,16 +355,6 @@ class NotificationService
             ['mistake_count' => $mistakeCount]
         );
         
-        // 🔥 LETHAL FIX: Also create cache notification for UI
-        UniversalNotificationService::create(
-            $user,
-            'review_mistakes',
-            'Review Your Mistakes',
-            $message,
-            ['mistake_count' => $mistakeCount],
-            UniversalNotificationService::PRIORITY_HIGH
-        );
-        
         return $notification;
     }
 
@@ -400,7 +364,7 @@ class NotificationService
     public function createWeakTopicsNotification(
         User $user,
         array $weakTopics
-    ): Notification {
+    ): array {
         $topicCount = count($weakTopics);
         $message = $topicCount === 1
             ? "You should review {$weakTopics[0]} to improve your performance."
@@ -422,7 +386,7 @@ class NotificationService
         User $user,
         int $oldRank,
         int $newRank
-    ): Notification {
+    ): array {
         $message = $newRank < $oldRank
             ? "You moved up from rank #$oldRank to #$newRank on the leaderboard! Keep it up!"
             : "Your leaderboard position has changed from #$oldRank to #$newRank.";
@@ -446,7 +410,7 @@ class NotificationService
         User $user,
         float $accuracy,
         string $timeframe = 'week'
-    ): Notification {
+    ): array {
         $message = $accuracy >= 80
             ? "Your accuracy this $timeframe was $accuracy%! Excellent performance!"
             : "Your accuracy this $timeframe was $accuracy%. Keep practicing to improve!";
@@ -466,7 +430,7 @@ class NotificationService
     /**
      * Create a study streak notification.
      */
-    public function createStudyStreakNotification(User $user, int $streakDays): Notification
+    public function createStudyStreakNotification(User $user, int $streakDays): array
     {
         $title = "{$streakDays}-Day Study Streak!";
         $message = "Congratulations! You've maintained a {$streakDays}-day study streak. Keep up the excellent work!";
@@ -477,16 +441,6 @@ class NotificationService
             $title,
             $message,
             ['streak_days' => $streakDays]
-        );
-        
-        // 🔥 LETHAL FIX: Also create cache notification for UI
-        UniversalNotificationService::create(
-            $user,
-            'study_streak',
-            $title,
-            $message,
-            ['streak_days' => $streakDays],
-            UniversalNotificationService::PRIORITY_HIGH
         );
         
         // Clear notification cache to ensure immediate visibility
@@ -501,7 +455,7 @@ class NotificationService
     public function createReviewReminderNotification(
         User $user,
         array $topicsToReview
-    ): Notification {
+    ): array {
         $topicCount = count($topicsToReview);
         $message = $topicCount === 1
             ? "Time to review {$topicsToReview[0]}! Keep your knowledge fresh."
@@ -523,7 +477,7 @@ class NotificationService
         User $user,
         string $courseName,
         float $progressPercentage
-    ): Notification {
+    ): array {
         return $this->createNotification(
             $user->id,
             'course_progress',
@@ -542,7 +496,7 @@ class NotificationService
     public function createCourseWelcomeNotification(
         User $user,
         string $courseName
-    ): Notification {
+    ): array {
         // Also create universal notification
         UniversalNotificationService::createCourseWelcomeNotification($user, $courseName);
         
@@ -568,7 +522,7 @@ class NotificationService
     public function createCorrectAnswersMilestoneNotification(
         User $user,
         int $correctAnswersCount
-    ): Notification {
+    ): array {
         // Format the message based on the milestone
         $milestone = floor($correctAnswersCount / 100) * 100;
         
@@ -583,19 +537,6 @@ class NotificationService
             ]
         );
         
-        // 🔥 LETHAL FIX: Also create cache notification for UI
-        UniversalNotificationService::create(
-            $user,
-            'correct_answers_milestone',
-            "You've reached $milestone correct answers!",
-            "Congratulations! You've correctly answered $milestone questions. Your knowledge is growing stronger!",
-            [
-                'milestone' => $milestone,
-                'correct_answers_count' => $correctAnswersCount
-            ],
-            UniversalNotificationService::PRIORITY_HIGH
-        );
-        
         // Clear notification cache to ensure immediate visibility
         $this->clearUserNotificationCache($user->id);
         
@@ -608,7 +549,7 @@ class NotificationService
     public function createWeakTopicAddedNotification(
         User $user,
         string $topicName
-    ): Notification {
+    ): array {
         $notification = $this->createNotification(
             $user->id,
             'weak_topic_added',
@@ -639,16 +580,10 @@ class NotificationService
         string $topicName, 
         int $topicId, 
         float $score
-    ): ?Notification {
-        // Check if there's already a notification for this topic in the last 24 hours
-        $existingNotification = Notification::where('user_id', $user->id)
-            ->where('type', 'failed_topic')
-            ->where('created_at', '>', now()->subHours(24))
-            ->whereRaw("JSON_EXTRACT(data, '$.topic_id') = ?", [$topicId])
-            ->first();
-            
-        if ($existingNotification) {
-            // Don't create a duplicate notification
+    ): ?array {
+        $dedupeKey = "failed_topic_notif_{$user->id}_{$topicId}";
+        $cacheMiss = new \stdClass();
+        if (Cache::get($dedupeKey, $cacheMiss) !== $cacheMiss) {
             return null;
         }
         
@@ -669,6 +604,8 @@ class NotificationService
         
         // Clear notification cache to ensure immediate visibility
         $this->clearUserNotificationCache($user->id);
+
+        Cache::put($dedupeKey, true, now()->addHours(24));
         
         return $notification;
     }
@@ -676,7 +613,7 @@ class NotificationService
     /**
      * Create a notification for when a streak is reset.
      */
-    public function createStreakResetNotification(User $user): Notification
+    public function createStreakResetNotification(User $user): array
     {
         $notification = $this->createNotification(
             $user->id,
@@ -719,34 +656,14 @@ class NotificationService
             ];
         }
 
-        // OPTIMIZED: Single query with subquery for unread count
-        $notifications = $user->notifications()
-            ->select([
-                'notifications.*',
-                DB::raw('(SELECT COUNT(*) FROM notifications AS unread_count WHERE unread_count.user_id = notifications.user_id AND unread_count.is_read = false) as unread_count')
-            ])
-            ->orderByRaw('is_read ASC, created_at DESC') // Prioritize unread notifications and show newest first
-            ->limit($limit)
-            ->get();
-            
-        // Extract unread count from first notification (all will have same count)
-        $unreadCount = $notifications->first() ? $notifications->first()->unread_count : 0;
-        
-        // Process notifications to add formatted timestamps and parse JSON data
-        $notifications->transform(function ($notification) {
-            // Parse JSON data if present
-            if ($notification->data && is_string($notification->data)) {
-                $notification->data = json_decode($notification->data);
-            }
-            
-            // Add human-readable time
-            $notification->time_ago = $this->formatTimeAgo($notification->created_at);
-            
-            // Remove the unread_count attribute from the notification object
-            unset($notification->unread_count);
-            
-            return $notification;
-        });
+        $notifications = UniversalNotificationService::getNotifications($user, $limit)
+            ->map(function ($notification) {
+                $createdAt = $notification['created_at'] ?? $notification['timestamp'] ?? now();
+                $notification['time_ago'] = $this->formatTimeAgo($createdAt);
+                return $notification;
+            });
+
+        $unreadCount = $notifications->where('read', false)->count();
 
         return [
             'notifications' => $notifications,
@@ -796,13 +713,8 @@ class NotificationService
         if (!$user) {
             return false;
         }
-        
-        return $user->notifications()
-            ->where('is_read', false)
-            ->update([
-                'is_read' => true,
-                'read_at' => now()
-            ]) > 0;
+
+        return UniversalNotificationService::markAllAsRead($user);
     }
 
     /**
@@ -821,17 +733,13 @@ class NotificationService
         if (!$user) {
             return false;
         }
-        
-        // Only mark notifications that belong to the authenticated user
-        $affected = Notification::where('user_id', $user->id)
-            ->whereIn('id', $notificationIds)
-            ->where('is_read', false)
-            ->update([
-                'is_read' => true,
-                'read_at' => now()
-            ]);
-            
-        return $affected > 0;
+
+        $affected = false;
+        foreach ($notificationIds as $notificationId) {
+            $affected = UniversalNotificationService::markAsRead($user, (string) $notificationId) || $affected;
+        }
+
+        return $affected;
     }
 
     /**
@@ -844,15 +752,20 @@ class NotificationService
     {
         try {
             // Make sure the user can only delete their own notifications
-            $userId = auth()->id();
-            
-            // Delete the notifications
-            $count = Notification::whereIn('id', $notificationIds)
-                ->where('user_id', $userId)
-                ->delete();
+            $user = auth()->user();
+            if (!$user) {
+                return false;
+            }
+
+            $count = 0;
+            foreach ($notificationIds as $notificationId) {
+                if (UniversalNotificationService::deleteNotification($user, (string) $notificationId)) {
+                    $count++;
+                }
+            }
                 
             // Clear user notification cache
-            $this->clearUserNotificationCache($userId);
+            $this->clearUserNotificationCache($user->id);
             
             return $count > 0;
         } catch (\Exception $e) {
@@ -873,7 +786,7 @@ class NotificationService
         User $user,
         string $courseName,
         float $amount
-    ): Notification {
+    ): array {
         $notification = $this->createNotification(
             $user->id,
             'payment_success',
@@ -904,7 +817,9 @@ class NotificationService
     {
         try {
             // Get all admin users
-            $admins = User::where('role', 'admin')->with(['markAsRead'])->get();
+            $admins = User::query()
+                ->where('role', User::ROLE_ADMIN)
+                ->get();
             
             if ($admins->isEmpty()) {
                 Log::warning('No admin users found to notify about payment', [
@@ -1005,7 +920,9 @@ class NotificationService
         
         try {
             // Get all admin users
-            $admins = User::where('role', 'admin')->with(['notify'])->get();
+            $admins = User::query()
+                ->where('role', User::ROLE_ADMIN)
+                ->get();
             
             if ($admins->isEmpty()) {
                 Log::warning('No admin users found for daily payment digest');
@@ -1043,6 +960,10 @@ class NotificationService
     public function markPaymentNotificationsAsRead(Payment $payment, User $admin)
     {
         try {
+            if (!Schema::hasTable('notifications')) {
+                return 0;
+            }
+
             $count = 0;
             
             // Find all unread notifications for this admin related to this payment

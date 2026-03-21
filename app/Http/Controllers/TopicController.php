@@ -21,6 +21,8 @@ use Illuminate\Support\Collection;
 use App\Models\Mistake;
 use App\Http\Controllers\Topic\TopicViewController;
 use App\Http\Controllers\Topic\TopicActionController;
+use App\Services\TopicProgressService;
+use App\Services\StudyGamePlanService;
 
 /**
  * 💀 NUCLEAR OPTIMIZED CONTROLLER - DELEGATION PATTERN 💀
@@ -36,8 +38,10 @@ class TopicController extends Controller
 {
     protected $viewController;
     protected $actionController;
+    protected TopicProgressService $topicProgressService;
+    protected StudyGamePlanService $studyGamePlanService;
 
-    public function __construct()
+    public function __construct(TopicProgressService $topicProgressService, StudyGamePlanService $studyGamePlanService)
     {
         $this->middleware('auth');
 
@@ -70,6 +74,8 @@ class TopicController extends Controller
 
         $this->viewController = new TopicViewController();
         $this->actionController = new TopicActionController();
+        $this->topicProgressService = $topicProgressService;
+        $this->studyGamePlanService = $studyGamePlanService;
     }
 
     /**
@@ -79,7 +85,9 @@ class TopicController extends Controller
     {
         // Convert courseId to integer and find course
         $requestedCourseId = (int) $courseId;
-        $course = Course::select('id', 'name', 'created_at', 'type', 'price')->find($requestedCourseId);
+        $course = Course::query()
+            ->select('id', 'name', 'created_at', 'type', 'price')
+            ->find($requestedCourseId);
         
         if (!$course) {
             // Log the attempt for debugging
@@ -91,7 +99,7 @@ class TopicController extends Controller
             ]);
             
             // Check if there are any available courses to redirect to
-            $availableCourse = Course::first();
+            $availableCourse = Course::query()->select('id')->first();
             if ($availableCourse) {
                 return redirect()->route('topics.forCourse', $availableCourse->id)
                     ->with('warning', "Course {$requestedCourseId} not found. Showing available course instead.");
@@ -102,34 +110,66 @@ class TopicController extends Controller
 
         // Check if user has access to the course
         $user = auth()->user();
-        
-            // Allow access if user is admin, enrolled, or if course is free
-            if (!$user->isAdmin() && !$user->isEnrolledInCourse($course->id) && $course->price && $course->price > 0) {
-            // Check if user has a pending payment
-            $pendingPayment = Payment::where('user_id', $user->id)
+
+        if (!$user->isAdmin() && !$user->hasAccessToCourse($course->id)) {
+            if ($user->requiresSurveyUnlockForCourse($course)) {
+                return redirect($user->freeCourseSurveyRedirectFor($course));
+            }
+
+            $pendingPayment = Payment::query()
+                ->where('user_id', $user->id)
                 ->where('course_id', $course->id)
                 ->where('status', 'pending')
-                ->first();
-                
+                ->exists();
+
             if ($pendingPayment) {
                 return redirect()->route('courses.index')
                     ->with('info', 'Your payment for this course is pending verification. You will receive access once your payment is confirmed.');
             }
-            
+
             return redirect()->route('courses.show', $course->id)
                 ->with('error', 'You need to purchase this course to access its content.');
         }
+
+        $hasFullCourseAccess = $user->hasFullAccessToCourse($course);
+        $previewTopicLimit = $user->getPreviewTopicLimitForCourse($course);
         
         // Load the course with its topics, user progress, and videos
-        $topics = Topic::where('course_id', $course->id)
+        $topics = Topic::query()
+            ->where('course_id', $course->id)
+            ->select([
+                'id',
+                'name',
+                'course_id',
+                'display_order',
+                'case_type',
+                'is_locked',
+            ])
             ->orderBy('display_order')
             ->with([
                 'userProgress' => function($query) use ($user) {
                     $query->where('user_id', $user->id);
                 },
-                'video' // Removed is_active filter since column was removed
+                'video:id,topic_id',
             ])
             ->get();
+
+        $previewLockedTopicIds = [];
+        foreach ($topics as $topic) {
+            $isPreviewLocked = $previewTopicLimit !== null
+                && (int) ($topic->display_order ?? 0) > $previewTopicLimit;
+
+            $topic->is_preview_locked = $isPreviewLocked;
+            $topic->is_locked = (bool) $topic->is_locked || $isPreviewLocked;
+
+            if ($isPreviewLocked) {
+                $topic->lock_reason = 'Preview access only includes the first ' . $previewTopicLimit . ' topics.';
+                $previewLockedTopicIds[] = $topic->id;
+            }
+        }
+
+        $this->topicProgressService->hydrateTopicsWithFreshQuizProgress($topics, $user->id);
+        $gamePlan = $this->studyGamePlanService->buildForCourse($user, $course, $topics);
 
             // Load assignments only for students, using integer role constants.
             $assignments = collect();
@@ -148,6 +188,12 @@ class TopicController extends Controller
                         }
                     ])
                     ->get();
+
+                if (!empty($previewLockedTopicIds)) {
+                    $assignments = $assignments
+                        ->reject(fn ($assignment) => in_array($assignment->topic_id, $previewLockedTopicIds, true))
+                        ->values();
+                }
                     
                 // ✅ FIXED: Pre-calculate all user progress data in a single pass to prevent N+1 queries
                 $assignments->each(function($assignment) use ($user) {
@@ -186,10 +232,14 @@ class TopicController extends Controller
 
         // Get available courses for random quiz modal
         if ($user->isAdmin()) {
-            $availableCourses = \App\Models\Course::orderBy('name')->get();
+            $availableCourses = \App\Models\Course::query()
+                ->select('id', 'name')
+                ->orderBy('name')
+                ->get();
         } else {
-            // Get courses the user has ACCESS to (enrolled AND paid/free)
-            $availableCourses = \App\Models\Course::where(function($query) use ($user) {
+            $candidateCourses = \App\Models\Course::query()
+                ->select('courses.id', 'courses.name')
+                ->where(function($query) use ($user) {
                 // User must be enrolled
                 $query->whereHas('users', function($subQuery) use ($user) {
                     $subQuery->where('user_id', $user->id)
@@ -207,14 +257,31 @@ class TopicController extends Controller
                                    ->where('status', 'completed');
                     });
                 });
-            })->orderBy('name')->get();
+            })
+                ->orderBy('name')
+                ->get();
+
+            $accessMap = $user->hasAccessToCourses($candidateCourses->pluck('id')->all());
+            $availableCourses = $candidateCourses
+                ->filter(fn ($availableCourse) => ($accessMap[$availableCourse->id] ?? false) && $user->hasFullAccessToCourse($availableCourse))
+                ->values();
         }
 
         return view('topics_for_course', [
             'course' => $course,
             'topics' => $topics,
             'assignments' => $assignments,
-            'availableCourses' => $availableCourses
+            'availableCourses' => $availableCourses,
+            'hasFullCourseAccess' => $hasFullCourseAccess,
+            'previewTopicLimit' => $previewTopicLimit,
+            'gamePlan' => $gamePlan,
+            'currentUserView' => [
+                'name' => $user->name,
+                'profile_image_url' => $user->getProfileImageUrl(),
+                'profile_fallback_url' => 'https://ui-avatars.com/api/?name=' . urlencode($user->name) . '&size=200&background=007bff&color=ffffff',
+                'level' => $user->getCurrentLevel(),
+                'xp' => (int) ($user->xp ?? 0),
+            ],
         ]);
     }
 
@@ -293,7 +360,7 @@ class TopicController extends Controller
             if ($user->isAdmin()) {
                 $accessibleCourses = \App\Models\Course::whereIn('id', $courseIds)->get();
             } else {
-                $accessibleCourses = \App\Models\Course::whereIn('id', $courseIds)
+                $candidateCourses = \App\Models\Course::whereIn('id', $courseIds)
                     ->where(function($query) use ($user) {
                         // User must be enrolled
                         $query->whereHas('users', function($subQuery) use ($user) {
@@ -313,6 +380,11 @@ class TopicController extends Controller
                             });
                         });
                     })->get();
+
+                $accessMap = $user->hasAccessToCourses($candidateCourses->pluck('id')->all());
+                $accessibleCourses = $candidateCourses
+                    ->filter(fn ($course) => ($accessMap[$course->id] ?? false) && $user->hasFullAccessToCourse($course))
+                    ->values();
             }
 
             if ($accessibleCourses->isEmpty()) {
@@ -366,6 +438,7 @@ class TopicController extends Controller
     public function getSourceProgress(Topic $topic)
     {
         try {
+            $user = auth()->user();
             $userId = auth()->id();
             // SECURITY FIX: Validate and sanitize the mode parameter to prevent SQL injection
             $mode = request()->input('mode', 'quiz');
@@ -384,6 +457,28 @@ class TopicController extends Controller
                     'error' => 'Invalid mode parameter',
                     'message' => 'Mode must be either "quiz" or "tutor"'
                 ], 400);
+            }
+
+            if (!$user->isAdmin() && !$user->hasAccessToCourse($topic->course_id)) {
+                if ($user->requiresSurveyUnlockForCourse($topic->course_id)) {
+                    return response()->json([
+                        'success' => false,
+                        'error' => 'Free course survey required',
+                        'survey_url' => $user->freeCourseSurveyRedirectFor($topic->course_id, request()->getRequestUri()),
+                    ], 423);
+                }
+
+                return response()->json([
+                    'success' => false,
+                    'error' => 'Access denied to this topic',
+                ], 403);
+            }
+
+            if (!$user->isAdmin() && $user->isTopicPreviewLocked($topic)) {
+                return response()->json([
+                    'success' => false,
+                    'error' => 'This topic is outside the free preview. Unlock the full course to continue.',
+                ], 403);
             }
 
             // Get available sources and their question counts for this topic
@@ -488,7 +583,7 @@ class TopicController extends Controller
             $user = auth()->user();
 
             // Check if user has access to the topic's course
-            if (!$user->isAdmin() && !$user->isEnrolledInCourse($topic->course_id)) {
+            if (!$user->isAdmin() && !$user->hasAccessToCourse($topic->course_id)) {
                 // TEMPORARY: Log the access issue for debugging
                 Log::info('Video access denied - redirecting to course', [
                     'user_id' => $user->id,
@@ -496,11 +591,20 @@ class TopicController extends Controller
                     'topic_id' => $topic->id,
                     'course_id' => $topic->course_id,
                     'is_admin' => $user->isAdmin(),
-                    'is_enrolled' => $user->isEnrolledInCourse($topic->course_id)
+                    'has_access' => $user->hasAccessToCourse($topic->course_id)
                 ]);
+
+                if ($user->requiresSurveyUnlockForCourse($topic->course_id)) {
+                    return redirect($user->freeCourseSurveyRedirectFor($topic->course_id));
+                }
 
                 return redirect()->route('courses.show', $topic->course_id)
                     ->with('error', 'You need to purchase this course to access its content.');
+            }
+
+            if (!$user->isAdmin() && $user->isTopicPreviewLocked($topic)) {
+                return redirect()->route('topics.forCourse', $topic->course_id)
+                    ->with('error', 'This video is outside the free preview. Unlock the full course to continue.');
             }
             
             // Load the topic with its video and course

@@ -6,6 +6,8 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Redis;
+use Illuminate\Support\Facades\Schema;
 use App\Services\Core\UltraConsolidatedCacheService;
 use Illuminate\Support\Facades\Validator;
 
@@ -13,11 +15,20 @@ class QuizAttempt extends Model
 {
     use HasFactory;
 
+    protected static array $columnExistenceCache = [];
+
+    /**
+     * When true, suppress per-attempt cache invalidation and rely on caller-level invalidation.
+     * Helps avoid invalidation fan-out during batch attempt creation (e.g. multi-source quiz).
+     */
+    protected static bool $deferProgressInvalidation = false;
+
     protected $fillable = [
         'user_id',
         'topic_id',
         'quiz_type',
         'study_mode',
+        'session_type',
         'source',
         'score',
         'total_questions',
@@ -37,7 +48,9 @@ class QuizAttempt extends Model
         'question_data' => 'array',
         'correct_answers' => 'integer',  // Simple count of correct answers
         'topic_id' => 'integer',
-        'assignment_id' => 'integer'
+        'assignment_id' => 'integer',
+        'attempt_id' => 'integer',
+        'session_type' => 'string',
     ];
 
     protected $attributes = [
@@ -54,6 +67,7 @@ class QuizAttempt extends Model
         'topic_id' => 'nullable|exists:topics,id',
         'quiz_type' => 'required|in:normal,random,tutor,mistake_review,assignment',
         'study_mode' => 'nullable|in:quiz,tutor,random,mistake_review,assignment',
+        'session_type' => 'nullable|string|max:32',
         'source' => 'nullable|string',
         'score' => 'required|integer|min:0',
         'total_questions' => 'required|integer|min:1',
@@ -61,7 +75,8 @@ class QuizAttempt extends Model
         'duration_seconds' => 'required|integer|min:0',
         'question_data' => 'nullable|array',
         'correct_answers' => 'nullable|integer|min:0',
-        'assignment_id' => 'nullable|exists:assignments,id'
+        'assignment_id' => 'nullable|exists:assignments,id',
+        'attempt_id' => 'nullable|integer|min:1'
     ];
 
     /**
@@ -94,6 +109,7 @@ class QuizAttempt extends Model
                 // ULTRA-FAST: Clear performance chart cache immediately for real-time updates
                 $performanceCacheKey = "performance_data_optimized_{$quizAttempt->user_id}";
                 \Illuminate\Support\Facades\Cache::forget($performanceCacheKey);
+                \Illuminate\Support\Facades\Cache::forget("performance_tracking_coach_{$quizAttempt->user_id}");
                 
                 \Log::info('Profile cache cleared after quiz attempt', [
                     'user_id' => $quizAttempt->user_id,
@@ -363,20 +379,8 @@ class QuizAttempt extends Model
                 ];
             }
 
-            // STEP 2: Get the LATEST attempt for each source (CRITICAL FIX)
-            $latestAttemptsBySource = [];
-            $attempts = self::where('user_id', $userId)
-                ->where('topic_id', $topicId)
-                ->where('study_mode', $studyMode)
-                ->whereNotNull('source')
-                ->orderBy('created_at', 'desc')
-                ->get()
-                ->groupBy('source');
-
-            // Get the most recent attempt for each source
-            foreach ($attempts as $source => $sourceAttempts) {
-                $latestAttemptsBySource[$source] = $sourceAttempts->first();
-            }
+            // STEP 2: Get latest source attempts in ONE query (hot-path optimization)
+            $latestAttemptsBySource = self::getLatestAttemptsBySource($userId, $topicId, $studyMode);
 
             // STEP 3: Calculate progress based on LATEST attempts only
             $sourceProgress = [];
@@ -388,8 +392,8 @@ class QuizAttempt extends Model
 
                 if ($latestAttempt) {
                     // Use the latest attempt's score and total for this source
-                    $correctCount = $latestAttempt->score;
-                    $attemptedCount = $latestAttempt->total_questions;
+                    $correctCount = (int) ($latestAttempt['score'] ?? 0);
+                    $attemptedCount = (int) ($latestAttempt['total_questions'] ?? 0);
                     $percentage = $attemptedCount > 0 ? ($correctCount / $attemptedCount) * 100 : 0;
                 } else {
                     // No attempts for this source yet
@@ -440,6 +444,34 @@ class QuizAttempt extends Model
     }
 
     /**
+     * Get latest attempt row per source for a user/topic/mode in a single query.
+     *
+     * @param int $userId
+     * @param int $topicId
+     * @param string $studyMode
+     * @return array<string, array{source:string,score:int,total_questions:int}>
+     */
+    private static function getLatestAttemptsBySource(int $userId, int $topicId, string $studyMode): array
+    {
+        $latestPerSource = self::query()
+            ->selectRaw('source, MAX(id) as latest_id')
+            ->where('user_id', $userId)
+            ->where('topic_id', $topicId)
+            ->where('study_mode', $studyMode)
+            ->whereNotNull('source')
+            ->groupBy('source');
+
+        return self::query()
+            ->from('quiz_attempts as qa')
+            ->joinSub($latestPerSource, 'latest_per_source', function ($join) {
+                $join->on('qa.id', '=', 'latest_per_source.latest_id');
+            })
+            ->get(['qa.source', 'qa.score', 'qa.total_questions'])
+            ->keyBy('source')
+            ->toArray();
+    }
+
+    /**
      * Get tutor mode source progress - ONLY LATEST ATTEMPT PER SOURCE
      * Does NOT calculate overall progress - tutor mode is source-specific only
      */
@@ -460,20 +492,8 @@ class QuizAttempt extends Model
                 ];
             }
 
-            // 🔥 FIX: Get ONLY the LATEST attempt for each source
-            $latestAttemptsBySource = [];
-            $attempts = self::where('user_id', $userId)
-                ->where('topic_id', $topicId)
-                ->where('study_mode', 'tutor')
-                ->whereNotNull('source')
-                ->orderBy('created_at', 'desc')
-                ->get()
-                ->groupBy('source');
-
-            // Get the most recent attempt for each source
-            foreach ($attempts as $source => $sourceAttempts) {
-                $latestAttemptsBySource[$source] = $sourceAttempts->first();
-            }
+            // 🔥 FIX: Get ONLY the LATEST attempt for each source in one query
+            $latestAttemptsBySource = self::getLatestAttemptsBySource($userId, $topicId, 'tutor');
 
             // Calculate progress for each source - USING LATEST ATTEMPT ONLY
             $sourceProgress = [];
@@ -483,8 +503,8 @@ class QuizAttempt extends Model
 
                 if ($latestAttempt) {
                     // Use the latest attempt's score and total for this source
-                    $correctCount = $latestAttempt->score;
-                    $attemptedCount = $latestAttempt->total_questions;
+                    $correctCount = (int) ($latestAttempt['score'] ?? 0);
+                    $attemptedCount = (int) ($latestAttempt['total_questions'] ?? 0);
                     $percentage = $attemptedCount > 0 ? ($correctCount / $attemptedCount) * 100 : 0;
                 } else {
                     // No attempts for this source yet
@@ -530,15 +550,64 @@ class QuizAttempt extends Model
      */
     public static function generateAttemptId($userId, $topicId, $timestamp = null)
     {
-        // Get the next available attempt ID for this user
-        $maxId = self::where('user_id', $userId)->max('attempt_id') ?? 0;
-        return $maxId + 1;
+        $counterKey = "quiz_attempt_seq:user:{$userId}";
+
+        try {
+            $redis = Redis::connection();
+
+            // Seed counter once from DB if key does not exist.
+            // IMPORTANT: Avoid evaluating DB max() eagerly on every call.
+            if (!$redis->exists($counterKey)) {
+                $seed = (int) (self::where('user_id', $userId)->max('attempt_id') ?? 0);
+                if ($redis->setnx($counterKey, $seed)) {
+                    $redis->expire($counterKey, 2592000); // 30 days
+                }
+            }
+
+            return (int) $redis->incr($counterKey);
+        } catch (\Throwable $e) {
+            // Safe fallback if Redis is unavailable
+            $maxId = self::where('user_id', $userId)->max('attempt_id') ?? 0;
+            return $maxId + 1;
+        }
+    }
+
+    public static function setProgressInvalidationDeferred(bool $defer): void
+    {
+        self::$deferProgressInvalidation = $defer;
+    }
+
+    public static function hasColumn(string $column): bool
+    {
+        $column = str_contains($column, '.') ? (string) substr($column, strrpos($column, '.') + 1) : $column;
+
+        if (!array_key_exists($column, static::$columnExistenceCache)) {
+            $instance = new static();
+            $table = $instance->getTable();
+
+            static::$columnExistenceCache[$column] = Schema::hasTable($table)
+                && Schema::hasColumn($table, $column);
+        }
+
+        return static::$columnExistenceCache[$column];
+    }
+
+    public static function availableColumns(array $columns): array
+    {
+        return array_values(array_filter($columns, fn (string $column) => static::hasColumn($column)));
+    }
+
+    public static function filterPersistableAttributes(array $attributes): array
+    {
+        $availableColumns = array_flip(static::availableColumns(array_keys($attributes)));
+
+        return array_intersect_key($attributes, $availableColumns);
     }
 
     /**
      * Create a new quiz attempt with progress tracking
      */
-    public static function createWithProgress($data)
+    public static function createWithProgress($data, bool $includeProgress = true)
     {
         try {
             // Generate attempt_id if not provided (for grouping multiple sources)
@@ -569,27 +638,31 @@ class QuizAttempt extends Model
             }
 
             // Create attempt with calculated data
-            $attempt = self::create(array_merge($data, [
+            $attempt = self::create(self::filterPersistableAttributes(array_merge($data, [
                 'percentage_grade' => $percentage,
                 'question_data' => $questionData
-            ]));
+            ])));
 
-            // Clear relevant caches using smart invalidation
-            try {
-                $cacheService = app(UltraConsolidatedCacheService::class);
-                $cacheService->smartInvalidate('user_progress', $data['user_id'], [
-                    'topic_id' => $data['topic_id']
-                ]);
-            } catch (\Exception $e) {
-                \Log::warning('Failed to clear cache after quiz attempt creation', [
-                    'error' => $e->getMessage()
-                ]);
+            // Clear relevant caches unless deferred by caller (batch mode)
+            if (!self::$deferProgressInvalidation) {
+                try {
+                    $cacheService = app(UltraConsolidatedCacheService::class);
+                    $cacheService->smartInvalidate('user_progress', $data['user_id'], [
+                        'topic_id' => $data['topic_id']
+                    ]);
+                } catch (\Exception $e) {
+                    \Log::warning('Failed to clear cache after quiz attempt creation', [
+                        'error' => $e->getMessage()
+                    ]);
+                }
             }
 
             // Return both the attempt and updated progress
             return [
                 'attempt' => $attempt,
-                'progress' => self::getTopicProgress($data['user_id'], $data['topic_id'], $data['study_mode'] ?? 'quiz')
+                'progress' => $includeProgress
+                    ? self::getTopicProgress($data['user_id'], $data['topic_id'], $data['study_mode'] ?? 'quiz')
+                    : null,
             ];
         } catch (\Exception $e) {
             \Log::error('Error creating quiz attempt with progress', [
@@ -760,20 +833,24 @@ class QuizAttempt extends Model
             // Clear specific mode cache
             $cacheKey = "topic_progress_{$userId}_{$topicId}_{$studyMode}";
             \Illuminate\Support\Facades\Cache::forget($cacheKey);
-            \Log::info("🔥 Progress cache cleared", [
-                'user_id' => $userId,
-                'topic_id' => $topicId,
-                'study_mode' => $studyMode,
-                'cache_key' => $cacheKey
-            ]);
+            if (config('app.debug')) {
+                \Log::debug("Progress cache cleared", [
+                    'user_id' => $userId,
+                    'topic_id' => $topicId,
+                    'study_mode' => $studyMode,
+                    'cache_key' => $cacheKey
+                ]);
+            }
         } else {
             // Clear both quiz and tutor caches
             \Illuminate\Support\Facades\Cache::forget("topic_progress_{$userId}_{$topicId}_quiz");
             \Illuminate\Support\Facades\Cache::forget("topic_progress_{$userId}_{$topicId}_tutor");
-            \Log::info("🔥 All progress caches cleared", [
-                'user_id' => $userId,
-                'topic_id' => $topicId
-            ]);
+            if (config('app.debug')) {
+                \Log::debug("All progress caches cleared", [
+                    'user_id' => $userId,
+                    'topic_id' => $topicId
+                ]);
+            }
         }
     }
 }

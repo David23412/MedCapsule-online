@@ -10,13 +10,12 @@ use Illuminate\Http\JsonResponse;
 use App\Services\QuizPerformanceService;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Cache;
+use App\Services\QuizUltraConsolidatedCacheService;
 
 class CourseController extends Controller
 {
     public function __construct()
     {
-        parent::__construct();
-        // Controller initialized log ANNIHILATEDr_id' => auth()->id()]);
         $this->middleware(['auth']);
     }
 
@@ -67,7 +66,12 @@ class CourseController extends Controller
     {
         try {
 
-        $validatedData = // TODO: Create FormRequest class for validation
+        $validatedData = $request->validate([
+            'name' => 'required|string|max:255',
+            'description' => 'nullable|string',
+            'price' => 'required|numeric|min:0',
+            'type' => 'required|string|in:medical,custom',
+        ]);
         
         $course = Course::create($validatedData);
         
@@ -130,7 +134,12 @@ class CourseController extends Controller
         try {
             $course = Course::findOrFail($id);
             
-            $validatedData = // TODO: Create FormRequest class for validation
+            $validatedData = $request->validate([
+                'name' => 'required|string|max:255',
+                'description' => 'nullable|string',
+                'price' => 'required|numeric|min:0',
+                'type' => 'required|string|in:medical,custom',
+            ]);
             
             // Handle course type change
             $oldType = $course->type ?? 'medical';

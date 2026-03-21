@@ -321,7 +321,20 @@ class PerformanceMonitorService
         }
 
         try {
-            return Redis::keys('perf:operation:*') ? count(Redis::keys('perf:operation:*')) : 0;
+            $connection = Redis::connection();
+            $cursor = null;
+            $count = 0;
+
+            do {
+                $keys = $connection->scan($cursor, 'perf:operation:*', 100);
+                if ($keys === false) {
+                    $keys = [];
+                }
+
+                $count += count($keys);
+            } while ((int) $cursor !== 0);
+
+            return $count;
         } catch (\Exception $e) {
             return 0;
         }

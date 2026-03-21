@@ -28,12 +28,18 @@ class VideoController extends Controller
      */
     public function getVideoAccess(Video $video): JsonResponse
     {
+        $startTime = microtime(true);
+
         try {
             $user = auth()->user();
-            $startTime = microtime(true);
 
-            // 🚀 ENHANCED EAGER LOADING: Load relationships to prevent N+1 queries
-            $video->load(['topic.course']);
+            $video = Video::query()
+                ->select('id', 'topic_id', 'youtube_video_id', 'title')
+                ->with([
+                    'topic:id,course_id',
+                    'topic.course:id,price',
+                ])
+                ->findOrFail($video->id);
 
             if (!$video->topic || !$video->topic->course) {
                 Log::warning('Video access denied - invalid video relationships', [
@@ -49,23 +55,12 @@ class VideoController extends Controller
             }
 
             $course = $video->topic->course;
-
-            // 🚀 ZERO N+1: Use optimized bulk cache for enrollment status
-            $cacheKey = "user_course_optimization_data_{$user->id}";
-            $userCourseData = Cache::remember($cacheKey, 300, function() use ($user) {
-                return [
-                    'enrolled_course_ids' => $user->courses()->pluck('courses.id')->toArray(),
-                    'is_admin' => $user->isAdmin()
-                ];
-            });
-
-            // ✅ INSTANT LOOKUP: No database query needed
-            $isAdmin = $userCourseData['is_admin'];
-            $isEnrolled = in_array($course->id, $userCourseData['enrolled_course_ids']);
+            $isAdmin = $user->isAdmin();
+            $isEnrolled = $user->hasAccessToCourse($course->id);
             $isFreeCourse = !$course->price || $course->price <= 0;
 
             // SECURITY: Enhanced authorization logic
-            if (!$isAdmin && !$isEnrolled && !$isFreeCourse) {
+            if (!$isAdmin && !$isEnrolled) {
                 Log::warning('Video access denied - insufficient permissions', [
                     'user_id' => $user->id,
                     'video_id' => $video->id,
@@ -78,7 +73,14 @@ class VideoController extends Controller
 
                 return response()->json([
                     'success' => false,
-                    'message' => 'You need to purchase this course to access its videos.'
+                    'message' => 'You do not have access to this video yet.'
+                ], 403);
+            }
+
+            if (!$isAdmin && $user->isTopicPreviewLocked($video->topic)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'This video is outside the free preview. Unlock the full course to continue.'
                 ], 403);
             }
 
@@ -89,12 +91,14 @@ class VideoController extends Controller
                 'expires_at' => now()->addHours(2)->toISOString()
             ];
 
-            Log::info('Video access granted successfully', [
-                'user_id' => $user->id,
-                'video_id' => $video->id,
-                'course_id' => $course->id,
-                'execution_time_ms' => round((microtime(true) - $startTime) * 1000, 2)
-            ]);
+            if (app()->environment('local', 'testing')) {
+                Log::info('Video access granted successfully', [
+                    'user_id' => $user->id,
+                    'video_id' => $video->id,
+                    'course_id' => $course->id,
+                    'execution_time_ms' => round((microtime(true) - $startTime) * 1000, 2)
+                ]);
+            }
 
             return response()->json([
                 'success' => true,
@@ -168,11 +172,13 @@ class VideoController extends Controller
                     });
             });
 
-            Log::info('Admin videos list loaded successfully', [
-                'user_id' => $user->id,
-                'videos_count' => $videos->count(),
-                'execution_time_ms' => round((microtime(true) - $startTime) * 1000, 2)
-            ]);
+            if (app()->environment('local', 'testing')) {
+                Log::info('Admin videos list loaded successfully', [
+                    'user_id' => $user->id,
+                    'videos_count' => $videos->count(),
+                    'execution_time_ms' => round((microtime(true) - $startTime) * 1000, 2)
+                ]);
+            }
 
             return response()->json([
                 'success' => true,

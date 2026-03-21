@@ -22,7 +22,7 @@ class CourseEnrollmentController extends Controller
             if (!auth()->check()) {
                 return redirect()->route('login')->with('error', 'Please login to continue.');
             }
-            if (!auth()->user()->isAdmin()) {
+            if (!optional(auth()->user())->isAdmin()) {
                 return redirect()->route('home')->with('error', 'Access denied. Only admins can manage enrollments.');
             }
             return $next($request);

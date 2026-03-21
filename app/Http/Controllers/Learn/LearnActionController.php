@@ -31,6 +31,7 @@ class LearnActionController extends Controller
         try {
             $userId = auth()->id();
             $rating = $request->input('rating');
+            $timeSpent = (int) $request->input('time_spent', 0);
             
             if (!in_array($rating, [1, 2, 3, 4, 5])) {
                 return response()->json([
@@ -53,22 +54,21 @@ class LearnActionController extends Controller
                 ], 404);
             }
 
-            // Update mistake based on rating
-            if ($rating >= 4) {
-                $mistake->mastered = true;
-                $mistake->mastered_at = now();
-            }
-
-            $mistake->last_reviewed = now();
-            $mistake->review_count = ($mistake->review_count ?? 0) + 1;
+            $mistake->applyRatedReview((int) $rating, session('learn_mode', 'quiz'), $timeSpent > 0 ? $timeSpent : null);
             $mistake->save();
+            app(\App\Services\Learning\ConceptMemoryService::class)
+                ->syncReview($mistake, (int) $rating, (string) session('learn_mode', 'quiz'), $timeSpent > 0 ? $timeSpent : null);
 
             DB::commit();
 
             return response()->json([
                 'success' => true,
                 'message' => 'Review recorded successfully',
-                'mastered' => $mistake->mastered
+                'mastered' => $mistake->mastered,
+                'next_review_at' => optional($mistake->next_review_at)->toIso8601String(),
+                'interval_days' => (int) ($mistake->interval_days ?? 0),
+                'stability' => (float) ($mistake->stability ?? 0),
+                'difficulty' => (float) ($mistake->difficulty ?? 0),
             ]);
             
         } catch (\Exception $e) {

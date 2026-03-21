@@ -11,6 +11,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
+use App\Models\Course;
 
 /**
  * Optimized Random Quiz Controller
@@ -62,15 +63,25 @@ class OptimizedRandomQuizController extends Controller
             Log::info("Requested {$questionCount} questions but only {$actualQuestionCount} available");
         }
 
-        // Get selected courses for navigation
+        // Keep selected course labels limited to fully accessible courses.
         $selectedCourses = collect();
         if (!empty($selectedCourseIds)) {
-            $selectedCourses = \App\Models\Course::whereIn('id', $selectedCourseIds)->get();
+            $selectedCourses = Course::query()
+                ->select('id', 'name')
+                ->whereIn('id', $selectedCourseIds)
+                ->get()
+                ->filter(fn (Course $course) => $user->hasFullAccessToCourse($course))
+                ->values();
         }
 
-        // Fallback to first available course if none selected
+        // Fallback to first fully accessible enrolled course if none selected
         if ($selectedCourses->isEmpty()) {
-            $selectedCourses = \App\Models\Course::take(1)->get();
+            $selectedCourses = $user->courses()
+                ->select('courses.id', 'courses.name')
+                ->get()
+                ->filter(fn (Course $course) => $user->hasFullAccessToCourse($course))
+                ->take(1)
+                ->values();
             if ($selectedCourses->isEmpty()) {
                 $selectedCourses = collect([new \App\Models\Course(['id' => 1, 'name' => 'General'])]);
             }
@@ -122,15 +133,25 @@ class OptimizedRandomQuizController extends Controller
             Log::info("Requested {$questionCount} questions but only {$actualQuestionCount} available");
         }
 
-        // Get selected courses for navigation
+        // Keep selected course labels limited to fully accessible courses.
         $selectedCourses = collect();
         if (!empty($selectedCourseIds)) {
-            $selectedCourses = \App\Models\Course::whereIn('id', $selectedCourseIds)->get();
+            $selectedCourses = Course::query()
+                ->select('id', 'name')
+                ->whereIn('id', $selectedCourseIds)
+                ->get()
+                ->filter(fn (Course $course) => $user->hasFullAccessToCourse($course))
+                ->values();
         }
 
-        // Fallback to first available course if none selected
+        // Fallback to first fully accessible enrolled course if none selected
         if ($selectedCourses->isEmpty()) {
-            $selectedCourses = \App\Models\Course::take(1)->get();
+            $selectedCourses = $user->courses()
+                ->select('courses.id', 'courses.name')
+                ->get()
+                ->filter(fn (Course $course) => $user->hasFullAccessToCourse($course))
+                ->take(1)
+                ->values();
             if ($selectedCourses->isEmpty()) {
                 $selectedCourses = collect([new \App\Models\Course(['id' => 1, 'name' => 'General'])]);
             }
@@ -145,7 +166,11 @@ class OptimizedRandomQuizController extends Controller
             'actual_questions' => $actualQuestionCount,
             // Pass dummy course/topic for unified template
             'course' => $selectedCourses->first() ?? new \App\Models\Course(['id' => 1, 'name' => 'Random Quiz']),
-            'topic' => new \App\Models\Topic(['id' => 0, 'name' => 'Mixed Random Questions'])
+            'topic' => new \App\Models\Topic(['id' => 0, 'name' => 'Mixed Random Questions']),
+            'currentUserView' => [
+                'profile_image_url' => auth()->user()->getProfileImageUrl(),
+                'profile_fallback_url' => 'https://ui-avatars.com/api/?name=' . urlencode(auth()->user()->name) . '&size=200&background=007bff&color=ffffff',
+            ],
         ]);
     }
 
@@ -254,17 +279,24 @@ class OptimizedRandomQuizController extends Controller
             // Ensure the response has the correct field names for the frontend
             $gradingResult['total'] = $gradingResult['totalQuestions'];
             $gradingResult['message'] = $gradingResult['encouragement'] ?? 'Quiz completed!';
+            $userId = (int) $user->id;
+            $score = (int) ($gradingResult['score'] ?? 0);
+            $totalQuestions = (int) ($gradingResult['totalQuestions'] ?? 1);
+            $percentageGrade = (float) ($gradingResult['percentageGrade'] ?? 0);
+            $courseName = $course->name ?? 'Random Quiz';
+            $topicName = $topic->name ?? 'Mixed Topics';
 
-            // 🔔 CRITICAL NOTIFICATION INTEGRATION - Random Quiz Completion
-            \App\Services\NotificationTriggerService::onQuizCompleted(auth()->user(), [
-                'score' => $gradingResult['score'] ?? 0,
-                'total_questions' => $gradingResult['totalQuestions'] ?? 1,
-                'percentage' => $gradingResult['percentageGrade'] ?? 0,
-                'course_name' => $course->name ?? 'Random Quiz',
-                'topic_name' => $topic->name ?? 'Mixed Topics',
-                'user_quiz_count' => $this->getUserQuizCount(auth()->id()),
-                'quiz_type' => 'random'
-            ]);
+            app()->terminating(function () use ($user, $userId, $score, $totalQuestions, $percentageGrade, $courseName, $topicName) {
+                \App\Services\NotificationTriggerService::onQuizCompleted($user, [
+                    'score' => $score,
+                    'total_questions' => $totalQuestions,
+                    'percentage' => $percentageGrade,
+                    'course_name' => $courseName,
+                    'topic_name' => $topicName,
+                    'user_quiz_count' => $this->getUserQuizCount($userId),
+                    'quiz_type' => 'random',
+                ]);
+            });
 
             return response()->json($gradingResult);
 

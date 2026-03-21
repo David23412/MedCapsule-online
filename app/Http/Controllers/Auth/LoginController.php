@@ -116,28 +116,6 @@ use Illuminate\Support\Facades\Cache;
             $request->session()->put('auth.logged_in_at', now()->timestamp);
             $request->session()->save();
 
-            // Auto-enroll in all free courses with eager loading
-            $user = Auth::user()->load([
-                'courses:id,name,price',
-                'quizAttempts:id,user_id,score,created_at'
-            ]);
-            
-            try {
-                $enrolledCount = $user->enrollInAllFreeCourses();
-                if ($enrolledCount > 0) {
-                    \Log::info('User auto-enrolled in free courses on login', [
-                        'user_id' => $user->id,
-                        'courses_enrolled' => $enrolledCount
-                    ]);
-                }
-            } catch (\Exception $e) {
-                \Log::warning('Failed to auto-enroll user in free courses on login', [
-                    'user_id' => $user->id,
-                    'error' => $e->getMessage()
-                ]);
-                // Continue with login even if auto-enrollment fails
-            }
-
             // 🔔 TRIGGER MEDCAPSULE WELCOME NOTIFICATION ON LOGIN
             try {
                 \App\Services\NotificationTriggerService::onUserLogin($user);
@@ -149,7 +127,7 @@ use Illuminate\Support\Facades\Cache;
                 // Continue with login even if notification fails
             }
 
-            return redirect()->intended('/');
+            return redirect()->intended(route('courses.index'));
         }
 
         // Log failed login attempt

@@ -43,11 +43,22 @@ class RegisterController extends Controller
     private function getUniversitiesList(): array
     {
         return [
-            'University of Ghana',
-            'Kwame Nkrumah University of Science and Technology',
-            'University of Cape Coast',
-            'University for Development Studies',
-            'Other'
+            [
+                'value' => 'Assiut University',
+                'label' => 'Assiut University - جامعة أسيوط',
+            ],
+            [
+                'value' => 'Cairo University',
+                'label' => 'Cairo University - جامعة القاهرة',
+            ],
+            [
+                'value' => 'Al Kasr Al Ainy',
+                'label' => 'Al Kasr Al Ainy - القصر العيني',
+            ],
+            [
+                'value' => 'Alexandria University',
+                'label' => 'Alexandria University - جامعة الإسكندرية',
+            ],
         ];
     }
 
@@ -74,30 +85,14 @@ class RegisterController extends Controller
             $user = User::create([
                 'name' => $validated['name'],
                 'email' => $validated['email'],
+                'number' => $validated['number'],
                 'university' => $validated['university'],
                 'password' => Hash::make($validated['password']),
-                'course_progress' => [],
-                'is_admin' => false, // Explicitly set is_admin
+                'survey_completed' => false,
+                'free_courses_unlocked' => false,
             ]);
 
             Log::info('User created', ['user_id' => $user->id]);
-
-            // Auto-enroll the user in ALL free courses
-            try {
-                $enrolledCount = $user->enrollInAllFreeCourses();
-                if ($enrolledCount > 0) {
-                    Log::info('User auto-enrolled in free courses', [
-                        'user_id' => $user->id,
-                        'courses_enrolled' => $enrolledCount
-                    ]);
-                }
-            } catch (\Exception $e) {
-                Log::warning('Failed to auto-enroll user in free courses', [
-                    'user_id' => $user->id,
-                    'error' => $e->getMessage()
-                ]);
-                // Continue with registration even if auto-enrollment fails
-            }
 
             // Log the user in
             Auth::login($user);
@@ -127,7 +122,7 @@ class RegisterController extends Controller
                     // Continue with registration even if notification fails
                 }
                 
-                return redirect()->intended(route('home'))
+                return redirect()->intended(route('courses.index'))
                     ->with('success', 'Welcome to MedCapsule!');
             } else {
                 Log::error('Auth check failed after login', ['user_id' => $user->id]);

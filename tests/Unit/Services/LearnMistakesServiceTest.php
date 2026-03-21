@@ -2,320 +2,275 @@
 
 namespace Tests\Unit\Services;
 
-use Tests\TestCase;
-use App\Services\Learning\MistakeManagementService;
-use App\Models\SkippedQuestion;
+use App\Models\Course;
+use App\Models\Mistake;
 use App\Models\Question;
 use App\Models\User;
-use App\Models\Topic;
-use App\Models\Course;
+use App\Models\UserMistakeMastery;
+use App\Services\Learning\MistakeManagementService;
+use App\Services\Learning\UserMistakeMasteryService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Schema;
+use Tests\TestCase;
 
 class LearnMistakesServiceTest extends TestCase
 {
     use RefreshDatabase;
 
-    private $service;
-    private $user;
-    private $topic;
-    private $questions;
+    private MistakeManagementService $service;
+    private User $user;
+    private Course $course;
+    private \App\Models\Topic $topic;
 
     protected function setUp(): void
     {
         parent::setUp();
-        
-        $this->service = new MistakeManagementService();
-        $this->user = User::factory()->create(['role' => 'student']);
-        $course = Course::factory()->create();
-        $this->topic = Topic::factory()->create(['course_id' => $course->id]);
-        $this->questions = Question::factory()->count(5)->create(['topic_id' => $this->topic->id]);
+        UserMistakeMastery::clearTableExistenceCache();
+
+        $this->service = app(MistakeManagementService::class);
+        $this->user = User::factory()->student()->create();
+        $this->course = Course::create([
+            'name' => 'Cardiology',
+            'description' => 'Core cardiology course',
+            'type' => 'medical',
+            'academic_year' => '2026-1',
+            'price' => 0,
+        ]);
+        $this->topic = \App\Models\Topic::create([
+            'course_id' => $this->course->id,
+            'name' => 'Hemodynamics',
+            'case_type' => 'quiz',
+            'display_order' => 1,
+        ]);
     }
 
-    /** @test */
-    public function it_can_skip_a_question()
+    public function test_it_marks_existing_mistake_as_skipped_and_returns_it_from_the_unified_pool(): void
     {
-        $question = $this->questions->first();
-        
-        $result = $this->service->skipQuestion($this->user->id, $question->id);
-        
+        $question = $this->createQuestion('Cardiac cycle');
+        $mistake = $this->createMistake($question);
+
+        $result = $this->service->skipMistake($this->user->id, $question->id, 'spaced');
+
         $this->assertTrue($result);
-        $this->assertTrue(SkippedQuestion::isSkipped($this->user->id, $question->id));
+
+        $mistake->refresh();
+        $this->assertTrue($mistake->skipped);
+        $this->assertNotNull($mistake->skip_until);
+
+        $skippedMistakes = $this->service->getSkippedMistakes($this->user->id);
+
+        $this->assertCount(1, $skippedMistakes);
+        $this->assertSame($mistake->id, $skippedMistakes->first()->id);
+        $this->assertSame($question->id, $skippedMistakes->first()->question_id);
     }
 
-    /** @test */
-    public function it_can_remove_skip_from_question()
+    public function test_it_keeps_skipped_mastered_mistakes_accessible(): void
     {
-        $question = $this->questions->first();
-        
-        // First skip the question
-        $this->service->skipQuestion($this->user->id, $question->id);
-        $this->assertTrue(SkippedQuestion::isSkipped($this->user->id, $question->id));
-        
-        // Then remove the skip
-        $result = $this->service->removeSkip($this->user->id, $question->id);
-        
-        $this->assertTrue($result);
-        $this->assertFalse(SkippedQuestion::isSkipped($this->user->id, $question->id));
+        $question = $this->createQuestion('Ejection fraction');
+        $mistake = $this->createMistake($question, [
+            'skipped' => true,
+            'mastered' => true,
+            'skip_until' => now()->addHour(),
+        ]);
+
+        $skippedMistakes = $this->service->getSkippedMistakes($this->user->id);
+
+        $this->assertCount(1, $skippedMistakes);
+        $this->assertSame($mistake->id, $skippedMistakes->first()->id);
+        $this->assertTrue((bool) $skippedMistakes->first()->mastered);
     }
 
-    /** @test */
-    public function it_can_get_skipped_questions()
+    public function test_it_keeps_skipped_items_in_totals_but_excludes_them_from_the_due_spaced_queue(): void
     {
-        $question1 = $this->questions[0];
-        $question2 = $this->questions[1];
-        
-        $this->service->skipQuestion($this->user->id, $question1->id);
-        $this->service->skipQuestion($this->user->id, $question2->id);
-        
-        $skippedQuestions = $this->service->getSkippedQuestions($this->user->id);
-        
-        $this->assertCount(2, $skippedQuestions);
-        $this->assertTrue($skippedQuestions->pluck('question_id')->contains($question1->id));
-        $this->assertTrue($skippedQuestions->pluck('question_id')->contains($question2->id));
+        $dueQuestion = $this->createQuestion('Cardiac output');
+        $skippedQuestion = $this->createQuestion('Stroke volume');
+
+        $dueMistake = $this->createMistake($dueQuestion, [
+            'next_review_at' => now()->subHour(),
+            'last_reviewed_at' => now()->subDay(),
+            'last_attempt_date' => now()->subDay(),
+            'skipped' => false,
+        ]);
+
+        $skippedMistake = $this->createMistake($skippedQuestion, [
+            'next_review_at' => now()->addHour(),
+            'skip_until' => now()->addHour(),
+            'last_reviewed_at' => now()->subDay(),
+            'last_attempt_date' => now()->subDay(),
+            'skipped' => true,
+        ]);
+
+        $payload = $this->service->getMistakesForLearning($this->user->id, 'spaced');
+
+        $this->assertNotNull($payload);
+        $this->assertSame(2, $payload['total_mistakes_count']);
+        $this->assertSame(1, $payload['skipped_count']);
+        $this->assertCount(1, $payload['mistakes']);
+        $this->assertSame($dueMistake->id, $payload['mistakes']->first()->id);
+        $this->assertFalse($payload['mistakes']->contains(fn ($mistake) => $mistake->id === $skippedMistake->id));
     }
 
-    /** @test */
-    public function it_can_get_skipped_questions_for_topic()
+    public function test_it_returns_live_retrievability_after_reviewing_a_spaced_mistake(): void
     {
-        $otherTopic = Topic::factory()->create(['course_id' => $this->topic->course_id]);
-        $otherQuestion = Question::factory()->create(['topic_id' => $otherTopic->id]);
-        
-        $question1 = $this->questions[0];
-        
-        $this->service->skipQuestion($this->user->id, $question1->id);
-        $this->service->skipQuestion($this->user->id, $otherQuestion->id);
-        
-        $skippedQuestions = $this->service->getSkippedQuestionsForTopic($this->user->id, $this->topic->id);
-        
-        $this->assertCount(1, $skippedQuestions);
-        $this->assertEquals($question1->id, $skippedQuestions->first()->question_id);
+        $question = $this->createQuestion('Preload');
+        $mistake = Mistake::recordFailure($this->user->id, $question, 'B');
+
+        $response = $this->service->reviewMistake(
+            $this->user->id,
+            $question->id,
+            'A',
+            18,
+            'spaced',
+            'knew'
+        );
+
+        $mistake->refresh();
+
+        $this->assertTrue($response['success']);
+        $this->assertTrue($response['is_correct']);
+        $this->assertArrayHasKey('retrievability', $response);
+        $this->assertEqualsWithDelta($mistake->currentRetrievability(), (float) $response['retrievability'], 0.0001);
+        $this->assertNotNull($response['next_review_at']);
     }
 
-    /** @test */
-    public function it_can_get_questions_for_session_excluding_skipped()
+    public function test_it_persists_classic_mastery_across_quick_review_sessions(): void
     {
-        $question1 = $this->questions[0];
-        $question2 = $this->questions[1];
-        
-        // Skip one question
-        $this->service->skipQuestion($this->user->id, $question1->id);
-        
-        $sessionQuestions = $this->service->getQuestionsForSession($this->user->id, $this->topic->id, true);
-        
-        $this->assertCount(4, $sessionQuestions); // 5 total - 1 skipped = 4
-        $this->assertFalse($sessionQuestions->pluck('id')->contains($question1->id));
-        $this->assertTrue($sessionQuestions->pluck('id')->contains($question2->id));
+        $question = $this->createQuestion('Contractility');
+        Mistake::recordFailure($this->user->id, $question, 'B');
+
+        $this->service->reviewMistake($this->user->id, $question->id, 'A', 12, 'quick');
+        $this->service->reviewMistake($this->user->id, $question->id, 'A', 11, 'quick');
+
+        $mastery = UserMistakeMastery::query()
+            ->where('user_id', $this->user->id)
+            ->where('question_id', $question->id)
+            ->first();
+
+        $this->assertNotNull($mastery);
+        $this->assertSame(2, $mastery->consecutive_correct);
+        $this->assertNotNull($mastery->graduated_at);
+        $this->assertSame('correct', $mastery->last_attempt_result);
+
+        $mistake = Mistake::query()
+            ->where('user_id', $this->user->id)
+            ->where('question_id', $question->id)
+            ->firstOrFail();
+
+        $this->assertSame(2, $mistake->correct_streak);
+        $this->assertTrue($mistake->mastered);
     }
 
-    /** @test */
-    public function it_can_get_questions_for_session_including_skipped()
+    public function test_it_uses_the_legacy_mistake_mirror_when_mastery_table_is_missing(): void
     {
-        $question1 = $this->questions[0];
-        
-        // Skip one question
-        $this->service->skipQuestion($this->user->id, $question1->id);
-        
-        $sessionQuestions = $this->service->getQuestionsForSession($this->user->id, $this->topic->id, false);
-        
-        $this->assertCount(5, $sessionQuestions); // All questions included
-        $this->assertTrue($sessionQuestions->pluck('id')->contains($question1->id));
+        $question = $this->createQuestion('Cardiac output');
+        Mistake::recordFailure($this->user->id, $question, 'B');
+
+        if (Schema::hasTable('user_mistake_mastery')) {
+            Schema::drop('user_mistake_mastery');
+            UserMistakeMastery::clearTableExistenceCache();
+        }
+
+        $first = $this->service->reviewMistake($this->user->id, $question->id, 'A', 12, 'quick');
+        $second = $this->service->reviewMistake($this->user->id, $question->id, 'A', 11, 'quick');
+
+        $mistake = Mistake::query()
+            ->where('user_id', $this->user->id)
+            ->where('question_id', $question->id)
+            ->firstOrFail();
+
+        $this->assertTrue($first['success']);
+        $this->assertTrue($second['success']);
+        $this->assertSame(2, $mistake->correct_streak);
+        $this->assertTrue($mistake->mastered);
+        $this->assertFalse(Schema::hasTable('user_mistake_mastery'));
     }
 
-    /** @test */
-    public function it_can_get_all_questions_for_topic_with_skip_info()
+    public function test_it_uses_current_mastery_rules_for_quick_quiz_and_spaced_modes(): void
     {
-        $question1 = $this->questions[0];
-        $question2 = $this->questions[1];
-        
-        $this->service->skipQuestion($this->user->id, $question1->id);
-        
-        $result = $this->service->getAllQuestionsForTopic($this->user->id, $this->topic->id);
-        
-        $this->assertArrayHasKey('all_questions', $result);
-        $this->assertArrayHasKey('skipped_question_ids', $result);
-        $this->assertArrayHasKey('available_questions', $result);
-        $this->assertArrayHasKey('skipped_questions', $result);
-        
-        $this->assertCount(5, $result['all_questions']);
-        $this->assertCount(1, $result['skipped_question_ids']);
-        $this->assertCount(4, $result['available_questions']);
-        $this->assertCount(1, $result['skipped_questions']);
-        
-        $this->assertTrue(in_array($question1->id, $result['skipped_question_ids']));
-        $this->assertFalse(in_array($question2->id, $result['skipped_question_ids']));
+        $question = $this->createQuestion('Afterload');
+        $mistake = $this->createMistake($question);
+
+        $mistake->forceFill([
+            'correct_streak' => 3,
+            'mastered' => false,
+        ])->save();
+
+        $this->assertTrue($mistake->fresh()->isMastered('quiz'));
+        $this->assertTrue($mistake->fresh()->isMastered('quick'));
+        $this->assertFalse($mistake->fresh()->isMastered('spaced'));
     }
 
-    /** @test */
-    public function it_can_check_if_question_is_skipped()
+    public function test_it_uses_two_streaks_for_practice_mode_mastery_tracking(): void
     {
-        $question = $this->questions->first();
-        
-        $this->assertFalse($this->service->isQuestionSkipped($this->user->id, $question->id));
-        
-        $this->service->skipQuestion($this->user->id, $question->id);
-        
-        $this->assertTrue($this->service->isQuestionSkipped($this->user->id, $question->id));
+        $masteryService = app(UserMistakeMasteryService::class);
+
+        $this->assertSame(2, $masteryService->requiredStreakForMode('practice'));
+        $this->assertSame(2, $masteryService->requiredStreakForMode('quick'));
+        $this->assertSame(3, $masteryService->requiredStreakForMode('quiz'));
+        $this->assertNull($masteryService->requiredStreakForMode('spaced'));
     }
 
-    /** @test */
-    public function it_can_clear_all_skips()
+    public function test_it_normalizes_the_legacy_skipped_course_filter_on_review_routes(): void
     {
-        $question1 = $this->questions[0];
-        $question2 = $this->questions[1];
-        
-        $this->service->skipQuestion($this->user->id, $question1->id);
-        $this->service->skipQuestion($this->user->id, $question2->id);
-        
-        $this->assertEquals(2, SkippedQuestion::where('user_id', $this->user->id)->count());
-        
-        $cleared = $this->service->clearAllSkips($this->user->id);
-        
-        $this->assertEquals(2, $cleared);
-        $this->assertEquals(0, SkippedQuestion::where('user_id', $this->user->id)->count());
+        $question = $this->createQuestion('Frank-Starling law');
+        $this->createMistake($question, [
+            'skipped' => true,
+            'skip_until' => now()->addHour(),
+        ]);
+
+        $reviewResponse = $this->actingAs($this->user)->get(route('review.index', ['course' => 'skipped']));
+        $reviewResponse->assertOk();
+        $reviewResponse->assertViewHas('selectedCourse', '');
+
+        $learnResponse = $this->actingAs($this->user)->get(route('review.learn', [
+            'course' => 'skipped',
+            'mode' => 'spaced',
+        ]));
+        $learnResponse->assertOk();
+        $learnResponse->assertViewHas('courseFilter', null);
     }
 
-    /** @test */
-    public function it_can_clear_topic_skips()
+    private function createQuestion(?string $concept = 'Cardiac cycle'): Question
     {
-        $otherTopic = Topic::factory()->create(['course_id' => $this->topic->course_id]);
-        $otherQuestion = Question::factory()->create(['topic_id' => $otherTopic->id]);
-        
-        $question1 = $this->questions[0];
-        
-        $this->service->skipQuestion($this->user->id, $question1->id);
-        $this->service->skipQuestion($this->user->id, $otherQuestion->id);
-        
-        $this->assertEquals(2, SkippedQuestion::where('user_id', $this->user->id)->count());
-        
-        $cleared = $this->service->clearTopicSkips($this->user->id, $this->topic->id);
-        
-        $this->assertEquals(1, $cleared);
-        $this->assertEquals(1, SkippedQuestion::where('user_id', $this->user->id)->count());
-        $this->assertFalse($this->service->isQuestionSkipped($this->user->id, $question1->id));
-        $this->assertTrue($this->service->isQuestionSkipped($this->user->id, $otherQuestion->id));
+        return Question::create([
+            'topic_id' => $this->topic->id,
+            'question' => 'What is the correct answer?',
+            'question_type' => Question::TYPE_MULTIPLE_CHOICE,
+            'option_a' => 'Correct answer',
+            'option_b' => 'Wrong answer B',
+            'option_c' => 'Wrong answer C',
+            'option_d' => 'Wrong answer D',
+            'correct_answer' => 'A',
+            'concept' => $concept,
+        ]);
     }
 
-    /** @test */
-    public function it_can_get_skip_statistics()
+    private function createMistake(Question $question, array $overrides = []): Mistake
     {
-        $question1 = $this->questions[0];
-        $question2 = $this->questions[1];
-        
-        $this->service->skipQuestion($this->user->id, $question1->id);
-        $this->service->skipQuestion($this->user->id, $question2->id);
-        
-        $stats = $this->service->getSkipStatistics($this->user->id);
-        
-        $this->assertArrayHasKey('total_skips', $stats);
-        $this->assertArrayHasKey('recent_skips', $stats);
-        $this->assertArrayHasKey('skips_by_session', $stats);
-        $this->assertArrayHasKey('most_skipped_topics', $stats);
-        $this->assertArrayHasKey('skip_frequency', $stats);
-        
-        $this->assertEquals(2, $stats['total_skips']);
-        $this->assertEquals(2, $stats['recent_skips']);
-    }
+        $mistake = Mistake::create(array_merge([
+            'user_id' => $this->user->id,
+            'question_id' => $question->id,
+            'submitted_answer' => 'B',
+            'question_text' => $question->question,
+            'correct_answer' => $question->correct_answer,
+            'last_attempt_date' => now()->subDay(),
+            'last_reviewed_at' => now()->subDay(),
+            'next_review_at' => now()->subHour(),
+            'difficulty' => 0.45,
+            'difficulty_baseline' => 0.45,
+            'stability' => 1.2,
+            'retrievability' => 0.75,
+            'review_count' => 1,
+            'lapse_count' => 1,
+            'mastered' => false,
+            'skipped' => false,
+        ], $overrides));
 
-    /** @test */
-    public function it_can_get_questions_with_skip_status()
-    {
-        $question1 = $this->questions[0];
-        $question2 = $this->questions[1];
-        
-        $this->service->skipQuestion($this->user->id, $question1->id);
-        
-        $questions = $this->service->getQuestionsWithSkipStatus($this->user->id, $this->topic->id);
-        
-        $this->assertCount(5, $questions);
-        
-        $skippedQuestion = $questions->where('id', $question1->id)->first();
-        $normalQuestion = $questions->where('id', $question2->id)->first();
-        
-        $this->assertTrue($skippedQuestion->is_skipped);
-        $this->assertFalse($normalQuestion->is_skipped);
-    }
+        if (array_key_exists('correct_streak', $overrides)) {
+            $mistake->forceFill(['correct_streak' => $overrides['correct_streak']])->save();
+        }
 
-    /** @test */
-    public function it_can_get_session_progress()
-    {
-        $question1 = $this->questions[0];
-        $question2 = $this->questions[1];
-        
-        $this->service->skipQuestion($this->user->id, $question1->id);
-        $this->service->skipQuestion($this->user->id, $question2->id);
-        
-        $progress = $this->service->getSessionProgress($this->user->id, $this->topic->id);
-        
-        $this->assertArrayHasKey('total_questions', $progress);
-        $this->assertArrayHasKey('skipped_questions', $progress);
-        $this->assertArrayHasKey('available_questions', $progress);
-        $this->assertArrayHasKey('skip_percentage', $progress);
-        
-        $this->assertEquals(5, $progress['total_questions']);
-        $this->assertEquals(2, $progress['skipped_questions']);
-        $this->assertEquals(3, $progress['available_questions']);
-        $this->assertEquals(40.0, $progress['skip_percentage']);
-    }
-
-    /** @test */
-    public function it_can_reset_session()
-    {
-        $question1 = $this->questions[0];
-        $question2 = $this->questions[1];
-        
-        $this->service->skipQuestion($this->user->id, $question1->id);
-        $this->service->skipQuestion($this->user->id, $question2->id);
-        
-        $this->assertEquals(2, SkippedQuestion::where('user_id', $this->user->id)->count());
-        
-        $result = $this->service->resetSession($this->user->id, $this->topic->id);
-        
-        $this->assertTrue($result);
-        $this->assertEquals(0, SkippedQuestion::where('user_id', $this->user->id)->count());
-    }
-
-    /** @test */
-    public function it_can_get_recommended_questions()
-    {
-        $question1 = $this->questions[0];
-        
-        // Skip one question recently
-        $this->service->skipQuestion($this->user->id, $question1->id);
-        
-        $recommended = $this->service->getRecommendedQuestions($this->user->id, $this->topic->id, 3);
-        
-        $this->assertCount(3, $recommended);
-        $this->assertFalse($recommended->pluck('id')->contains($question1->id));
-    }
-
-    /** @test */
-    public function it_handles_empty_topic_gracefully()
-    {
-        $emptyTopic = Topic::factory()->create(['course_id' => $this->topic->course_id]);
-        
-        $questions = $this->service->getQuestionsForSession($this->user->id, $emptyTopic->id);
-        $progress = $this->service->getSessionProgress($this->user->id, $emptyTopic->id);
-        
-        $this->assertCount(0, $questions);
-        $this->assertEquals(0, $progress['total_questions']);
-        $this->assertEquals(0, $progress['skip_percentage']);
-    }
-
-    /** @test */
-    public function it_handles_different_session_types()
-    {
-        $question = $this->questions->first();
-        
-        $this->service->skipQuestion($this->user->id, $question->id, SkippedQuestion::SESSION_LEARN_MISTAKES);
-        $this->service->skipQuestion($this->user->id, $question->id, SkippedQuestion::SESSION_QUIZ);
-        
-        $learnMistakesSkips = $this->service->getSkippedQuestions($this->user->id, SkippedQuestion::SESSION_LEARN_MISTAKES);
-        $quizSkips = $this->service->getSkippedQuestions($this->user->id, SkippedQuestion::SESSION_QUIZ);
-        
-        $this->assertCount(1, $learnMistakesSkips);
-        $this->assertCount(1, $quizSkips);
-        
-        $this->assertTrue($this->service->isQuestionSkipped($this->user->id, $question->id, SkippedQuestion::SESSION_LEARN_MISTAKES));
-        $this->assertTrue($this->service->isQuestionSkipped($this->user->id, $question->id, SkippedQuestion::SESSION_QUIZ));
+        return $mistake->fresh();
     }
 }

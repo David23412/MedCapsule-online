@@ -243,6 +243,44 @@ function initializeMistakesLearnPage() {
                 }
             };
 
+            const playInstantOptionFeedback = (isCorrect) => {
+                if (!quizStarted) {
+                    return;
+                }
+
+                const soundPath = isCorrect ? '/sounds/Single-correct.mp3' : '/sounds/quiz-wrong.mp3';
+                const fallbackPool = isCorrect ? audioPool.correct : audioPool.wrong;
+                const fallbackElementId = isCorrect ? 'correctSound' : 'wrongSound';
+
+                try {
+                    const freshAudio = new Audio(soundPath);
+                    freshAudio.volume = isCorrect ? 0.7 : 0.6;
+                    freshAudio.preload = 'auto';
+
+                    const playPromise = freshAudio.play();
+                    if (playPromise !== undefined) {
+                        playPromise.catch(() => {
+                            if (fallbackPool.length > 0) {
+                                const readyAudio = fallbackPool.shift();
+                                readyAudio.currentTime = 0;
+                                readyAudio.play().catch(() => {
+                                    const fallbackElement = document.getElementById(fallbackElementId);
+                                    if (fallbackElement) {
+                                        fallbackElement.currentTime = 0;
+                                        fallbackElement.play().catch(() => {});
+                                    }
+                                });
+                                readyAudio.addEventListener('ended', () => {
+                                    fallbackPool.push(readyAudio);
+                                }, { once: true });
+                            }
+                        });
+                    }
+                } catch (error) {
+                    // Silent fail to preserve answer flow
+                }
+            };
+
             // 💀 NUCLEAR AUDIO PRELOADING SYSTEM - F16 RAPTOR SPEED 💀
             const audioElements = [correctSound, wrongSound, encouragementSound];
             
@@ -312,6 +350,7 @@ function initializeMistakesLearnPage() {
             let currentPatchIndex = 0; // Track current patch
             let currentPositionInPatch = -1; // Track position in current patch
             let patches = []; // Array of question patches
+            let encouragementHideTimeout = null;
 
             const parseNumber = (value, fallback = 0) => {
                 const parsed = Number(value);
@@ -417,7 +456,6 @@ function initializeMistakesLearnPage() {
                 const difficultyValue = question.element.querySelector('[data-role="memory-difficulty"]');
                 const retrievabilityValue = question.element.querySelector('[data-role="memory-retrievability"]');
                 const reviewStreakValue = question.element.querySelector('[data-role="memory-review-streak"]');
-                const relearnStateValue = question.element.querySelector('[data-role="spaced-relearn-state"]');
 
                 if (statusBadge) {
                     statusBadge.textContent = status.label;
@@ -448,15 +486,6 @@ function initializeMistakesLearnPage() {
                     reviewStreakValue.textContent = String(question.reviewStreak);
                 }
 
-                if (relearnStateValue) {
-                    if (question.learningState === 'relearn' && question.sameDayRelearnStep > 0) {
-                        relearnStateValue.textContent = `Same-day relearn ${question.sameDayRelearnStep} of ${question.maxSameDayRelearnStep}`;
-                        relearnStateValue.className = 'spaced-relearn-state is-visible';
-                    } else {
-                        relearnStateValue.textContent = '';
-                        relearnStateValue.className = 'spaced-relearn-state';
-                    }
-                }
             };
 
             const showReviewSyncError = (question, message) => {
@@ -518,18 +547,9 @@ function initializeMistakesLearnPage() {
                     return;
                 }
 
-                const isVisible = selectedMode === 'spaced' && question.element.classList.contains('active');
-                const hasSelection = Boolean(question.selectedAnswer);
-                question.element.classList.toggle('spaced-selection-ready', isVisible && hasSelection);
-
                 question.element.querySelectorAll('.option').forEach((option) => {
-                    option.classList.toggle('selected', hasSelection && option.dataset.option === question.selectedAnswer);
+                    option.classList.remove('selected');
                 });
-
-                const submitButton = question.element.querySelector('.submit-spaced-answer');
-                if (submitButton) {
-                    submitButton.disabled = !isVisible || !question.confidenceLevel || !hasSelection;
-                }
             };
 
             const updateConfidencePanels = () => {
@@ -610,6 +630,7 @@ function initializeMistakesLearnPage() {
                 question.needsSameDayRelearn = payload.needs_same_day_relearn === true;
                 question.isMastered = payload.is_mastered === true;
                 question.lastReviewedAt = Date.now();
+                question.lastAttemptAt = new Date();
 
                 renderMemoryState(question);
                 updateQueueSummary();
@@ -686,6 +707,17 @@ function initializeMistakesLearnPage() {
                 }
 
                 return url;
+            };
+
+            const clearAutoStartFlagFromUrl = () => {
+                const url = new URL(window.location.href);
+
+                if (!url.searchParams.has('autostart')) {
+                    return;
+                }
+
+                url.searchParams.delete('autostart');
+                window.history.replaceState({}, document.title, url.toString());
             };
 
             const applySessionOutcome = (question, isCorrect) => {
@@ -772,7 +804,7 @@ function initializeMistakesLearnPage() {
 
             const getSpacedReviewedCount = () => getSpacedSessionDeck().filter((question) => question.sessionResolved).length;
 
-            const getNextSpacedQuestionIndex = () => {
+            const getNextSpacedQuestionIndex = (excludeQuestionId = null) => {
                 const sortSpacedQuestions = (questions) => questions.sort((left, right) => {
                     const leftDue = left.question.nextReviewAt ? left.question.nextReviewAt.getTime() : 0;
                     const rightDue = right.question.nextReviewAt ? right.question.nextReviewAt.getTime() : 0;
@@ -811,6 +843,13 @@ function initializeMistakesLearnPage() {
 
                 if (eligibleQuestions.length === 0) {
                     eligibleQuestions = sortSpacedQuestions(getSpacedEligibleQuestions(true));
+                }
+
+                if (excludeQuestionId !== null) {
+                    const alternativeQuestion = eligibleQuestions.find(({ question }) => question.id !== excludeQuestionId);
+                    if (alternativeQuestion) {
+                        return alternativeQuestion.index;
+                    }
                 }
 
                 return eligibleQuestions[0]?.index ?? null;
@@ -972,8 +1011,8 @@ function initializeMistakesLearnPage() {
                     patch.forEach(q => q.patchIndex = patches.length);
                     patches.push(patch);
                 }
-                console.log(`📦 Created ${patches.length} patches with ${PATCH_SIZE} questions each`);
-                console.log('📦 Patch details:', patches.map((patch, i) => `Patch ${i + 1}: ${patch.length} questions`));
+                console.log(`📦 Created ${patches.length} study sets with ${PATCH_SIZE} questions each`);
+                console.log('📦 Set details:', patches.map((patch, i) => `Set ${i + 1}: ${patch.length} questions`));
             }
 
             // PATCH CYCLING: Check if current patch is completed
@@ -990,7 +1029,7 @@ function initializeMistakesLearnPage() {
             function moveToNextPatch() {
                 if (currentPatchIndex < patches.length - 1) {
                     currentPatchIndex++;
-                    console.log(`🔄 MOVING TO PATCH ${currentPatchIndex + 1}/${patches.length}`);
+                    console.log(`🔄 MOVING TO SET ${currentPatchIndex + 1}/${patches.length}`);
 
                     // Reset question index to start of new patch
                     currentQuestionIndex = patches[currentPatchIndex][0] ?
@@ -1001,12 +1040,33 @@ function initializeMistakesLearnPage() {
 
                     // Show encouragement when moving to next patch
                     const encouragementMessage = document.querySelector('.encouragement-message');
-                    encouragementMessage.querySelector('h2').textContent = `Patch ${currentPatchIndex} Complete! 🎉`;
-                    encouragementMessage.querySelector('p').textContent = 'Moving to next set of questions...';
-                    encouragementMessage.style.display = 'block';
-                    setTimeout(() => {
-                        encouragementMessage.style.display = 'none';
-                    }, 2000);
+                    const completedSetNumber = currentPatchIndex;
+                    const nextSetNumber = currentPatchIndex + 1;
+
+                    if (encouragementMessage) {
+                        const title = encouragementMessage.querySelector('h2');
+                        const message = encouragementMessage.querySelector('p');
+
+                        if (title) {
+                            title.textContent = 'Good job!';
+                        }
+
+                        if (message) {
+                            message.textContent = `Set ${completedSetNumber} complete. Next up: Set ${nextSetNumber}.`;
+                        }
+
+                        encouragementMessage.classList.remove('show');
+                        void encouragementMessage.offsetWidth;
+                        encouragementMessage.classList.add('show');
+
+                        if (encouragementHideTimeout) {
+                            window.clearTimeout(encouragementHideTimeout);
+                        }
+
+                        encouragementHideTimeout = window.setTimeout(() => {
+                            encouragementMessage.classList.remove('show');
+                        }, 2200);
+                    }
 
                     return true;
                 }
@@ -1052,7 +1112,8 @@ function initializeMistakesLearnPage() {
                 // Reset tracking variables
                 totalAttempts = 0;
                 correctFirstAttempts = 0;
-                startTime = Date.now();
+                startTime = null;
+                quizStarted = false;
 
                 // Reset all questions data for a new session
                 questionsData.forEach(q => {
@@ -1069,10 +1130,10 @@ function initializeMistakesLearnPage() {
                     q.frozenResponseSeconds = null;
                 });
 
-                currentQuestionIndex = 0;
+                currentQuestionIndex = -1;
                 currentPatchIndex = 0; // Reset patch index
                 currentPositionInPatch = -1; // Reset position
-                initialSpacedDeckCount = selectedMode === 'spaced' ? getSpacedSessionDeck().length : 0;
+                initialSpacedDeckCount = 0;
                 activeQuestions.clear();
                 questionsData.forEach(q => activeQuestions.add(q.id));
 
@@ -1081,12 +1142,18 @@ function initializeMistakesLearnPage() {
                     card.classList.remove('active');
                 });
 
-                // Show the first question
-                showNextQuestion();
-                updateStageIndicator();
+                difficultyOptions.forEach(option => option.classList.remove('selected'));
+                selectedMode = null;
+                startButton.disabled = true;
+                difficultySelector.style.display = 'block';
+                difficultyOverlay.style.display = 'block';
+                progressContainer.style.display = 'none';
 
-                // Reset progress
+                updateSidebarMode();
+                updateConfidencePanels();
+                updateStageIndicator();
                 updateProgress();
+                updateQueueSummary();
             });
 
             // Setup submit button for written answers
@@ -1190,7 +1257,7 @@ function initializeMistakesLearnPage() {
                                 // Move to next question using patch cycling
                                 showNextQuestion();
                                 updateStageIndicator();
-                            }, 1500);
+                            }, 300);
                         } else {
                             console.error('Error checking answer:', data.message);
                             feedbackElement.textContent = 'Error checking answer. Please try again.';
@@ -1310,6 +1377,7 @@ function initializeMistakesLearnPage() {
             });
 
             if (autoStartMode && autoStartMode === selectedMode && !modeNeedsReload(autoStartMode)) {
+                clearAutoStartFlagFromUrl();
                 startButton.click();
             }
 
@@ -1325,6 +1393,7 @@ function initializeMistakesLearnPage() {
 
                         if (selectedMode === 'spaced') {
                             const selectedOption = this.dataset.option;
+                            const isCorrect = this.dataset.isCorrect === "true";
 
                             if (!currentQuestion.firstSelectedAnswer) {
                                 currentQuestion.firstSelectedAnswer = selectedOption;
@@ -1336,7 +1405,29 @@ function initializeMistakesLearnPage() {
 
                             currentQuestion.selectedAnswer = selectedOption;
                             clearReviewSyncError(currentQuestion);
-                            renderSpacedSelectionState(currentQuestion);
+                            this.parentElement.classList.add('answered');
+                            this.classList.add(isCorrect ? 'correct' : 'incorrect');
+                            playInstantOptionFeedback(isCorrect);
+
+                            const timeSpentSeconds = currentQuestion.frozenResponseSeconds || currentQuestionElapsedSeconds();
+
+                            submitReviewAnswer(currentQuestion.id, selectedOption, timeSpentSeconds, currentQuestion.confidenceLevel)
+                                .then((data) => {
+                                    syncAdaptiveState(currentQuestion, data);
+                                    applySpacedOutcome(currentQuestion, data.is_correct === true, data);
+
+                                    setTimeout(() => {
+                                        this.parentElement.classList.remove('answered');
+                                        this.classList.remove('correct', 'incorrect');
+                                        showNextQuestion();
+                                    }, 800);
+                                })
+                                .catch((error) => {
+                                    console.error('Error recording spaced review:', error);
+                                    this.parentElement.classList.remove('answered');
+                                    this.classList.remove('correct', 'incorrect');
+                                    showReviewSyncError(currentQuestion, error.message || 'Review was not saved. Try this question again.');
+                                });
                             return;
                         }
 
@@ -1348,69 +1439,7 @@ function initializeMistakesLearnPage() {
                             return;
                         }
                         
-                        if (isCorrect) {
-                            // 💀 INSTANT CORRECT SOUND - LETHAL MULTI-LAYER SYSTEM 💀
-                            // Layer 1: Fresh audio (ALWAYS WORKS)
-                            try {
-                                const freshAudio = new Audio('/sounds/Single-correct.mp3');
-                                freshAudio.volume = 0.7;
-                                freshAudio.preload = 'auto';
-                                
-                                // Force play with multiple attempts
-                                const playPromise = freshAudio.play();
-                                if (playPromise !== undefined) {
-                                    playPromise.catch(() => {
-                                        // Layer 2: Audio pool fallback
-                                        if (audioPool.correct.length > 0) {
-                                            const readyAudio = audioPool.correct.shift();
-                                            readyAudio.currentTime = 0;
-                                            readyAudio.play().catch(() => {
-                                                // Layer 3: Preloaded element fallback
-                                                const correctAudio = document.getElementById('correctSound');
-                                                if (correctAudio) {
-                                                    correctAudio.currentTime = 0;
-                                                    correctAudio.play().catch(() => {});
-                                                }
-                                            });
-                                            readyAudio.addEventListener('ended', () => {
-                                                audioPool.correct.push(readyAudio);
-                                            }, { once: true });
-                                        }
-                                    });
-                                }
-                            } catch (error) {}
-                        } else {
-                            // 💀 INSTANT WRONG SOUND - LETHAL MULTI-LAYER SYSTEM 💀
-                            // Layer 1: Fresh audio (ALWAYS WORKS)
-                            try {
-                                const freshAudio = new Audio('/sounds/quiz-wrong.mp3');
-                                freshAudio.volume = 0.6;
-                                freshAudio.preload = 'auto';
-                                
-                                // Force play with multiple attempts
-                                const playPromise = freshAudio.play();
-                                if (playPromise !== undefined) {
-                                    playPromise.catch(() => {
-                                        // Layer 2: Audio pool fallback
-                                        if (audioPool.wrong.length > 0) {
-                                            const readyAudio = audioPool.wrong.shift();
-                                            readyAudio.currentTime = 0;
-                                            readyAudio.play().catch(() => {
-                                                // Layer 3: Preloaded element fallback
-                                                const wrongAudio = document.getElementById('wrongSound');
-                                                if (wrongAudio) {
-                                                    wrongAudio.currentTime = 0;
-                                                    wrongAudio.play().catch(() => {});
-                                                }
-                                            });
-                                            readyAudio.addEventListener('ended', () => {
-                                                audioPool.wrong.push(readyAudio);
-                                            }, { once: true });
-                                        }
-                                    });
-                                }
-                            } catch (error) {}
-                        }
+                        playInstantOptionFeedback(isCorrect);
                         
                         clearReviewSyncError(currentQuestion);
 
@@ -1427,13 +1456,9 @@ function initializeMistakesLearnPage() {
                                 syncAdaptiveState(currentQuestion, data);
                                 applySessionOutcome(currentQuestion, data.is_correct === true);
 
-                                // Move to next question after a short delay
                                 setTimeout(() => {
-                                    // Reset the answered state
                                     this.parentElement.classList.remove('answered');
                                     this.classList.remove('correct', 'incorrect');
-
-                                    // Show next question
                                     showNextQuestion();
                                 }, 800);
                             })
@@ -1444,65 +1469,6 @@ function initializeMistakesLearnPage() {
                                 showReviewSyncError(currentQuestion, 'Review was not saved. Try this question again.');
                             });
                     }
-                });
-            });
-
-            document.querySelectorAll('.submit-spaced-answer').forEach(button => {
-                button.addEventListener('click', function() {
-                    if (selectedMode !== 'spaced') {
-                        return;
-                    }
-
-                    const currentQuestion = questionsData[currentQuestionIndex];
-                    if (!currentQuestion || currentQuestion.id !== this.dataset.questionId) {
-                        return;
-                    }
-
-                    if (!requireSpacedConfidence(currentQuestion)) {
-                        return;
-                    }
-
-                    if (!currentQuestion.selectedAnswer) {
-                        showReviewSyncError(currentQuestion, 'Select an answer before submitting.');
-                        return;
-                    }
-
-                    clearReviewSyncError(currentQuestion);
-                    this.disabled = true;
-
-                    const selectedOptionElement = currentQuestion.element.querySelector(`.option[data-option="${currentQuestion.selectedAnswer}"]`);
-                    const isCorrect = selectedOptionElement?.dataset.isCorrect === 'true';
-                    const timeSpentSeconds = currentQuestion.frozenResponseSeconds || currentQuestionElapsedSeconds();
-
-                    submitReviewAnswer(currentQuestion.id, currentQuestion.selectedAnswer, timeSpentSeconds, currentQuestion.confidenceLevel)
-                        .then((data) => {
-                            if (isCorrect) {
-                                soundSystem.playCorrect();
-                            } else {
-                                soundSystem.playWrong();
-                            }
-
-                            if (selectedOptionElement) {
-                                selectedOptionElement.classList.add(isCorrect ? 'correct' : 'incorrect');
-                            }
-
-                            syncAdaptiveState(currentQuestion, data);
-                            applySpacedOutcome(currentQuestion, data.is_correct === true, data);
-
-                            setTimeout(() => {
-                                if (selectedOptionElement) {
-                                    selectedOptionElement.classList.remove('correct', 'incorrect', 'selected');
-                                }
-
-                                this.disabled = false;
-                                showNextQuestion();
-                            }, 800);
-                        })
-                        .catch((error) => {
-                            console.error('Error recording spaced review:', error);
-                            this.disabled = false;
-                            showReviewSyncError(currentQuestion, error.message || 'Review was not saved. Try this question again.');
-                        });
                 });
             });
 
@@ -1583,7 +1549,10 @@ function initializeMistakesLearnPage() {
                 if (questionsData.length === 0) return;
 
                 if (selectedMode === 'spaced') {
-                    const nextQuestionIndex = getNextSpacedQuestionIndex();
+                    const previousQuestionId = currentQuestionIndex >= 0
+                        ? questionsData[currentQuestionIndex]?.id ?? null
+                        : null;
+                    const nextQuestionIndex = getNextSpacedQuestionIndex(previousQuestionId);
 
                     if (nextQuestionIndex === null) {
                         showCompletion();
@@ -1615,7 +1584,7 @@ function initializeMistakesLearnPage() {
 
                 // PATCH CYCLING: Check if current patch is completed
                 if (isCurrentPatchCompleted()) {
-                    console.log(`✅ Patch ${currentPatchIndex + 1} completed!`);
+                    console.log(`✅ Set ${currentPatchIndex + 1} completed!`);
                     if (!moveToNextPatch()) {
                         // No more patches available
                         showCompletion();

@@ -11,6 +11,8 @@ use Illuminate\Support\Facades\Cache;
 use App\Services\QuizCacheService;
 use App\Models\Question;
 use App\Models\Topic;
+use Illuminate\Support\Collection;
+use Illuminate\Support\Str;
 
 class QuestionController extends Controller
 {
@@ -24,16 +26,36 @@ class QuestionController extends Controller
         // Ultra-aggressive caching for topics
         $cacheKey = QuizUltraConsolidatedCacheService::generateCacheKey('admin_topics_all', ['timestamp' => now()->format('Y-m-d-H')]);
         $topics = Cache::remember($cacheKey, 3600, function () {
-            return Topic::select('id', 'name', 'course_id')->with('course:id,name')->get();
+            return Topic::query()
+                ->select('id', 'name', 'course_id')
+                ->orderBy('name')
+                ->get();
         });
-        
-        return view('add_question', compact('topics'));
+
+        $conceptSuggestionsByTopic = Cache::remember('admin_question_concepts_by_topic_v2', 3600, function () {
+            return Question::query()
+                ->whereNotNull('concept')
+                ->get(['topic_id', 'concept'])
+                ->groupBy('topic_id')
+                ->map(function (Collection $questions) {
+                    return $questions
+                        ->pluck('concept')
+                        ->filter(fn ($name) => is_string($name) && trim($name) !== '')
+                        ->unique(fn ($name) => Str::lower(trim($name)))
+                        ->sort()
+                        ->values()
+                        ->all();
+                })
+                ->all();
+        });
+
+        return view('add_question', compact('topics', 'conceptSuggestionsByTopic'));
     }
 
     public function storeQuestion(QuestionRequest $request)
     {
         try {
-            if (auth()->user()->role !== 'admin') {
+            if (!auth()->user()->isAdmin()) {
                 abort(403);
             }
 
@@ -125,7 +147,9 @@ class QuestionController extends Controller
         $optionD = $request->question_type === 'multiple_choice' ? $request->option_d : '';
 
         // Create the question
-        Question::create([
+        $topic = Topic::query()->select('id', 'course_id', 'name')->findOrFail((int) $request->topic_id);
+
+        $question = Question::create([
             'topic_id' => $request->topic_id,
             'question' => $request->question,
             'explanation' => $request->explanation,
@@ -139,6 +163,8 @@ class QuestionController extends Controller
             'image_url' => $imageUrl,
             'source' => $request->source
         ]);
+
+        $this->syncQuestionConcepts($question, $topic, $request->input('concept_names'));
 
         return redirect()->back()->with('success', 'Question added successfully!');
         
@@ -166,6 +192,7 @@ class QuestionController extends Controller
             // TODO: Create FormRequest class for validation
 
             $question = Question::findOrFail($id);
+            $topic = Topic::query()->select('id', 'course_id', 'name')->findOrFail((int) ($request->topic_id ?? $question->topic_id));
 
             // Process alternative answers if provided
             $alternativeAnswers = null;
@@ -202,6 +229,8 @@ class QuestionController extends Controller
                 'source' => $request->source
             ]);
 
+            $this->syncQuestionConcepts($question->fresh(), $topic, $request->input('concept_names'));
+
             return redirect()->back()->with('success', 'Question updated successfully!');
 
         } catch (\Exception $e) {
@@ -221,5 +250,18 @@ class QuestionController extends Controller
             \Log::error('Method execution failed', ['error' => $e->getMessage()]);
             return response()->json(['success' => false, 'message' => 'Operation failed'], 500);
         }
-}
+    }
+
+    private function syncQuestionConcepts(Question $question, Topic $topic, ?string $rawConceptNames): void
+    {
+        $conceptNames = collect(preg_split('/[\r\n,;]+/', (string) $rawConceptNames))
+            ->map(fn ($name) => trim((string) $name))
+            ->filter()
+            ->unique(fn ($name) => Str::lower($name))
+            ->values()
+            ->all();
+
+        $question->assignConceptTags($conceptNames);
+        $question->save();
+    }
 }

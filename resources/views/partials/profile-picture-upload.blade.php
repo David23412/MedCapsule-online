@@ -1,10 +1,10 @@
 <div class="profile-picture-container">
     <div class="current-profile-picture">
-        @if(Auth::user()->profile_picture_url)
-            <img src="{{ Auth::user()->getProfileImageUrl() }}" alt="Profile picture" class="current-profile-img">
+        @if($navigationProfileImageUrl)
+            <img src="{{ $navigationProfileImageUrl }}" alt="Profile picture" class="current-profile-img">
         @else
             <div class="profile-placeholder">
-                <span>{{ substr(Auth::user()->name, 0, 1) }}</span>
+                <span>{{ substr($navigationUser?->name ?? Auth::user()->name, 0, 1) }}</span>
             </div>
         @endif
     </div>

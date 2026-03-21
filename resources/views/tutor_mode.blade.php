@@ -393,6 +393,16 @@
             background: #f8d7da;
         }
 
+        .correct-answer-card {
+            margin-top: 10px;
+            padding: 10px;
+            background-color: #e3fcef !important;
+            border-radius: 8px;
+            border: 1px solid #00a854 !important;
+            color: #00a854 !important;
+            font-weight: 500;
+        }
+
         /* Disable blue highlight after checking answer */
         .option-card[style*="pointer-events: none"] {
             cursor: default !important;
@@ -1909,6 +1919,10 @@
                     <i class="fas fa-redo"></i>
                     Retry Quiz
                 </button>
+                <button class="popup-btn review-btn" id="review-answers-btn" type="button">
+                    <i class="fas fa-search"></i>
+                    Review Answers
+                </button>
                 <a href="{{ route('topics.forCourse', $course->id) }}" class="popup-btn view-progress-btn" id="view-progress-btn">
                     <i class="fas fa-chart-line"></i>
                     View Progress
@@ -3192,7 +3206,6 @@
         }
 
         window.applyHighlight = function(color) {
-            // Use the stored selection from currentSelection
             if (!currentSelection || !currentSelection.range) {
                 console.error('No stored selection available for highlighting');
                 hideToolbar();
@@ -3202,14 +3215,12 @@
             const questionElement = currentSelection.questionElement;
             const questionId = getQuestionId(questionElement);
 
-            // Only allow highlighting within question text elements
             if (!questionElement) {
                 console.error('No question element found');
                 hideToolbar();
                 return;
             }
 
-            // Create a fresh range from the stored selection
             const range = document.createRange();
             try {
                 range.setStart(currentSelection.range.startContainer, currentSelection.range.startOffset);
@@ -3220,105 +3231,67 @@
                 return;
             }
 
-            // Create highlight mark element
-            const mark = document.createElement('mark');
-            mark.className = `highlight-${color}`;
+            const selectionOffsets = getRangeOffsets(questionElement, range);
+            if (selectionOffsets.end <= selectionOffsets.start) {
+                hideToolbar();
+                return;
+            }
 
             try {
-                // Use the most reliable method: surroundContents for simple text
-                // or extractContents + insertNode for complex selections
-                if (range.startContainer === range.endContainer) {
-                    // Simple text selection within one node
-                    range.surroundContents(mark);
-                } else {
-                    // Complex selection across multiple nodes
-                    const fragment = range.extractContents();
-                    mark.appendChild(fragment);
-                    range.insertNode(mark);
-                }
+                const existingIntervals = normalizeHighlightEntries(questionElement, highlights[questionId] || []);
+                const updatedIntervals = applyHighlightInterval(existingIntervals, selectionOffsets.start, selectionOffsets.end, color);
 
-                // Save highlight for persistence
-                saveHighlight(questionId, {
-                    text: currentSelection.text,
-                    color: color,
-                    offset: getTextOffset(questionElement, range.startContainer, range.startOffset)
-                });
-
+                renderQuestionHighlights(questionElement, updatedIntervals);
+                persistQuestionHighlights(questionId, questionElement, updatedIntervals);
                 console.log(`✅ SUCCESS: Applied ${color} highlight to "${currentSelection.text}"`);
                 hideToolbar();
                 window.getSelection().removeAllRanges();
-
             } catch (e) {
-                console.error('Primary highlighting method failed:', e);
-
-                // Simplified fallback approach
-                try {
-                    // Create wrapper span for safer application
-                    const span = document.createElement('span');
-                    span.innerHTML = `<mark class="highlight-${color}">${currentSelection.text}</mark>`;
-
-                    // Replace the selected text with the highlighted version
-                    range.deleteContents();
-                    range.insertNode(span);
-
-                    // Save highlight for persistence
-                    saveHighlight(questionId, {
-                        text: currentSelection.text,
-                        color: color,
-                        offset: getTextOffset(questionElement, range.startContainer, range.startOffset)
-                    });
-
-                    console.log('✅ SUCCESS: Applied highlight using fallback method');
-                    hideToolbar();
-                    window.getSelection().removeAllRanges();
-
-                } catch (e2) {
-                    console.error('Fallback highlighting method also failed:', e2);
-                    hideToolbar();
-                }
+                console.error('Failed to apply highlight:', e);
+                hideToolbar();
             }
         };
 
         window.removeHighlight = function() {
-            if (!currentSelection) return;
+            if (!currentSelection || !currentSelection.range) return;
 
-            const selection = window.getSelection();
-            if (!selection.rangeCount) return;
-
-            const range = selection.getRangeAt(0);
             const questionElement = currentSelection.questionElement;
             const questionId = getQuestionId(questionElement);
+            const range = document.createRange();
 
-            // Find and remove highlight marks within selection
-            const marks = Array.from(questionElement.querySelectorAll('mark'));
-            marks.forEach(mark => {
-                if (selection.containsNode(mark, true)) {
-                    const parent = mark.parentNode;
-                    while (mark.firstChild) {
-                        parent.insertBefore(mark.firstChild, mark);
-                    }
-                    parent.removeChild(mark);
-                    parent.normalize();
-                }
-            });
-
-            // Update saved highlights
-            if (highlights[questionId]) {
-                highlights[questionId] = highlights[questionId].filter(h => 
-                    !currentSelection.text.includes(h.text)
-                );
-                localStorage.setItem('tutorModeHighlights', JSON.stringify(highlights));
+            try {
+                range.setStart(currentSelection.range.startContainer, currentSelection.range.startOffset);
+                range.setEnd(currentSelection.range.endContainer, currentSelection.range.endOffset);
+            } catch (e) {
+                console.error('Failed to recreate range for highlight removal:', e);
+                hideToolbar();
+                return;
             }
 
+            const selectionOffsets = getRangeOffsets(questionElement, range);
+            if (selectionOffsets.end <= selectionOffsets.start) {
+                hideToolbar();
+                return;
+            }
+
+            const existingIntervals = normalizeHighlightEntries(questionElement, highlights[questionId] || []);
+            const updatedIntervals = removeHighlightInterval(existingIntervals, selectionOffsets.start, selectionOffsets.end);
+
+            renderQuestionHighlights(questionElement, updatedIntervals);
+            persistQuestionHighlights(questionId, questionElement, updatedIntervals);
             hideToolbar();
             window.getSelection().removeAllRanges();
         };
 
-        function saveHighlight(questionId, highlightData) {
-            if (!highlights[questionId]) {
-                highlights[questionId] = [];
+        function persistQuestionHighlights(questionId, questionElement, intervals) {
+            const serializedHighlights = serializeHighlightIntervals(questionElement, intervals);
+
+            if (serializedHighlights.length > 0) {
+                highlights[questionId] = serializedHighlights;
+            } else {
+                delete highlights[questionId];
             }
-            highlights[questionId].push(highlightData);
+
             localStorage.setItem('tutorModeHighlights', JSON.stringify(highlights));
         }
 
@@ -3327,22 +3300,9 @@
                 const questionElement = document.querySelector(`[data-question-id="${questionId}"] .question-text`);
                 if (!questionElement) return;
 
-                highlights[questionId].forEach(highlight => {
-                    try {
-                        const textNode = findTextNode(questionElement, highlight.text, highlight.offset);
-                        if (textNode) {
-                            const range = document.createRange();
-                            range.setStart(textNode, highlight.offset.start);
-                            range.setEnd(textNode, highlight.offset.end);
-
-                            const mark = document.createElement('mark');
-                            mark.className = `highlight-${highlight.color}`;
-                            range.surroundContents(mark);
-                        }
-                    } catch (e) {
-                        console.error('Failed to restore highlight:', e);
-                    }
-                });
+                const normalizedHighlights = normalizeHighlightEntries(questionElement, highlights[questionId] || []);
+                renderQuestionHighlights(questionElement, normalizedHighlights);
+                persistQuestionHighlights(questionId, questionElement, normalizedHighlights);
             });
         }
 
@@ -3351,8 +3311,160 @@
             return questionCard ? questionCard.id : null;
         }
 
-        function getTextOffset(container, node, offset) {
-            let textOffset = 0;
+        function applyHighlightInterval(intervals, start, end, color) {
+            if (end <= start) return mergeHighlightIntervals(intervals);
+
+            const updatedIntervals = [];
+
+            intervals.forEach(interval => {
+                if (interval.end <= start || interval.start >= end) {
+                    updatedIntervals.push({ ...interval });
+                    return;
+                }
+
+                if (interval.start < start) {
+                    updatedIntervals.push({
+                        start: interval.start,
+                        end: start,
+                        color: interval.color
+                    });
+                }
+
+                if (interval.end > end) {
+                    updatedIntervals.push({
+                        start: end,
+                        end: interval.end,
+                        color: interval.color
+                    });
+                }
+            });
+
+            updatedIntervals.push({ start, end, color });
+            return mergeHighlightIntervals(updatedIntervals);
+        }
+
+        function removeHighlightInterval(intervals, start, end) {
+            if (end <= start) return mergeHighlightIntervals(intervals);
+
+            const updatedIntervals = [];
+
+            intervals.forEach(interval => {
+                if (interval.end <= start || interval.start >= end) {
+                    updatedIntervals.push({ ...interval });
+                    return;
+                }
+
+                if (interval.start < start) {
+                    updatedIntervals.push({
+                        start: interval.start,
+                        end: start,
+                        color: interval.color
+                    });
+                }
+
+                if (interval.end > end) {
+                    updatedIntervals.push({
+                        start: end,
+                        end: interval.end,
+                        color: interval.color
+                    });
+                }
+            });
+
+            return mergeHighlightIntervals(updatedIntervals);
+        }
+
+        function normalizeHighlightEntries(questionElement, entries) {
+            const textLength = questionElement.textContent.length;
+            let normalizedIntervals = [];
+
+            (entries || []).forEach(entry => {
+                const color = entry?.color;
+                const start = Number(entry?.offset?.start ?? 0);
+                let end = Number(entry?.offset?.end ?? start);
+
+                if ((!Number.isFinite(end) || end <= start) && typeof entry?.text === 'string') {
+                    end = start + entry.text.length;
+                }
+
+                if (!color || !Number.isFinite(start) || !Number.isFinite(end)) {
+                    return;
+                }
+
+                const clampedStart = Math.max(0, Math.min(start, textLength));
+                const clampedEnd = Math.max(clampedStart, Math.min(end, textLength));
+                normalizedIntervals = applyHighlightInterval(normalizedIntervals, clampedStart, clampedEnd, color);
+            });
+
+            return mergeHighlightIntervals(normalizedIntervals);
+        }
+
+        function mergeHighlightIntervals(intervals) {
+            return intervals
+                .filter(interval => interval && interval.color && interval.end > interval.start)
+                .sort((a, b) => a.start - b.start || a.end - b.end)
+                .reduce((mergedIntervals, interval) => {
+                    const previousInterval = mergedIntervals[mergedIntervals.length - 1];
+
+                    if (previousInterval && previousInterval.color === interval.color && interval.start <= previousInterval.end) {
+                        previousInterval.end = Math.max(previousInterval.end, interval.end);
+                    } else {
+                        mergedIntervals.push({ ...interval });
+                    }
+
+                    return mergedIntervals;
+                }, []);
+        }
+
+        function renderQuestionHighlights(questionElement, intervals) {
+            const fullText = questionElement.textContent;
+            const normalizedIntervals = mergeHighlightIntervals(intervals);
+            const fragment = document.createDocumentFragment();
+            let cursor = 0;
+
+            normalizedIntervals.forEach(interval => {
+                if (interval.start > cursor) {
+                    fragment.appendChild(document.createTextNode(fullText.slice(cursor, interval.start)));
+                }
+
+                const mark = document.createElement('mark');
+                mark.className = `highlight-${interval.color}`;
+                mark.textContent = fullText.slice(interval.start, interval.end);
+                fragment.appendChild(mark);
+
+                cursor = interval.end;
+            });
+
+            if (cursor < fullText.length) {
+                fragment.appendChild(document.createTextNode(fullText.slice(cursor)));
+            }
+
+            questionElement.textContent = '';
+            questionElement.appendChild(fragment);
+        }
+
+        function serializeHighlightIntervals(questionElement, intervals) {
+            const fullText = questionElement.textContent;
+
+            return mergeHighlightIntervals(intervals).map(interval => ({
+                text: fullText.slice(interval.start, interval.end),
+                color: interval.color,
+                offset: {
+                    start: interval.start,
+                    end: interval.end
+                }
+            }));
+        }
+
+        function getRangeOffsets(container, range) {
+            return {
+                start: getAbsoluteTextOffset(container, range.startContainer, range.startOffset),
+                end: getAbsoluteTextOffset(container, range.endContainer, range.endOffset)
+            };
+        }
+
+        function getAbsoluteTextOffset(container, node, offset) {
+            let absoluteOffset = 0;
             const walker = document.createTreeWalker(
                 container,
                 NodeFilter.SHOW_TEXT,
@@ -3363,34 +3475,13 @@
             let currentNode;
             while (currentNode = walker.nextNode()) {
                 if (currentNode === node) {
-                    return {
-                        start: textOffset + offset,
-                        end: textOffset + offset
-                    };
+                    return absoluteOffset + offset;
                 }
-                textOffset += currentNode.textContent.length;
-            }
-            return { start: 0, end: 0 };
-        }
 
-        function findTextNode(container, text, offset) {
-            const walker = document.createTreeWalker(
-                container,
-                NodeFilter.SHOW_TEXT,
-                null,
-                false
-            );
-
-            let currentNode;
-            let currentOffset = 0;
-            while (currentNode = walker.nextNode()) {
-                const nodeLength = currentNode.textContent.length;
-                if (currentOffset + nodeLength >= offset.start) {
-                    return currentNode;
-                }
-                currentOffset += nodeLength;
+                absoluteOffset += currentNode.textContent.length;
             }
-            return null;
+
+            return absoluteOffset;
         }
 
     </script>
@@ -4749,6 +4840,159 @@
         });
     </script>
 
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const reviewAnswersButton = document.getElementById('review-answers-btn');
+
+            if (!reviewAnswersButton) {
+                return;
+            }
+
+            window.enterTutorReviewMode = function enterTutorReviewMode() {
+                if (document.body.classList.contains('tutor-review-mode')) {
+                    return;
+                }
+
+                document.body.classList.add('tutor-review-mode');
+
+                const popupOverlay = document.getElementById('popup-overlay');
+                const popup = document.getElementById('popup');
+                const timerElement = document.getElementById('timer');
+                popup?.classList.remove('show');
+                popupOverlay?.classList.remove('show');
+
+                if (timerInterval) {
+                    clearTimeout(timerInterval);
+                    timerInterval = null;
+                }
+
+                if (timerElement) {
+                    timerElement.classList.remove('warning', 'danger');
+                }
+
+                const buildExplanationCard = (explanation) => {
+                    if (!explanation) {
+                        return null;
+                    }
+
+                    const explanationCard = document.createElement('div');
+                    explanationCard.className = 'explanation-review-card';
+
+                    const title = document.createElement('strong');
+                    title.textContent = 'Explanation:';
+
+                    const body = document.createElement('div');
+                    body.className = 'explanation-review-text';
+                    body.textContent = explanation;
+
+                    explanationCard.appendChild(title);
+                    explanationCard.appendChild(body);
+
+                    return explanationCard;
+                };
+
+                document.querySelectorAll('.check-answer, .next-question, .view-results, .btn-dont-know').forEach((element) => {
+                    element.style.display = 'none';
+                });
+
+                document.querySelectorAll('.option-card').forEach((optionCard) => {
+                    optionCard.style.pointerEvents = 'none';
+                    optionCard.style.cursor = 'default';
+                    optionCard.setAttribute('tabindex', '-1');
+                });
+
+                document.querySelectorAll('.written-answer').forEach((writtenAnswer) => {
+                    writtenAnswer.readOnly = true;
+                    writtenAnswer.disabled = true;
+                    writtenAnswer.classList.add('review-locked');
+                });
+
+                document.querySelectorAll('.options-container').forEach((container) => {
+                    const questionId = container.dataset.questionId;
+                    const normalizedQuestionId = String(questionId || '');
+
+                    if (!normalizedQuestionId) {
+                        return;
+                    }
+
+                    const questionCard = container.closest('.question-card');
+                    const feedbackDiv = questionCard?.querySelector('.answer-feedback');
+                    const alertDiv = feedbackDiv?.querySelector('.alert');
+                    const resultText = feedbackDiv?.querySelector('.result-text');
+                    const explanationContent = feedbackDiv?.querySelector('.explanation-content');
+                    const qData = questionData[normalizedQuestionId] || questionData[Number(normalizedQuestionId)];
+                    const submittedAnswer = userAnswers[normalizedQuestionId] ?? userAnswers[Number(normalizedQuestionId)] ?? null;
+
+                    if (!feedbackDiv || !alertDiv || !resultText || !explanationContent || !qData) {
+                        return;
+                    }
+
+                    const explanationCard = buildExplanationCard(qData.explanation || '');
+                    explanationContent.innerHTML = '';
+                    feedbackDiv.style.display = 'block';
+
+                    const writtenAnswer = container.querySelector('.written-answer');
+                    const isCorrect = submittedAnswer !== null
+                        && String(submittedAnswer).trim().toLowerCase() === String(qData.correct_answer || '').trim().toLowerCase();
+
+                    if (writtenAnswer) {
+                        alertDiv.className = `alert ${isCorrect ? 'alert-success' : 'alert-danger'}`;
+                        resultText.textContent = isCorrect ? 'Correct Answer' : 'Review Answer';
+
+                        if (!isCorrect) {
+                            const correctAnswerCard = document.createElement('div');
+                            correctAnswerCard.className = 'correct-answer-card';
+                            correctAnswerCard.innerHTML = `<strong>Correct answer:</strong> ${qData.correct_answer || ''}`;
+                            explanationContent.appendChild(correctAnswerCard);
+                        }
+
+                        if (explanationCard) {
+                            explanationContent.appendChild(explanationCard);
+                        }
+
+                        return;
+                    }
+
+                    const optionCards = container.querySelectorAll('.option-card');
+                    optionCards.forEach((optionCard) => {
+                        const optionLetter = optionCard.getAttribute('data-option');
+                        optionCard.classList.remove('selected', 'correct', 'incorrect');
+
+                        if (optionLetter === qData.correct_answer) {
+                            optionCard.classList.add('correct');
+                        } else if (submittedAnswer !== null && optionLetter === String(submittedAnswer) && optionLetter !== qData.correct_answer) {
+                            optionCard.classList.add('incorrect');
+                        }
+                    });
+
+                    alertDiv.className = `alert ${isCorrect ? 'alert-success' : 'alert-danger'}`;
+                    resultText.textContent = isCorrect ? 'Correct Answer' : 'Review Answer';
+
+                    if (!isCorrect) {
+                        const correctAnswerCard = document.createElement('div');
+                        correctAnswerCard.className = 'correct-answer-card';
+                        correctAnswerCard.innerHTML = `<strong>Correct answer:</strong> ${qData.correct_answer || ''}`;
+                        explanationContent.appendChild(correctAnswerCard);
+                    }
+
+                    if (explanationCard) {
+                        explanationContent.appendChild(explanationCard);
+                    }
+                });
+
+                if (typeof window.jumpToQuestion === 'function') {
+                    window.jumpToQuestion(1);
+                }
+
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+            };
+
+            reviewAnswersButton.addEventListener('click', function () {
+                window.enterTutorReviewMode();
+            });
+        });
+    </script>
+
     <!-- FORCE BIG BEAUTIFUL BUTTON STYLING -->
     <style>
         .popup-btn {
@@ -4777,6 +5021,16 @@
             transform: translateY(-2px) !important;
             box-shadow: 0 6px 12px rgba(0, 123, 255, 0.2) !important;
         }
+        .popup-btn.review-btn {
+            background: #f8f9fa !important;
+            color: #495057 !important;
+        }
+        .popup-btn.review-btn:hover {
+            background: #e9ecef !important;
+            color: #495057 !important;
+            transform: translateY(-2px) !important;
+            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.1) !important;
+        }
         .popup-btn.view-progress-btn {
             background: #28a745 !important;
             color: white !important;
@@ -4793,6 +5047,13 @@
             justify-content: center !important;
             flex-wrap: wrap !important;
             margin-top: 2rem !important;
+        }
+        .written-answer.review-locked {
+            background: #f8fafc !important;
+            cursor: not-allowed !important;
+        }
+        .tutor-review-mode .highlight-toolbar {
+            display: none !important;
         }
         /* ENSURE CONFETTI APPEARS ABOVE MODAL */
         canvas {

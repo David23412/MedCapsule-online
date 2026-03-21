@@ -31,35 +31,20 @@ class HomeController extends Controller
     public function index(HomeRequest $request)
     {
         try {
-            // NUCLEAR: Ultra-fast cache key with minimal computation
             $userId = auth()->id() ?? 'guest';
-            $authStatus = auth()->check() ? 'auth' : 'guest';
-            $cacheKey = "home_nuclear_v5_{$authStatus}_{$userId}_" . now()->format('Y-m-d-H');
+            $isAuthenticated = auth()->check();
+            $baseCacheKey = 'home_shared_v6_' . now()->format('Y-m-d-H');
 
-            // NUCLEAR: Precomputed data with Redis pipeline
-            $homeData = Cache::remember($cacheKey, 7200, function () use ($userId) {
-                // PARALLEL: Load all data simultaneously
+            $baseHomeData = Cache::remember($baseCacheKey, 3600, function () {
                 $data = $this->homePageService->getHomePageData();
-                
-                // NUCLEAR: Skip user data for guests completely
-                if ($userId !== 'guest') {
-                    // Only essential user data, no relationships
-                    $user = auth()->user();
-                    $data['user'] = [
-                        'id' => $user->id,
-                        'name' => $user->name,
-                        'email' => $user->email,
-                        'role' => $user->role,
-                        'university' => $user->university,
-                        'profile_picture_url' => $user->profile_picture_url
-                    ];
-                }
-                
+                $data['activeStudentCount'] = $this->homePageService->getActiveStudentCount();
+
                 return $data;
             });
-            
-            // NUCLEAR: For authenticated users, always include fresh user data to avoid cache issues
-            if ($userId !== 'guest' && auth()->check()) {
+
+            $homeData = $baseHomeData;
+
+            if ($isAuthenticated) {
                 $user = auth()->user();
                 $homeData['user'] = [
                     'id' => $user->id,
@@ -70,23 +55,30 @@ class HomeController extends Controller
                     'profile_picture_url' => $user->profile_picture_url
                 ];
                 $homeData['isAuthenticated'] = true;
-                
-                // Add session info to help with client-side state management
                 $homeData['sessionInfo'] = [
                     'loginTime' => $user->session_created_at ? $user->session_created_at->timestamp : null,
                     'sessionId' => $request->session()->getId()
                 ];
+                $homeData['currentUserView'] = [
+                    'name' => $user->name,
+                    'is_admin' => $user->isAdmin(),
+                    'is_tutor' => $user->isTutor(),
+                    'study_streak_days' => (int) ($user->study_streak_days ?? 0),
+                    'profile_image_url' => $user->getProfileImageUrl(),
+                    'profile_fallback_url' => 'https://ui-avatars.com/api/?name=' . urlencode($user->name) . '&size=200&background=007bff&color=ffffff',
+                ];
             } else {
                 $homeData['isAuthenticated'] = false;
+                $homeData['currentUserView'] = null;
             }
 
             // NUCLEAR: Optimized response headers for maximum caching
             $headers = [
                 'Cache-Control' => 'public, max-age=3600, s-maxage=7200',
-                'ETag' => '"' . md5(json_encode($homeData)) . '"',
+                'ETag' => '"' . sha1($baseCacheKey . '|' . ($isAuthenticated ? 'auth:' . $userId : 'guest')) . '"',
                 'Last-Modified' => gmdate('D, d M Y H:i:s') . ' GMT',
                 'Vary' => 'Accept-Encoding',
-                'X-Cache-Status' => Cache::has($cacheKey) ? 'HIT' : 'MISS'
+                'X-Cache-Status' => Cache::has($baseCacheKey) ? 'HIT' : 'MISS'
             ];
 
             // NUCLEAR: JSON response optimization
@@ -95,8 +87,8 @@ class HomeController extends Controller
                     'success' => true,
                     'data' => $homeData,
                     'performance' => [
-                        'cached' => Cache::has($cacheKey),
-                        'cache_key' => $cacheKey,
+                        'cached' => Cache::has($baseCacheKey),
+                        'cache_key' => $baseCacheKey,
                         'load_time' => microtime(true) - LARAVEL_START
                     ]
                 ], 200, $headers);

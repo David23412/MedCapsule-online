@@ -38,6 +38,7 @@ class CourseFactory extends Factory
         return [
             'name' => $courseName,
             'description' => fake()->paragraph(3),
+            'type' => 'medical',
             'price' => fake()->randomElement([0, 49.99, 99.99, 149.99, 199.99, 299.99]),
             'created_at' => now(),
             'updated_at' => now(),
@@ -51,7 +52,7 @@ class CourseFactory extends Factory
     {
         return $this->state(fn (array $attributes) => [
             'price' => 0,
-            'type' => 'free',
+            'type' => 'medical',
         ]);
     }
 
@@ -62,7 +63,7 @@ class CourseFactory extends Factory
     {
         return $this->state(fn (array $attributes) => [
             'price' => fake()->randomElement([99.99, 149.99, 199.99, 299.99]),
-            'type' => 'premium',
+            'type' => 'medical',
         ]);
     }
 

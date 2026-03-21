@@ -26,7 +26,8 @@ return new class extends Migration
             // Add indexes for performance
             $table->index(['user_id', 'course_id']);
             $table->index(['status', 'created_at']);
-            $table->index('reference_number');
+            $table->index('created_at');
+            $table->index('payment_method');
             $table->index('transaction_id');
         });
     }

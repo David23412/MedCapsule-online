@@ -11,7 +11,6 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\DB;
 
 /**
  * Quiz Grading Controller - Handles quiz grading and scoring operations
@@ -40,8 +39,6 @@ class QuizGradingController extends Controller
             $validated = $request->validated();
             $userId = auth()->id();
 
-            DB::beginTransaction();
-
             // Convert to integers and validate course-topic relationship
             $courseId = (int) $course;
             $topicId = (int) $topic;
@@ -66,18 +63,16 @@ class QuizGradingController extends Controller
                 $validated['assignment_id'] ?? null
             );
 
-            DB::commit();
+            app()->terminating(function () use ($topicId, $userId, $gradingResult) {
+                $this->clearQuizCaches($topicId, $userId);
+                $this->performanceService->track('quiz_submit', 0.001);
 
-            // Clear related caches
-            $this->clearQuizCaches($topicId, $userId);
-
-            $this->performanceService->track("quiz_submit", 0.001);
-
-            Log::info("Quiz submitted and graded", [
-                'quiz_id' => $topicId,
-                'user_id' => $userId,
-                'score' => $gradingResult['score'] ?? 0
-            ]);
+                Log::info('Quiz submitted and graded', [
+                    'quiz_id' => $topicId,
+                    'user_id' => $userId,
+                    'score' => $gradingResult['score'] ?? 0,
+                ]);
+            });
 
             return response()->json([
                 'success' => true,
@@ -85,8 +80,6 @@ class QuizGradingController extends Controller
             ]);
 
         } catch (\Exception $e) {
-            DB::rollBack();
-
             Log::error("Quiz submission failed", [
                 'error' => $e->getMessage(),
                 'quiz_id' => $topicId,
@@ -179,7 +172,7 @@ class QuizGradingController extends Controller
     {
         try {
             // Check admin permissions
-            if (!auth()->user()->isAdmin()) {
+            if (!optional(auth()->user())->isAdmin()) {
                 return response()->json([
                     'error' => 'Unauthorized'
                 ], 403);

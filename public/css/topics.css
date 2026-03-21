@@ -14,9 +14,14 @@ body {
 .navbar {
     background: rgba(255, 255, 255, .95);
     padding: 1rem 2rem;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, .1);
+    box-shadow: none;
     position: fixed;
     top: 0;
+    left: 0;
+    right: 0;
+    z-index: 1000;
+    backdrop-filter: blur(10px);
+}
 
 /* 
  * Styles moved from topics_for_course.blade.php
@@ -1205,11 +1210,6 @@ body {
 .assignment-status-bar.assignment-active * {
     color: #e65100 !important;
 }
-    left: 0;
-    right: 0;
-    z-index: 1000;
-    backdrop-filter: blur(10px);
-}
 
 .navbar-brand {
     color: #007bff;
@@ -1218,12 +1218,30 @@ body {
     text-decoration: none;
     display: flex;
     align-items: center;
+    gap: 0.75rem;
+    margin-left: -0.35rem;
     transition: transform .3s ease;
 }
 
 .navbar-brand:hover {
     color: #0056b3;
     transform: translateY(-1px);
+}
+
+.brand-pill-logo {
+    display: inline-flex;
+    align-items: center;
+    flex-shrink: 0;
+}
+
+.brand-pill-logo svg {
+    display: block;
+    width: 52px;
+    height: 26px;
+}
+
+.brand-text {
+    line-height: 1;
 }
 
 .nav-links {

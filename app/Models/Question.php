@@ -7,6 +7,8 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 use App\Services\Core\UltraConsolidatedCacheService;
+use Illuminate\Support\Collection;
+use Illuminate\Support\Str;
 
 class Question extends Model
 {
@@ -31,6 +33,7 @@ class Question extends Model
         'correct_answer',
         'image_url',
         'source',
+        'concept',
         'alternative_answers',
         'similarity_threshold',
         'total_attempts',
@@ -62,6 +65,66 @@ class Question extends Model
     public function mistakes()
     {
         return $this->hasMany(Mistake::class);
+    }
+
+    public function getConceptsAttribute(): Collection
+    {
+        $concept = trim((string) ($this->attributes['concept'] ?? ''));
+        if ($concept === '') {
+            return collect();
+        }
+
+        return collect([
+            (object) [
+                'id' => abs(crc32(Str::slug($concept))),
+                'name' => $concept,
+                'slug' => Str::slug($concept),
+            ],
+        ]);
+    }
+
+    public function assignConceptTags(array $conceptNames): void
+    {
+        $concept = collect($conceptNames)
+            ->map(fn ($name) => trim((string) $name))
+            ->filter()
+            ->unique(fn (string $name) => Str::lower($name))
+            ->first();
+
+        $this->forceFill([
+            'concept' => $concept ?: null,
+        ]);
+    }
+
+    public function getPrimaryConceptNameAttribute(): ?string
+    {
+        $concept = trim((string) ($this->attributes['concept'] ?? ''));
+        return $concept !== '' ? $concept : null;
+    }
+
+    public function getPrimaryConceptSlugAttribute(): ?string
+    {
+        $concept = $this->primary_concept_name;
+
+        if ($concept === null || $concept === '') {
+            return null;
+        }
+
+        return Str::slug($concept);
+    }
+
+    public function getConceptTagsAttribute(): array
+    {
+        $concept = $this->primary_concept_name;
+
+        if ($concept === null || $concept === '') {
+            return [];
+        }
+
+        return [[
+            'name' => $concept,
+            'slug' => Str::slug($concept),
+        ]];
     }
 
     /**
@@ -681,7 +744,9 @@ class Question extends Model
             try {
                 // Clear all caches using the CacheService
                 $cacheService = app(UltraConsolidatedCacheService::class);
-                $cacheService->clearQuestionCaches($question->id, $question->topic_id);
+                if (method_exists($cacheService, 'clearQuestionCaches')) {
+                    $cacheService->clearQuestionCaches($question->id, $question->topic_id);
+                }
                 
                 // Force clear all session data that might contain questions
                 session()->flush();
@@ -705,7 +770,9 @@ class Question extends Model
             try {
                 // Clear all caches using the CacheService
                 $cacheService = app(UltraConsolidatedCacheService::class);
-                $cacheService->clearQuestionCaches($question->id, $question->topic_id);
+                if (method_exists($cacheService, 'clearQuestionCaches')) {
+                    $cacheService->clearQuestionCaches($question->id, $question->topic_id);
+                }
                 
                 // Log the update and cache clearing
                 Log::info('Question updated and all caches cleared', [

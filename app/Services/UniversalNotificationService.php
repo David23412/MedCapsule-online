@@ -15,6 +15,9 @@ use Illuminate\Support\Collection;
  */
 class UniversalNotificationService
 {
+    private const MAX_NOTIFICATIONS = 5;
+    private const READ_RETENTION_HOURS = 12;
+
     /**
      * BEAUTIFUL NOTIFICATION ICON MAPPING - RESTORED FROM ORIGINAL DESIGN
      */
@@ -45,11 +48,13 @@ class UniversalNotificationService
         'tutor_session_completed' => 'fas fa-bullseye',
         'tutor_mastery_achieved' => 'fas fa-trophy',
         'tutor_perfect_mastery' => 'fas fa-crown',
+        'tutor_quiz_completed' => 'fas fa-check-circle',
         'tutor_perfect' => 'fas fa-star',
         'tutor_strong_performance' => 'fas fa-thumbs-up',
         'tutor_needs_practice' => 'fas fa-redo-alt',
         'tutor_student_perfect' => 'fas fa-star',
         'tutor_student_progress' => 'fas fa-chart-line',
+        'tutor_assignment_assigned' => 'fas fa-user-graduate',
         
         // 📝 ASSIGNMENT SPECIFIC
         'assignment_assigned' => 'fas fa-calendar',
@@ -65,6 +70,15 @@ class UniversalNotificationService
         // ⏰ ASSIGNMENT DUE REMINDERS (Simplified)
         'assignment_due_1h' => 'fas fa-exclamation-circle',
         'assignment_due_3h' => 'fas fa-exclamation-circle',
+        'assignment_due_6h' => 'fas fa-clock',
+        'assignment_due_12h' => 'fas fa-clock',
+        'assignment_due_24h' => 'fas fa-calendar',
+        'assignment_due_48h' => 'fas fa-calendar-day',
+        'assignment_due_date_set' => 'fas fa-calendar-alt',
+        'assignment_overdue_1h' => 'fas fa-exclamation-circle',
+        'assignment_overdue_6h' => 'fas fa-exclamation-triangle',
+        'assignment_overdue_24h' => 'fas fa-exclamation',
+        'assignment_overdue_days' => 'fas fa-times-circle',
         
         // 🚨 ASSIGNMENT OVERDUE
         'assignment_overdue' => 'fas fa-exclamation-circle',
@@ -79,6 +93,7 @@ class UniversalNotificationService
         
         // 🏆 ACHIEVEMENTS & MILESTONES
         'achievement' => 'fas fa-trophy',
+        'topic_completed' => 'fas fa-check-circle',
         'streak_milestone' => 'fas fa-fire',
         'study_streak' => 'fas fa-fire',
         'correct_answers_milestone' => 'fas fa-star-of-life',
@@ -113,6 +128,7 @@ class UniversalNotificationService
         'streak_month_11' => 'fas fa-bolt',
         'streak_month_12' => 'fas fa-bolt',
         'streak_year_1' => 'fas fa-bolt',
+        'burning_streak' => 'fas fa-fire',
         
         // 💎 PREMIUM COURSE MASTERY
         'course_mastery' => 'fas fa-gem',
@@ -141,6 +157,8 @@ class UniversalNotificationService
         'warning' => 'fas fa-exclamation-triangle',
         'error' => 'fas fa-exclamation-circle',
         'test' => 'fas fa-bell',
+        'medcapsule_enrolled' => 'fas fa-capsules',
+        'medcapsule_welcome' => 'fas fa-capsules',
         
         // 🎯 SPECIAL ACHIEVEMENTS
         'perfect_score' => 'fas fa-star',
@@ -151,8 +169,38 @@ class UniversalNotificationService
         
         // 📚 SUBJECT SPECIFIC
         'anatomy_mastered' => 'fas fa-heartbeat',
+        'anatomy_enrolled' => 'fas fa-tint',
+        'anatomy_completed' => 'fas fa-tint',
+        'anatomy_halfway' => 'fas fa-tint',
+        'biochemistry_enrolled' => 'fas fa-flask',
+        'biochemistry_completed' => 'fas fa-flask',
+        'biochemistry_halfway' => 'fas fa-flask',
         'cardiology_completed' => 'fas fa-heart',
+        'physiology_enrolled' => 'fas fa-heartbeat',
+        'physiology_completed' => 'fas fa-heartbeat',
+        'physiology_halfway' => 'fas fa-heartbeat',
+        'histology_enrolled' => 'fas fa-microscope',
+        'histology_completed' => 'fas fa-microscope',
+        'histology_halfway' => 'fas fa-microscope',
+        'microbiology_enrolled' => 'fas fa-bacteria',
+        'microbiology_completed' => 'fas fa-bacteria',
+        'microbiology_halfway' => 'fas fa-bacteria',
+        'parasitology_enrolled' => 'fas fa-bug',
+        'parasitology_completed' => 'fas fa-bug',
+        'parasitology_halfway' => 'fas fa-bug',
+        'ethics_enrolled' => 'fas fa-balance-scale',
+        'ethics_completed' => 'fas fa-balance-scale',
+        'ethics_halfway' => 'fas fa-balance-scale',
         'pharmacology_quiz' => 'fas fa-pills',
+        'psychology_enrolled' => 'fas fa-brain',
+        'psychology_completed' => 'fas fa-brain',
+        'psychology_halfway' => 'fas fa-brain',
+        'patient_care_enrolled' => 'fas fa-user-md',
+        'patient_care_completed' => 'fas fa-user-md',
+        'patient_care_halfway' => 'fas fa-user-md',
+        'pharma_enrolled' => 'fas fa-pills',
+        'pharma_completed' => 'fas fa-pills',
+        'pharma_halfway' => 'fas fa-pills',
         'physiology_quiz' => 'fas fa-dna',
         
         // 🎨 CUSTOM TYPES
@@ -194,9 +242,11 @@ class UniversalNotificationService
         $duplicateKey = "user_notif_dup_{$userId}_{$duplicateHash}";
 
         // Check duplicate in O(1) time using cache
-        if (Cache::has($duplicateKey)) {
+        $cacheMiss = new \stdClass();
+        $cachedNotification = Cache::get($duplicateKey, $cacheMiss);
+        if ($cachedNotification !== $cacheMiss) {
             Log::info("⚡ DUPLICATE BLOCKED: {$type} for user {$userId}");
-            return Cache::get($duplicateKey);
+            return $cachedNotification;
         }
 
         // 🐆 NUCLEAR FAST NOTIFICATION CREATION
@@ -206,10 +256,13 @@ class UniversalNotificationService
             'type' => $type,
             'title' => $title,
             'message' => $message,
+            'data' => $data,
             'icon' => self::NOTIFICATION_ICONS[$type] ?? 'fas fa-bell',
             'priority' => $priority,
             'read' => false,
+            'read_at' => null,
             'created_at' => date('c'), // ISO 8601 format
+            'timestamp' => date('c'), // Backward-compatible alias used by older consumers
             'ts' => $now // Microsecond timestamp for sorting
         ];
 
@@ -221,19 +274,7 @@ class UniversalNotificationService
 
         // Prepend new notification
         array_unshift($existingNotifications, $notification);
-
-        // ⚡ HYPER-OPTIMIZED LIMIT ENFORCEMENT
-        if (count($existingNotifications) > 5) {
-            $existingNotifications = array_slice($existingNotifications, 0, 5);
-        }
-
-        // 🔥 SINGLE CACHE WRITE OPERATION
-        $unreadCount = count(array_filter($existingNotifications, fn($n) => !$n['read']));
-
-        Cache::putMany([
-            $cacheKey => $existingNotifications,
-            $unreadKey => $unreadCount
-        ], 86400 * 30);
+        self::persistNotifications($userId, self::normalizeNotifications($existingNotifications));
 
         Log::info("🐆 NOTIFICATION CREATED: {$type} for user {$userId} in " . round((microtime(true) - $now) * 1000, 2) . 'ms');
 
@@ -257,12 +298,16 @@ class UniversalNotificationService
     public static function getNotifications(User $user, int $limit = 100): Collection
     {
         $cacheKey = "user_notifications_{$user->id}";
-
-        // 🔥 SINGLE CACHE HIT - HYPER FAST
         $notifications = Cache::get($cacheKey, []);
+        $normalizedNotifications = self::normalizeNotifications($notifications);
 
-        // ⚡ RETURN FIRST 5 - NO PROCESSING OVERHEAD
-        return collect($notifications)->take(5);
+        if ($normalizedNotifications !== array_values($notifications)) {
+            self::persistNotifications($user->id, $normalizedNotifications);
+        }
+
+        $effectiveLimit = max(1, min($limit, self::MAX_NOTIFICATIONS));
+
+        return collect($normalizedNotifications)->take($effectiveLimit);
     }
 
     /**
@@ -276,6 +321,130 @@ class UniversalNotificationService
         $count = Cache::get("user_unread_count_{$user->id}", 0);
         // NO LIMIT: Show actual unread count
         return $count;
+    }
+
+    /**
+     * Backward-compatible helper used by existing controllers.
+     */
+    public static function createCourseWelcomeNotification(User $user, string $courseName): array
+    {
+        return self::create(
+            $user,
+            'course_welcome',
+            "Welcome to {$courseName}!",
+            "You've been enrolled in {$courseName}. Start your journey now and explore the materials!",
+            ['course_name' => $courseName],
+            self::PRIORITY_HIGH
+        );
+    }
+
+    /**
+     * Backward-compatible stats endpoint.
+     */
+    public static function getStats(User $user): array
+    {
+        return self::getPerformanceStats($user);
+    }
+
+    /**
+     * Remove old read notifications and return removed count.
+     */
+    public static function cleanupExpiredNotifications(User $user, int $days = 7): int
+    {
+        $userId = $user->id;
+        $cacheKey = "user_notifications_{$userId}";
+        $notifications = Cache::get($cacheKey, []);
+        $before = count($notifications);
+        $filtered = self::normalizeNotifications(
+            $notifications,
+            self::MAX_NOTIFICATIONS,
+            now()->subDays($days)
+        );
+
+        self::persistNotifications($userId, $filtered);
+
+        return max(0, $before - count($filtered));
+    }
+
+    /**
+     * Delete all read (viewed) notifications.
+     */
+    public static function aggressiveDeleteViewed(User $user): int
+    {
+        $userId = $user->id;
+        $cacheKey = "user_notifications_{$userId}";
+        $unreadKey = "user_unread_count_{$userId}";
+
+        $notifications = Cache::get($cacheKey, []);
+        $before = count($notifications);
+
+        $filtered = array_values(array_filter($notifications, static fn (array $n) => !($n['read'] ?? false)));
+        self::persistNotifications($userId, array_slice($filtered, 0, self::MAX_NOTIFICATIONS));
+
+        return max(0, $before - count($filtered));
+    }
+
+    /**
+     * Keep the most recent notifications and aggressively prune older/read ones.
+     */
+    public static function ultraAggressiveCleanup(User $user, int $keepUnread = 1): int
+    {
+        $userId = $user->id;
+        $cacheKey = "user_notifications_{$userId}";
+        $unreadKey = "user_unread_count_{$userId}";
+
+        $notifications = Cache::get($cacheKey, []);
+        $before = count($notifications);
+
+        $kept = [];
+        $unreadKept = 0;
+
+        foreach ($notifications as $notification) {
+            $isRead = (bool) ($notification['read'] ?? false);
+            if (!$isRead && $unreadKept < max(1, $keepUnread)) {
+                $kept[] = $notification;
+                $unreadKept++;
+            }
+
+            if (count($kept) >= 5) {
+                break;
+            }
+        }
+
+        Cache::putMany([
+            $cacheKey => $kept,
+            $unreadKey => count(array_filter($kept, static fn (array $n) => !($n['read'] ?? false))),
+        ], 86400 * 30);
+
+        return max(0, $before - count($kept));
+    }
+
+    /**
+     * Compatibility hook used by middleware.
+     */
+    public static function performAggressiveCleanup(User $user): int
+    {
+        $removed = self::cleanupExpiredNotifications($user, 3);
+        $removed += self::enforceLimit($user, 5);
+
+        return $removed;
+    }
+
+    /**
+     * Ensure notifications do not exceed configured cap.
+     */
+    public static function enforceLimit(User $user, int $limit = 5): int
+    {
+        $userId = $user->id;
+        $cacheKey = "user_notifications_{$userId}";
+        $unreadKey = "user_unread_count_{$userId}";
+
+        $notifications = Cache::get($cacheKey, []);
+        $before = count($notifications);
+        $trimmed = self::normalizeNotifications($notifications, max(1, $limit));
+        self::persistNotifications($userId, $trimmed);
+
+        return max(0, $before - count($trimmed));
     }
 
     /**
@@ -297,21 +466,16 @@ class UniversalNotificationService
 
         foreach ($notifications as &$notification) {
             if ($notification['id'] === $notificationId) {
-                $notification['read'] = true;
+                if (!($notification['read'] ?? false)) {
+                    $notification['read'] = true;
+                    $notification['read_at'] = now()->toISOString();
+                }
                 $found = true;
-            }
-            if (!$notification['read']) {
-                $unreadCount++;
             }
         }
 
         if ($found) {
-            // 🔥 BATCH CACHE UPDATE
-            Cache::putMany([
-                $cacheKey => $notifications,
-                $unreadKey => $unreadCount
-            ], 86400 * 30);
-
+            self::persistNotifications($userId, self::normalizeNotifications($notifications));
             return true;
         }
 
@@ -333,14 +497,13 @@ class UniversalNotificationService
 
         // 🔥 MARK ALL AS READ IN SINGLE OPERATION
         foreach ($notifications as &$notification) {
-            $notification['read'] = true;
+            if (!($notification['read'] ?? false)) {
+                $notification['read'] = true;
+                $notification['read_at'] = now()->toISOString();
+            }
         }
 
-        // 🔥 ATOMIC BATCH UPDATE
-        Cache::putMany([
-            $cacheKey => $notifications,
-            $unreadKey => 0
-        ], 86400 * 30);
+        self::persistNotifications($userId, self::normalizeNotifications($notifications));
 
         return true;
     }
@@ -370,13 +533,62 @@ class UniversalNotificationService
             }
         }
 
-        // 🔥 BATCH CACHE UPDATE
-        Cache::putMany([
-            $cacheKey => $filteredNotifications,
-            $unreadKey => $unreadCount
-        ], 86400 * 30);
+        self::persistNotifications($userId, $filteredNotifications);
 
         return count($filteredNotifications) !== count($notifications);
+    }
+
+    private static function normalizeNotifications(
+        array $notifications,
+        int $limit = self::MAX_NOTIFICATIONS,
+        ?\Illuminate\Support\Carbon $readCutoff = null
+    ): array {
+        $limit = max(1, $limit);
+        $readCutoff ??= now()->subHours(self::READ_RETENTION_HOURS);
+
+        $normalized = [];
+
+        foreach ($notifications as $notification) {
+            $isRead = (bool) ($notification['read'] ?? false);
+
+            if ($isRead) {
+                $readAt = $notification['read_at']
+                    ?? $notification['created_at']
+                    ?? $notification['timestamp']
+                    ?? null;
+
+                if (!$readAt) {
+                    continue;
+                }
+
+                try {
+                    if (\Carbon\Carbon::parse($readAt)->lte($readCutoff)) {
+                        continue;
+                    }
+                } catch (\Throwable $e) {
+                    continue;
+                }
+            }
+
+            $normalized[] = $notification;
+
+            if (count($normalized) >= $limit) {
+                break;
+            }
+        }
+
+        return array_values($normalized);
+    }
+
+    private static function persistNotifications(int $userId, array $notifications): void
+    {
+        $cacheKey = "user_notifications_{$userId}";
+        $unreadKey = "user_unread_count_{$userId}";
+
+        Cache::putMany([
+            $cacheKey => array_values($notifications),
+            $unreadKey => count(array_filter($notifications, static fn (array $n) => !($n['read'] ?? false))),
+        ], 86400 * 30);
     }
 
     /**
@@ -529,15 +741,21 @@ class UniversalNotificationService
         $cacheKey = "user_notifications_{$userId}";
         $unreadKey = "user_unread_count_{$userId}";
 
-        $notifications = Cache::get($cacheKey, []);
-        $unreadCount = Cache::get($unreadKey, 0);
+        $notificationsMiss = new \stdClass();
+        $unreadMiss = new \stdClass();
+        $cachedNotifications = Cache::get($cacheKey, $notificationsMiss);
+        $cachedUnreadCount = Cache::get($unreadKey, $unreadMiss);
+        $cacheHealthy = $cachedNotifications !== $notificationsMiss;
+        $unreadCacheHealthy = $cachedUnreadCount !== $unreadMiss;
+        $notifications = $cacheHealthy ? $cachedNotifications : [];
+        $unreadCount = $unreadCacheHealthy ? $cachedUnreadCount : 0;
 
         $health = [
             'user_id' => $userId,
             'total_notifications' => count($notifications),
             'unread_count' => $unreadCount,
-            'cache_healthy' => Cache::has($cacheKey),
-            'unread_cache_healthy' => Cache::has($unreadKey),
+            'cache_healthy' => $cacheHealthy,
+            'unread_cache_healthy' => $unreadCacheHealthy,
             'memory_usage_kb' => round(strlen(serialize($notifications)) / 1024, 2),
             'average_notification_age_hours' => count($notifications) > 0 ?
                 round(collect($notifications)->avg(function($n) {
@@ -555,7 +773,7 @@ class UniversalNotificationService
         if ($unreadCount > 5) {
             $health['system_status'] = 'WARNING: HIGH UNREAD COUNT';
         }
-        if (!Cache::has($cacheKey)) {
+        if (!$cacheHealthy) {
             $health['system_status'] = 'ERROR: CACHE MISSING';
         }
 

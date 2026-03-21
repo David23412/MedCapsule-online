@@ -27,17 +27,46 @@ class UltraConsolidatedCacheService
     private const CACHE_PREFIX = 'ultra_cache:';
     private const COMPRESSION_THRESHOLD = 1024; // 1KB
     private const MAX_CACHE_SIZE = 100 * 1024 * 1024; // 100MB
-    private const CONNECTION_POOL_SIZE = 10;
+    private const COMPRESSED_PAYLOAD_MARKER = '__ultra_compressed__';
     
     private $redis;
+    private bool $redisAvailable = false;
     private array $cacheHierarchy;
-    private array $connectionPool = [];
+
+    private function useScanInvalidation(): bool
+    {
+        return true;
+    }
+
+    private function scanInvalidationMaxKeys(): int
+    {
+        return max(1, (int) config('features.scan_invalidation_max_keys', 500));
+    }
+
+    private function scanInvalidationBatchSize(): int
+    {
+        return max(1, (int) config('features.scan_invalidation_batch_size', 100));
+    }
     
     public function __construct()
     {
-        $this->redis = Redis::connection();
         $this->initializeCacheHierarchy();
-        $this->initializeConnectionPool();
+        $this->initializeRedisConnection();
+    }
+
+    private function initializeRedisConnection(): void
+    {
+        try {
+            $this->redis = Redis::connection();
+            $this->redisAvailable = true;
+        } catch (\Throwable $e) {
+            $this->redis = null;
+            $this->redisAvailable = false;
+
+            Log::warning('UltraConsolidatedCache: Redis unavailable, falling back to framework cache only', [
+                'error' => $e->getMessage(),
+            ]);
+        }
     }
 
     /**
@@ -80,60 +109,105 @@ class UltraConsolidatedCacheService
     }
 
     /**
-     * Initialize database connection pool
-     */
-    private function initializeConnectionPool(): void
-    {
-        for ($i = 0; $i < self::CONNECTION_POOL_SIZE; $i++) {
-            $connection = DB::connection();
-            $connection->getPdo()->setAttribute(\PDO::ATTR_TIMEOUT, 30);
-            $this->connectionPool[] = $connection;
-        }
-    }
-
-    /**
-     * Get optimized database connection
-     */
-    private function getConnection()
-    {
-        return array_pop($this->connectionPool) ?: DB::connection();
-    }
-
-    /**
-     * Return connection to pool
-     */
-    private function returnConnection($connection): void
-    {
-        if (count($this->connectionPool) < self::CONNECTION_POOL_SIZE) {
-            $this->connectionPool[] = $connection;
-        }
-    }
-
-    /**
      * ULTRA-FAST CACHE WITH COMPRESSION
      */
     public function remember(string $key, callable $callback, int $ttl = 3600): mixed
     {
         $cacheKey = self::CACHE_PREFIX . md5($key);
-        
-        return Cache::remember($cacheKey, $ttl, function () use ($callback, $key) {
-            $start = microtime(true);
-            $result = $callback();
-            $duration = (microtime(true) - $start) * 1000;
-            
-            // Compress large results
-            if (is_string($result) && strlen($result) > self::COMPRESSION_THRESHOLD) {
-                $result = gzcompress($result, 6);
-            }
-            
-            Log::info('UltraConsolidatedCache: Cached result', [
+        $cacheMiss = new \stdClass();
+
+        try {
+            $cachedValue = Cache::get($cacheKey, $cacheMiss);
+        } catch (\Throwable $e) {
+            Log::warning('UltraConsolidatedCache: cache get failed', [
+                'key' => $key,
+                'error' => $e->getMessage(),
+            ]);
+
+            return $callback();
+        }
+
+        if ($cachedValue !== $cacheMiss) {
+            return $this->decodeCachedValue($cachedValue);
+        }
+
+        $start = microtime(true);
+        $result = $callback();
+        $duration = (microtime(true) - $start) * 1000;
+        $encodedResult = $this->encodeCachedValue($result);
+
+        try {
+            Cache::put($cacheKey, $encodedResult, $ttl);
+        } catch (\Throwable $e) {
+            Log::warning('UltraConsolidatedCache: cache put failed', [
+                'key' => $key,
+                'error' => $e->getMessage(),
+            ]);
+        }
+
+        if (config('app.debug')) {
+            Log::debug('UltraConsolidatedCache: Cached result', [
                 'key' => $key,
                 'duration_ms' => round($duration, 2),
-                'compressed' => is_string($result) && strlen($result) > self::COMPRESSION_THRESHOLD
+                'compressed' => $this->isCompressedPayload($encodedResult)
             ]);
-            
-            return $result;
-        });
+        }
+
+        return $result;
+    }
+
+    private function encodeCachedValue(mixed $value): mixed
+    {
+        if (!is_string($value) || strlen($value) <= self::COMPRESSION_THRESHOLD) {
+            return $value;
+        }
+
+        $compressed = gzcompress($value, 6);
+        if ($compressed === false) {
+            return $value;
+        }
+
+        return [
+            self::COMPRESSED_PAYLOAD_MARKER => true,
+            'data' => base64_encode($compressed),
+        ];
+    }
+
+    private function decodeCachedValue(mixed $value): mixed
+    {
+        if (is_array($value) && ($value[self::COMPRESSED_PAYLOAD_MARKER] ?? false) === true) {
+            $compressed = base64_decode((string) ($value['data'] ?? ''), true);
+            if ($compressed === false) {
+                return $value;
+            }
+
+            $decompressed = @gzuncompress($compressed);
+
+            return $decompressed === false ? $value : $decompressed;
+        }
+
+        if ($this->looksLikeLegacyCompressedString($value)) {
+            $decompressed = @gzuncompress($value);
+            if ($decompressed !== false) {
+                return $decompressed;
+            }
+        }
+
+        return $value;
+    }
+
+    private function isCompressedPayload(mixed $value): bool
+    {
+        return is_array($value) && ($value[self::COMPRESSED_PAYLOAD_MARKER] ?? false) === true;
+    }
+
+    private function looksLikeLegacyCompressedString(mixed $value): bool
+    {
+        if (!is_string($value) || strlen($value) < 3) {
+            return false;
+        }
+
+        return strncmp($value, "\x78", 1) === 0;
     }
 
     /**
@@ -144,28 +218,78 @@ class UltraConsolidatedCacheService
         $cacheKey = "optimized_quiz_{$userId}_{$topicId}_" . md5(serialize($sources));
         
         return $this->remember($cacheKey, function () use ($userId, $topicId, $sources) {
-            $connection = $this->getConnection();
-            
-            try {
-                // OPTIMIZED: Single query with covering index
-                $questions = Question::select([
-                    'id', 'topic_id', 'question', 'correct_answer', 'explanation',
-                    'image_url', 'question_type', 'option_a', 'option_b', 'option_c', 'option_d',
-                    'alternative_answers', 'similarity_threshold', 'source'
-                ])
+            $questionQuery = Question::query()
                 ->where('topic_id', $topicId)
                 ->when(!in_array('all', $sources), function ($query) use ($sources) {
                     $query->whereIn('source', $sources);
-                })
-                ->orderByRaw('RAND()')
-                ->limit(10)
-                ->get();
-                
-                return $questions->toArray();
-            } finally {
-                $this->returnConnection($connection);
+                });
+
+            $selectedIds = $this->sampleQuestionIds($questionQuery, 10);
+
+            if ($selectedIds === []) {
+                return [];
             }
+
+            $idOrderMap = array_flip($selectedIds);
+
+            $questions = Question::select([
+                'id', 'topic_id', 'question', 'correct_answer', 'explanation',
+                'image_url', 'question_type', 'option_a', 'option_b', 'option_c', 'option_d',
+                'alternative_answers', 'similarity_threshold', 'source'
+            ])
+                ->whereIn('id', $selectedIds)
+                ->get()
+                ->sortBy(function ($question) use ($idOrderMap) {
+                    return $idOrderMap[$question->id] ?? PHP_INT_MAX;
+                })
+                ->values();
+            
+            return $questions->toArray();
         }, 1800); // 30 minutes
+    }
+
+    private function sampleQuestionIds($query, int $limit): array
+    {
+        $stats = (clone $query)
+            ->selectRaw('MIN(id) as min_id, MAX(id) as max_id, COUNT(*) as total')
+            ->first();
+
+        $total = (int) ($stats->total ?? 0);
+        if ($total === 0) {
+            return [];
+        }
+
+        if ($total <= $limit) {
+            return (clone $query)
+                ->orderBy('id')
+                ->pluck('id')
+                ->all();
+        }
+
+        $minId = (int) $stats->min_id;
+        $maxId = (int) $stats->max_id;
+        $startId = random_int($minId, $maxId);
+
+        $selectedIds = (clone $query)
+            ->where('id', '>=', $startId)
+            ->orderBy('id')
+            ->limit($limit)
+            ->pluck('id')
+            ->all();
+
+        if (count($selectedIds) < $limit) {
+            $selectedIds = array_merge(
+                $selectedIds,
+                (clone $query)
+                    ->where('id', '<', $startId)
+                    ->orderBy('id')
+                    ->limit($limit - count($selectedIds))
+                    ->pluck('id')
+                    ->all()
+            );
+        }
+
+        return array_values(array_unique($selectedIds));
     }
 
     /**
@@ -177,33 +301,112 @@ class UltraConsolidatedCacheService
     }
 
     /**
+     * Legacy-safe cache helpers used by older controllers/services.
+     */
+    public static function safeRemember(
+        string $key,
+        int $ttl,
+        callable $callback,
+        mixed $fallback = null,
+        array $context = []
+    ): mixed {
+        try {
+            return Cache::remember($key, $ttl, $callback);
+        } catch (\Throwable $e) {
+            Log::warning('UltraConsolidatedCache: safeRemember fallback', [
+                'key' => $key,
+                'error' => $e->getMessage(),
+                'context' => $context,
+            ]);
+
+            return is_callable($fallback) ? $fallback() : $fallback;
+        }
+    }
+
+    public static function safeGet(string $key, mixed $default = null): mixed
+    {
+        try {
+            return Cache::get($key, $default);
+        } catch (\Throwable $e) {
+            Log::warning('UltraConsolidatedCache: safeGet fallback', [
+                'key' => $key,
+                'error' => $e->getMessage(),
+            ]);
+
+            return $default;
+        }
+    }
+
+    public static function safePut(string $key, mixed $value, int $ttl = 3600): bool
+    {
+        if (is_resource($value)) {
+            return false;
+        }
+
+        try {
+            Cache::put($key, $value, $ttl);
+            return true;
+        } catch (\Throwable $e) {
+            Log::warning('UltraConsolidatedCache: safePut fallback', [
+                'key' => $key,
+                'error' => $e->getMessage(),
+            ]);
+
+            return false;
+        }
+    }
+
+    public static function get(string $key, mixed $default = null): mixed
+    {
+        return self::safeGet($key, $default);
+    }
+
+    /**
      * OPTIMIZED USER PROGRESS WITH ATOMIC UPDATES
      */
     public function getUserTopicProgress(int $userId, int $topicId, string $studyMode = 'quiz'): array
     {
         $cacheKey = "user_{$userId}_topic_{$topicId}_progress_{$studyMode}";
-        
-        // Try Redis hash first (fastest)
-        $progress = $this->redis->hgetall($cacheKey);
-        if (!empty($progress)) {
-            return [
-                'completed' => (int)($progress['completed'] ?? 0),
-                'score' => (int)($progress['score'] ?? 0),
-                'last_updated' => (int)($progress['last_updated'] ?? 0),
-                'mistakes' => json_decode($progress['mistakes'] ?? '[]', true)
-            ];
+
+        if ($this->redisAvailable && $this->redis !== null) {
+            try {
+                $progress = $this->redis->hgetall($cacheKey);
+                if (!empty($progress)) {
+                    return [
+                        'completed' => (int)($progress['completed'] ?? 0),
+                        'score' => (int)($progress['score'] ?? 0),
+                        'last_updated' => (int)($progress['last_updated'] ?? 0),
+                        'mistakes' => json_decode($progress['mistakes'] ?? '[]', true)
+                    ];
+                }
+            } catch (\Throwable $e) {
+                Log::warning('UltraConsolidatedCache: Redis progress read failed', [
+                    'key' => $cacheKey,
+                    'error' => $e->getMessage(),
+                ]);
+            }
         }
         
         // Fallback to calculated progress
         return $this->remember($cacheKey, function () use ($userId, $topicId, $studyMode) {
-            $connection = $this->getConnection();
-            
-            try {
-                return QuizAttempt::getTopicProgress($userId, $topicId, $studyMode);
-            } finally {
-                $this->returnConnection($connection);
-            }
+            return QuizAttempt::getTopicProgress($userId, $topicId, $studyMode);
         }, 1800); // 30 minutes
+    }
+
+    /**
+     * Backward-compatible stats shape expected by legacy code.
+     */
+    public function getCacheStats(): array
+    {
+        $stats = $this->getCacheStatistics();
+
+        return [
+            'hit_rate' => (float) ($stats['hit_rate'] ?? 0),
+            'memory_usage' => (string) ($stats['memory_used'] ?? '0B'),
+            'active_keys' => $this->getActiveKeyCount(),
+            'connected_clients' => (int) ($stats['connected_clients'] ?? 0),
+            'total_commands_processed' => (int) ($stats['total_commands_processed'] ?? 0),
+        ];
     }
 
     /**
@@ -212,19 +415,167 @@ class UltraConsolidatedCacheService
     public function updateUserProgress(int $userId, int $topicId, array $progress): void
     {
         $cacheKey = "user_{$userId}_topic_{$topicId}_progress_quiz";
-        
-        // Store in Redis hash for atomic updates
-        $this->redis->hmset($cacheKey, [
-            'completed' => $progress['completed'] ?? 0,
-            'score' => $progress['score'] ?? 0,
-            'last_updated' => time(),
-            'mistakes' => json_encode($progress['mistakes'] ?? [])
+
+        if (!$this->redisAvailable || $this->redis === null) {
+            Cache::put($cacheKey, [
+                'completed' => $progress['completed'] ?? 0,
+                'score' => $progress['score'] ?? 0,
+                'last_updated' => time(),
+                'mistakes' => $progress['mistakes'] ?? [],
+            ], 3600);
+
+            return;
+        }
+
+        try {
+            $this->redis->hmset($cacheKey, [
+                'completed' => $progress['completed'] ?? 0,
+                'score' => $progress['score'] ?? 0,
+                'last_updated' => time(),
+                'mistakes' => json_encode($progress['mistakes'] ?? [])
+            ]);
+            $this->redis->expire($cacheKey, 3600);
+            $this->redis->hincrby("user_summary:{$userId}", 'topics_completed', 1);
+            $this->redis->expire("user_summary:{$userId}", 86400);
+        } catch (\Throwable $e) {
+            Log::warning('UltraConsolidatedCache: Redis progress write failed', [
+                'key' => $cacheKey,
+                'error' => $e->getMessage(),
+            ]);
+        }
+    }
+
+    public function clearQuizCaches(?int $topicId = null, ?int $userId = null): void
+    {
+        $exactKeys = [];
+        $patterns = [];
+
+        if ($topicId !== null && $userId !== null) {
+            $exactKeys[] = "quiz_options_{$topicId}_{$userId}";
+            $exactKeys[] = "quiz_gen_{$topicId}_{$userId}";
+            $exactKeys[] = "user_{$userId}_topic_{$topicId}_progress_quiz";
+            $patterns[] = "optimized_quiz_{$userId}_{$topicId}_*";
+            $patterns[] = "quiz_options_{$topicId}_{$userId}_*";
+            $patterns[] = "quiz_gen_{$topicId}_{$userId}_*";
+        } elseif ($topicId !== null) {
+            $patterns[] = "quiz_options_{$topicId}_*";
+            $patterns[] = "quiz_gen_{$topicId}_*";
+            $patterns[] = "random_quiz_stats_*";
+        }
+
+        $this->forgetCacheEntries($exactKeys, $patterns);
+
+        if ($topicId !== null) {
+            $this->smartInvalidate('quiz', $topicId, $userId !== null ? ['user_progress_id' => $userId] : []);
+        }
+    }
+
+    public function invalidateUserCaches(int $userId, ?int $topicId = null): void
+    {
+        $exactKeys = [
+            "mistake_courses_{$userId}",
+            "mistakes_user_{$userId}",
+            "mistakes_count_{$userId}",
+            "performance_tracking_coach_{$userId}",
+            "user_summary:{$userId}",
+        ];
+        $patterns = [
+            "user_{$userId}_*",
+            "student_progress_*",
+            "student_realtime_*",
+            "analytics_*",
+            "student_dashboard_*",
+            "comparison_analytics_*",
+            "progress_summary_*",
+        ];
+
+        if ($topicId !== null) {
+            $exactKeys[] = "user_{$userId}_topic_{$topicId}_progress_quiz";
+            $exactKeys[] = "user_{$userId}_topic_{$topicId}_progress_quick";
+            $patterns[] = "optimized_quiz_{$userId}_{$topicId}_*";
+        }
+
+        $this->forgetCacheEntries($exactKeys, $patterns);
+    }
+
+    public function clearTopicProgressCaches(int $topicId, int $userId, string $studyMode = 'quiz'): void
+    {
+        $exactKeys = [
+            "user_{$userId}_topic_{$topicId}_progress_{$studyMode}",
+            "mistake_{$userId}_{$topicId}_progress",
+        ];
+        $patterns = [
+            "topic_access_*",
+            "student_progress_*",
+            "student_realtime_*",
+        ];
+
+        $this->forgetCacheEntries($exactKeys, $patterns);
+    }
+
+    public function clearTopicCaches(int $topicId, ?int $userId = null): void
+    {
+        $exactKeys = [
+            "topic_{$topicId}_questions",
+        ];
+        $patterns = [
+            "topic_access_*",
+            "quiz_options_{$topicId}_*",
+            "quiz_gen_{$topicId}_*",
+            "random_quiz_stats_*",
+        ];
+
+        if ($userId !== null) {
+            $exactKeys[] = "user_{$userId}_topic_{$topicId}_progress_quiz";
+            $exactKeys[] = "user_{$userId}_topic_{$topicId}_progress_quick";
+        }
+
+        $this->forgetCacheEntries($exactKeys, $patterns);
+        $this->smartInvalidate('topic', $topicId, $userId !== null ? ['user_progress_id' => $userId] : []);
+    }
+
+    public function clearTopicCachesByCourse(int $courseId): void
+    {
+        $topicIds = Topic::where('course_id', $courseId)->pluck('id');
+
+        foreach ($topicIds as $topicId) {
+            $this->clearTopicCaches((int) $topicId);
+        }
+    }
+
+    public function clearCourseCaches(int $courseId, ?int $userId = null): void
+    {
+        $exactKeys = [
+            "course_{$courseId}_topics",
+            "course_{$courseId}_enrollments",
+        ];
+        $patterns = [
+            "course_preview_*",
+            "admin_courses_index_*",
+            "topic_access_*",
+        ];
+
+        if ($userId !== null) {
+            $patterns[] = "student_progress_*";
+        }
+
+        $this->forgetCacheEntries($exactKeys, $patterns);
+        $this->smartInvalidate('course', $courseId, $userId !== null ? ['user_progress_id' => $userId] : []);
+    }
+
+    public function clearUserMasteryStats(int $userId): void
+    {
+        $this->forgetCacheEntries([
+            "mistake_courses_{$userId}",
+            "mistakes_user_{$userId}",
+            "mistakes_count_{$userId}",
+            "performance_tracking_coach_{$userId}",
+            "user_summary:{$userId}",
+        ], [
+            "student_progress_*",
+            "comparison_analytics_*",
+            "progress_summary_*",
         ]);
-        $this->redis->expire($cacheKey, 3600); // 1 hour
-        
-        // Also update user progress summary
-        $this->redis->hincrby("user_summary:{$userId}", 'topics_completed', 1);
-        $this->redis->expire("user_summary:{$userId}", 86400); // 24 hours
     }
 
     /**
@@ -235,32 +586,26 @@ class UltraConsolidatedCacheService
         $cacheKey = "optimized_mistakes_{$userId}_" . ($courseId ?? 'all');
         
         return $this->remember($cacheKey, function () use ($userId, $courseId) {
-            $connection = $this->getConnection();
-            
-            try {
-                // OPTIMIZED: Single query with covering index and selective loading
-                $mistakesQuery = Mistake::select([
-                    'mistakes.id', 'mistakes.user_id', 'mistakes.question_id',
-                    'mistakes.submitted_answer', 'mistakes.attempt_count',
-                    'mistakes.last_attempt_date', 'mistakes.created_at'
-                ])
-                ->with([
-                    'question:id,question,topic_id,correct_answer,image_url,explanation,question_type,option_a,option_b,option_c,option_d',
-                    'question.topic:id,name,course_id',
-                    'question.topic.course:id,name'
-                ])
-                ->where('mistakes.user_id', $userId);
+            // OPTIMIZED: Single query with covering index and selective loading
+            $mistakesQuery = Mistake::select([
+                'mistakes.id', 'mistakes.user_id', 'mistakes.question_id',
+                'mistakes.submitted_answer', 'mistakes.attempt_count',
+                'mistakes.last_attempt_date', 'mistakes.created_at'
+            ])
+            ->with([
+                'question:id,question,topic_id,correct_answer,image_url,explanation,question_type,option_a,option_b,option_c,option_d',
+                'question.topic:id,name,course_id',
+                'question.topic.course:id,name'
+            ])
+            ->where('mistakes.user_id', $userId);
 
-                if ($courseId) {
-                    $mistakesQuery->whereHas('question.topic.course', function ($query) use ($courseId) {
-                        $query->where('id', $courseId);
-                    });
-                }
-
-                return $mistakesQuery->orderBy('mistakes.last_attempt_date', 'desc')->get()->toArray();
-            } finally {
-                $this->returnConnection($connection);
+            if ($courseId) {
+                $mistakesQuery->whereHas('question.topic.course', function ($query) use ($courseId) {
+                    $query->where('id', $courseId);
+                });
             }
+
+            return $mistakesQuery->orderBy('mistakes.last_attempt_date', 'desc')->get()->toArray();
         }, 900); // 15 minutes
     }
 
@@ -269,20 +614,26 @@ class UltraConsolidatedCacheService
      */
     public function smartInvalidate(string $type, int $id, array $context = []): void
     {
+        $startedAt = microtime(true);
         try {
             // Calculate affected cache keys
             $affectedKeys = $this->calculateAffectedKeys($type, $id, $context);
             
             // Invalidate in batches to prevent Redis overload
-            $this->batchInvalidate($affectedKeys);
+            $invalidatedCount = $this->batchInvalidate($affectedKeys);
             
             // Warm critical caches immediately
             $this->warmCriticalCaches($type, $id);
+
+            $durationMs = (microtime(true) - $startedAt) * 1000;
             
             Log::info('Smart cache invalidation completed', [
                 'type' => $type,
                 'id' => $id,
-                'keys_invalidated' => count($affectedKeys)
+                'pattern_count' => count($affectedKeys),
+                'keys_invalidated' => $invalidatedCount,
+                'strategy' => 'scan',
+                'duration_ms' => round($durationMs, 2)
             ]);
             
         } catch (\Exception $e) {
@@ -328,44 +679,169 @@ class UltraConsolidatedCacheService
     /**
      * Batch invalidate keys to prevent Redis overload
      */
-    private function batchInvalidate(array $keys): void
+    private function batchInvalidate(array $keys): int
     {
-        $batchSize = 100;
+        if (!$this->redisAvailable || $this->redis === null) {
+            return 0;
+        }
+
+        $batchSize = $this->scanInvalidationBatchSize();
+        $deletedCount = 0;
         
         foreach (array_chunk($keys, $batchSize) as $batch) {
-            $pipeline = $this->redis->pipeline();
-            
+            // Resolve matching keys BEFORE starting pipeline.
+            // PhpRedis cannot run SCAN while a pipeline is active.
+            $resolvedKeys = [];
             foreach ($batch as $pattern) {
-                // Get all keys matching pattern
-                $matchingKeys = $this->redis->keys(self::CACHE_PREFIX . $pattern);
-                if (!empty($matchingKeys)) {
-                    // Properly convert Redis result to array
-                    if (is_array($matchingKeys)) {
-                        $keysArray = $matchingKeys;
-                    } elseif (is_object($matchingKeys)) {
-                        // Handle different Redis client responses
-                        if (method_exists($matchingKeys, 'toArray')) {
-                            $keysArray = $matchingKeys->toArray();
-                        } elseif ($matchingKeys instanceof \Traversable) {
-                            $keysArray = iterator_to_array($matchingKeys);
-                        } else {
-                            $keysArray = (array) $matchingKeys;
-                        }
-                    } else {
-                        $keysArray = [$matchingKeys];
-                    }
-                    
-                    if (!empty($keysArray)) {
-                        // Use individual del calls instead of spread operator to avoid unpacking issues
-                        foreach ($keysArray as $key) {
-                            $pipeline->del($key);
-                        }
-                    }
+                $keysArray = $this->resolveMatchingKeys(self::CACHE_PREFIX . $pattern);
+                if (!empty($keysArray)) {
+                    $resolvedKeys = array_merge($resolvedKeys, $keysArray);
                 }
+            }
+
+            $resolvedKeys = $this->normalizeResolvedKeys($resolvedKeys);
+
+            if (empty($resolvedKeys)) {
+                continue;
+            }
+
+            // De-duplicate to avoid repeated DELs for overlapping patterns.
+            $resolvedKeys = array_values(array_unique($resolvedKeys));
+
+            $pipeline = $this->redis->pipeline();
+            foreach ($resolvedKeys as $key) {
+                $pipeline->del($key);
             }
             
             $pipeline->exec();
+            $deletedCount += count($resolvedKeys);
         }
+
+        return $deletedCount;
+    }
+
+    private function resolveMatchingKeys(string $fullPattern): array
+    {
+        return $this->scanMatchingKeys($fullPattern);
+    }
+
+    private function resolveAnyMatchingKeys(string $pattern): array
+    {
+        return $this->scanMatchingKeys($pattern);
+    }
+
+    private function forgetCacheEntries(array $exactKeys = [], array $patterns = []): void
+    {
+        $redisKeys = [];
+
+        foreach (array_unique(array_filter($exactKeys)) as $key) {
+            Cache::forget($key);
+            $redisKeys[] = $key;
+            $redisKeys[] = self::CACHE_PREFIX . md5($key);
+        }
+
+        if (!$this->redisAvailable || $this->redis === null) {
+            return;
+        }
+
+        foreach (array_unique(array_filter($patterns)) as $pattern) {
+            $rawPattern = str_contains($pattern, '*') ? $pattern : "{$pattern}*";
+            $redisKeys = array_merge($redisKeys, $this->resolveAnyMatchingKeys($rawPattern));
+            $redisKeys = array_merge($redisKeys, $this->resolveAnyMatchingKeys('*' . ltrim($rawPattern, '*')));
+            $redisKeys = array_merge($redisKeys, $this->resolveAnyMatchingKeys(self::CACHE_PREFIX . $rawPattern));
+        }
+
+        $redisKeys = array_values(array_unique(array_filter($redisKeys)));
+
+        if (empty($redisKeys)) {
+            return;
+        }
+
+        foreach (array_chunk($redisKeys, $this->scanInvalidationBatchSize()) as $batch) {
+            $pipeline = $this->redis->pipeline();
+            foreach ($batch as $redisKey) {
+                $pipeline->del($redisKey);
+            }
+            $pipeline->exec();
+        }
+    }
+
+    private function getActiveKeyCount(): int
+    {
+        if (!$this->redisAvailable || $this->redis === null) {
+            return 0;
+        }
+
+        try {
+            $count = $this->redis->dbsize();
+            return is_numeric($count) ? (int) $count : 0;
+        } catch (\Throwable $e) {
+            Log::warning('UltraConsolidatedCache: failed to get active key count', [
+                'error' => $e->getMessage(),
+            ]);
+
+            return 0;
+        }
+    }
+
+    private function scanMatchingKeys(string $fullPattern): array
+    {
+        if (!$this->redisAvailable || $this->redis === null) {
+            return [];
+        }
+
+        $matched = [];
+        $cursor = 0;
+        $maxKeys = $this->scanInvalidationMaxKeys();
+        $count = $this->scanInvalidationBatchSize();
+
+        do {
+            $result = $this->redis->scan($cursor, [
+                'match' => $fullPattern,
+                'count' => $count,
+            ]);
+
+            if ($result === false) {
+                break;
+            }
+
+            if (is_array($result) && array_key_exists(0, $result) && array_key_exists(1, $result)) {
+                $cursor = (int) $result[0];
+                $keys = $result[1];
+            } else {
+                $cursor = 0;
+                $keys = $result;
+            }
+
+            $keys = $this->normalizeResolvedKeys(is_array($keys) ? $keys : [$keys]);
+
+            foreach ($keys as $key) {
+                $matched[] = $key;
+                if (count($matched) >= $maxKeys) {
+                    return $matched;
+                }
+            }
+        } while ((int) $cursor !== 0);
+
+        return $matched;
+    }
+
+    private function normalizeResolvedKeys(array $keys): array
+    {
+        $normalized = [];
+
+        array_walk_recursive($keys, function ($value) use (&$normalized) {
+            if (!is_scalar($value)) {
+                return;
+            }
+
+            $key = trim((string) $value);
+            if ($key !== '') {
+                $normalized[] = $key;
+            }
+        });
+
+        return array_values(array_unique($normalized));
     }
 
     /**
@@ -439,10 +915,12 @@ class UltraConsolidatedCacheService
     private function fallbackInvalidation(string $type, int $id): void
     {
         $pattern = self::CACHE_PREFIX . "{$type}_{$id}_*";
-        $keys = $this->redis->keys($pattern);
+        $keys = $this->resolveMatchingKeys($pattern);
         
         if (!empty($keys)) {
-            $this->redis->del($keys);
+            foreach ($keys as $key) {
+                $this->redis->del($key);
+            }
         }
     }
 
@@ -463,7 +941,7 @@ class UltraConsolidatedCacheService
             'connected_clients' => $info['connected_clients'],
             'total_commands_processed' => $info['total_commands_processed'],
             'instantaneous_ops_per_sec' => $info['instantaneous_ops_per_sec'],
-            'connection_pool_size' => count($this->connectionPool),
+            'connection_pool_size' => 0,
             'cache_hierarchy' => array_keys($this->cacheHierarchy)
         ];
     }
@@ -480,7 +958,7 @@ class UltraConsolidatedCacheService
         ];
         
         // Clean expired keys
-        $keys = $this->redis->keys(self::CACHE_PREFIX . '*');
+        $keys = $this->resolveMatchingKeys(self::CACHE_PREFIX . '*');
         foreach ($keys as $key) {
             if (!$this->redis->exists($key)) {
                 $this->redis->del($key);
@@ -494,18 +972,6 @@ class UltraConsolidatedCacheService
             $stats['memory_freed'] = $this->redis->info('memory')['used_memory'];
         }
         
-        // Clean connection pool
-        foreach ($this->connectionPool as $connection) {
-            try {
-                $connection->disconnect();
-            } catch (\Exception $e) {
-                Log::warning('Failed to disconnect connection during cleanup', ['error' => $e->getMessage()]);
-            }
-        }
-        
-        $this->connectionPool = [];
-        $this->initializeConnectionPool();
-        
         return $stats;
     }
 
@@ -517,8 +983,8 @@ class UltraConsolidatedCacheService
         return [
             'cache_stats' => $this->getCacheStatistics(),
             'connection_pool' => [
-                'pool_size' => self::CONNECTION_POOL_SIZE,
-                'available_connections' => count($this->connectionPool),
+                'pool_size' => 0,
+                'available_connections' => 0,
                 'active_connections' => 0
             ],
             'system_performance' => [

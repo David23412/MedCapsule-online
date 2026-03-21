@@ -66,6 +66,7 @@ class RunComprehensiveTests extends Command
         $totalTests = 0;
         $passedTests = 0;
         $failedTests = 0;
+        $skippedTests = 0;
         $startTime = microtime(true);
 
         foreach ($testCategories as $categoryName => $testFiles) {
@@ -79,6 +80,8 @@ class RunComprehensiveTests extends Command
                 $totalTests++;
                 if ($result['status'] === 'PASSED') {
                     $passedTests++;
+                } elseif ($result['status'] === 'SKIPPED') {
+                    $skippedTests++;
                 } else {
                     $failedTests++;
                 }
@@ -90,7 +93,7 @@ class RunComprehensiveTests extends Command
         $endTime = microtime(true);
         $executionTime = round($endTime - $startTime, 2);
 
-        $this->generateReport($results, $totalTests, $passedTests, $failedTests, $executionTime);
+        $this->generateReport($results, $totalTests, $passedTests, $failedTests, $skippedTests, $executionTime);
     }
 
     private function runCategoryTests($category)
@@ -109,14 +112,30 @@ class RunComprehensiveTests extends Command
         
         $totalTests = count($results);
         $passedTests = count(array_filter($results, fn($r) => $r['status'] === 'PASSED'));
-        $failedTests = $totalTests - $passedTests;
+        $skippedTests = count(array_filter($results, fn($r) => $r['status'] === 'SKIPPED'));
+        $failedTests = $totalTests - $passedTests - $skippedTests;
 
-        $this->generateReport([$category => $results], $totalTests, $passedTests, $failedTests, 0);
+        $this->generateReport([$category => $results], $totalTests, $passedTests, $failedTests, $skippedTests, 0);
     }
 
     private function runTestFiles($testFiles)
     {
         $results = [];
+
+        $phpunitRunner = $this->resolvePhpUnitRunner();
+        if ($phpunitRunner === null) {
+            $this->warn('⚠️  PHPUnit runner not found (vendor/bin/phpunit or global phpunit). Marking tests as SKIPPED.');
+
+            foreach ($testFiles as $testFile) {
+                $results[] = [
+                    'file' => $testFile,
+                    'status' => 'SKIPPED',
+                    'reason' => 'PHPUnit runner not installed in this environment'
+                ];
+            }
+
+            return $results;
+        }
         
         foreach ($testFiles as $testFile) {
             if (!file_exists($testFile)) {
@@ -129,9 +148,11 @@ class RunComprehensiveTests extends Command
             
             try {
                 // Run the test file directly with PHPUnit
-                $command = "vendor/bin/phpunit $testFile";
-                $output = shell_exec($command . " 2>&1");
-                $exitCode = $this->getLastExitCode();
+                $command = $phpunitRunner . ' ' . escapeshellarg($testFile) . ' --colors=never';
+                $outputLines = [];
+                $exitCode = 1;
+                exec($command . ' 2>&1', $outputLines, $exitCode);
+                $output = implode("\n", $outputLines);
                 
                 if ($exitCode === 0 || strpos($output, 'OK') !== false || strpos($output, 'PASS') !== false) {
                     $this->info("✅ PASSED");
@@ -150,9 +171,16 @@ class RunComprehensiveTests extends Command
         return $results;
     }
 
-    private function getLastExitCode()
+    private function resolvePhpUnitRunner(): ?string
     {
-        return $this->laravel->make('process')->getExitCode() ?? 0;
+        $localPhpUnit = base_path('vendor/bin/phpunit');
+        if (is_file($localPhpUnit)) {
+            return escapeshellarg($localPhpUnit);
+        }
+
+        $globalPhpUnit = trim((string) shell_exec('command -v phpunit 2>/dev/null'));
+
+        return $globalPhpUnit !== '' ? escapeshellcmd($globalPhpUnit) : null;
     }
 
     private function getTestFilesForCategory($category)
@@ -181,7 +209,7 @@ class RunComprehensiveTests extends Command
         return $testCategories[$category] ?? [];
     }
 
-    private function generateReport($results, $totalTests, $passedTests, $failedTests, $executionTime)
+    private function generateReport($results, $totalTests, $passedTests, $failedTests, $skippedTests, $executionTime)
     {
         $this->info('📊 COMPREHENSIVE TEST REPORT');
         $this->info('============================');
@@ -193,6 +221,7 @@ class RunComprehensiveTests extends Command
         $this->info("📈 Total Tests: $totalTests");
         $this->info("✅ Passed: $passedTests");
         $this->info("❌ Failed: $failedTests");
+        $this->info("⏭️  Skipped: $skippedTests");
         
         if ($totalTests > 0) {
             $successRate = round(($passedTests / $totalTests) * 100, 1);
@@ -207,7 +236,8 @@ class RunComprehensiveTests extends Command
             $this->info(str_repeat('-', strlen($category) + 9));
             
             $categoryPassed = count(array_filter($categoryResults, fn($t) => $t['status'] === 'PASSED'));
-            $categoryFailed = count($categoryResults) - $categoryPassed;
+            $categorySkipped = count(array_filter($categoryResults, fn($t) => $t['status'] === 'SKIPPED'));
+            $categoryFailed = count($categoryResults) - $categoryPassed - $categorySkipped;
             
             foreach ($categoryResults as $result) {
                 $status = $result['status'];
@@ -215,15 +245,17 @@ class RunComprehensiveTests extends Command
                 
                 if ($status === 'PASSED') {
                     $this->info("  ✅ $file");
+                } elseif ($status === 'SKIPPED') {
+                    $this->warn("  ⏭️  $file (skipped)");
                 } else {
                     $this->error("  ❌ $file");
                 }
             }
             
-            $categoryTotal = $categoryPassed + $categoryFailed;
+            $categoryTotal = $categoryPassed + $categoryFailed + $categorySkipped;
             if ($categoryTotal > 0) {
                 $categoryScore = round(($categoryPassed / $categoryTotal) * 100, 1);
-                $this->info("  📊 $categoryPassed/$categoryTotal passed ($categoryScore%)");
+                $this->info("  📊 $categoryPassed/$categoryTotal passed ($categoryScore%), skipped: $categorySkipped");
             }
             $this->newLine();
         }
@@ -232,8 +264,10 @@ class RunComprehensiveTests extends Command
         $this->info('🎯 OVERALL ASSESSMENT');
         $this->info('====================');
         
-        if ($totalTests > 0) {
-            $overallScore = round(($passedTests / $totalTests) * 100, 1);
+        $effectiveTotal = max(0, $totalTests - $skippedTests);
+
+        if ($effectiveTotal > 0) {
+            $overallScore = round(($passedTests / $effectiveTotal) * 100, 1);
             
             if ($overallScore >= 95) {
                 $this->info("🏆 EXCELLENT: $overallScore% overall score");
@@ -252,6 +286,9 @@ class RunComprehensiveTests extends Command
                 $this->info("   Your system has significant issues.");
                 $this->info("   🚨 Immediate fixes required before any deployment!");
             }
+        } elseif ($totalTests > 0) {
+            $this->warn('⚠️  No executable tests were run (all skipped).');
+            $this->warn('   Install PHPUnit to get real pass/fail signal.');
         }
         
         $this->newLine();
@@ -264,6 +301,9 @@ class RunComprehensiveTests extends Command
             $this->info('🔧 Fix failed tests before production deployment');
             $this->info('📋 Review error messages and address root causes');
             $this->info('🧪 Re-run tests after fixes to verify resolution');
+        } elseif ($skippedTests > 0) {
+            $this->info('🧰 Install PHPUnit (global or vendor/bin/phpunit) to execute skipped tests');
+            $this->info('🧪 Re-run this command after installing test runner for accurate signal');
         } else {
             $this->info('🎉 All tests passed! Your system is ready for production.');
             $this->info('📊 Consider adding more tests for edge cases');

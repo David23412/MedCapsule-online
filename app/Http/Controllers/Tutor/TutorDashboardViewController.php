@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Tutor;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 use App\Models\User;
 
 class TutorDashboardViewController extends Controller
@@ -35,7 +36,14 @@ class TutorDashboardViewController extends Controller
         return view('tutor.dashboard', [
             'students' => $dashboardData['students'],
             'analytics' => $dashboardData['analytics'],
-            'tutor' => $user]);
+            'tutor' => $user,
+            'currentUserView' => [
+                'is_admin' => $user->isAdmin(),
+                'profile_image_url' => $user->getProfileImageUrl(),
+                'has_profile_picture' => (bool) $user->profile_picture_url,
+                'profile_initial' => strtoupper(substr($user->name, 0, 1)),
+            ],
+        ]);
     }
 
     /**
@@ -66,7 +74,14 @@ class TutorDashboardViewController extends Controller
             'student' => $profileData['student'],
             'tutor' => $user,
             'data' => $profileData['analytics'],
-            'assignments' => $profileData['assignments']]);
+            'assignments' => $profileData['assignments'],
+            'currentUserView' => [
+                'is_admin' => $user->isAdmin(),
+                'profile_image_url' => $user->getProfileImageUrl(),
+                'has_profile_picture' => (bool) $user->profile_picture_url,
+                'profile_initial' => strtoupper(substr($user->name, 0, 1)),
+            ],
+        ]);
     }
 
     /**
@@ -78,28 +93,47 @@ class TutorDashboardViewController extends Controller
         $cacheKey = "dashboard_students_{$user->id}";
         
         return Cache::remember($cacheKey, now()->addMinutes(10), function () use ($user) {
-            $query = User::where('role', User::ROLE_STUDENT);
+            $quizMetricsSubquery = DB::table('quiz_attempts')
+                ->selectRaw('
+                    user_id,
+                    COALESCE(AVG(percentage_grade), 0) as quiz_average_score,
+                    COUNT(*) as quiz_attempts_total
+                ')
+                ->groupBy('user_id');
+
+            $query = User::query()
+                ->select('users.*')
+                ->leftJoinSub($quizMetricsSubquery, 'quiz_metrics', function ($join) {
+                    $join->on('quiz_metrics.user_id', '=', 'users.id');
+                })
+                ->addSelect([
+                    DB::raw('COALESCE(quiz_metrics.quiz_average_score, 0) as quiz_average_score'),
+                    DB::raw('COALESCE(quiz_metrics.quiz_attempts_total, 0) as quiz_attempts_total'),
+                ])
+                ->where('role', User::ROLE_STUDENT);
 
             if (!$user->isAdmin()) {
-                // Get tutor's course IDs
-                $tutorCourseIds = $user->courses()->pluck('courses.id');
-                
-                // Only show students enrolled in the same courses as the tutor
-                $query->whereHas('courses', function ($q) use ($tutorCourseIds) {
-                    $q->whereIn('courses.id', $tutorCourseIds)
-                      ->whereNotNull('course_user.enrolled_at');
-                });
+                $tutorCourseIds = $user->courses()->pluck('courses.id')->map(fn ($id) => (int) $id)->all();
+
+                if ($tutorCourseIds === []) {
+                    return collect();
+                }
+
+                $query->join('course_user as shared_enrollments', function ($join) use ($tutorCourseIds) {
+                    $join->on('shared_enrollments.user_id', '=', 'users.id')
+                        ->where('shared_enrollments.is_enrolled', true)
+                        ->whereIn('shared_enrollments.course_id', $tutorCourseIds);
+                })->distinct();
             }
 
-            return $query->with([
-                'quizAttempts' => function ($query) {
-                    $query->latest()->take(10)->with('topic:id,name');
-                }
-            ])
-            ->withCount('quizAttempts')
-            ->get()
-            ->map(function ($student) {
-                return $this->enhanceStudentData($student);
+            $students = $query->orderBy('users.name')->get();
+            $recentScoresByStudent = $this->getRecentAttemptScoresByStudent($students);
+
+            return $students->map(function ($student) use ($recentScoresByStudent) {
+                return $this->enhanceStudentData(
+                    $student,
+                    $recentScoresByStudent[$student->id] ?? []
+                );
             });
         });
     }
@@ -107,19 +141,18 @@ class TutorDashboardViewController extends Controller
     /**
      * Enhance student data with calculated metrics - Optimized
      */
-    private function enhanceStudentData(User $student)
+    private function enhanceStudentData(User $student, array $recentScores = [])
     {
-        $quizAttempts = $student->quizAttempts;
-        $averageScore = $quizAttempts->avg('score') ?? 0;
-        $recentAttempts = $quizAttempts->take(5);
-        
-        $trend = $this->calculatePerformanceTrend($recentAttempts);
+        $averageScore = round((float) ($student->quiz_average_score ?? 0), 1);
+        $totalQuizzes = (int) ($student->quiz_attempts_total ?? 0);
+        $trend = $this->calculatePerformanceTrend(collect($recentScores));
         
         $student->enhanced_metrics = [
-            'average_score' => round($averageScore, 1),
-            'total_quizzes' => $quizAttempts->count(),
+            'average_score' => $averageScore,
+            'score_class' => $this->resolveScoreClass($averageScore),
+            'total_quizzes' => $totalQuizzes,
             'performance_trend' => $trend,
-            'last_quiz_date' => $recentAttempts->first()?->created_at,
+            'last_quiz_date' => null,
             'is_active' => $student->last_active_at && $student->last_active_at->gte(now()->subDays(3))];
 
         return $student;
@@ -136,20 +169,21 @@ class TutorDashboardViewController extends Controller
         })->count();
 
         $totalQuizzes = $students->sum(function ($student) {
-            return $student->quizAttempts->count();
+            return $student->enhanced_metrics['total_quizzes'] ?? 0;
         });
 
         $averageScore = $students->avg(function ($student) {
-            return $student->quizAttempts->avg('score') ?? 0;
+            return $student->enhanced_metrics['average_score'] ?? 0;
         });
 
         $strugglingStudents = $students->filter(function ($student) {
-            $avgScore = $student->quizAttempts->avg('score') ?? 0;
-            return $avgScore < 60 && $student->quizAttempts->count() > 0;
+            $avgScore = $student->enhanced_metrics['average_score'] ?? 0;
+            $totalQuizzes = $student->enhanced_metrics['total_quizzes'] ?? 0;
+            return $avgScore < 60 && $totalQuizzes > 0;
         })->count();
 
         $highPerformers = $students->filter(function ($student) {
-            $avgScore = $student->quizAttempts->avg('score') ?? 0;
+            $avgScore = $student->enhanced_metrics['average_score'] ?? 0;
             return $avgScore >= 80;
         })->count();
 
@@ -180,6 +214,56 @@ class TutorDashboardViewController extends Controller
         if ($difference > 5) return 'improving';
         if ($difference < -5) return 'declining';
         return 'stable';
+    }
+
+    private function getRecentAttemptScoresByStudent($students): array
+    {
+        $studentIds = $students->pluck('id')->filter()->values()->all();
+
+        if (empty($studentIds)) {
+            return [];
+        }
+
+        $studentIdList = implode(',', array_map('intval', $studentIds));
+
+        $recentAttempts = \DB::select("
+            SELECT recent.user_id, recent.percentage_grade
+            FROM (
+                SELECT
+                    qa.user_id,
+                    qa.percentage_grade,
+                    ROW_NUMBER() OVER (PARTITION BY qa.user_id ORDER BY qa.created_at DESC, qa.id DESC) AS row_num
+                FROM quiz_attempts qa
+                WHERE qa.user_id IN ({$studentIdList})
+            ) AS recent
+            WHERE recent.row_num <= 5
+            ORDER BY recent.user_id, recent.row_num
+        ");
+
+        $groupedScores = [];
+
+        foreach ($recentAttempts as $attempt) {
+            $groupedScores[$attempt->user_id][] = (float) ($attempt->percentage_grade ?? 0);
+        }
+
+        return $groupedScores;
+    }
+
+    private function resolveScoreClass(float $score): string
+    {
+        if ($score >= 80) {
+            return 'excellent';
+        }
+
+        if ($score >= 70) {
+            return 'good';
+        }
+
+        if ($score >= 60) {
+            return 'average';
+        }
+
+        return 'poor';
     }
 
     /**
@@ -216,8 +300,8 @@ class TutorDashboardViewController extends Controller
             ->join('course_user as cu2', 'cu1.course_id', '=', 'cu2.course_id')
             ->where('cu1.user_id', $tutor->id)
             ->where('cu2.user_id', $studentId)
-            ->whereNotNull('cu1.enrolled_at')
-            ->whereNotNull('cu2.enrolled_at')
+            ->where('cu1.is_enrolled', true)
+            ->where('cu2.is_enrolled', true)
             ->exists();
     }
 

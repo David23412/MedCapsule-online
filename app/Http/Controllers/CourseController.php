@@ -29,7 +29,7 @@ class CourseController extends Controller
     public function __construct(
         protected CourseService $courseService
     ) {
-        $this->middleware('auth');
+        $this->middleware('auth')->except(['index', 'show']);
         $this->middleware('admin')->only(['showAddCourseForm', 'addCourse']);
     }
 

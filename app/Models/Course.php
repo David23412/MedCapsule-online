@@ -6,11 +6,14 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use App\Events\CourseUpdated;
 
 class Course extends Model
 {
     use HasFactory;
+
+    protected static ?array $availableCourseUserPlannerPivotColumns = null;
 
     protected $fillable = [
         'name',
@@ -56,7 +59,7 @@ class Course extends Model
     public function users()
     {
         return $this->belongsToMany(User::class, 'course_user')
-                    ->withPivot('is_enrolled')
+                    ->withPivot($this->courseUserPivotColumns(['is_enrolled']))
                     ->withTimestamps();
     }
 
@@ -66,7 +69,41 @@ class Course extends Model
     public function enrolledUsers()
     {
         return $this->belongsToMany(User::class, 'course_user')
+            ->withPivot($this->courseUserPivotColumns())
             ->wherePivot('is_enrolled', true);
+    }
+
+    /**
+     * Avoid selecting planner pivot columns on installations where the
+     * course_user table has not been migrated to include them.
+     */
+    protected function courseUserPivotColumns(array $baseColumns = []): array
+    {
+        return array_merge($baseColumns, self::availableCourseUserPlannerPivotColumns());
+    }
+
+    protected static function availableCourseUserPlannerPivotColumns(): array
+    {
+        if (self::$availableCourseUserPlannerPivotColumns !== null) {
+            return self::$availableCourseUserPlannerPivotColumns;
+        }
+
+        $plannerColumns = [
+            'planner_exam_date',
+            'planner_target_score',
+            'planner_daily_study_minutes',
+            'planner_focus',
+            'planner_preferred_source',
+            'planner_repair_mode',
+            'planner_classic_repair_difficulty',
+        ];
+
+        self::$availableCourseUserPlannerPivotColumns = array_values(array_filter(
+            $plannerColumns,
+            static fn (string $column): bool => Schema::hasColumn('course_user', $column)
+        ));
+
+        return self::$availableCourseUserPlannerPivotColumns;
     }
 
     public function payments()
@@ -77,6 +114,18 @@ class Course extends Model
     public function accessRequests()
     {
         return $this->hasMany(CourseAccessRequest::class);
+    }
+
+    public function scopeFree($query)
+    {
+        return $query->where(function ($builder) {
+            $builder->where('price', 0)->orWhereNull('price');
+        });
+    }
+
+    public function isFree(): bool
+    {
+        return $this->price == 0 || $this->price === null;
     }
 
     /** -------------------
@@ -377,46 +426,14 @@ class Course extends Model
                     }
                 }
 
-                // SCENARIO 2: PAID TO FREE - Auto-enroll ALL users (keep existing enrollments)
+                // SCENARIO 2: PAID TO FREE - keep enrollments unchanged; survey unlock handles preview access
                 elseif ($originalPrice > 0 && $newPrice == 0) {
-                    \Illuminate\Support\Facades\Log::info('🆓 Course changed from PAID to FREE - auto-enrolling all users', [
+                    \Illuminate\Support\Facades\Log::info('🆓 Course changed from PAID to FREE - preview access will now be managed by survey unlock', [
                         'course_id' => $course->id,
                         'course_name' => $course->name,
                         'old_price' => $originalPrice,
                         'new_price' => $newPrice
                     ]);
-
-                    // Get all users who are NOT already enrolled
-                    $allUsers = \App\Models\User::all();
-                    $enrolledUserIds = DB::table('course_user')
-                        ->where('course_id', $course->id)
-                        ->where('is_enrolled', true)
-                        ->pluck('user_id')
-                        ->toArray();
-
-                    $usersToEnroll = $allUsers->whereNotIn('id', $enrolledUserIds);
-                    $enrollmentData = [];
-
-                    foreach ($usersToEnroll as $user) {
-                        $enrollmentData[] = [
-                            'user_id' => $user->id,
-                            'course_id' => $course->id,
-                            'is_enrolled' => true,
-                            'created_at' => now(),
-                            'updated_at' => now()
-                        ];
-                    }
-
-                    if (!empty($enrollmentData)) {
-                        DB::table('course_user')->insert($enrollmentData);
-
-                        \Illuminate\Support\Facades\Log::info('✅ Auto-enrolled users in free course', [
-                            'course_id' => $course->id,
-                            'course_name' => $course->name,
-                            'users_enrolled' => count($enrollmentData),
-                            'existing_enrollments_preserved' => count($enrolledUserIds)
-                        ]);
-                    }
                 }
 
                 // SCENARIO 3: PAID TO PAID - Keep all existing enrollments (no action needed)

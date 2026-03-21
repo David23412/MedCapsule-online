@@ -114,18 +114,18 @@
 
                             <div class="mb-4">
                                 <label class="form-label">Topic</label>
-                                <select name="topic_id" class="form-select" required>
+                                <select name="topic_id" id="topic_id" class="form-select" required>
                                     <option value="" disabled selected>Select a topic</option>
 {{-- 💀 N+1 FIX NEEDED: Eager load 'name' in controller --}}
                                     @foreach($topics as $topic)
-                                        <option value="{{ $topic->id }}">{{ $topic->name }}</option>
+                                        <option value="{{ $topic->id }}" {{ old('topic_id') == $topic->id ? 'selected' : '' }}>{{ $topic->name }}</option>
                                     @endforeach
                                 </select>
                             </div>
 
                             <div class="mb-4">
                                 <label class="form-label">Question Text</label>
-                                <textarea name="question" class="form-control" rows="3" required></textarea>
+                                <textarea name="question" class="form-control" rows="3" required>{{ old('question') }}</textarea>
                             </div>
 
                             <div class="mb-4">
@@ -141,9 +141,27 @@
 
                             <div class="mb-4">
                                 <label class="form-label">Explanation (Optional)</label>
-                                <textarea name="explanation" class="form-control" rows="3" placeholder="Add an explanation that will help students understand this question better"></textarea>
+                                <textarea name="explanation" class="form-control" rows="3" placeholder="Add an explanation that will help students understand this question better">{{ old('explanation') }}</textarea>
                                 <div class="form-text text-muted">
                                     This explanation will be shown to students when reviewing their mistakes
+                                </div>
+                            </div>
+
+                            <div class="mb-4">
+                                <label class="form-label">Concept (Optional)</label>
+                                <textarea
+                                    name="concept_names"
+                                    id="concept_names"
+                                    class="form-control"
+                                    rows="2"
+                                    placeholder="Enter the main concept. Example: Partial pressure gradient"
+                                >{{ old('concept_names') }}</textarea>
+                                <div class="form-text text-muted">
+                                    Use one clear concept name. The system derives any internal slug automatically.
+                                </div>
+                                <div class="mt-3">
+                                    <div class="small text-muted mb-2">Existing concepts in this topic</div>
+                                    <div id="concept_suggestions" class="d-flex flex-wrap gap-2"></div>
                                 </div>
                             </div>
 
@@ -189,29 +207,29 @@
                                 <div class="row mb-4">
                                     <div class="col-md-6 mb-3">
                                         <label class="form-label">Option A</label>
-                                        <input type="text" name="option_a" class="form-control mc-required">
+                                        <input type="text" name="option_a" class="form-control mc-required" value="{{ old('option_a') }}">
                                     </div>
                                     <div class="col-md-6 mb-3">
                                         <label class="form-label">Option B</label>
-                                        <input type="text" name="option_b" class="form-control mc-required">
+                                        <input type="text" name="option_b" class="form-control mc-required" value="{{ old('option_b') }}">
                                     </div>
                                     <div class="col-md-6 mb-3">
                                         <label class="form-label">Option C</label>
-                                        <input type="text" name="option_c" class="form-control mc-required">
+                                        <input type="text" name="option_c" class="form-control mc-required" value="{{ old('option_c') }}">
                                     </div>
                                     <div class="col-md-6 mb-3">
                                         <label class="form-label">Option D</label>
-                                        <input type="text" name="option_d" class="form-control mc-required">
+                                        <input type="text" name="option_d" class="form-control mc-required" value="{{ old('option_d') }}">
                                     </div>
                                 </div>
 
                                 <div class="mb-4">
                                     <label class="form-label">Correct Answer</label>
                                     <select name="correct_answer" id="mc_correct_answer" class="form-select mc-required">
-                                        <option value="A">A</option>
-                                        <option value="B">B</option>
-                                        <option value="C">C</option>
-                                        <option value="D">D</option>
+                                        <option value="A" {{ old('correct_answer') === 'A' ? 'selected' : '' }}>A</option>
+                                        <option value="B" {{ old('correct_answer') === 'B' ? 'selected' : '' }}>B</option>
+                                        <option value="C" {{ old('correct_answer') === 'C' ? 'selected' : '' }}>C</option>
+                                        <option value="D" {{ old('correct_answer') === 'D' ? 'selected' : '' }}>D</option>
                                     </select>
                                 </div>
                             </div>
@@ -220,12 +238,12 @@
                             <div id="written_section" style="display:none;">
                                 <div class="mb-4">
                                     <label class="form-label">Correct Answer</label>
-                                    <textarea name="written_correct_answer" id="written_correct_answer" class="form-control" rows="3" placeholder="Enter the expected correct answer"></textarea>
+                                    <textarea name="written_correct_answer" id="written_correct_answer" class="form-control" rows="3" placeholder="Enter the expected correct answer">{{ old('written_correct_answer') }}</textarea>
                                 </div>
                                 
                                 <div class="mb-4">
                                     <label class="form-label">Alternative Acceptable Answers (Optional)</label>
-                                    <textarea name="alternative_answers" class="form-control" rows="3" placeholder="Enter alternative acceptable answers, one per line"></textarea>
+                                    <textarea name="alternative_answers" class="form-control" rows="3" placeholder="Enter alternative acceptable answers, one per line">{{ old('alternative_answers') }}</textarea>
                                     <div class="form-text text-muted">
                                         Enter variations of acceptable answers, one per line. These will be considered correct along with the main answer.
                                     </div>
@@ -237,10 +255,10 @@
                                 <label class="form-label">Source</label>
                                 <select name="source" class="form-select" required>
                                     <option value="" disabled selected>Select a source</option>
-                                    <option value="Assuit">Assuit</option>
-                                    <option value="Cairo">Cairo</option>
-                                    <option value="Alexandria">Alexandria</option>
-                                    <option value="Other">Other</option>
+                                    <option value="Assuit" {{ old('source') === 'Assuit' ? 'selected' : '' }}>Assuit</option>
+                                    <option value="Cairo" {{ old('source') === 'Cairo' ? 'selected' : '' }}>Cairo</option>
+                                    <option value="Alexandria" {{ old('source') === 'Alexandria' ? 'selected' : '' }}>Alexandria</option>
+                                    <option value="Other" {{ old('source') === 'Other' ? 'selected' : '' }}>Other</option>
                                 </select>
                                 <div class="form-text text-muted">
                                     Select the source of this question
@@ -271,10 +289,14 @@
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
+        const conceptSuggestionsByTopic = @json($conceptSuggestionsByTopic ?? []);
         // Image preview functionality for both file upload and URL input
         const imageUrlInput = document.getElementById('image_url');
         const imageFileInput = document.getElementById('question_image');
         const previewImage = document.getElementById('preview');
+        const topicSelect = document.getElementById('topic_id');
+        const conceptsInput = document.getElementById('concept_names');
+        const conceptSuggestions = document.getElementById('concept_suggestions');
 
         // Handle URL input
         imageUrlInput.addEventListener('input', function() {
@@ -349,6 +371,43 @@
                 });
             }
         });
+
+        const appendConceptName = (name) => {
+            const currentValue = conceptsInput.value.trim();
+            const existingNames = currentValue
+                ? currentValue.split(/[\r\n,;]+/).map(value => value.trim().toLowerCase()).filter(Boolean)
+                : [];
+
+            if (existingNames.includes(name.toLowerCase())) {
+                return;
+            }
+
+            conceptsInput.value = currentValue ? `${currentValue}\n${name}` : name;
+        };
+
+        const renderConceptSuggestions = () => {
+            const topicId = topicSelect.value;
+            const names = conceptSuggestionsByTopic[String(topicId)] || [];
+
+            conceptSuggestions.innerHTML = '';
+
+            if (!topicId || names.length === 0) {
+                conceptSuggestions.innerHTML = '<span class="text-muted small">No saved concepts yet for this topic.</span>';
+                return;
+            }
+
+            names.forEach((name) => {
+                const button = document.createElement('button');
+                button.type = 'button';
+                button.className = 'btn btn-sm btn-outline-primary';
+                button.textContent = name;
+                button.addEventListener('click', () => appendConceptName(name));
+                conceptSuggestions.appendChild(button);
+            });
+        };
+
+        topicSelect.addEventListener('change', renderConceptSuggestions);
+        renderConceptSuggestions();
     </script>
 </body>
 </html>

@@ -8,16 +8,19 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
-use App\Models\Mistake;
+use Illuminate\Support\Facades\Schema;
 use Carbon\Carbon;
-use App\Models\Topic;
-use App\Models\User;
 use App\Models\QuizAttempt;
+use App\Services\PerformanceTrackingService;
 use App\Services\SecureFileUploadService;
 
 class ProfileController extends Controller
 {
-    public function __construct()
+    private static ?array $availableCoursePlannerColumns = null;
+
+    public function __construct(
+        private PerformanceTrackingService $performanceTrackingService
+    )
     {
         // Apply auth middleware
         $this->middleware(['auth']);
@@ -73,6 +76,20 @@ class ProfileController extends Controller
 
         // Extract cached data
         extract($profileData);
+
+        $weekStart = now()->startOfWeek();
+        $weekEnd = now()->endOfWeek();
+        $weeklyQuestions = Cache::remember("profile_weekly_questions_{$user->id}_" . now()->format('Y-m-d'), 300, function () use ($user, $weekStart, $weekEnd) {
+            return \App\Models\QuizAttempt::where('user_id', $user->id)
+                ->whereBetween('created_at', [$weekStart, $weekEnd])
+                ->sum('total_questions');
+        });
+
+        $weeklyGoal = $user->weekly_goal ?? 50;
+        $progressPercent = $weeklyGoal > 0 ? min(100, ($weeklyQuestions / $weeklyGoal) * 100) : 0;
+        $progressColor = $progressPercent >= 100 ? '#10b981' :
+            ($progressPercent >= 70 ? '#3b82f6' :
+            ($progressPercent >= 40 ? '#f59e0b' : '#ef4444'));
 
         // RUTHLESS OPTIMIZATION: Cached user rank with longer duration
         $userRank = null;
@@ -137,95 +154,83 @@ class ProfileController extends Controller
         });
 
         // Format data for the chart
-        $chartData = $performanceData->map(function($attempt) {
-            return [
-                'x' => Carbon::parse($attempt->date)->timestamp * 1000,
-                'y' => round($attempt->accuracy, 1),
-                'topic' => $attempt->topic ?? 'Unknown Topic',
-                'date' => Carbon::parse($attempt->date)->format('M j, Y g:i A')
-            ];
-        });
+        $chartData = $performanceData
+            ->sortBy('date')
+            ->values()
+            ->map(function($attempt) {
+                $attemptDate = Carbon::parse($attempt->date);
 
-        // RUTHLESS OPTIMIZATION: Single JOIN query eliminating subqueries
-        // FIXED: Only show weak topics from courses user is currently enrolled in
-        $weakTopicsData = DB::table('topics')
-            ->join('user_topic_progress', 'topics.id', '=', 'user_topic_progress.topic_id')
-            ->join('courses', 'topics.course_id', '=', 'courses.id')
-            ->join('course_user', function($join) use ($user) {
-                $join->on('courses.id', '=', 'course_user.course_id')
-                     ->where('course_user.user_id', '=', $user->id)
-                     ->where('course_user.is_enrolled', '=', true);
-            })
-            ->where('user_topic_progress.user_id', $user->id)
-            ->whereNotNull('user_topic_progress.percentage_grade')
-            ->where('user_topic_progress.percentage_grade', '<', 100)
-            ->select(
-                'topics.id',
-                'topics.name',
-                'topics.course_id',
-                'courses.name as course_name',
-                'user_topic_progress.percentage_grade',
-                DB::raw('
-                    CASE
-                        WHEN user_topic_progress.percentage_grade <= 25 THEN 1
-                        WHEN user_topic_progress.percentage_grade <= 49 THEN 2
-                        WHEN user_topic_progress.percentage_grade <= 74 THEN 3
-                        ELSE 4
-                    END as priority
-                ')
-            )
-            ->orderBy('priority')
-            ->orderBy('user_topic_progress.percentage_grade')
-            ->get();
-
-        // Convert to collection with same structure as original
-        $weakTopics = $weakTopicsData->map(function($topic) {
-            return (object) [
-                'id' => $topic->id,
-                'name' => $topic->name,
-                'course_id' => $topic->course_id,
-                'course' => (object) [
-                    'id' => $topic->course_id,
-                    'name' => $topic->course_name
-                ],
-                'userProgress' => collect([(object) ['percentage_grade' => $topic->percentage_grade]])
-            ];
-        });
-        
-        // RUTHLESS OPTIMIZATION: Extended leaderboard caching - TEMPORARILY DISABLED FOR DEBUGGING
-        $leaderboard = DB::table('users')
-            ->select(
-                'users.id',
-                'users.name',
-                'users.total_questions_attempted',
-                'users.correct_answers_count',
-                'users.xp',
-                DB::raw('FLOOR(COALESCE(users.xp, 0) / 1000) + 1 as level')
-            )
-            ->where('users.total_questions_attempted', '>', 0)
-                            ->where('users.role', 3)
-            ->orderBy('xp', 'desc')
-            ->limit(10)
-            ->get()
-            ->map(function($user) {
-                return (object) [
-                    'id' => $user->id,
-                    'name' => $user->name,
-                    'xp' => $user->xp ?? 0,
-                    'level' => $user->level,
-                    'correct_answers' => $user->correct_answers_count
+                return [
+                    'x' => $attemptDate->timestamp * 1000,
+                    'y' => round($attempt->accuracy, 1),
+                    'topic' => $attempt->topic ?? 'Unknown Topic',
+                    'date' => $attemptDate->format('M j, Y g:i A')
                 ];
             });
+
+        $weakTopicCoach = $this->performanceTrackingService->getWeakTopicCoach($user, 5);
+        
+        // RUTHLESS OPTIMIZATION: Extended leaderboard caching - TEMPORARILY DISABLED FOR DEBUGGING
+        $leaderboard = Cache::remember('profile_leaderboard_top10_v1', 300, function () {
+            return DB::table('users')
+                ->select(
+                    'users.id',
+                    'users.name',
+                    'users.correct_answers_count',
+                    'users.xp',
+                    DB::raw('FLOOR(COALESCE(users.xp, 0) / 1000) + 1 as level')
+                )
+                ->where('users.total_questions_attempted', '>', 0)
+                ->where('users.role', 3)
+                ->orderByDesc('xp')
+                ->limit(10)
+                ->get()
+                ->map(function($user) {
+                    return (object) [
+                        'id' => $user->id,
+                        'name' => $user->name,
+                        'xp' => $user->xp ?? 0,
+                        'level' => $user->level,
+                        'correct_answers' => $user->correct_answers_count
+                    ];
+                });
+        });
+
+        $tenthPlaceXp = count($leaderboard) >= 10 ? $leaderboard[9]->xp : 0;
+        $currentUserView = [
+            'name' => $user->name,
+            'role' => $user->role,
+            'is_admin' => $user->role === 'admin',
+            'profile_image_url' => $user->getProfileImageUrl(),
+            'profile_fallback_url' => 'https://ui-avatars.com/api/?name=' . urlencode($user->name) . '&size=200&background=007bff&color=ffffff',
+            'member_since' => $user->created_at->format('F Y'),
+            'xp' => (int) ($user->xp ?? 0),
+            'weekly_goal' => (int) $weeklyGoal,
+            'weekly_questions' => (int) $weeklyQuestions,
+            'weekly_progress_percent' => $progressPercent,
+            'weekly_progress_color' => $progressColor,
+            'correct_answers_count' => (int) ($user->correct_answers_count ?? 0),
+            'xp_needed_for_top_ten' => max(0, $tenthPlaceXp - (int) ($user->xp ?? 0)),
+            'week_start_label' => $weekStart->format('M d'),
+            'week_end_label' => $weekEnd->format('M d'),
+            'exam_date' => optional($user->exam_date)->format('Y-m-d'),
+            'target_score' => (int) ($user->target_score ?? 80),
+            'daily_study_minutes' => (int) ($user->daily_study_minutes ?? 90),
+            'planner_focus' => $user->planner_focus ?? 'balanced',
+            'repair_mode' => $user->repair_mode,
+            'classic_repair_difficulty' => $user->classic_repair_difficulty,
+        ];
 
         return view('profile', compact(
             'accuracyRate',
             'totalQuestions',
-            'weakTopics',
             'leaderboard',
             'studyStreak',
             'chartData',
             'userRank',
-            'formattedStudyTimes'
+            'formattedStudyTimes',
+            'currentUserView',
+            'weakTopicCoach'
         ));
     }
 
@@ -272,37 +277,6 @@ class ProfileController extends Controller
             'mistake_review' => $result->mistake_review ?? 0,
             'total' => $result->total ?? 0
         ];
-    }
-
-    /**
-     * COMPLEXITY REDUCTION: Get performance data for charts
-     */
-    private function getPerformanceData($user): array
-    {
-        return QuizAttempt::select('created_at as date', 'percentage_grade', 'quiz_type', 'topic_id')
-            ->where('user_id', $user->id)
-            ->where('quiz_type', '!=', 'mistake_review')
-            ->orderBy('created_at', 'desc')
-            ->take(7)
-            ->get()
-            ->sortBy('date')
-            ->values()
-            ->toArray();
-    }
-
-    /**
-     * COMPLEXITY REDUCTION: Format performance data for charts
-     */
-    private function formatChartData($performanceData): array
-    {
-        return collect($performanceData)->map(function($attempt) {
-            return [
-                'x' => Carbon::parse($attempt['date'])->timestamp * 1000,
-                'y' => round($attempt['percentage_grade'] ?? 0, 1),
-                'topic' => $attempt['topic'] ?? 'Unknown Topic',
-                'date' => Carbon::parse($attempt['date'])->format('M j, Y g:i A')
-            ];
-        })->toArray();
     }
 
     /**
@@ -433,29 +407,180 @@ class ProfileController extends Controller
     {
         try {
             $validated = $request->validate([
-                'weekly_goal' => 'required|integer|min:10|max:500'
+                'weekly_goal' => 'required|integer|min:10|max:500',
+                'exam_date' => 'nullable|date|after_or_equal:today',
+                'target_score' => 'required|integer|min:50|max:100',
+                'daily_study_minutes' => 'required|integer|min:30|max:480',
+                'planner_focus' => 'required|in:balanced,new_topics,revision,exam_prep',
+                'repair_mode' => 'nullable|in:easy,hard,spaced',
+                'classic_repair_difficulty' => 'nullable|in:easy,hard',
             ]);
 
             $user = auth()->user();
             $user->weekly_goal = $validated['weekly_goal'];
+            $user->exam_date = $validated['exam_date'] ?? null;
+            $user->target_score = $validated['target_score'];
+            $user->daily_study_minutes = $validated['daily_study_minutes'];
+            $user->planner_focus = $validated['planner_focus'];
+            $user->repair_mode = $validated['repair_mode'] ?? null;
+            $user->classic_repair_difficulty = $validated['classic_repair_difficulty'] ?? null;
             $user->save();
+
+            Cache::forget("user_profile_optimized_{$user->id}_" . now()->format('Y-m-d-H'));
+            Cache::forget("profile_weekly_questions_{$user->id}_" . now()->format('Y-m-d'));
 
             return response()->json([
                 'success' => true,
-                'message' => 'Weekly goal updated successfully!',
-                'weekly_goal' => $user->weekly_goal
+                'message' => 'Planner settings updated successfully!',
+                'weekly_goal' => $user->weekly_goal,
+                'exam_date' => optional($user->exam_date)->format('Y-m-d'),
+                'target_score' => $user->target_score,
+                'daily_study_minutes' => $user->daily_study_minutes,
+                'planner_focus' => $user->planner_focus,
+                'repair_mode' => $user->repair_mode,
+                'classic_repair_difficulty' => $user->classic_repair_difficulty,
             ]);
 
         } catch (\Exception $e) {
-            \Log::error('Failed to update weekly goal', [
+            \Log::error('Failed to update planner settings', [
                 'user_id' => auth()->id(),
                 'error' => $e->getMessage()
             ]);
 
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to update goal. Please try again.'
+                'message' => 'Failed to update planner settings. Please try again.'
             ], 500);
         }
+    }
+
+    public function updateCoursePlannerSettings(Request $request)
+    {
+        try {
+            $validated = $request->validate([
+                'course_id' => 'required|integer|exists:courses,id',
+                'planner_exam_date' => 'nullable|date|after_or_equal:today',
+                'planner_target_score' => 'nullable|integer|min:50|max:100',
+                'planner_daily_study_minutes' => 'nullable|integer|min:15|max:480',
+                'planner_focus' => 'nullable|in:balanced,new_topics,revision,exam_prep',
+                'planner_preferred_source' => 'nullable|string|max:255',
+                'planner_repair_mode' => 'nullable|in:easy,hard,spaced',
+                'planner_classic_repair_difficulty' => 'nullable|in:easy,hard',
+            ]);
+
+            $user = auth()->user();
+            $courseId = (int) $validated['course_id'];
+
+            $enrollment = DB::table('course_user')
+                ->where('user_id', $user->id)
+                ->where('course_id', $courseId)
+                ->where('is_enrolled', true)
+                ->first();
+
+            if (!$enrollment) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'You are not enrolled in this course.',
+                ], 403);
+            }
+
+            $availablePlannerColumns = $this->availableCoursePlannerColumns();
+
+            if (empty($availablePlannerColumns)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Course planner overrides are not available on this installation yet.',
+                ], 409);
+            }
+
+            $requestedUpdates = [];
+            foreach ([
+                'planner_exam_date',
+                'planner_target_score',
+                'planner_daily_study_minutes',
+                'planner_focus',
+                'planner_preferred_source',
+                'planner_repair_mode',
+                'planner_classic_repair_difficulty',
+            ] as $field) {
+                if ($request->exists($field)) {
+                    $requestedUpdates[$field] = $validated[$field] ?? null;
+                }
+            }
+
+            $plannerUpdates = array_intersect_key($requestedUpdates, array_flip($availablePlannerColumns));
+            $plannerUpdates['updated_at'] = now();
+
+            DB::table('course_user')
+                ->where('user_id', $user->id)
+                ->where('course_id', $courseId)
+                ->update($plannerUpdates);
+
+            Cache::forget("user_profile_optimized_{$user->id}_" . now()->format('Y-m-d-H'));
+            Cache::forget("profile_weekly_questions_{$user->id}_" . now()->format('Y-m-d'));
+
+            $responsePayload = [
+                'success' => true,
+                'message' => 'Course planner settings updated successfully!',
+                'course_id' => $courseId,
+                'overrides' => [
+                    'planner_exam_date' => $plannerUpdates['planner_exam_date'] ?? data_get($enrollment, 'planner_exam_date'),
+                    'planner_target_score' => $plannerUpdates['planner_target_score'] ?? data_get($enrollment, 'planner_target_score'),
+                    'planner_daily_study_minutes' => $plannerUpdates['planner_daily_study_minutes'] ?? data_get($enrollment, 'planner_daily_study_minutes'),
+                    'planner_focus' => $plannerUpdates['planner_focus'] ?? data_get($enrollment, 'planner_focus'),
+                    'planner_preferred_source' => $plannerUpdates['planner_preferred_source'] ?? data_get($enrollment, 'planner_preferred_source'),
+                    'planner_repair_mode' => $plannerUpdates['planner_repair_mode'] ?? data_get($enrollment, 'planner_repair_mode'),
+                    'planner_classic_repair_difficulty' => $plannerUpdates['planner_classic_repair_difficulty'] ?? data_get($enrollment, 'planner_classic_repair_difficulty'),
+                ],
+                'defaults' => [
+                    'exam_date' => optional($user->exam_date)->format('Y-m-d'),
+                    'target_score' => (int) ($user->target_score ?? 80),
+                    'daily_study_minutes' => (int) ($user->daily_study_minutes ?? 90),
+                    'planner_focus' => (string) ($user->planner_focus ?? 'balanced'),
+                    'repair_mode' => $user->repair_mode,
+                    'classic_repair_difficulty' => $user->classic_repair_difficulty,
+                ],
+            ];
+
+            if ($request->ajax() || $request->wantsJson()) {
+                return response()->json($responsePayload);
+            }
+
+            return redirect()->back()->with('status', $responsePayload['message']);
+        } catch (\Exception $e) {
+            Log::error('Failed to update course planner settings', [
+                'user_id' => auth()->id(),
+                'error' => $e->getMessage(),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to update course planner settings. Please try again.',
+            ], 500);
+        }
+    }
+
+    private function availableCoursePlannerColumns(): array
+    {
+        if (self::$availableCoursePlannerColumns !== null) {
+            return self::$availableCoursePlannerColumns;
+        }
+
+        $plannerColumns = [
+            'planner_exam_date',
+            'planner_target_score',
+            'planner_daily_study_minutes',
+            'planner_focus',
+            'planner_preferred_source',
+            'planner_repair_mode',
+            'planner_classic_repair_difficulty',
+        ];
+
+        self::$availableCoursePlannerColumns = array_values(array_filter(
+            $plannerColumns,
+            static fn (string $column): bool => Schema::hasColumn('course_user', $column)
+        ));
+
+        return self::$availableCoursePlannerColumns;
     }
 }

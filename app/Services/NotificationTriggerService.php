@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\User;
 use App\Models\Assignment;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 
 class NotificationTriggerService
@@ -771,45 +772,100 @@ class NotificationTriggerService
     /**
      * FIXED: Simple reminder for mistakes that need review
      */
-    public static function onMistakesNeedReview(User $user, int $mistakeCount)
+    public static function onMistakesNeedReview(User $user, int $mistakeCount, array $context = [])
     {
+        $priority = $context['priority'] ?? ($mistakeCount >= 15 ? 'high' : 'normal');
+        $cacheKey = "study_reminder:mistakes:{$user->id}";
+
+        if (!self::allowReminder($cacheKey, $context['force'] ?? false)) {
+            return;
+        }
+
         UniversalNotificationService::create(
             $user,
             'review_mistakes',
             'Review Mistakes Reminder',
             "You have {$mistakeCount} mistakes to review. Take a few minutes to strengthen your knowledge!",
-            ['mistake_count' => $mistakeCount],
-            'normal'
+            array_merge([
+                'mistake_count' => $mistakeCount,
+                'action_url' => secure_url(route('review.index', [], false)),
+            ], $context),
+            $priority
         );
 
         Log::info('Review mistakes reminder sent', [
             'user_id' => $user->id,
-            'mistake_count' => $mistakeCount
+            'mistake_count' => $mistakeCount,
+            'priority' => $priority,
         ]);
     }
 
     /**
      * FIXED: Weak topic reminder based on profile progress table
      */
-    public static function onWeakTopicReminder(User $user, array $weakTopics)
+    public static function onWeakTopicReminder(User $user, array $weakTopics, array $context = [])
     {
-        $topicNames = implode(', ', array_column($weakTopics, 'name'));
+        $focusTopic = $context['focus_topic'] ?? $weakTopics[0] ?? null;
+        $topicNames = implode(', ', array_map(function ($topic) {
+            return $topic['topic_name'] ?? $topic['name'] ?? 'Unknown Topic';
+        }, $weakTopics));
         $topicCount = count($weakTopics);
+        $priority = $context['priority'] ?? 'normal';
+        $focusTopicId = $focusTopic['topic_id'] ?? $focusTopic['id'] ?? 'general';
+        $cacheKey = "study_reminder:weak_topic:{$user->id}:{$focusTopicId}";
+
+        if (!self::allowReminder($cacheKey, $context['force'] ?? false)) {
+            return;
+        }
+
+        $title = $priority === 'urgent' ? 'Critical Weak Topic Alert' : 'Weak Topics Found';
+        $focusTopicName = $focusTopic['topic_name'] ?? $focusTopic['name'] ?? 'this topic';
+        $focusReasonText = $focusTopic['reason_text'] ?? 'This topic needs attention.';
+        $message = $focusTopic
+            ? "Focus on {$focusTopicName} next. {$focusReasonText}"
+            : "You need work on: {$topicNames}. Time to practice these!";
         
+        $primaryActionUrl = !empty($focusTopic['open_mistakes_count'])
+            ? ($focusTopic['mistakes_url'] ?? null)
+            : ($focusTopic['practice_url'] ?? null);
+
         UniversalNotificationService::create(
             $user,
             'weak_topic_identified',
-            'Weak Topics Found',
-            "You need work on: {$topicNames}. Time to practice these!",
-            ['weak_topics' => $weakTopics, 'topic_count' => $topicCount],
-            'normal'
+            $title,
+            $message,
+            array_merge([
+                'weak_topics' => $weakTopics,
+                'topic_count' => $topicCount,
+                'focus_topic' => $focusTopic,
+                'action_url' => $primaryActionUrl ?? secure_url(route('review.index', [], false)),
+                'secondary_action_url' => $focusTopic['mistakes_url'] ?? secure_url(route('review.index', [], false)),
+            ], $context),
+            $priority
         );
 
         Log::info('Weak topics reminder sent', [
             'user_id' => $user->id,
             'topic_count' => $topicCount,
-            'topics' => $topicNames
+            'topics' => $topicNames,
+            'priority' => $priority,
         ]);
+    }
+
+    private static function allowReminder(string $cacheKey, bool $force = false): bool
+    {
+        if ($force) {
+            Cache::put($cacheKey, true, now()->addDay());
+            return true;
+        }
+
+        if (Cache::has($cacheKey)) {
+            return false;
+        }
+
+        Cache::put($cacheKey, true, now()->addDay());
+
+        return true;
     }
 
     /**

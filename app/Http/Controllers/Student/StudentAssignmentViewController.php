@@ -25,7 +25,9 @@ class StudentAssignmentViewController extends Controller
      */
     public function index(Request $request): View
     {
-        Log::info('Method index called', ['user_id' => auth()->id(), 'timestamp' => now()]);
+        if (app()->environment('local', 'testing')) {
+            Log::info('Method index called', ['user_id' => auth()->id(), 'timestamp' => now()]);
+        }
         
         $filters = $request->only(['status', 'course_id']);
         
@@ -62,7 +64,9 @@ class StudentAssignmentViewController extends Controller
      */
     public function show(Assignment $assignment): View
     {
-        Log::info('Method show called', ['user_id' => auth()->id(), 'timestamp' => now()]);
+        if (app()->environment('local', 'testing')) {
+            Log::info('Method show called', ['user_id' => auth()->id(), 'timestamp' => now()]);
+        }
         $this->authorize('view', $assignment);
         
         $assignment->load(['tutor', 'topic', 'course']);
@@ -75,7 +79,9 @@ class StudentAssignmentViewController extends Controller
      */
     public function history(): View
     {
-        Log::info('Method history called', ['user_id' => auth()->id(), 'timestamp' => now()]);
+        if (app()->environment('local', 'testing')) {
+            Log::info('Method history called', ['user_id' => auth()->id(), 'timestamp' => now()]);
+        }
         $completedAssignments = $this->assignmentService->getStudentAssignments(
             auth()->id(), 
             ['status' => Assignment::STATUS_COMPLETED]
@@ -91,24 +97,28 @@ class StudentAssignmentViewController extends Controller
      */
     public function start(Assignment $assignment): RedirectResponse
     {
-        Log::info('Method start called', [
-            'user_id' => auth()->id(), 
-            'assignment_id' => $assignment->id,
-            'assignment_status' => $assignment->status,
-            'can_be_completed' => $assignment->canBeCompleted(),
-            'is_locked' => $assignment->isLocked(),
-            'topic_locked' => $assignment->topic->is_locked ?? false,
-            'timestamp' => now()
-        ]);
+        if (app()->environment('local', 'testing')) {
+            Log::info('Method start called', [
+                'user_id' => auth()->id(), 
+                'assignment_id' => $assignment->id,
+                'assignment_status' => $assignment->status,
+                'can_be_completed' => $assignment->canBeCompleted(),
+                'is_locked' => $assignment->isLocked(),
+                'topic_locked' => $assignment->topic->is_locked ?? false,
+                'timestamp' => now()
+            ]);
+        }
         
         $this->authorize('view', $assignment);
 
         if (!$assignment->canBeCompleted()) {
-            Log::warning('Assignment cannot be completed', [
-                'assignment_id' => $assignment->id,
-                'status' => $assignment->status,
-                'is_locked' => $assignment->isLocked()
-            ]);
+            if (app()->environment('local', 'testing')) {
+                Log::warning('Assignment cannot be completed', [
+                    'assignment_id' => $assignment->id,
+                    'status' => $assignment->status,
+                    'is_locked' => $assignment->isLocked()
+                ]);
+            }
             return redirect()->back()->withErrors(['error' => 'This assignment cannot be started at this time.']);
         }
 
@@ -118,10 +128,12 @@ class StudentAssignmentViewController extends Controller
             'assignment_id' => $assignment->id
         ]);
         
-        Log::info('Redirecting to quiz', [
-            'assignment_id' => $assignment->id,
-            'quiz_url' => $quizUrl
-        ]);
+        if (app()->environment('local', 'testing')) {
+            Log::info('Redirecting to quiz', [
+                'assignment_id' => $assignment->id,
+                'quiz_url' => $quizUrl
+            ]);
+        }
 
         return redirect($quizUrl);
     }

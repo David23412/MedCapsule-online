@@ -9,7 +9,7 @@ class HandleNgrokRequests
 {
     public function handle(Request $request, Closure $next)
     {
-        if (str_contains($request->getHost(), 'ngrok-free.app')) {
+        if (str_contains($request->getHost(), 'ngrok-free.app') || str_contains($request->getHost(), 'ngrok-free.dev')) {
             // Configure session for ngrok
             config([
                 'session.domain' => '',  // Empty domain for ngrok

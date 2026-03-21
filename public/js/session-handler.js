@@ -13,6 +13,7 @@
 
     let sessionStartTime = Date.now();
     let warningShown = false;
+    let authRedirectInProgress = false;
 
     /**
      * Initialize session handler
@@ -92,13 +93,18 @@
      * Handle session expiration
      */
     function handleSessionExpired() {
-        console.warn('Session expired - redirecting to home');
-        
-        // Show message
-        alert('Your session has expired. You will be redirected to the homepage.');
-        
-        // Redirect to home
-        window.location.href = '/';
+        console.warn('Session expired - redirecting to login');
+        showNotification('Your session expired. Redirecting to login...', 'warning');
+        redirectToLogin('/login');
+    }
+
+    function redirectToLogin(url) {
+        if (authRedirectInProgress) {
+            return;
+        }
+
+        authRedirectInProgress = true;
+        window.location.assign(url || '/login');
     }
 
     /**
@@ -108,8 +114,8 @@
         // jQuery AJAX error handler
         if (window.jQuery) {
             $(document).ajaxError(function(event, jqXHR, settings, thrownError) {
-                if (jqXHR.status === 419) {
-                    handleCsrfError(jqXHR);
+                if (jqXHR.status === 419 || jqXHR.status === 401) {
+                    handleAuthError(jqXHR);
                 }
             });
         }
@@ -118,8 +124,8 @@
         const originalFetch = window.fetch;
         window.fetch = function(...args) {
             return originalFetch.apply(this, args).then(response => {
-                if (response.status === 419) {
-                    handleCsrfError(response);
+                if (response.status === 419 || response.status === 401) {
+                    handleAuthError(response);
                 }
                 return response;
             });
@@ -130,8 +136,8 @@
             window.axios.interceptors.response.use(
                 response => response,
                 error => {
-                    if (error.response && error.response.status === 419) {
-                        handleCsrfError(error.response);
+                    if (error.response && (error.response.status === 419 || error.response.status === 401)) {
+                        handleAuthError(error.response);
                     }
                     return Promise.reject(error);
                 }
@@ -142,25 +148,25 @@
     /**
      * Handle CSRF token mismatch (419 error)
      */
-    function handleCsrfError(response) {
-        console.warn('CSRF token mismatch detected - refreshing page');
+    function handleAuthError(response) {
+        console.warn('Authentication/session error detected - redirecting to login');
         
         // Try to get redirect URL from response
-        let redirectUrl = '/';
+        let redirectUrl = '/login';
         
         if (response.data && response.data.redirect) {
             redirectUrl = response.data.redirect;
         }
         
         // Show user-friendly message
-        const message = 'Your session expired. Refreshing the page...';
+        const message = 'You were logged out. Redirecting to login...';
         
         // Create notification
         showNotification(message, 'warning');
         
         // Redirect after short delay
         setTimeout(() => {
-            window.location.href = redirectUrl;
+            redirectToLogin(redirectUrl);
         }, 1500);
     }
 

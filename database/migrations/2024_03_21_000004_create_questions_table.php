@@ -36,6 +36,9 @@ return new class extends Migration {
             // Add similarity threshold for written answers
             $table->float('similarity_threshold')->default(0.8);
 
+            // Lightweight concept tagging lives directly on the question.
+            $table->string('concept')->nullable();
+
             // Correct answer and attempt tracking
             $table->integer('total_attempts')->default(0);
             $table->integer('correct_attempts')->default(0);
@@ -45,10 +48,12 @@ return new class extends Migration {
             
             // Indexes for better performance
             $table->index('topic_id'); // Fast look-up for questions by topic
+            $table->index(['topic_id', 'source'], 'idx_questions_topic_source'); // Latest-source lookups per topic
             $table->index(['topic_id', 'last_attempted_at']); // For sorting by the most recently attempted question
             $table->index(['source', 'question_type']); // For filtering questions by source and type
             $table->index(['topic_id', 'question_type']); // For filtering questions by topic and type
             $table->index(['total_attempts', 'correct_attempts']); // For difficulty analysis
+            $table->index(['topic_id', 'concept']); // For concept-aware retrieval
         });
     }
 

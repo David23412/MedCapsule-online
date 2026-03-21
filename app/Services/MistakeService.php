@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\Mistake;
 use App\Models\Question;
+use App\Services\Learning\ConceptMemoryService;
 use App\Models\Course;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
@@ -12,6 +13,11 @@ use Illuminate\Support\Facades\Log;
 
 class MistakeService
 {
+    public function __construct(
+        private ConceptMemoryService $conceptMemoryService,
+    ) {
+    }
+
     const CACHE_TTL = 900; // 15 minutes
 
     /**
@@ -23,11 +29,11 @@ class MistakeService
      */
     public function getMistakesForUser(int $userId, ?string $courseFilter): array
     {
+        $this->reactivateExpiredSkippedMistakes($userId);
         $cacheKey = "mistakes.user.{$userId}.filter." . ($courseFilter ?? 'all');
 
         return Cache::remember($cacheKey, self::CACHE_TTL, function () use ($userId, $courseFilter) {
             $mistakesQuery = Mistake::where('user_id', $userId)
-                ->where('mastered', false)
                 ->with([
                     'question:id,question,question_type,topic_id,image_url,option_a,option_b,option_c,option_d,correct_answer,explanation',
                     'question.topic:id,name,course_id',
@@ -35,13 +41,9 @@ class MistakeService
                 ]);
 
             if ($courseFilter) {
-                if ($courseFilter === 'skipped') {
-                    $mistakesQuery->where('skipped', true);
-                } else {
-                    $mistakesQuery->whereHas('question.topic.course', function ($query) use ($courseFilter) {
-                        $query->where('id', $courseFilter);
-                    });
-                }
+                $mistakesQuery->whereHas('question.topic.course', function ($query) use ($courseFilter) {
+                    $query->where('id', $courseFilter);
+                });
             }
 
             $mistakes = $mistakesQuery->orderBy('last_attempt_date', 'desc')->get();
@@ -76,7 +78,6 @@ class MistakeService
                 ->join('questions', 'topics.id', '=', 'questions.topic_id')
                 ->join('mistakes', 'questions.id', '=', 'mistakes.question_id')
                 ->where('mistakes.user_id', $userId)
-                ->where('mistakes.mastered', false)
                 ->distinct()
                 ->get();
         });
@@ -101,17 +102,7 @@ class MistakeService
                 return null;
             }
 
-            $mistake = Mistake::updateOrCreate(
-                ['user_id' => $userId, 'question_id' => $questionId],
-                [
-                    'submitted_answer' => $submittedAnswer,
-                    'question_text' => $question->question,
-                    'correct_answer' => $question->correct_answer,
-                    'last_attempt_date' => now(),
-                    'mastered' => false, // Always un-master when a mistake is made
-                    'skipped' => false, // Reset skipped status
-                ]
-            );
+            $mistake = Mistake::recordFailure($userId, $question, $submittedAnswer);
 
             $this->clearUserMistakeCaches($userId);
             return $mistake;
@@ -145,17 +136,15 @@ class MistakeService
      * @param int $questionId
      * @return Mistake|null
      */
-    public function skipMistake(int $userId, int $questionId): ?Mistake
+    public function skipMistake(int $userId, int $questionId, string $mode = 'quiz'): ?Mistake
     {
         $mistake = Mistake::where('user_id', $userId)
             ->where('question_id', $questionId)
             ->first();
 
         if ($mistake) {
-            $mistake->update([
-                'skipped' => true,
-                'last_attempt_date' => now(),
-            ]);
+            $mistake->applySkip($mode);
+            $mistake->save();
             $this->clearUserMistakeCaches($userId);
             return $mistake;
         }
@@ -177,9 +166,9 @@ class MistakeService
             ->where('question_id', $questionId)
             ->firstOrFail();
 
-        // Assuming an `updateAnki` method exists on the Mistake model
-        $mistake->updateAnki($rating);
+        $mistake->applyRatedReview($rating, 'quiz');
         $mistake->save();
+        $this->conceptMemoryService->syncReview($mistake, $rating, 'quiz');
 
         $this->clearUserMistakeCaches($userId);
 
@@ -196,10 +185,8 @@ class MistakeService
         // SURGICAL OPTIMIZATION: Only clear specific user caches, not all courses
         $cacheKeys = [
             "mistakes.user.{$userId}.filter.all",
-            "mistakes.user.{$userId}.filter.skipped", 
             "mistake_courses.user.{$userId}",
             "mistakes_smart_{$userId}_v3",
-            "mistakes_smart_{$userId}_skipped_v3",
             "mistakes_support_smart_{$userId}"
         ];
 
@@ -238,5 +225,22 @@ class MistakeService
                 'cache_keys_cleared' => count($cacheKeys) + count($userCourseIds ?? [])
             ]);
         }
+    }
+
+    private function reactivateExpiredSkippedMistakes(int $userId): void
+    {
+        if (!Mistake::hasColumn('skip_until')) {
+            return;
+        }
+
+        Mistake::query()
+            ->where('user_id', $userId)
+            ->where('skipped', true)
+            ->whereNotNull('skip_until')
+            ->where('skip_until', '<=', now())
+            ->update([
+                'skipped' => false,
+                'skip_until' => null,
+            ]);
     }
 }

@@ -70,6 +70,8 @@ class UserFactory extends Factory
             // Study tracking
             'study_streak_days' => fake()->numberBetween(0, 365),
             'study_time_seconds' => fake()->numberBetween(0, 86400), // Up to 24 hours
+            'survey_completed' => false,
+            'free_courses_unlocked' => false,
 
             // Activity tracking
             'last_active_at' => fake()->dateTimeBetween('-30 days', 'now'),

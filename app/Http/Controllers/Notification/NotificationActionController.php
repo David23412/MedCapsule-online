@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Services\UniversalNotificationService;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Facades\Cache;
 
 class NotificationActionController extends Controller
 {
@@ -25,6 +26,10 @@ class NotificationActionController extends Controller
             
             $success = UniversalNotificationService::markAsRead($user, $notificationId);
             $unreadCount = UniversalNotificationService::getUnreadCount($user);
+
+            if ($success) {
+                $this->invalidateNotificationListCache($user->id);
+            }
             
             return response()->json([
                 'success' => $success,
@@ -45,6 +50,10 @@ class NotificationActionController extends Controller
             $user = auth()->user();
             
             $success = UniversalNotificationService::markAllAsRead($user);
+
+            if ($success) {
+                $this->invalidateNotificationListCache($user->id);
+            }
             
             return response()->json([
                 'success' => $success,
@@ -74,6 +83,15 @@ class NotificationActionController extends Controller
         } catch (\Exception $e) {
             \Log::error('Method execution failed', ['error' => $e->getMessage()]);
             return response()->json(['success' => false, 'message' => 'Operation failed'], 500);
+        }
+    }
+
+    private function invalidateNotificationListCache(int $userId): void
+    {
+        $minuteKey = now()->format('Y-m-d-H-i');
+
+        foreach ([5, 20, 100] as $limit) {
+            Cache::forget("notifications_{$userId}_{$limit}_{$minuteKey}");
         }
     }
 }

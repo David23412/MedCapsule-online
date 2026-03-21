@@ -3,10 +3,13 @@
 namespace App\Providers;
 
 use Illuminate\Support\ServiceProvider;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\View;
 use App\Services\PaymentService;
 use App\Services\PaymentSecurityService;
 use App\Services\AdvancedCacheService;
+use App\Services\NavigationViewDataService;
 use App\Services\PerformanceMonitorService;
 use App\Models\Question;
 use App\Observers\QuestionObserver;
@@ -69,6 +72,17 @@ class AppServiceProvider extends ServiceProvider
 
         // FIXED: Set up global performance monitoring
         $this->setupGlobalPerformanceMonitoring();
+
+        View::composer([
+            'partials.navigation',
+            'components.notification-bell',
+            'partials.profile-picture-upload',
+            'components.responsive-navigation',
+        ], function ($view): void {
+            $view->with(
+                app(NavigationViewDataService::class)->getSharedData(auth()->user())
+            );
+        });
     }
 
     /**
@@ -110,13 +124,42 @@ class AppServiceProvider extends ServiceProvider
      */
     private function warmCriticalCaches(): void
     {
+        if ($this->app->runningInConsole()) {
+            return;
+        }
+
         try {
             $cacheService = app(AdvancedCacheService::class);
 
-            // Warm caches in background to not block boot
-            dispatch(function () use ($cacheService) {
-                $cacheService->warmCriticalCaches();
-            })->onQueue('cache-warming');
+            try {
+                if (!Cache::add('critical_caches:warming', true, now()->addMinutes(10))) {
+                    return;
+                }
+            } catch (\Throwable $e) {
+                \Log::warning('Failed to acquire critical cache warming lock', [
+                    'error' => $e->getMessage(),
+                ]);
+
+                return;
+            }
+
+            $this->app->terminating(function () use ($cacheService) {
+                try {
+                    $cacheService->warmCriticalCaches();
+                } catch (\Throwable $e) {
+                    \Log::warning('Deferred critical cache warming failed', [
+                        'error' => $e->getMessage(),
+                    ]);
+                } finally {
+                    try {
+                        Cache::forget('critical_caches:warming');
+                    } catch (\Throwable $e) {
+                        \Log::warning('Failed to release critical cache warming lock', [
+                            'error' => $e->getMessage(),
+                        ]);
+                    }
+                }
+            });
 
         } catch (\Exception $e) {
             \Log::error('Failed to initialize cache warming', [
@@ -212,7 +255,9 @@ class AppServiceProvider extends ServiceProvider
 
                     $performanceService->endOperation($operationId, [
                         'status' => 'completed',
-                        'execution_time' => $event->job->getExecutionTime()
+                        'execution_time' => method_exists($event->job, 'getExecutionTime')
+                            ? $event->job->getExecutionTime()
+                            : null,
                     ]);
                 }
             } catch (\Exception $e) {

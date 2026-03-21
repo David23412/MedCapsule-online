@@ -11,7 +11,9 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\DB;
 use App\Services\DatabaseTransactionService;
 use App\Services\SecureFileUploadService;
-use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Database\Eloquent\Collection as EloquentCollection;
+use Illuminate\Support\Collection as SupportCollection;
+use App\Services\FreeCourseSurveyService;
 
 /**
  * COURSE SERVICE - ZERO FUNCTIONALITY BREAKAGE
@@ -33,7 +35,8 @@ class CourseService
     public function __construct(
         protected DatabaseTransactionService $transactionService,
         protected SecureFileUploadService $fileUploadService,
-        protected PerformanceMonitorService $performanceMonitor
+        protected PerformanceMonitorService $performanceMonitor,
+        protected FreeCourseSurveyService $freeCourseSurveyService
     ) {}
 
     /**
@@ -53,22 +56,54 @@ class CourseService
             $cacheVersion = Cache::get('courses_cache_version', 1);
             $cacheKey = "courses_metadata_" . ($user?->id ?? 'guest') . "_" . ($selectedYear ?? 'all') . "_v{$cacheVersion}";
 
-            // For logged-in users, skip cache to ensure instant enrollment updates (PRESERVED)
-            $cacheTTL = $isLoggedIn ? 0 : 30; // 0 seconds for logged-in users = no cache
-
-            $courses = Cache::remember($cacheKey, $cacheTTL, function () use ($user, $isLoggedIn, $selectedYear) {
-                return $this->buildCourseQuery($user?->id, $isLoggedIn, $selectedYear)->get();
-            });
+            // For logged-in users, bypass cache explicitly to avoid driver-specific TTL=0 behavior.
+            $courses = $isLoggedIn
+                ? $this->buildCourseQuery($user?->id, true, $selectedYear)->get()
+                : Cache::remember($cacheKey, 30, function () use ($selectedYear) {
+                    return $this->buildCourseQuery(null, false, $selectedYear)->get();
+                });
 
             // PRESERVE existing formatting logic exactly
             $this->formatCoursesForDisplay($courses, $user);
 
             // PRESERVE existing academic years filter
-            $availableYears = Course::distinct()->pluck('academic_year')->filter()->sort()->values();
+            $availableYears = Cache::remember('courses_available_years_v1', 3600, function () {
+                return Course::distinct()->pluck('academic_year')->filter()->sort()->values();
+            });
+
+            $currentUserView = $user ? [
+                'name' => $user->name,
+                'is_admin' => $user->isAdmin(),
+                'is_tutor' => $user->isTutor(),
+                'study_streak_days' => (int) ($user->study_streak_days ?? 0),
+                'profile_image_url' => $user->getProfileImageUrl(),
+                'profile_fallback_url' => 'https://ui-avatars.com/api/?name=' . urlencode($user->name) . '&size=200&background=007bff&color=ffffff',
+                'total_correct_answers' => $user->getTotalCorrectAnswers(),
+                'survey_completed' => $user->hasCompletedFreeCourseSurvey(),
+                'free_courses_unlocked' => $user->hasUnlockedFreeCourses(),
+            ] : null;
+
+            $freeCoursesForSurveyUnlock = $this->freeCourseSurveyService->freeCourses()
+                ->map(fn (Course $course) => [
+                    'id' => $course->id,
+                    'name' => $course->name,
+                ]);
+
+            $freeCourseSurveyDraftPayload = null;
+            if ($user) {
+                $draft = $this->freeCourseSurveyService->draftFor($user);
+                if ($draft) {
+                    $freeCourseSurveyDraftPayload = [
+                        'answers' => $draft->answers ?? [],
+                        'current_step' => $draft->current_step,
+                        'redirect_to' => $draft->redirect_to,
+                    ];
+                }
+            }
 
             return [
                 'success' => true,
-                'data' => compact('courses', 'availableYears', 'selectedYear')
+                'data' => compact('courses', 'availableYears', 'selectedYear', 'currentUserView', 'freeCoursesForSurveyUnlock', 'freeCourseSurveyDraftPayload')
             ];
 
         } finally {
@@ -85,23 +120,8 @@ class CourseService
         $operationId = $this->performanceMonitor->startOperation('course_show_service');
 
         try {
-            // PRESERVE existing eager loading pattern exactly
-            $course = Course::with([
-                    'topics' => function($query) {
-                        $query->select('id', 'name', 'course_id', 'display_order')
-                            ->orderBy('display_order');
-                    },
-                    'enrolledUsers:id,name,profile_picture_url' // Prevent N+1 in views
-                ])
-                ->withCount([
-                    'enrolledUsers as enrolled_users_count',
-                    'topics as topics_count' => function($q) {
-                        $q->where('name', 'NOT LIKE', '%cases%');
-                    },
-                    'topics as cases_count' => function($q) {
-                        $q->where('name', 'LIKE', '%cases%');
-                    }
-                ])
+            $course = Course::query()
+                ->select('id')
                 ->findOrFail($courseId);
 
             $isEnrolled = $this->determineEnrollmentStatus($courseId, $user);
@@ -139,10 +159,10 @@ class CourseService
                     throw new \Exception('User is already enrolled in this course');
                 }
 
-                // Use existing enrollment logic (PRESERVED)
-                $user->courses()->syncWithoutDetaching([
-                    $courseId => ['enrolled_at' => now()]
-                ]);
+                $user->enrollInCourse(
+                    $courseId,
+                    $course->isFree() ? User::COURSE_ACCESS_PREVIEW : User::COURSE_ACCESS_FULL
+                );
 
                 // Clear existing caches (PRESERVED)
                 $this->clearCourseCaches();
@@ -296,7 +316,7 @@ class CourseService
      */
     private function buildCourseQuery(?int $userId, bool $isLoggedIn, ?string $selectedYear): \Illuminate\Database\Eloquent\Builder
     {
-        $query = Course::withCount([
+        $query = Course::query()->withCount([
             'topics as topics_count' => function ($query) {
                 $query->where('name', 'NOT LIKE', '%cases%');
             },
@@ -304,10 +324,7 @@ class CourseService
                 $query->where('name', 'LIKE', '%cases%');
             },
             'enrolledUsers as enrolled_users_count'
-        ])->with(['enrolledUsers' => function($query) {
-            $query->select('users.id', 'users.name', 'users.email', 'users.profile_picture_url')
-                ->take(6); // Increased to show more users
-        }]);
+        ]);
 
         // Apply academic year filter using CourseFilterService logic
         if ($selectedYear && $this->isValidAcademicYear($selectedYear)) {
@@ -414,8 +431,11 @@ class CourseService
      * FORMAT COURSES FOR DISPLAY
      * Preserves exact formatting logic from CourseController
      */
-    private function formatCoursesForDisplay(Collection $courses, ?User $user): void
+    private function formatCoursesForDisplay(EloquentCollection $courses, ?User $user): void
     {
+        $previewLimit = 3;
+        $previewUsersByCourse = $this->loadEnrolledPreviewData($courses, $previewLimit);
+
         if (!$user) {
             // For guest users, set default values (PRESERVED)
             foreach ($courses as $course) {
@@ -423,17 +443,22 @@ class CourseService
                 $course->has_pending_payment = false;
                 $course->completion_percentage = 0;
                 $course->mastered_topics_count = 0;
+                $course->is_free_course = $course->isFree();
+                $course->requires_survey_unlock = false;
+                $course->access_level = null;
+                $course->is_preview_access = false;
+                $course->preview_topics_count = null;
 
                 // Format enrolled users for display (PRESERVED)
-                $enrolledUsers = $course->enrolledUsers ?? collect();
-                $course->enrolled_preview = $enrolledUsers->take(5)->map(function($user) {
+                $enrolledUsers = $previewUsersByCourse->get($course->id, collect());
+                $course->enrolled_preview = $enrolledUsers->map(function($previewUser) {
                     return [
-                        'name' => $user->name,
-                        'profile_picture_url' => $user->profile_picture_url,
-                        'initial' => strtoupper(substr($user->name, 0, 1))
+                        'name' => $previewUser['name'],
+                        'profile_picture_url' => $previewUser['profile_picture_url'],
+                        'initial' => strtoupper(substr($previewUser['name'], 0, 1))
                     ];
                 });
-                $course->has_more = $enrolledUsers->count() > 5;
+                $course->has_more = ($course->enrolled_users_count ?? 0) > $previewLimit;
                 $course->enrolled_users_count = $course->enrolled_users_count ?? 0;
             }
             return;
@@ -442,9 +467,17 @@ class CourseService
         // Use existing optimized bulk cache (PRESERVED)
         $cacheKey = "user_course_optimization_data_{$user->id}";
         $userCourseData = Cache::remember($cacheKey, 300, function() use ($user) {
+            $enrolledCourseIds = $user->courses()->pluck('courses.id')->toArray();
+
             return [
-                'enrolled_course_ids' => $user->courses()->pluck('courses.id')->toArray(),
-                'pending_payment_course_ids' => [], // Add missing key for pending payments
+                'enrolled_course_ids' => $enrolledCourseIds,
+                'course_access_levels' => $user->getCourseAccessLevels($enrolledCourseIds),
+                'pending_payment_course_ids' => DB::table('payments')
+                    ->where('user_id', $user->id)
+                    ->whereIn('status', ['pending', 'pending_verification'])
+                    ->pluck('course_id')
+                    ->map(static fn ($courseId) => (int) $courseId)
+                    ->toArray(),
                 'is_admin' => $user->isAdmin()
             ];
         });
@@ -454,9 +487,18 @@ class CourseService
             // PRESERVE existing enrollment logic exactly
             if ($userCourseData['is_admin']) {
                 $course->is_enrolled = true;
+                $course->access_level = User::COURSE_ACCESS_FULL;
             } else {
-                $course->is_enrolled = in_array($course->id, $userCourseData['enrolled_course_ids']);
+                $course->access_level = $userCourseData['course_access_levels'][$course->id] ?? null;
+                $course->is_enrolled = $course->access_level !== null;
             }
+
+            $course->is_free_course = $course->isFree();
+            $course->requires_survey_unlock = $course->is_free_course && $user->requiresSurveyUnlockForCourse($course);
+            $course->is_preview_access = $course->access_level === User::COURSE_ACCESS_PREVIEW;
+            $course->preview_topics_count = $course->is_preview_access
+                ? (int) config('free_course_survey.preview_topics_count', 5)
+                : null;
 
             // PRESERVE existing payment check logic
             $course->has_pending_payment = in_array($course->id, $userCourseData['pending_payment_course_ids'] ?? []);
@@ -466,16 +508,83 @@ class CourseService
             $course->mastered_topics_count = 0;
 
             // Format enrolled users for display (PRESERVED)
-            $enrolledUsers = $course->enrolledUsers ?? collect();
-            $course->enrolled_preview = $enrolledUsers->take(5)->map(function($user) {
+            $enrolledUsers = $previewUsersByCourse->get($course->id, collect());
+            $course->enrolled_preview = $enrolledUsers->map(function($previewUser) {
                 return [
-                    'name' => htmlspecialchars($user->name, ENT_QUOTES, 'UTF-8'), // XSS protection
-                    'profile_picture_url' => $user->profile_picture_url,
-                    'initial' => strtoupper(substr($user->name, 0, 1))
+                    'name' => htmlspecialchars($previewUser['name'], ENT_QUOTES, 'UTF-8'), // XSS protection
+                    'profile_picture_url' => $previewUser['profile_picture_url'],
+                    'initial' => strtoupper(substr($previewUser['name'], 0, 1))
                 ];
             });
-            $course->has_more = $enrolledUsers->count() > 5;
+            $course->has_more = ($course->enrolled_users_count ?? 0) > $previewLimit;
             $course->enrolled_users_count = $course->enrolled_users_count ?? 0;
+        }
+    }
+
+    private function loadEnrolledPreviewData(EloquentCollection $courses, int $perCourseLimit): SupportCollection
+    {
+        $courseIds = $courses->pluck('id')->filter()->values();
+        if ($courseIds->isEmpty()) {
+            return collect();
+        }
+
+        try {
+            $placeholders = implode(', ', array_fill(0, $courseIds->count(), '?'));
+            $limit = max(1, $perCourseLimit);
+
+            $rows = collect(DB::select(
+                "
+                    SELECT preview.course_id, preview.user_id, preview.name, preview.profile_picture_url
+                    FROM (
+                        SELECT
+                            deduped.course_id,
+                            deduped.user_id,
+                            deduped.name,
+                            deduped.profile_picture_url,
+                            ROW_NUMBER() OVER (
+                                PARTITION BY deduped.course_id
+                                ORDER BY deduped.updated_at DESC, deduped.enrollment_id DESC
+                            ) as row_num
+                        FROM (
+                            SELECT
+                                cu.course_id,
+                                cu.user_id,
+                                u.name,
+                                u.profile_picture_url,
+                                cu.updated_at,
+                                cu.id as enrollment_id,
+                                ROW_NUMBER() OVER (
+                                    PARTITION BY cu.course_id, cu.user_id
+                                    ORDER BY cu.updated_at DESC, cu.id DESC
+                                ) as user_row_num
+                            FROM course_user cu
+                            INNER JOIN users u ON u.id = cu.user_id
+                            WHERE cu.is_enrolled = 1
+                            AND cu.course_id IN ({$placeholders})
+                        ) deduped
+                        WHERE deduped.user_row_num = 1
+                    ) preview
+                    WHERE preview.row_num <= {$limit}
+                    ORDER BY preview.course_id, preview.row_num
+                ",
+                $courseIds->all()
+            ));
+
+            return $rows->groupBy('course_id')->map(function (SupportCollection $group) {
+                return $group->map(function ($row) {
+                    return [
+                        'name' => $row->name,
+                        'profile_picture_url' => $row->profile_picture_url,
+                    ];
+                })->values();
+            });
+        } catch (\Throwable $e) {
+            Log::warning('Failed to bulk load enrolled preview data', [
+                'course_count' => $courseIds->count(),
+                'error' => $e->getMessage(),
+            ]);
+
+            return collect();
         }
     }
 
@@ -506,6 +615,7 @@ class CourseService
     private function clearCourseCaches(): void
     {
         Cache::increment('courses_cache_version');
+        Cache::forget('courses_available_years_v1');
         Cache::forget("user_course_optimization_data_" . auth()->id());
     }
 

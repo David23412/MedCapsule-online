@@ -22,7 +22,12 @@ class UserCourseService
         try {
             DB::table('course_user')->updateOrInsert(
                 ['user_id' => $user->id, 'course_id' => $course->id],
-                ['is_enrolled' => true, 'enrolled_at' => now(), 'updated_at' => now()]
+                [
+                    'is_enrolled' => true,
+                    'access_level' => User::COURSE_ACCESS_FULL,
+                    'enrolled_at' => now(),
+                    'updated_at' => now(),
+                ]
             );
 
             $this->clearCourseCacheForUser($user);
@@ -142,7 +147,12 @@ class UserCourseService
                 // User is not enrolled, grant access
                 DB::table('course_user')->updateOrInsert(
                     ['user_id' => $user->id, 'course_id' => $course->id],
-                    ['is_enrolled' => true, 'enrolled_at' => now(), 'updated_at' => now()]
+                    [
+                        'is_enrolled' => true,
+                        'access_level' => User::COURSE_ACCESS_FULL,
+                        'enrolled_at' => now(),
+                        'updated_at' => now(),
+                    ]
                 );
 
                 $isEnrolled = true;

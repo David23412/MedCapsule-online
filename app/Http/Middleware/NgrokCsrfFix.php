@@ -14,7 +14,11 @@ class NgrokCsrfFix
     public function handle(Request $request, Closure $next): Response
     {
         // For ngrok development, we need to handle CSRF more flexibly
-        if (str_contains($request->getHost(), 'ngrok') || str_contains($request->getHost(), 'ngrok-free.app')) {
+        if (
+            str_contains($request->getHost(), 'ngrok') ||
+            str_contains($request->getHost(), 'ngrok-free.app') ||
+            str_contains($request->getHost(), 'ngrok-free.dev')
+        ) {
             // Add ngrok-specific headers
             $request->headers->set('X-Forwarded-Proto', 'https');
             $request->headers->set('X-Forwarded-Host', $request->getHost());

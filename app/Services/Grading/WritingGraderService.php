@@ -149,7 +149,7 @@ class WritingGraderService
         $similarities = $this->cache->remember(
             $forceEnhancedCacheKey,
             3600,
-            function() use ($expandedStudent, $expandedCorrect) {
+            function() use ($expandedStudent, $expandedCorrect, $forceEnhancedCacheKey) {
                 // SUPER AGENT MODE: Force the enhanced SimilarityEngine to run
                 $result = $this->similarityEngine->calculateAll(
                     $expandedStudent,  // Use raw expanded text
@@ -357,7 +357,7 @@ class WritingGraderService
                 'levenshtein' => 0.0,
                 'semantic' => 0.0,
                 'medical' => 0.0,
-                'ensemble' => $enhancedScore,
+                'ensemble_score' => $enhancedScore,
                 'confidence' => $enhancedConfidence,
                 'processing_time' => 0.0
             ];
@@ -606,7 +606,7 @@ class WritingGraderService
     /**
      * Get accuracy metrics from stored evaluations
      */
-    public function getAccuracyMetrics(string $subject = null, int $hours = 24): array
+    public function getAccuracyMetrics(?string $subject = null, int $hours = 24): array
     {
         try {
             return Evaluation::getAccuracyMetrics($subject, $hours);
@@ -630,7 +630,7 @@ class WritingGraderService
     /**
      * Get performance metrics from stored evaluations
      */
-    public function getSystemPerformanceMetrics(string $subject = null, int $hours = 24): array
+    public function getSystemPerformanceMetrics(?string $subject = null, int $hours = 24): array
     {
         try {
             return Evaluation::getPerformanceMetrics($subject, $hours);

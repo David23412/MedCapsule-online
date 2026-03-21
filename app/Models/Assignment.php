@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Collection;
 use Carbon\Carbon;
 
 class Assignment extends Model
@@ -69,6 +70,18 @@ class Assignment extends Model
      */
     public function getStatusStringAttribute(): string
     {
+        if (isset($this->display_status_string)) {
+            return (string) $this->display_status_string;
+        }
+
+        if (isset($this->display_status)) {
+            return match ((int) $this->display_status) {
+                self::STATUS_COMPLETED => 'completed',
+                self::STATUS_LOCKED => ($this->deadline && now()->gt($this->deadline)) ? 'overdue' : 'locked',
+                default => 'active',
+            };
+        }
+
         $status = $this->getCurrentStatusAttribute();
         
         if ($status === self::STATUS_COMPLETED) {
@@ -741,7 +754,11 @@ class Assignment extends Model
      */
     public function isCompletedByUser($userId): bool
     {
-        $attempts = $this->attemptsForUser($userId)->get();
+        if (isset($this->user_progress['completed'])) {
+            return (bool) $this->user_progress['completed'];
+        }
+
+        $attempts = $this->getLoadedAttemptsForUser($userId) ?? $this->attemptsForUser($userId)->get();
         
         if ($attempts->isEmpty()) {
             return false;
@@ -760,7 +777,11 @@ class Assignment extends Model
      */
     public function getUserBestScore($userId): float
     {
-        $attempts = $this->attemptsForUser($userId)->get();
+        if (isset($this->user_progress['percentage'])) {
+            return (float) $this->user_progress['percentage'];
+        }
+
+        $attempts = $this->getLoadedAttemptsForUser($userId) ?? $this->attemptsForUser($userId)->get();
         
         if ($attempts->isEmpty()) {
             return 0;
@@ -793,6 +814,11 @@ class Assignment extends Model
      */
     public function hasUserAttempted($userId): bool
     {
+        $loadedAttempts = $this->getLoadedAttemptsForUser($userId);
+        if ($loadedAttempts !== null) {
+            return $loadedAttempts->isNotEmpty();
+        }
+
         return $this->attemptsForUser($userId)->exists();
     }
 
@@ -810,6 +836,10 @@ class Assignment extends Model
      */
     public function getStatusForUser(User $user): int
     {
+        if (isset($this->display_status)) {
+            return (int) $this->display_status;
+        }
+
         // 1. Check if the user has completed the assignment
         if ($this->isCompletedByUser($user->id)) {
             return self::STATUS_COMPLETED;
@@ -822,6 +852,15 @@ class Assignment extends Model
 
         // 3. If none of the above, the assignment is active
         return self::STATUS_ACTIVE;
+    }
+
+    private function getLoadedAttemptsForUser(int $userId): ?Collection
+    {
+        if (!$this->relationLoaded('attempts')) {
+            return null;
+        }
+
+        return $this->attempts->where('user_id', $userId)->values();
     }
 
     /**

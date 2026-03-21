@@ -88,10 +88,31 @@
     <nav class="navbar navbar-expand-lg navbar-light">
         <div class="container">
             <a class="navbar-brand" href="/" aria-label="MedCapsule">
-                <svg width="60" height="30" viewBox="0 0 100 50" xmlns="http://www.w3.org/2000/svg">
-                    <rect fill="#3579F6" x="10" y="15" width="80" height="20" rx="10" ry="10" />
-                    <rect x="50" y="15" width="40" height="20" fill="#ff0000" rx="0 10 10 0" ry="10"/>
-                    <line x1="50" y1="15" x2="50" y2="35" stroke="white" stroke-width="1.5" stroke-dasharray="2,1"/>
+                <svg width="52" height="26" viewBox="0 0 52 26" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                    <defs>
+                        <linearGradient id="loginPillBody" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="0%" stop-color="#2563eb"/>
+                            <stop offset="45%" stop-color="#3b82f6"/>
+                            <stop offset="100%" stop-color="#1d4ed8"/>
+                        </linearGradient>
+                        <linearGradient id="loginPillGloss" x1="0.1" y1="0" x2="0.9" y2="0">
+                            <stop offset="0%" stop-color="rgba(255,255,255,0)"/>
+                            <stop offset="30%" stop-color="rgba(255,255,255,0.6)"/>
+                            <stop offset="70%" stop-color="rgba(255,255,255,0.5)"/>
+                            <stop offset="100%" stop-color="rgba(255,255,255,0)"/>
+                        </linearGradient>
+                        <linearGradient id="loginPillShadow" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="0%" stop-color="rgba(0,0,0,0)"/>
+                            <stop offset="100%" stop-color="rgba(10,20,80,0.28)"/>
+                        </linearGradient>
+                        <filter id="loginPillDrop" x="-8%" y="-15%" width="116%" height="150%">
+                            <feDropShadow dx="0" dy="2.5" stdDeviation="2" flood-color="#1d4ed8" flood-opacity="0.38"/>
+                        </filter>
+                    </defs>
+                    <rect x="1" y="3" width="50" height="18" rx="9" fill="url(#loginPillBody)" filter="url(#loginPillDrop)"/>
+                    <rect x="1" y="3" width="50" height="18" rx="9" fill="url(#loginPillShadow)"/>
+                    <rect x="4" y="4" width="44" height="7" rx="5" fill="url(#loginPillGloss)" opacity="0.88"/>
+                    <ellipse cx="10" cy="8" rx="3.5" ry="2" fill="rgba(255,255,255,0.6)"/>
                 </svg>
             </a>
             <div class="d-flex">
@@ -124,6 +145,14 @@
                                 <label for="email" class="form-label">Email Address</label>
                                 <input id="email" type="email" class="form-control @error('email') is-invalid @enderror" name="email" value="{{ old('email') }}" required autocomplete="email">
                                 @error('email')
+                                    <div class="invalid-feedback">{{ $message }}</div>
+                                @enderror
+                            </div>
+
+                            <div class="mb-3">
+                                <label for="number" class="form-label">Number</label>
+                                <input id="number" type="tel" class="form-control @error('number') is-invalid @enderror" name="number" value="{{ old('number') }}" required autocomplete="tel">
+                                @error('number')
                                     <div class="invalid-feedback">{{ $message }}</div>
                                 @enderror
                             </div>

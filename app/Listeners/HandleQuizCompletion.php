@@ -6,6 +6,7 @@ use App\Events\QuizCompleted;
 use App\Services\UserStatsService;
 use App\Services\NotificationService;
 use App\Services\Core\UltraConsolidatedCacheService;
+use App\Services\StudyGamePlanService;
 use App\Models\Mistake;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Queue\InteractsWithQueue;
@@ -24,6 +25,7 @@ class HandleQuizCompletion implements ShouldQueue
     protected UserStatsService $userStatsService;
     protected NotificationService $notificationService;
     protected UltraConsolidatedCacheService $cacheService;
+    protected StudyGamePlanService $studyGamePlanService;
 
     /**
      * Create the event listener.
@@ -31,11 +33,13 @@ class HandleQuizCompletion implements ShouldQueue
     public function __construct(
         UserStatsService $userStatsService,
         NotificationService $notificationService,
-        UltraConsolidatedCacheService $cacheService
+        UltraConsolidatedCacheService $cacheService,
+        StudyGamePlanService $studyGamePlanService
     ) {
         $this->userStatsService = $userStatsService;
         $this->notificationService = $notificationService;
         $this->cacheService = $cacheService;
+        $this->studyGamePlanService = $studyGamePlanService;
     }
 
     /**
@@ -49,6 +53,7 @@ class HandleQuizCompletion implements ShouldQueue
             $this->processMistakes($event);
             $this->processNotifications($event);
             $this->processCacheInvalidation($event);
+            $this->processPlannerTasks($event);
             
         } catch (\Exception $e) {
             Log::error('Quiz completion processing failed', [
@@ -96,16 +101,22 @@ class HandleQuizCompletion implements ShouldQueue
             $incorrectAnswers = collect($event->gradingResult['results'])
                 ->where('is_correct', false);
             
+            $questionMap = \App\Models\Question::query()
+                ->whereIn('id', $incorrectAnswers->pluck('question_id')->filter()->all())
+                ->get()
+                ->keyBy('id');
+
             foreach ($incorrectAnswers as $result) {
-                Mistake::updateOrCreate(
-                    [
-                        'user_id' => $event->user->id,
-                        'question_id' => $result['question_id']
-                    ],
-                    [
-                        'submitted_answer' => $result['submitted_answer'] ?? 'unanswered',
-                        'last_attempt_date' => now()
-                    ]
+                $question = $questionMap->get($result['question_id'] ?? null);
+
+                if (!$question) {
+                    continue;
+                }
+
+                Mistake::recordFailure(
+                    $event->user->id,
+                    $question,
+                    $result['submitted_answer'] ?? 'unanswered'
                 );
             }
             
@@ -174,6 +185,24 @@ class HandleQuizCompletion implements ShouldQueue
                 'user_id' => $event->user->id,
                 'topic_id' => $event->topic->id,
                 'error' => $e->getMessage()
+            ]);
+        }
+    }
+
+    private function processPlannerTasks(QuizCompleted $event): void
+    {
+        try {
+            $course = $event->topic->course()->first();
+            if (!$course) {
+                return;
+            }
+
+            $this->studyGamePlanService->syncAfterSession($event->user, $course);
+        } catch (\Exception $e) {
+            Log::error('Planner sync after quiz completion failed', [
+                'user_id' => $event->user->id,
+                'topic_id' => $event->topic->id,
+                'error' => $e->getMessage(),
             ]);
         }
     }

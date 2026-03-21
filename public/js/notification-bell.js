@@ -8,7 +8,7 @@ function notificationBell() {
         unreadCount: 0,
         loading: false,
         lastFetched: 0,
-        notificationSound: new Audio('/sounds/notification-sound.mp3'),
+        notificationSound: new Audio('/sounds/Soft-ui-notification-sound-effect.mp3'),
         prevUnreadCount: 0,
         websocket: null,
         

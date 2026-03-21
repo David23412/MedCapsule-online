@@ -3,6 +3,7 @@
 namespace App\Exceptions;
 
 use Illuminate\Foundation\Exceptions\Handler as ExceptionHandler;
+use Illuminate\Auth\AuthenticationException;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Response;
@@ -60,6 +61,10 @@ class Handler extends ExceptionHandler
      */
     public function render($request, Throwable $e): Response|JsonResponse
     {
+        if ($e instanceof AuthenticationException) {
+            return $this->handleAuthenticationException($request, $e);
+        }
+
         // Handle CSRF token mismatch (419 errors) - CRITICAL FIX
         if ($e instanceof TokenMismatchException) {
             return $this->handleTokenMismatchException($request, $e);
@@ -122,7 +127,7 @@ class Handler extends ExceptionHandler
                 'error' => 'Session Expired',
                 'message' => 'Your session has expired. Please refresh the page.',
                 'code' => 'SESSION_EXPIRED',
-                'redirect' => route('home'),
+                'redirect' => route('login'),
             ], 419);
         }
 
@@ -131,9 +136,27 @@ class Handler extends ExceptionHandler
         $request->session()->invalidate();
         $request->session()->regenerateToken();
 
-        return redirect()->route('home')
-            ->with('warning', 'Your session expired. Please log in again if needed.')
+        return redirect()->route('login')
+            ->with('warning', 'Your session expired. Please log in again.')
             ->with('session_expired', true);
+    }
+
+    /**
+     * Handle unauthenticated access globally.
+     */
+    protected function handleAuthenticationException(Request $request, AuthenticationException $e): Response|JsonResponse
+    {
+        if ($request->expectsJson() || $request->ajax()) {
+            return response()->json([
+                'success' => false,
+                'error' => 'Unauthenticated',
+                'message' => 'Your session has expired. Please log in again.',
+                'redirect' => route('login'),
+            ], 401);
+        }
+
+        return redirect()->guest(route('login'))
+            ->with('warning', 'You were logged out. Please sign in again.');
     }
 
     /**

@@ -155,13 +155,13 @@
                                     
                                     <div class="mb-3">
                                         <small class="text-muted d-block">
-                                            <i class="fas fa-user me-1"></i>{{ $assignment->tutor->name }}
+                                            <i class="fas fa-user me-1"></i>{{ $assignment->tutor ? $assignment->tutor->name : 'Unknown Tutor' }}
                                         </small>
                                         <small class="text-muted d-block">
-                                            <i class="fas fa-book me-1"></i>{{ $assignment->course->name }}
+                                            <i class="fas fa-book me-1"></i>{{ $assignment->course ? $assignment->course->name : 'Unknown Course' }}
                                         </small>
                                         <small class="text-muted d-block">
-                                            <i class="fas fa-bookmark me-1"></i>{{ $assignment->topic->name }}
+                                            <i class="fas fa-bookmark me-1"></i>{{ $assignment->topic ? $assignment->topic->name : 'Unknown Topic' }}
                                         </small>
                                     </div>
 
@@ -175,7 +175,7 @@
                                     </div>
 
                                     @if($assignment->description)
-                                        <p class="card-text small">{{ Str::limit($assignment->description, 80) }}</p>
+                                        <p class="card-text small">{{ substr($assignment->description, 0, 80) }}{{ strlen($assignment->description) > 80 ? '...' : '' }}</p>
                                     @endif
                                 </div>
                                 
@@ -216,13 +216,13 @@
                                     
                                     <div class="mb-3">
                                         <small class="text-muted d-block">
-                                            <i class="fas fa-user me-1"></i>{{ $assignment->tutor->name }}
+                                            <i class="fas fa-user me-1"></i>{{ $assignment->tutor ? $assignment->tutor->name : 'Unknown Tutor' }}
                                         </small>
                                         <small class="text-muted d-block">
-                                            <i class="fas fa-book me-1"></i>{{ $assignment->course->name }}
+                                            <i class="fas fa-book me-1"></i>{{ $assignment->course ? $assignment->course->name : 'Unknown Course' }}
                                         </small>
                                         <small class="text-muted d-block">
-                                            <i class="fas fa-bookmark me-1"></i>{{ $assignment->topic->name }}
+                                            <i class="fas fa-bookmark me-1"></i>{{ $assignment->topic ? $assignment->topic->name : 'Unknown Topic' }}
                                         </small>
                                     </div>
 
@@ -236,7 +236,7 @@
                                     </div>
 
                                     @if($assignment->description)
-                                        <p class="card-text small">{{ Str::limit($assignment->description, 80) }}</p>
+                                        <p class="card-text small">{{ substr($assignment->description, 0, 80) }}{{ strlen($assignment->description) > 80 ? '...' : '' }}</p>
                                     @endif
                                 </div>
                                 
@@ -277,13 +277,13 @@
                                     
                                     <div class="mb-3">
                                         <small class="text-muted d-block">
-                                            <i class="fas fa-user me-1"></i>{{ $assignment->tutor->name }}
+                                            <i class="fas fa-user me-1"></i>{{ $assignment->tutor ? $assignment->tutor->name : 'Unknown Tutor' }}
                                         </small>
                                         <small class="text-muted d-block">
-                                            <i class="fas fa-book me-1"></i>{{ $assignment->course->name }}
+                                            <i class="fas fa-book me-1"></i>{{ $assignment->course ? $assignment->course->name : 'Unknown Course' }}
                                         </small>
                                         <small class="text-muted d-block">
-                                            <i class="fas fa-bookmark me-1"></i>{{ $assignment->topic->name }}
+                                            <i class="fas fa-bookmark me-1"></i>{{ $assignment->topic ? $assignment->topic->name : 'Unknown Topic' }}
                                         </small>
                                     </div>
 
@@ -298,7 +298,7 @@
                                     </div>
 
                                     @if($assignment->description)
-                                        <p class="card-text small">{{ Str::limit($assignment->description, 80) }}</p>
+                                        <p class="card-text small">{{ substr($assignment->description, 0, 80) }}{{ strlen($assignment->description) > 80 ? '...' : '' }}</p>
                                     @endif
                                 </div>
                                 
@@ -337,13 +337,13 @@
                                     
                                     <div class="mb-3">
                                         <small class="text-muted d-block">
-                                            <i class="fas fa-user me-1"></i>{{ $assignment->tutor->name }}
+                                            <i class="fas fa-user me-1"></i>{{ $assignment->tutor ? $assignment->tutor->name : 'Unknown Tutor' }}
                                         </small>
                                         <small class="text-muted d-block">
-                                            <i class="fas fa-book me-1"></i>{{ $assignment->course->name }}
+                                            <i class="fas fa-book me-1"></i>{{ $assignment->course ? $assignment->course->name : 'Unknown Course' }}
                                         </small>
                                         <small class="text-muted d-block">
-                                            <i class="fas fa-bookmark me-1"></i>{{ $assignment->topic->name }}
+                                            <i class="fas fa-bookmark me-1"></i>{{ $assignment->topic ? $assignment->topic->name : 'Unknown Topic' }}
                                         </small>
                                     </div>
 

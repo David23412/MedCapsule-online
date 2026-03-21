@@ -103,15 +103,16 @@ Route::middleware(['auth', 'role:admin,tutor'])->group(function () {
 // Get question counts by source for a topic
 Route::get('/topic/{topic}/question-counts', function($topicId) {
     try {
-        // Get all questions for this topic
-        $questions = Question::where('topic_id', $topicId)->get();
-        
-        // Count questions by source
+        $sourceCounts = Question::query()
+            ->where('topic_id', $topicId)
+            ->whereNotNull('source')
+            ->selectRaw('source, COUNT(*) as total')
+            ->groupBy('source')
+            ->pluck('total', 'source');
+
         $counts = [
-            'total' => $questions->count(),
-            'sources' => $questions->groupBy('source')->map(function($group) {
-                return $group->count();
-            })
+            'total' => (int) Question::where('topic_id', $topicId)->count(),
+            'sources' => $sourceCounts,
         ];
         
         return response()->json($counts);
@@ -138,42 +139,6 @@ Route::get('/topics/{topicId}/sources', function($topicId) {
     }
 });
 
-// Test payment verification route (no auth, no CSRF)
-Route::post('/test-payment-verify/{payment}', function($payment) {
-    try {
-        $payment = \App\Models\Payment::findOrFail($payment);
-        
-        // Update payment status
-        $payment->update([
-            'status' => 'completed',
-            'paid_at' => now(),
-            'payment_data' => array_merge($payment->payment_data ?? [], [
-                'verified_by' => 'api_test',
-                'verified_at' => now()->toDateTimeString(),
-                'admin_notes' => 'API test verification'
-            ])
-        ]);
-        
-        // Enroll user in course
-        $user = \App\Models\User::find($payment->user_id);
-        if ($user) {
-            $user->courses()->syncWithoutDetaching([$payment->course_id]);
-        }
-        
-        return response()->json([
-            'success' => true,
-            'message' => 'Payment verified successfully via API',
-            'payment_id' => $payment->id,
-            'status' => $payment->status
-        ]);
-    } catch (\Exception $e) {
-        return response()->json([
-            'success' => false,
-            'message' => 'Error: ' . $e->getMessage()
-        ], 500);
-    }
-}); 
-
 Route::middleware('auth')->group(function () {
     // User progress endpoint for milestone bar updates
     Route::get('/user/progress', function () {
@@ -189,4 +154,3 @@ Route::middleware('auth')->group(function () {
     Route::post('/video-token/{videoId}', [VideoController::class, 'getVideoAccess']);
     Route::get('/video-stream/{token}', [VideoController::class, 'getVideoStream']);
 }); 
-

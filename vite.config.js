@@ -4,15 +4,19 @@ import { resolve } from 'path';
 import autoprefixer from 'autoprefixer';
 import cssnano from 'cssnano';
 
+import react from '@vitejs/plugin-react';
+
 export default defineConfig({
     plugins: [
         laravel({
             input: [
                 'resources/css/app.css',
                 'resources/js/app.js',
+                'resources/js/landing-entry.tsx',
             ],
             refresh: true,
         }),
+        react(),
     ],
 
     // PERFORMANCE OPTIMIZATIONS
@@ -57,8 +61,11 @@ export default defineConfig({
 
     // Development optimizations
     server: {
+        host: '0.0.0.0',
+        port: 5173,
+        strictPort: true,
         hmr: {
-            overlay: false
+            host: 'localhost',
         }
     },
 

@@ -5,8 +5,11 @@
         <div class="nav-links">
             <a href="javascript:history.back()" class="nav-link">← Back</a>
             @auth
+                @php
+                    $navigationFallbackProfileImageUrl = 'https://ui-avatars.com/api/?name=' . urlencode($navigationUser?->name ?? Auth::user()->name) . '&size=200&background=007bff&color=ffffff';
+                @endphp
                 <a href="{{ route('profile') }}" class="profile-circle">
-                    <img src="{{ Auth::user()->profile_picture_url }}?v={{ time() }}" alt="Profile Picture" class="profile-image" onerror="this.src='https://ui-avatars.com/api/?name={{ urlencode(Auth::user()->name) }}&size=200&background=007bff&color=ffffff'">
+                    <img src="{{ $navigationProfileImageUrl }}" alt="Profile Picture" class="profile-image" onerror="this.src='{{ $navigationFallbackProfileImageUrl }}'">
                 </a>
             @endauth
         </div>
