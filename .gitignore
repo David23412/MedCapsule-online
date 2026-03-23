@@ -1,0 +1,70 @@
+##############################################################################
+# MedCapsule — .gitignore
+# PHP / Laravel / Node.js / Docker
+##############################################################################
+
+# ── PHP Dependencies ─────────────────────────────────────────────────────────
+/vendor
+
+# ── Node.js Dependencies ─────────────────────────────────────────────────────
+/node_modules
+
+# ── Compiled Frontend Assets ─────────────────────────────────────────────────
+/public/build
+/public/hot
+/public/storage
+
+# ── Environment / Secrets ────────────────────────────────────────────────────
+# Keep ONLY .env.example committed; everything else is a secret.
+/.env
+/.env.*
+!/.env.example
+
+# ── Laravel Runtime / Storage ─────────────────────────────────────────────────
+/storage/logs/*.log
+/storage/framework/cache/data/*
+/storage/framework/sessions/*
+/storage/framework/views/*
+/storage/cache/*
+/storage/*.key
+
+# Audit / probe results that were mistakenly committed
+/storage/audit/
+/storage/audit-phase2-results.md
+/storage/database-probe-results.md
+/storage/differential-integrity-results.md
+/storage/focused-database-probe.md
+/storage/performance-benchmark-results.md
+
+# ── Laravel Bootstrap Cache ───────────────────────────────────────────────────
+/bootstrap/cache/*
+!/bootstrap/cache/.gitkeep
+
+# ── Testing Artifacts ─────────────────────────────────────────────────────────
+.phpunit.result.cache
+/tests/reports/
+/.playwright-cli/
+
+# ── Build / Tool Output Directories ──────────────────────────────────────────
+/output/
+/artifacts/
+
+# ── OS / Editor Junk ─────────────────────────────────────────────────────────
+.DS_Store
+**/.DS_Store
+Thumbs.db
+*.swp
+*.swo
+/.idea
+/.vscode
+
+# ── Personal Planning Files ───────────────────────────────────────────────────
+Task planner.md
+
+# ── Kiro IDE Workspace ────────────────────────────────────────────────────────
+.kiro/
+
+# ── Misc ──────────────────────────────────────────────────────────────────────
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*

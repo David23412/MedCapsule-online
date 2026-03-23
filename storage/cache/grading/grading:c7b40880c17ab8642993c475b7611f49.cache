@@ -1,1 +1,0 @@
-a:8:{s:8:"original";s:22:"DM = diabetes mellitus";s:10:"normalized";s:18:"dm diabete mellitu";s:7:"cleaned";s:21:"dm  diabetes mellitus";s:6:"tokens";a:3:{i:0;s:2:"dm";i:1;s:8:"diabetes";i:2;s:8:"mellitus";}s:13:"medical_terms";a:0:{}s:13:"abbreviations";a:0:{}s:10:"confidence";d:0.5;s:15:"processing_time";d:0.0008130073547363281;}

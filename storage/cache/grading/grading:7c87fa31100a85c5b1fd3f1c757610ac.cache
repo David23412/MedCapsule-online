@@ -1,1 +1,0 @@
-a:8:{s:8:"original";s:10:"O2 sat 98%";s:10:"normalized";s:9:"o2 sat 98";s:7:"cleaned";s:9:"o2 sat 98";s:6:"tokens";a:3:{i:0;s:2:"o2";i:1;s:3:"sat";i:2;s:2:"98";}s:13:"medical_terms";a:0:{}s:13:"abbreviations";a:0:{}s:10:"confidence";d:0.5;s:15:"processing_time";d:0.0024611949920654297;}

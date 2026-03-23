@@ -1,1 +1,0 @@
-a:8:{s:8:"original";s:13:"Test answer 0";s:10:"normalized";s:11:"test answer";s:7:"cleaned";s:13:"test answer 0";s:6:"tokens";a:2:{i:0;s:4:"test";i:1;s:6:"answer";}s:13:"medical_terms";a:0:{}s:13:"abbreviations";a:0:{}s:10:"confidence";d:0.5;s:15:"processing_time";d:0.0008001327514648438;}

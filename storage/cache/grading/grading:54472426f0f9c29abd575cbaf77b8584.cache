@@ -1,1 +1,0 @@
-a:8:{s:8:"original";s:8:"pH = 7.4";s:10:"normalized";s:7:"ph 7. 4";s:7:"cleaned";s:8:"ph  7. 4";s:6:"tokens";a:3:{i:0;s:2:"ph";i:1;s:2:"7.";i:2;s:1:"4";}s:13:"medical_terms";a:0:{}s:13:"abbreviations";a:0:{}s:10:"confidence";d:0.5;s:15:"processing_time";d:0.0007162094116210938;}

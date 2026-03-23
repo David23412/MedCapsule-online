@@ -1,1 +1,0 @@
-a:8:{s:8:"original";s:25:"E = mc², c = 3×10^8 m/s";s:10:"normalized";s:16:"e mc, c 3108 m s";s:7:"cleaned";s:18:"e  mc, c  3108 m/s";s:6:"tokens";a:6:{i:0;s:1:"e";i:1;s:3:"mc,";i:2;s:1:"c";i:3;s:4:"3108";i:4;s:1:"m";i:5;s:1:"s";}s:13:"medical_terms";a:0:{}s:13:"abbreviations";a:0:{}s:10:"confidence";d:0.6;s:15:"processing_time";d:0.0018610954284667969;}
