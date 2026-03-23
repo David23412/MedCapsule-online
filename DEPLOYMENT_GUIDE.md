@@ -1,5 +1,80 @@
 # MedCapsule Production Deployment Guide
 
+## ⚠️ STEP 0 — Rotate Secrets Before Deploying
+
+Old credentials (`APP_KEY`, `REVERB_APP_KEY`, `REVERB_APP_SECRET`) were committed to git history in earlier commits. **You must rotate them before going live.** Follow these steps exactly — in this order.
+
+### 0.1 Generate a new APP_KEY
+
+Run this locally (requires PHP 8.x):
+
+```bash
+php -r "echo 'base64:' . base64_encode(random_bytes(32)) . PHP_EOL;"
+```
+
+Or, if you have Composer dependencies installed:
+
+```bash
+php artisan key:generate --show
+```
+
+Copy the output (it looks like `base64:...`). **Do not paste it into any file you commit.**
+
+### 0.2 Generate new Reverb credentials
+
+If you are using Laravel Reverb (self-hosted WebSockets), generate fresh credentials:
+
+```bash
+php -r "
+function randStr(int \$len): string {
+    \$chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
+    \$out = '';
+    for (\$i = 0; \$i < \$len; \$i++) {
+        \$out .= \$chars[random_int(0, strlen(\$chars)-1)];
+    }
+    return \$out;
+}
+echo 'REVERB_APP_ID='    . randStr(16) . PHP_EOL;
+echo 'REVERB_APP_KEY='   . randStr(20) . PHP_EOL;
+echo 'REVERB_APP_SECRET='. randStr(20) . PHP_EOL;
+"
+```
+
+If you are **not** using Reverb (broadcasting is set to `log`), you can leave these blank.
+
+### 0.3 Set secrets on your hosting platform
+
+Paste **only** into your platform's environment variables dashboard — never into a committed file.
+
+| Platform | Where to set env vars |
+|---|---|
+| **Railway** | Project → Variables tab |
+| **Render** | Service → Environment tab |
+| **Hetzner / VPS** | `/etc/environment` or your `.env` file on the server (outside the repo) |
+| **Docker / Docker Compose** | `docker run -e APP_KEY=...` or your `docker-compose.yml` `environment:` block |
+
+Minimum required variables:
+
+```
+APP_KEY=base64:<your-newly-generated-key>
+APP_ENV=production
+APP_DEBUG=false
+APP_URL=https://your-domain.com
+
+DB_CONNECTION=mysql
+DB_HOST=<db-host>
+DB_PORT=3306
+DB_DATABASE=medcapsule
+DB_USERNAME=<db-user>
+DB_PASSWORD=<db-password>
+```
+
+### 0.4 Why the old key matters
+
+The `APP_KEY` is used to encrypt/decrypt cookies, sessions, and any encrypted model fields. Using the old (now-public) key means anyone who saw your git history could forge session tokens or decrypt sensitive data. Rotating it immediately invalidates all existing sessions (users will be logged out — that's expected and safe).
+
+---
+
 Beautiful — you're in the captain's seat now. Below is a no-fluff, exact step-by-step, copy/paste-ready playbook to take your Laravel MedCapsule repo → Hetzner CX11 server → live domain with SSL + Redis + MySQL + Supervisor queue worker + simple backups. I'll hold your hand through every command and every file you need. Move fast, follow exactly, and you'll have a real production instance tonight.
 
 ## Assumptions

@@ -8,8 +8,10 @@ set -e
 
 echo "==> Checking APP_KEY..."
 if [ -z "$APP_KEY" ]; then
-    echo "    Generating new APP_KEY..."
-    php artisan key:generate --force
+    echo "ERROR: APP_KEY environment variable is not set."
+    echo "       Generate one with: php -r \"echo 'base64:' . base64_encode(random_bytes(32)) . PHP_EOL;\""
+    echo "       Then set it as an environment variable on your hosting platform."
+    exit 1
 fi
 
 echo "==> Running database migrations..."
