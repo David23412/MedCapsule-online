@@ -3400,8 +3400,8 @@ class WrittenAnswerEvaluationService
      */
     public function evaluateQuestionAnswer(Question $question, string $submittedAnswer): array
     {
-        // Get threshold from the question if set, otherwise use default
-        $threshold = $question->similarity_threshold ?? self::DEFAULT_SIMILARITY_THRESHOLD;
+        // Get threshold use default
+        $threshold = self::DEFAULT_SIMILARITY_THRESHOLD;
         
         // Get alternative answers or use empty array if null
         $alternativeAnswers = $question->alternative_answers ?? [];

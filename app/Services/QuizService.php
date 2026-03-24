@@ -220,20 +220,39 @@ class QuizService
      */
     private function getQuestionsFromDatabase(Topic $topic, array $sources): \Illuminate\Database\Eloquent\Collection
     {
-        return Question::select([
-            'id', 'topic_id', 'question', 'question_type', 
-            'option_a', 'option_b', 'option_c', 'option_d',
-            'correct_answer', 'explanation', 'image_url', 'source',
-            'alternative_answers', 'similarity_threshold'
+        $query = Question::select([
+            'questions.id', 'questions.topic_id', 'questions.question', 'questions.question_type',
+            'questions.option_a', 'questions.option_b', 'questions.option_c', 'questions.option_d',
+            'questions.correct_answer', 'questions.explanation', 'questions.image_url', 'questions.source',
+            'questions.alternative_answers', 'questions.exam_appearances_count'
         ])
-        ->where('topic_id', $topic->id)
-        ->whereNotNull('question') // Ensure question content exists
-        ->where('question', '!=', '') // Ensure question is not empty
+        ->whereNotNull('questions.question') // Ensure question content exists
+        ->where('questions.question', '!=', '') // Ensure question is not empty
         ->with(['topic:id,name,course_id']) // Eager load minimal topic data
-        ->when(!in_array('all', $sources), function ($query) use ($sources) {
-            $query->whereIn('source', $sources);
-        })
-        ->get();
+        ->when(!in_array('all', $sources), function ($q) use ($sources) {
+            $q->whereIn('questions.source', $sources);
+        });
+
+        // Add topic filtering logic based on exam vs lecture
+        $isExamTopic = $topic->is_exam;
+
+        if ($isExamTopic) {
+            // For exam topics, only pull questions whose main topic is this exam
+            $query->where('questions.topic_id', $topic->id);
+        } else {
+            // For lecture topics, pull main topic questions + pivot linked questions
+            $query->where(function($q) use ($topic) {
+                $q->where('questions.topic_id', $topic->id)
+                  ->orWhereExists(function ($sub) use ($topic) {
+                      $sub->select(\Illuminate\Support\Facades\DB::raw(1))
+                          ->from('question_topic_links')
+                          ->whereColumn('question_topic_links.question_id', 'questions.id')
+                          ->where('question_topic_links.topic_id', $topic->id);
+                  });
+            });
+        }
+
+        return $query->get();
     }
 
     /**
@@ -660,7 +679,7 @@ class QuizService
                     'id', 'topic_id', 'question', 'question_type',
                     'option_a', 'option_b', 'option_c', 'option_d',
                     'correct_answer', 'explanation', 'image_url', 'source',
-                    'alternative_answers', 'similarity_threshold'
+                    'alternative_answers'
                 ]);
 
             // Apply course filtering with validated course IDs

@@ -105,20 +105,36 @@ class UltraFastQuizService
     {
         $this->incrementQueryCounter();
 
-        return Question::select([
-                'id', 'topic_id', 'question', 'question_type',
-                'option_a', 'option_b', 'option_c', 'option_d',
-                'correct_answer', 'explanation', 'image_url', 'source',
-                'alternative_answers', 'similarity_threshold'
+        $query = Question::select([
+                'questions.id', 'questions.topic_id', 'questions.question', 'questions.question_type',
+                'questions.option_a', 'questions.option_b', 'questions.option_c', 'questions.option_d',
+                'questions.correct_answer', 'questions.explanation', 'questions.image_url', 'questions.source',
+                'questions.alternative_answers', 'questions.exam_appearances_count'
             ])
-            ->where('topic_id', $topic->id)
-            ->whereNotNull('question')
-            ->where('question', '!=', '')
-            ->when(!in_array('all', $sources), function($query) use ($sources) {
-                return $query->whereIn('source', $sources);
-            })
-            ->orderBy('id')
-            ->get();
+            ->whereNotNull('questions.question')
+            ->where('questions.question', '!=', '')
+            ->when(!in_array('all', $sources), function($q) use ($sources) {
+                return $q->whereIn('questions.source', $sources);
+            });
+
+        // Add topic filtering logic based on exam vs lecture
+        if ($topic->is_exam) {
+            // For exam topics, only pull questions whose main topic is this exam
+            $query->where('questions.topic_id', $topic->id);
+        } else {
+            // For lecture topics, pull main topic questions + pivot linked questions
+            $query->where(function($q) use ($topic) {
+                $q->where('questions.topic_id', $topic->id)
+                  ->orWhereExists(function ($sub) use ($topic) {
+                      $sub->select(\Illuminate\Support\Facades\DB::raw(1))
+                          ->from('question_topic_links')
+                          ->whereColumn('question_topic_links.question_id', 'questions.id')
+                          ->where('question_topic_links.topic_id', $topic->id);
+                  });
+            });
+        }
+
+        return $query->orderBy('questions.id')->get();
     }
 
     /**

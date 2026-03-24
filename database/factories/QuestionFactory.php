@@ -27,8 +27,6 @@ class QuestionFactory extends Factory
             'explanation' => $this->faker->optional(0.8)->paragraph(),
             'image_url' => $this->faker->optional(0.3)->imageUrl(640, 480, 'medical'),
             'source' => $this->faker->optional(0.7)->randomElement(['Assuit', 'Cairo', 'Alexandria', 'Mansoura', 'Ain Shams']),
-            'total_attempts' => $this->faker->numberBetween(0, 1000),
-            'correct_attempts' => $this->faker->numberBetween(0, 800),
             'last_attempted_at' => $this->faker->optional(0.6)->dateTimeBetween('-6 months', 'now'),
             'created_at' => $this->faker->dateTimeBetween('-1 year', 'now'),
             'updated_at' => $this->faker->dateTimeBetween('-1 month', 'now'),

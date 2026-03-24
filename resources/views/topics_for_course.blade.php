@@ -138,15 +138,20 @@
                 </div>
             @endif
 
-            <div class="sidebar-collapsed-task-indicator" aria-hidden="true">
-                <div class="sidebar-collapsed-task-indicator-shell">
-                    @foreach($collapsedTaskDots as $isCompleted)
-                        <span class="sidebar-collapsed-task-dot{{ $isCompleted ? ' is-complete' : '' }}"></span>
-                    @endforeach
+            <div class="sidebar-coming-soon">
+                <div class="coming-soon-overlay">
+                    <span class="coming-soon-badge">Coming Soon</span>
                 </div>
-            </div>
+                <div class="sidebar-blur-container">
+                    <div class="sidebar-collapsed-task-indicator" aria-hidden="true">
+                        <div class="sidebar-collapsed-task-indicator-shell">
+                            @foreach($collapsedTaskDots as $isCompleted)
+                                <span class="sidebar-collapsed-task-dot{{ $isCompleted ? ' is-complete' : '' }}"></span>
+                            @endforeach
+                        </div>
+                    </div>
 
-            <div class="sidebar-game-plan">
+                    <div class="sidebar-game-plan">
                 <div class="sidebar-game-plan-head">
                     <div>
                         <div class="sidebar-game-plan-title">Today&apos;s Plan</div>
@@ -252,6 +257,8 @@
                         </div>
                     </details>
                 @endif
+            </div>
+                </div>
             </div>
         </div>
 
@@ -436,15 +443,7 @@
                             </div>
                         </div>
                         
-                        <div class="source-info">
-                            <div class="source-info-title">
-                                <i class="fas fa-info-circle"></i>
-                                <span>Tip</span>
-                            </div>
-                            <p class="source-info-text">
-                                Complete all sources to master this topic. Progress is tracked for each source.
-                            </p>
-                        </div>
+
                         
 
                     </form>

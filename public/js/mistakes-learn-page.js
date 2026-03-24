@@ -743,10 +743,18 @@ function initializeMistakesLearnPage() {
                         activeQuestions.delete(question.id);
 
                         const encouragementMessage = document.querySelector('.encouragement-message');
-                        encouragementMessage.style.display = 'block';
-                        setTimeout(() => {
-                            encouragementMessage.style.display = 'none';
-                        }, 1000);
+                        if (encouragementMessage) {
+                            const title = encouragementMessage.querySelector('h2');
+                            const message = encouragementMessage.querySelector('p');
+                            if (title) title.textContent = 'Great job! Keep going! 🎉';
+                            if (message) message.textContent = "You're making great progress!";
+
+                            encouragementMessage.classList.add('show');
+                            if (encouragementHideTimeout) clearTimeout(encouragementHideTimeout);
+                            encouragementHideTimeout = setTimeout(() => {
+                                encouragementMessage.classList.remove('show');
+                            }, 1500);
+                        }
                     }
                 } else {
                     question.correctStreak = 0;
@@ -1313,7 +1321,7 @@ function initializeMistakesLearnPage() {
             function selectDifficulty(mode) {
                 const selectedOption = Array.from(difficultyOptions).find(option => option.dataset.mode === mode);
 
-                if (!selectedOption) {
+                if (!selectedOption || selectedOption.classList.contains('difficulty-option-spaced')) {
                     return;
                 }
 
@@ -1328,6 +1336,7 @@ function initializeMistakesLearnPage() {
             // Handle difficulty selection
             difficultyOptions.forEach(option => {
                 option.addEventListener('click', function() {
+                    if (this.classList.contains('difficulty-option-spaced')) return;
                     selectDifficulty(this.dataset.mode);
                 });
             });
@@ -1391,48 +1400,9 @@ function initializeMistakesLearnPage() {
                             return;
                         }
 
-                        if (selectedMode === 'spaced') {
-                            const selectedOption = this.dataset.option;
-                            const isCorrect = this.dataset.isCorrect === "true";
-
-                            if (!currentQuestion.firstSelectedAnswer) {
-                                currentQuestion.firstSelectedAnswer = selectedOption;
-                                currentQuestion.timeToFirstSelection = currentQuestionElapsedSeconds();
-                                currentQuestion.frozenResponseSeconds = currentQuestion.timeToFirstSelection;
-                            } else if (currentQuestion.selectedAnswer && currentQuestion.selectedAnswer !== selectedOption) {
-                                currentQuestion.answerChangeCount = (currentQuestion.answerChangeCount || 0) + 1;
-                            }
-
-                            currentQuestion.selectedAnswer = selectedOption;
-                            clearReviewSyncError(currentQuestion);
-                            this.parentElement.classList.add('answered');
-                            this.classList.add(isCorrect ? 'correct' : 'incorrect');
-                            playInstantOptionFeedback(isCorrect);
-
-                            const timeSpentSeconds = currentQuestion.frozenResponseSeconds || currentQuestionElapsedSeconds();
-
-                            submitReviewAnswer(currentQuestion.id, selectedOption, timeSpentSeconds, currentQuestion.confidenceLevel)
-                                .then((data) => {
-                                    syncAdaptiveState(currentQuestion, data);
-                                    applySpacedOutcome(currentQuestion, data.is_correct === true, data);
-
-                                    setTimeout(() => {
-                                        this.parentElement.classList.remove('answered');
-                                        this.classList.remove('correct', 'incorrect');
-                                        showNextQuestion();
-                                    }, 800);
-                                })
-                                .catch((error) => {
-                                    console.error('Error recording spaced review:', error);
-                                    this.parentElement.classList.remove('answered');
-                                    this.classList.remove('correct', 'incorrect');
-                                    showReviewSyncError(currentQuestion, error.message || 'Review was not saved. Try this question again.');
-                                });
-                            return;
-                        }
-
                         // 💀 LETHAL INSTANT SOUND PLAYBACK - NUCLEAR SPEED 💀
                         const isCorrect = this.dataset.isCorrect === "true";
+                        const selectedOption = this.dataset.option;
                         
                         // 💀 BULLETPROOF AUDIO CONTROL - NO SOUNDS UNTIL QUIZ STARTS 💀
                         if (!quizStarted) {
@@ -1440,34 +1410,56 @@ function initializeMistakesLearnPage() {
                         }
                         
                         playInstantOptionFeedback(isCorrect);
-                        
                         clearReviewSyncError(currentQuestion);
 
                         // Mark options container as answered
                         this.parentElement.classList.add('answered');
-                        
-                        // Mark selected option
                         this.classList.add(isCorrect ? 'correct' : 'incorrect');
-                        
+
                         const timeSpentSeconds = currentQuestionElapsedSeconds();
 
-                        submitReviewAnswer(currentQuestion.id, this.dataset.option, timeSpentSeconds, currentQuestion.confidenceLevel)
+                        if (selectedMode === 'spaced') {
+                            if (!currentQuestion.firstSelectedAnswer) {
+                                currentQuestion.firstSelectedAnswer = selectedOption;
+                                currentQuestion.timeToFirstSelection = timeSpentSeconds;
+                                currentQuestion.frozenResponseSeconds = timeSpentSeconds;
+                            } else if (currentQuestion.selectedAnswer && currentQuestion.selectedAnswer !== selectedOption) {
+                                currentQuestion.answerChangeCount = (currentQuestion.answerChangeCount || 0) + 1;
+                            }
+                            currentQuestion.selectedAnswer = selectedOption;
+                        }
+
+                        // ⚡️ OPTIMISTIC CYCLING - Fire and move on
+                        const processOutcome = () => {
+                            if (selectedMode === 'spaced') {
+                                applySpacedOutcome(currentQuestion, isCorrect);
+                            } else {
+                                applySessionOutcome(currentQuestion, isCorrect);
+                            }
+                        };
+
+                        processOutcome();
+
+                        // 🔥 NUCLEAR SPEED: Reduced timeout to 600ms for faster cycling feel
+                        setTimeout(() => {
+                            this.parentElement.classList.remove('answered');
+                            this.classList.remove('correct', 'incorrect');
+                            showNextQuestion();
+                        }, 600);
+
+                        // BACKGROUND SYNC - Do not block the experience
+                        submitReviewAnswer(currentQuestion.id, selectedOption, timeSpentSeconds, currentQuestion.confidenceLevel)
                             .then((data) => {
                                 syncAdaptiveState(currentQuestion, data);
-                                applySessionOutcome(currentQuestion, data.is_correct === true);
-
-                                setTimeout(() => {
-                                    this.parentElement.classList.remove('answered');
-                                    this.classList.remove('correct', 'incorrect');
-                                    showNextQuestion();
-                                }, 800);
                             })
                             .catch((error) => {
-                                console.error('Error recording multiple choice review:', error);
-                                this.parentElement.classList.remove('answered');
-                                this.classList.remove('correct', 'incorrect');
-                                showReviewSyncError(currentQuestion, 'Review was not saved. Try this question again.');
+                                console.error('Error background syncing review:', error);
+                                // We don't show sync error here unless it's critical, 
+                                // because the user has already moved on.
                             });
+                        return;
+
+
                     }
                 });
             });

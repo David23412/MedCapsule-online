@@ -6,6 +6,11 @@ import App from './landing-page/App.tsx'
 type LandingConfig = {
   isAuthenticated?: boolean
   appUrl?: string
+  user?: {
+    name: string
+    profile_image_url: string
+    profile_fallback_url: string
+  } | null
 }
 
 declare global {
@@ -21,6 +26,7 @@ createRoot(document.getElementById('root')!).render(
     <App
       appUrl={landingConfig.appUrl}
       isAuthenticated={landingConfig.isAuthenticated}
+      user={landingConfig.user}
     />
   </StrictMode>,
 )

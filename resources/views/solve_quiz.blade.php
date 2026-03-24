@@ -1287,8 +1287,42 @@
                             @include('components.question-written', ['question' => $question])
                         @else
                             <div class="question-box {{ $question->image_url ? 'has-image' : '' }}" data-question-id="{{ $question->id }}">
-                                <div class="question-text">
-                                    {{ $question->question }}
+                                <div class="d-flex justify-content-between align-items-start">
+                                    <div class="question-text flex-grow-1">
+                                        {{ $question->question }}
+                                        
+                                        @if(!empty($question->exam_origin_text))
+                                            <div class="text-muted small mt-2">
+                                                <i class="fas fa-certificate"></i> {{ $question->exam_origin_text }}
+                                            </div>
+                                        @endif
+                                    </div>
+                                    
+                                    <div class="ms-2 d-flex flex-column align-items-end gap-1">
+                                        @if(!empty($question->enhanced_source_badges))
+                                            @foreach($question->enhanced_source_badges as $badge)
+                                                @if(str_contains($badge, 'HIGH YIELD'))
+                                                    <span class="badge bg-danger text-white" style="font-size: 0.7rem; padding: 0.3rem 0.6rem; font-weight: 600;">
+                                                        🔥 {{ $badge }}
+                                                    </span>
+                                                @elseif(str_contains($badge, 'REPEATED'))
+                                                    <span class="badge bg-warning text-dark" style="font-size: 0.7rem; padding: 0.3rem 0.6rem; font-weight: 600;">
+                                                        📈 {{ $badge }}
+                                                    </span>
+                                                @else
+                                                    <span class="badge bg-primary text-white" style="font-size: 0.75rem; padding: 0.25rem 0.5rem;">
+                                                        {{ $badge }}
+                                                    </span>
+                                                @endif
+                                            @endforeach
+                                        @endif
+                                        
+                                        @if($question->exam_frequency_score > 0)
+                                            <div class="text-muted small" style="font-size: 0.65rem;">
+                                                Score: {{ number_format($question->exam_frequency_score, 2) }}
+                                            </div>
+                                        @endif
+                                    </div>
                                 </div>
 
                                 @if($question->image_url)

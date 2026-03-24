@@ -71,6 +71,9 @@ class GradingService
      */
     public function gradeQuiz(User $user, array $answers, int $duration, string $mode, Topic $topic, Course $course, ?int $assignmentId = null): array
     {
+        // Enforce canonical modes to ensure attempts match planner task visibility gates.
+        $mode = in_array((string) $mode, ['quiz', 'tutor', 'random'], true) ? (string) $mode : 'quiz';
+
         DB::beginTransaction();
         try {
             // Validate inputs
@@ -176,10 +179,11 @@ class GradingService
      */
     private function updateUserStatsAndRewards(User $user, array $gradingResult, int $duration): array
     {
-        // Calculate XP first so counters (including xp) can be updated in one atomic stats write.
-        $earnedXP = $this->calculateEarnedXP($gradingResult['score'], $duration, $gradingResult['percentageGrade']);
+        // XP is now strictly managed by the Planner via StudyGamePlanService::applyXpTransitions.
+        // GradingService no longer double-awards XP.
+        $earnedXP = 0;
 
-        // Update user statistics
+        // Update user statistics (XP increment will cleanly be 0)
         $this->userStatsService->updateAfterQuizAttempt(
             $user,
             $gradingResult['totalQuestions'],
@@ -188,12 +192,11 @@ class GradingService
             $earnedXP
         );
 
-        // Handle level-up checks/notifications after the atomic stats write.
+        // Handle level-up checks/notifications 
         $xpResult = $this->finalizeXpAndLevel($user, $earnedXP);
 
         // Study streak is already updated atomically inside UserStatsService::updateAfterQuizAttempt().
-        // Avoid duplicate recalculation/queries here to keep grading hot-path lean and deterministic.
-
+        
         return $xpResult;
     }
 
@@ -206,22 +209,15 @@ class GradingService
      */
     private function isAnswerCorrectInGradingResult(int $questionId, array $gradingResult): bool
     {
-        // SUPER OPTIMIZATION: Build hash map once for O(1) lookups instead of O(n²) nested loops
-        static $answerCache = [];
-        $cacheKey = md5(serialize(array_keys($gradingResult['sourceData'] ?? [])));
-        
-        if (!isset($answerCache[$cacheKey])) {
-            $answerCache[$cacheKey] = [];
-            // Build flat hash map: question_id => is_correct
-            foreach ($gradingResult['sourceData'] as $sourceData) {
-                foreach ($sourceData['question_data'] as $questionData) {
-                    $answerCache[$cacheKey][$questionData['question_id']] = $questionData['is_correct'];
+        foreach ($gradingResult['sourceData'] as $sourceData) {
+            foreach ($sourceData['question_data'] as $questionData) {
+                if ((int)$questionData['question_id'] === $questionId) {
+                    return (bool)$questionData['is_correct'];
                 }
             }
         }
         
-        // O(1) lookup instead of O(n²) search!
-        return $answerCache[$cacheKey][$questionId] ?? false;
+        return false;
     }
 
     /**
@@ -299,10 +295,7 @@ class GradingService
             throw new \InvalidArgumentException($totalLengthError);
         }
 
-        // Allow empty answers array (user might not answer anything)
-        if (!is_array($answers)) {
-            throw new \InvalidArgumentException('Answers must be provided as an array');
-        }
+
 
         if (!is_numeric($duration) || $duration < 0) {
             throw new \InvalidArgumentException('Duration must be a non-negative number');
@@ -797,43 +790,12 @@ class GradingService
 
     private function resolveRequiredStreakForSession(User $user, string $mode): int
     {
-        return match ($mode) {
-            'quick' => $this->userMistakeMasteryService->requiredStreakForMode('quick') ?? 2,
-            'quiz', 'tutor', 'random' => $this->userMistakeMasteryService->requiredStreakForUser($user),
-            default => $this->userMistakeMasteryService->requiredStreakForMode($mode)
-                ?? $this->userMistakeMasteryService->requiredStreakForUser($user),
-        };
+        // Streak always from user's repair difficulty, not session mode.
+        // $mode is accepted for future differentiation if needed.
+        return $this->userMistakeMasteryService->requiredStreakForUser($user);
     }
 
-    /**
-     * Calculate and award XP to user
-     *
-     * @param User $user
-     * @param int $score
-     * @param int $duration
-     * @param float $percentageGrade
-     * @return array
-     */
-    private function calculateEarnedXP(int $score, int $duration, float $percentageGrade): int
-    {
-        // Calculate XP based on score and time
-        $baseXP = $score * self::XP_PER_CORRECT_ANSWER; // XP per correct answer
-        $timeBonus = max(0, self::MAX_TIME_BONUS_XP - floor($duration / 60)); // Up to max time bonus XP for fast completion
-        $accuracyBonus = floor($percentageGrade / self::ACCURACY_BONUS_DIVISOR) * self::ACCURACY_BONUS_MULTIPLIER; // Up to max accuracy bonus XP for high accuracy
-        $earnedXP = $baseXP + $timeBonus + $accuracyBonus;
 
-        Log::info('XP Calculation:', [
-            'score' => $score,
-            'baseXP' => $baseXP,
-            'duration' => $duration,
-            'timeBonus' => $timeBonus,
-            'percentageGrade' => $percentageGrade,
-            'accuracyBonus' => $accuracyBonus,
-            'totalXP' => $earnedXP
-        ]);
-
-        return $earnedXP;
-    }
 
     /**
      * Finalize level-up workflow after XP has already been atomically written.
@@ -1118,24 +1080,8 @@ class GradingService
      */
     private function updateTutorProgress(User $user, Question $question, Topic $topic, bool $isCorrect): void
     {
-        // SURGICAL OPTIMIZATION: Single time() source to eliminate multiple system calls
-        static $requestStartTime = null;
-        if ($requestStartTime === null) {
-            $requestStartTime = time();
-        }
-        
-        // INSTANT OPTIMIZATION: Cache session data to reduce expensive I/O
-        static $cachedSessionData = null;
-        static $lastSessionUpdate = 0;
-        $now = $requestStartTime; // Use single time source
-        
-        // Only read from session once per request or if cache is stale
-        if ($cachedSessionData === null || ($now - $lastSessionUpdate) > 1) {
-            $cachedSessionData = session()->get('tutor_progress', ['sources' => []]);
-            $lastSessionUpdate = $now;
-        }
-        
-        $tutorProgress = &$cachedSessionData; // Use reference for instant updates
+        $now = time();
+        $tutorProgress = session()->get('tutor_progress', ['sources' => []]);
         $source = $question->source ?: 'General';
 
         if (!isset($tutorProgress['sources'][$source])) {
@@ -1143,22 +1089,23 @@ class GradingService
                 'correct' => 0,
                 'total' => 0,
                 'completed_questions' => [], // Keep as array for storage
-                'completed_questions_set' => [], // SUPER OPTIMIZATION: Use as hash set for O(1) lookups
-                'start_time' => $requestStartTime // Use single time source
+                'completed_questions_set' => [], // hash set for O(1) lookups
+                'correct_questions_set' => [], // Track actual correctness per question
+                'start_time' => $now // Use single time source
             ];
         }
 
-        // SUPER OPTIMIZATION: Use hash set for O(1) lookup instead of O(n) in_array
+        // Use hash set for O(1) lookup instead of O(n) in_array
         if (!isset($tutorProgress['sources'][$source]['completed_questions_set'][$question->id])) {
             $tutorProgress['sources'][$source]['total']++;
             if ($isCorrect) {
                 $tutorProgress['sources'][$source]['correct']++;
+                $tutorProgress['sources'][$source]['correct_questions_set'][$question->id] = true;
             }
             $tutorProgress['sources'][$source]['completed_questions'][] = $question->id;
             $tutorProgress['sources'][$source]['completed_questions_set'][$question->id] = true; // O(1) lookup
         }
 
-        // INSTANT OPTIMIZATION: Batch session write - only write once at the end
         session(['tutor_progress' => $tutorProgress]);
     }
 
@@ -1171,23 +1118,7 @@ class GradingService
      */
     private function checkAndCreateTutorAttempt(User $user, Question $question, Topic $topic): void
     {
-        // SURGICAL OPTIMIZATION: Use single time source from updateTutorProgress
-        static $requestStartTime = null;
-        if ($requestStartTime === null) {
-            $requestStartTime = time();
-        }
-        
-        // INSTANT OPTIMIZATION: Use cached session data to avoid expensive I/O
-        static $cachedSessionData = null;
-        static $lastSessionUpdate = 0;
-        $now = $requestStartTime; // Use single time source
-        
-        if ($cachedSessionData === null || ($now - $lastSessionUpdate) > 1) {
-            $cachedSessionData = session()->get('tutor_progress', ['sources' => []]);
-            $lastSessionUpdate = $now;
-        }
-        
-        $tutorProgress = $cachedSessionData;
+        $tutorProgress = session()->get('tutor_progress', ['sources' => []]);
         $source = $question->source ?: 'General';
         
         if (!isset($tutorProgress['sources'][$source])) {
@@ -1201,7 +1132,7 @@ class GradingService
             ->count();
             
         // Fallback: if this is the last question for the source, always create the attempt
-        if ($remainingQuestions === 0 || $this->isLastQuestionForSource($question, $topic, $source)) {
+        if ($remainingQuestions === 0) {
             Log::info('Creating tutor attempt (all questions completed for source)', [
                 'user_id' => $user->id,
                 'topic_id' => $topic->id,
@@ -1263,6 +1194,7 @@ private function createTutorAttempt(User $user, Topic $topic, string $source, ar
 
         // OPTIMIZED: Build question data more efficiently - avoid array_unique() overhead
         $completedQuestions = $sourceProgress['completed_questions'] ?? [];
+        $correctQuestionsSet = $sourceProgress['correct_questions_set'] ?? [];
         $seenQuestions = []; // Track seen questions to avoid duplicates
         $questionData = [];
         
@@ -1271,7 +1203,7 @@ private function createTutorAttempt(User $user, Topic $topic, string $source, ar
                 $questionData[] = [
                     'question_id' => $questionId,
                     'user_answer' => null,
-                    'is_correct' => true
+                    'is_correct' => isset($correctQuestionsSet[$questionId])
                 ];
                 $seenQuestions[$questionId] = true;
             }

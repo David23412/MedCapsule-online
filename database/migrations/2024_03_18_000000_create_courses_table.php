@@ -23,12 +23,14 @@ return new class extends Migration
             $table->string('color')->nullable(); // Color for the course
             $table->string('title_color')->default('#FFFFFF'); // Title color for the course
             $table->decimal('price', 10, 2)->nullable(); // Course price (null for free courses)
+            $table->enum('access_type', ['free', 'preview', 'paid'])->default('paid'); // Course access type
             $table->timestamps();
 
             // Indexes for performance
             $table->index('name', 'idx_courses_name');
             $table->index('academic_year', 'idx_academic_year');
             $table->index(['academic_year', 'price'], 'idx_academic_year_price');
+            $table->index('access_type', 'idx_courses_access_type');
             $table->index('created_at', 'idx_courses_created_at');
         });
     }

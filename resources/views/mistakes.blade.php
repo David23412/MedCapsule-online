@@ -116,69 +116,76 @@
                 <span class="nav-link-label">Profile Settings</span>
             </a>
 
-            <span class="sidebar-section-label">Review Bank</span>
+            <div class="sidebar-coming-soon">
+                <div class="coming-soon-overlay">
+                    <span class="coming-soon-badge">Coming Soon</span>
+                </div>
+                <div class="sidebar-blur-container">
+                    <span class="sidebar-section-label">Review Bank</span>
 
-            <div class="sidebar-insight-card sidebar-insight-card-primary">
-                <div class="sidebar-insight-head">
-                    <i class="fas fa-heart-pulse nav-icon"></i>
-                    <span class="nav-link-label">Bank Health</span>
-                </div>
-                <p class="sidebar-insight-copy">
-                    {{ $mistakeCollection->count() }} cards are active in {{ strtolower($activeReviewLabel) }}.
-                </p>
-                <div class="sidebar-chip-list">
-                    <span class="sidebar-chip">{{ $activeReviewLabel }}</span>
-                    <span class="sidebar-chip">{{ $totalMistakesCount ?? $mistakeCollection->count() }} total</span>
-                </div>
-            </div>
+                    <div class="sidebar-insight-card sidebar-insight-card-primary">
+                        <div class="sidebar-insight-head">
+                            <i class="fas fa-heart-pulse nav-icon"></i>
+                            <span class="nav-link-label">Bank Health</span>
+                        </div>
+                        <p class="sidebar-insight-copy">
+                            {{ $mistakeCollection->count() }} cards are active in {{ strtolower($activeReviewLabel) }}.
+                        </p>
+                        <div class="sidebar-chip-list">
+                            <span class="sidebar-chip">{{ $activeReviewLabel }}</span>
+                            <span class="sidebar-chip">{{ $totalMistakesCount ?? $mistakeCollection->count() }} total</span>
+                        </div>
+                    </div>
 
-            <div class="sidebar-stat-grid">
-                <div class="sidebar-stat-card sidebar-stat-card-loaded">
-                    <span class="sidebar-stat-label">Queue</span>
-                    <strong>{{ $mistakeCollection->count() }}</strong>
-                    <small>Visible now</small>
-                </div>
-                <div class="sidebar-stat-card sidebar-stat-card-skipped">
-                    <span class="sidebar-stat-label">Skipped</span>
-                    <strong>{{ $skippedCount ?? 0 }}</strong>
-                    <small>Need another pass</small>
-                </div>
-                <div class="sidebar-stat-card sidebar-stat-card-cold">
-                    <span class="sidebar-stat-label">Stale</span>
-                    <strong>{{ $staleCount }}</strong>
-                    <small>7 days+</small>
-                </div>
-                <div class="sidebar-stat-card sidebar-stat-card-ready">
-                    <span class="sidebar-stat-label">Close</span>
-                    <strong>{{ $closeReviewCount }}</strong>
-                    <small>Near clear</small>
-                </div>
-            </div>
+                    <div class="sidebar-stat-grid">
+                        <div class="sidebar-stat-card sidebar-stat-card-loaded">
+                            <span class="sidebar-stat-label">Queue</span>
+                            <strong>{{ $mistakeCollection->count() }}</strong>
+                            <small>Visible now</small>
+                        </div>
+                        <div class="sidebar-stat-card sidebar-stat-card-skipped">
+                            <span class="sidebar-stat-label">Skipped</span>
+                            <strong>{{ $skippedCount ?? 0 }}</strong>
+                            <small>Need another pass</small>
+                        </div>
+                        <div class="sidebar-stat-card sidebar-stat-card-cold">
+                            <span class="sidebar-stat-label">Stale</span>
+                            <strong>{{ $staleCount }}</strong>
+                            <small>7 days+</small>
+                        </div>
+                        <div class="sidebar-stat-card sidebar-stat-card-ready">
+                            <span class="sidebar-stat-label">Close</span>
+                            <strong>{{ $closeReviewCount }}</strong>
+                            <small>Near clear</small>
+                        </div>
+                    </div>
 
-            <span class="sidebar-section-label">Priority</span>
+                    <span class="sidebar-section-label">Priority</span>
 
-            <div class="sidebar-insight-card sidebar-insight-card-soft">
-                <div class="sidebar-insight-head">
-                    <i class="fas fa-bullseye nav-icon"></i>
-                    <span class="nav-link-label">Next Focus</span>
-                </div>
-                <p class="sidebar-insight-copy">
-                    @if($topWeakCourse)
-                        {{ $topWeakCourse->name }} is carrying the biggest review load.
-                    @else
-                        Your review queue is balanced across courses.
-                    @endif
-                </p>
-                <div class="sidebar-chip-list">
-                    @if($topWeakCourse)
-                        <span class="sidebar-chip">{{ $topWeakCourse->name }}</span>
-                        <span class="sidebar-chip">{{ $topWeakCourse->mistake_count }} flagged</span>
-                    @endif
-                    <span class="sidebar-chip">{{ $coldReviewCount }} cold</span>
-                    <span class="sidebar-chip">{{ $writtenCount }} written</span>
-                    @if($oldestMistake && $oldestMistake->last_attempt_date)
-                        <span class="sidebar-chip">Oldest {{ $oldestMistake->last_attempt_date->diffForHumans() }}</span>
-                    @endif
+                    <div class="sidebar-insight-card sidebar-insight-card-soft">
+                        <div class="sidebar-insight-head">
+                            <i class="fas fa-bullseye nav-icon"></i>
+                            <span class="nav-link-label">Next Focus</span>
+                        </div>
+                        <p class="sidebar-insight-copy">
+                            @if($topWeakCourse)
+                                {{ $topWeakCourse->name }} is carrying the biggest review load.
+                            @else
+                                Your review queue is balanced across courses.
+                            @endif
+                        </p>
+                        <div class="sidebar-chip-list">
+                            @if($topWeakCourse)
+                                <span class="sidebar-chip">{{ $topWeakCourse->name }}</span>
+                                <span class="sidebar-chip">{{ $topWeakCourse->mistake_count }} flagged</span>
+                            @endif
+                            <span class="sidebar-chip">{{ $coldReviewCount }} cold</span>
+                            <span class="sidebar-chip">{{ $writtenCount }} written</span>
+                            @if($oldestMistake && $oldestMistake->last_attempt_date)
+                                <span class="sidebar-chip">Oldest {{ $oldestMistake->last_attempt_date->diffForHumans() }}</span>
+                            @endif
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>

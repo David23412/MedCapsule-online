@@ -19,6 +19,7 @@ class Course extends Model
         'name',
         'description',
         'type',
+        'access_type',
         'image',
         'price',
         'currency',
@@ -37,6 +38,7 @@ class Course extends Model
 
     protected $casts = [
         'type' => 'string',
+        'access_type' => 'string',
         'price' => 'decimal:2'
     ];
 
@@ -95,7 +97,7 @@ class Course extends Model
             'planner_focus',
             'planner_preferred_source',
             'planner_repair_mode',
-            'planner_classic_repair_difficulty',
+            'planner_mistake_mastery_mode',
         ];
 
         self::$availableCourseUserPlannerPivotColumns = array_values(array_filter(
@@ -126,6 +128,47 @@ class Course extends Model
     public function isFree(): bool
     {
         return $this->price == 0 || $this->price === null;
+    }
+
+    // New access type methods
+    public function isFreeAccess(): bool
+    {
+        return $this->access_type === 'free';
+    }
+
+    public function isPreviewAccess(): bool
+    {
+        return $this->access_type === 'preview';
+    }
+
+    public function isPaidAccess(): bool
+    {
+        return $this->access_type === 'paid';
+    }
+
+    public function canUserAccessTopic(User $user, Topic $topic): bool
+    {
+        // Use the standardized User model method for access checking
+        $accessType = $user->getCourseAccessLevel($this);
+        
+        // Full access = all topics
+        if ($accessType === User::COURSE_ACCESS_FULL) {
+            return true;
+        }
+        
+        // Preview access = limited topics
+        if ($accessType === User::COURSE_ACCESS_PREVIEW) {
+            $previewLimit = config('free_course_survey.preview_topics_count', 5);
+            return ($topic->display_order ?? 0) <= $previewLimit;
+        }
+        
+        // Locked = no access
+        return false;
+    }
+
+    public function getPreviewTopicLimit(): int
+    {
+        return (int) config('free_course_survey.preview_topics_count', 5);
     }
 
     /** -------------------

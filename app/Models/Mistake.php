@@ -23,8 +23,6 @@ class Mistake extends Model
         'user_id',
         'question_id',
         'submitted_answer',
-        'question_text',
-        'correct_answer',
         'correct_streak',
         'last_attempt_date',
         'quick_correct_count',
@@ -208,7 +206,7 @@ class Mistake extends Model
     /**
      * Check if the mistake is considered mastered based on mode
      */
-    public function isMastered($mode = 'quiz'): bool
+    public function isMastered($mode = 'classic'): bool
     {
         $normalizedMode = $this->normalizeReviewMode((string) $mode);
 
@@ -216,7 +214,12 @@ class Mistake extends Model
             return false;
         }
 
-        $requiredStreak = ($normalizedMode === 'quick') ? 2 : 3;
+        $requiredStreak = 2; // Default for 'practice' or 'easy'
+        
+        if ($normalizedMode === 'hard' || $normalizedMode === 'quiz' || $normalizedMode === 'classic') {
+            $requiredStreak = 3;
+        }
+
         return (bool) $this->mastered || $this->correct_streak >= $requiredStreak;
     }
 
@@ -311,8 +314,6 @@ class Mistake extends Model
                 'question_id' => $question->id,
             ]);
 
-            $mistake->question_text = $question->question;
-            $mistake->correct_answer = $question->correct_answer;
             $mistake->submitted_answer = $submittedAnswer !== null && trim($submittedAnswer) !== ''
                 ? $submittedAnswer
                 : 'unanswered';
@@ -341,7 +342,18 @@ class Mistake extends Model
             return $query;
         }
 
-        $requiredStreak = ($normalizedMode === 'quick') ? 2 : 3;
+        $userId = $this->extractUserIdFromQuery($query);
+        $difficulty = 'easy';
+        if ($userId) {
+            $difficulty = \App\Models\User::where('id', $userId)->value('mistake_mastery_mode') ?? 'easy';
+        }
+
+        $requiredStreak = (new \App\Services\Learning\UserMistakeMasteryService())->requiredStreakForDifficulty($difficulty);
+        
+        if ($normalizedMode === 'quick') {
+            $requiredStreak = 2;
+        }
+
         return $query
             ->where('mastered', false)
             ->where('correct_streak', '<', $requiredStreak);
@@ -358,12 +370,37 @@ class Mistake extends Model
             return $query->whereRaw('1 = 0');
         }
 
-        $requiredStreak = ($normalizedMode === 'quick') ? 2 : 3;
+        $userId = $this->extractUserIdFromQuery($query);
+        $difficulty = 'easy';
+        if ($userId) {
+            $difficulty = \App\Models\User::where('id', $userId)->value('mistake_mastery_mode') ?? 'easy';
+        }
+
+        $requiredStreak = (new \App\Services\Learning\UserMistakeMasteryService())->requiredStreakForDifficulty($difficulty);
+        
+        if ($normalizedMode === 'quick') {
+            $requiredStreak = 2;
+        }
+
         return $query->where(function ($innerQuery) use ($requiredStreak) {
             $innerQuery
                 ->where('mastered', true)
                 ->orWhere('correct_streak', '>=', $requiredStreak);
         });
+    }
+
+    private function extractUserIdFromQuery($query): ?int
+    {
+        $baseQuery = $query->getQuery();
+        if (isset($baseQuery->wheres)) {
+            foreach ($baseQuery->wheres as $where) {
+                // If it's a basic where and column is user_id or mistakes.user_id
+                if (isset($where['column']) && ($where['column'] === 'user_id' || $where['column'] === 'mistakes.user_id') && isset($where['value'])) {
+                    return (int) $where['value'];
+                }
+            }
+        }
+        return null;
     }
 
     public function scopeDueForReview($query, $mode = 'quiz')
@@ -490,13 +527,16 @@ class Mistake extends Model
         return array_values(array_unique($cacheKeys));
     }
 
-    private function normalizeReviewMode(string $mode): string
+    public function normalizeReviewMode(string $mode = 'classic'): string
     {
-        return match ($mode) {
-            'quick' => 'quick',
-            'spaced' => 'spaced',
-            'review', 'mistake_review', 'quiz', 'practice', 'study', 'assignment', 'tutor', 'random' => 'quiz',
-            default => 'quiz',
+        $cleaned = strtolower(trim($mode));
+        
+        return match ($cleaned) {
+            'easy', 'practice', 'simple' => 'easy',
+            'hard', 'quiz', 'classic', 'tough' => 'hard',
+            'spaced', 'adaptive', 'intelligent' => 'spaced',
+            'quick', 'lightning' => 'quick',
+            default => 'hard', // Default back to hard if unknown
         };
     }
 

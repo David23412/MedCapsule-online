@@ -299,7 +299,7 @@ class GradingServiceTest extends TestCase
     public function it_persists_mastery_and_marks_random_quiz_attempts_with_session_type()
     {
         $user = User::factory()->create([
-            'classic_repair_difficulty' => 'easy',
+            'mistake_mastery_mode' => 'easy',
         ]);
         $course = Course::factory()->create();
         $topic = Topic::factory()->create(['course_id' => $course->id]);
@@ -363,7 +363,7 @@ class GradingServiceTest extends TestCase
     public function it_grades_and_saves_quiz_attempts_when_mastery_table_is_missing()
     {
         $user = User::factory()->create([
-            'classic_repair_difficulty' => 'easy',
+            'mistake_mastery_mode' => 'easy',
             'xp' => 0,
         ]);
         $course = Course::factory()->create();

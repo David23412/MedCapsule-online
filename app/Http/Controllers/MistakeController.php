@@ -157,10 +157,11 @@ class MistakeController extends Controller
     public function rateMistake(Request $request, $questionId)
     {
         $userId = Auth::id();
-        $rating = $request->validate(['rating' => 'required|integer|in:1,2,3,4'])['rating'];
+        $rating = $request->input('rating');
+        $mode = $request->input('mode', 'classic');
 
         try {
-            $mistake = $this->mistakeService->rateMistake($userId, $questionId, $rating);
+            $mistake = $this->mistakeService->rateMistake($userId, $questionId, $rating, $mode);
             Log::info('Mistake rated successfully.', ['mistake_id' => $mistake->id]);
             return response()->json([
                 'success' => true,

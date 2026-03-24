@@ -23,7 +23,8 @@ return new class extends Migration
                 $table->unsignedSmallInteger('daily_study_minutes')->default(90);
                 $table->string('planner_focus')->default('balanced');
                 $table->string('repair_mode', 20)->nullable();
-                $table->string('classic_repair_difficulty', 20)->nullable();
+                $table->string('mistake_mastery_mode', 20)->nullable();
+                $table->boolean('has_sr_access')->default(false);
                 $table->rememberToken();
                 $table->string('active_session_token')->nullable();
                 $table->timestamp('session_created_at')->nullable();

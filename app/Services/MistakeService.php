@@ -160,13 +160,13 @@ class MistakeService
      * @param int $rating
      * @return Mistake|null
      */
-    public function rateMistake(int $userId, int $questionId, int $rating): ?Mistake
+    public function rateMistake(int $userId, int $questionId, int $rating, string $mode = 'classic'): ?Mistake
     {
         $mistake = Mistake::where('user_id', $userId)
             ->where('question_id', $questionId)
             ->firstOrFail();
 
-        $mistake->applyRatedReview($rating, 'quiz');
+        $mistake->applyRatedReview($rating, $mode);
         $mistake->save();
         $this->conceptMemoryService->syncReview($mistake, $rating, 'quiz');
 

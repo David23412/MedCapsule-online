@@ -70,6 +70,10 @@ class ArchitecturalRefactorServiceProvider extends ServiceProvider
         // Quiz completion handling
         $this->app['events']->listen(
             QuizCompleted::class,
+            \App\Listeners\SyncPlannerAfterQuiz::class
+        );
+        $this->app['events']->listen(
+            QuizCompleted::class,
             HandleQuizCompletion::class
         );
         

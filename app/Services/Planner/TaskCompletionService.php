@@ -9,6 +9,7 @@ use App\Models\Topic;
 use App\Models\User;
 use App\Models\UserTopicProgress;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
@@ -53,7 +54,15 @@ class TaskCompletionService
                 continue;
             }
 
-            if (!(bool) ($storedTask['counts_toward_progression'] ?? false)) {
+            // Always evaluate frontier quiz tasks for stage transitions
+            // even if counts_toward_progression is false due to preview state
+            $isFrontierQuiz = in_array(
+                (string) ($storedTask['type'] ?? ''),
+                ['frontier_topic_quiz', 'final_exam_sprint'],
+                true
+            );
+
+            if (!$isFrontierQuiz && !(bool) ($storedTask['counts_toward_progression'] ?? false)) {
                 continue;
             }
 
@@ -93,8 +102,14 @@ class TaskCompletionService
             }
 
             if (in_array($type, ['frontier_topic_quiz', 'final_exam_sprint'], true)) {
+                // Only auto-clear tutor if the student was genuinely eligible to skip it
+                // (pre-existing accuracy ≥70% before ever doing tutor). A plain quiz pass
+                // should not silently backfill planner_tutor_cleared_at.
                 if ($progress->planner_tutor_cleared_at === null) {
-                    $progress->planner_tutor_cleared_at = $now;
+                    $profile = data_get($context->topicSignals, 'profiles.' . $topicId, []);
+                    if ((bool) ($profile['tutor_preclear_eligible'] ?? false)) {
+                        $progress->planner_tutor_cleared_at = $now;
+                    }
                 }
 
                 if ($progress->planner_quiz_cleared_at === null) {
@@ -145,20 +160,14 @@ class TaskCompletionService
 
     private function evaluateRapidOverviewTask(array $task, ?Topic $topic, PlannerContext $context): array
     {
+        // Duration cap (10 min) is a planning constraint, not a completion gate.
+        // Binary finish like tutor: if the attempt exists, the task is done.
         $matchingAttempts = $this->matchingTopicAttempts($task, $context->attemptSignals);
         if ($matchingAttempts->isEmpty()) {
             return $this->result('pending', 0.0, false);
         }
 
-        $withinCap = $matchingAttempts->contains(function (array $attempt) {
-            $durationSeconds = max(0, (int) ($attempt['duration_seconds'] ?? 0));
-
-            return $durationSeconds > 0 && $durationSeconds <= 600;
-        });
-
-        return $withinCap
-            ? $this->result('complete', 1.0, true)
-            : $this->result('pending', 0.0, true);
+        return $this->result('complete', 1.0, true);
     }
 
     private function evaluateClassicRepairTask(array $task, ?Topic $topic, PlannerContext $context): array
@@ -174,7 +183,9 @@ class TaskCompletionService
             ->values();
 
         if ($assignedMistakeIds->isEmpty()) {
-            return $this->evaluateScoredTopicTask($task, $topic, $context, 70.0);
+            // Malformed task — planner assigned repair but found no mistakes.
+            // Treat as pending rather than falling through to quiz evaluation.
+            return $this->result('pending', 0.0, false);
         }
 
         $difficulty = (string) ($task['repair_difficulty'] ?? $context->classicRepairDifficulty ?? 'easy');
@@ -231,11 +242,19 @@ class TaskCompletionService
     private function evaluateProgressionQuizTask(array $task, ?Topic $topic, PlannerContext $context): array
     {
         if (!($topic instanceof Topic)) {
+            Log::debug('evaluateProgressionQuizTask: no topic', ['task_id' => $task['id']]);
             return $this->result('pending', 0.0, false);
         }
 
         $matchingAttempts = $this->matchingTopicAttempts($task, $context->attemptSignals);
         if ($matchingAttempts->isEmpty()) {
+            Log::debug('evaluateProgressionQuizTask: no matching attempts', [
+                'task_id' => $task['id'],
+                'topic_id' => $topic->id,
+                'required_mode' => $this->resolveRequiredStudyMode($task),
+                'required_source' => $task['source'] ?? null,
+                'attempts_today_count' => count($context->attemptSignals['topic_attempts_today'] ?? []),
+            ]);
             return $this->result('pending', 0.0, false);
         }
 
@@ -244,6 +263,14 @@ class TaskCompletionService
         $accuracy = (float) ($profile['stage_two_accuracy'] ?? 0.0);
         $passReady = (bool) ($profile['stage_two_pass_ready'] ?? false);
         $fallbackUsed = (bool) ($profile['stage_two_fallback_used'] ?? false);
+
+        Log::debug('evaluateProgressionQuizTask: profile signals', [
+            'task_id' => $task['id'],
+            'stage_two_pass_ready' => $passReady,
+            'stage_two_accuracy' => $accuracy,
+            'stage_two_question_count' => $questionCount,
+            'stage_two_fallback_used' => $fallbackUsed,
+        ]);
 
         if ($passReady) {
             return $this->result('complete', 1.0, true, [
@@ -254,9 +281,9 @@ class TaskCompletionService
         }
 
         if ($questionCount > 0) {
-            $progress = $fallbackUsed
-                ? round(max(0.0, min(0.99, $accuracy / 70.0)), 4)
-                : round(max(0.0, min(0.99, ($accuracy / 70.0) * min(1.0, $questionCount / 2))), 4);
+            // Simplified formula — sample-size threshold is already enforced by stage_two_pass_ready.
+            // The question-count multiplier caused jarring progress jumps and is not needed here.
+            $progress = round(max(0.0, min(0.99, $accuracy / 70.0)), 4);
 
             return $this->result('partial', $progress, true, [
                 'best_percentage_grade' => round($accuracy, 2),
@@ -470,17 +497,6 @@ class TaskCompletionService
             ->count();
     }
 
-    private function topicHasAttempt(Topic $topic, array $topicSignals = []): bool
-    {
-        $attemptedTopicIds = $topicSignals['attempted_topic_ids'] ?? [];
-        if (in_array((int) $topic->id, $attemptedTopicIds, true)) {
-            return true;
-        }
-
-        $progress = $topic->userProgress->first();
-
-        return $topic->last_attempt_date !== null || $progress?->last_attempt_date !== null;
-    }
 
     private function matchingTopicAttempts(array $task, array $attemptSignals)
     {
@@ -493,12 +509,15 @@ class TaskCompletionService
         $requiredSource = $task['source'] ?? null;
 
         return collect($attemptSignals['topic_attempts_today'] ?? [])->filter(function (array $attempt) use ($topicId, $requiredMode, $requiredSource) {
-            $attemptMode = (string) ($attempt['study_mode'] ?? 'quiz');
             $attemptTopicId = isset($attempt['topic_id']) ? (int) $attempt['topic_id'] : null;
             $isRandomAttempt = (string) ($attempt['session_type'] ?? '') === 'random_quiz'
                 || (string) ($attempt['quiz_type'] ?? '') === 'random';
-            $modeMatches = $attemptMode === $requiredMode;
+            $modeMatches = (string) ($attempt['study_mode'] ?? '') === $requiredMode;
+            
+            // Lenient matching: If task has a specific source but attempt is missing it, 
+            // we allow a match if the mode and topic are correct, to prevent silent progression stalls.
             $sourceMatches = $requiredSource === null
+                || ($attempt['source'] ?? null) === null
                 || strcasecmp((string) ($attempt['source'] ?? ''), (string) $requiredSource) === 0;
 
             return $attemptTopicId === $topicId
@@ -569,6 +588,15 @@ class TaskCompletionService
                 continue;
             }
 
+            $clearedAt = $progress->planner_cleared_at instanceof Carbon
+                ? $progress->planner_cleared_at
+                : Carbon::parse($progress->planner_cleared_at);
+
+            $hoursSinceClear = $clearedAt->diffInHours(now());
+            if ($hoursSinceClear < 48) {
+                continue;
+            }
+
             if ((float) ($latestAttempt->percentage_grade ?? 0.0) >= 70.0) {
                 continue;
             }
@@ -606,7 +634,7 @@ class TaskCompletionService
             ->when($preferredSource !== null, function ($query) use ($preferredSource) {
                 $query->where('source', $preferredSource);
             })
-            ->where('created_at', '>', $plannerClearedAt->copy()->addHours(48))
+            ->where('created_at', '>', $plannerClearedAt) // any attempt after clearing; 48h cooldown checked in PHP
             ->orderByDesc('created_at')
             ->first(['percentage_grade', 'created_at', 'study_mode', 'session_type', 'source']);
     }

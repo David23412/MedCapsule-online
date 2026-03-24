@@ -41,6 +41,7 @@ class TopicFactory extends Factory
             'course_id' => Course::factory(),
             'display_order' => $this->faker->numberBetween(1, 20),
             'case_type' => $this->faker->randomElement(['quiz', 'cases', 'practical']),
+            'is_exam' => false,
             'created_at' => $this->faker->dateTimeBetween('-1 year', 'now'),
             'updated_at' => $this->faker->dateTimeBetween('-1 month', 'now'),
         ];
@@ -65,6 +66,17 @@ class TopicFactory extends Factory
     {
         return $this->state(fn (array $attributes) => [
             'name' => $name,
+        ]);
+    }
+
+    /**
+     * Create an exam topic.
+     */
+    public function exam(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'is_exam' => true,
+            'name' => 'Final Exam 2024'
         ]);
     }
 

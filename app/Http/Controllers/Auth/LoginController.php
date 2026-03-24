@@ -58,6 +58,13 @@ use Illuminate\Support\Facades\Cache;
                 ])->onlyInput('email');
             }
 
+            // Check if user is permanently locked (Hard Lock escalation)
+            if ($this->securityService->isPermanentlyLocked($user->id)) {
+                return back()->withErrors([
+                    'email' => 'This account has been permanently locked due to multiple security violations. Please contact support.'
+                ])->onlyInput('email');
+            }
+
             // Increment login attempts for security tracking
             $this->securityService->incrementLoginAttempts($user->id);
         }

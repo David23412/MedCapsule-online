@@ -74,9 +74,9 @@ class SqlInjectionProtectionMiddleware
     ];
     
     /**
-     * Maximum allowed special characters ratio
+     * Maximum allowed special characters ratio (Increased for medical formulas)
      */
-    private const MAX_SPECIAL_CHAR_RATIO = 0.3;
+    private const MAX_SPECIAL_CHAR_RATIO = 0.45;
 
     /**
      * Handle an incoming request.
@@ -245,9 +245,11 @@ class SqlInjectionProtectionMiddleware
             }
         }
         
-        // Check special character ratio
-        $specialCharRatio = $this->calculateSpecialCharRatio($value);
-        if ($specialCharRatio > self::MAX_SPECIAL_CHAR_RATIO && strlen($value) > 10) {
+        // Check special character ratio (with scientific text awareness)
+        $charMeta = $this->calculateSpecialCharRatio($value);
+        $specialCharRatio = $charMeta['ratio'];
+        
+        if ($specialCharRatio > self::MAX_SPECIAL_CHAR_RATIO && strlen($value) > 15 && !$charMeta['is_scientific']) {
             $threats[] = [
                 'type' => 'high_special_char_ratio',
                 'source' => $source,
@@ -284,14 +286,28 @@ class SqlInjectionProtectionMiddleware
     /**
      * Calculate the ratio of special characters in a string
      */
-    private function calculateSpecialCharRatio(string $value): float
+    private function calculateSpecialCharRatio(string $value): array
     {
         if (empty($value)) {
-            return 0;
+            return ['ratio' => 0, 'is_scientific' => false];
         }
         
-        $specialChars = preg_match_all('/[^a-zA-Z0-9\s]/', $value);
-        return $specialChars / strlen($value);
+        // Detect scientific/medical notation which often has high special char density
+        // e.g. "Na+ / Cl- [conc] > 10%"
+        $scientificPattern = '/[a-zA-Z]{1,2}[\+\-\d]|\d+[\%\+]|\[[a-zA-Z\s]+\]/i';
+        $isScientific = (bool) preg_match($scientificPattern, $value);
+
+        // Standard medical/math symbols should not count towards "Attack Density"
+        $safeSymbols = ['+', '-', '/', '*', '=', '>', '<', '[', ']', '(', ')', '%', '.', ',', ':', ';'];
+        $cleanValue = str_replace($safeSymbols, '', $value);
+        
+        $specialChars = preg_match_all('/[^a-zA-Z0-9\s]/', $cleanValue);
+        $ratio = $specialChars / strlen($value);
+
+        return [
+            'ratio' => $ratio,
+            'is_scientific' => $isScientific
+        ];
     }
     
     /**

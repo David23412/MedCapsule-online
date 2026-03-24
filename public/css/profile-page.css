@@ -260,25 +260,31 @@
         .profile-header {
             background: transparent;
             border-radius: 0;
-            padding: 12px 0 24px;
-            margin-bottom: 18px;
+            padding: 18px 0 32px;
+            margin-bottom: 22px;
             position: relative;
             overflow: visible;
             border: 0;
             box-shadow: none;
-            transition: none;
         }
 
         .profile-header::before {
             content: '';
             position: absolute;
-            inset: -16px -26px;
-            background:
-                radial-gradient(circle at top left, rgba(191, 219, 254, 0.28), transparent 30%),
-                radial-gradient(circle at 78% 32%, rgba(196, 181, 253, 0.16), transparent 24%),
-                radial-gradient(circle at 40% 90%, rgba(103, 232, 249, 0.12), transparent 26%);
-            filter: blur(2px);
+            top: -45px;
+            left: -45px;
+            right: -45px;
+            bottom: -20px;
+            background: 
+                radial-gradient(circle at 10% 20%, rgba(59, 130, 246, 0.08), transparent 45%),
+                radial-gradient(circle at 80% 30%, rgba(139, 92, 246, 0.06), transparent 40%),
+                radial-gradient(circle at 45% 85%, rgba(6, 182, 212, 0.05), transparent 35%);
+            filter: blur(40px);
+            z-index: -1;
             pointer-events: none;
+            /* Fade out the bottom so it flows instead of cutting off */
+            -webkit-mask-image: linear-gradient(to bottom, black 65%, transparent 100%);
+            mask-image: linear-gradient(to bottom, black 65%, transparent 100%);
         }
 
         .profile-hero-layout {
@@ -383,8 +389,8 @@
             position: absolute;
             border-radius: 50%;
             pointer-events: none;
-            filter: blur(2px);
-            opacity: 0.72;
+            filter: blur(60px);
+            opacity: 0.45;
             animation: profileOrbFloat 10s ease-in-out infinite;
         }
 
@@ -1563,11 +1569,12 @@
         color: rgba(255, 255, 255, 0.7) !important;
     }
 
-    /* Fix for weak topic practice button - exact size 81px x 26px */
+    /* Fix for weak topic practice button - allow growth for longer text */
     .topic-review-item .btn-sm {
-        width: 81px !important;
-        height: 26px !important;
-        padding: 2px 8px !important;
+        min-width: 84px !important;
+        width: auto !important;
+        height: auto !important;
+        padding: 5px 12px !important;
         font-size: 11px !important;
         line-height: 1.2 !important;
         display: inline-flex !important;

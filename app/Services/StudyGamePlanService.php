@@ -17,7 +17,9 @@ use Illuminate\Support\Collection;
 
 class StudyGamePlanService
 {
-    private const PLAN_VERSION = 25;
+    private const PLAN_VERSION = 37;
+    private const STABILITY_WINDOW_MINUTES = 180;
+    private const TASK_LIMIT_DEFAULT = 5;
     private const RECOMPUTE_WINDOW_MINUTES = 15;
     private const COMPLETED_PLAN_FREEZE_MINUTES = 360; // 6 hours
 
@@ -52,6 +54,15 @@ class StudyGamePlanService
             );
 
             if ($markersChanged) {
+                $courseKey = (string) $course->id;
+                // Invalidate stored plan meta to force recompute
+                $tasksPayload = $plan->tasks ?? [];
+                if (isset($tasksPayload['planner_meta'][$courseKey])) {
+                    unset($tasksPayload['planner_meta'][$courseKey]['generated_at']);
+                    $plan->tasks = $tasksPayload;
+                    $plan->save();
+                }
+
                 $user = $user->fresh();
                 $course = $course->fresh();
                 $topics = $course->topics()
@@ -152,7 +163,9 @@ class StudyGamePlanService
             $storedTaskMap
         );
 
-        $persistedTasks = $this->sortTasksForStudentFlow($normalizedTasks)->values();
+        $persistedTasks = $this->sortTasksForStudentFlow(
+            $normalizedTasks->filter(fn (array $t) => !(bool) ($t['is_preview'] ?? false))
+        )->values();
         $visibleTasks = $this->buildVisibleTaskQueue(
             $persistedTasks,
             $topics,
@@ -194,15 +207,8 @@ class StudyGamePlanService
             $user->refresh();
         }
 
-        [$trackedMinutes, $trackedQuestions] = $this->resolveTodayStudyProgress($user, $topics);
-        $targetMinutes = max(
-            1,
-            (int) (
-                data_get($context->resolvedSettings, 'allocated_minutes')
-                ?: data_get($context->resolvedSettings, 'effective_daily_study_minutes')
-                ?: $context->dailyStudyMinutes
-            )
-        );
+        [$trackedMinutes, $trackedQuestions] = $this->resolveTodayStudyProgress($user);
+        $targetMinutes = max(1, (int) $context->totalDailyStudyMinutes);
 
         $roadmapTasks = $this->roadmapTasks($visibleTasks, $context);
 
@@ -239,23 +245,11 @@ class StudyGamePlanService
         ], fn ($value) => $value !== null);
     }
 
-    private function resolveTodayStudyProgress(User $user, Collection $topics): array
+    private function resolveTodayStudyProgress(User $user): array
     {
-        $courseTopicIds = $topics
-            ->pluck('id')
-            ->filter()
-            ->map(fn ($topicId) => (int) $topicId)
-            ->values()
-            ->all();
-
-        if ($courseTopicIds === []) {
-            return [0, 0];
-        }
-
         $todayAttempts = QuizAttempt::query()
             ->where('user_id', $user->id)
             ->whereDate('created_at', now()->toDateString())
-            ->whereIn('topic_id', $courseTopicIds)
             ->where('duration_seconds', '>', 0)
             ->where('total_questions', '>', 0)
             ->get(['duration_seconds', 'total_questions']);
@@ -327,6 +321,7 @@ class StudyGamePlanService
                 ->filter(fn ($id) => $id > 0)
                 ->values()
                 ->all(),
+            'url' => $this->resolveTaskUrl($candidate, $context),
             'trigger_reason' => $triggerReason,
             'resolved_exam_date' => $context->examDate?->format('Y-m-d'),
             'resolved_focus' => $context->plannerFocus,
@@ -398,6 +393,7 @@ class StudyGamePlanService
                 ->filter(fn ($id) => $id > 0)
                 ->values()
                 ->all(),
+            'url' => $this->resolveTaskUrl($storedTask, $context),
             'trigger_reason' => $triggerReason,
             'resolved_exam_date' => $storedTask['resolved_exam_date'] ?? $context->examDate?->format('Y-m-d'),
             'resolved_focus' => $storedTask['resolved_focus'] ?? $context->plannerFocus,
@@ -415,7 +411,13 @@ class StudyGamePlanService
 
     private function resolveCompletionState(?array $storedTask, array $evaluation): string
     {
-        if ((bool) ($storedTask['completed'] ?? false) || ($evaluation['state'] ?? 'pending') === 'complete') {
+        // Persistence guard: A task once completed must never regress to pending
+        // unless explicitly handled (e.g. by regression logic elsewhere).
+        if ((bool) ($storedTask['completed'] ?? false)) {
+            return 'complete';
+        }
+
+        if (($evaluation['state'] ?? 'pending') === 'complete') {
             return 'complete';
         }
 
@@ -470,9 +472,24 @@ class StudyGamePlanService
             $result->push($childTask);
         }
 
-        return $result
+        // Previews and spawned children must not be truncated by tasksLimit —
+        // doing so would drop slot 2/3 previews when a child task is injected after slot 1.
+        // Progression tasks (Slot 1 frontier, etc) must never be demoted by child injections.
+        // Concept repair children must never appear at Slot 1.
+        $progressionTasks = $result
+            ->filter(fn (array $t) => !(bool) ($t['is_preview'] ?? false) && empty($t['spawned_from_task_id']))
+            ->sortBy(function (array $t) {
+                // Frontier tasks (actionable) first, then completed progression tasks.
+                return sprintf('%01d-%01d', $t['completed'] ? 1 : 0, (int) ($t['slot_index'] ?? 99));
+            })
+            ->take($context->tasksLimit);
+
+        $previewAndChildTasks = $result
+            ->filter(fn (array $t) => (bool) ($t['is_preview'] ?? false) || !empty($t['spawned_from_task_id']));
+
+        return $progressionTasks
+            ->concat($previewAndChildTasks)
             ->unique('id')
-            ->take($context->tasksLimit)
             ->values();
     }
 
@@ -486,7 +503,17 @@ class StudyGamePlanService
             return false;
         }
 
+        // Tutor and rapid overview completions never spawn concept repair
+        // Concept repair is only meaningful after scored sessions
+        $type = (string) ($task['type'] ?? '');
+        if (in_array($type, ['start_topic', 'rapid_overview'], true)) {
+            return false;
+        }
+
         $storedTask = $storedTaskMap->get($task['id']);
+        if ($storedTask === null) {
+            return false;
+        }
 
         return !(bool) ($storedTask['completed'] ?? false);
     }
@@ -535,7 +562,10 @@ class StudyGamePlanService
         $childTask['xp_awarded_total'] = 0;
         $childTask['slot_index'] = $parentTask['slot_index'] ?? null;
         $childTask['backfill_level'] = $parentTask['backfill_level'] ?? null;
-        $childTask['counts_toward_progression'] = false;
+        // Preserve counts_toward_progression from the task type
+        // frontier_topic_quiz and repair tasks count toward progression
+        // even when shown as previews
+        $childTask['counts_toward_progression'] = (bool) ($childTask['counts_toward_progression'] ?? false);
         $childTask['simulation_scope'] = null;
         $childTask['covered_topic_ids'] = [];
         $childTask['is_preview'] = false;
@@ -660,7 +690,13 @@ class StudyGamePlanService
                 return false;
             }
 
-            $topic = isset($task['topic_id']) ? $topics->firstWhere('id', (int) $task['topic_id']) : null;
+            /* Preview tasks CAN complete during stable reuse if a student solves 
+               material ahead of the active slot (e.g. solving a preview quiz).
+               We MUST detect this to trigger a recompute and unlock the plan. */
+
+            $topic = isset($task['topic_id'])
+                ? $topics->firstWhere('id', (int) $task['topic_id'])
+                : null;
 
             return $this->taskCompletionService->isTaskCompleted($task, $topic, $context);
         });
@@ -713,11 +749,12 @@ class StudyGamePlanService
             }
         }
 
-        return $completedStoredTasks
-            ->concat($candidateTasks)
+        // Append completed tasks AFTER new candidates so they never consume slots
+        // that new tasks need (prepending caused slot starvation when 3+ tasks were completed).
+        return $candidateTasks
+            ->concat($completedStoredTasks)
             ->unique('id')
-            ->take($context->tasksLimit)
-            ->values();
+            ->values(); // no take() here — sortTasksForStudentFlow + buildVisibleTaskQueue handle limits
     }
 
     private function refreshPersistedMeta(
@@ -755,13 +792,12 @@ class StudyGamePlanService
         return $tasks
             ->values()
             ->map(fn (array $task, int $index) => $task + ['_sort_index' => $index])
-            ->sortBy(function (array $task): string {
-                $completionBucket = !empty($task['completed']) ? 1 : 0;
+            ->sortBy(function (array $task, int $index): string {
                 $slotBucket = isset($task['slot_index']) && $task['slot_index'] !== null
                     ? (int) $task['slot_index']
                     : 99;
 
-                return sprintf('%01d-%02d-%04d', $completionBucket, $slotBucket, (int) ($task['_sort_index'] ?? 0));
+                return sprintf('%02d-%04d', $slotBucket, $index);
             })
             ->map(function (array $task): array {
                 unset($task['_sort_index']);
@@ -769,20 +805,6 @@ class StudyGamePlanService
                 return $task;
             })
             ->values();
-    }
-
-    private function taskSequenceRank(array $task): int
-    {
-        return match ((string) ($task['type'] ?? '')) {
-            'start_topic', 'rapid_overview' => 1,
-            'repair_topic', 'topic_mistake_review', 'mistakes_cleanup', 'concept_repair', 'concept_cluster_repair' => 2,
-            'frontier_topic_quiz', 'secure_topic', 'final_exam_sprint', 'accuracy_polish' => 3,
-            default => match ((string) ($task['study_mode'] ?? '')) {
-                'tutor' => 1,
-                'mistake_review' => 2,
-                default => 3,
-            },
-        };
     }
 
     private function buildVisibleTaskQueue(
@@ -824,11 +846,28 @@ class StudyGamePlanService
                 })
                 ->values();
 
+            // Critical Fix: Group completed tasks for the same topic together with the actionable task
+            // so the "Study (Done) -> Solve (Active)" flow stays intact at the top.
+            $actionableTopicId = (int) ($currentActionableTask['topic_id'] ?? 0);
+            $actionableType = (string) ($currentActionableTask['type'] ?? '');
+
+            $topicGroup = $activeTasks->filter(function (array $task) use ($actionableTopicId) {
+                return (int) ($task['topic_id'] ?? 0) === $actionableTopicId
+                    && !($task['is_preview'] ?? false);
+            })->values();
+
+            $previewTasks = $previewTasks->reject(function (array $preview) use ($actionableTopicId, $actionableType) {
+                return (int) ($preview['topic_id'] ?? 0) === $actionableTopicId
+                    && (string) ($preview['type'] ?? '') === $actionableType;
+            });
+
+            $groupAndPreviewIds = $topicGroup->pluck('id')->concat($previewTasks->pluck('id'))->all();
+
             $extraTasks = $activeTasks
-                ->reject(fn (array $task) => ($task['id'] ?? null) === ($currentActionableTask['id'] ?? null))
+                ->reject(fn (array $task) => in_array($task['id'] ?? null, $groupAndPreviewIds, true))
                 ->values();
 
-            return collect([$currentActionableTask])
+            return $topicGroup
                 ->concat($previewTasks)
                 ->concat($extraTasks)
                 ->values();
@@ -927,22 +966,20 @@ class StudyGamePlanService
         return [
             'exam_date' => $examDate,
             'exam_date_iso' => $resolvedSettings['exam_date_iso'] ?? $examDate,
-            'target_score' => (int) ($resolvedSettings['target_score'] ?? 0),
             'configured_daily_study_minutes' => (int) ($resolvedSettings['configured_daily_study_minutes'] ?? 0),
             'effective_daily_study_minutes' => (int) ($resolvedSettings['effective_daily_study_minutes'] ?? 0),
             'allocated_minutes' => (int) ($resolvedSettings['allocated_minutes'] ?? 0),
             'planner_focus' => (string) ($resolvedSettings['planner_focus'] ?? 'balanced'),
             'preferred_source' => $resolvedSettings['preferred_source'] ?? null,
             'repair_mode' => (string) ($resolvedSettings['repair_mode'] ?? 'easy'),
-            'classic_repair_difficulty' => (string) ($resolvedSettings['classic_repair_difficulty'] ?? 'easy'),
+            'mistake_mastery_mode' => (string) ($resolvedSettings['mistake_mastery_mode'] ?? 'easy'),
             'course_overrides' => [
                 'planner_exam_date' => data_get($resolvedSettings, 'course_overrides.planner_exam_date'),
-                'planner_target_score' => data_get($resolvedSettings, 'course_overrides.planner_target_score'),
                 'planner_daily_study_minutes' => data_get($resolvedSettings, 'course_overrides.planner_daily_study_minutes'),
                 'planner_focus' => data_get($resolvedSettings, 'course_overrides.planner_focus'),
                 'planner_preferred_source' => data_get($resolvedSettings, 'course_overrides.planner_preferred_source'),
                 'planner_repair_mode' => data_get($resolvedSettings, 'course_overrides.planner_repair_mode'),
-                'planner_classic_repair_difficulty' => data_get($resolvedSettings, 'course_overrides.planner_classic_repair_difficulty'),
+                'planner_mistake_mastery_mode' => data_get($resolvedSettings, 'course_overrides.planner_mistake_mastery_mode'),
             ],
         ];
     }
@@ -950,10 +987,36 @@ class StudyGamePlanService
     private function roadmapTasks(Collection $tasks, object $context): Collection
     {
         return $tasks
-            ->filter(fn (array $task) => isset($task['slot_index']) && (int) $task['slot_index'] <= $context->tasksLimit)
+            ->filter(fn (array $task) =>
+                !isset($task['slot_index'])
+                || $task['slot_index'] === null
+                || (int) $task['slot_index'] <= $context->tasksLimit
+            )
             ->sortBy(fn (array $task) => (int) ($task['slot_index'] ?? 999))
             ->take($context->tasksLimit)
             ->values();
+    }
+
+    private function resolveTaskUrl(array $task, object $context): ?string
+    {
+        $topicId = (int) ($task['topic_id'] ?? 0);
+        if ($topicId <= 0) {
+            if (($task['type'] ?? '') === 'mistakes_cleanup') {
+                return route('review.index');
+            }
+            return null;
+        }
+
+        $courseId = $context->course->id;
+        $mode = $task['study_mode'] ?? 'quiz';
+        $source = (string) ($task['resolved_source'] ?? $task['source'] ?? '');
+        $sourceParams = $source !== '' ? ['sources' => [$source]] : [];
+
+        if ($mode === 'tutor') {
+            return route('quiz.tutor', array_merge(['course' => $courseId, 'topic' => $topicId], $sourceParams));
+        }
+
+        return route('quiz.start', array_merge(['course' => $courseId, 'topic' => $topicId], $sourceParams));
     }
 
     private function resolveTodayPlan(User $user): StudyPlan

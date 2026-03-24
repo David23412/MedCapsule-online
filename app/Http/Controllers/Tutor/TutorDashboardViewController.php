@@ -317,7 +317,7 @@ class TutorDashboardViewController extends Controller
             'quizAttempts' => function ($query) {
                 $query->select([
                     'id', 'user_id', 'topic_id', 'percentage_grade', 'created_at',
-                    'duration_seconds', 'questions_attempted', 'correct_answers'
+                    'duration_seconds', 'total_questions', 'score'
                 ])
                 ->with([
                     'topic:id,name,course_id',
@@ -428,8 +428,8 @@ class TutorDashboardViewController extends Controller
                     'score' => $attempt->percentage_grade,
                     'date' => $attempt->created_at,
                     'duration' => $attempt->duration_seconds ?? 0,
-                    'questions_attempted' => $attempt->questions_attempted ?? 0,
-                    'correct_answers' => $attempt->correct_answers ?? 0
+                    'questions_attempted' => $attempt->total_questions ?? 0,
+                    'correct_answers' => $attempt->score ?? 0
                 ];
             })->toArray(),
             'performance_by_topic' => $topicPerformance,

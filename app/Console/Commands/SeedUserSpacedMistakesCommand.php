@@ -281,14 +281,10 @@ class SeedUserSpacedMistakesCommand extends Command
                 'question_id' => $question->id,
             ],
             [
-                'question_text' => $question->question,
-                'correct_answer' => $question->correct_answer,
                 'submitted_answer' => $this->wrongAnswerFor($question),
             ]
         );
 
-        $mistake->question_text = $question->question;
-        $mistake->correct_answer = $question->correct_answer;
         $mistake->submitted_answer = $this->wrongAnswerFor($question);
         $mistake->setRelation('question', $question);
         $mistake->markFailedAttempt($mistake->submitted_answer);

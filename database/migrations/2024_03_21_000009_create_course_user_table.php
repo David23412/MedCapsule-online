@@ -21,7 +21,7 @@ return new class extends Migration
             $table->string('planner_focus', 40)->nullable();
             $table->string('planner_preferred_source')->nullable();
             $table->string('planner_repair_mode', 20)->nullable();
-            $table->string('planner_classic_repair_difficulty', 20)->nullable();
+            $table->string('planner_mistake_mastery_mode', 20)->nullable();
             $table->timestamps();
 
             // Indexes for better performance

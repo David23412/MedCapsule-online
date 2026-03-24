@@ -35,13 +35,18 @@ class AdaptiveMistakeScheduler
         array $interactionSignals = []
     ): void
     {
-        $rating = max(1, min(5, $rating));
         $normalizedMode = $this->normalizeMode($mode);
+        $now = now();
+        $isCorrect = $rating >= 3;
+
+        if ($normalizedMode !== 'spaced') {
+            $this->applyClassicReview($mistake, $isCorrect, $normalizedMode);
+            return;
+        }
+
         $normalizedConfidence = $this->normalizeConfidence($confidence);
         $calibrationService = new SchedulerCalibrationService();
         $profile = $calibrationService->getProfile($normalizedMode, (int) $mistake->user_id);
-        $now = now();
-        $isCorrect = $rating >= 3;
         $hesitationScore = $this->resolveHesitationScore(
             $mistake,
             $responseSeconds,
@@ -49,9 +54,11 @@ class AdaptiveMistakeScheduler
             $rating,
             $normalizedMode
         );
-        $priorLastAttempt = $mistake->last_attempt_date instanceof Carbon
-            ? $mistake->last_attempt_date->copy()
-            : ($mistake->last_attempt_date ? Carbon::parse($mistake->last_attempt_date) : null);
+        $priorLastAttempt = $mistake->last_attempt_date;
+        if ($priorLastAttempt && !($priorLastAttempt instanceof Carbon)) {
+            $priorLastAttempt = Carbon::parse($priorLastAttempt);
+        }
+        $priorLastAttempt = ($priorLastAttempt instanceof Carbon) ? $priorLastAttempt->copy() : null;
 
         $difficulty = $this->resolveCurrentDifficulty($mistake);
         $stability = $this->resolveCurrentStability($mistake);
@@ -252,15 +259,16 @@ class AdaptiveMistakeScheduler
                 ];
             }
 
-            if (($question->total_attempts ?? 0) >= 8) {
+            // User attempt frequency signal - using user-specific data instead
+            $userAttemptCount = DB::table('user_mistake_mastery')
+                ->where('question_id', $question->id)
+                ->count();
+                
+            if ($userAttemptCount >= 8) {
                 $signals[] = [
-                    'difficulty' => $this->mapAccuracyToDifficulty(
-                        attempts: (int) $question->total_attempts,
-                        correctAttempts: (int) $question->correct_attempts,
-                        questionType: (string) $question->question_type
-                    ),
-                    'weight' => min(0.38, 0.14 + (((int) $question->total_attempts) / 120)),
-                    'confidence' => min(1.0, 0.30 + (((int) $question->total_attempts) / 40)),
+                    'difficulty' => 'medium', // Default difficulty since we can't calculate accuracy
+                    'weight' => min(0.38, 0.14 + ($userAttemptCount / 120)),
+                    'confidence' => min(1.0, 0.30 + ($userAttemptCount / 40)),
                 ];
             }
 
@@ -289,25 +297,22 @@ class AdaptiveMistakeScheduler
                     ];
                 }
 
-                $topicAccuracyStats = DB::table('questions')
-                    ->where('topic_id', $question->topic_id)
-                    ->where('total_attempts', '>=', 5)
+                // Topic-level difficulty signal (using user mistake data instead)
+                $topicMasteryStats = DB::table('user_mistake_mastery')
+                    ->join('questions', 'user_mistake_mastery.question_id', '=', 'questions.id')
+                    ->where('questions.topic_id', $question->topic_id)
                     ->selectRaw('
-                        SUM(total_attempts) as total_attempts,
-                        SUM(correct_attempts) as correct_attempts,
-                        COUNT(*) as question_count
+                        COUNT(*) as total_attempts,
+                        SUM(CASE WHEN last_attempt_result = "correct" THEN 1 ELSE 0 END) as correct_attempts,
+                        COUNT(DISTINCT user_mistake_mastery.user_id) as user_count
                     ')
                     ->first();
 
-                if ($topicAccuracyStats && (int) ($topicAccuracyStats->total_attempts ?? 0) >= 20) {
+                if ($topicMasteryStats && (int) ($topicMasteryStats->total_attempts ?? 0) >= 20) {
                     $signals[] = [
-                        'difficulty' => $this->mapAccuracyToDifficulty(
-                            attempts: (int) $topicAccuracyStats->total_attempts,
-                            correctAttempts: (int) $topicAccuracyStats->correct_attempts,
-                            questionType: (string) $question->question_type
-                        ),
-                        'weight' => min(0.20, 0.08 + (((int) $topicAccuracyStats->question_count) * 0.01)),
-                        'confidence' => min(0.70, 0.22 + (((int) $topicAccuracyStats->total_attempts) / 160)),
+                        'difficulty' => 'medium', // Default since we can't calculate accuracy easily
+                        'weight' => min(0.20, 0.08 + (((int) $topicMasteryStats->user_count) * 0.01)),
+                        'confidence' => min(0.70, 0.22 + (((int) $topicMasteryStats->total_attempts) / 160)),
                     ];
                 }
             }
@@ -363,9 +368,7 @@ class AdaptiveMistakeScheduler
         $answerLengthFactor = min(0.10, max(0.0, ($answerWords - 2) * 0.015));
         $writtenBonus = $question->question_type === Question::TYPE_WRITTEN ? 0.12 : 0.0;
         $imageBonus = !empty($question->image_url) ? 0.03 : 0.0;
-        $thresholdBonus = $question->question_type === Question::TYPE_WRITTEN
-            ? max(0.0, ((float) ($question->similarity_threshold ?? Question::DEFAULT_SIMILARITY_THRESHOLD) - Question::DEFAULT_SIMILARITY_THRESHOLD) * 0.25)
-            : 0.0;
+        $thresholdBonus = 0.0;
 
         $baseDifficulty = 0.38
             + $writtenBonus
@@ -1047,11 +1050,43 @@ class AdaptiveMistakeScheduler
 
     private function normalizeMode(string $mode): string
     {
-        return match ($mode) {
+        $cleaned = strtolower(trim($mode));
+        return match ($cleaned) {
+            'easy', 'practice' => 'easy',
+            'hard', 'quiz', 'classic' => 'hard',
+            'spaced', 'adaptive' => 'spaced',
             'quick' => 'quick',
-            'spaced' => 'spaced',
-            default => 'quiz',
+            default => 'hard',
         };
+    }
+
+    private function applyClassicReview(Mistake $mistake, bool $isCorrect, string $mode): void
+    {
+        $now = now();
+        $mistake->last_attempt_date = $now;
+        
+        if ($isCorrect) {
+            $mistake->correct_streak++;
+        } else {
+            $mistake->correct_streak = 0;
+        }
+
+        $mistake->mastered = $mistake->isMastered($mode);
+        
+        if ($mistake->mastered) {
+             if (Mistake::hasColumn('mastered_at')) {
+                 $mistake->setAdaptiveColumnValue('mastered_at', $now);
+             }
+             // For classic/practice, we push the next review out by a week so they focus on other weak topics
+             $mistake->setAdaptiveColumnValue('next_review_at', $now->copy()->addDays(7));
+        } else {
+             // Still due now for practice
+             $mistake->setAdaptiveColumnValue('next_review_at', $now);
+        }
+
+        $mistake->setAdaptiveColumnValue('review_count', (int) $mistake->review_count + 1);
+        $mistake->setAdaptiveColumnValue('last_reviewed_at', $now);
+        $mistake->save();
     }
 
     private function normalizeConfidence(?string $confidence): ?string

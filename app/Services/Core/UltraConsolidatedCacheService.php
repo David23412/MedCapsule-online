@@ -235,7 +235,7 @@ class UltraConsolidatedCacheService
             $questions = Question::select([
                 'id', 'topic_id', 'question', 'correct_answer', 'explanation',
                 'image_url', 'question_type', 'option_a', 'option_b', 'option_c', 'option_d',
-                'alternative_answers', 'similarity_threshold', 'source'
+                'alternative_answers', 'source'
             ])
                 ->whereIn('id', $selectedIds)
                 ->get()

@@ -203,75 +203,82 @@
                 <span class="nav-link-label">Profile Settings</span>
             </a>
 
-            <span class="sidebar-section-label">Session</span>
+            <div class="sidebar-coming-soon">
+                <div class="coming-soon-overlay">
+                    <span class="coming-soon-badge">Coming Soon</span>
+                </div>
+                <div class="sidebar-blur-container">
+                    <span class="sidebar-section-label">Session</span>
 
-            <div class="sidebar-insight-card sidebar-insight-card-primary">
-                <div class="sidebar-insight-head">
-                    <i class="fas fa-crosshairs nav-icon"></i>
-                    <span class="nav-link-label">Session Focus</span>
-                    <span class="sidebar-mode-chip" id="sidebarModeValue" data-mode="pending">Pick mode</span>
-                </div>
-                <p class="sidebar-insight-copy">
-                    @if($isTopicFocusedSession)
-                        {{ $topicSessionTitle }}
-                    @else
-                        Adaptive review across your active mistake bank.
-                    @endif
-                </p>
-                <div class="sidebar-chip-list">
-                    <span class="sidebar-chip">{{ $activeCourseName }}</span>
-                    <span class="sidebar-chip">{{ $sessionLoadedCount }} loaded</span>
-                    <span class="sidebar-chip">{{ $coveragePercent }}% coverage</span>
-                </div>
-            </div>
-
-            <div class="sidebar-insight-card sidebar-insight-card-soft">
-                <div class="sidebar-insight-head">
-                    <i class="fas fa-wave-square nav-icon"></i>
-                    <span class="nav-link-label">Session Pulse</span>
-                </div>
-                <div class="sidebar-progress-meta">
-                    <span id="sidebarProgressSummary">0 reviewed this run</span>
-                    <span id="sidebarProgressPercent">0%</span>
-                </div>
-                <div class="sidebar-progress-track">
-                    <div class="sidebar-progress-fill" id="sidebarProgressFill"></div>
-                </div>
-                <div class="sidebar-stat-grid">
-                    <div class="sidebar-stat-card sidebar-stat-card-coverage">
-                        <span class="sidebar-stat-label">Cleared</span>
-                        <strong id="sidebarCompletedCount">0</strong>
-                        <small>Finished this run</small>
+                    <div class="sidebar-insight-card sidebar-insight-card-primary">
+                        <div class="sidebar-insight-head">
+                            <i class="fas fa-crosshairs nav-icon"></i>
+                            <span class="nav-link-label">Session Focus</span>
+                            <span class="sidebar-mode-chip" id="sidebarModeValue" data-mode="pending">Pick mode</span>
+                        </div>
+                        <p class="sidebar-insight-copy">
+                            @if($isTopicFocusedSession)
+                                {{ $topicSessionTitle }}
+                            @else
+                                Adaptive review across your active mistake bank.
+                            @endif
+                        </p>
+                        <div class="sidebar-chip-list">
+                            <span class="sidebar-chip">{{ $activeCourseName }}</span>
+                            <span class="sidebar-chip">{{ $sessionLoadedCount }} loaded</span>
+                            <span class="sidebar-chip">{{ $coveragePercent }}% coverage</span>
+                        </div>
                     </div>
-                    <div class="sidebar-stat-card sidebar-stat-card-cold">
-                        <span class="sidebar-stat-label">Active</span>
-                        <strong id="sidebarRemainingCount">{{ $sessionLoadedCount }}</strong>
-                        <small>Still in rotation</small>
+
+                    <div class="sidebar-insight-card sidebar-insight-card-soft">
+                        <div class="sidebar-insight-head">
+                            <i class="fas fa-wave-square nav-icon"></i>
+                            <span class="nav-link-label">Session Pulse</span>
+                        </div>
+                        <div class="sidebar-progress-meta">
+                            <span id="sidebarProgressSummary">0 reviewed this run</span>
+                            <span id="sidebarProgressPercent">0%</span>
+                        </div>
+                        <div class="sidebar-progress-track">
+                            <div class="sidebar-progress-fill" id="sidebarProgressFill"></div>
+                        </div>
+                        <div class="sidebar-stat-grid">
+                            <div class="sidebar-stat-card sidebar-stat-card-coverage">
+                                <span class="sidebar-stat-label">Cleared</span>
+                                <strong id="sidebarCompletedCount">0</strong>
+                                <small>Finished this run</small>
+                            </div>
+                            <div class="sidebar-stat-card sidebar-stat-card-cold">
+                                <span class="sidebar-stat-label">Active</span>
+                                <strong id="sidebarRemainingCount">{{ $sessionLoadedCount }}</strong>
+                                <small>Still in rotation</small>
+                            </div>
+                        </div>
                     </div>
-                </div>
-            </div>
 
-            <span class="sidebar-section-label">Context</span>
+                    <span class="sidebar-section-label">Context</span>
 
-            <div class="sidebar-insight-card sidebar-insight-card-soft">
-                <div class="sidebar-insight-head">
-                    <i class="fas fa-layer-group nav-icon"></i>
-                    <span class="nav-link-label">Current Target</span>
-                </div>
-                <p class="sidebar-insight-copy">
-                    @if($isTopicFocusedSession)
-                        Focused repair on the topic{{ $selectedTopicNames->count() === 1 ? '' : 's' }} you picked.
-                    @else
-                        Balanced review across the mistakes most likely to slow your next quiz.
-                    @endif
-                </p>
-                <div class="sidebar-chip-list">
-                    <span class="sidebar-chip">{{ $activeCourseName }}</span>
-                    @forelse($selectedTopicNames->take(2) as $topicName)
-                        <span class="sidebar-chip">{{ $topicName }}</span>
-                    @empty
-                        <span class="sidebar-chip">All weak topics</span>
-                    @endforelse
+                    <div class="sidebar-insight-card sidebar-insight-card-soft">
+                        <div class="sidebar-insight-head">
+                            <i class="fas fa-layer-group nav-icon"></i>
+                            <span class="nav-link-label">Current Target</span>
+                        </div>
+                        <p class="sidebar-insight-copy">
+                            @if($isTopicFocusedSession)
+                                Focused repair on the topic{{ $selectedTopicNames->count() === 1 ? '' : 's' }} you picked.
+                            @else
+                                Balanced review across the mistakes most likely to slow your next quiz.
+                            @endif
+                        </p>
+                        <div class="sidebar-chip-list">
+                            <span class="sidebar-chip">{{ $activeCourseName }}</span>
+                            @forelse($selectedTopicNames->take(2) as $topicName)
+                                <span class="sidebar-chip">{{ $topicName }}</span>
+                            @empty
+                                <span class="sidebar-chip">All weak topics</span>
+                            @endforelse
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -319,19 +326,16 @@
             </div>
         @else
             @if($isTopicFocusedSession)
-                <div class="alert alert-info d-flex align-items-start gap-3 mb-4" role="alert" style="background: rgba(239, 246, 255, 0.95); border: 1px solid rgba(59, 130, 246, 0.18); color: #1e3a8a; border-radius: 16px; padding: 1rem 1.25rem; box-shadow: 0 10px 24px rgba(59, 130, 246, 0.08);">
-                    <i class="fas fa-crosshairs mt-1" style="font-size: 1rem; color: #2563eb;"></i>
-                    <div>
-                        <div style="font-weight: 700; font-size: 1rem;">
-                            {{ $topicSessionTitle }}
-                        </div>
-                        <div style="font-size: 0.95rem; color: #47607e;">
-                            Reviewing mistakes for {{ $selectedTopicNames->count() === 1 ? $selectedTopicNames->first() : $selectedTopicNames->join(', ') }}.
-                        </div>
-                        <div style="font-size: 0.95rem; color: #47607e;">
-                            This session is filtered to the weak topic{{ $selectedTopicNames->count() === 1 ? '' : 's' }} you need to fix first.
-                            {{ $selectedTopicMistakeCount ?? $mistakes->count() }} mistake{{ ($selectedTopicMistakeCount ?? $mistakes->count()) === 1 ? '' : 's' }} loaded.
-                        </div>
+                <div class="focused-session-bar" style="background: rgba(248, 250, 252, 0.6); border: 1px solid #e2e8f0; border-radius: 999px; padding: 0.5rem 1.5rem; margin: 0 auto 2rem; display: flex; align-items: center; justify-content: center; gap: 12px; width: fit-content; max-width: 900px; backdrop-filter: blur(8px);">
+                    <i class="fas fa-crosshairs" style="color: #3b82f6; font-size: 0.8rem;"></i>
+                    <div style="font-size: 0.85rem; color: #64748b; display: flex; align-items: center; gap: 8px;">
+                        <span style="font-weight: 600; color: #334155;">{{ $topicSessionTitle }}</span>
+                        <span style="color: #e2e8f0;">•</span>
+                        <span>{{ $selectedTopicNames->count() === 1 ? $selectedTopicNames->first() : $selectedTopicNames->count() . ' topics' }}</span>
+                        <span style="color: #e2e8f0;">•</span>
+                        <span style="color: #3b82f6; font-weight: 500;">
+                            {{ $selectedTopicMistakeCount ?? $mistakes->count() }} Mistake{{ ($selectedTopicMistakeCount ?? $mistakes->count()) === 1 ? '' : 's' }}
+                        </span>
                     </div>
                 </div>
             @endif
@@ -376,20 +380,25 @@
                 
                 <div class="difficulty-options">
                     <div class="difficulty-option" data-mode="practice">
-                        <h3>Classic Easy</h3>
-                        <p>Original loop. Two clears per card.</p>
+                        <h3>Easy</h3>
+                        <p>Get each mistake right twice to finish the session.</p>
                     </div>
                     <div class="difficulty-option" data-mode="quiz">
-                        <h3>Classic Hard</h3>
-                        <p>Original loop. Three clears per card.</p>
+                        <h3>Hard</h3>
+                        <p>Get each mistake right three times for a deeper review.</p>
                     </div>
-                    <div class="difficulty-option difficulty-option-spaced" data-mode="spaced">
-                        <h3>Spaced Repetition</h3>
-                        <p>Due-first review. Correct cards leave. Failed cards re-enter soon.</p>
+                    <div class="difficulty-option difficulty-option-spaced sidebar-coming-soon" data-mode="spaced">
+                        <div class="sidebar-blur-container">
+                            <h3>Spaced Repetition</h3>
+                            <p>Focus on the mistakes you're most likely to forget first.</p>
+                        </div>
+                        <div class="coming-soon-overlay">
+                            <i class="fas fa-lock blue-lock-icon"></i>
+                        </div>
                     </div>
                 </div>
                 <p class="difficulty-note">
-                    Classic keeps the old deck loop. Spaced Repetition follows the review schedule and prioritizes the most due mistakes first.
+                    Easy and Hard focus on repeated practice. Spaced Repetition prioritizes mistakes based on your personal review schedule.
                 </p>
                 <button class="start-button" disabled>Start Learning</button>
             </div>
@@ -494,12 +503,9 @@
     </div>
     </div>
 
-    <div class="encouragement-message" role="status" aria-live="polite">
-        <div class="encouragement-icon" aria-hidden="true">
-            <i class="fas fa-check"></i>
-        </div>
-        <h2>Good job!</h2>
-        <p>Set 1 complete. Next up: Set 2.</p>
+    <div class="encouragement-message">
+        <h2>Great job! Keep going! 🎉</h2>
+        <p>You're making great progress!</p>
     </div>
 
     <!-- Quiz-style completion popup -->

@@ -351,7 +351,6 @@
 
     window.openGoalModal = function openGoalModal() {
         const currentGoal = Number(profilePageConfig.weeklyGoal || 50);
-        const currentTargetScore = Number(profilePageConfig.targetScore || 80);
         const currentDailyStudyMinutes = Number(profilePageConfig.dailyStudyMinutes || 90);
         const currentPlannerFocus = String(profilePageConfig.plannerFocus || 'balanced');
         const currentExamDate = profilePageConfig.examDate || '';
@@ -374,16 +373,10 @@
                                        style="font-size: 1.5rem; padding: 1rem; border: 2px solid #cbd5e1; border-radius: 10px; text-align: center; font-weight: 700;">
                             </div>
                             <div class="row g-3 mb-4">
-                                <div class="col-sm-6">
+                                <div class="col-sm-12">
                                     <label class="form-label" style="font-weight: 600; color: #475569; font-size: 0.95rem;">Daily study time</label>
                                     <input type="number" class="form-control" id="dailyStudyMinutesInput" value="${currentDailyStudyMinutes}"
                                            min="30" max="480" step="15"
-                                           style="padding: 0.85rem; border: 2px solid #cbd5e1; border-radius: 10px; font-weight: 700;">
-                                </div>
-                                <div class="col-sm-6">
-                                    <label class="form-label" style="font-weight: 600; color: #475569; font-size: 0.95rem;">Target score</label>
-                                    <input type="number" class="form-control" id="targetScoreInput" value="${currentTargetScore}"
-                                           min="50" max="100" step="1"
                                            style="padding: 0.85rem; border: 2px solid #cbd5e1; border-radius: 10px; font-weight: 700;">
                                 </div>
                                 <div class="col-sm-6">
@@ -435,7 +428,6 @@
     window.saveGoal = function saveGoal() {
         const goal = parseInt(document.getElementById('goalInput').value, 10);
         const dailyStudyMinutes = parseInt(document.getElementById('dailyStudyMinutesInput').value, 10);
-        const targetScore = parseInt(document.getElementById('targetScoreInput').value, 10);
         const examDate = document.getElementById('examDateInput').value || null;
         const plannerFocus = document.getElementById('plannerFocusInput').value;
 
@@ -463,7 +455,6 @@
             body: JSON.stringify({
                 weekly_goal: goal,
                 daily_study_minutes: dailyStudyMinutes,
-                target_score: targetScore,
                 exam_date: examDate,
                 planner_focus: plannerFocus
             })

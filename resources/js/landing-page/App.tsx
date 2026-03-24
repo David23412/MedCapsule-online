@@ -2,414 +2,518 @@ import { useEffect, useRef, useState } from 'react';
 import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import {
-  BookOpen,
-  Calendar,
-  FileText,
+  MessageCircle,
+  X,
 } from 'lucide-react';
 
 gsap.registerPlugin(ScrollTrigger);
 
 // --- SUB-COMPONENTS FOR ANIMATED ARTIFACTS ---
 
-// ─── CARD 1: DIAGNOSTIC SHUFFLER ────────────────────────────────────────────
+// ─── CARD 1: MCQ QUESTION CARD ───────────────────────────────────────────────
 
-const SHUFFLER_ITEMS = [
-  { id: 1, label: 'Neuro-Radiology', tag: 'Pattern Recognition', badge: '↑ 18%', color: '#EEF4FF' },
-  { id: 2, label: 'Clinical Pharmacology', tag: 'Drug Interaction Cycles', badge: 'Active', color: '#F0FDF4' },
-  { id: 3, label: 'Histopathology', tag: 'Tissue-Level Mastery', badge: '94% Recall', color: '#FEF9C3' },
+const MCQ_QUESTIONS = [
+  {
+    num: 12,
+    question: 'Which cell type produces myelin in the CNS?',
+    options: ['Astrocyte', 'Oligodendrocyte', 'Microglia', 'Schwann cell'],
+    correct: 1, wrong: 2,
+    explanation: 'Oligodendrocytes myelinate multiple CNS axons. Schwann cells do the same in the PNS.',
+  },
+  {
+    num: 27,
+    question: 'Which enzyme is deficient in Phenylketonuria (PKU)?',
+    options: ['Tyrosinase', 'Phenylalanine hydroxylase', 'Homogentisate oxidase', 'Fumarylacetoacetase'],
+    correct: 1, wrong: 0,
+    explanation: 'PKU results from deficiency of phenylalanine hydroxylase, causing phenylalanine accumulation.',
+  },
+  {
+    num: 44,
+    question: 'Which layer of the heart is most vulnerable to ischemia?',
+    options: ['Epicardium', 'Myocardium', 'Subendocardium', 'Pericardium'],
+    correct: 2, wrong: 0,
+    explanation: 'The subendocardium receives blood last and at the lowest pressure, making it most ischemia-prone.',
+  },
 ];
 
-const DiagnosticShuffler = () => {
-  const [items, setItems] = useState(SHUFFLER_ITEMS);
-  const [animating, setAnimating] = useState(false);
+const MCQCard = () => {
+  const [qIdx, setQIdx] = useState(0);
+  const [wrongSelected, setWrongSelected] = useState<number | null>(null);
+  const [correctSelected, setCorrectSelected] = useState<number | null>(null);
+  const [showExplanation, setShowExplanation] = useState(false);
+  const [fading, setFading] = useState(false);
+
+  const cardRef    = useRef<HTMLDivElement>(null);
+  const cursorRef  = useRef<SVGSVGElement>(null);
+  const optionRefs = useRef<(HTMLDivElement | null)[]>([]);
+  const gsapCtxRef = useRef<gsap.Context | null>(null);
+  const qRef       = useRef(qIdx);
+  qRef.current = qIdx;
+
+  const q = MCQ_QUESTIONS[qIdx];
+  const optionLetters = ['A', 'B', 'C', 'D'];
 
   useEffect(() => {
-    const id = setInterval(() => {
-      setAnimating(true);
-      setTimeout(() => {
-        setItems(prev => {
-          const next = [...prev];
-          const last = next.pop()!;
-          next.unshift(last);
-          return next;
-        });
-        setAnimating(false);
-      }, 120);
-    }, 3000);
-    return () => clearInterval(id);
-  }, []);
+    setWrongSelected(null);
+    setCorrectSelected(null);
+    setShowExplanation(false);
+    setFading(false);
+
+    const card   = cardRef.current;
+    const cursor = cursorRef.current;
+    if (!card || !cursor) return;
+    if (gsapCtxRef.current) gsapCtxRef.current.revert();
+
+    const ctx = gsap.context(() => {
+      const getCenter = (el: HTMLElement) => {
+        const cr = card.getBoundingClientRect();
+        const er = el.getBoundingClientRect();
+        return { x: er.left - cr.left + er.width / 2 - 5, y: er.top - cr.top + er.height / 2 - 5 };
+      };
+
+      const qi       = qRef.current;
+      const wrongEl  = optionRefs.current[MCQ_QUESTIONS[qi].wrong];
+      const rightEl  = optionRefs.current[MCQ_QUESTIONS[qi].correct];
+      if (!wrongEl || !rightEl) return;
+
+      const wp = getCenter(wrongEl);
+      const rp = getCenter(rightEl);
+
+      const tl = gsap.timeline({ delay: 0.8 });
+
+      // enter from bottom-right
+      tl.fromTo(cursor,
+        { x: card.offsetWidth * 0.88, y: card.offsetHeight * 1.05, opacity: 0, scale: 0.7 },
+        { x: wp.x, y: wp.y, opacity: 1, scale: 1, duration: 0.72, ease: 'power3.out' }
+      );
+
+      // click wrong
+      tl.to(cursor, { scale: 0.75, duration: 0.08 })
+        .add(() => setWrongSelected(MCQ_QUESTIONS[qRef.current].wrong))
+        .to(cursor, { scale: 1, duration: 0.16, ease: 'elastic.out(1,0.4)' });
+
+      // pause — viewer registers the mistake
+      tl.to({}, { duration: 0.85 });
+
+      // glide to correct
+      tl.to(cursor, { x: rp.x, y: rp.y, duration: 0.62, ease: 'power2.inOut' });
+
+      // click correct
+      tl.to(cursor, { scale: 0.75, duration: 0.08 })
+        .add(() => { setWrongSelected(null); setCorrectSelected(MCQ_QUESTIONS[qRef.current].correct); })
+        .to(cursor, { scale: 1, duration: 0.16, ease: 'elastic.out(1,0.4)' });
+
+      // explanation slides in
+      tl.to({}, { duration: 0.45 }).add(() => setShowExplanation(true));
+
+      // cursor drifts away
+      tl.to(cursor, { y: '+=34', opacity: 0, duration: 0.48, ease: 'power2.in' }, '+=1.2');
+
+      // advance question
+      tl.add(() => {
+        setFading(true);
+        setTimeout(() => setQIdx(i => (i + 1) % MCQ_QUESTIONS.length), 360);
+      }, '+=0.28');
+    }, card);
+
+    gsapCtxRef.current = ctx;
+    return () => ctx.revert();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [qIdx]);
 
   return (
-    <div className="bg-white p-8 rounded-[2rem] border border-blue-50 shadow-clinical relative overflow-hidden h-96 group">
-      {/* Header */}
-      <div className="flex justify-between items-start mb-5">
-        <div className="p-2 bg-blue-50 rounded-xl text-plasma">
-          <BookOpen size={18} />
-        </div>
-        <span className="font-mono text-[10px] text-blue-200 tracking-widest">01 / 03</span>
+    <div
+      ref={cardRef}
+      className="bg-white p-7 rounded-[2.5rem] border border-gray-100 shadow-[0_8px_30px_rgb(0,0,0,0.04)] hover:shadow-[0_20px_50px_rgba(8,_112,_184,_0.1)] transition-all duration-700 relative overflow-hidden h-96 flex flex-col group cursor-default"
+      style={{ opacity: fading ? 0 : 1, transition: 'opacity 0.36s ease, transform 0.5s ease' }}
+    >
+      <div className="absolute top-0 right-0 w-32 h-32 bg-blue-50/30 rounded-full -mr-16 -mt-16 blur-3xl pointer-events-none" />
+
+      <div className="mb-4 relative z-10">
+        <span className="font-mono text-[11px] font-bold text-plasma/40 tracking-[0.2em]">01</span>
       </div>
 
-      <h5 className="font-heading font-bold text-lg mb-1 text-charcoal">Diagnostic Shuffler</h5>
-      <p className="font-body text-charcoal-dim text-xs leading-relaxed mb-6">
-        Systematic cycling of clinical categories for recall optimization.
+      <h5 className="font-heading font-bold text-lg mb-0.5 text-charcoal">Course Question Bank</h5>
+      <p className="font-body text-charcoal-dim text-[11px] leading-relaxed mb-3">
+        Exam-style questions with instant feedback and explanations.
       </p>
 
-      {/* Stacked card deck */}
-      <div className="absolute inset-x-6 bottom-6 h-40">
-        {items.map((item, i) => (
-          <div
-            key={item.id}
-            className="absolute inset-x-0 h-[68px] rounded-2xl border px-4 flex items-center justify-between"
-            style={{
-              transform: `translateY(${-i * 18}px) scale(${1 - i * 0.04})`,
-              zIndex: 20 - i,
-              opacity: i === 0 ? 1 : i === 1 ? 0.55 : 0.25,
-              background: i === 0 ? item.color : '#F8F9FF',
-              borderColor: i === 0 ? 'rgba(65,139,245,0.18)' : 'rgba(0,0,0,0.06)',
-              boxShadow: i === 0 ? '0 8px 24px -4px rgba(65,139,245,0.12)' : 'none',
-              transition: animating
-                ? 'none'
-                : 'transform 700ms cubic-bezier(0.34,1.56,0.64,1), opacity 700ms ease',
-            }}
-          >
-            {i === 0 && (
-              <>
-                <div>
-                  <p className="font-heading font-bold text-sm text-charcoal leading-tight">{item.label}</p>
-                  <p className="font-mono text-[10px] text-charcoal-dim mt-0.5">{item.tag}</p>
-                </div>
-                <span
-                  className="font-mono text-[10px] font-semibold px-2.5 py-1 rounded-full"
-                  style={{ background: 'rgba(65,139,245,0.10)', color: '#418BF5' }}
-                >
-                  {item.badge}
+      <div className="flex-1 flex flex-col">
+        <div className="flex items-center gap-2 mb-2">
+          <span className="font-mono text-[9px] text-plasma font-bold tracking-widest uppercase">Q {q.num}</span>
+          <div className="flex-1 h-px bg-blue-50" />
+        </div>
+        <p className="font-body text-[12px] font-semibold text-charcoal mb-3 leading-snug">{q.question}</p>
+
+        <div className="space-y-1.5">
+          {q.options.map((opt, i) => {
+            const isWrong = i === wrongSelected;
+            const isRight = i === correctSelected;
+            let bg = 'bg-[#F8F9FF]', border = 'border-transparent', textColor = 'text-charcoal', letterBg = 'bg-gray-100 text-gray-400';
+            if (isWrong)  { bg = 'bg-red-50';     border = 'border-red-300';     textColor = 'text-red-700';     letterBg = 'bg-red-300 text-white'; }
+            if (isRight)  { bg = 'bg-emerald-50'; border = 'border-emerald-400'; textColor = 'text-emerald-800'; letterBg = 'bg-emerald-400 text-white'; }
+            return (
+              <div
+                key={i}
+                ref={el => { optionRefs.current[i] = el; }}
+                className={`flex items-center gap-2.5 px-3 py-2 rounded-xl border ${bg} ${border} transition-all duration-500`}
+              >
+                <span className={`w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 text-[10px] font-bold transition-all duration-500 ${letterBg}`}>
+                  {optionLetters[i]}
                 </span>
-              </>
-            )}
-          </div>
-        ))}
-      </div>
-
-      {/* Cycle indicator dots */}
-      <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-1.5">
-        {items.map((_, i) => (
-          <div
-            key={i}
-            className="rounded-full transition-all duration-500"
-            style={{
-              width: i === 0 ? 16 : 5,
-              height: 5,
-              background: i === 0 ? '#418BF5' : '#D1D5DB',
-            }}
-          />
-        ))}
-      </div>
-    </div>
-  );
-};
-
-// ─── CARD 2: TELEMETRY TYPEWRITER ────────────────────────────────────────────
-
-const FEED_MESSAGES = [
-  { prefix: 'XP', color: '#418BF5', text: 'Level Up — Systematic Mastery Path Unlocked. +250 XP earned.' },
-  { prefix: 'SYNC', color: '#22C55E', text: 'Refinement cycle complete. Protocol retention rate: 94.2%.' },
-  { prefix: 'ALERT', color: '#F59E0B', text: 'Neuro-Radiology pattern gap detected. Scheduling recall boost.' },
-  { prefix: 'EXEC', color: '#A78BFA', text: 'Clinical execution score updated. Delta: +12 pts this session.' },
-];
-
-const TelemetryTypewriter = () => {
-  const [msgIdx, setMsgIdx] = useState(0);
-  const [charIdx, setCharIdx] = useState(0);
-  const [displayed, setDisplayed] = useState('');
-  const [phase, setPhase] = useState<'typing' | 'pause' | 'clear'>('typing');
-  const logRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const msg = FEED_MESSAGES[msgIdx].text;
-
-    if (phase === 'typing') {
-      if (charIdx < msg.length) {
-        const t = setTimeout(() => {
-          setDisplayed(p => p + msg[charIdx]);
-          setCharIdx(c => c + 1);
-        }, 38);
-        return () => clearTimeout(t);
-      } else {
-        const t = setTimeout(() => setPhase('pause'), 1800);
-        return () => clearTimeout(t);
-      }
-    }
-
-    if (phase === 'pause') {
-      const t = setTimeout(() => setPhase('clear'), 400);
-      return () => clearTimeout(t);
-    }
-
-    if (phase === 'clear') {
-      setDisplayed('');
-      setCharIdx(0);
-      setMsgIdx(i => (i + 1) % FEED_MESSAGES.length);
-      setPhase('typing');
-    }
-  }, [phase, charIdx, msgIdx]);
-
-  // Auto-scroll log to bottom
-  useEffect(() => {
-    if (logRef.current) logRef.current.scrollTop = logRef.current.scrollHeight;
-  }, [displayed]);
-
-  const current = FEED_MESSAGES[msgIdx];
-
-  return (
-    <div className="bg-white p-8 rounded-[2rem] border border-blue-50 shadow-clinical relative overflow-hidden h-96">
-      {/* Header */}
-      <div className="flex justify-between items-start mb-5">
-        <div className="p-2 bg-blue-50 rounded-xl text-plasma">
-          <FileText size={18} />
-        </div>
-        <span className="font-mono text-[10px] text-blue-200 tracking-widest">02 / 03</span>
-      </div>
-
-      <h5 className="font-heading font-bold text-lg mb-1 text-charcoal">Telemetry Typewriter</h5>
-      <p className="font-body text-charcoal-dim text-xs leading-relaxed mb-5">
-        Real-time algorithmic feedback on performance progression.
-      </p>
-
-      {/* Terminal window */}
-      <div className="bg-[#0F1117] rounded-2xl overflow-hidden border border-white/5 shadow-xl">
-        {/* Terminal chrome */}
-        <div className="flex items-center justify-between px-4 py-2.5 border-b border-white/5">
-          <div className="flex gap-1.5">
-            <div className="w-2.5 h-2.5 rounded-full bg-red-500/70" />
-            <div className="w-2.5 h-2.5 rounded-full bg-yellow-500/70" />
-            <div className="w-2.5 h-2.5 rounded-full bg-green-500/70" />
-          </div>
-          <div className="flex items-center gap-2">
-            <span
-              className="w-1.5 h-1.5 rounded-full animate-pulse"
-              style={{ background: '#22C55E' }}
-            />
-            <span className="font-mono text-[9px] text-white/30 uppercase tracking-widest">Live Feed</span>
-          </div>
+                <span className={`text-[11px] font-body transition-colors duration-500 ${textColor}`}>{opt}</span>
+                {isRight && <span className="ml-auto text-emerald-500 text-[11px] font-bold">✓</span>}
+                {isWrong && <span className="ml-auto text-red-400 text-[11px] font-bold">✗</span>}
+              </div>
+            );
+          })}
         </div>
 
-        {/* Output area */}
-        <div ref={logRef} className="p-4 h-28 overflow-hidden">
-          <p className="font-mono text-[11px] leading-relaxed text-white/60">
-            <span
-              className="font-bold mr-2 px-1.5 py-0.5 rounded text-[9px] uppercase"
-              style={{ background: current.color + '22', color: current.color }}
-            >
-              {current.prefix}
-            </span>
-            <span className="text-white/90">{displayed}</span>
-            <span
-              className="inline-block w-[2px] h-[13px] ml-[2px] align-text-bottom animate-pulse"
-              style={{ background: current.color }}
-            />
+        <div
+          className="mt-2 px-3 py-2 rounded-xl bg-blue-50/60 border border-blue-100 overflow-hidden transition-all duration-500"
+          style={{ maxHeight: showExplanation ? 60 : 0, opacity: showExplanation ? 1 : 0, padding: showExplanation ? undefined : 0 }}
+        >
+          <p className="font-body text-[10px] text-plasma leading-relaxed">
+            <span className="font-bold">Explanation: </span>{q.explanation}
           </p>
         </div>
       </div>
+
+      {/* Animated cursor */}
+      <svg
+        ref={cursorRef}
+        width="22" height="22" viewBox="0 0 20 20"
+        className="absolute pointer-events-none z-50 origin-top-left drop-shadow-[0_2px_8px_rgba(0,0,0,0.28)]"
+        style={{ top: 0, left: 0, opacity: 0 }}
+      >
+        <path d="M2 2L18 9L10.5 11L8 18L2 2Z" fill="#1A1A1A" stroke="white" strokeWidth="1.6" strokeLinejoin="round" />
+      </svg>
     </div>
   );
 };
 
-// ─── CARD 3: CURSOR PROTOCOL SCHEDULER ───────────────────────────────────────
+// ─── CARD 2: WEAK TOPICS MASTERY BARS ────────────────────────────────────────
 
-const CursorScheduler = () => {
-  const wrapperRef = useRef<HTMLDivElement>(null);
-  const cursorRef = useRef<SVGSVGElement>(null);
-  const gridRef = useRef<HTMLDivElement>(null);
-  const saveBtnRef = useRef<HTMLButtonElement>(null);
-  const tooltipRef = useRef<HTMLDivElement>(null);
-  const glowRef = useRef<HTMLDivElement>(null);
+const TOPICS = [
+  { label: 'Histology',     pct: 42, color: '#FDE047', warn: false },
+  { label: 'Microbiology',  pct: 28, color: '#F87171', warn: true  },
+  { label: 'Pathology',     pct: 76, color: '#34D399', warn: false },
+  { label: 'Biochemistry',  pct: 55, color: '#FDE047', warn: false },
+  { label: 'Pharmacology',  pct: 19, color: '#F87171', warn: true  },
+];
+
+const WeakTopicsPanel = () => {
+  const [filled, setFilled] = useState(false);
+  const [alertVisible, setAlertVisible] = useState(false);
+  const [cycle, setCycle] = useState(0);
 
   useEffect(() => {
-    const ctx = gsap.context(() => {
-      const cells = gridRef.current?.querySelectorAll<HTMLElement>('.cal-cell');
-      if (!cells || cells.length < 14 || !saveBtnRef.current || !cursorRef.current || !wrapperRef.current) return;
-
-      // pick three cells to activate: Mon(1), Wed(3), next-Thu(11)
-      const targets = [cells[1], cells[3], cells[11]];
-      const cursorHotspot = { x: 2, y: 2 };
-
-      // ── reset helpers ──
-      const resetCells = () => {
-        gsap.set(cells, { backgroundColor: '#F0EFF4', borderColor: 'transparent', scale: 1 });
-        gsap.set('.cal-check', { opacity: 0, scale: 0 });
-      };
-      const resetBtn = () => {
-        gsap.set(saveBtnRef.current, { backgroundColor: '#ffffff', color: '#6B7280', scale: 1 });
-      };
-      const resetUI = () => { resetCells(); resetBtn(); };
-
-      resetUI();
-      gsap.set(cursorRef.current, { opacity: 0 });
-      gsap.set(tooltipRef.current, { opacity: 0, y: 6, scale: 0.9 });
-      gsap.set(glowRef.current, { opacity: 0 });
-
-      // ── position helper ──
-      const getCenterPoint = (el: HTMLElement) => {
-        const wrapperRect = wrapperRef.current!.getBoundingClientRect();
-        const rect = el.getBoundingClientRect();
-
-        return {
-          centerX: rect.left - wrapperRect.left + (rect.width / 2),
-          centerY: rect.top - wrapperRect.top + (rect.height / 2),
-        };
-      };
-
-      const cursorPos = (el: HTMLElement) => {
-        const point = getCenterPoint(el);
-
-        return {
-          left: point.centerX - cursorHotspot.x,
-          top: point.centerY - cursorHotspot.y,
-        };
-      };
-
-      const glowPos = (el: HTMLElement) => {
-        const point = getCenterPoint(el);
-
-        return {
-          left: point.centerX - 16,
-          top: point.centerY - 16,
-        };
-      };
-
-      // ── build repeating timeline ──
-      const tl = gsap.timeline({ repeat: -1, repeatDelay: 1, onRepeat: resetUI });
-
-      // Cursor enters from bottom-right
-      tl.fromTo(cursorRef.current,
-        { left: '90%', top: '110%', opacity: 0, scale: 0.7 },
-        { left: '70%', top: '62%', opacity: 1, scale: 1, duration: 0.55, ease: 'power3.out' }
-      );
-
-      // Visit each target cell
-      targets.forEach((cell) => {
-        const p = cursorPos(cell);
-        const glowPoint = glowPos(cell);
-        tl
-          // glide to cell
-          .to(cursorRef.current, { left: p.left, top: p.top, duration: 0.55, ease: 'power2.inOut' })
-          // cursor press
-          .to(cursorRef.current, { scale: 0.82, duration: 0.09 })
-          // cell press + highlight
-          .to(cell, { scale: 0.88, duration: 0.09 }, '<')
-          .to(cell, { backgroundColor: '#DBEAFE', borderColor: '#418BF5', duration: 0.18, ease: 'power1.out' })
-          // checkmark pop in
-          .to(cell.querySelector('.cal-check'), { opacity: 1, scale: 1, duration: 0.22, ease: 'back.out(2)' }, '<0.08')
-          // release
-          .to(cell, { scale: 1, duration: 0.2, ease: 'elastic.out(1,0.5)' })
-          .to(cursorRef.current, { scale: 1, duration: 0.15 }, '<')
-          // glow flash
-          .fromTo(glowRef.current,
-            { opacity: 0.5, left: glowPoint.left, top: glowPoint.top },
-            { opacity: 0, duration: 0.45, ease: 'power2.out' }, '<'
-          );
-      });
-
-      // Move to Save button
-      const bp = cursorPos(saveBtnRef.current);
-      tl
-        .to(cursorRef.current, { left: bp.left, top: bp.top, duration: 0.65, ease: 'power2.inOut' })
-        .to(cursorRef.current, { scale: 0.82, duration: 0.09 })
-        .to(saveBtnRef.current, { scale: 0.96, duration: 0.09 }, '<')
-        .to(saveBtnRef.current, { backgroundColor: '#418BF5', color: '#ffffff', duration: 0.22 })
-        .to(saveBtnRef.current, { scale: 1, duration: 0.22, ease: 'elastic.out(1,0.5)' })
-        .to(cursorRef.current, { scale: 1, duration: 0.15 }, '<')
-        // tooltip pop
-        .to(tooltipRef.current, { opacity: 1, y: 0, scale: 1, duration: 0.3, ease: 'back.out(2)' }, '+=0.12')
-        // cursor drifts away
-        .to(cursorRef.current, { top: '+=28', opacity: 0, duration: 0.5, ease: 'power2.in' }, '+=0.7')
-        .to(tooltipRef.current, { opacity: 0, y: -4, duration: 0.25 }, '<0.2');
-    });
-
-    return () => ctx.revert();
-  }, []);
+    const runCycle = () => {
+      setFilled(false);
+      setAlertVisible(false);
+      const t1 = setTimeout(() => setFilled(true), 300);
+      const t2 = setTimeout(() => setAlertVisible(true), 1200);
+      const t3 = setTimeout(() => {
+        setFilled(false);
+        setAlertVisible(false);
+        setTimeout(() => setCycle(c => c + 1), 400);
+      }, 4000);
+      return () => { clearTimeout(t1); clearTimeout(t2); clearTimeout(t3); };
+    };
+    return runCycle();
+  }, [cycle]);
 
   return (
-    <div className="bg-white p-8 rounded-[2rem] border border-blue-50 shadow-clinical relative overflow-hidden h-96">
-      {/* Header */}
-      <div className="flex justify-between items-start mb-5">
-        <div className="p-2 bg-blue-50 rounded-xl text-plasma">
-          <Calendar size={18} />
-        </div>
-        <span className="font-mono text-[10px] text-blue-200 tracking-widest">03 / 03</span>
+    <div className="bg-white p-7 rounded-[2.5rem] border border-gray-100 shadow-[0_8px_30px_rgb(0,0,0,0.04)] hover:shadow-[0_20px_50px_rgba(8,_112,_184,_0.1)] transition-all duration-700 relative overflow-hidden h-96 flex flex-col cursor-default group">
+      <div className="absolute top-0 right-0 w-32 h-32 bg-amber-50/30 rounded-full -mr-16 -mt-16 blur-3xl pointer-events-none" />
+
+      <div className="mb-4 relative z-10">
+        <span className="font-mono text-[11px] font-bold text-plasma/40 tracking-[0.2em]">02</span>
       </div>
 
-      <h5 className="font-heading font-bold text-lg mb-1 text-charcoal">Protocol Scheduler</h5>
-      <p className="font-body text-charcoal-dim text-xs leading-relaxed mb-4">
-        Automated weekly mapping of your retention protocol.
+      <h5 className="font-heading font-bold text-lg mb-0.5 text-charcoal">Find Your Weak Spots</h5>
+      <p className="font-body text-charcoal-dim text-[11px] leading-relaxed mb-4">
+        Pinpoint where your mastery gaps are before the exam does.
       </p>
 
-      {/* Calendar widget */}
-      <div ref={wrapperRef} className="relative border border-gray-100 rounded-2xl p-4 bg-white shadow-sm overflow-visible">
-
-        {/* Day headers */}
-        <div className="grid grid-cols-7 text-center font-mono text-[9px] text-gray-400 tracking-widest pb-2 mb-2 border-b border-gray-100">
-          {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((d, i) => (
-            <span key={i}>{d}</span>
-          ))}
-        </div>
-
-        {/* Day cells */}
-        <div ref={gridRef} className="grid grid-cols-7 gap-1.5 mb-4 relative">
-          {Array.from({ length: 14 }).map((_, i) => (
-            <div
-              key={i}
-              className="cal-cell h-7 rounded-[5px] border border-transparent flex items-center justify-center"
-              style={{ backgroundColor: '#F0EFF4' }}
-            >
-              <svg
-                className="cal-check w-3 h-3"
-                viewBox="0 0 24 24" fill="none"
-                stroke="#418BF5" strokeWidth="3.5"
-                strokeLinecap="round" strokeLinejoin="round"
-                style={{ opacity: 0 }}
+      {/* Topic bars */}
+      <div className="flex-1 space-y-2.5">
+        {TOPICS.map((t, i) => (
+          <div key={i}>
+            <div className="flex justify-between items-center mb-1">
+              <span className="font-body text-[11px] font-semibold text-charcoal">
+                {t.label}
+              </span>
+              <span
+                className="font-mono text-[10px] font-bold transition-all duration-700"
+                style={{ color: t.color }}
               >
-                <polyline points="20 6 9 17 4 12" />
-              </svg>
+                {filled ? `${t.pct}%` : '0%'}
+              </span>
             </div>
-          ))}
-        </div>
-
-        {/* Save button + tooltip */}
-        <div className="relative">
-          <button
-            ref={saveBtnRef}
-            className="w-full py-2 rounded-xl text-[11px] font-heading font-bold border border-gray-100 transition-all"
-            style={{ backgroundColor: '#ffffff', color: '#6B7280' }}
-          >
-            CONFIRM PROTOCOL
-          </button>
-
-          <div
-            ref={tooltipRef}
-            className="absolute -top-9 left-1/2 -translate-x-1/2 bg-charcoal text-white text-[9px] font-mono px-3 py-1.5 rounded-lg shadow-lg whitespace-nowrap z-50 pointer-events-none"
-          >
-            ✓ Protocol Synced
-            <div className="absolute -bottom-[5px] left-1/2 -translate-x-1/2 w-2.5 h-2.5 bg-charcoal rotate-45 rounded-sm" />
+            <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
+              <div
+                className="h-full rounded-full transition-all duration-700"
+                style={{
+                  width: filled ? `${t.pct}%` : '0%',
+                  background: t.color,
+                  transitionDelay: `${i * 90}ms`,
+                }}
+              />
+            </div>
           </div>
-        </div>
+        ))}
+      </div>
 
-        {/* Glow dot */}
-        <div
-          ref={glowRef}
-          className="absolute w-8 h-8 rounded-full pointer-events-none"
-          style={{ background: 'radial-gradient(circle, rgba(65,139,245,0.6) 0%, transparent 70%)', opacity: 0 }}
-        />
+      {/* Alert banner */}
+      <div
+        className="mt-3 px-3 py-2 rounded-xl flex items-center gap-2 transition-all duration-500"
+        style={{
+          background: '#FEF2F2',
+          border: '1px solid #FECACA',
+          opacity: alertVisible ? 1 : 0,
+          transform: alertVisible ? 'translateY(0)' : 'translateY(6px)',
+        }}
+      >
+        <span className="text-red-500 text-[13px]">⚠</span>
+        <p className="font-mono text-[10px] text-red-700 font-bold">
+          ALERT: Retention gap in Microbiology & Pharmacology
+        </p>
+      </div>
+    </div>
+  );
+};
 
-        {/* SVG Cursor */}
+// ─── CARD 3: PERFORMANCE CHART (replicates profile-page analytics) ─────────
+
+// 12 quiz data points: score < 50 = red, 50-89 = yellow, ≥90 = green
+const PERF_DATA = [
+  { score: 38, label: 'Anatomy'       },
+  { score: 45, label: 'Histology'     },
+  { score: 52, label: 'Biochem'       },
+  { score: 49, label: 'Physiology'    },
+  { score: 63, label: 'Micro'         },
+  { score: 71, label: 'Pathology'     },
+  { score: 68, label: 'Pharmacology'  },
+  { score: 80, label: 'Anatomy'       },
+  { score: 88, label: 'Histology'     },
+  { score: 85, label: 'Micro'         },
+  { score: 92, label: 'Pathology'     },
+  { score: 96, label: 'Biochem'       },
+];
+
+const scoreColor = (s: number) =>
+  s >= 90 ? '#10B981' : s >= 50 ? '#F59E0B' : '#EF4444';
+
+const PerformanceChart = () => {
+  const svgRef    = useRef<SVGSVGElement>(null);
+  const pathRef   = useRef<SVGPathElement>(null);
+  const fillRef   = useRef<SVGPathElement>(null);
+  const dotsRef   = useRef<SVGCircleElement[]>([]);
+  const glowsRef  = useRef<SVGCircleElement[]>([]);
+  const ctxRef    = useRef<gsap.Context | null>(null);
+  const [cycle, setCycle] = useState(0);
+  const [tooltip, setTooltip] = useState<{ label: string; score: number; color: string } | null>(null);
+
+  // SVG canvas dimensions
+  const W = 320, H = 140;
+  const PAD = { l: 28, r: 12, t: 14, b: 24 };
+  const innerW = W - PAD.l - PAD.r;
+  const innerH = H - PAD.t - PAD.b;
+
+  // Map data to SVG coords
+  const pts = PERF_DATA.map((d, i) => ({
+    x: PAD.l + (i / (PERF_DATA.length - 1)) * innerW,
+    y: PAD.t + (1 - d.score / 100) * innerH,
+    ...d,
+  }));
+
+  // Build a smooth monotone cubic path string
+  const buildPath = (points: typeof pts) => {
+    if (points.length < 2) return '';
+    let d = `M ${points[0].x} ${points[0].y}`;
+    for (let i = 0; i < points.length - 1; i++) {
+      const cp1x = (points[i].x + points[i + 1].x) / 2;
+      const cp2x = cp1x;
+      d += ` C ${cp1x} ${points[i].y} ${cp2x} ${points[i + 1].y} ${points[i + 1].x} ${points[i + 1].y}`;
+    }
+    return d;
+  };
+
+  const linePath  = buildPath(pts);
+  const fillPath  = linePath + ` L ${pts[pts.length - 1].x} ${H - PAD.b} L ${pts[0].x} ${H - PAD.b} Z`;
+
+  useEffect(() => {
+    const svg   = svgRef.current;
+    const path  = pathRef.current;
+    const fill  = fillRef.current;
+    if (!svg || !path || !fill) return;
+    if (ctxRef.current) ctxRef.current.revert();
+
+    // Reset dots
+    dotsRef.current.forEach(d => { if (d) gsap.set(d, { scale: 0, opacity: 0, transformOrigin: '50% 50%' }); });
+    glowsRef.current.forEach(g => { if (g) gsap.set(g, { scale: 0, opacity: 0, transformOrigin: '50% 50%' }); });
+    gsap.set(fill, { opacity: 0 });
+
+    const totalLen = path.getTotalLength();
+    gsap.set(path, { strokeDasharray: totalLen, strokeDashoffset: totalLen });
+
+    const ctx = gsap.context(() => {
+      const tl = gsap.timeline({ delay: 0.4, onComplete: () => {
+        setTimeout(() => setCycle(c => c + 1), 1800);
+      }});
+
+      // 1. Draw the line left-to-right
+      tl.to(path, { strokeDashoffset: 0, duration: 2.2, ease: 'power2.inOut' });
+
+      // 2. Fill fades in
+      tl.to(fill, { opacity: 1, duration: 0.6, ease: 'power1.in' }, '-=0.8');
+
+      // 3. Dots pop in staggered
+      tl.to(dotsRef.current.filter(Boolean), {
+        scale: 1, opacity: 1, duration: 0.35, ease: 'back.out(2.5)',
+        stagger: 0.12,
+      }, '-=1.6');
+
+      // 4. Glows pulse in behind dots
+      tl.to(glowsRef.current.filter(Boolean), {
+        scale: 1, opacity: 0.4, duration: 0.4, ease: 'power1.out',
+        stagger: 0.12,
+      }, '<');
+    }, svg);
+
+    ctxRef.current = ctx;
+    return () => ctx.revert();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cycle]);
+
+  // Y-axis labels
+  const yTicks = [100, 90, 50, 0];
+
+  return (
+    <div className="bg-white p-7 rounded-[2.5rem] border border-gray-100 shadow-[0_8px_30px_rgb(0,0,0,0.04)] hover:shadow-[0_20px_50px_rgba(8,_112,_184,_0.1)] transition-all duration-700 relative overflow-hidden h-96 flex flex-col cursor-default group">
+      <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-50/20 rounded-full -mr-16 -mt-16 blur-3xl pointer-events-none" />
+
+      <div className="mb-4 relative z-10">
+        <span className="font-mono text-[11px] font-bold text-plasma/40 tracking-[0.2em]">03</span>
+      </div>
+
+      <h5 className="font-heading font-bold text-lg mb-0.5 text-charcoal">Progress Over Time</h5>
+      <p className="font-body text-charcoal-dim text-[11px] leading-relaxed mb-3">
+        Your quiz accuracy across sessions — color-coded by performance zone.
+      </p>
+
+      {/* Legend */}
+      <div className="flex items-center gap-3 mb-3">
+        {[['#EF4444','< 50%'], ['#F59E0B','50–89%'], ['#10B981','≥90%']].map(([c, l]) => (
+          <div key={l} className="flex items-center gap-1.5">
+            <div className="w-2 h-2 rounded-full" style={{ background: c }} />
+            <span className="font-mono text-[9px] text-charcoal-dim">{l}</span>
+          </div>
+        ))}
+      </div>
+
+      {/* SVG Chart */}
+      <div className="flex-1 relative">
         <svg
-          ref={cursorRef}
-          width="20" height="20" viewBox="0 0 20 20"
-          className="absolute pointer-events-none z-50 origin-top-left drop-shadow-[0_3px_8px_rgba(0,0,0,0.35)]"
-          style={{ top: '62%', left: '70%', opacity: 0 }}
+          ref={svgRef}
+          viewBox={`0 0 ${W} ${H}`}
+          className="w-full h-full overflow-visible"
+          onMouseLeave={() => setTooltip(null)}
         >
-          <path d="M2 2L18 9L10.5 11L8 18L2 2Z" fill="#1A1A1A" stroke="white" strokeWidth="1.8" strokeLinejoin="round" />
+          <defs>
+            {/* Segmented gradient fill matching the real chart */}
+            <linearGradient id="perfFill" x1="0" y1="0" x2="1" y2="0">
+              <stop offset="0%"   stopColor="#EF4444" stopOpacity="0.25" />
+              <stop offset="35%"  stopColor="#F59E0B" stopOpacity="0.22" />
+              <stop offset="65%"  stopColor="#F59E0B" stopOpacity="0.22" />
+              <stop offset="100%" stopColor="#10B981" stopOpacity="0.28" />
+            </linearGradient>
+            <linearGradient id="perfLine" x1="0" y1="0" x2="1" y2="0">
+              <stop offset="0%"   stopColor="#EF4444" />
+              <stop offset="35%"  stopColor="#F59E0B" />
+              <stop offset="65%"  stopColor="#F59E0B" />
+              <stop offset="100%" stopColor="#10B981" />
+            </linearGradient>
+          </defs>
+
+          {/* Subtle horizontal grid lines */}
+          {[90, 50].map(y => {
+            const cy = PAD.t + (1 - y / 100) * innerH;
+            return (
+              <line key={y}
+                x1={PAD.l} x2={W - PAD.r} y1={cy} y2={cy}
+                stroke={y === 90 ? '#10B98122' : '#F59E0B22'}
+                strokeWidth="1"
+                strokeDasharray="4 3"
+              />
+            );
+          })}
+
+          {/* Y-axis tick labels */}
+          {yTicks.map(v => (
+            <text key={v}
+              x={PAD.l - 4}
+              y={PAD.t + (1 - v / 100) * innerH + 4}
+              textAnchor="end"
+              className="font-mono"
+              style={{ fontSize: 8, fill: '#9ca3af' }}
+            >{v}%</text>
+          ))}
+
+          {/* Fill area */}
+          <path ref={fillRef} d={fillPath} fill="url(#perfFill)" opacity={0} />
+
+          {/* Main line */}
+          <path
+            ref={pathRef}
+            d={linePath}
+            fill="none"
+            stroke="url(#perfLine)"
+            strokeWidth="2.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+
+          {/* Glow halos behind dots */}
+          {pts.map((p, i) => (
+            <circle
+              key={`g-${i}`}
+              ref={el => { if (el) glowsRef.current[i] = el; }}
+              cx={p.x} cy={p.y} r={9}
+              fill={scoreColor(p.score)}
+              opacity={0}
+            />
+          ))}
+
+          {/* Data dots */}
+          {pts.map((p, i) => {
+            const r = 3.5 + (i / (pts.length - 1)) * 2.5; // bigger = more recent
+            return (
+              <circle
+                key={`d-${i}`}
+                ref={el => { if (el) dotsRef.current[i] = el; }}
+                cx={p.x} cy={p.y} r={r}
+                fill={scoreColor(p.score)}
+                stroke="white"
+                strokeWidth="2"
+                opacity={0}
+                style={{ cursor: 'default' }}
+                onMouseEnter={() => setTooltip({ label: p.label, score: p.score, color: scoreColor(p.score) })}
+              />
+            );
+          })}
         </svg>
+
+        {/* Tooltip */}
+        {tooltip && (
+          <div
+            className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 bg-white border border-gray-100 rounded-xl shadow-lg px-3 py-2 pointer-events-none z-20"
+          >
+            <p className="font-mono text-[10px] font-bold" style={{ color: tooltip.color }}>{tooltip.score}%</p>
+            <p className="font-mono text-[9px] text-charcoal-dim">{tooltip.label}</p>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -418,6 +522,11 @@ const CursorScheduler = () => {
 type AppProps = {
   isAuthenticated?: boolean;
   appUrl?: string;
+  user?: {
+    name: string;
+    profile_image_url: string;
+    profile_fallback_url: string;
+  } | null;
 };
 
 type LiveUserSnapshot = {
@@ -569,7 +678,45 @@ const LiveUserCounter = ({ appUrl }: { appUrl?: string }) => {
   );
 };
 
-export default function App({ isAuthenticated = false, appUrl }: AppProps) {
+const FloatingContact = () => {
+  const [isOpen, setIsOpen] = useState(false);
+
+  return (
+    <div className="fixed bottom-8 right-8 z-[1000] flex flex-col items-end gap-4">
+      {/* Contact Options */}
+      <div 
+        className={`flex flex-col gap-3 transition-all duration-300 transform origin-bottom ${
+          isOpen ? 'opacity-100 scale-100 translate-y-0' : 'opacity-0 scale-95 translate-y-4 pointer-events-none'
+        }`}
+      >
+        <a 
+          href="https://t.me/Medcapsule1" 
+          target="_blank" 
+          rel="noopener noreferrer"
+          className="flex items-center gap-3 bg-white px-4 py-2.5 rounded-full shadow-lg border border-blue-50 group hover:bg-blue-50 transition-colors"
+        >
+          <span className="text-xs font-heading font-bold text-charcoal">Join Telegram</span>
+          <div className="w-8 h-8 rounded-full bg-[#0088cc] flex items-center justify-center text-white">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm4.64 6.8c-.15 1.58-.8 5.42-1.13 7.19-.14.75-.42 1-.68 1.03-.58.05-1.02-.38-1.58-.69-.88-.48-1.38-.78-2.23-1.34-1-.65-.35-1 .22-1.67.15-.17 2.71-2.48 2.76-2.69.01-.03.01-.14-.07-.18s-.21-.01-.3.01c-.13.02-2.13 1.34-6.02 2.69-.57.2-.91.2-.91.2s-1.05-.33-1.05-.33c-.5-.16-.9-.25-.86-.53.02-.15.21-.3.57-.45 2.21-.96 3.68-1.6 4.41-1.92 2.1-.91 2.53-1.07 2.82-1.07.06 0 .46.02.67.18.17.14.22.33.24.47z"/>
+            </svg>
+          </div>
+        </a>
+      </div>
+
+      {/* Main Toggle Button */}
+      <button 
+        onClick={() => setIsOpen(!isOpen)}
+        className={`w-14 h-14 rounded-full bg-white shadow-xl flex items-center justify-center text-plasma border border-blue-50 transition-all duration-300 transform hover:scale-110 active:scale-95 ${isOpen ? 'rotate-90' : 'rotate-0'}`}
+        aria-label="Contact Us"
+      >
+        {isOpen ? <X size={24} strokeWidth={2.5} /> : <MessageCircle size={24} strokeWidth={2.5} />}
+      </button>
+    </div>
+  );
+};
+
+export default function App({ isAuthenticated = false, appUrl, user }: AppProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const startHref = resolveAppHref(appUrl, isAuthenticated ? '/courses' : '/register');
 
@@ -589,7 +736,6 @@ export default function App({ isAuthenticated = false, appUrl }: AppProps) {
   const solvePulseRef = useRef<HTMLDivElement>(null);
   const solveMetricRef = useRef<HTMLSpanElement>(null);
   const gridCellsRef = useRef<HTMLDivElement>(null);
-  const laserRef = useRef<HTMLDivElement>(null);
   const ekgPathRef = useRef<SVGPathElement>(null);
 
   useEffect(() => {
@@ -631,7 +777,7 @@ export default function App({ isAuthenticated = false, appUrl }: AppProps) {
         scrollTrigger: {
           trigger: protocolRef.current,
           start: "top top",
-          end: "+=300%", // 3 sections of scrolling
+          end: "+=450%", // 3 sections of scrolling with more breathing room
           scrub: 0.5,
           pin: true,
         }
@@ -640,7 +786,7 @@ export default function App({ isAuthenticated = false, appUrl }: AppProps) {
       // SECTION 1: SOLVE FASTER
       const solveRadius = 100;
       const solveCircumference = 2 * Math.PI * solveRadius;
-      const solveEndOffset = solveCircumference * 0.08;
+      const solveEndOffset = 0;
       const solveCounter = { value: 0 };
 
       if (solveProgressRef.current) {
@@ -688,7 +834,7 @@ export default function App({ isAuthenticated = false, appUrl }: AppProps) {
       protocolTimeline.to(
         solveCounter,
         {
-          value: 96,
+          value: 100,
           ease: "none",
           duration: 0.2,
           onUpdate: () => {
@@ -708,47 +854,48 @@ export default function App({ isAuthenticated = false, appUrl }: AppProps) {
         const cells = Array.from(gridCellsRef.current.children);
         const dots = cells.map((cell) => cell.firstElementChild);
 
-        gsap.set(cells, {
-          backgroundColor: "#F0EFF4",
-          scale: 0.96,
-        });
+        // Initial state
+        gsap.set(cells, { backgroundColor: "#F0EFF4", scale: 0.96 });
+        gsap.set(dots, { opacity: 0.45, scale: 0.7 });
 
-        gsap.set(dots, {
-          opacity: 0.45,
-          scale: 0.7,
-        });
+        // Cycle 1: Significant mistakes (organized spread)
+        const mistakes1 = [cells[2], cells[11], cells[14], cells[22]];
+        protocolTimeline.to(mistakes1, {
+          backgroundColor: "#ef4444", 
+          duration: 0.1,
+          stagger: 0.05
+        }, 0.3);
 
-        protocolTimeline.fromTo(laserRef.current,
-          { xPercent: -120 },
-          { xPercent: 640, ease: "none", duration: 0.42 },
-          0.38
-        );
+        // Cycle 2: Progressive correction (fewer red)
+        protocolTimeline.to([cells[2], cells[14]], { backgroundColor: "#22c55e", duration: 0.1 }, 0.42);
+        protocolTimeline.to([cells[11], cells[22]], { backgroundColor: "#ef4444", duration: 0.1 }, 0.42);
 
+        // Cycle 3: One red box left (almost perfect)
+        protocolTimeline.to(cells[11], { backgroundColor: "#22c55e", duration: 0.1 }, 0.5); 
+        protocolTimeline.to(cells[22], { backgroundColor: "#ef4444", duration: 0.1 }, 0.5);
+
+        // Final Cycle: Sweep to Full Mastery (starts slightly later now at 0.58)
         protocolTimeline.to(cells, {
-          backgroundColor: "#2563eb",
+          backgroundColor: "#22c55e",
           scale: 1,
-          duration: 0.16,
-          ease: "power1.out",
+          duration: 0.25,
           stagger: {
             grid: [5, 5],
-            from: "start",
-            axis: "x",
-            amount: 0.22,
-          },
-        }, 0.4);
+            from: "start", // Sweep from top-left
+            amount: 0.35
+          }
+        }, 0.58);
 
         protocolTimeline.to(dots, {
           opacity: 1,
           scale: 1,
-          duration: 0.14,
-          ease: "power1.out",
+          duration: 0.2,
           stagger: {
             grid: [5, 5],
             from: "start",
-            axis: "x",
-            amount: 0.18,
-          },
-        }, 0.42);
+            amount: 0.25
+          }
+        }, 0.55);
       }
 
       // SECTION 3: EXECUTION
@@ -787,12 +934,8 @@ export default function App({ isAuthenticated = false, appUrl }: AppProps) {
           <stop offset="0%" stopColor="rgba(0,0,0,0)" />
           <stop offset="100%" stopColor="rgba(10,20,80,0.28)" />
         </linearGradient>
-        <filter id="pillDrop" x="-8%" y="-15%" width="120%" height="150%">
-          <feDropShadow dx="0" dy="2.5" stdDeviation="2" floodColor="#1d4ed8" floodOpacity="0.38" />
-        </filter>
       </defs>
-      <rect x="1" y="3" width="62" height="18" rx="9" fill="url(#pillBody)" filter="url(#pillDrop)" />
-      <rect x="1" y="3" width="62" height="18" rx="9" fill="url(#pillShadow)" />
+      <rect x="1" y="3" width="62" height="18" rx="9" fill="url(#pillBody)" />
       <rect x="4" y="4" width="56" height="7" rx="3.5" fill="url(#pillGloss)" opacity="0.88" />
       <ellipse cx="12" cy="8" rx="3.5" ry="2" fill="rgba(255,255,255,0.6)" />
     </svg>
@@ -812,12 +955,30 @@ export default function App({ isAuthenticated = false, appUrl }: AppProps) {
           </div>
           <div className="flex items-center gap-3">
             <LiveUserCounter appUrl={appUrl} />
+            
             <a
               href={startHref}
               className="text-sm font-sans font-medium text-charcoal px-5 py-2 hover:bg-ghost rounded-full transition-colors whitespace-nowrap"
             >
               Start
             </a>
+
+            {isAuthenticated && user && (
+              <a
+                href={`${appUrl}/profile`}
+                className="w-9 h-9 rounded-full overflow-hidden border border-gray-100 bg-gray-50 flex-shrink-0 transition-opacity duration-300 ml-1 hover:opacity-80"
+                aria-label="Profile Settings"
+              >
+                <img
+                  src={user.profile_image_url}
+                  alt={user.name}
+                  className="w-full h-full object-cover"
+                  onError={(e) => {
+                    (e.target as HTMLImageElement).src = user.profile_fallback_url;
+                  }}
+                />
+              </a>
+            )}
           </div>
         </div>
       </nav>
@@ -858,14 +1019,14 @@ export default function App({ isAuthenticated = false, appUrl }: AppProps) {
         >
           <div className="max-w-7xl mx-auto px-6 w-full pointer-events-auto">
             <div className="text-center mb-16">
-              <h3 className="font-mono text-xs text-plasma uppercase tracking-widest mb-4">Organizational Artifacts</h3>
-              <h4 className="font-heading text-4xl text-charcoal font-bold font-heading">Clinical Software Excellence.</h4>
+              <h3 className="font-mono text-xs text-plasma uppercase tracking-widest mb-4">Core Study Tools</h3>
+              <h4 className="font-heading text-4xl text-charcoal font-bold font-heading">Master your medical curriculum.</h4>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-              <DiagnosticShuffler />
-              <TelemetryTypewriter />
-              <CursorScheduler />
+              <MCQCard />
+              <WeakTopicsPanel />
+              <PerformanceChart />
             </div>
           </div>
         </div>
@@ -875,7 +1036,7 @@ export default function App({ isAuthenticated = false, appUrl }: AppProps) {
       <section ref={protocolRef} className="h-screen bg-ghost relative overflow-hidden border-t border-gray-200">
         <div className="max-w-7xl mx-auto px-6 h-full flex flex-col justify-center">
           <div className="absolute top-20 left-6 lg:left-12 z-20">
-            <h3 className="font-mono text-xs text-charcoal-dim tracking-widest uppercase">Protocol Archive</h3>
+            <h3 className="font-mono text-xs text-charcoal-dim tracking-widest uppercase">The MedCapsule Method</h3>
           </div>
 
           <div className="relative h-[60vh] flex items-center">
@@ -971,7 +1132,6 @@ export default function App({ isAuthenticated = false, appUrl }: AppProps) {
                       </div>
                     ))}
                   </div>
-                  <div ref={laserRef} className="absolute top-0 bottom-0 w-2 bg-plasma/90 z-10" />
                 </div>
               </div>
             </div>
@@ -1006,8 +1166,20 @@ export default function App({ isAuthenticated = false, appUrl }: AppProps) {
       </section>
 
       {/* ////// 3. PRICING SECTION ////// */}
-      <section className="py-32 bg-white relative">
-        <div className="max-w-7xl mx-auto px-6">
+      <section className="py-32 bg-white relative overflow-hidden">
+        
+        {/* Coming Soon Overlay */}
+        <div className="absolute inset-0 z-20 flex flex-col items-center justify-center pointer-events-none">
+          <div className="font-mono text-plasma text-xs tracking-[0.2em] font-bold mb-4 uppercase opacity-70">
+            Membership Access
+          </div>
+          <h2 className="font-heading font-bold text-5xl md:text-7xl text-charcoal tracking-tight opacity-90 text-center">
+            Coming Soon
+          </h2>
+        </div>
+
+        {/* Blurred Content */}
+        <div className="max-w-7xl mx-auto px-6 filter blur-lg opacity-50 pointer-events-none select-none grayscale-[0.2] transition-all duration-700">
           <div className="text-center mb-20">
             <h3 className="font-mono text-xs text-plasma uppercase tracking-widest mb-4">Pricing & Access</h3>
             <h4 className="font-heading text-4xl text-charcoal font-bold">Select Your Mastery Tier.</h4>
@@ -1075,7 +1247,7 @@ export default function App({ isAuthenticated = false, appUrl }: AppProps) {
         </div>
       </section>
 
-
+      <FloatingContact />
     </div>
   );
 }

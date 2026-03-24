@@ -121,26 +121,42 @@ class PerformanceTrackingService
 
     private function getTrackedTopicProgress(User $user): Collection
     {
-        return UserTopicProgress::query()
+        $progress = UserTopicProgress::query()
             ->join('topics', 'user_topic_progress.topic_id', '=', 'topics.id')
             ->join('courses', 'topics.course_id', '=', 'courses.id')
-            ->join('course_user', function ($join) use ($user) {
-                $join->on('courses.id', '=', 'course_user.course_id')
-                    ->where('course_user.user_id', '=', $user->id)
-                    ->where('course_user.is_enrolled', '=', true);
+            ->when(!$user->isAdmin() && !$user->isTutor(), function ($query) use ($user) {
+                $query->join('course_user', function ($join) use ($user) {
+                    $join->on('courses.id', '=', 'course_user.course_id')
+                        ->where('course_user.user_id', '=', $user->id)
+                        ->where('course_user.is_enrolled', '=', true);
+                });
             })
             ->where('user_topic_progress.user_id', $user->id)
             ->whereNotNull('user_topic_progress.percentage_grade')
+            ->whereNotNull('user_topic_progress.last_attempt_date')
             ->select([
                 'user_topic_progress.topic_id',
                 'user_topic_progress.percentage_grade',
                 'user_topic_progress.last_attempt_date',
                 'topics.name as topic_name',
                 'topics.course_id',
+                'topics.display_order',
+                'topics.is_locked as topic_manual_lock',
                 'courses.name as course_name',
             ])
             ->orderBy('user_topic_progress.percentage_grade')
             ->get();
+
+        // 🛡️ SECURITY: Filter out topics that are locked (manually or for preview)
+        return $progress->filter(function ($topic) use ($user) {
+            // If topic is manually locked, exclude it
+            if ($topic->topic_manual_lock) {
+                return false;
+            }
+            
+            // If topic is locked for preview users, exclude it
+            return !$user->isTopicPreviewLocked($topic->topic_id);
+        });
     }
 
     private function getOpenMistakesByTopic(int $userId, array $topicIds): Collection
@@ -252,10 +268,10 @@ class PerformanceTrackingService
             'priority_score' => round($priorityScore, 1),
             'reason_text' => $this->buildReasonText($grade, $openMistakesCount, $daysSinceLastActivity),
             'coach_text' => $this->buildCoachText($severity, $trendDelta, $openMistakesCount, $daysSinceLastActivity),
-            'practice_url' => secure_url(route('quiz.start', ['course' => (int) $progress->course_id, 'topic' => (int) $progress->topic_id], false)),
-            'mistakes_url' => secure_url(route('review.learn', [
+            'practice_url' => route('quiz.start', ['course' => (int) $progress->course_id, 'topic' => (int) $progress->topic_id], false),
+            'mistakes_url' => route('review.learn', [
                 'topic_ids' => [(int) $progress->topic_id],
-            ], false)),
+            ], false),
         ];
     }
 

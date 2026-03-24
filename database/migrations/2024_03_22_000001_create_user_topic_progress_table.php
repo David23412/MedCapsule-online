@@ -14,6 +14,9 @@ return new class extends Migration
             $table->foreignId('topic_id')->constrained()->onDelete('cascade');
             $table->float('percentage_grade')->nullable();
             $table->timestamp('last_attempt_date')->nullable();
+            $table->timestamp('planner_tutor_cleared_at')->nullable();
+            $table->timestamp('planner_quiz_cleared_at')->nullable();
+            $table->timestamp('planner_cleared_at')->nullable();
             $table->timestamps();
 
             // Add unique constraint to prevent duplicate records

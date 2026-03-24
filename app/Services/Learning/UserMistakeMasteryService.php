@@ -51,37 +51,40 @@ class UserMistakeMasteryService
 
         if ($isCorrect) {
             $mastery->consecutive_correct = max(0, (int) ($mastery->consecutive_correct ?? 0)) + 1;
-            $mastery->graduated_at = $mastery->consecutive_correct >= max(1, $requiredStreak)
-                ? $attemptedAt
-                : null;
+            if ($mastery->graduated_at === null && $mastery->consecutive_correct >= max(1, $requiredStreak)) {
+                $mastery->graduated_at = $attemptedAt;
+                
+                // Track graduation mode based on required streak
+                $mastery->graduation_mode = $requiredStreak <= 2 ? 'easy' : 'hard';
+            }
         } else {
             $mastery->consecutive_correct = 0;
-            $mastery->graduated_at = null;
+            // graduated_at is preserved permanently once earned
         }
 
         $mastery->save();
 
         if ($syncMistakeMirror) {
-            $this->syncMistakeMirror(
-                $userId,
-                (int) $question->id,
-                $mastery->consecutive_correct,
-                $mastery->graduated_at,
-                $attemptedAt
-            );
+            $mistakeExists = Mistake::query()
+                ->where('user_id', $userId)
+                ->where('question_id', (int) $question->id)
+                ->exists();
+
+            if ($mistakeExists) {
+                $this->syncMistakeMirror(
+                    $userId,
+                    (int) $question->id,
+                    $mastery->consecutive_correct,
+                    $mastery->graduated_at,
+                    $attemptedAt
+                );
+            }
         }
 
         return $mastery;
     }
 
-    public function requiredStreakForMode(string $mode): ?int
-    {
-        return match ($mode) {
-            'quick', 'practice' => 2,
-            'quiz', 'random', 'tutor', 'study', 'assignment', 'review', 'mistake_review' => 3,
-            default => $mode === 'spaced' ? null : 3,
-        };
-    }
+
 
     public function requiredStreakForDifficulty(?string $difficulty): int
     {
@@ -90,7 +93,7 @@ class UserMistakeMasteryService
 
     public function requiredStreakForUser(User $user): int
     {
-        return $this->requiredStreakForDifficulty($user->classic_repair_difficulty ?? 'easy');
+        return $this->requiredStreakForDifficulty($user->mistake_mastery_mode ?? 'easy');
     }
 
     private function recordAttemptUsingLegacyMistakeMirror(
@@ -109,6 +112,8 @@ class UserMistakeMasteryService
         $graduatedAt = $usingFreshMirrorState
             ? ((bool) ($legacyState['mastered'] ?? false) ? $attemptedAt : null)
             : ($isCorrect && $consecutiveCorrect >= max(1, $requiredStreak) ? $attemptedAt : null);
+            
+        $graduationMode = $graduatedAt !== null ? ($requiredStreak <= 2 ? 'easy' : 'hard') : null;
 
         $this->syncMistakeMirror(
             $userId,
@@ -125,7 +130,8 @@ class UserMistakeMasteryService
             $consecutiveCorrect,
             $graduatedAt,
             $attemptedAt,
-            $isCorrect
+            $isCorrect,
+            $graduationMode
         ) {
             $mastery->forceFill([
                 'user_id' => $userId,
@@ -133,6 +139,7 @@ class UserMistakeMasteryService
                 'course_id' => $courseId > 0 ? $courseId : null,
                 'consecutive_correct' => $consecutiveCorrect,
                 'graduated_at' => $graduatedAt,
+                'graduation_mode' => $graduationMode,
                 'last_attempt_at' => $attemptedAt,
                 'last_attempt_result' => $isCorrect ? 'correct' : 'incorrect',
                 'total_attempts' => 1,

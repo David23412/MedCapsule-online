@@ -218,7 +218,7 @@ class ProfileController extends Controller
             'daily_study_minutes' => (int) ($user->daily_study_minutes ?? 90),
             'planner_focus' => $user->planner_focus ?? 'balanced',
             'repair_mode' => $user->repair_mode,
-            'classic_repair_difficulty' => $user->classic_repair_difficulty,
+            'mistake_mastery_mode' => $user->mistake_mastery_mode,
         ];
 
         return view('profile', compact(
@@ -413,7 +413,7 @@ class ProfileController extends Controller
                 'daily_study_minutes' => 'required|integer|min:30|max:480',
                 'planner_focus' => 'required|in:balanced,new_topics,revision,exam_prep',
                 'repair_mode' => 'nullable|in:easy,hard,spaced',
-                'classic_repair_difficulty' => 'nullable|in:easy,hard',
+                'mistake_mastery_mode' => 'nullable|in:easy,hard',
             ]);
 
             $user = auth()->user();
@@ -423,7 +423,7 @@ class ProfileController extends Controller
             $user->daily_study_minutes = $validated['daily_study_minutes'];
             $user->planner_focus = $validated['planner_focus'];
             $user->repair_mode = $validated['repair_mode'] ?? null;
-            $user->classic_repair_difficulty = $validated['classic_repair_difficulty'] ?? null;
+            $user->mistake_mastery_mode = $validated['mistake_mastery_mode'] ?? null;
             $user->save();
 
             Cache::forget("user_profile_optimized_{$user->id}_" . now()->format('Y-m-d-H'));
@@ -438,7 +438,7 @@ class ProfileController extends Controller
                 'daily_study_minutes' => $user->daily_study_minutes,
                 'planner_focus' => $user->planner_focus,
                 'repair_mode' => $user->repair_mode,
-                'classic_repair_difficulty' => $user->classic_repair_difficulty,
+                'mistake_mastery_mode' => $user->mistake_mastery_mode,
             ]);
 
         } catch (\Exception $e) {
@@ -465,7 +465,7 @@ class ProfileController extends Controller
                 'planner_focus' => 'nullable|in:balanced,new_topics,revision,exam_prep',
                 'planner_preferred_source' => 'nullable|string|max:255',
                 'planner_repair_mode' => 'nullable|in:easy,hard,spaced',
-                'planner_classic_repair_difficulty' => 'nullable|in:easy,hard',
+                'planner_mistake_mastery_mode' => 'nullable|in:easy,hard',
             ]);
 
             $user = auth()->user();
@@ -501,7 +501,7 @@ class ProfileController extends Controller
                 'planner_focus',
                 'planner_preferred_source',
                 'planner_repair_mode',
-                'planner_classic_repair_difficulty',
+                'planner_mistake_mastery_mode',
             ] as $field) {
                 if ($request->exists($field)) {
                     $requestedUpdates[$field] = $validated[$field] ?? null;
@@ -530,7 +530,7 @@ class ProfileController extends Controller
                     'planner_focus' => $plannerUpdates['planner_focus'] ?? data_get($enrollment, 'planner_focus'),
                     'planner_preferred_source' => $plannerUpdates['planner_preferred_source'] ?? data_get($enrollment, 'planner_preferred_source'),
                     'planner_repair_mode' => $plannerUpdates['planner_repair_mode'] ?? data_get($enrollment, 'planner_repair_mode'),
-                    'planner_classic_repair_difficulty' => $plannerUpdates['planner_classic_repair_difficulty'] ?? data_get($enrollment, 'planner_classic_repair_difficulty'),
+                    'planner_mistake_mastery_mode' => $plannerUpdates['planner_mistake_mastery_mode'] ?? data_get($enrollment, 'planner_mistake_mastery_mode'),
                 ],
                 'defaults' => [
                     'exam_date' => optional($user->exam_date)->format('Y-m-d'),
@@ -538,7 +538,7 @@ class ProfileController extends Controller
                     'daily_study_minutes' => (int) ($user->daily_study_minutes ?? 90),
                     'planner_focus' => (string) ($user->planner_focus ?? 'balanced'),
                     'repair_mode' => $user->repair_mode,
-                    'classic_repair_difficulty' => $user->classic_repair_difficulty,
+                    'mistake_mastery_mode' => $user->mistake_mastery_mode,
                 ],
             ];
 
@@ -573,7 +573,7 @@ class ProfileController extends Controller
             'planner_focus',
             'planner_preferred_source',
             'planner_repair_mode',
-            'planner_classic_repair_difficulty',
+            'planner_mistake_mastery_mode',
         ];
 
         self::$availableCoursePlannerColumns = array_values(array_filter(

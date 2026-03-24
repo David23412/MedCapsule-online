@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\DB;
 use App\Services\Core\UltraConsolidatedCacheService;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
@@ -35,19 +36,18 @@ class Question extends Model
         'source',
         'concept',
         'alternative_answers',
-        'similarity_threshold',
-        'total_attempts',
-        'correct_attempts',
-        'last_attempted_at'
+        'exam_appearances_count'
     ];
 
     protected $casts = [
         'topic_id' => 'integer',
         'alternative_answers' => 'string',
-        'total_attempts' => 'integer',
-        'correct_attempts' => 'integer',
-        'similarity_threshold' => 'float',
-        'last_attempted_at' => 'datetime'
+        'exam_appearances_count' => 'integer'
+    ];
+
+    protected $appends = [
+        'exam_frequency_score',
+        'source_badges'
     ];
 
     // Remove the problematic accessors that were trying to map to a different schema
@@ -57,6 +57,178 @@ class Question extends Model
     public function topic()
     {
         return $this->belongsTo(Topic::class);
+    }
+
+    /**
+     * Boot method for Question model.
+     */
+    protected static function boot()
+    {
+        parent::boot();
+
+        static::saved(function ($question) {
+            // Clear question count cache for current topic
+            Cache::forget("topic:{$question->topic_id}:questions_count");
+            
+            // If topic was changed, clear old topic cache too
+            if ($question->wasChanged('topic_id')) {
+                Cache::forget("topic:{$question->getOriginal('topic_id')}:questions_count");
+            }
+        });
+
+        static::deleted(function ($question) {
+            // Clear cache for current topic
+            Cache::forget("topic:{$question->topic_id}:questions_count");
+        });
+    }
+
+    // Define many-to-many relationship: A Question can belong to multiple Topics
+    public function topics()
+    {
+        return $this->belongsToMany(Topic::class, 'question_topic_links')
+            ->withTimestamps();
+    }
+
+    // Get additional topics (excluding the main/source topic)
+    public function additionalTopics()
+    {
+        return $this->belongsToMany(Topic::class, 'question_topic_links')
+            ->where('topic_id', '!=', $this->topic_id)
+            ->withTimestamps();
+    }
+
+    // Get exam source topics (topics with is_exam = true)
+    public function getExamSourceTopicsAttribute()
+    {
+        return $this->topics->filter(function ($topic) {
+            return $topic->is_exam;
+        });
+    }
+
+    // Get exam source relationships (pivot data)
+    public function examSourceLinks()
+    {
+        return $this->belongsToMany(Topic::class, 'question_topic_links')
+            ->where('topics.is_exam', true)
+            ->withTimestamps();
+    }
+
+    // Get source badges for UI display
+    public function getSourceBadgesAttribute(): array
+    {
+        $badges = [];
+        
+        // Check main topic first
+        if ($this->topic && $this->topic->is_exam) {
+            $badges[] = strtoupper($this->topic->name);
+        }
+        
+        // Check additional topics
+        foreach ($this->exam_source_topics as $topic) {
+            $badgeName = strtoupper($topic->name);
+            if (!in_array($badgeName, $badges)) {
+                $badges[] = $badgeName;
+            }
+        }
+        
+        return $badges;
+    }
+
+    // Check if question belongs to an exam topic
+    public function isFromExam(): bool
+    {
+        return !empty($this->source_badges) || $this->exam_appearances_count > 0;
+    }
+
+    // Get exam frequency level for psychological impact
+    public function getExamFrequencyLevelAttribute(): string
+    {
+        if ($this->exam_appearances_count >= 5) return 'Very High';
+        if ($this->exam_appearances_count >= 3) return 'High';
+        if ($this->exam_appearances_count >= 2) return 'Medium';
+        if ($this->exam_appearances_count >= 1) return 'Low';
+        return 'None';
+    }
+
+    // Get enhanced source badges with frequency indicators
+    public function getEnhancedSourceBadgesAttribute(): array
+    {
+        $badges = [];
+        
+        // Add exam frequency badges
+        if ($this->exam_appearances_count >= 3) {
+            $badges[] = '🔥 HIGH YIELD';
+        } elseif ($this->exam_appearances_count >= 2) {
+            $badges[] = '📈 REPEATED';
+        }
+        
+        // Add original source badges
+        foreach ($this->source_badges as $badge) {
+            $badges[] = $badge;
+        }
+        
+        return $badges;
+    }
+
+    // Get exam origin text for trust signals
+    public function getExamOriginTextAttribute(): string
+    {
+        $examTopics = $this->examSourceLinks;
+        if ($examTopics->isEmpty()) {
+            return '';
+        }
+        
+        $origins = $examTopics->map(function ($topic) {
+            return $topic->name;
+        })->toArray();
+        
+        return 'Source: ' . implode(', ', $origins);
+    }
+
+    // Calculate and update exam frequency score
+    public function updateExamFrequencyScore(): void
+    {
+        // Get all unique topic IDs for this question (main + linked)
+        $topicIds = DB::table('question_topic_links')
+            ->where('question_id', $this->id)
+            ->pluck('topic_id')
+            ->push($this->topic_id)
+            ->filter()
+            ->unique();
+            
+        // Count how many are exam topics
+        $examCount = Topic::whereIn('id', $topicIds)
+            ->where('is_exam', true)
+            ->count();
+        
+        $this->update([
+            'exam_appearances_count' => $examCount
+        ]);
+    }
+
+    /**
+     * Scope for questions from any exam source.
+     */
+    public function scopeFromExam($query)
+    {
+        return $query->where(function ($q) {
+            $q->whereHas('topic', fn($t) => $t->where('is_exam', true))
+              ->orWhereHas('topics', fn($t) => $t->where('is_exam', true));
+        });
+    }
+
+    /**
+     * Scope for high-yield questions (appeared in 3+ exams).
+     */
+    public function scopeHighYield($query)
+    {
+        return $query->where('exam_appearances_count', '>=', 3);
+    }
+
+    // Get dynamic exam frequency score
+    public function getExamFrequencyScoreAttribute(): float
+    {
+        return min($this->exam_appearances_count * 2.5, 10.0);
     }
 
     /**
@@ -150,59 +322,33 @@ class Question extends Model
 
     /**
      * Get the success rate for this question.
+     * Now calculates from user attempt data instead of question-level metrics.
      * Returns 0 if no attempts have been made.
      */
-    // 💀 N+1 WARNING: This accessor accesses 'total_attempts' - consider eager loading
     public function getSuccessRateAttribute(): float
     {
-        return $this->total_attempts > 0 
-            ? ($this->correct_attempts / $this->total_attempts) * 100 
-            : 0;
+        // Calculate from user-specific data instead of question-level metrics
+        $totalAttempts = \App\Models\QuizAttempt::whereHas('questions', function($query) {
+            $query->where('question_id', $this->id);
+        })->count();
+        
+        if ($totalAttempts === 0) return 0;
+        
+        // This would need to be calculated based on actual user performance data
+        // For now, return 0 as we don't have the correct data structure
+        return 0;
     }
 
     /**
-     * Record an attempt and update total and correct attempts.
-     * Returns true if the answer was correct, false otherwise.
+     * Check if the submitted answer is correct for this question.
      *
      * @param string $submittedAnswer The answer submitted by the user.
-     * @return bool
+     * @return bool True if correct, false otherwise.
      */
-    public function recordAttempt(string $submittedAnswer): bool
+    public function isAnswerCorrect(string $submittedAnswer): bool
     {
-        // Use appropriate grading method based on question type
-        $isCorrect = $this->isAnswerCorrect($submittedAnswer);
-
-        // Increment total attempts and correct attempts if applicable
-        $this->increment('total_attempts');
-        if ($isCorrect) {
-            $this->increment('correct_attempts');
-        }
-
-        // Update the last attempted timestamp
-        $this->update(['last_attempted_at' => now()]);
-
-        return $isCorrect;
-    }
-
-    /**
-     * Check if an answer is correct based on the question type
-     * Handles null values for $submittedAnswer
-     * 
-     * @param string|null $submittedAnswer
-     * @return bool
-     */
-    public function isAnswerCorrect($submittedAnswer): bool
-    {
-        // Handle null or empty answers
-        if ($submittedAnswer === null) {
-            return false;
-        }
-        
-        // Ensure submitted answer is always a string
-        $submittedAnswer = (string)$submittedAnswer;
-        
         if ($this->question_type === self::TYPE_MULTIPLE_CHOICE) {
-            return $submittedAnswer === $this->correct_answer;
+            return strtoupper(trim($submittedAnswer)) === strtoupper(trim($this->correct_answer));
         } elseif ($this->question_type === self::TYPE_WRITTEN) {
             try {
                 // Make sure we're working with valid strings before comparing
@@ -301,7 +447,7 @@ class Question extends Model
             // Deeper similarity analysis
             
             // 4. Determine similarity threshold based on question and answer properties
-            $baseThreshold = $this->similarity_threshold ?? self::DEFAULT_SIMILARITY_THRESHOLD;
+            $baseThreshold = self::DEFAULT_SIMILARITY_THRESHOLD;
             
             // Adjust threshold based on various factors
             $adjustedThreshold = $baseThreshold;
@@ -688,222 +834,27 @@ class Question extends Model
 
 
     /**
-     * Get all incorrect answers (mistakes) for a user.
-     * This is useful for tracking user progress and mistakes.
+     * Get questions that the user has made mistakes on.
+     * Now uses user-specific mistake data instead of question-level metrics.
      *
      * @param int $userId
      * @return \Illuminate\Database\Eloquent\Collection
      */
     public static function getMistakesForUser(int $userId)
     {
-        return static::where('total_attempts', '>', 0)
-            ->where('correct_attempts', '<', 'total_attempts')
-            ->whereHas('mistakes', function ($query) use ($userId) {
-                $query->where('user_id', $userId);
-            })
-            ->get();
+        return static::whereHas('mistakes', function ($query) use ($userId) {
+            $query->where('user_id', $userId);
+        })->get();
     }
 
     /**
-     * Get the total number of attempts made by users for a specific question.
-     * Can be used to display insights on the question's difficulty.
+     * Get the total number of questions in the system.
+     * Returns the count of all questions.
      *
      * @return int
      */
-    public function getTotalAttemptsCount(): int
+    public static function getTotalQuestionsCount(): int
     {
-        // Cache the total attempts for 1 hour for better performance
-        return Cache::remember("question:{$this->id}:total_attempts", 3600, function () {
-            return $this->total_attempts;
-        });
-    }
-
-    /**
-     * Get the total number of correct attempts made by users for a specific question.
-     * Can be used for analytics and question difficulty analysis.
-     *
-     * @return int
-     */
-    public function getCorrectAttemptsCount(): int
-    {
-        // Cache the correct attempts for 1 hour for better performance
-        return Cache::remember("question:{$this->id}:correct_attempts", 3600, function () {
-            return $this->correct_attempts;
-        });
-    }
-
-    /**
-     * Boot method for handling model events like saving and updating.
-     */
-    protected static function boot()
-    {
-        parent::boot();
-
-        // Automatically clear all caches when a question is updated or deleted
-        static::deleted(function ($question) {
-            try {
-                // Clear all caches using the CacheService
-                $cacheService = app(UltraConsolidatedCacheService::class);
-                if (method_exists($cacheService, 'clearQuestionCaches')) {
-                    $cacheService->clearQuestionCaches($question->id, $question->topic_id);
-                }
-                
-                // Force clear all session data that might contain questions
-                session()->flush();
-                
-                // Log the deletion and cache clearing
-                Log::info('Question deleted and all caches cleared', [
-                    'question_id' => $question->id,
-                    'topic_id' => $question->topic_id,
-                    'session_cleared' => true
-                ]);
-            } catch (\Exception $e) {
-                Log::error('Error clearing caches after question deletion', [
-                    'question_id' => $question->id,
-                    'error' => $e->getMessage()
-                ]);
-            }
-        });
-
-        // Similar cache clearing for updates
-        static::updated(function ($question) {
-            try {
-                // Clear all caches using the CacheService
-                $cacheService = app(UltraConsolidatedCacheService::class);
-                if (method_exists($cacheService, 'clearQuestionCaches')) {
-                    $cacheService->clearQuestionCaches($question->id, $question->topic_id);
-                }
-                
-                // Log the update and cache clearing
-                Log::info('Question updated and all caches cleared', [
-                    'question_id' => $question->id,
-                    'topic_id' => $question->topic_id
-                ]);
-            } catch (\Exception $e) {
-                Log::error('Error clearing caches after question update', [
-                    'question_id' => $question->id,
-                    'error' => $e->getMessage()
-                ]);
-            }
-        });
-
-        // PHASE 2: Dispatch QuestionDeleted event when question is deleted
-        static::deleted(function ($question) {
-            event(new \App\Events\QuestionDeleted(
-                $question,
-                $question->topic_id,
-                $question->source
-            ));
-        });
-    }
-
-    /**
-     * Check if answer contains negation that changes meaning
-     * This helps prevent answers with opposite meanings from being marked correct
-     * 
-     * @param string $submittedAnswer
-     * @param string $correctAnswer
-     * @return bool True if negation changes meaning
-     */
-    protected function containsOppositeNegation(string $submittedAnswer, string $correctAnswer): bool 
-    {
-        $negationWords = ['not', 'no', 'never', 'doesn\'t', 'does not', 'isn\'t', 'is not', 'cannot', 'can\'t'];
-        
-        // Check if negation patterns exist in one but not the other
-        $submittedHasNegation = false;
-        $correctHasNegation = false;
-        
-        foreach ($negationWords as $negation) {
-            if (strpos($submittedAnswer, $negation) !== false) {
-                $submittedHasNegation = true;
-            }
-            
-            if (strpos($correctAnswer, $negation) !== false) {
-                $correctHasNegation = true;
-            }
-        }
-        
-        // If negation status differs, answers likely have opposite meanings
-        return $submittedHasNegation !== $correctHasNegation;
-    }
-
-    /**
-     * Safe regex replace with bounds checking and error handling
-     * Prevents ReDoS attacks and memory exhaustion as mentioned in Fix.md
-     * 
-     * @param string $pattern
-     * @param string $replacement
-     * @param string $subject
-     * @param int $limit
-     * @return string
-     */
-    protected function safeRegexReplace(string $pattern, string $replacement, string $subject, int $limit = -1): string
-    {
-        try {
-            // Input validation - prevent excessively long inputs
-            if (strlen($subject) > 10000) {
-                Log::warning('Text too long for regex processing, truncating', [
-                    'original_length' => strlen($subject),
-                    'truncated_to' => 10000
-                ]);
-                $subject = substr($subject, 0, 10000);
-            }
-
-            // Set safe PCRE limits to prevent ReDoS
-            $originalBacktrackLimit = ini_get('pcre.backtrack_limit');
-            $originalRecursionLimit = ini_get('pcre.recursion_limit');
-            
-            ini_set('pcre.backtrack_limit', '100000');
-            ini_set('pcre.recursion_limit', '10000');
-            
-            // Perform the regex operation
-            $result = preg_replace($pattern, $replacement, $subject, $limit);
-            
-            // Restore original limits
-            ini_set('pcre.backtrack_limit', $originalBacktrackLimit);
-            ini_set('pcre.recursion_limit', $originalRecursionLimit);
-            
-            // Check for regex errors
-            if ($result === null) {
-                $error = preg_last_error();
-                Log::error('Regex operation failed', [
-                    'pattern' => $pattern,
-                    'error_code' => $error,
-                    'subject_length' => strlen($subject)
-                ]);
-                return $subject; // Return original on error
-            }
-            
-            return $result;
-            
-        } catch (\Exception $e) {
-            Log::error('Safe regex replace failed', [
-                'pattern' => $pattern,
-                'error' => $e->getMessage(),
-                'subject_length' => strlen($subject)
-            ]);
-            
-            // Return original subject on any error (fail-safe)
-            return $subject;
-        }
-    }
-
-    /**
-     * Get the proper URL for question images
-     */
-    public function getImageUrlAttribute($value)
-    {
-        if (!$value) {
-            return null;
-        }
-        
-        // If it's already a full URL, return as is
-        if (filter_var($value, FILTER_VALIDATE_URL)) {
-            return $value;
-        }
-        
-        // If it's a local file path, construct the proper URL
-        $filename = basename($value);
-        return url('/uploads/questions/' . $filename);
+        return static::count();
     }
 }

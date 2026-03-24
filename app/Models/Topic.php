@@ -29,6 +29,7 @@ class Topic extends Model
         'case_type',
         'cache_version',
         'is_locked',
+        'is_exam',
         'locked_by_tutor_id',
         'lock_reason',
         'locked_at',
@@ -37,6 +38,7 @@ class Topic extends Model
 
     protected $casts = [
         'is_locked' => 'boolean',
+        'is_exam' => 'boolean',
         'locked_at' => 'datetime',
         'unlocked_at' => 'datetime'
     ];
@@ -60,6 +62,88 @@ class Topic extends Model
     public function questions(): HasMany
     {
         return $this->hasMany(Question::class)->orderBy('id'); // Ensure questions are ordered
+    }
+
+    // Many-to-many relationship for questions linked to this topic
+    public function linkedQuestions()
+    {
+        return $this->belongsToMany(Question::class, 'question_topic_links')
+            ->withTimestamps()
+            ->orderBy('id');
+    }
+
+    // Get all questions for this topic (both direct and linked)
+    public function allQuestions()
+    {
+        // For exam topics, return only direct questions to preserve the original exam set
+        if ($this->isExamTopic()) {
+            return $this->questions()
+                ->with(['topic', 'topics'])
+                ->get();
+        }
+        
+        // For lecture topics, get all questions (direct + linked)
+        $directIds = $this->questions()->pluck('id');
+        $linkedIds = $this->linkedQuestions()->pluck('questions.id');
+        $allIds = $directIds->concat($linkedIds)->unique();
+
+        return Question::whereIn('id', $allIds)
+            ->with(['topic', 'topics'])
+            ->orderBy('id')
+            ->get();
+    }
+
+    public function isExamTopic(): bool
+    {
+        return (bool) $this->is_exam;
+    }
+
+    // Get questions for exam topics (only direct questions to maintain exam order)
+    public function examQuestions()
+    {
+        return $this->allQuestions();
+    }
+
+    // Get lecture-only questions (exclude exam sources)
+    public function lectureQuestions()
+    {
+        $all = $this->allQuestions();
+        return $all->filter(fn($q) => !$q->isFromExam());
+    }
+
+    // Get past exam questions
+    public function pastExamQuestions()
+    {
+        $all = $this->allQuestions();
+        return $all->filter(fn($q) => $q->isFromExam());
+    }
+
+    // Get repeated questions (appeared in 2+ exams)
+    public function repeatedQuestions()
+    {
+        $all = $this->allQuestions();
+        return $all->filter(fn($q) => $q->exam_appearances_count >= 2);
+    }
+
+    // Get high-yield questions (appeared in 3+ exams)
+    public function highYieldQuestions()
+    {
+        $all = $this->allQuestions();
+        return $all->filter(fn($q) => $q->exam_appearances_count >= 3);
+    }
+
+    // Get questions with mistakes for current user
+    public function mistakeQuestions()
+    {
+        if (!auth()->check()) return collect();
+        
+        $userMistakeIds = \App\Models\Mistake::where('user_id', auth()->id())
+            ->pluck('question_id')
+            ->toArray();
+            
+        return $this->allQuestions()->filter(function ($question) use ($userMistakeIds) {
+            return in_array($question->id, $userMistakeIds);
+        });
     }
 
     public function quizAttempts(): HasMany
@@ -179,6 +263,8 @@ class Topic extends Model
     /**
     // 💀 N+1 WARNING: This accessor accesses 'id' - consider eager loading
      * Get the count of questions associated with the topic.
+     * For exam topics: only direct questions
+     * For lecture topics: direct + linked questions
      *
      * @return int
      */
@@ -189,7 +275,16 @@ class Topic extends Model
         }
 
         return Cache::remember("topic:{$this->id}:questions_count", 3600, function () {
-            return $this->questions()->count();
+            // For exam topics: only direct questions
+            if ($this->is_exam) {
+                return $this->questions()->count();
+            }
+            
+            // For lecture topics: count distinct union of direct and linked
+            $directIds = $this->questions()->select('questions.id');
+            $linkedIds = $this->linkedQuestions()->select('questions.id');
+            
+            return $directIds->union($linkedIds)->count();
         });
     }
 
@@ -274,6 +369,13 @@ class Topic extends Model
         });
 
         // Clear the cache whenever a topic is updated or deleted
+        static::updated(function ($topic) {
+            Cache::forget("topic:{$topic->id}:questions_count");
+        });
+
+        static::deleted(function ($topic) {
+            Cache::forget("topic:{$topic->id}:questions_count");
+        });
     }
 
     public function getCacheKey($userId, $suffix = '')

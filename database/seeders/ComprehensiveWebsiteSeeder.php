@@ -211,6 +211,7 @@ class ComprehensiveWebsiteSeeder extends Seeder
                 'name' => 'DR.HOSSAM',
                 'description' => 'Comprehensive medical education platform designed for USMLE Step 1 & 2 preparation. This course features advanced 3D anatomical visualizations, high-yield question banks with detailed explanations, predictive scoring algorithms, and interactive pathophysiology simulations. Includes First Aid integration, medical animations, VR anatomy lab experiences, and real-time performance analytics for optimal learning outcomes.',
                 'type' => 'medical',
+                'access_type' => 'free',
                 'academic_year' => 'USMLE STEP 1',
                 'price' => 0.00,
                 'color' => '#FF1744',
@@ -221,6 +222,7 @@ class ComprehensiveWebsiteSeeder extends Seeder
                 'name' => 'Advanced Pathology & Disease Mechanisms',
                 'description' => 'Comprehensive pathology course focusing on disease diagnosis and mechanisms. Features high-resolution histopathology galleries, interactive 3D disease progression animations, virtual microscopy lab with AI-guided analysis, and USMLE-style pathology question banks. Includes Robbins & Cotran integration, tissue comparison studies, expert pathologist video lectures, and advanced pattern recognition training.',
                 'type' => 'medical',
+                'access_type' => 'free',
                 'academic_year' => 'Year 2',
                 'price' => 0.00,
                 'color' => '#2196F3',
@@ -231,6 +233,7 @@ class ComprehensiveWebsiteSeeder extends Seeder
                 'name' => 'Clinical Pharmacology & Therapeutics',
                 'description' => 'Navigate the complex world of modern pharmacotherapy with confidence. This advanced course covers drug mechanisms, pharmacokinetics, adverse effects, and therapeutic decision-making. Features interactive drug interaction simulators, dosage calculators, and real-world clinical scenarios to prepare you for safe and effective prescribing practices.',
                 'type' => 'medical',
+                'access_type' => 'free',
                 'academic_year' => 'Year 3',
                 'price' => 0.00,
                 'color' => '#00C853',
@@ -241,6 +244,7 @@ class ComprehensiveWebsiteSeeder extends Seeder
                 'name' => 'Internal Medicine & Clinical Reasoning',
                 'description' => 'Develop expert clinical reasoning skills through immersive patient scenarios and diagnostic challenges. This comprehensive course integrates physical examination techniques, laboratory interpretation, imaging analysis, and treatment planning. Perfect for medical students preparing for clinical rotations and board examinations.',
                 'type' => 'medical',
+                'access_type' => 'free',
                 'academic_year' => 'Year 4',
                 'price' => 0.00,
                 'color' => '#9C27B0',
@@ -251,6 +255,7 @@ class ComprehensiveWebsiteSeeder extends Seeder
                 'name' => 'Emergency Medicine & Critical Care',
                 'description' => 'Master life-saving interventions and critical decision-making in emergency settings. This intensive course covers trauma management, cardiac emergencies, toxicology, and procedural skills through high-fidelity simulations and expert-led case discussions. Essential preparation for emergency medicine rotations and residency.',
                 'type' => 'medical',
+                'access_type' => 'free',
                 'academic_year' => 'Year 5',
                 'price' => 0.00,
                 'color' => '#FF5722',
@@ -261,6 +266,7 @@ class ComprehensiveWebsiteSeeder extends Seeder
                 'name' => 'Surgical Principles & Techniques',
                 'description' => 'Build surgical expertise through comprehensive study of operative principles, anatomy, and perioperative care. Features 3D surgical animations, instrument identification modules, and step-by-step procedural guides. Includes wound healing, infection control, and surgical complications management for complete surgical education.',
                 'type' => 'medical',
+                'access_type' => 'free',
                 'academic_year' => 'Year 3',
                 'price' => 0.00,
                 'color' => '#607D8B',
@@ -345,9 +351,6 @@ class ComprehensiveWebsiteSeeder extends Seeder
                     'explanation' => $questionData['explanation'],
                     'image_url' => $questionData['image_url'],
                     'source' => $questionData['source'],
-                    'total_attempts' => $totalAttempts = rand(50, 500),
-                    'correct_attempts' => intval($totalAttempts * (rand(40, 85) / 100)),
-                    'last_attempted_at' => now()->subDays(rand(1, 30)),
                 ]);
 
                 $this->command->info("✅ Created USMLE question: " . substr($questionData['question'], 0, 50) . "...");
@@ -412,7 +415,6 @@ class ComprehensiveWebsiteSeeder extends Seeder
                     'source' => 'quiz',
                     'score' => $score,
                     'total_questions' => $totalQuestions,
-                    'correct_answers' => $correctAnswers,
                     'percentage_grade' => $percentageGrade,
                     'duration_seconds' => rand(300, 1800), // 5-30 minutes
                     'question_data' => json_encode([

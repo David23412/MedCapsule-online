@@ -26,7 +26,6 @@ return new class extends Migration
             
             // Mistake tracking (as JSON)
             $table->json('question_data')->nullable(); // Detailed attempt data if needed for review
-            $table->integer('correct_answers')->nullable(); // Count of correct answers (same as score)
             
             // 🚀 LEAN INDEXES: Only essential ones (detailed indexes in nuclear_performance_indexing)
             $table->index(['user_id', 'topic_id']); // Basic user-topic queries

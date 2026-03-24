@@ -172,9 +172,11 @@ class PlannerSignalService
             }
 
             if ($signals['nearest_assignment_deadline'] instanceof Carbon) {
-                $signals['nearest_assignment_hours'] = max(
-                    0,
-                    now()->diffInHours($signals['nearest_assignment_deadline'], false) * -1
+                // positive = hours until deadline, negative = hours overdue
+                // callers track overdue separately via overdue_assignment_count
+                $signals['nearest_assignment_hours'] = now()->diffInHours(
+                    $signals['nearest_assignment_deadline'],
+                    false
                 );
                 $signals['nearest_assignment_deadline'] = $signals['nearest_assignment_deadline']->toIso8601String();
             }
@@ -332,6 +334,16 @@ class PlannerSignalService
                 $signal['source_backlog'] = $signal['_source_backlog'] ?? [];
                 $signal['classic_reviewable_mistake_ids'] = array_values(array_map('intval', $signal['_classic_reviewable_mistake_ids']));
 
+                unset(
+                    $signal['_due_risks'],
+                    $signal['_due_mistakes'],
+                    $signal['_source_backlog'],
+                    $signal['_oldest_due_at'],
+                    $signal['_reviewable_mistake_ids'],
+                    $signal['_classic_reviewable_mistake_ids'],
+                    $signal['_id']
+                );
+
                 return $signal;
             })
             ->all();
@@ -352,7 +364,10 @@ class PlannerSignalService
             return 'deferred_skipped_backlog';
         }
 
-        if ($nextReviewAt === null || $nextReviewAt->lte(now())) {
+        // null next_review_at = mistake has never been scheduled for SR review.
+        // Treat as active_open_backlog (not yet due), not due_spaced_reviews.
+        // Classifying null as due_spaced_reviews inflates SR pressure for classic repair students.
+        if ($nextReviewAt !== null && $nextReviewAt->lte(now())) {
             return 'due_spaced_reviews';
         }
 

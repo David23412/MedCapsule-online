@@ -89,14 +89,13 @@ class MistakeManagementService
                     return $query->dueForReview('spaced');
                 });
 
-            if (Mistake::hasColumn('next_review_at')) {
-                $mistakes->orderBy('next_review_at');
-            }
             $mistakes = $mistakes
+                ->when($mode === 'spaced' && Mistake::hasColumn('next_review_at'), function ($query) {
+                    $query->orderBy('next_review_at');
+                })
                 ->when($mode !== 'spaced', function ($query) {
-                    return $query
-                        ->orderBy('correct_streak')
-                        ->orderBy('last_attempt_date');
+                    $query->orderBy('correct_streak')
+                          ->orderBy('last_attempt_date');
                 })
                 ->get();
 
@@ -146,12 +145,13 @@ class MistakeManagementService
                 return null;
             }
 
-            return compact('mistakes', 'courses', 'courseCounts', 'totalMistakesCount', 'skippedCount')
-                + [
-                    'course_counts' => $courseCounts,
-                    'total_mistakes_count' => $totalMistakesCount,
-                    'skipped_count' => $skippedCount,
-                ];
+            return [
+                'mistakes' => $mistakes,
+                'courses' => $courses,
+                'course_counts' => $courseCounts,
+                'total_mistakes_count' => $totalMistakesCount,
+                'skipped_count' => $skippedCount,
+            ];
         });
     }
 
@@ -463,14 +463,18 @@ class MistakeManagementService
             $mistake->save();
             $this->conceptMemoryService->syncReview($mistake, $usedRating, $resolvedMode, $effectiveResponseSeconds > 0 ? $effectiveResponseSeconds : null, $resolvedConfidence);
 
-            $requiredStreak = $this->userMistakeMasteryService->requiredStreakForMode($resolvedMode);
-            if ($requiredStreak !== null && $mistake->question) {
+            $normalizedMode = $mistake->normalizeReviewMode($resolvedMode);
+            $requiredStreak = ($normalizedMode === 'easy') ? 2 : 3;
+            
+            if ($mistake->question) {
+                // syncMistakeMirror: true ensures mistakes table's updated_at advances,
+                // securely triggering cache invalidation via buildLearningDeckFingerprint()
                 $this->userMistakeMasteryService->recordAttempt(
                     $userId,
                     $mistake->question,
                     $isCorrect,
                     $requiredStreak,
-                    syncMistakeMirror: false
+                    syncMistakeMirror: true
                 );
             }
 
@@ -616,7 +620,6 @@ class MistakeManagementService
                 })
                 ->orderBy('last_attempt_date', 'asc')
                 ->orderBy('correct_streak', 'asc') // Prioritize lower streaks
-                ->limit(10)
                 ->get();
         });
     }
@@ -643,10 +646,7 @@ class MistakeManagementService
             Cache::forget($key);
         }
 
-        // Clear pattern-based cache keys for learning mistakes
-        $patternKeys = [
-            "learn_mistakes_*", // This will need to be handled differently as it has MD5 hash
-        ];
+
 
         // Since Laravel doesn't support pattern deletion easily, we'll use tags if available
         // For now, we'll clear the main learning cache by invalidating with a version key

@@ -32,6 +32,7 @@ class PlannerContext
         public string $repairMode,
         public string $classicRepairDifficulty,
         public array $resolvedSettings,
+        public mixed $course,
     ) {
     }
 }

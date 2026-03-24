@@ -218,7 +218,6 @@ class ULTIMATE_RAW_DATA_SEEDER extends Seeder
                         'study_mode' => 'quiz',
                         'score' => $score,
                         'total_questions' => $totalQuestions,
-                        'correct_answers' => $score,
                         'percentage_grade' => ($score / $totalQuestions) * 100,
                         'duration_seconds' => rand(300, 1800),
                         'question_data' => $questionData,

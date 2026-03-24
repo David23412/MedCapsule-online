@@ -297,9 +297,7 @@
                                 <span class="badge rounded-pill text-bg-light" style="padding: 0.55rem 0.85rem; font-weight: 600;">
                                     {{ $currentUserView['daily_study_minutes'] ?? 90 }}m / day
                                 </span>
-                                <span class="badge rounded-pill text-bg-light" style="padding: 0.55rem 0.85rem; font-weight: 600;">
-                                    Target {{ $currentUserView['target_score'] ?? 80 }}%
-                                </span>
+
                                 <span class="badge rounded-pill text-bg-light text-capitalize" style="padding: 0.55rem 0.85rem; font-weight: 600;">
                                     {{ str_replace('_', ' ', $currentUserView['planner_focus'] ?? 'balanced') }}
                                 </span>
@@ -412,7 +410,7 @@
                                             @endif
                                         </small>
                                     </div>
-                                    <div class="d-flex align-items-center gap-2">
+                                    <div class="d-flex align-items-center gap-2 flex-shrink-0">
                                         @if(($topic['open_mistakes_count'] ?? 0) > 0)
                                             <a href="{{ $topic['mistakes_url'] }}" class="btn btn-sm {{ $buttonClass }}">
                                                 Review Mistakes
@@ -509,7 +507,7 @@
             totalCount: {{ $totalQuestions }},
             weeklyGoal: {{ $currentUserView['weekly_goal'] ?? (auth()->user()->weekly_goal ?? 50) }},
             examDate: @json($currentUserView['exam_date'] ?? null),
-            targetScore: {{ $currentUserView['target_score'] ?? 80 }},
+
             dailyStudyMinutes: {{ $currentUserView['daily_study_minutes'] ?? 90 }},
             plannerFocus: @json($currentUserView['planner_focus'] ?? 'balanced'),
             updateGoalRoute: @json(route('profile.update-goal'))

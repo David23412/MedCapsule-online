@@ -132,7 +132,7 @@ class EventDrivenGradingService
         return Question::select([
                 'id', 'question_type', 'correct_answer', 
                 'option_a', 'option_b', 'option_c', 'option_d',
-                'topic_id', 'source', 'alternative_answers', 'similarity_threshold'
+                'topic_id', 'source', 'alternative_answers'
             ])
             ->whereIn('id', $questionIds)
             ->get()
@@ -176,7 +176,7 @@ class EventDrivenGradingService
                     $submittedAnswer,
                     $question->correct_answer,
                     $question->alternative_answers ?? [],
-                    $question->similarity_threshold ?? 0.7
+                    0.8
                 );
                 return $evaluation['isCorrect'] ?? false;
             }

@@ -4870,27 +4870,6 @@
                     timerElement.classList.remove('warning', 'danger');
                 }
 
-                const buildExplanationCard = (explanation) => {
-                    if (!explanation) {
-                        return null;
-                    }
-
-                    const explanationCard = document.createElement('div');
-                    explanationCard.className = 'explanation-review-card';
-
-                    const title = document.createElement('strong');
-                    title.textContent = 'Explanation:';
-
-                    const body = document.createElement('div');
-                    body.className = 'explanation-review-text';
-                    body.textContent = explanation;
-
-                    explanationCard.appendChild(title);
-                    explanationCard.appendChild(body);
-
-                    return explanationCard;
-                };
-
                 document.querySelectorAll('.check-answer, .next-question, .view-results, .btn-dont-know').forEach((element) => {
                     element.style.display = 'none';
                 });
@@ -4927,8 +4906,6 @@
                         return;
                     }
 
-                    const explanationCard = buildExplanationCard(qData.explanation || '');
-                    explanationContent.innerHTML = '';
                     feedbackDiv.style.display = 'block';
 
                     const writtenAnswer = container.querySelector('.written-answer');
@@ -4939,16 +4916,7 @@
                         alertDiv.className = `alert ${isCorrect ? 'alert-success' : 'alert-danger'}`;
                         resultText.textContent = isCorrect ? 'Correct Answer' : 'Review Answer';
 
-                        if (!isCorrect) {
-                            const correctAnswerCard = document.createElement('div');
-                            correctAnswerCard.className = 'correct-answer-card';
-                            correctAnswerCard.innerHTML = `<strong>Correct answer:</strong> ${qData.correct_answer || ''}`;
-                            explanationContent.appendChild(correctAnswerCard);
-                        }
-
-                        if (explanationCard) {
-                            explanationContent.appendChild(explanationCard);
-                        }
+    
 
                         return;
                     }
@@ -4968,16 +4936,7 @@
                     alertDiv.className = `alert ${isCorrect ? 'alert-success' : 'alert-danger'}`;
                     resultText.textContent = isCorrect ? 'Correct Answer' : 'Review Answer';
 
-                    if (!isCorrect) {
-                        const correctAnswerCard = document.createElement('div');
-                        correctAnswerCard.className = 'correct-answer-card';
-                        correctAnswerCard.innerHTML = `<strong>Correct answer:</strong> ${qData.correct_answer || ''}`;
-                        explanationContent.appendChild(correctAnswerCard);
-                    }
-
-                    if (explanationCard) {
-                        explanationContent.appendChild(explanationCard);
-                    }
+    
                 });
 
                 if (typeof window.jumpToQuestion === 'function') {

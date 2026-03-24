@@ -7,6 +7,7 @@ use App\Models\Course;
 use App\Models\Topic;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\DB;
 use PhpOffice\PhpSpreadsheet\IOFactory;
 
 class ImportQuestionsFromExcel extends Command
@@ -102,18 +103,75 @@ class ImportQuestionsFromExcel extends Command
 
             // Prepare question data
             $questionData = [
-                'question_text' => trim($data['question_text']),
+                'question' => trim($data['question_text'] ?? $data['question'] ?? ''),
                 'option_a' => trim($data['option_a'] ?? ''),
                 'option_b' => trim($data['option_b'] ?? ''),
                 'option_c' => trim($data['option_c'] ?? ''),
                 'option_d' => trim($data['option_d'] ?? ''),
-                'option_e' => trim($data['option_e'] ?? ''),
                 'correct_answer' => strtoupper(trim($data['correct_answer'] ?? 'A')),
                 'explanation' => trim($data['explanation'] ?? ''),
-                'difficulty' => trim($data['difficulty'] ?? 'medium'),
-                'course_id' => $courseId ?? ($data['course_id'] ?? null),
+                'source' => trim($data['source'] ?? ''),
+                'concept' => trim($data['concept'] ?? ''),
+                'question_type' => trim($data['question_type'] ?? 'multiple_choice'),
                 'topic_id' => $data['topic_id'] ?? null,
             ];
+
+            // Handle extra topics for many-to-many relationships
+            $extraTopics = trim($data['extra_topics'] ?? '');
+            $extraTopicIds = [];
+            
+            if ($extraTopics) {
+                // Split by comma and process each topic (legacy support for topic names)
+                $topicNames = array_map('trim', explode(',', $extraTopics));
+                
+                foreach ($topicNames as $topicName) {
+                    if (empty($topicName)) continue;
+                    
+                    // Find topic by name (case-insensitive)
+                    $topic = Topic::where('name', 'LIKE', $topicName)->first();
+                    if ($topic) {
+                        $extraTopicIds[] = $topic->id;
+                    } else {
+                        $this->stats['errors'][] = "Topic not found: {$topicName}";
+                    }
+                }
+            }
+
+            // Handle extra_topic_ids column (new preferred method)
+            $extraTopicIdsColumn = trim($data['extra_topic_ids'] ?? '');
+            $extraTopicIdsFromColumn = [];
+            
+            if ($extraTopicIdsColumn) {
+                // Split by comma and process each topic ID
+                $topicIdStrings = array_map('trim', explode(',', $extraTopicIdsColumn));
+                
+                foreach ($topicIdStrings as $topicIdString) {
+                    if (empty($topicIdString)) continue;
+                    
+                    // Validate that it's a valid integer
+                    if (!is_numeric($topicIdString)) {
+                        $this->stats['errors'][] = "Invalid topic ID format: {$topicIdString}";
+                        continue;
+                    }
+                    
+                    $topicId = (int) $topicIdString;
+                    
+                    // Validate that the topic exists
+                    if (Topic::where('id', $topicId)->exists()) {
+                        $extraTopicIdsFromColumn[] = $topicId;
+                    } else {
+                        $this->stats['errors'][] = "Topic ID not found: {$topicId}";
+                    }
+                }
+            }
+            
+            // Merge extra topic IDs from both methods, removing duplicates
+            $allExtraTopicIds = array_unique(array_merge($extraTopicIds, $extraTopicIdsFromColumn));
+            
+            // Remove the main topic ID from extra topics to avoid redundancy
+            if (!empty($questionData['topic_id'])) {
+                $allExtraTopicIds = array_diff($allExtraTopicIds, [(int)$questionData['topic_id']]);
+            }
 
             // Handle image
             $imageFilename = trim($data['image_filename'] ?? '');
@@ -138,17 +196,47 @@ class ImportQuestionsFromExcel extends Command
             // Import or update question
             if (!$dryRun) {
                 // Check if question exists (by text)
-                $existing = Question::where('question_text', $questionData['question_text'])
-                    ->where('course_id', $questionData['course_id'])
+                $existing = Question::where('question', $questionData['question'])
                     ->first();
 
                 if ($existing) {
-                    $existing->update($questionData);
+                    // ARCHITECTURE RULE: Prefer Exam topic as the canonical topic_id
+                    $currentTopic = Topic::find($existing->topic_id);
+                    $newTopic = Topic::find($questionData['topic_id']);
+                    
+                    $isCurrentExam = $currentTopic && $currentTopic->is_exam;
+                    $isNewExam = $newTopic && $newTopic->is_exam;
+                    
+                    if ($isCurrentExam && !$isNewExam) {
+                        // Keep current exam topic as main, add new lecture topic to pivot
+                        $allExtraTopicIds[] = $questionData['topic_id'];
+                        unset($questionData['topic_id']);
+                    } elseif (!$isCurrentExam && $isNewExam) {
+                        // Promote to exam topic as main, move old lecture topic to pivot
+                        $allExtraTopicIds[] = $existing->topic_id;
+                    } elseif ($existing->topic_id != $questionData['topic_id']) {
+                        // Same priority, just move old one to pivot
+                        $allExtraTopicIds[] = $existing->topic_id;
+                    }
+                    
+                    $existing->update(array_filter($questionData));
+                    $question = $existing;
                     $this->stats['updated']++;
                 } else {
-                    Question::create($questionData);
+                    $question = Question::create($questionData);
                     $this->stats['imported']++;
                 }
+
+                // Handle extra topic relationships with cleaner Eloquent sync
+                if (!empty($allExtraTopicIds)) {
+                    $validExtraTopicIds = array_filter(array_unique($allExtraTopicIds));
+                    if (!empty($validExtraTopicIds)) {
+                        $question->topics()->syncWithoutDetaching($validExtraTopicIds);
+                    }
+                }
+                
+                // Update exam frequency score after linking
+                $question->updateExamFrequencyScore();
             } else {
                 $this->stats['imported']++;
             }

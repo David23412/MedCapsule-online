@@ -221,7 +221,6 @@ class TutorStudentSeeder extends Seeder
                     'percentage_grade' => $score,
                     'duration_seconds' => rand(300, 1800), // 5-30 minutes
                     'question_data' => $this->generateQuestionData($totalQuestions, $correctAnswers),
-                    'correct_answers' => $correctAnswers,
                     'created_at' => now()->subDays(rand(0, 60))->subHours(rand(0, 23)),
                 ]);
             }

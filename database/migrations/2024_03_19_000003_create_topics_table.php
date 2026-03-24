@@ -16,6 +16,7 @@ return new class extends Migration {
             $table->string('case_type')->default('quiz'); // Type: quiz (regular topic), cases, or practical
             $table->integer('display_order')->default(0); // Order of topics within a course
             $table->boolean('is_locked')->default(false); // Topic locking status
+            $table->boolean('is_exam')->default(false); // Whether this topic is an exam
             $table->unsignedInteger('cache_version')->default(1); // Cache version for invalidation
             $table->timestamps();
 
@@ -25,6 +26,7 @@ return new class extends Migration {
             $table->index('display_order'); // To speed up ordering within courses
             $table->index('case_type'); // For filtering by case type
             $table->index('is_locked'); // For topic locking queries
+            $table->index('is_exam'); // For quick filtering of exam topics
             // REMOVED: Indexes for user-specific fields that no longer exist
         });
     }

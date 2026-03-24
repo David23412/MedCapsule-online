@@ -46,7 +46,7 @@ class PlannerContextFactory
         $mixedDurationMinutes = $this->resolveMixedDuration($dailyStudyMinutes, $daysToExam);
         $carryOverTaskIds = $this->resolveCarryOverTaskIds($user, $course->id);
         $courseTopicIds = $topics->pluck('id')->map(fn ($id) => (int) $id)->all();
-        $classicRepairDifficulty = (string) ($courseSettings['classic_repair_difficulty'] ?? 'easy');
+        $classicRepairDifficulty = (string) ($courseSettings['mistake_mastery_mode'] ?? 'easy');
         $backlogSignals = $this->plannerSignalService->buildTopicBacklogSignals(
             $user->id,
             $courseTopicIds,
@@ -60,6 +60,7 @@ class PlannerContextFactory
             'active_assignment_count' => 0,
             'by_topic' => [],
         ];
+        $repairMode = (string) ($courseSettings['repair_mode'] ?? 'easy');
         $conceptSignals = $this->buildConceptSignals($user, $courseTopicIds);
         $topicSignals = $this->buildTopicSignals(
             $user,
@@ -68,11 +69,11 @@ class PlannerContextFactory
             $assignmentSignals,
             $conceptSignals,
             $daysToExam,
-            $courseSettings['preferred_source']
+            $courseSettings['preferred_source'],
+            $repairMode
         );
         $attemptSignals = $this->buildAttemptSignals($user, $courseTopicIds);
         $behaviorSignals = $this->plannerTaskOutcomeService->summarizeRecentBehavior($user, $course->id, $courseTopicIds);
-        $repairMode = (string) ($courseSettings['repair_mode'] ?? 'easy');
 
         return new PlannerContext(
             examDate: $examDate,
@@ -85,7 +86,9 @@ class PlannerContextFactory
             mixedDurationMinutes: $mixedDurationMinutes,
             carryOverTaskIds: $carryOverTaskIds,
             courseTopicIds: $courseTopicIds,
-            openMistakesCount: (int) ($backlogSignals['classic_reviewable_backlog'] ?? $backlogSignals['reviewable_backlog'] ?? 0),
+            openMistakesCount: (int) ($repairMode === 'spaced'
+                ? ($backlogSignals['due_spaced_reviews'] ?? 0)
+                : ($backlogSignals['reviewable_backlog'] ?? 0)),
             overallAccuracy: $this->resolveOverallAccuracy($user),
             topicSignals: $topicSignals,
             attemptSignals: $attemptSignals,
@@ -100,6 +103,7 @@ class PlannerContextFactory
             repairMode: $repairMode,
             classicRepairDifficulty: $classicRepairDifficulty,
             resolvedSettings: $courseSettings,
+            course: $course,
         );
     }
 
@@ -206,7 +210,7 @@ class PlannerContextFactory
 
         $topicAttemptsToday = QuizAttempt::query()
             ->where('user_id', $user->id)
-            ->whereDate('created_at', '>=', now()->subDays(90)->toDateString())
+            ->whereDate('created_at', now()->toDateString()) // today only — used for task completion matching
             ->whereIn('topic_id', $courseTopicIds)
             ->whereNotNull('topic_id')
             ->get($attemptSignalColumns)
@@ -286,7 +290,6 @@ class PlannerContextFactory
                     'stale_skipped_count' => (int) ($signal['stale_skipped_count'] ?? 0),
                 ])
                 ->all(),
-            'total_due' => (int) ($backlogSignals['due_spaced_reviews'] ?? 0),
         ];
     }
 
@@ -302,7 +305,8 @@ class PlannerContextFactory
         array $assignmentSignals,
         array $conceptSignals,
         ?int $daysToExam,
-        ?string $preferredSource
+        ?string $preferredSource,
+        string $repairMode
     ): array
     {
         $topicIds = $topics->pluck('id')->map(fn ($id) => (int) $id)->all();
@@ -470,7 +474,8 @@ class PlannerContextFactory
             $daysToExam,
             $preferredSource,
             $tutorAttemptsByTopicSource->all(),
-            $recentQuizAttempts
+            $recentQuizAttempts,
+            $repairMode
         );
 
         $preferredSourcePhaseActive = collect($profiles)
@@ -502,7 +507,8 @@ class PlannerContextFactory
         ?int $daysToExam,
         ?string $preferredSource,
         array $tutorAttemptsBySource,
-        Collection $recentQuizAttempts
+        Collection $recentQuizAttempts,
+        string $repairMode
     ): array {
         $dueByTopic = collect($backlogSignals['by_topic'] ?? [])->keyBy('topic_id');
         $assignmentByTopic = collect($assignmentSignals['topics'] ?? [])->keyBy('topic_id');
@@ -530,7 +536,8 @@ class PlannerContextFactory
             $examUrgency,
             $preferredSource,
             $tutorAttemptsBySource,
-            $recentQuizAttempts
+            $recentQuizAttempts,
+            $repairMode
         ) {
             $topicId = (int) $topic->id;
             $topicDueSignal = $dueByTopic->get($topicId, []);
@@ -548,9 +555,12 @@ class PlannerContextFactory
                 : ((float) $accuracy <= 0.0 ? 1.0 : 0.0);
 
             $hasPreferredSourceMaterial = $preferredSource !== null && array_key_exists($preferredSource, $topicSources);
+            $preferredSourceTotal = $hasPreferredSourceMaterial ? (int) ($topicSources[$preferredSource] ?? 0) : 0;
             $preferredSourceSamples = $hasPreferredSourceMaterial ? (int) ($sourceSamples[$topicId][$preferredSource] ?? 0) : 0;
             $preferredSourceAccuracy = $hasPreferredSourceMaterial ? (float) ($sourcePercentages[$topicId][$preferredSource] ?? 0.0) : null;
-            $topicHasBlockingBacklog = (int) ($topicDueSignal['reviewable_backlog'] ?? 0) > 0;
+            $topicHasBlockingBacklog = $repairMode === 'spaced'
+                ? ((int) ($topicDueSignal['due_spaced_reviews'] ?? 0) > 0)
+                : ((int) ($topicDueSignal['classic_reviewable_backlog'] ?? 0) > 0);
             $topicHasDueReview = (int) ($topicDueSignal['due_spaced_reviews'] ?? 0) > 0;
             $hasPersistedProgressionState = $topicProgress !== null && (
                 $topicProgress->planner_tutor_cleared_at !== null
@@ -572,6 +582,7 @@ class PlannerContextFactory
                 $topicId,
                 $preferredSource,
                 $hasPreferredSourceMaterial,
+                $preferredSourceTotal,
                 $resolvedTutorClearedAt
             );
             $resolvedQuizClearedAt = $hasPersistedProgressionState
@@ -635,7 +646,8 @@ class PlannerContextFactory
                 $recentQuizAttempts,
                 $topicId,
                 $preferredSource,
-                $hasPreferredSourceMaterial
+                $hasPreferredSourceMaterial,
+                $resolvedClearedAt // post-clear filter: ignore pre-clear failures as noise
             );
             $isRegressed = $resolvedClearedAt !== null
                 && $latestStructuredFailureAt !== null
@@ -722,6 +734,7 @@ class PlannerContextFactory
                 'topic_state' => $state,
                 'recommended_study_mode' => $recommendedStudyMode,
                 'curriculum_unlocked' => false,
+                'tutor_preclear_eligible' => false, // set properly in the second pass
             ]];
         })->all();
 
@@ -733,9 +746,12 @@ class PlannerContextFactory
 
             if ((bool) ($profiles[$topicId]['curriculum_unlocked'] ?? false)
                 && !($profiles[$topicId]['has_persisted_progression_state'] ?? false)
+                && !(bool) ($profiles[$topicId]['is_untouched'] ?? false)
                 && (float) ($profiles[$topicId]['progression_accuracy'] ?? 0.0) >= 70.0
+                && (int) ($profiles[$topicId]['stage_two_question_count'] ?? 0) >= 2
                 && $profiles[$topicId]['resolved_tutor_cleared_at'] === null) {
                 $profiles[$topicId]['tutor_cleared'] = true;
+                $profiles[$topicId]['tutor_preclear_eligible'] = true;
                 $profiles[$topicId]['resolved_tutor_cleared_at'] = $profiles[$topicId]['resolved_quiz_cleared_at']
                     ?? ($profiles[$topicId]['last_attempt_at'] ?? null);
                 $profiles[$topicId]['is_untouched'] = false;
@@ -770,6 +786,7 @@ class PlannerContextFactory
         $preferredKey = $topicId . '|' . (string) $preferredSource;
         if ($hasPreferredSourceMaterial && !empty($tutorAttemptsBySource[$preferredKey] ?? [])) {
             return collect($tutorAttemptsBySource[$preferredKey])
+                ->filter(fn (QuizAttempt $attempt) => (int) ($attempt->duration_seconds ?? 0) >= 300) // min 5 min — exclude abandoned sessions
                 ->map(fn (QuizAttempt $attempt) => $attempt->created_at instanceof Carbon ? $attempt->created_at : ($attempt->created_at ? Carbon::parse($attempt->created_at) : null))
                 ->filter()
                 ->sortDesc()
@@ -779,6 +796,7 @@ class PlannerContextFactory
         $topicTutorAttempt = $recentQuizAttempts
             ->filter(fn (QuizAttempt $attempt) => (int) ($attempt->topic_id ?? 0) === $topicId)
             ->filter(fn (QuizAttempt $attempt) => (string) ($attempt->study_mode ?? '') === 'tutor')
+            ->filter(fn (QuizAttempt $attempt) => (int) ($attempt->duration_seconds ?? 0) >= 300) // min 5 min
             ->filter(function (QuizAttempt $attempt) use ($preferredSource, $hasPreferredSourceMaterial) {
                 if (!$hasPreferredSourceMaterial || $preferredSource === null) {
                     return true;
@@ -799,6 +817,7 @@ class PlannerContextFactory
         int $topicId,
         ?string $preferredSource,
         bool $hasPreferredSourceMaterial,
+        int $preferredSourceTotal,
         ?Carbon $resolvedTutorClearedAt
     ): array {
         $structuredQuizAttempts = $recentQuizAttempts
@@ -806,6 +825,13 @@ class PlannerContextFactory
             ->filter(fn (QuizAttempt $attempt) => (string) ($attempt->study_mode ?? '') === 'quiz')
             ->reject(fn (QuizAttempt $attempt) => (string) ($attempt->session_type ?? '') === 'random_quiz')
             ->filter(function (QuizAttempt $attempt) use ($resolvedTutorClearedAt) {
+                // Consistency fix: Always allow attempts recorded TODAY to count toward 
+                // progression to avoid stalls due to tight clock comparisons or 
+                // overlapping stage transitions in the same request/minute.
+                if ($attempt->created_at !== null && $attempt->created_at->isToday()) {
+                    return true;
+                }
+
                 if (!$resolvedTutorClearedAt instanceof Carbon) {
                     return true;
                 }
@@ -821,10 +847,19 @@ class PlannerContextFactory
         $sourceUsed = null;
 
         if ($hasPreferredSourceMaterial && $preferredSource !== null) {
-            $relevantAttempts = $structuredQuizAttempts
+            $matchingPreferred = $structuredQuizAttempts
                 ->filter(fn (QuizAttempt $attempt) => strcasecmp((string) ($attempt->source ?? ''), $preferredSource) === 0)
                 ->values();
-            $sourceUsed = $preferredSource;
+
+            if ($matchingPreferred->isNotEmpty()) {
+                $relevantAttempts = $matchingPreferred;
+                $sourceUsed = $preferredSource;
+            } else {
+                // Fallback: If no preferred source attempts exist yet, use any available relevant attempts
+                // to avoid blocking progression if the student took a general quiz.
+                $relevantAttempts = $structuredQuizAttempts;
+                $fallbackUsed = true;
+            }
         } else {
             $fallbackUsed = true;
         }
@@ -850,7 +885,7 @@ class PlannerContextFactory
             'fallback_used' => $fallbackUsed,
             'source' => $sourceUsed,
             'pass_ready' => $hasPreferredSourceMaterial
-                ? ($questionCount >= 2 && $accuracy >= 70.0)
+                ? ($questionCount >= min(2, $preferredSourceTotal) && $accuracy >= 70.0 && !$fallbackUsed)
                 : ($questionCount > 0 && $accuracy >= 70.0),
             'latest_passed_at' => $latestPassedAt instanceof Carbon
                 ? $latestPassedAt
@@ -885,12 +920,23 @@ class PlannerContextFactory
         Collection $recentQuizAttempts,
         int $topicId,
         ?string $preferredSource,
-        bool $hasPreferredSourceMaterial
+        bool $hasPreferredSourceMaterial,
+        ?Carbon $resolvedClearedAt = null
     ): ?Carbon {
         $latestFailedAttempt = $recentQuizAttempts
             ->filter(fn (QuizAttempt $attempt) => (int) ($attempt->topic_id ?? 0) === $topicId)
             ->filter(fn (QuizAttempt $attempt) => (string) ($attempt->study_mode ?? '') === 'quiz')
             ->reject(fn (QuizAttempt $attempt) => (string) ($attempt->session_type ?? '') === 'random_quiz')
+            ->filter(function (QuizAttempt $attempt) use ($resolvedClearedAt) {
+                // Only consider attempts AFTER clearing — pre-clear failures are learning noise, not regression
+                if (!$resolvedClearedAt instanceof Carbon) {
+                    return true;
+                }
+
+                return $attempt->created_at instanceof Carbon
+                    ? $attempt->created_at->gt($resolvedClearedAt)
+                    : ($attempt->created_at ? Carbon::parse($attempt->created_at)->gt($resolvedClearedAt) : false);
+            })
             ->filter(function (QuizAttempt $attempt) use ($preferredSource, $hasPreferredSourceMaterial) {
                 if (!$hasPreferredSourceMaterial || $preferredSource === null) {
                     return true;
@@ -953,7 +999,7 @@ class PlannerContextFactory
             'planner_focus' => $plannerFocus,
             'preferred_source' => $preferredSource,
             'repair_mode' => $repairMode,
-            'classic_repair_difficulty' => $classicRepairDifficulty,
+            'mistake_mastery_mode' => $classicRepairDifficulty,
             'course_overrides' => [
                 'planner_exam_date' => $pivot->planner_exam_date ?? null,
                 'planner_target_score' => $pivot->planner_target_score ?? null,
@@ -961,7 +1007,7 @@ class PlannerContextFactory
                 'planner_focus' => $pivot->planner_focus ?? null,
                 'planner_preferred_source' => $pivot->planner_preferred_source ?? null,
                 'planner_repair_mode' => $pivot->planner_repair_mode ?? null,
-                'planner_classic_repair_difficulty' => $pivot->planner_classic_repair_difficulty ?? null,
+                'planner_mistake_mastery_mode' => $pivot->planner_mistake_mastery_mode ?? null,
             ],
         ];
     }
@@ -979,7 +1025,7 @@ class PlannerContextFactory
             'planner_focus',
             'planner_preferred_source',
             'planner_repair_mode',
-            'planner_classic_repair_difficulty',
+            'planner_mistake_mastery_mode',
         ];
 
         self::$availableCoursePlannerColumns = array_values(array_filter(
@@ -1123,8 +1169,8 @@ class PlannerContextFactory
 
     private function resolveClassicRepairDifficulty(User $user, ?object $pivot): string
     {
-        $difficulty = $pivot->planner_classic_repair_difficulty
-            ?? $user->classic_repair_difficulty
+        $difficulty = $pivot->planner_mistake_mastery_mode
+            ?? $user->mistake_mastery_mode
             ?? 'easy';
 
         return in_array($difficulty, ['easy', 'hard'], true) ? $difficulty : 'easy';

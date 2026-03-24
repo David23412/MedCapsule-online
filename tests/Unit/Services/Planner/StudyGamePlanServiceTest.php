@@ -61,7 +61,7 @@ class StudyGamePlanServiceTest extends TestCase
         $first = $this->service->buildForCourse($this->user, $this->course, $topics);
         $second = $this->service->buildForCourse($this->user, $this->course, $topics);
 
-        $this->assertSame(25, $first['version']);
+        $this->assertSame(37, $first['version']);
         $this->assertSame($first['version'], $second['version']);
         $this->assertSame($first['generated_at'], $second['generated_at']);
         $this->assertSame('stable_reuse', $second['trigger_reason']);
@@ -249,7 +249,7 @@ class StudyGamePlanServiceTest extends TestCase
 
         $this->assertNotNull($startTask);
         $this->assertSame('Study: Fresh topic', $startTask['title']);
-        $this->assertTrue((bool) ($repairTask['is_preview'] ?? false));
+        $this->assertNull($repairTask);
     }
 
     public function test_it_prioritizes_untouched_topics_in_course_display_order(): void
@@ -469,7 +469,7 @@ class StudyGamePlanServiceTest extends TestCase
         $firstTask = collect($plan['tasks'])->first();
 
         $this->assertNotNull($firstTask);
-        $this->assertSame('start_topic', $firstTask['type']);
+        $this->assertSame('start_topic', $firstTask['type']); // Fallback used because no preferred attempts, stays in tutor mode
         $this->assertSame('Cairo', $firstTask['resolved_source']);
         $this->assertStringStartsWith('Study: Cardiovascular System', $firstTask['title']);
     }
@@ -774,7 +774,7 @@ class StudyGamePlanServiceTest extends TestCase
         $this->assertFalse((bool) ($tasks[0]['is_preview'] ?? false));
 
         $this->assertSame(2, (int) ($tasks[1]['slot_index'] ?? 0));
-        $this->assertFalse((bool) ($tasks[1]['counts_toward_progression'] ?? true));
+        $this->assertTrue((bool) ($tasks[1]['counts_toward_progression'] ?? false)); // Repair tasks count toward progression even as previews
         $this->assertTrue((bool) ($tasks[1]['is_preview'] ?? false));
         $this->assertSame((int) $frontierTopic->id, (int) ($tasks[1]['topic_id'] ?? 0));
         $this->assertSame('repair_topic', $tasks[1]['type']);
@@ -1074,7 +1074,7 @@ class StudyGamePlanServiceTest extends TestCase
 
         $this->assertNotNull($updatedQuizTask);
         $this->assertFalse((bool) $updatedQuizTask['completed']);
-        $this->assertSame('pending', $updatedQuizTask['completion_state']);
+        $this->assertSame('preview', $updatedQuizTask['completion_state']);
         $this->assertSame('Quiz', $updatedQuizTask['mode_label']);
         $this->assertNull(UserTopicProgress::query()
             ->where('user_id', $this->user->id)

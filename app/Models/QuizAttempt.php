@@ -35,7 +35,6 @@ class QuizAttempt extends Model
         'percentage_grade',
         'duration_seconds',
         'question_data',     // JSON array of {question_id, user_answer, is_correct} for potential review
-        'correct_answers',   // Number of correct answers in the quiz
         'assignment_id',     // Link to assignment if this is an assignment quiz
         'attempt_id'         // Groups multiple sources from same quiz attempt
     ];
@@ -46,7 +45,6 @@ class QuizAttempt extends Model
         'total_questions' => 'integer',
         'duration_seconds' => 'integer',
         'question_data' => 'array',
-        'correct_answers' => 'integer',  // Simple count of correct answers
         'topic_id' => 'integer',
         'assignment_id' => 'integer',
         'attempt_id' => 'integer',
@@ -55,8 +53,7 @@ class QuizAttempt extends Model
 
     protected $attributes = [
         'study_mode' => null,
-        'source' => null,
-        'correct_answers' => 0
+        'source' => null
     ];
 
     /**
@@ -74,7 +71,6 @@ class QuizAttempt extends Model
         'percentage_grade' => 'required|numeric|min:0|max:100',
         'duration_seconds' => 'required|integer|min:0',
         'question_data' => 'nullable|array',
-        'correct_answers' => 'nullable|integer|min:0',
         'assignment_id' => 'nullable|exists:assignments,id',
         'attempt_id' => 'nullable|integer|min:1'
     ];
@@ -111,6 +107,15 @@ class QuizAttempt extends Model
                 \Illuminate\Support\Facades\Cache::forget($performanceCacheKey);
                 \Illuminate\Support\Facades\Cache::forget("performance_tracking_coach_{$quizAttempt->user_id}");
                 
+                // 🔥 CRITICAL: Synchronously clear topic progress cache to avoid stale reads during grading
+                $studyMode = $quizAttempt->study_mode ?: 'quiz';
+                $progressKey = "user_{$quizAttempt->user_id}_topic_{$quizAttempt->topic_id}_progress_{$studyMode}";
+                \Illuminate\Support\Facades\Cache::forget($progressKey);
+                
+                // Clear the Ultra Cache version too (hashed)
+                $ultraKey = "ultra_cache:" . md5($progressKey);
+                \Illuminate\Support\Facades\Cache::forget($ultraKey);
+                
                 \Log::info('Profile cache cleared after quiz attempt', [
                     'user_id' => $quizAttempt->user_id,
                     'quiz_type' => $quizAttempt->quiz_type,
@@ -144,11 +149,6 @@ class QuizAttempt extends Model
         });
 
         static::creating(function ($model) {
-            // CRITICAL FIX: Ensure correct_answers is set if not provided
-            if (!isset($model->correct_answers) || $model->correct_answers === null) {
-                $model->correct_answers = $model->score ?? 0;
-            }
-            
             // CRITICAL FIX: Ensure assignment_id is nullable
             if (empty($model->assignment_id)) {
                 $model->assignment_id = null;
@@ -215,8 +215,7 @@ class QuizAttempt extends Model
                 'study_mode' => $model->study_mode,
                 'source' => $model->source,
                 'score' => $model->score,
-                'total_questions' => $model->total_questions,
-                'correct_answers' => $model->correct_answers
+                'total_questions' => $model->total_questions
             ]);
         });
 
@@ -346,7 +345,8 @@ class QuizAttempt extends Model
         }
         
         // Cache key for this specific user/topic/mode combination
-        $cacheKey = "topic_progress_{$userId}_{$topicId}_{$studyMode}";
+        // 🔥 STANDARDIZED: matches UltraConsolidatedCacheService pattern
+        $cacheKey = "user_{$userId}_topic_{$topicId}_progress_{$studyMode}";
         
         // 🔥 REDUCED CACHE: 10 seconds for instant updates
         return \Illuminate\Support\Facades\Cache::remember($cacheKey, 10, function () use ($userId, $topicId, $studyMode) {
@@ -631,11 +631,6 @@ class QuizAttempt extends Model
                     'is_correct' => $q['is_correct'] ?? false
                 ];
             }, $data['question_data'] ?? []);
-
-            // CRITICAL FIX: Ensure correct_answers is set
-            if (!isset($data['correct_answers'])) {
-                $data['correct_answers'] = $data['score'] ?? 0;
-            }
 
             // Create attempt with calculated data
             $attempt = self::create(self::filterPersistableAttributes(array_merge($data, [

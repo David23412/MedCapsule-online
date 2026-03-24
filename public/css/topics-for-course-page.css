@@ -170,6 +170,11 @@ body{font-family:'Poppins',sans-serif;background-color:#f8f9fa;zoom:.72;margin:0
     line-height: 1;
 }
 
+.sidebar-logo-copy {
+    min-width: 0;
+    flex: 1;
+}
+
 .sidebar-logo-sub {
     font-size: 0.68rem;
     font-weight: 600;
@@ -178,6 +183,10 @@ body{font-family:'Poppins',sans-serif;background-color:#f8f9fa;zoom:.72;margin:0
     text-transform: uppercase;
     line-height: 1;
     margin-top: 4px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 100%;
 }
 
 .sidebar-nav {
@@ -1152,6 +1161,50 @@ body.sidebar-collapsed .main-content {
     color: #e65100 !important;
 }
 
+/* Coming Soon Blur Styles */
+.sidebar-coming-soon {
+    position: relative;
+    margin-top: 1.5rem;
+    padding-bottom: 2rem;
+}
+
+.sidebar-blur-container {
+    filter: blur(4px);
+    pointer-events: none;
+    user-select: none;
+    opacity: 0.5;
+    transition: filter 0.3s ease;
+}
+
+.coming-soon-overlay {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 20;
+    pointer-events: none;
+}
+
+.coming-soon-badge {
+    background: #0f172a;
+    color: #ffffff;
+    padding: 0.65rem 1.4rem;
+    border-radius: 99px;
+    font-size: 0.72rem;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    box-shadow: 0 12px 30px rgba(15, 23, 42, 0.28);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    white-space: nowrap;
+    transform: translateY(-20px);
+}
+
+body.sidebar-collapsed .coming-soon-overlay {
+    display: none;
+}
+
 .profile-circle .profile-image {
     width: 100%;
     height: 100%;
@@ -1304,21 +1357,31 @@ body.sidebar-collapsed .main-content {
 }
 
 #sourceSelectionModal .source-card {
-    padding: 0.75rem 1rem;
+    padding: 0.75rem 0.75rem 0.75rem 0;
     transition: all 0.2s ease;
     margin-bottom: 0.5rem;
-    background: transparent;
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
     position: relative;
     overflow: hidden;
     cursor: pointer;
+    user-select: none;
 }
 
-#sourceSelectionModal .source-card:hover {
-    background-color: rgba(0, 0, 0, 0.02);
+#sourceSelectionModal .source-content {
+    padding-left: calc(3px + 0.5rem);
+}
+
+#sourceSelectionModal .source-card:hover,
+#sourceSelectionModal .source-card.selected:hover {
+    background-color: #f8f9fa;
+    border-color: #cbd5e1;
 }
 
 #sourceSelectionModal .source-card.selected {
-    background-color: rgba(0, 123, 255, 0.03);
+    background-color: #ffffff;
+    border: 1px solid #cbd5e1;
 }
 
 #sourceSelectionModal .source-name {

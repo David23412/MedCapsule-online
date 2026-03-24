@@ -283,7 +283,6 @@ class ComprehensiveTestSeeder extends Seeder
                         'source' => 'seeder',
                         'score' => $correctAnswers,
                         'total_questions' => $totalQuestions,
-                        'correct_answers' => $correctAnswers,
                         'percentage_grade' => ($correctAnswers / $totalQuestions) * 100,
                         'duration_seconds' => rand(300, 1800), // 5-30 minutes
                         'question_data' => $questionData,
@@ -313,7 +312,7 @@ class ComprehensiveTestSeeder extends Seeder
             
             // Update user stats based on quiz attempts
             $userAttempts = QuizAttempt::where('user_id', $student->id)->get();
-            $totalCorrect = $userAttempts->sum('correct_answers');
+            $totalCorrect = $userAttempts->sum('score');
             $totalQuestions = $userAttempts->sum('total_questions');
             
             $student->update([
@@ -330,7 +329,7 @@ class ComprehensiveTestSeeder extends Seeder
             
             foreach ($topics as $topic) {
                 $topicAttempts = $userAttempts->where('topic_id', $topic->id);
-                $topicCorrect = $topicAttempts->sum('correct_answers');
+                $topicCorrect = $topicAttempts->sum('score');
                 $topicTotal = $topicAttempts->sum('total_questions');
                 
                 UserTopicProgress::updateOrCreate([

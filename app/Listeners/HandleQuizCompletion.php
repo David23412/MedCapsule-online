@@ -49,11 +49,13 @@ class HandleQuizCompletion implements ShouldQueue
     {
         try {
             // Process in parallel using separate jobs
-            $this->processUserStats($event);
-            $this->processMistakes($event);
             $this->processNotifications($event);
             $this->processCacheInvalidation($event);
-            $this->processPlannerTasks($event);
+
+            // Sync planner state: apply transitions and rotate tasks if needed.
+            if ($event->course) {
+                $this->studyGamePlanService->syncAfterSession($event->user, $event->course);
+            }
             
         } catch (\Exception $e) {
             Log::error('Quiz completion processing failed', [
@@ -68,65 +70,6 @@ class HandleQuizCompletion implements ShouldQueue
         }
     }
 
-    /**
-     * Process user statistics update
-     */
-    private function processUserStats(QuizCompleted $event): void
-    {
-        try {
-            $this->userStatsService->updateAfterQuizAttempt(
-                $event->user,
-                $event->gradingResult['total_questions'],
-                $event->gradingResult['score'],
-                $event->quizAttempt->duration_seconds
-            );
-            
-            // Calculate and award XP
-            $this->calculateAndAwardXP($event);
-            
-        } catch (\Exception $e) {
-            Log::error('User stats update failed', [
-                'user_id' => $event->user->id,
-                'error' => $e->getMessage()
-            ]);
-        }
-    }
-
-    /**
-     * Process mistakes recording
-     */
-    private function processMistakes(QuizCompleted $event): void
-    {
-        try {
-            $incorrectAnswers = collect($event->gradingResult['results'])
-                ->where('is_correct', false);
-            
-            $questionMap = \App\Models\Question::query()
-                ->whereIn('id', $incorrectAnswers->pluck('question_id')->filter()->all())
-                ->get()
-                ->keyBy('id');
-
-            foreach ($incorrectAnswers as $result) {
-                $question = $questionMap->get($result['question_id'] ?? null);
-
-                if (!$question) {
-                    continue;
-                }
-
-                Mistake::recordFailure(
-                    $event->user->id,
-                    $question,
-                    $result['submitted_answer'] ?? 'unanswered'
-                );
-            }
-            
-        } catch (\Exception $e) {
-            Log::error('Mistakes processing failed', [
-                'user_id' => $event->user->id,
-                'error' => $e->getMessage()
-            ]);
-        }
-    }
 
     /**
      * Process notifications
@@ -189,49 +132,6 @@ class HandleQuizCompletion implements ShouldQueue
         }
     }
 
-    private function processPlannerTasks(QuizCompleted $event): void
-    {
-        try {
-            $course = $event->topic->course()->first();
-            if (!$course) {
-                return;
-            }
-
-            $this->studyGamePlanService->syncAfterSession($event->user, $course);
-        } catch (\Exception $e) {
-            Log::error('Planner sync after quiz completion failed', [
-                'user_id' => $event->user->id,
-                'topic_id' => $event->topic->id,
-                'error' => $e->getMessage(),
-            ]);
-        }
-    }
-
-    /**
-     * Calculate and award XP
-     */
-    private function calculateAndAwardXP(QuizCompleted $event): void
-    {
-        try {
-            $score = $event->gradingResult['score'];            $duration = $event->quizAttempt->duration_seconds;
-            $percentage = $event->gradingResult['percentage_grade'];
-            
-            // Calculate XP
-            $baseXP = $score * 10;
-            $timeBonus = max(0, 50 - floor($duration / 60));
-            $accuracyBonus = floor($percentage / 10) * 5;
-            $earnedXP = $baseXP + $timeBonus + $accuracyBonus;
-            
-            // Award XP
-            $event->user->increment('xp', $earnedXP);
-            
-        } catch (\Exception $e) {
-            Log::error('XP calculation failed', [
-                'user_id' => $event->user->id,
-                'error' => $e->getMessage()
-            ]);
-        }
-    }
 
     /**
      * Check for level up
@@ -268,7 +168,7 @@ class HandleQuizCompletion implements ShouldQueue
             $totalTopics = $course->topics()->count();
             $masteredTopics = \App\Models\UserTopicProgress::where('user_id', $user->id)
                 ->whereIn('topic_id', $course->topics()->pluck('id'))
-                ->where('percentage_grade', '>=', 90) // 90%+ accuracy for mastery
+                ->whereNotNull('planner_cleared_at')
                 ->count();
                 
             if ($totalTopics > 0 && $masteredTopics >= $totalTopics) {

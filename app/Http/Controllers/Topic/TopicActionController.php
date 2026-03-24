@@ -47,11 +47,17 @@ class TopicActionController extends Controller
         $validated = $request->validated();
 
         try {
+            $name = $validated['name'];
+            $isExam = $request->has('is_exam') 
+                ? $request->boolean('is_exam') 
+                : (str_contains(strtolower($name), 'mid') || str_contains(strtolower($name), 'final') || str_contains(strtolower($name), 'exam'));
+
             $topic = Topic::create([
-                'name' => $validated['name'],
+                'name' => $name,
                 'course_id' => $validated['course_id'],
                 'description' => $validated['description'] ?? '',
                 'display_order' => $validated['display_order'] ?? 0,
+                'is_exam' => $isExam,
                 'created_by' => auth()->id()
             ]);
 

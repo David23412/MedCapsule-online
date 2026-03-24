@@ -593,18 +593,43 @@
 
                 sourcesContainer.appendChild(card);
 
+                // Add robust click handler for the entire card
                 card.addEventListener('click', function(e) {
+                    // If the user clicked the checkbox directly, the browser already toggled it.
+                    // We just need to update the card's visual state.
                     if (e.target.type === 'checkbox') {
+                        this.classList.toggle('selected', e.target.checked);
+                        
+                        // Prevent unchecking the last remaining checkbox
+                        const anyChecked = sourcesContainer.querySelector('input[type="checkbox"]:checked');
+                        if (!anyChecked) {
+                            e.target.checked = true;
+                            this.classList.add('selected');
+                        }
                         return;
                     }
+                    
+                    // If they clicked anything else on the card, manually toggle the checkbox
                     const checkbox = this.querySelector('input[type="checkbox"]');
-                    checkbox.checked = !checkbox.checked;
-                    this.classList.toggle('selected', checkbox.checked);
-
-                    const anyChecked = sourcesContainer.querySelector('input[type="checkbox"]:checked');
-                    if (!anyChecked) {
-                        checkbox.checked = true;
-                        this.classList.add('selected');
+                    if (checkbox) {
+                        const newState = !checkbox.checked;
+                        
+                        // Prevent unchecking the last remaining checkbox
+                        const anyChecked = sourcesContainer.querySelector('input[type="checkbox"]:checked');
+                        if (!newState && !anyChecked || (anyChecked && anyChecked.length === 1 && anyChecked[0] === checkbox && !newState)) {
+                            // Already handled by logic above, but being explicit
+                            return;
+                        }
+                        
+                        checkbox.checked = newState;
+                        this.classList.toggle('selected', newState);
+                        
+                        // Final safety check for "at least one"
+                        const stillChecked = sourcesContainer.querySelector('input[type="checkbox"]:checked');
+                        if (!stillChecked) {
+                            checkbox.checked = true;
+                            this.classList.add('selected');
+                        }
                     }
                 });
             });

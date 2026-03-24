@@ -134,7 +134,7 @@ class PerfSnapshot extends Command
 
         // quick cache-hit inference for progress key
         if ($endpoint === 'source-progress' || $endpoint === 'quiz-grade') {
-            $progressKey = "topic_progress_{$user->id}_{$topic->id}_quiz";
+            $progressKey = "user_{$user->id}_topic_{$topic->id}_progress_quiz";
             Cache::forget($progressKey);
             DB::flushQueryLog();
             DB::enableQueryLog();

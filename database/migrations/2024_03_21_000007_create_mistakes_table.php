@@ -13,8 +13,7 @@ return new class extends Migration
             $table->foreignId('user_id')->constrained()->onDelete('cascade');
             $table->foreignId('question_id')->constrained()->onDelete('cascade');
             $table->string('submitted_answer')->nullable(); // User's wrong answer (null if skipped)
-            $table->text('question_text'); // Stores question text directly
-            $table->string('correct_answer'); // Correct answer for review
+            
             $table->integer('correct_streak')->default(0); // # of consecutive correct answers
             $table->integer('quick_correct_count')->default(0); // Count of correct answers in quick mode
             $table->integer('quiz_correct_count')->default(0); // Count of correct answers in quiz mode
@@ -65,6 +64,7 @@ return new class extends Migration
             $table->foreignId('course_id')->constrained()->onDelete('cascade');
             $table->unsignedInteger('consecutive_correct')->default(0);
             $table->timestamp('graduated_at')->nullable();
+            $table->string('graduation_mode', 20)->nullable(); // Tracks if graduated in easy/hard mode
             $table->timestamp('last_attempt_at')->nullable();
             $table->string('last_attempt_result', 16)->nullable();
             $table->unsignedInteger('total_attempts')->default(0);

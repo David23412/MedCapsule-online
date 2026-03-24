@@ -26,6 +26,10 @@ class PlannerTaskOutcomeService
                 continue;
             }
 
+            if ((bool) ($task['is_preview'] ?? false)) {
+                continue;
+            }
+
             $outcome = PlannerTaskOutcome::query()
                 ->where('user_id', $user->id)
                 ->whereDate('plan_date', $planDate)
@@ -54,7 +58,7 @@ class PlannerTaskOutcomeService
 
             $completionLatencyMinutes = $outcome->completion_latency_minutes;
             if ($completionLatencyMinutes === null && $completedAt !== null && $firstPresentedAt !== null) {
-                $completionLatencyMinutes = max(0, $firstPresentedAt->diffInMinutes($completedAt));
+                $completionLatencyMinutes = max(1, $firstPresentedAt->diffInMinutes($completedAt));
             }
 
             $outcome->fill([
@@ -107,7 +111,7 @@ class PlannerTaskOutcomeService
                         'planner_focus' => $context->plannerFocus,
                         'preferred_source' => $context->preferredSource,
                         'repair_mode' => $context->repairMode,
-                        'classic_repair_difficulty' => $context->classicRepairDifficulty,
+                        'mistake_mastery_mode' => $context->classicRepairDifficulty,
                     ],
                 ],
             ]);
@@ -122,9 +126,7 @@ class PlannerTaskOutcomeService
                 ->where('course_id', $course->id)
                 ->whereNotIn('task_id', $presentTaskIds)
                 ->whereNull('completed_at')
-                ->update([
-                    'last_presented_at' => now(),
-                ]);
+                    ->delete();
         }
     }
 
@@ -190,7 +192,11 @@ class PlannerTaskOutcomeService
 
         $byStudyModePerformance = $attempts
             ->map(function (QuizAttempt $attempt) {
-                $studyMode = $attempt->study_mode ?: ($attempt->quiz_type === 'random' ? 'quiz' : 'quiz');
+                $studyMode = $attempt->study_mode ?: match($attempt->quiz_type) {
+                    'mistake_review' => 'mistake_review',
+                    'random' => 'quiz',
+                    default => 'quiz',
+                };
 
                 return [
                     'study_mode' => $studyMode,
@@ -201,11 +207,26 @@ class PlannerTaskOutcomeService
             })
             ->groupBy('study_mode')
             ->map(function (Collection $group) use ($byStudyModeCompletion) {
-                $totalQuestions = (int) $group->sum('total_questions');
-                $totalMinutes = max(0.01, ((int) $group->sum('duration_seconds')) / 60);
+                $sessionRates = $group
+                    ->filter(fn ($row) => $row['duration_seconds'] > 30)
+                    ->map(fn ($row) => $row['total_questions'] / max(0.01, $row['duration_seconds'] / 60))
+                    ->values()
+                    ->sort()
+                    ->values();
+
+                if ($sessionRates->isEmpty()) {
+                    $totalQ = $group->sum('total_questions');
+                    $totalM = max(0.01, $group->sum('duration_seconds') / 60);
+                    $qpm = $totalQ / $totalM;
+                } else {
+                    $mid = (int) floor($sessionRates->count() / 2);
+                    $qpm = $sessionRates->count() % 2 === 0
+                        ? ($sessionRates[$mid - 1] + $sessionRates[$mid]) / 2.0
+                        : $sessionRates[$mid];
+                }
 
                 return [
-                    'questions_per_minute' => round($totalQuestions / $totalMinutes, 4),
+                    'questions_per_minute' => round((float) $qpm, 4),
                     'average_accuracy' => round((float) $group->avg('percentage_grade'), 2),
                     'completion_rate' => (float) ($byStudyModeCompletion[$group->first()['study_mode']] ?? 0.0),
                 ];

@@ -24,6 +24,11 @@
         window.__MEDCAPSULE_LANDING__ = {{ Illuminate\Support\Js::from([
             'isAuthenticated' => auth()->check(),
             'appUrl' => url(''),
+            'user' => auth()->check() ? [
+                'name' => auth()->user()->name,
+                'profile_image_url' => auth()->user()->getProfileImageUrl(),
+                'profile_fallback_url' => 'https://ui-avatars.com/api/?name=' . urlencode(auth()->user()->name) . '&size=100&background=F0F4FF&color=3579F6',
+            ] : null,
         ]) }};
     </script>
 

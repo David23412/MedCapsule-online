@@ -184,13 +184,11 @@ class TopicViewController extends Controller
             $latestAttempt = $latestAttempts[$source] ?? null;
 
             if ($latestAttempt) {
-                // Use correct_answers or fall back to score (they should be the same)
-                $correctAnswers = $latestAttempt->correct_answers ?? $latestAttempt->score;
+                $correctAnswers = $latestAttempt->score;
                 
                 Log::info('🔥 SOURCE PROGRESS: Latest attempt found', [
                     'source' => $source,
                     'attempt_id' => $latestAttempt->id,
-                    'correct_answers' => $latestAttempt->correct_answers,
                     'score' => $latestAttempt->score,
                     'used_correct_answers' => $correctAnswers,
                     'percentage_grade' => $latestAttempt->percentage_grade,

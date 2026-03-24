@@ -21,7 +21,7 @@ class TopicPlannerPayloadTest extends TestCase
             'target_score' => 81,
             'daily_study_minutes' => 90,
             'repair_mode' => 'hard',
-            'classic_repair_difficulty' => 'hard',
+            'mistake_mastery_mode' => 'hard',
             'survey_completed' => true,
             'free_courses_unlocked' => true,
             'has_sr_access' => true,
@@ -31,6 +31,7 @@ class TopicPlannerPayloadTest extends TestCase
             'description' => 'Feature test course',
             'type' => 'medical',
             'academic_year' => '2026-1',
+            'access_type' => 'free',
             'price' => 0,
         ]);
         DB::table('course_user')->insert([
@@ -42,7 +43,7 @@ class TopicPlannerPayloadTest extends TestCase
             'planner_daily_study_minutes' => 40,
             'planner_exam_date' => now()->addDays(7)->toDateString(),
             'planner_repair_mode' => 'spaced',
-            'planner_classic_repair_difficulty' => 'easy',
+            'planner_mistake_mastery_mode' => 'easy',
             'created_at' => now(),
             'updated_at' => now(),
         ]);
@@ -75,7 +76,7 @@ class TopicPlannerPayloadTest extends TestCase
             return data_get($gamePlan, 'settings.resolved_settings.planner_focus') === 'revision'
                 && data_get($gamePlan, 'settings.resolved_settings.effective_daily_study_minutes') === 40
                 && data_get($gamePlan, 'settings.resolved_settings.repair_mode') === 'spaced'
-                && data_get($gamePlan, 'settings.resolved_settings.classic_repair_difficulty') === 'easy'
+                && data_get($gamePlan, 'settings.resolved_settings.mistake_mastery_mode') === 'easy'
                 && array_key_exists('planned_minutes', $gamePlan)
                 && array_key_exists('planned_questions', $gamePlan)
                 && array_key_exists('daily_progress', $gamePlan)
@@ -132,12 +133,13 @@ class TopicPlannerPayloadTest extends TestCase
 
     public function test_course_exam_date_update_preserves_other_course_planner_overrides(): void
     {
-        $user = User::factory()->student()->create();
+        $this->withoutExceptionHandling(); $user = User::factory()->student()->create();
         $course = Course::create([
             'name' => 'Planner override course',
             'description' => 'Feature test course',
             'type' => 'medical',
             'academic_year' => '2026-1',
+            'access_type' => 'free',
             'price' => 0,
         ]);
 

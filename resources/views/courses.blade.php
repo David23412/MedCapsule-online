@@ -193,8 +193,13 @@
                                     </div>
                                 </li>
                                 <li>
-                                    <a class="dropdown-item" href="{{ route('review.index') }}">
-                                        <i class="fas fa-exclamation-circle me-2"></i>My Mistakes
+                                    <a class="dropdown-item" href="{{ route('profile') }}">
+                                        <i class="fas fa-user-circle me-2"></i>My Profile
+                                    </a>
+                                </li>
+                                <li>
+                                    <a class="dropdown-item" href="https://t.me/Medcapsule1" target="_blank">
+                                        <i class="fab fa-telegram-plane me-2"></i>Join Support
                                     </a>
                                 </li>
                                 @if($currentUserView['is_admin'] ?? Auth::user()->isAdmin())

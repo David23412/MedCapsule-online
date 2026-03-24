@@ -11,11 +11,19 @@ use Normalizer;
 
 class SessionSecurityService
 {
+    private array $fingerprintCache = [];
+    private const HARD_LOCK_THRESHOLD = 3;
+    private const HARD_LOCK_PERIOD = 86400 * 30; // 30 days
     /**
      * Generate device fingerprint from request
      */
     public function generateDeviceFingerprint(Request $request): string
     {
+        $cacheKey = spl_object_hash($request);
+        if (isset($this->fingerprintCache[$cacheKey])) {
+            return $this->fingerprintCache[$cacheKey];
+        }
+
         // Get all headers in their original structure for maximum sensitivity
         $allHeaders = $request->headers->all();
         
@@ -44,7 +52,10 @@ class SessionSecurityService
         
         $allComponents = array_merge($components, $additionalEntropy);
         
-        return hash('sha256', implode('|', $allComponents));
+        $fingerprint = hash('sha256', implode('|', $allComponents));
+        $this->fingerprintCache[$cacheKey] = $fingerprint;
+        
+        return $fingerprint;
     }
 
     /**
@@ -122,12 +133,16 @@ class SessionSecurityService
         ];
     }
 
-    /**
-     * Log security event
-     */
     public function logSecurityEvent(User $user, string $eventType, Request $request, array $securityData = []): void
     {
         try {
+            $risk = $securityData['risk_level'] ?? 'low';
+            
+            // Hard Lock escalation logic
+            if ($risk === 'critical') {
+                $this->incrementHardLockScore($user->id);
+            }
+
             SessionSecurityLog::create([
                 'user_id' => $user->id,
                 'event_type' => $eventType,
@@ -135,7 +150,7 @@ class SessionSecurityService
                 'user_agent' => $request->userAgent() ?? 'unknown',
                 'device_fingerprint' => $this->generateDeviceFingerprint($request),
                 'security_data' => $securityData,
-                'risk_level' => $securityData['risk_level'] ?? 'low',
+                'risk_level' => $risk,
                 'action_taken' => $securityData['action_taken'] ?? false
             ]);
         } catch (\Exception $e) {
@@ -145,6 +160,105 @@ class SessionSecurityService
                 'error' => $e->getMessage()
             ]);
         }
+    }
+
+    private function incrementHardLockScore(int $userId): void
+    {
+        $key = "hard_lock_score_{$userId}";
+        $score = Cache::get($key, 0) + 1;
+        Cache::put($key, $score, 86400); // 24 hour window
+        
+        if ($score >= self::HARD_LOCK_THRESHOLD) {
+            Cache::put("account_locked_permanent_{$userId}", true, self::HARD_LOCK_PERIOD);
+        }
+    }
+
+    public function isPermanentlyLocked(int $userId): bool
+    {
+        return (bool) Cache::get("account_locked_permanent_{$userId}", false);
+    }
+
+    /**
+     * Detect if two different IPs are using the same account concurrently
+     */
+    public function detectConcurrentUsage(int $userId, string $currentIp): bool
+    {
+        $key = "recent_ips_{$userId}";
+        $ips = Cache::get($key, []);
+        
+        // If we see more than 1 IP in the last 2 minutes, it's highly suspicious
+        if (count($ips) > 1 && !in_array($currentIp, $ips)) {
+             return true;
+        }
+
+        return false;
+    }
+
+    /**
+     * Enhanced session validation with Zero Sharing policy
+     */
+    public function validateSessionSecurity(User $user, Request $request): array
+    {
+        $result = [
+            'valid' => true,
+            'action' => 'allow',
+            'reason' => null
+        ];
+
+        // 1. SESSION TOKEN LOCK (Primary Multi-Device Prevention)
+        $currentSessionId = $request->session()->getId();
+        if ($user->active_session_token && $user->active_session_token !== $currentSessionId) {
+            $result = [
+                'valid' => false,
+                'action' => 'logout',
+                'reason' => 'Multiple logins detected. This account is already in use on another device.'
+            ];
+            return $result;
+        }
+
+        // 2. DEVICE FINGERPRINT LOCK
+        $currentFingerprint = $this->generateDeviceFingerprint($request);
+        if ($user->device_fingerprint && $user->device_fingerprint !== $currentFingerprint) {
+            $result = [
+                'valid' => false,
+                'action' => 'logout',
+                'reason' => 'Security fingerprint mismatch. Your device/browser signature has changed.'
+            ];
+            return $result;
+        }
+
+        // 3. CONCURRENT IP LOCK
+        $currentIP = $request->ip();
+        if ($this->detectConcurrentUsage($user->id, $currentIP)) {
+            $result = [
+                'valid' => false,
+                'action' => 'force_logout',
+                'reason' => 'Concurrent account usage detected from multiple geographic locations.'
+            ];
+            return $result;
+        }
+
+        // Advanced security checks (these can still run even if the above checks pass, for additional layers)
+        if ($this->detectSessionHijacking($user, $request)) {
+            $result = [
+                'valid' => false,
+                'action' => 'force_logout',
+                'reason' => 'Suspicious activity detected - security breach prevented'
+            ];
+            return $result;
+        }
+
+        // Rate limiting check
+        if ($this->isExcessiveActivity($user->id)) {
+            $result = [
+                'valid' => false,
+                'action' => 'temporary_block',
+                'reason' => 'Excessive activity detected - temporary restriction'
+            ];
+            return $result;
+        }
+
+        return $result;
     }
 
     /**
@@ -186,60 +300,6 @@ class SessionSecurityService
     }
 
     /**
-     * Enhanced session validation with security checks
-     */
-    public function validateSessionSecurity(User $user, Request $request): array
-    {
-        $result = [
-            'valid' => true,
-            'action' => 'allow',
-            'reason' => null
-        ];
-
-        // Skip validation if user has no active session
-        if (!$user->active_session_token) {
-            return $result;
-        }
-
-        // For testing purposes, we'll simulate session validation
-        // In real middleware, this would check against the actual session ID
-        $currentFingerprint = $this->generateDeviceFingerprint($request);
-        $currentIP = $request->ip();
-
-        // Check if device fingerprint matches (if set)
-        if ($user->device_fingerprint && $user->device_fingerprint !== $currentFingerprint) {
-            $result = [
-                'valid' => false,
-                'action' => 'logout',
-                'reason' => 'Device fingerprint mismatch - session hijacking detected'
-            ];
-            return $result;
-        }
-
-        // Check for IP changes (basic geolocation check)
-        if ($user->last_login_ip && $this->isDifferentGeolocation($user->last_login_ip, $currentIP)) {
-            $result = [
-                'valid' => false,
-                'action' => 'logout',
-                'reason' => 'Geographic location change detected'
-            ];
-            return $result;
-        }
-
-        // Advanced security checks
-        if ($this->detectSessionHijacking($user, $request)) {
-            $result = [
-                'valid' => false,
-                'action' => 'force_logout',
-                'reason' => 'Suspicious activity detected - security breach prevented'
-            ];
-            return $result;
-        }
-
-        // Rate limiting check
-        if ($this->isExcessiveActivity($user->id)) {
-            $result = [
-                'valid' => false,
                 'action' => 'temporary_block',
                 'reason' => 'Excessive activity detected - temporary restriction'
             ];

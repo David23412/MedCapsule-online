@@ -57,7 +57,7 @@ class QuizReadController extends Controller
                     'id' => $topic->id,
                     'title' => $topic->name,
                     'course_name' => $topic->course->name,
-                    'total_questions' => $topic->questions()->count(),
+                    'total_questions' => $topic->questions_count,
                     'available_sources' => $this->ultraFastQuizService->getAvailableSources($topic),
                     'last_attempt' => $topic->quizAttempts()
                         ->where('user_id', auth()->id())

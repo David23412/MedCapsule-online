@@ -35,7 +35,7 @@ class User extends Authenticatable
         'daily_study_minutes',
         'planner_focus',
         'repair_mode',
-        'classic_repair_difficulty',
+        'mistake_mastery_mode',
         'last_active_at',
         'profile_picture_url',
         'correct_answers_count',
@@ -84,7 +84,7 @@ class User extends Authenticatable
         'daily_study_minutes' => 'integer',
         'profile_picture_url' => 'string',
         'repair_mode' => 'string',
-        'classic_repair_difficulty' => 'string',
+        'mistake_mastery_mode' => 'string',
         'correct_answers_count' => 'integer',
         'total_questions_attempted' => 'integer',
         'concurrent_login_attempts' => 'integer',
@@ -153,7 +153,7 @@ class User extends Authenticatable
             'planner_focus',
             'planner_preferred_source',
             'planner_repair_mode',
-            'planner_classic_repair_difficulty',
+            'planner_mistake_mastery_mode',
         ];
 
         self::$availableCourseUserPlannerPivotColumns = array_values(array_filter(
@@ -341,7 +341,8 @@ class User extends Authenticatable
             return [];
         }
 
-        if ($this->isAdmin()) {
+        // 🔥 FIX: Admins and Tutors get FULL access to ALL courses (even without enrollment)
+        if ($this->isAdmin() || $this->isTutor()) {
             return array_fill_keys($courseIds, self::COURSE_ACCESS_FULL);
         }
 
@@ -350,10 +351,13 @@ class User extends Authenticatable
             ->unique()
             ->values()
             ->all();
+        
+
 
         $accessMap = array_fill_keys($normalizedCourseIds, null);
         $hasFreeSurveyUnlock = $this->hasUnlockedFreeCourses();
 
+        // 🔥 FIX: Include access_type column for proper access control
         $rows = DB::table('courses')
             ->leftJoin('course_user', function ($join) {
                 $join->on('courses.id', '=', 'course_user.course_id')
@@ -362,7 +366,8 @@ class User extends Authenticatable
             ->whereIn('courses.id', $normalizedCourseIds)
             ->select(
                 'courses.id',
-                'courses.price',
+                'courses.access_type',  // 🔥 NEW: Use access_type as source of truth
+                'courses.price',        // Keep for backward compatibility
                 'course_user.is_enrolled',
                 'course_user.access_level'
             )
@@ -370,33 +375,62 @@ class User extends Authenticatable
 
         foreach ($rows as $row) {
             $courseId = (int) $row->id;
-            $isFreeCourse = $row->price === null || (float) $row->price <= 0;
+            $accessType = $row->access_type ?? 'paid'; // Default to paid if not set
             $isEnrolled = (bool) ($row->is_enrolled ?? false);
 
+            // 🔥 FIX: Must be enrolled for any access (students only)
             if (!$isEnrolled) {
                 $accessMap[$courseId] = null;
                 continue;
             }
 
-            if ($this->isTutor()) {
-                $accessMap[$courseId] = self::COURSE_ACCESS_FULL;
-                continue;
-            }
+            // 🔥 FIX: Use access_type column as source of truth
+            switch ($accessType) {
+                case 'free':
+                    // Free access courses → FULL access for enrolled users
+                    $accessMap[$courseId] = self::COURSE_ACCESS_FULL;
+                    break;
+                    
+                case 'preview':
+                    // Preview courses → PREVIEW access (if survey unlocked)
+                    $accessMap[$courseId] = $hasFreeSurveyUnlock 
+                        ? self::COURSE_ACCESS_PREVIEW 
+                        : null;
+                    break;
+                    
+                case 'paid':
+                    // 🔥 FIX: Paid courses → Check payment status
+                    $hasPaid = DB::table('payments')
+                        ->where('user_id', $this->id)
+                        ->where('course_id', $courseId)
+                        ->where('status', 'completed')
+                        ->exists();
+                    
+                    $accessMap[$courseId] = $hasPaid 
+                        ? self::COURSE_ACCESS_FULL 
+                        : null;
+                    break;
+                    
+                default:
+                    // 🔥 FALLBACK: Use legacy price-based logic for backward compatibility
+                    $isFreeCourse = $row->price === null || (float) $row->price <= 0;
+                    
+                    if ($isFreeCourse && !$hasFreeSurveyUnlock) {
+                        $accessMap[$courseId] = null;
+                        continue 2;
+                    }
 
-            if ($isFreeCourse && !$hasFreeSurveyUnlock) {
-                $accessMap[$courseId] = null;
-                continue;
-            }
+                    $storedLevel = is_string($row->access_level) ? trim($row->access_level) : null;
+                    if (in_array($storedLevel, [self::COURSE_ACCESS_PREVIEW, self::COURSE_ACCESS_FULL], true)) {
+                        $accessMap[$courseId] = $storedLevel;
+                        continue 2;
+                    }
 
-            $storedLevel = is_string($row->access_level) ? trim($row->access_level) : null;
-            if (in_array($storedLevel, [self::COURSE_ACCESS_PREVIEW, self::COURSE_ACCESS_FULL], true)) {
-                $accessMap[$courseId] = $storedLevel;
-                continue;
+                    $accessMap[$courseId] = $isFreeCourse
+                        ? self::COURSE_ACCESS_PREVIEW
+                        : self::COURSE_ACCESS_FULL;
+                    break;
             }
-
-            $accessMap[$courseId] = $isFreeCourse
-                ? self::COURSE_ACCESS_PREVIEW
-                : self::COURSE_ACCESS_FULL;
         }
 
         return $accessMap;

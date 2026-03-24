@@ -73,8 +73,8 @@ return new class extends Migration
                 $tableSchema->string('planner_repair_mode', 20)->nullable()->after('planner_preferred_source');
             }
 
-            if (!Schema::hasColumn('course_user', 'planner_classic_repair_difficulty')) {
-                $tableSchema->string('planner_classic_repair_difficulty', 20)->nullable()->after('planner_repair_mode');
+            if (!Schema::hasColumn('course_user', 'planner_mistake_mastery_mode')) {
+                $tableSchema->string('planner_mistake_mastery_mode', 20)->nullable()->after('planner_repair_mode');
             }
         });
 
@@ -175,8 +175,8 @@ return new class extends Migration
         }
 
         $columns = [];
-        if (Schema::hasColumn('course_user', 'planner_classic_repair_difficulty')) {
-            $columns[] = 'planner_classic_repair_difficulty';
+        if (Schema::hasColumn('course_user', 'planner_mistake_mastery_mode')) {
+            $columns[] = 'planner_mistake_mastery_mode';
         }
         if (Schema::hasColumn('course_user', 'planner_repair_mode')) {
             $columns[] = 'planner_repair_mode';

@@ -70,9 +70,9 @@ class PlannerTaskBuilderService
 
         $frontierTask = $this->buildFrontierProtocolTask($buckets, $context);
         if ($frontierTask !== null) {
-            return collect([
-                $this->withProtocolMetadata($frontierTask, 1, null, true),
-            ]);
+            $slot1 = $this->withProtocolMetadata($frontierTask, 1, null, true);
+            $previews = $this->buildProgressionPreviewTasks($topics, $context, $slot1);
+            return collect([$slot1])->concat($previews)->values();
         }
 
         $backfillBuilders = [
@@ -146,15 +146,7 @@ class PlannerTaskBuilderService
             if ($slotTwo !== null) {
                 $previews->push($this->withPreviewMetadata($slotTwo, 2, (string) $actionableTask['id']));
             }
-
-            $slotThree = $this->topicLikelyClearsCleanly($profile)
-                ? ($nextTopic ? $this->buildStudyPreviewTask($nextTopic, $context) : null)
-                : $this->buildRepairPreviewTask($currentTopic, $context);
-
-            if ($slotThree !== null && $previews->isNotEmpty()) {
-                $previews->push($this->withPreviewMetadata($slotThree, 3, (string) $previews->last()['id']));
-            }
-
+            // No slot 3 — cannot know if mistakes will exist before quiz is taken
             return $previews->values();
         }
 
@@ -175,14 +167,16 @@ class PlannerTaskBuilderService
             return $previews->filter()->values();
         }
 
-        if ($this->isRepairProgressionTask($actionableTask) && $nextTopic !== null) {
-            $slotTwo = $this->buildStudyPreviewTask($nextTopic, $context);
-            $previews->push($this->withPreviewMetadata($slotTwo, 2, (string) $actionableTask['id']));
-            $previews->push($this->withPreviewMetadata(
-                $this->buildSolvePreviewTask($nextTopic, $context),
-                3,
-                (string) $previews->last()['id']
-            ));
+        if ($this->isRepairProgressionTask($actionableTask)) {
+            if ($nextTopic !== null) {
+                $slotTwo = $this->buildStudyPreviewTask($nextTopic, $context);
+                $previews->push($this->withPreviewMetadata($slotTwo, 2, (string) $actionableTask['id']));
+                $slotThree = $this->buildSolvePreviewTask($nextTopic, $context);
+                if ($slotThree !== null) {
+                    $previews->push($this->withPreviewMetadata($slotThree, 3, (string) $previews->last()['id']));
+                }
+            }
+            // if nextTopic is null (last topic in repair stage), previews stays empty — correct, nothing left to show
         }
 
         return $previews->filter()->values();
@@ -246,7 +240,7 @@ class PlannerTaskBuilderService
 
         if ($context->repairMode === 'spaced') {
             return $clearedTopics
-                ->filter(fn (Topic $topic) => !(bool) data_get($context->topicSignals, 'profiles.' . $topic->id . '.has_due_review', false))
+                ->filter(fn (Topic $topic) => (bool) data_get($context->topicSignals, 'profiles.' . $topic->id . '.has_due_review', false))
                 ->map(function (Topic $topic) use ($context) {
                     $signal = $this->resolveSpacedSignalForTopic((int) $topic->id, $context, false);
 
@@ -297,7 +291,9 @@ class PlannerTaskBuilderService
         int $limit
     ): Collection {
         return $this->clearedBackfillTopics($topics, $buckets, $context)
-            ->reject(fn (Topic $topic) => (bool) data_get($context->topicSignals, 'profiles.' . $topic->id . '.has_reviewable_backlog', false))
+            ->reject(fn (Topic $topic) => $context->repairMode === 'spaced' 
+                ? (bool) data_get($context->topicSignals, 'profiles.' . $topic->id . '.has_due_review', false)
+                : (bool) data_get($context->topicSignals, 'profiles.' . $topic->id . '.has_reviewable_backlog', false))
             ->sortByDesc(fn (Topic $topic) => (float) data_get($context->topicSignals, 'profiles.' . $topic->id . '.priority_score', 0.0))
             ->map(fn (Topic $topic) => $this->buildSecureTopicTasks(collect([$topic]), $context, 1, 6)->first())
             ->filter()
@@ -312,7 +308,9 @@ class PlannerTaskBuilderService
         int $limit
     ): Collection {
         return $this->clearedBackfillTopics($topics, $buckets, $context)
-            ->reject(fn (Topic $topic) => (bool) data_get($context->topicSignals, 'profiles.' . $topic->id . '.has_reviewable_backlog', false))
+            ->reject(fn (Topic $topic) => $context->repairMode === 'spaced' 
+                ? (bool) data_get($context->topicSignals, 'profiles.' . $topic->id . '.has_due_review', false)
+                : (bool) data_get($context->topicSignals, 'profiles.' . $topic->id . '.has_reviewable_backlog', false))
             ->filter(fn (Topic $topic) => (int) data_get($context->topicSignals, 'profiles.' . $topic->id . '.hours_since_last_activity', 0) > 336)
             ->sortByDesc(fn (Topic $topic) => (int) data_get($context->topicSignals, 'profiles.' . $topic->id . '.hours_since_last_activity', 0))
             ->map(fn (Topic $topic) => $this->buildSecureTopicTasks(collect([$topic]), $context, 1, 4)->first())
@@ -336,7 +334,9 @@ class PlannerTaskBuilderService
         }
 
         $coveredTopicIds = $this->clearedBackfillTopics($topics, $buckets, $context)
-            ->reject(fn (Topic $topic) => (bool) data_get($context->topicSignals, 'profiles.' . $topic->id . '.has_reviewable_backlog', false))
+            ->reject(fn (Topic $topic) => $context->repairMode === 'spaced' 
+                ? (bool) data_get($context->topicSignals, 'profiles.' . $topic->id . '.has_due_review', false)
+                : (bool) data_get($context->topicSignals, 'profiles.' . $topic->id . '.has_reviewable_backlog', false))
             ->pluck('id')
             ->map(fn ($id) => (int) $id)
             ->take(6)
@@ -478,6 +478,7 @@ class PlannerTaskBuilderService
             'priority_score' => $score['priority'],
             'score_components' => $score['components'],
             'sizing_basis' => $sizing['sizing_basis'],
+            'counts_toward_progression' => true,
         ] + $this->taskReasonService->repairTopic($topic, $this->topicGrade($topic, $context), $sourceLabel, $conceptLabel);
     }
 
@@ -624,7 +625,10 @@ class PlannerTaskBuilderService
     {
         $task['slot_index'] = $slotIndex;
         $task['backfill_level'] = null;
-        $task['counts_toward_progression'] = false;
+        // Preserve counts_toward_progression from the task type
+        // frontier_topic_quiz and repair tasks count toward progression
+        // even when shown as previews
+        $task['counts_toward_progression'] = (bool) ($task['counts_toward_progression'] ?? in_array($task['type'] ?? '', ['frontier_topic_quiz', 'repair_topic', 'secure_topic'], true));
         $task['is_preview'] = true;
         $task['unlocks_after_task_id'] = $unlocksAfterTaskId;
         $task['completed'] = false;
@@ -791,83 +795,6 @@ class PlannerTaskBuilderService
         ];
     }
 
-    public function backfillRemainingSlots(Collection $candidates, PlannerTopicBuckets $buckets, PlannerContext $context, int $targetCount = 3): Collection
-    {
-        if ($candidates->count() >= $targetCount) {
-            return $candidates;
-        }
-
-        $clearedTopics = $buckets->allOpenTopics
-            ->reject(fn (Topic $topic) => (int) $topic->id === (int) $buckets->frontierTopicId)
-            ->values();
-
-        if ($clearedTopics->isEmpty()) {
-            return $candidates;
-        }
-
-        $existingTopicIds = $candidates->pluck('topic_id')->filter()->map(fn ($id) => (int) $id)->all();
-        $limit = $targetCount - $candidates->count();
-
-        // 1. Mistake review for cleared topics (Classic Mode)
-        if ($context->repairMode !== 'spaced' && $candidates->count() < $targetCount) {
-            $repairTopics = $clearedTopics->reject(fn ($t) => in_array((int) $t->id, $existingTopicIds, true));
-            $repairTasks = $this->buildRepairTopicTasks($repairTopics, $context, $limit, -10);
-            foreach ($repairTasks as $task) {
-                if ($candidates->count() >= $targetCount) break;
-                $candidates->push($task);
-                $existingTopicIds[] = (int) ($task['topic_id'] ?? 0);
-            }
-        }
-
-        // 2. Spaced review for cleared topics (SR Mode)
-        if ($context->repairMode === 'spaced' && $candidates->count() < $targetCount) {
-            $dueMistakeTopics = collect($context->dueMistakeSignals['by_topic'] ?? [])
-                ->filter(fn (array $signal) => $clearedTopics->contains('id', (int) ($signal['topic_id'] ?? 0)))
-                ->reject(fn (array $signal) => in_array((int) ($signal['topic_id'] ?? 0), $existingTopicIds, true))
-                ->values();
-            
-            // Temporary bucket for SR backfill
-            $srBuckets = new PlannerTopicBuckets(
-                openTopics: $clearedTopics,
-                allOpenTopics: $clearedTopics,
-                untouchedTopics: collect(),
-                weakTopics: collect(),
-                nearMasteryTopics: collect(),
-                dueMistakeTopics: $dueMistakeTopics,
-                masteredTopicsCount: 0,
-                attemptedTopicsCount: 0,
-                frontierTopicId: null,
-                progressionLocked: false
-            );
-
-            $srTasks = $this->buildTopicMistakeReviewTasks($srBuckets, $context, $limit, -10);
-            foreach ($srTasks as $task) {
-                if ($candidates->count() >= $targetCount) break;
-                $candidates->push($task);
-                $existingTopicIds[] = (int) ($task['topic_id'] ?? 0);
-            }
-        }
-
-        // 3. Quiz drill for secure cleared topics
-        if ($candidates->count() < $targetCount) {
-            $limit = $targetCount - $candidates->count();
-            $secureTopics = $clearedTopics
-                ->filter(fn (Topic $topic) => data_get($context->topicSignals, 'profiles.' . $topic->id . '.progression_stage') === 'cleared')
-                ->reject(fn (Topic $topic) => in_array((int) $topic->id, $existingTopicIds, true))
-                ->sortByDesc(fn (Topic $topic) => $this->topicGrade($topic, $context))
-                ->values();
-
-            $secureTasks = $this->buildSecureTopicTasks($secureTopics, $context, $limit, -20);
-            foreach ($secureTasks as $task) {
-                if ($candidates->count() >= $targetCount) break;
-                $candidates->push($task);
-                $existingTopicIds[] = (int) ($task['topic_id'] ?? 0);
-            }
-        }
-
-        return $candidates;
-    }
-
 
     public function buildRepairTopicTasks(Collection $weakTopics, PlannerContext $context, int $limit = 2, int $priorityOffset = 0): Collection
     {
@@ -879,7 +806,7 @@ class PlannerTaskBuilderService
 
         foreach ($weakTopics->take($limit) as $topic) {
             $profile = data_get($context->topicSignals, 'profiles.' . $topic->id, []);
-            if (($profile['progression_stage'] ?? '') !== 'mistakes') {
+            if (($profile['progression_stage'] ?? '') !== 'mistakes' && ($profile['progression_stage'] ?? '') !== 'cleared') {
                 continue;
             }
 
@@ -965,7 +892,8 @@ class PlannerTaskBuilderService
 
             // Guard: Re-study (Tutor mode) should only appear if they actually finished it once before
             // If they are in Stage 1 (!tutor_cleared), that's handled by buildStartTopicTasks
-            if (!($profile['tutor_cleared'] ?? false)) {
+            // Allow if quiz_failed_repeatedly OR is_regressed OR tutor_cleared
+            if (!($profile['tutor_cleared'] ?? false) && !($profile['quiz_failed_repeatedly'] ?? false) && !($profile['is_regressed'] ?? false)) {
                 continue;
             }
 
@@ -1015,6 +943,7 @@ class PlannerTaskBuilderService
                 'priority_score' => $score['priority'],
                 'score_components' => $score['components'],
                 'sizing_basis' => $sizing['sizing_basis'],
+                'counts_toward_progression' => true,
             ] + $this->taskReasonService->rebuildTopic($topic, $this->topicGrade($topic, $context), $sourceLabel, $conceptLabel));
         }
 
@@ -1243,6 +1172,7 @@ class PlannerTaskBuilderService
                 'priority_score' => $score['priority'],
                 'score_components' => $score['components'],
                 'sizing_basis' => $sizing['sizing_basis'],
+                'counts_toward_progression' => true,
             ] + $this->taskReasonService->secureTopic($topic, $this->topicGrade($topic, $context), $sourceLabel));
         }
 
@@ -1281,25 +1211,21 @@ class PlannerTaskBuilderService
         $xpValue = $this->resolveXpValue('frontier_topic_quiz', $score['priority'], $context);
 
         $isRegressed = (bool) ($profile['is_regressed'] ?? false);
-        $quizFailedRepeatedly = (bool) ($profile['quiz_failed_repeatedly'] ?? false);
-        
-        $studyMode = $quizFailedRepeatedly ? 'tutor' : 'quiz';
-        $modeLabel = $quizFailedRepeatedly ? 'Tutor' : 'Quiz';
-        $titlePrefix = $isRegressed ? 'Re-study: ' : ($quizFailedRepeatedly ? 'Refresher: ' : 'Solve: ');
+        $titlePrefix = $isRegressed ? 'Re-study: ' : 'Solve: ';
 
         return [
             'id' => $taskId,
             'type' => 'frontier_topic_quiz',
             'topic_id' => $topic->id,
             'title' => $titlePrefix . $topic->name,
-            'meta' => $this->buildTaskMeta($modeLabel, $sourceLabel, $sizing['question_target'], $sizing['duration_minutes']),
+            'meta' => $this->buildTaskMeta('Quiz', $sourceLabel, $sizing['question_target'], $sizing['duration_minutes']),
             'xp' => $xpValue,
             'xp_value' => $xpValue,
             'base_xp' => $this->baseXpForType('frontier_topic_quiz'),
             'source' => $sourceLabel,
             'resolved_source' => $sourceLabel,
-            'study_mode' => $studyMode,
-            'mode_label' => $modeLabel,
+            'study_mode' => 'quiz',
+            'mode_label' => 'Quiz',
             'target_concepts' => $this->resolveConceptTargets($topic, $context),
             'concept_tagging_complete' => false,
             'is_regression' => false,
@@ -1310,6 +1236,7 @@ class PlannerTaskBuilderService
             'priority_score' => $score['priority'],
             'score_components' => $score['components'],
             'sizing_basis' => $sizing['sizing_basis'],
+            'counts_toward_progression' => true,
         ] + $this->taskReasonService->frontierTopicSolve($topic, $this->topicGrade($topic, $context), $sourceLabel);
     }
 
@@ -1368,6 +1295,7 @@ class PlannerTaskBuilderService
                 'priority_score' => $score['priority'],
                 'score_components' => $score['components'],
                 'sizing_basis' => $sizing['sizing_basis'],
+                'counts_toward_progression' => true,
             ] + ($isRapidOverview
                 ? $this->taskReasonService->rapidOverview($topic, $sourceLabel)
                 : $this->taskReasonService->startTopic($topic, $sourceLabel)));
@@ -1391,7 +1319,7 @@ class PlannerTaskBuilderService
             }
 
             $profile = data_get($context->topicSignals, 'profiles.' . $topic->id, []);
-            if (($profile['progression_stage'] ?? '') !== 'mistakes') {
+            if (($profile['progression_stage'] ?? '') !== 'mistakes' && ($profile['progression_stage'] ?? '') !== 'cleared') {
                 continue;
             }
 
@@ -1454,6 +1382,7 @@ class PlannerTaskBuilderService
                 'priority_score' => $score['priority'],
                 'score_components' => $score['components'],
                 'sizing_basis' => $sizing['sizing_basis'],
+                'counts_toward_progression' => true,
             ] + $this->taskReasonService->topicMistakeReview($topic, $dueCount, (int) ($topicDueSignal['minutes_overdue'] ?? 0), $conceptLabel));
         }
 
@@ -1519,7 +1448,7 @@ class PlannerTaskBuilderService
 
     public function buildFinalExamSprintTask(PlannerContext $context, int $priorityOffset = 0): ?array
     {
-        if ($context->daysToExam === null || $context->daysToExam < 0 || $context->daysToExam > 10) {
+        if ($context->daysToExam === null || $context->daysToExam < 0 || $context->daysToExam > 7) {
             return null;
         }
 
@@ -1608,8 +1537,14 @@ class PlannerTaskBuilderService
             return null;
         }
 
-        if ($preferredSource !== null && in_array($preferredSource, $availableSources, true)) {
-            return $preferredSource;
+        if ($preferredSource !== null) {
+            // Case-insensitive match — source labels in DB may differ in casing (e.g. 'Assuit' vs 'assiut')
+            $matched = collect($availableSources)->first(
+                fn ($s) => strcasecmp($s, $preferredSource) === 0
+            );
+            if ($matched !== null) {
+                return $matched; // return the canonical case from source_totals, not the user preference string
+            }
         }
 
         if (count($availableSources) === 1) {

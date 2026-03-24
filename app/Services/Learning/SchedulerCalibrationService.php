@@ -246,7 +246,7 @@ class SchedulerCalibrationService
             ->where('event_type', MistakeReviewEvent::EVENT_TYPE_REVIEW)
             ->count();
 
-        if ($reviewCount < 30 || $reviewCount % 10 !== 0) {
+        if ($reviewCount < 10 || $reviewCount % 5 !== 0) {
             return;
         }
 
@@ -362,12 +362,12 @@ class SchedulerCalibrationService
             ->orderBy('reviewed_at')
             ->get();
 
-        if ($events->count() < 12) {
+        if ($events->count() < 5) {
             return $this->getUserConfidenceProfile($mode, $userId);
         }
 
         $metrics = $this->deriveUserConfidenceMetrics($events, $baseProfile);
-        if ($metrics['sample_size'] < 10) {
+        if ($metrics['sample_size'] < 5) {
             return $this->getUserConfidenceProfile($mode, $userId);
         }
         $quality = $this->assessUserConfidenceQuality($metrics);
