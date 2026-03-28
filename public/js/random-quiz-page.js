@@ -305,6 +305,16 @@ document.addEventListener('DOMContentLoaded', function() {
 
                         playQuizCompletionSound(percentage);
 
+                        const progressSignal = {
+                            mode: 'random',
+                            timestamp: Math.floor(Date.now() / 1000)
+                        };
+
+                        localStorage.setItem('quizProgressUpdate', JSON.stringify(progressSignal));
+                        document.dispatchEvent(new CustomEvent('sourceProgressUpdated', {
+                            detail: progressSignal
+                        }));
+
                         // Show the completion popup
                         popupOverlay.classList.add('show');
                         popup.classList.add('show');

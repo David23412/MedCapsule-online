@@ -109,7 +109,7 @@ class ExecuteSecurityScan extends Command
     private function generateSecurityReport($validatedResult, $evidenceStats, $reproStats): string
     {
         $findings = $validatedResult->getFindings();
-        $metrics = $validatedResult->getMetrics();
+        $metrics = $this->normalizeMetrics($validatedResult->getMetrics());
         
         $report = "# Security Vulnerability Scan Report\n\n";
         $report .= "**Generated**: " . now()->toISOString() . "\n";
@@ -223,6 +223,31 @@ class ExecuteSecurityScan extends Command
         $report .= "*SURGICAL-PRECISION Security Analysis with ZERO FALSE POSITIVES*\n";
         
         return $report;
+    }
+
+    private function normalizeMetrics(array $metrics): array
+    {
+        $normalized = [];
+
+        foreach ($metrics as $name => $metric) {
+            if (is_array($metric) && array_key_exists('name', $metric)) {
+                $normalized[] = [
+                    'name' => (string) $metric['name'],
+                    'value' => $metric['value'] ?? '',
+                    'unit' => (string) ($metric['unit'] ?? ''),
+                ];
+
+                continue;
+            }
+
+            $normalized[] = [
+                'name' => is_string($name) && $name !== '' ? $name : 'metric_'.(count($normalized) + 1),
+                'value' => is_scalar($metric) || $metric === null ? $metric : json_encode($metric),
+                'unit' => '',
+            ];
+        }
+
+        return $normalized;
     }
 
     private function getSecurityStatus($findings): string

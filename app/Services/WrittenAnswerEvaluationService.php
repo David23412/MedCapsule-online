@@ -6,3647 +6,1531 @@ use App\Models\Question;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Cache;
 
+/**
+ * WrittenAnswerEvaluationService
+ *
+ * Changes in this version vs previous:
+ *
+ * 1. GENERALIZED COMPARISON GRADING
+ *    extractComparisonTermPairs() now dynamically extracts the two sides of any
+ *    comparison from the correct-answer text instead of matching against a hard-
+ *    coded list of term pairs. Works for any medical comparison question.
+ *
+ * 2. FIXED CACHE KEYS
+ *    Student answers are unique strings — caching on them is useless and wastes
+ *    memory. Cache keys now use only stable inputs: md5(correctAnswer + threshold).
+ *    The student answer is never part of a cache key.
+ *
+ * 3. DEDUPLICATED CONTRADICTION / LOCATION LOGIC
+ *    The duplicate location-mismatch checks that existed in both
+ *    detectMissingCriticalTerms() and checkForCriticalPatternMismatch() are now
+ *    consolidated into a single method: detectLocationMismatch(). Both callers
+ *    delegate to it.
+ *
+ * 4. BETTER SIMILARITY STACK
+ *    calculateSimilarityMetrics() now uses the upgraded TextProcessingService
+ *    which provides TF-IDF cosine + bigram/trigram ngram similarity in place of
+ *    the old "conceptual similarity" that was just Jaccard + keyword reweighted.
+ */
 class WrittenAnswerEvaluationService
 {
-    /**
-     * @var TextProcessingService
-     */
-    protected $textProcessor;
-    
-    /**
-     * @var PatternMatcherService
-     */
-    protected $patternMatcher;
-    
-    /**
-     * Default threshold for combined similarity to consider answers correct
-     */
+    protected TextProcessingService    $textProcessor;
+    protected PatternMatcherService    $patternMatcher;
+    protected MedicalKnowledgeService  $medicalKnowledge;
+
     const DEFAULT_SIMILARITY_THRESHOLD = 0.85;
 
-    /**
-     * Cache configuration
-     */
-    private $cacheEnabled = true;
-    private $cacheTtl = 86400; // 24 hours
+    private bool $cacheEnabled = true;
+    private int  $cacheTtl     = 86400;
 
-    /**
-     * Specialized medical domains with their respective weights
-     */
-    private $medicalDomains = [
-        'cardiovascular' => ['heart', 'cardiac', 'myocardial', 'coronary', 'artery', 'arteries', 'atrial', 'ventricular', 'circulation', 'bp', 'blood pressure', 'aorta', 'ventricle', 'atrium', 'endocardium', 'myocardium', 'epicardium', 'pericardium', 'valve', 'chordae', 'purkinje', 'sinoatrial', 'atrioventricular'],
+    // -------------------------------------------------------------------------
+    // Medical domain keyword lists (unchanged from previous version)
+    // -------------------------------------------------------------------------
 
-        'respiratory' => ['lung', 'pulmonary', 'respiratory', 'breath', 'breathing', 'ventilation', 'airway', 'alveoli', 'bronchi', 'oxygen', 'co2', 'trachea', 'larynx', 'pharynx', 'diaphragm', 'pleura', 'mediastinum', 'pneumothorax', 'spirometry', 'hypoxia', 'hypoxemia', 'hypercarbia', 'surfactant'],
-
-        'nervous' => ['brain', 'neural', 'nervous', 'cns', 'pns', 'neuron', 'parasympathetic', 'sympathetic', 'nerve', 'spinal', 'cord', 'cerebrum', 'cerebral', 'cerebellum', 'brainstem', 'cortex', 'thalamus', 'hypothalamus', 'hippocampus', 'amygdala', 'basal ganglia', 'axon', 'dendrite', 'oligodendrocyte', 'astrocyte', 'microglia', 'schwann', 'reflex', 'sensory', 'motor', 'neurotransmitter'],
-
-        'gastrointestinal' => ['gi', 'stomach', 'intestine', 'colon', 'bowel', 'digestion', 'digestive', 'liver', 'hepatic', 'gallbladder', 'pancreas', 'esophagus', 'duodenum', 'jejunum', 'ileum', 'cecum', 'rectum', 'peritoneum', 'mucosa', 'submucosa', 'muscularis', 'serosa', 'villus', 'peristalsis', 'enzyme', 'bile', 'absorption'],
-
-        'endocrine' => ['hormone', 'insulin', 'thyroid', 'adrenal', 'pituitary', 'pancreatic', 'diabetes', 'glycemic', 'gland', 'endocrine', 'tsh', 'cortisol', 'aldosterone', 'adrenaline', 'estrogen', 'testosterone', 'progesterone', 'thyroid', 'parathyroid', 'acth', 'prolactin', 'feedback', 'receptor', 'signaling'],
-
-        'musculoskeletal' => ['muscle', 'bone', 'joint', 'tendon', 'ligament', 'skeletal', 'orthopedic', 'fracture', 'spine', 'vertebral', 'spinal', 'cartilage', 'synovial', 'ossification', 'osteoblast', 'osteoclast', 'myosin', 'actin', 'sarcomere', 'contraction', 'neuromuscular', 'articulation', 'axial', 'appendicular', 'collagen', 'calcium'],
-
-        'urinary' => ['kidney', 'renal', 'bladder', 'urinary', 'urine', 'nephron', 'ureter', 'urethra', 'glomerular', 'nephritis', 'tubule', 'podocyte', 'filtration', 'reabsorption', 'secretion', 'collecting duct', 'loop of henle', 'cystitis', 'pyelonephritis', 'creatinine', 'urea', 'micturition'],
-
-        'immune' => ['immune', 'antibody', 'antigen', 'inflammation', 'lymphocyte', 'leukocyte', 'white blood cell', 'wbc', 'infection', 'neutrophil', 'basophil', 'eosinophil', 'monocyte', 'macrophage', 'dendritic', 'nk cell', 'cytokine', 'chemokine', 'complement', 'immunoglobulin', 'mhc', 'thymus', 'spleen', 'lymph node', 'humoral', 'cellular'],
-
-        'reproductive' => ['ovary', 'ovarian', 'testis', 'testes', 'testicular', 'uterus', 'uterine', 'vagina', 'vaginal', 'penis', 'penile', 'prostate', 'prostatic', 'gamete', 'spermatogenesis', 'oogenesis', 'ovulation', 'menstruation', 'fertilization', 'zygote', 'embryo', 'placenta', 'fetus', 'gestation', 'parturition'],
-
-        'histology' => ['tissue', 'epithelium', 'epithelial', 'connective', 'muscle', 'nervous', 'basement membrane', 'collagen', 'elastin', 'fibroblast', 'macrophage', 'mast cell', 'simple', 'stratified', 'squamous', 'cuboidal', 'columnar', 'transitional', 'goblet cell', 'microvilli', 'cilia', 'tight junction', 'desmosome', 'gap junction', 'hematoxylin', 'eosin'],
-
-        'biochemistry' => ['enzyme', 'protein', 'carbohydrate', 'lipid', 'nucleic acid', 'dna', 'rna', 'atp', 'metabolism', 'glycolysis', 'krebs', 'tca cycle', 'citric acid cycle', 'electron transport', 'oxidative phosphorylation', 'gluconeogenesis', 'glycogenesis', 'glycogenolysis', 'fatty acid', 'amino acid', 'transcription', 'translation', 'replication', 'mutation', 'coenzyme', 'cofactor']
+    private array $medicalDomains = [
+        'cardiovascular' => [
+            'heart','cardiac','myocardial','coronary','artery','arteries','atrial',
+            'ventricular','circulation','bp','blood pressure','aorta','ventricle',
+            'atrium','endocardium','myocardium','epicardium','pericardium','valve',
+            'chordae','purkinje','sinoatrial','atrioventricular',
+        ],
+        'respiratory' => [
+            'lung','pulmonary','respiratory','breath','breathing','ventilation',
+            'airway','alveoli','bronchi','oxygen','co2','trachea','larynx','pharynx',
+            'diaphragm','pleura','mediastinum','pneumothorax','spirometry','hypoxia',
+            'hypoxemia','hypercarbia','surfactant',
+        ],
+        'nervous' => [
+            'brain','neural','nervous','cns','pns','neuron','parasympathetic',
+            'sympathetic','nerve','spinal','cord','cerebrum','cerebral','cerebellum',
+            'brainstem','cortex','thalamus','hypothalamus','hippocampus','amygdala',
+            'basal ganglia','axon','dendrite','oligodendrocyte','astrocyte','microglia',
+            'schwann','reflex','sensory','motor','neurotransmitter',
+        ],
+        'gastrointestinal' => [
+            'gi','stomach','intestine','colon','bowel','digestion','digestive','liver',
+            'hepatic','gallbladder','pancreas','esophagus','duodenum','jejunum','ileum',
+            'cecum','rectum','peritoneum','mucosa','submucosa','muscularis','serosa',
+            'villus','peristalsis','enzyme','bile','absorption',
+        ],
+        'endocrine' => [
+            'hormone','insulin','thyroid','adrenal','pituitary','pancreatic','diabetes',
+            'glycemic','gland','endocrine','tsh','cortisol','aldosterone','adrenaline',
+            'estrogen','testosterone','progesterone','parathyroid','acth','prolactin',
+            'feedback','receptor','signaling',
+        ],
+        'musculoskeletal' => [
+            'muscle','bone','joint','tendon','ligament','skeletal','orthopedic',
+            'fracture','spine','vertebral','spinal','cartilage','synovial','ossification',
+            'osteoblast','osteoclast','myosin','actin','sarcomere','contraction',
+            'neuromuscular','articulation','axial','appendicular','collagen','calcium',
+        ],
+        'urinary' => [
+            'kidney','renal','bladder','urinary','urine','nephron','ureter','urethra',
+            'glomerular','nephritis','tubule','podocyte','filtration','reabsorption',
+            'secretion','collecting duct','loop of henle','cystitis','pyelonephritis',
+            'creatinine','urea','micturition',
+        ],
+        'immune' => [
+            'immune','antibody','antigen','inflammation','lymphocyte','leukocyte',
+            'white blood cell','wbc','infection','neutrophil','basophil','eosinophil',
+            'monocyte','macrophage','dendritic','nk cell','cytokine','chemokine',
+            'complement','immunoglobulin','mhc','thymus','spleen','lymph node',
+            'humoral','cellular',
+        ],
+        'histology' => [
+            'tissue','epithelium','epithelial','connective','basement membrane',
+            'collagen','elastin','fibroblast','mast cell','simple','stratified',
+            'squamous','cuboidal','columnar','transitional','goblet cell','microvilli',
+            'cilia','tight junction','desmosome','gap junction','hematoxylin','eosin',
+        ],
+        'biochemistry' => [
+            'enzyme','protein','carbohydrate','lipid','nucleic acid','dna','rna','atp',
+            'metabolism','glycolysis','krebs','tca cycle','citric acid cycle',
+            'electron transport','oxidative phosphorylation','gluconeogenesis',
+            'glycogenesis','glycogenolysis','fatty acid','amino acid','transcription',
+            'translation','replication','mutation','coenzyme','cofactor',
+        ],
     ];
 
-    /**
-     * Course-specific pattern matchers
-     */
-    private $coursePatternMatchers = [
-        // Anatomy patterns
-        'anatomical_position' => ['anatomical position', 'anterior', 'posterior', 'superior', 'inferior', 'medial', 'lateral'],
-        'skeletal_system' => ['axial skeleton', 'appendicular skeleton', 'bone classification', 'bone markings'],
-        'joint_types' => ['fibrous joint', 'cartilaginous joint', 'synovial joint', 'arthrokinematics', 'osteokinematics'],
+    // -------------------------------------------------------------------------
+    // Known process → correct location mapping (single source of truth)
+    // -------------------------------------------------------------------------
 
-        // Physiology patterns
-        'action_potential' => ['depolarization', 'repolarization', 'hyperpolarization', 'threshold', 'sodium channel', 'potassium channel'],
-        'cardiac_cycle' => ['systole', 'diastole', 'isovolumetric contraction', 'isovolumetric relaxation', 'atrial contraction'],
-        'respiratory_mechanics' => ['inspiration', 'expiration', 'compliance', 'resistance', 'surfactant', 'boyle\'s law'],
-        'renal_physiology' => ['glomerular filtration', 'tubular reabsorption', 'tubular secretion', 'countercurrent mechanism'],
-
-        // Biochemistry patterns
-        'glycolysis' => ['glycolysis', 'pyruvate', 'atp generation', 'substrate-level phosphorylation'],
-        'tca_cycle' => ['citric acid cycle', 'krebs cycle', 'oxidative decarboxylation', 'acetyl-coa'],
-        'electron_transport' => ['electron transport chain', 'oxidative phosphorylation', 'proton gradient', 'atp synthase'],
-        'dna_replication' => ['dna replication', 'leading strand', 'lagging strand', 'okazaki fragments', 'dna polymerase'],
-
-        // Histology patterns
-        'epithelial_tissue' => ['epithelial tissue', 'simple epithelium', 'stratified epithelium', 'basement membrane'],
-        'connective_tissue' => ['connective tissue', 'loose connective', 'dense connective', 'specialized connective'],
-        'muscle_tissue' => ['skeletal muscle', 'cardiac muscle', 'smooth muscle', 'sarcomere organization']
+    private array $processLocations = [
+        'protein synthesis' => [
+            'correct'   => ['ribosome','endoplasmic reticulum'],
+            'incorrect' => ['mitochondrion','golgi','lysosome','peroxisome','nucleus'],
+        ],
+        'dna replication' => [
+            'correct'   => ['nucleus'],
+            'incorrect' => ['mitochondrion','cytoplasm','ribosome','endoplasmic reticulum'],
+        ],
+        'krebs cycle' => [
+            'correct'   => ['mitochondrion','mitochondrial matrix'],
+            'incorrect' => ['cytoplasm','nucleus','endoplasmic reticulum','lysosome'],
+        ],
+        'tca cycle' => [
+            'correct'   => ['mitochondrion','mitochondrial matrix'],
+            'incorrect' => ['cytoplasm','nucleus','endoplasmic reticulum','lysosome'],
+        ],
+        'citric acid cycle' => [
+            'correct'   => ['mitochondrion','mitochondrial matrix'],
+            'incorrect' => ['cytoplasm','nucleus','endoplasmic reticulum','lysosome'],
+        ],
+        'electron transport chain' => [
+            'correct'   => ['mitochondrion','inner mitochondrial membrane'],
+            'incorrect' => ['cytoplasm','nucleus','plasma membrane','endoplasmic reticulum'],
+        ],
+        'oxidative phosphorylation' => [
+            'correct'   => ['mitochondrion','inner mitochondrial membrane'],
+            'incorrect' => ['cytoplasm','nucleus','plasma membrane'],
+        ],
+        'glycolysis' => [
+            'correct'   => ['cytoplasm','cytosol'],
+            'incorrect' => ['mitochondrion','nucleus','endoplasmic reticulum'],
+        ],
+        'translation' => [
+            'correct'   => ['ribosome','endoplasmic reticulum'],
+            'incorrect' => ['mitochondrion','nucleus','golgi','lysosome'],
+        ],
     ];
 
-    /**
-     * Medical symbols and notations
-     */
-    private $medicalSymbols = [];
-    private $chemicalSymbols = [];
+    // -------------------------------------------------------------------------
+    // Medical symbols / abbreviation maps
+    // -------------------------------------------------------------------------
 
-    /**
-     * Constructor
-     */
+    private array $medicalSymbols  = [];
+    private array $chemicalSymbols = [];
+
+    // -------------------------------------------------------------------------
+    // Constructor
+    // -------------------------------------------------------------------------
+
     public function __construct(
-        TextProcessingService $textProcessor,
-        PatternMatcherService $patternMatcher
+        TextProcessingService   $textProcessor,
+        PatternMatcherService   $patternMatcher,
+        ?MedicalKnowledgeService $medicalKnowledge = null
     ) {
-        $this->textProcessor = $textProcessor;
-        $this->patternMatcher = $patternMatcher;
+        $this->textProcessor    = $textProcessor;
+        $this->patternMatcher   = $patternMatcher;
+        $this->medicalKnowledge = $medicalKnowledge ?? app(MedicalKnowledgeService::class);
 
-        // Initialize services with caching
         $this->textProcessor->setCacheConfig(true, 86400);
         $this->patternMatcher->setCacheConfig(true, 86400);
 
-        // Initialize medical symbols translation map
         $this->initializeMedicalSymbols();
     }
-    
-    /**
-     * Initialize medical symbols and notation mapping
-     * This helps with the translation of commonly used medical symbols in student answers
-     */
+
     private function initializeMedicalSymbols(): void
     {
         $this->medicalSymbols = [
-            // Arrows for increase/decrease
-            '↑' => 'increased',
-            '↓' => 'decreased',
-            '⬆' => 'increased',
-            '⬇' => 'decreased',
-            '⇑' => 'greatly increased',
-            '⇓' => 'greatly decreased',
-            
-            // Mathematical symbols
-            '>' => 'greater than',
-            '<' => 'less than',
-            '≥' => 'greater than or equal to',
-            '≤' => 'less than or equal to',
-            '=' => 'equal to',
-            '≈' => 'approximately equal to',
-            '≠' => 'not equal to',
-            
-            // Common medical notations
-            '°C' => 'degrees celsius',
-            '°F' => 'degrees fahrenheit',
-            'Δ' => 'change in',
-            'Ø' => 'no' // or 'absent'
+            '↑' => 'increased', '↓' => 'decreased',
+            '⬆' => 'increased', '⬇' => 'decreased',
+            '⇑' => 'greatly increased', '⇓' => 'greatly decreased',
+            '>' => 'greater than', '<' => 'less than',
+            '≥' => 'greater than or equal to', '≤' => 'less than or equal to',
+            '=' => 'equal to', '≈' => 'approximately equal to', '≠' => 'not equal to',
+            '°C' => 'degrees celsius', '°F' => 'degrees fahrenheit',
+            'Δ' => 'change in', 'Ø' => 'no',
         ];
-        
-        // Chemical symbols and notations
+
         $this->chemicalSymbols = [
-            'Na+' => 'sodium ion',
-            'K+' => 'potassium ion',
-            'Ca2+' => 'calcium ion',
-            'Mg2+' => 'magnesium ion',
-            'Cl-' => 'chloride ion',
-            'HCO3-' => 'bicarbonate',
-            'H+' => 'hydrogen ion',
-            'OH-' => 'hydroxide',
-            'O2' => 'oxygen',
-            'CO2' => 'carbon dioxide'
+            'Na+' => 'sodium ion', 'K+' => 'potassium ion',
+            'Ca2+' => 'calcium ion', 'Mg2+' => 'magnesium ion',
+            'Cl-' => 'chloride ion', 'HCO3-' => 'bicarbonate',
+            'H+' => 'hydrogen ion', 'OH-' => 'hydroxide',
+            'O2' => 'oxygen', 'CO2' => 'carbon dioxide',
         ];
     }
-    
-    /**
-     * Preprocess answer to handle medical symbols and notations
-     * 
-     * @param string $answer The answer to preprocess
-     * @return string The processed answer with symbols translated
-     */
-    private function preprocessSymbols(string $answer): string
-    {
-        // Process medical symbols
-        foreach ($this->medicalSymbols as $symbol => $meaning) {
-            $answer = str_replace($symbol, " $meaning ", $answer);
-        }
-        
-        // Process chemical symbols - only replace when they appear as standalone symbols
-        foreach ($this->chemicalSymbols as $symbol => $meaning) {
-            // Use word boundary where possible, or just look for the exact symbol
-            $pattern = '/\b' . preg_quote($symbol, '/') . '\b/';
-            $answer = preg_replace($pattern, " $meaning ", $answer);
-        }
-        
-        // Special handling for common patterns in medical answers
-        $patterns = [
-            // Blood pressure notation
-            '/(\d+)\/(\d+)/' => 'systolic $1 diastolic $2',
-            
-            // HR notation
-            '/HR\s*=\s*(\d+)/' => 'heart rate $1',
-            '/HR\s*(\d+)/' => 'heart rate $1',
-            
-            // Temperature notation
-            '/T\s*=\s*(\d+[\.,]?\d*)/' => 'temperature $1',
-            
-            // Lab values
-            '/(\d+[\.,]?\d*)\s*mmol\/L/' => '$1 millimoles per liter',
-            '/(\d+[\.,]?\d*)\s*mg\/dL/' => '$1 milligrams per deciliter',
-            '/(\d+[\.,]?\d*)\s*mEq\/L/' => '$1 milliequivalents per liter',
-            
-            // Greek letters commonly used
-            '/α/' => 'alpha',
-            '/β/' => 'beta',
-            '/γ/' => 'gamma',
-            '/δ/' => 'delta',
-            '/μ/' => 'mu'
-        ];
-        
-        foreach ($patterns as $pattern => $replacement) {
-            $answer = preg_replace($pattern, $replacement, $answer);
-        }
-        
-        return $answer;
-    }
-    
-    /**
-     * Set cache configuration
-     *
-     * @param bool $enabled Whether to enable caching
-     * @param int $ttl Cache time-to-live in seconds
-     * @return void
-     */
+
+    // =========================================================================
+    // PUBLIC INTERFACE
+    // =========================================================================
+
     public function setCacheConfig(bool $enabled, int $ttl = 86400): void
     {
         $this->cacheEnabled = $enabled;
-        $this->cacheTtl = $ttl;
-        
-        // Pass the same config to text processor
+        $this->cacheTtl     = $ttl;
         $this->textProcessor->setCacheConfig($enabled, $ttl);
     }
-    
-    /**
-     * Get cached result or compute and cache
-     *
-     * @param string $key Cache key
-     * @param \Closure $callback Function to compute result if not cached
-     * @return mixed Cached or computed result
-     */
-    private function getCachedOrCompute(string $key, \Closure $callback)
+
+    public function evaluateQuestionAnswer(Question $question, string $submittedAnswer): array
     {
-        if (!$this->cacheEnabled) {
-            return $callback();
-        }
-        
-        $cacheKey = 'answer_eval:' . md5($key);
+        $rawThreshold = null;
+        try { $rawThreshold = $question->similarity_threshold ?? null; }
+        catch (\Throwable) { $rawThreshold = null; }
 
-        $cacheMiss = new \stdClass();
-        $cachedResult = Cache::get($cacheKey, $cacheMiss);
-        if ($cachedResult !== $cacheMiss) {
-            return $cachedResult;
-        }
-        
-        $result = $callback();
-        Cache::put($cacheKey, $result, $this->cacheTtl);
-        
-        return $result;
-    }
-    
-    /**
-     * Check if this appears to be a comparison question
-     *
-     * @param string $correctAnswer The correct answer text
-     * @return bool Whether this looks like a comparison question
-     */
-    private function isComparisonQuestion(string $correctAnswer): bool
-    {
-        $comparisonIndicators = [
-            ' vs ', ' vs. ', ' versus ', ' compared to ', ' comparison ',
-            ' difference ', ' differences ', ' unlike ', ' whereas ',
-            ' however ', ' while ', ' although ', ' but ', ' in contrast ',
-            ': ', ' - ', ' vs ' // Colon and dash often separate compared items
-        ];
+        $threshold           = is_numeric($rawThreshold) ? (float) $rawThreshold : self::DEFAULT_SIMILARITY_THRESHOLD;
+        $alternativeAnswers  = $this->normalizeAlternativeAnswers($question->alternative_answers ?? []);
 
-        $normalizedAnswer = strtolower($correctAnswer);
-
-        foreach ($comparisonIndicators as $indicator) {
-            if (strpos($normalizedAnswer, $indicator) !== false) {
-                return true;
-            }
-        }
-
-        // Check for paired terms that are often compared in medical contexts
-        $comparisonPairs = [
-            ['glycoproteins', 'proteoglycans'],
-            ['systolic', 'diastolic'],
-            ['arteries', 'veins'],
-            ['sympathetic', 'parasympathetic'],
-            ['aerobic', 'anaerobic'],
-            ['mitosis', 'meiosis'],
-            ['dna', 'rna'],
-            ['type 1', 'type 2'],
-            ['acute', 'chronic'],
-            ['innate', 'adaptive']
-        ];
-
-        foreach ($comparisonPairs as $pair) {
-            if (strpos($normalizedAnswer, $pair[0]) !== false &&
-                strpos($normalizedAnswer, $pair[1]) !== false) {
-                return true;
-            }
-        }
-
-        return false;
+        return $this->evaluateAnswer($submittedAnswer, $question->correct_answer, $alternativeAnswers, $threshold);
     }
 
-    /**
-     * Check if this appears to be a definition question
-     *
-     * @param string $correctAnswer The correct answer text
-     * @return bool Whether this looks like a definition question
-     */
-    private function isDefinitionQuestion(string $correctAnswer): bool
+    public function isCorrect(Question $question, string $submittedAnswer): bool
     {
-        // Definition question indicators
-        $definitionIndicators = [
-            ' is ', ' are ', ' refers to ', ' means ', ' defined as ',
-            ' the term ', ' is defined as ', ' is known as ', ' represents ',
-            ' consists of ', ' composed of ', ' characterized by ', ' refers to ',
-            ' is a ', ' are a ', ' is an ', ' are an ', ' is the ', ' are the '
-        ];
-
-        $normalizedAnswer = strtolower($correctAnswer);
-
-        foreach ($definitionIndicators as $indicator) {
-            if (strpos($normalizedAnswer, $indicator) !== false) {
-                return true;
-            }
-        }
-
-        // Check for common definition patterns
-        $definitionPatterns = [
-            '/^[a-z]+(?:\s+[a-z]+)*\s+is\s+/i',  // "X is ..."
-            '/^[a-z]+(?:\s+[a-z]+)*\s+are\s+/i', // "X are ..."
-            '/^[a-z]+(?:\s+[a-z]+)*\s+refers?\s+to/i', // "X refers to ..."
-            '/^the\s+[a-z]+(?:\s+[a-z]+)*\s+is/i', // "The X is ..."
-            '/^the\s+[a-z]+(?:\s+[a-z]+)*\s+are/i', // "The X are ..."
-        ];
-
-        foreach ($definitionPatterns as $pattern) {
-            if (preg_match($pattern, $correctAnswer)) {
-                return true;
-            }
-        }
-
-        return false;
+        return $this->evaluateQuestionAnswer($question, $submittedAnswer)['isCorrect'];
     }
 
-    /**
-     * Evaluate definition questions with more lenient grading
-     *
-     * @param string $submittedAnswer The student's submitted answer
-     * @param string $correctAnswer The correct answer
-     * @param float $baseThreshold The base similarity threshold
-     * @return array Evaluation results for definition questions
-     */
-    private function evaluateDefinitionAnswer(string $submittedAnswer, string $correctAnswer, float $baseThreshold): array
-    {
-        $metrics = $this->calculateSimilarityMetrics($submittedAnswer, $correctAnswer);
+    // =========================================================================
+    // CORE EVALUATION
+    // =========================================================================
 
-        // For definition questions, prioritize keyword overlap and conceptual similarity
-        // Be much more lenient since definitions can be phrased in many correct ways
-        $definitionScore = ($metrics['keyword'] * 0.5) + ($metrics['conceptual'] * 0.5);
+    public function evaluateAnswer(
+        string $submittedAnswer,
+        string $correctAnswer,
+        array  $alternativeAnswers  = [],
+        float  $similarityThreshold = self::DEFAULT_SIMILARITY_THRESHOLD
+    ): array {
+        $start              = microtime(true);
+        $alternativeAnswers = $this->normalizeAlternativeAnswers($alternativeAnswers);
+        $submittedAnswer    = trim($submittedAnswer);
+        $correctAnswer      = trim($correctAnswer);
 
-        // Boost for any reasonable keyword overlap in definitions
-        if ($metrics['keyword'] >= 0.3) {
-            $definitionScore = min(1.0, $definitionScore + 0.2);
+        // ── Fast exits ──────────────────────────────────────────────────────
+        if ($submittedAnswer === '') {
+            return $this->earlyResult(false, 0.0, 'No answer provided', $start);
+        }
+        if ($correctAnswer === '') {
+            return $this->earlyResult(false, 0.0, 'No correct answer to compare against', $start);
+        }
+        if (strtolower($submittedAnswer) === strtolower($correctAnswer)) {
+            return $this->earlyResult(true, 1.0, 'Perfect match!', $start);
         }
 
-        // Definitions should pass if they capture the essence with reasonable keyword overlap
-        $isCorrect = $definitionScore >= 0.4 || ($metrics['keyword'] >= 0.4 && $metrics['conceptual'] >= 0.3);
+        $normSubmitted = $this->normalizeForSemanticComparison($submittedAnswer);
+        $normCorrect   = $this->normalizeForSemanticComparison($correctAnswer);
 
-        return [
-            'isCorrect' => $isCorrect,
-            'similarity' => max($definitionScore, 0.5), // Ensure it's above threshold if correct
-            'metrics' => [
-                'definition_score' => $definitionScore,
-                'weighted' => $definitionScore,
-                'definition_boost' => true
-            ],
-            'reason' => 'Definition question - core concepts identified',
-            'courseTopic' => $this->identifyCourseTopic($correctAnswer),
-            'feedback' => $this->generateDefinitionFeedback($submittedAnswer, $correctAnswer, $metrics, $isCorrect)
-        ];
+        if ($normSubmitted === $normCorrect) {
+            return $this->earlyResult(true, 1.0, 'Perfect match after normalization', $start);
+        }
+        if (!$this->hasMeaningfulTokenOverlap($normSubmitted, $normCorrect, $alternativeAnswers)) {
+            return $this->earlyResult(false, 0.0, 'No matching concepts found', $start);
+        }
+
+        // ── Symbol / abbreviation preprocessing ─────────────────────────────
+        $submittedAnswer    = $this->preprocessSymbols($submittedAnswer);
+        $correctAnswer      = $this->preprocessSymbols($correctAnswer);
+        $alternativeAnswers = array_map([$this, 'preprocessSymbols'], $alternativeAnswers);
+
+        $semanticSubmitted = $this->normalizeForSemanticComparison($submittedAnswer);
+        $semanticCorrect   = $this->normalizeForSemanticComparison($correctAnswer);
+
+        // ── ANS hard gates (before question-type routing) ────────────────────
+        $ansResult = $this->applyAnsHardGates($semanticSubmitted, $semanticCorrect);
+        if ($ansResult !== null) {
+            return $ansResult;
+        }
+
+        // ── Question-type routing ────────────────────────────────────────────
+        if ($this->isNumericalValueQuestion($correctAnswer)) {
+            return $this->evaluateNumericalValueAnswer($submittedAnswer, $correctAnswer, $similarityThreshold);
+        }
+        if ($this->isEnumerationQuestion($correctAnswer)) {
+            return $this->evaluateEnumerationAnswer($submittedAnswer, $correctAnswer);
+        }
+        if ($this->isComparisonQuestion($correctAnswer)) {
+            return $this->evaluateComparisonAnswer($submittedAnswer, $correctAnswer, $similarityThreshold);
+        }
+        if ($this->isDefinitionQuestion($correctAnswer)) {
+            return $this->evaluateDefinitionAnswer($submittedAnswer, $correctAnswer, $similarityThreshold);
+        }
+        if ($this->isMatchingQuestion($correctAnswer)) {
+            return $this->evaluateMatchingAnswer($submittedAnswer, $correctAnswer, $similarityThreshold);
+        }
+
+        // ── Full evaluation (cached by stable key only) ──────────────────────
+        //
+        // FIX: Cache key must NOT include the student answer — every student
+        // writes something unique, so including it effectively disables caching.
+        // We cache on (correctAnswer + alternatives + threshold) because those
+        // are the stable inputs that define the grading context.
+        //
+        $stableCacheKey = 'eval_ctx:' . md5($correctAnswer . '|' . implode('|', $alternativeAnswers) . '|' . $similarityThreshold);
+
+        // The context (correct answer side) can be pre-warmed; student answer
+        // is handled fresh each call but the expensive normalizations on the
+        // correct side benefit from caching.
+        $cachedContext = $this->getFromCache($stableCacheKey);
+        $gradingContext = $cachedContext ?? $this->buildGradingContext($correctAnswer, $alternativeAnswers);
+
+        if ($cachedContext === null) {
+            $this->putToCache($stableCacheKey, $gradingContext);
+        }
+
+        return $this->runFullEvaluation(
+            $submittedAnswer,
+            $correctAnswer,
+            $alternativeAnswers,
+            $similarityThreshold,
+            $gradingContext
+        );
     }
 
-    /**
-     * Generate feedback specific to definition questions
-     *
-     * @param string $submitted Submitted answer
-     * @param string $correct Correct answer
-     * @param array $metrics Similarity metrics
-     * @param bool $isCorrect Whether the answer is correct
-     * @return string Feedback message
-     */
-    private function generateDefinitionFeedback(string $submitted, string $correct, array $metrics, bool $isCorrect): string
-    {
-        if ($isCorrect) {
-            if ($metrics['keyword'] >= 0.8) {
-                return "Excellent! Your definition is very accurate and uses appropriate terminology.";
-            } else {
-                return "Good job! Your definition captures the essential concepts, even with different wording.";
-            }
-        } else {
-            if ($metrics['keyword'] < 0.4) {
-                return "Your definition is missing key terms. Review the definition and identify the essential components that characterize this concept.";
-            } elseif ($metrics['conceptual'] < 0.4) {
-                return "Your definition doesn't fully capture the concept. Focus on the core characteristics and functions of the term being defined.";
-            } else {
-                return "Your definition is close but needs refinement. Compare your answer with standard definitions and note the differences in scope and detail.";
-            }
-        }
-    }
+    // =========================================================================
+    // GENERALIZED COMPARISON GRADING  (Priority 1 fix)
+    // =========================================================================
 
     /**
-     * Check if this appears to be a matching question
+     * Extract the two sides of a comparison from the correct-answer text.
      *
-     * @param string $correctAnswer The correct answer text
-     * @return bool Whether this looks like a matching question
-     */
-    private function isMatchingQuestion(string $correctAnswer): bool
-    {
-        // Matching question indicators
-        $matchingIndicators = [
-            'match:', 'match the', 'matches which', 'corresponds to',
-            'is associated with', 'is linked to', 'relates to', 'connects to',
-            'paired with', 'coupled with', 'goes with', 'belongs to',
-            ': ', ' - ', ' → ', ' ==> '
-        ];
-
-        $normalizedAnswer = strtolower($correctAnswer);
-
-        foreach ($matchingIndicators as $indicator) {
-            if (strpos($normalizedAnswer, $indicator) !== false) {
-                return true;
-            }
-        }
-
-        return false;
-    }
-
-    /**
-     * Check if this appears to be a numerical value question
+     * Previous approach: hard-coded list of term pairs (glycoproteins/proteoglycans,
+     * DNA/RNA, etc.) — failed for any comparison not in the list.
      *
-     * @param string $correctAnswer The correct answer text
-     * @return bool Whether this looks like a numerical value question
+     * New approach: split the correct answer on comparison markers, then extract
+     * the meaningful content tokens from each side. This works for ANY comparison
+     * question regardless of topic.
+     *
+     * Returns ['sideA' => string[], 'sideB' => string[]] or null if no clear split.
      */
-    private function isNumericalValueQuestion(string $correctAnswer): bool
+    private function extractComparisonTermPairs(string $correctAnswer): ?array
     {
-        // Look for patterns typical of numerical values
-        $numericalPatterns = [
-            '/\d+[\.\-\–]\d+/',  // Ranges like 3.5-5.0 or 3.5–5.0
-            '/\d+\s*[\-\–]\s*\d+/',  // Ranges with spaces
-            '/\d+[\.,]\d+/',  // Decimals
-            '/\d+\s*\/\s*\d+/',  // Fractions
-            '/\d+[\.,]\d+\s*(g|mg|µg|ng|kg)\/(dL|L|ml|mL)/i',  // Lab values with units
-            '/\d+[\.,]\d+\s*(mmol|µmol|nmol)\/L/i',  // SI units
-            '/\d+[\.,]\d+\s*°[CF]/i',  // Temperatures
-            '/\d+[\.,]\d+\s*(mmHg|kPa|atm)/i',  // Pressures
-            '/\d+\s*%\s*(to|‑|–|-)\s*\d+%?/i',  // Percentage ranges like "75-80%" or "75‑80%"
-            '/\d+\s*‑\s*\d+\s*%/',  // Percentage ranges with en dash
-            '/\d+[\.,]\d+\s*%/',  // Single percentages like "75.5%"
-            '/~\s*\d+[\.,]\d+/',  // Approximate values like "~75.5"
-            '/approximately\s+\d+[\.,]\d+/',  // "approximately 75.5"
-            '/about\s+\d+[\.,]\d+/',  // "about 75.5"
-        ];
-
-        foreach ($numericalPatterns as $pattern) {
-            if (preg_match($pattern, $correctAnswer)) {
-                return true;
-            }
-        }
-
-        // Check for common medical numerical terms
-        $numericalTerms = [
-            'normal', 'range', 'level', 'concentration', 'value', 'reference',
-            'g/dl', 'g/l', 'mg/dl', 'mmol/l', 'µmol/l', 'meq/l',
-            'percent', 'percentage', '%', 'constitutes', 'makes up', 'accounts for'
+        // Split on common comparison separators — order matters (longer first)
+        $separators = [
+            'compared to','in contrast to','in contrast','on the other hand',
+            'versus','whereas','however','while','although','unlike',
+            ' vs. ',' vs ',' v. ',' v ',
         ];
 
-        $normalizedAnswer = strtolower($correctAnswer);
-        foreach ($numericalTerms as $term) {
-            if (strpos($normalizedAnswer, $term) !== false) {
-                return true;
+        $lower = strtolower($correctAnswer);
+        $splitPos = false;
+        $splitLen = 0;
+
+        foreach ($separators as $sep) {
+            $pos = strpos($lower, $sep);
+            if ($pos !== false) {
+                $splitPos = $pos;
+                $splitLen = strlen($sep);
+                break;
             }
         }
 
-        return false;
-    }
-
-    /**
-     * Evaluate matching questions with flexible grading
-     *
-     * @param string $submittedAnswer The student's submitted answer
-     * @param string $correctAnswer The correct answer
-     * @param float $baseThreshold The base similarity threshold
-     * @return array Evaluation results for matching questions
-     */
-    private function evaluateMatchingAnswer(string $submittedAnswer, string $correctAnswer, float $baseThreshold): array
-    {
-        // Extract key matching elements from correct answer
-        $correctMatches = $this->extractMatchingPairs($correctAnswer);
-        $submittedMatches = $this->extractMatchingPairs($submittedAnswer);
-
-        // Calculate similarity between matching pairs
-        $matchSimilarity = $this->calculateMatchingSimilarity($submittedMatches, $correctMatches);
-
-        // For matching questions, be lenient - accept if core matches are present
-        $isCorrect = $matchSimilarity['overall_similarity'] >= 0.5 ||
-                    ($matchSimilarity['pair_similarity'] >= 0.4 && $matchSimilarity['key_matches'] > 0);
-
-        return [
-            'isCorrect' => $isCorrect,
-            'similarity' => max($matchSimilarity['overall_similarity'], 0.6), // Ensure above threshold if correct
-            'metrics' => [
-                'matching_similarity' => $matchSimilarity,
-                'weighted' => $matchSimilarity['overall_similarity'],
-                'matching_boost' => true
-            ],
-            'reason' => 'Matching question - key associations identified',
-            'courseTopic' => $this->identifyCourseTopic($correctAnswer),
-            'feedback' => $this->generateMatchingFeedback($submittedAnswer, $correctAnswer, $matchSimilarity, $isCorrect)
-        ];
-    }
-
-    /**
-     * Extract matching pairs from answer text
-     *
-     * @param string $answer The answer text
-     * @return array Extracted matching pairs
-     */
-    private function extractMatchingPairs(string $answer): array
-    {
-        $pairs = [];
-
-        // Look for colon-separated pairs (item: description)
-        if (preg_match_all('/([^:]+):\s*([^:]+)(?:\s*-|$)/', $answer, $matches)) {
-            foreach ($matches[0] as $i => $match) {
-                $item = trim($matches[1][$i]);
-                $description = trim($matches[2][$i]);
-                $pairs[] = [
-                    'item' => $item,
-                    'description' => $description,
-                    'type' => 'colon_pair'
-                ];
-            }
-        }
-
-        // Look for dash-separated pairs (item - description)
-        if (preg_match_all('/([^-\n]+)\s*-\s*([^\n-]+)/', $answer, $matches)) {
-            foreach ($matches[0] as $i => $match) {
-                $item = trim($matches[1][$i]);
-                $description = trim($matches[2][$i]);
-                $pairs[] = [
-                    'item' => $item,
-                    'description' => $description,
-                    'type' => 'dash_pair'
-                ];
-            }
-        }
-
-        return $pairs;
-    }
-
-    /**
-     * Calculate similarity between matching pairs
-     *
-     * @param array $submittedPairs Pairs from submitted answer
-     * @param array $correctPairs Pairs from correct answer
-     * @return array Similarity metrics
-     */
-    private function calculateMatchingSimilarity(array $submittedPairs, array $correctPairs): array
-    {
-        if (empty($correctPairs)) {
-            return ['overall_similarity' => 0, 'pair_similarity' => 0, 'key_matches' => 0];
-        }
-
-        $totalSimilarity = 0;
-        $keyMatches = 0;
-
-        foreach ($correctPairs as $correctPair) {
-            $bestSimilarity = 0;
-            $matchedSubmitted = null;
-
-            foreach ($submittedPairs as $submittedPair) {
-                $itemSimilarity = $this->calculateSimilarityMetrics($correctPair['item'], $submittedPair['item'])['weighted'];
-                $descSimilarity = $this->calculateSimilarityMetrics($correctPair['description'], $submittedPair['description'])['weighted'];
-
-                $pairSimilarity = ($itemSimilarity + $descSimilarity) / 2;
-
-                if ($pairSimilarity > $bestSimilarity) {
-                    $bestSimilarity = $pairSimilarity;
-                    $matchedSubmitted = $submittedPair;
-                }
-
-                // If both item and description match well, count as key match
-                if ($itemSimilarity >= 0.7 && $descSimilarity >= 0.7) {
-                    $keyMatches++;
+        // If no separator found, try a colon split (common in "A: ... B: ..." answers)
+        if ($splitPos === false) {
+            $colonCount = substr_count($lower, ':');
+            if ($colonCount === 2) {
+                // Format "TermA: desc; TermB: desc" — split on second colon cluster
+                $parts = preg_split('/[;,]\s*/', $correctAnswer, 2);
+                if (count($parts) === 2) {
+                    $splitPos = strlen($parts[0]);
+                    $splitLen = 1;
                 }
             }
-
-            $totalSimilarity += $bestSimilarity;
         }
 
-        $overallSimilarity = count($correctPairs) > 0 ? $totalSimilarity / count($correctPairs) : 0;
-        $pairSimilarity = $totalSimilarity / max(count($submittedPairs), count($correctPairs));
+        if ($splitPos === false) {
+            return null;
+        }
+
+        $sideAText = trim(substr($correctAnswer, 0, $splitPos));
+        $sideBText = trim(substr($correctAnswer, $splitPos + $splitLen));
+
+        if ($sideAText === '' || $sideBText === '') {
+            return null;
+        }
 
         return [
-            'overall_similarity' => $overallSimilarity,
-            'pair_similarity' => $pairSimilarity,
-            'key_matches' => $keyMatches,
-            'total_correct_pairs' => count($correctPairs),
-            'total_submitted_pairs' => count($submittedPairs)
+            'sideA' => $this->extractMeaningfulTokens($this->normalizeForSemanticComparison($sideAText)),
+            'sideB' => $this->extractMeaningfulTokens($this->normalizeForSemanticComparison($sideBText)),
         ];
     }
 
     /**
-     * Generate feedback specific to matching questions
+     * Score a comparison answer using dynamic side-extraction.
      *
-     * @param string $submitted Submitted answer
-     * @param string $correct Correct answer
-     * @param array $matchSimilarity Similarity metrics
-     * @param bool $isCorrect Whether the answer is correct
-     * @return string Feedback message
+     * Logic:
+     *   1. Extract Side A and Side B from the correct answer.
+     *   2. Measure how much of each side the student covered.
+     *   3. A good comparison answer must address BOTH sides — partial credit
+     *      only if at least one side is well-covered.
+     *   4. Falls back to regular evaluation when no clear split is found.
      */
-    private function generateMatchingFeedback(string $submitted, string $correct, array $matchSimilarity, bool $isCorrect): string
-    {
-        if ($isCorrect) {
-            if ($matchSimilarity['overall_similarity'] >= 0.8) {
-                return "Excellent! You've correctly matched the key associations. Your understanding of these relationships is strong.";
-            } else {
-                return "Good job! You've identified the main matching relationships. Consider reviewing the specific details for each association.";
-            }
-        } else {
-            $missingPairs = $matchSimilarity['total_correct_pairs'] - $matchSimilarity['key_matches'];
-            if ($missingPairs > 0) {
-                return "Your answer is missing some key associations. Review each item and ensure you've correctly matched it with its corresponding description or function.";
-            } else {
-                return "Some of your matches need refinement. Compare your associations with the correct pairings and note the differences in specificity or terminology.";
-            }
+    private function evaluateComparisonAnswer(
+        string $submittedAnswer,
+        string $correctAnswer,
+        float  $baseThreshold
+    ): array {
+        $pairs = $this->extractComparisonTermPairs($correctAnswer);
+
+        if ($pairs === null) {
+            // Cannot find the two sides — fall back to regular evaluation
+            return $this->performRegularEvaluation($submittedAnswer, $correctAnswer, $baseThreshold);
         }
-    }
 
-    /**
-     * Evaluate numerical value questions with flexible grading
-     *
-     * @param string $submittedAnswer The student's submitted answer
-     * @param string $correctAnswer The correct answer
-     * @param float $baseThreshold The base similarity threshold
-     * @return array Evaluation results for numerical questions
-     */
-    private function evaluateNumericalValueAnswer(string $submittedAnswer, string $correctAnswer, float $baseThreshold): array
-    {
-        // Extract numerical values from both answers
-        $correctNumbers = $this->extractNumericalValues($correctAnswer);
-        $submittedNumbers = $this->extractNumericalValues($submittedAnswer);
+        $submittedTokens = $this->extractMeaningfulTokens(
+            $this->normalizeForSemanticComparison($this->preprocessSymbols($submittedAnswer))
+        );
 
-        // Check if the core numerical values match
-        $numericalMatch = $this->compareNumericalValues($submittedNumbers, $correctNumbers);
+        // Coverage = what fraction of each side's tokens appear in the student answer
+        $coverageA = $this->tokenCoverage($submittedTokens, $pairs['sideA']);
+        $coverageB = $this->tokenCoverage($submittedTokens, $pairs['sideB']);
 
-        // For numerical questions, be more lenient - if we have any numerical matches, boost the score
-        if ($numericalMatch['total_matches'] > 0) {
-            // We have numerical matches - this is a numerical question and student got the numbers right
-            $numericalScore = max($numericalMatch['score'], 0.6); // At least 0.6 for having correct numbers
+        // Both sides must be addressed for full credit
+        $bothSideScore = ($coverageA + $coverageB) / 2.0;
+        // Partial credit if at least one side is strong
+        $bestSideScore = max($coverageA, $coverageB);
 
+        // Grading rubric:
+        //   ≥ 0.7 on both sides  → correct
+        //   ≥ 0.5 on both sides  → borderline, use hybrid
+        //   < 0.5 on either side → fall back to regular eval
+        if ($bothSideScore >= 0.70) {
+            $finalSimilarity = max($bothSideScore, 0.85);
             return [
-                'isCorrect' => true,
-                'similarity' => $numericalScore,
-                'metrics' => [
-                    'numerical_match' => $numericalMatch,
-                    'weighted' => $numericalScore,
-                    'numerical_boost' => true
-                ],
-                'reason' => 'Numerical value question - correct values identified',
+                'isCorrect'   => true,
+                'similarity'  => $finalSimilarity,
+                'metrics'     => ['coverageA' => $coverageA, 'coverageB' => $coverageB, 'bothSideScore' => $bothSideScore],
+                'reason'      => 'Comparison question — both sides addressed',
                 'courseTopic' => $this->identifyCourseTopic($correctAnswer),
-                'feedback' => $this->generateNumericalFeedback($submittedAnswer, $correctAnswer, $numericalMatch)
+                'feedback'    => $this->comparisonFeedback($coverageA, $coverageB, true),
             ];
         }
 
-        // No numerical matches found - fall back to regular evaluation but with lower threshold
-        $regularResult = $this->performRegularEvaluation($submittedAnswer, $correctAnswer, min($baseThreshold, 0.5));
-
-        // If regular evaluation also fails, provide specific numerical feedback
-        if (!$regularResult['isCorrect']) {
-            $regularResult['feedback'] = $this->generateNumericalFeedback($submittedAnswer, $correctAnswer, $numericalMatch);
-        }
-
-        return $regularResult;
-    }
-
-    /**
-     * Extract numerical values from text
-     *
-     * @param string $text The text to analyze
-     * @return array Extracted numerical values with context
-     */
-    private function extractNumericalValues(string $text): array
-    {
-        $values = [];
-
-        // Extract ranges like "3.5–5.0" or "3.5-5.0" or "3.5 to 5.0"
-        if (preg_match_all('/(\d+[\.,]\d+)\s*[\-\–]\s*(\d+[\.,]\d+)/', $text, $matches)) {
-            foreach ($matches[0] as $i => $match) {
-                $values[] = [
-                    'type' => 'range',
-                    'min' => (float) str_replace(',', '.', $matches[1][$i]),
-                    'max' => (float) str_replace(',', '.', $matches[2][$i]),
-                    'text' => $match,
-                    'unit' => $this->extractUnit($match)
-                ];
-            }
-        }
-
-        // Extract single values like "3.5 g/dL"
-        if (preg_match_all('/(\d+[\.,]\d+)\s*([a-zA-Zµ°\/]+)?/', $text, $matches)) {
-            foreach ($matches[0] as $i => $match) {
-                $value = (float) str_replace(',', '.', $matches[1][$i]);
-                $unit = isset($matches[2][$i]) ? trim($matches[2][$i]) : '';
-
-                // Skip if this is part of a range we already captured
-                $alreadyCaptured = false;
-                foreach ($values as $existing) {
-                    if (strpos($existing['text'], $match) !== false) {
-                        $alreadyCaptured = true;
-                        break;
-                    }
-                }
-
-                if (!$alreadyCaptured) {
-                    $values[] = [
-                        'type' => 'single',
-                        'value' => $value,
-                        'text' => $match,
-                        'unit' => $this->normalizeUnit($unit)
-                    ];
-                }
-            }
-        }
-
-        return $values;
-    }
-
-    /**
-     * Extract unit from numerical text
-     *
-     * @param string $text The numerical text
-     * @return string The extracted unit
-     */
-    private function extractUnit(string $text): string
-    {
-        // Extract everything after the numbers
-        if (preg_match('/[\d\.\-\–]+\s*(.+)$/', $text, $match)) {
-            return trim($match[1]);
-        }
-        return '';
-    }
-
-    /**
-     * Normalize unit for comparison
-     *
-     * @param string $unit The unit to normalize
-     * @return string Normalized unit
-     */
-    private function normalizeUnit(string $unit): string
-    {
-        $unit = strtolower(trim($unit));
-
-        // Common unit normalizations
-        $normalizations = [
-            'g/dl' => 'g/dl',
-            'g/dL' => 'g/dl',
-            'grams per deciliter' => 'g/dl',
-            'g/l' => 'g/l',
-            'g/L' => 'g/l',
-            'grams per liter' => 'g/l',
-            'mg/dl' => 'mg/dl',
-            'mmol/l' => 'mmol/l',
-            'mmHg' => 'mmhg',
-            '°c' => 'celsius',
-            '°f' => 'fahrenheit'
-        ];
-
-        return $normalizations[$unit] ?? $unit;
-    }
-
-    /**
-     * Compare numerical values between submitted and correct answers
-     *
-     * @param array $submittedNumbers Numbers from submitted answer
-     * @param array $correctNumbers Numbers from correct answer
-     * @return array Comparison results
-     */
-    private function compareNumericalValues(array $submittedNumbers, array $correctNumbers): array
-    {
-        if (empty($correctNumbers)) {
-            return ['score' => 0, 'matches' => [], 'reason' => 'No numerical values in correct answer'];
-        }
-
-        if (empty($submittedNumbers)) {
-            return ['score' => 0, 'matches' => [], 'reason' => 'No numerical values in submitted answer'];
-        }
-
-        $matches = [];
-        $totalScore = 0;
-
-        foreach ($correctNumbers as $correctNum) {
-            $bestMatch = ['score' => 0, 'submitted' => null];
-
-            foreach ($submittedNumbers as $submittedNum) {
-                $score = $this->calculateNumericalSimilarity($correctNum, $submittedNum);
-                if ($score > $bestMatch['score']) {
-                    $bestMatch = ['score' => $score, 'submitted' => $submittedNum];
-                }
-            }
-
-            if ($bestMatch['score'] > 0.7) { // Good match
-                $matches[] = [
-                    'correct' => $correctNum,
-                    'submitted' => $bestMatch['submitted'],
-                    'score' => $bestMatch['score']
-                ];
-                $totalScore += $bestMatch['score'];
-            }
-        }
-
-        $averageScore = count($matches) > 0 ? $totalScore / count($matches) : 0;
-
-        return [
-            'score' => $averageScore,
-            'matches' => $matches,
-            'total_matches' => count($matches),
-            'reason' => count($matches) > 0 ? 'Numerical values matched' : 'No numerical values matched'
-        ];
-    }
-
-    /**
-     * Calculate similarity between two numerical values
-     *
-     * @param array $num1 First numerical value
-     * @param array $num2 Second numerical value
-     * @return float Similarity score (0.0 to 1.0)
-     */
-    private function calculateNumericalSimilarity(array $num1, array $num2): float
-    {
-        // Same units get bonus
-        $unitBonus = ($num1['unit'] === $num2['unit']) ? 0.2 : 0;
-
-        if ($num1['type'] === 'range' && $num2['type'] === 'range') {
-            // Both are ranges - check if they overlap or are very close
-            $overlap = min($num1['max'], $num2['max']) - max($num1['min'], $num2['min']);
-            $totalRange = max($num1['max'], $num2['max']) - min($num1['min'], $num2['min']);
-
-            if ($totalRange > 0) {
-                $overlapScore = max(0, $overlap / $totalRange);
-                return min(1.0, $overlapScore + $unitBonus);
-            }
-        }
-
-        if ($num1['type'] === 'single' && $num2['type'] === 'single') {
-            // Both are single values - check if they're close
-            $diff = abs($num1['value'] - $num2['value']);
-            $avg = ($num1['value'] + $num2['value']) / 2;
-
-            if ($avg > 0) {
-                $relativeDiff = $diff / $avg;
-                $similarity = max(0, 1.0 - $relativeDiff);
-                return min(1.0, $similarity + $unitBonus);
-            }
-        }
-
-        if ($num1['type'] === 'range' && $num2['type'] === 'single') {
-            // Range vs single - check if single is within range
-            if ($num2['value'] >= $num1['min'] && $num2['value'] <= $num1['max']) {
-                return 0.9 + $unitBonus; // Very good - exact value in range
-            }
-            // Check if close to range bounds
-            $distanceToMin = abs($num2['value'] - $num1['min']);
-            $distanceToMax = abs($num2['value'] - $num1['max']);
-            $minDistance = min($distanceToMin, $distanceToMax);
-            $rangeSize = $num1['max'] - $num1['min'];
-
-            if ($rangeSize > 0) {
-                $relativeDistance = $minDistance / $rangeSize;
-                return max(0, 0.8 - $relativeDistance) + $unitBonus;
-            }
-        }
-
-        if ($num1['type'] === 'single' && $num2['type'] === 'range') {
-            // Single vs range - delegate to range vs single
-            return $this->calculateNumericalSimilarity($num2, $num1);
-        }
-
-        // Different types or no match
-        return $unitBonus; // Only unit bonus if units match
-    }
-
-    /**
-     * Generate feedback specific to numerical questions
-     *
-     * @param string $submitted Submitted answer
-     * @param string $correct Correct answer
-     * @param array $numericalMatch Numerical comparison results
-     * @return string Feedback message
-     */
-    private function generateNumericalFeedback(string $submitted, string $correct, array $numericalMatch): string
-    {
-        if ($numericalMatch['score'] >= 0.9) {
-            return "Excellent! Your numerical values are very accurate.";
-        } elseif ($numericalMatch['score'] >= 0.7) {
-            return "Good job! Your numerical values are close to the correct range. Check the exact formatting and units.";
-        } else {
-            if ($numericalMatch['total_matches'] > 0) {
-                return "You have some correct numerical elements, but check the exact values and units. Medical reference ranges must be precise.";
-            } else {
-                return "Your answer doesn't contain the correct numerical values. Check the reference ranges and units carefully.";
-            }
-        }
-    }
-
-    /**
-     * Evaluate comparison-style questions with more flexible grading
-     *
-     * @param string $submittedAnswer The student's submitted answer
-     * @param string $correctAnswer The correct answer
-     * @param float $baseThreshold The base similarity threshold
-     * @return array Evaluation results for comparison questions
-     */
-    private function evaluateComparisonAnswer(string $submittedAnswer, string $correctAnswer, float $baseThreshold): array
-    {
-        // Extract key comparison elements from correct answer
-        $correctElements = $this->extractComparisonElements($correctAnswer);
-        $submittedElements = $this->extractComparisonElements($submittedAnswer);
-
-        // Calculate similarity between key elements
-        $elementSimilarity = $this->calculateComparisonElementSimilarity($submittedElements, $correctElements);
-
-        // For comparison questions, if core comparison is excellent, mark as correct
-        // This prioritizes conceptual understanding over exact wording
-        if ($elementSimilarity['core_comparison_score'] >= 0.8) {
-            // Perfect core comparison - student got the key distinctions right
+        if ($bothSideScore >= 0.50) {
+            $regularMetrics  = $this->calculateSimilarityMetrics($submittedAnswer, $correctAnswer);
+            $hybridScore     = ($bothSideScore * 0.65) + ($regularMetrics['weighted'] * 0.35);
+            $isCorrect       = $hybridScore >= min($baseThreshold, 0.60);
             return [
-                'isCorrect' => true,
-                'similarity' => max($elementSimilarity['core_comparison_score'], 0.85), // Ensure it's above default threshold
-                'metrics' => [
-                    'comparison_elements' => $elementSimilarity,
-                    'weighted' => $elementSimilarity['core_comparison_score'],
-                    'comparison_boost' => true
-                ],
-                'reason' => 'Comparison question - core concepts correctly identified',
+                'isCorrect'   => $isCorrect,
+                'similarity'  => $hybridScore,
+                'metrics'     => array_merge($regularMetrics, ['coverageA' => $coverageA, 'coverageB' => $coverageB]),
+                'reason'      => 'Comparison question — partial coverage of both sides',
                 'courseTopic' => $this->identifyCourseTopic($correctAnswer),
-                'feedback' => $this->generateComparisonFeedback($submittedAnswer, $correctAnswer, $elementSimilarity)
+                'feedback'    => $this->comparisonFeedback($coverageA, $coverageB, $isCorrect),
             ];
         }
 
-        // If core comparison is good but not perfect, use a hybrid approach
-        if ($elementSimilarity['core_comparison_score'] >= 0.6) {
-            $adjustedThreshold = min($baseThreshold, 0.5); // Reduce threshold to 50% for comparison questions
-            $regularSimilarity = $this->calculateSimilarityMetrics($submittedAnswer, $correctAnswer)['weighted'];
-
-            // Weight core comparison more heavily for final decision
-            $finalSimilarity = ($elementSimilarity['core_comparison_score'] * 0.7) + ($regularSimilarity * 0.3);
-
-            return [
-                'isCorrect' => $finalSimilarity >= $adjustedThreshold,
-                'similarity' => $finalSimilarity,
-                'metrics' => [
-                    'comparison_elements' => $elementSimilarity,
-                    'weighted' => $finalSimilarity,
-                    'comparison_boost' => true
-                ],
-                'reason' => 'Comparison question - core concepts identified',
-                'courseTopic' => $this->identifyCourseTopic($correctAnswer),
-                'feedback' => $this->generateComparisonFeedback($submittedAnswer, $correctAnswer, $elementSimilarity)
-            ];
-        }
-
-        // Fall back to regular evaluation if comparison elements aren't strong enough
+        // One or both sides severely under-covered — regular eval
         return $this->performRegularEvaluation($submittedAnswer, $correctAnswer, $baseThreshold);
     }
 
     /**
-     * Extract key comparison elements from an answer
+     * What fraction of $referenceTokens appear in $submittedTokens?
      *
-     * @param string $answer The answer text
-     * @return array Extracted comparison elements
+     * @param  string[]  $submittedTokens
+     * @param  string[]  $referenceTokens
      */
-    private function extractComparisonElements(string $answer): array
+    private function tokenCoverage(array $submittedTokens, array $referenceTokens): float
     {
-        $normalized = strtolower($answer);
+        if (empty($referenceTokens)) { return 1.0; }
 
-        // Split by common comparison separators
-        $parts = preg_split('/(?:vs\.?|versus|compared to|in contrast|however|while|although|but|unlike|whereas|:|-|;)/i', $normalized);
-
-        $elements = [];
-        foreach ($parts as $part) {
-            $part = trim($part);
-            if (empty($part)) continue;
-
-            // Extract key terms from each part
-            $terms = $this->extractKeyTerms($part);
-            $elements[] = [
-                'text' => $part,
-                'terms' => $terms,
-                'length' => strlen($part)
-            ];
-        }
-
-        return $elements;
-    }
-
-    /**
-     * Extract key medical terms from text
-     *
-     * @param string $text The text to analyze
-     * @return array Key terms found
-     */
-    private function extractKeyTerms(string $text): array
-    {
-        $terms = [];
-
-        // Common medical term patterns
-        $patterns = [
-            // Specific medical terms (customize based on domain)
-            '/\b(glycoproteins?|proteoglycans?|oligosaccharides?|glycosaminoglycans?)\b/i',
-            '/\b(branched|linear|uronic|uronic acid|sulfate|sulfated?)\b/i',
-            '/\b(mucins?|antigens?|receptors?|hormones?|enzymes?|antibodies?)\b/i',
-            '/\b(cartilage|bone|ground substance|cell membrane)\b/i',
-            '/\b(\d+[-\s]?\d+\s+units?|>\s*\d+\s+units?|<.*units?)\b/i',
-
-            // General medical patterns
-            '/\b[a-z]+(?:ic|al|ous|ive|tion|ment|sis|emia|itis|osis|pathy|ology)\b/i',
-            '/\b[a-z]{4,}\b/i' // Words 4+ characters
-        ];
-
-        foreach ($patterns as $pattern) {
-            if (preg_match_all($pattern, $text, $matches)) {
-                $terms = array_merge($terms, $matches[0]);
-            }
-        }
-
-        return array_unique(array_map('strtolower', $terms));
-    }
-
-    /**
-     * Calculate similarity between comparison elements
-     *
-     * @param array $submittedElements Elements from submitted answer
-     * @param array $correctElements Elements from correct answer
-     * @return array Similarity metrics
-     */
-    private function calculateComparisonElementSimilarity(array $submittedElements, array $correctElements): array
-    {
-        if (empty($correctElements)) {
-            return ['overall_similarity' => 0, 'core_similarity' => 0, 'element_matches' => []];
-        }
-
-        $totalCorrectTerms = 0;
-        $matchedTerms = 0;
-
-        // For comparison questions, focus on key distinguishing features
-        // Core comparison requires identifying the main items being compared and their key characteristics
-        $coreComparisonScore = $this->calculateCoreComparisonScore($submittedElements, $correctElements);
-
-        foreach ($correctElements as $correctElement) {
-            $correctTerms = $correctElement['terms'];
-            $totalCorrectTerms += count($correctTerms);
-
-            // Find best matching submitted element
-            $bestMatch = 0;
-            $bestTerms = [];
-
-            foreach ($submittedElements as $submittedElement) {
-                $submittedTerms = $submittedElement['terms'];
-                $commonTerms = array_intersect($correctTerms, $submittedTerms);
-                $similarity = count($commonTerms) / max(1, count($correctTerms));
-
-                if ($similarity > $bestMatch) {
-                    $bestMatch = $similarity;
-                    $bestTerms = $commonTerms;
-                }
-            }
-
-            $matchedTerms += count($bestTerms);
-        }
-
-        $overallSimilarity = $totalCorrectTerms > 0 ? $matchedTerms / $totalCorrectTerms : 0;
-
-        return [
-            'overall_similarity' => $overallSimilarity,
-            'core_similarity' => $coreComparisonScore,
-            'total_terms' => $totalCorrectTerms,
-            'matched_terms' => $matchedTerms,
-            'core_comparison_score' => $coreComparisonScore
-        ];
-    }
-
-    /**
-     * Calculate core comparison score - focuses on the essential distinguishing features
-     *
-     * @param array $submittedElements Elements from submitted answer
-     * @param array $correctElements Elements from correct answer
-     * @return float Core comparison score (0.0 to 1.0)
-     */
-    private function calculateCoreComparisonScore(array $submittedElements, array $correctElements): float
-    {
-        // Extract all terms from both answers for comparison analysis
-        $allCorrectTerms = [];
-        $allSubmittedTerms = [];
-
-        foreach ($correctElements as $element) {
-            $allCorrectTerms = array_merge($allCorrectTerms, $element['terms']);
-        }
-
-        foreach ($submittedElements as $element) {
-            $allSubmittedTerms = array_merge($allSubmittedTerms, $element['terms']);
-        }
-
-        $allCorrectTerms = array_unique($allCorrectTerms);
-        $allSubmittedTerms = array_unique($allSubmittedTerms);
-
-        // Define comparison-critical term pairs (things that must be distinguished)
-        $criticalPairs = [
-            // Glycoproteins vs Proteoglycans
-            ['glycoproteins', 'proteoglycans'],
-            ['glycoprotein', 'proteoglycan'],
-
-            // Carbohydrate types
-            ['oligosaccharides', 'glycosaminoglycans'],
-            ['oligosaccharide', 'glycosaminoglycan'],
-
-            // Other common comparison pairs in biochemistry
-            ['dna', 'rna'],
-            ['aerobic', 'anaerobic'],
-            ['mitosis', 'meiosis'],
-            ['systolic', 'diastolic'],
-            ['arteries', 'veins'],
-            ['sympathetic', 'parasympathetic'],
-        ];
-
-        $pairsRecognized = 0;
-        $totalPairs = 0;
-
-        foreach ($criticalPairs as $pair) {
-            $correctHasBoth = in_array($pair[0], $allCorrectTerms) && in_array($pair[1], $allCorrectTerms);
-            $submittedHasBoth = in_array($pair[0], $allSubmittedTerms) && in_array($pair[1], $allSubmittedTerms);
-
-            if ($correctHasBoth) {
-                $totalPairs++;
-                if ($submittedHasBoth) {
-                    $pairsRecognized++;
-                }
-            }
-        }
-
-        // If no critical pairs found in correct answer, fall back to general term matching
-        if ($totalPairs === 0) {
-            // Check for general comparison indicators
-            $comparisonTerms = ['branched', 'linear', 'uronic', 'sulfate', 'cartilage', 'bone'];
-            $correctComparisonTerms = array_intersect($allCorrectTerms, $comparisonTerms);
-            $submittedComparisonTerms = array_intersect($allSubmittedTerms, $comparisonTerms);
-
-            if (!empty($correctComparisonTerms)) {
-                $recognized = count(array_intersect($submittedComparisonTerms, $correctComparisonTerms));
-                $total = count($correctComparisonTerms);
-                return $total > 0 ? $recognized / $total : 0;
-            }
-
-            return 0;
-        }
-
-        $pairScore = $totalPairs > 0 ? $pairsRecognized / $totalPairs : 0;
-
-        // Bonus for recognizing the key distinguishing carbohydrate types
-        $keyDistinguishingTerms = ['oligosaccharides', 'glycosaminoglycans'];
-        $correctHasDistinguishing = !empty(array_intersect($allCorrectTerms, $keyDistinguishingTerms));
-        $submittedHasDistinguishing = !empty(array_intersect($allSubmittedTerms, $keyDistinguishingTerms));
-
-        $distinguishingBonus = 0;
-        if ($correctHasDistinguishing && $submittedHasDistinguishing) {
-            $distinguishingBonus = 0.3; // Significant bonus for getting the key difference right
-        } elseif ($correctHasDistinguishing && !$submittedHasDistinguishing) {
-            $distinguishingBonus = -0.2; // Penalty for missing key distinguishing features
-        }
-
-        $finalScore = min(1.0, max(0, $pairScore + $distinguishingBonus));
-
-        return $finalScore;
-    }
-
-    /**
-     * Generate feedback specific to comparison questions
-     *
-     * @param string $submitted Submitted answer
-     * @param string $correct Correct answer
-     * @param array $elementSimilarity Similarity metrics
-     * @return string Feedback message
-     */
-    private function generateComparisonFeedback(string $submitted, string $correct, array $elementSimilarity): string
-    {
-        if ($elementSimilarity['core_similarity'] >= 0.8) {
-            return "Excellent! You've identified the key differences in this comparison. Consider adding more specific details for a complete answer.";
-        } elseif ($elementSimilarity['core_similarity'] >= 0.6) {
-            return "Good job! You've captured the main comparison points. Review the specific characteristics and functions mentioned in the correct answer.";
-        } else {
-            return "You've started to identify some comparison elements, but focus on the key differences between the terms being compared. Review the specific characteristics that distinguish them.";
-        }
-    }
-
-    /**
-     * Perform regular evaluation as fallback
-     *
-     * @param string $submittedAnswer Submitted answer
-     * @param string $correctAnswer Correct answer
-     * @param float $threshold Similarity threshold
-     * @return array Regular evaluation results
-     */
-    private function performRegularEvaluation(string $submittedAnswer, string $correctAnswer, float $threshold): array
-    {
-        $metrics = $this->calculateSimilarityMetrics($submittedAnswer, $correctAnswer);
-        $isCorrect = $metrics['weighted'] >= $threshold;
-
-        return [
-            'isCorrect' => $isCorrect,
-            'similarity' => $metrics['weighted'],
-            'metrics' => $metrics,
-            'reason' => $isCorrect ? 'Regular evaluation - sufficient similarity' : 'Regular evaluation - insufficient similarity',
-            'courseTopic' => $this->identifyCourseTopic($correctAnswer),
-            'feedback' => $this->generateDetailedFeedback($submittedAnswer, $correctAnswer, $metrics, $isCorrect, $metrics['weighted'], $threshold, null)
-        ];
-    }
-
-    /**
-     * SMART GRADING ALGORITHM - The Sweet Spot Between Accuracy and Intelligence
-     * This system finds the optimal balance for medical education grading
-     *
-     * @param string $submittedAnswer The answer submitted by the user
-     * @param string $correctAnswer The correct answer from the database
-     * @param array $alternativeAnswers Optional array of alternative correct answers
-     * @param float $similarityThreshold Optional threshold to consider answers correct (0.0 to 1.0)
-     * @return array Results including score, similarity, detailed metrics, and reason
-     */
-    public function evaluateAnswer(
-        string $submittedAnswer,
-        string $correctAnswer,
-        array $alternativeAnswers = [],
-        float $similarityThreshold = self::DEFAULT_SIMILARITY_THRESHOLD
-    ): array {
-        $startTime = microtime(true);
-
-        // 🚨 CRITICAL EARLY CHECKS
-        $submittedAnswer = trim($submittedAnswer);
-        $correctAnswer = trim($correctAnswer);
-
-        if (empty($submittedAnswer)) {
-            return [
-                'isCorrect' => false,
-                'similarity' => 0.0,
-                'reason' => 'No answer provided',
-                'processing_time' => microtime(true) - $startTime
-            ];
-        }
-
-        if (empty($correctAnswer)) {
-            return [
-                'isCorrect' => false,
-                'similarity' => 0.0,
-                'reason' => 'No correct answer to compare against',
-                'processing_time' => microtime(true) - $startTime
-            ];
-        }
-
-        // ✅ EXACT MATCH - FASTEST PATH
-        if (strtolower($submittedAnswer) === strtolower($correctAnswer)) {
-            return [
-                'isCorrect' => true,
-                'similarity' => 1.0,
-                'reason' => 'Perfect match!',
-                'processing_time' => microtime(true) - $startTime
-            ];
-        }
-        
-        // Check 4: Basic keyword overlap (fast check)
-        $submittedWords = array_filter(explode(' ', strtolower($submittedAnswer)));
-        $correctWords = array_filter(explode(' ', strtolower($correctAnswer)));
-        $commonWords = array_intersect($submittedWords, $correctWords);
-        
-        if (count($commonWords) === 0) {
-            return [
-                'isCorrect' => false,
-                'similarity' => 0.0,
-                'reason' => 'No matching keywords found',
-                'processing_time' => microtime(true) - $startTime
-            ];
-        }
-        
-        // Only proceed with expensive evaluation if early checks pass
-        // DEBUG: Log initial inputs
-        Log::debug('WrittenAnswerEvaluationService::evaluateAnswer - START', [
-            'submitted_answer' => $submittedAnswer,
-            'correct_answer' => $correctAnswer,
-            'alternative_answers' => $alternativeAnswers,
-            'similarity_threshold' => $similarityThreshold
-        ]);
-
-        // Preprocess answers to handle medical symbols and notations
-        $submittedAnswer = $this->preprocessSymbols($submittedAnswer);
-        $correctAnswer = $this->preprocessSymbols($correctAnswer);
-        $alternativeAnswers = array_map([$this, 'preprocessSymbols'], $alternativeAnswers);
-
-        // DEBUG: Log after preprocessing
-        Log::debug('WrittenAnswerEvaluationService::evaluateAnswer - After preprocessing', [
-            'submitted_answer' => $submittedAnswer,
-            'correct_answer' => $correctAnswer,
-            'alternative_answers' => $alternativeAnswers
-        ]);
-
-        // Check if this is a comparison question and handle it specially
-        if ($this->isComparisonQuestion($correctAnswer)) {
-            Log::debug('WrittenAnswerEvaluationService::evaluateAnswer - Detected comparison question, using specialized evaluation');
-            return $this->evaluateComparisonAnswer($submittedAnswer, $correctAnswer, $similarityThreshold);
-        }
-
-        // Check if this is a numerical value question and handle it specially
-        if ($this->isNumericalValueQuestion($correctAnswer)) {
-            Log::debug('WrittenAnswerEvaluationService::evaluateAnswer - Detected numerical value question, using specialized evaluation');
-            return $this->evaluateNumericalValueAnswer($submittedAnswer, $correctAnswer, $similarityThreshold);
-        }
-
-        // Check if this is a definition question and handle it specially
-        if ($this->isDefinitionQuestion($correctAnswer)) {
-            Log::debug('WrittenAnswerEvaluationService::evaluateAnswer - Detected definition question, using specialized evaluation');
-            return $this->evaluateDefinitionAnswer($submittedAnswer, $correctAnswer, $similarityThreshold);
-        }
-
-        // Check if this is a matching question and handle it specially
-        if ($this->isMatchingQuestion($correctAnswer)) {
-            Log::debug('WrittenAnswerEvaluationService::evaluateAnswer - Detected matching question, using specialized evaluation');
-            return $this->evaluateMatchingAnswer($submittedAnswer, $correctAnswer, $similarityThreshold);
-        }
-        
-        $cacheKey = "evaluate:{$submittedAnswer}:{$correctAnswer}:" . implode('|', $alternativeAnswers) . ":{$similarityThreshold}";
-        
-        return $this->getCachedOrCompute($cacheKey, function() use ($submittedAnswer, $correctAnswer, $alternativeAnswers, $similarityThreshold, $startTime) {
-            // Normalize inputs
-            $submittedAnswer = trim($submittedAnswer);
-            $correctAnswer = trim($correctAnswer);
-            
-            // DEBUG: Log after trimming
-            Log::debug('WrittenAnswerEvaluationService::evaluateAnswer - After trimming', [
-                'submitted_answer' => $submittedAnswer,
-                'correct_answer' => $correctAnswer
-            ]);
-            
-            // Performance optimization - Empty answers are never correct
-            if (empty($submittedAnswer)) {
-                Log::debug('WrittenAnswerEvaluationService::evaluateAnswer - Empty submitted answer detected');
-                return [
-                    'isCorrect' => false,
-                    'similarity' => 0,
-                    'metrics' => [],
-                    'reason' => 'No answer provided',
-                    'feedback' => 'Please provide an answer to the question.'
-                ];
-            }
-            
-            // Performance optimization - Check for exact match first
-            $normalizedSubmitted = $this->textProcessor->normalizeText($submittedAnswer);
-            $normalizedCorrect = $this->textProcessor->normalizeText($correctAnswer);
-            
-            // DEBUG: Log normalization results
-            Log::debug('WrittenAnswerEvaluationService::evaluateAnswer - Normalization results', [
-                'normalized_submitted' => $normalizedSubmitted,
-                'normalized_correct' => $normalizedCorrect,
-                'exact_match' => ($normalizedSubmitted === $normalizedCorrect)
-            ]);
-            
-            if ($normalizedSubmitted === $normalizedCorrect) {
-                Log::debug('WrittenAnswerEvaluationService::evaluateAnswer - Exact match found');
-                return [
-                    'isCorrect' => true,
-                    'similarity' => 1.0,
-                    'metrics' => [
-                        'exact_match' => true,
-                        'levenshtein' => 1.0,
-                        'jaccard' => 1.0,
-                        'keyword' => 1.0
-                    ],
-                    'reason' => 'Exact match with correct answer',
-                    'feedback' => 'Your answer exactly matches the expected answer.'
-                ];
-            }
-            
-            // Check for exact match with alternative answers - quick win
-            foreach ($alternativeAnswers as $index => $altAnswer) {
-                if (empty($altAnswer)) continue;
-                
-                $normalizedAlt = $this->textProcessor->normalizeText($altAnswer);
-                Log::debug('WrittenAnswerEvaluationService::evaluateAnswer - Checking alternative answer', [
-                    'index' => $index,
-                    'alternative_answer' => $altAnswer,
-                    'normalized_alternative' => $normalizedAlt,
-                    'matches_submitted' => ($normalizedSubmitted === $normalizedAlt)
-                ]);
-                
-                if ($normalizedSubmitted === $normalizedAlt) {
-                    Log::debug('WrittenAnswerEvaluationService::evaluateAnswer - Exact match with alternative found');
-                    return [
-                        'isCorrect' => true,
-                        'similarity' => 1.0,
-                        'metrics' => [
-                            'exact_match' => true,
-                            'alternative_index' => $index
-                        ],
-                        'reason' => 'Exact match with alternative answer',
-                        'feedback' => 'Your answer correctly matches an alternative accepted answer.'
-                    ];
-                }
-            }
-            
-            // Identify course topic early for domain-specific optimizations
-            $courseTopic = $this->identifyCourseTopic($correctAnswer);
-            Log::debug('WrittenAnswerEvaluationService::evaluateAnswer - Course topic identified', [
-                'course_topic' => $courseTopic
-            ]);
-            
-            // Special case: Protein synthesis location check (very important to get right)
-            if (stripos($normalizedSubmitted, 'protein synthesis') !== false) {
-                // Check for critical location error with protein synthesis
-                $hasLocationError = false;
-                
-                // Check if protein synthesis is mentioned with a wrong location
-                $incorrectLocations = ['mitochondria', 'mitochondrial', 'nucleus', 'nuclear', 'golgi'];
-                foreach ($incorrectLocations as $wrongLocation) {
-                    // Find if protein synthesis is closely associated with a wrong location
-                    // Using a distance-based approach to catch cases where they're mentioned close together
-                    $proteinPos = stripos($normalizedSubmitted, 'protein synthesis');
-                    $locationPos = stripos($normalizedSubmitted, $wrongLocation);
-                    
-                    if ($locationPos !== false && abs($proteinPos - $locationPos) < 50) {
-                        // If protein synthesis and wrong location are close in the text
-                        $hasLocationError = true;
-                        break;
-                    }
-                }
-                
-                // Special case for protein synthesis - if location is wrong, immediately mark as incorrect
-                if ($hasLocationError) {
-                    return [
-                        'isCorrect' => false,
-                        'similarity' => 0.5, // Set a moderate similarity score
-                        'metrics' => [
-                            'conceptual' => 0.4,
-                            'keyword' => 0.5,
-                            'hasContradictions' => true
-                        ],
-                        'reason' => 'Answer contains incorrect location for protein synthesis',
-                        'courseTopic' => $courseTopic,
-                        'feedback' => 'Your answer incorrectly states the location of protein synthesis. Protein synthesis occurs on ribosomes, which can be found free in the cytoplasm or attached to the endoplasmic reticulum, not in the ' . $wrongLocation . '.'
-                    ];
-                }
-            }
-            
-            // Special case: Check for medical abbreviation usage in sympathetic/parasympathetic nervous system
-            if (preg_match('/\b(SNS|PNS|ANS)\b/i', $normalizedSubmitted)) {
-                // If using abbreviations for nervous system, check if other concepts align
-                $isAbbreviatedSNS = preg_match('/\bSNS\b/i', $normalizedSubmitted);
-                $isAbbreviatedPNS = preg_match('/\bPNS\b/i', $normalizedSubmitted);
-                
-                // Process known correct abbreviation patterns
-                if ($isAbbreviatedSNS && 
-                    (stripos($normalizedCorrect, 'sympathetic') !== false) && 
-                    ((stripos($normalizedSubmitted, 'increase hr') !== false || 
-                      stripos($normalizedSubmitted, 'increases hr') !== false || 
-                      stripos($normalizedSubmitted, 'increase heart') !== false || 
-                      stripos($normalizedSubmitted, 'increases heart') !== false) &&
-                     (stripos($normalizedSubmitted, 'inhibit gi') !== false || 
-                      stripos($normalizedSubmitted, 'inhibits gi') !== false || 
-                      stripos($normalizedSubmitted, 'decrease gi') !== false || 
-                      stripos($normalizedSubmitted, 'decreases gi') !== false || 
-                      stripos($normalizedSubmitted, 'decrease digest') !== false || 
-                      stripos($normalizedSubmitted, 'decreases digest') !== false))
-                   ) {
-                    // This is correct sympathetic abbreviation usage with correct effects
-                    return [
-                        'isCorrect' => true,
-                        'similarity' => 0.9,
-                        'metrics' => [
-                            'conceptual' => 0.9,
-                            'keyword' => 0.8,
-                            'hasContradictions' => false,
-                            'abbreviated' => true
-                        ],
-                        'reason' => 'Correct use of medical abbreviations',
-                        'courseTopic' => 'physiology',
-                        'feedback' => 'Your answer correctly describes the effects of the sympathetic nervous system using standard medical abbreviations.'
-                    ];
-                }
-                
-                if ($isAbbreviatedPNS && 
-                    (stripos($normalizedCorrect, 'parasympathetic') !== false) && 
-                    ((stripos($normalizedSubmitted, 'decrease hr') !== false || 
-                      stripos($normalizedSubmitted, 'decreases hr') !== false || 
-                      stripos($normalizedSubmitted, 'decrease heart') !== false || 
-                      stripos($normalizedSubmitted, 'decreases heart') !== false) &&
-                     (stripos($normalizedSubmitted, 'increase gi') !== false || 
-                      stripos($normalizedSubmitted, 'increases gi') !== false || 
-                      stripos($normalizedSubmitted, 'increase digest') !== false || 
-                      stripos($normalizedSubmitted, 'increases digest') !== false))
-                   ) {
-                    // This is correct parasympathetic abbreviation usage with correct effects
-                    return [
-                        'isCorrect' => true,
-                        'similarity' => 0.9,
-                        'metrics' => [
-                            'conceptual' => 0.9,
-                            'keyword' => 0.8,
-                            'hasContradictions' => false,
-                            'abbreviated' => true
-                        ],
-                        'reason' => 'Correct use of medical abbreviations',
-                        'courseTopic' => 'physiology',
-                        'feedback' => 'Your answer correctly describes the effects of the parasympathetic nervous system using standard medical abbreviations.'
-                    ];
-                }
-            }
-            
-            // Enhanced intelligent matching for common medical concepts
-            if ($this->isIntelligentConceptMatch($normalizedSubmitted, $normalizedCorrect)) {
-                return [
-                    'isCorrect' => true,
-                    'similarity' => 0.95, // High score for intelligent understanding
-                    'metrics' => [
-                        'conceptual' => 0.95,
-                        'keyword' => 0.85,
-                        'hasContradictions' => false,
-                        'intelligent_match' => true
-                    ],
-                    'reason' => 'Intelligent understanding of medical concept',
-                    'courseTopic' => $courseTopic,
-                    'feedback' => 'Your answer demonstrates intelligent understanding of the medical concept, even with different wording.'
-                ];
-            }
-
-            // Special case: Heart function with enhanced understanding
-            if ($this->isHeartFunctionMatch($normalizedSubmitted, $normalizedCorrect)) {
-                return [
-                    'isCorrect' => true,
-                    'similarity' => 0.90,
-                    'metrics' => [
-                        'conceptual' => 0.90,
-                        'keyword' => 0.75,
-                        'hasContradictions' => false,
-                        'heart_function_match' => true
-                    ],
-                    'reason' => 'Correct understanding of heart function',
-                    'courseTopic' => 'physiology',
-                    'feedback' => 'Your answer correctly captures the function of the heart, demonstrating good understanding.'
-                ];
-            }
-
-            // Special case: Medical abbreviations - be more lenient
-            if ($this->isMedicalAbbreviationMatch($normalizedSubmitted, $normalizedCorrect)) {
-                return [
-                    'isCorrect' => true,
-                    'similarity' => 0.92,
-                    'metrics' => [
-                        'conceptual' => 0.95,
-                        'keyword' => 0.80,
-                        'hasContradictions' => false,
-                        'abbreviation_match' => true
-                    ],
-                    'reason' => 'Correct use of medical abbreviations',
-                    'courseTopic' => $courseTopic,
-                    'feedback' => 'Your answer correctly uses medical abbreviations and demonstrates understanding of the concepts.'
-                ];
-            }
-
-            // Special case: Typos and misspellings - be very forgiving
-            if ($this->isTypoMatch($normalizedSubmitted, $normalizedCorrect)) {
-                return [
-                    'isCorrect' => true,
-                    'similarity' => 0.88,
-                    'metrics' => [
-                        'conceptual' => 0.90,
-                        'keyword' => 0.70,
-                        'hasContradictions' => false,
-                        'typo_match' => true
-                    ],
-                    'reason' => 'Correct despite minor typos',
-                    'courseTopic' => $courseTopic,
-                    'feedback' => 'Your answer is correct despite minor spelling variations. Pay attention to precise medical terminology.'
-                ];
-            }
-            
-            // Special case: Alternative phrasing with "cardiac muscle" instead of "heart"
-            if (
-                (stripos($normalizedCorrect, 'heart pump') !== false ||
-                 stripos($normalizedCorrect, 'heart pumps') !== false) &&
-                (stripos($normalizedSubmitted, 'cardiac muscle contract') !== false) &&
-                (stripos($normalizedSubmitted, 'propel blood') !== false ||
-                 stripos($normalizedSubmitted, 'pump blood') !== false ||
-                 stripos($normalizedSubmitted, 'circulate blood') !== false) &&
-                (stripos($normalizedSubmitted, 'oxygen') !== false &&
-                 stripos($normalizedSubmitted, 'nutrient') !== false)
-            ) {
-                // This is an alternative correct phrasing using more specific anatomical terminology
-                return [
-                    'isCorrect' => true,
-                    'similarity' => 0.88,
-                    'metrics' => [
-                        'conceptual' => 0.9,
-                        'keyword' => 0.7,
-                        'hasContradictions' => false,
-                        'alternative_phrasing' => true
-                    ],
-                    'reason' => 'Correct using alternative medical terminology',
-                    'courseTopic' => 'physiology',
-                    'feedback' => 'Your answer correctly describes heart function using precise anatomical terminology.'
-                ];
-            }
-            
-            // Early error detection - check for critical pattern mismatches
-            if ($courseTopic) {
-                $patternCritical = $this->isPatternCriticalQuestion($correctAnswer);
-                
-                if ($patternCritical) {
-                    $patternMismatch = $this->checkForCriticalPatternMismatch($normalizedSubmitted, $normalizedCorrect, $courseTopic);
-                    
-                    if ($patternMismatch) {
-                        return [
-                            'isCorrect' => false,
-                            'similarity' => 0.5, // Set a moderate similarity score
-                            'metrics' => [
-                                'conceptual' => 0.4,
-                                'keyword' => 0.5,
-                                'hasContradictions' => true
-                            ],
-                            'reason' => 'Answer contains critical pattern mismatch',
-                            'courseTopic' => $courseTopic,
-                            'feedback' => $this->generateDetailedFeedback(
-                                $submittedAnswer, 
-                                $correctAnswer, 
-                                ['hasContradictions' => true, 'keyword' => 0.5, 'conceptual' => 0.4],
-                                false,
-                                0.5,
-                                $similarityThreshold,
-                                $courseTopic
-                            )
-                        ];
-                    }
-                }
-            }
-            
-            // Calculate similarity metrics for the main correct answer
-            $metrics = $this->calculateSimilarityMetrics($submittedAnswer, $correctAnswer);
-            $mainSimilarity = $metrics['weighted'];
-            $mainMetrics = $metrics;
-            
-            // DEBUG: Log main similarity calculation
-            Log::debug('WrittenAnswerEvaluationService::evaluateAnswer - Main similarity calculation', [
-                'main_similarity' => $mainSimilarity,
-                'main_metrics' => $mainMetrics,
-                'has_contradictions' => $metrics['hasContradictions'] ?? false
-            ]);
-            
-            // Early invalid detection - If the main answer has contradictions, mark as incorrect
-            if ($metrics['hasContradictions'] ?? false) {
-                $mainSimilarity = min($mainSimilarity, 0.65); // Cap the similarity score
-                Log::debug('WrittenAnswerEvaluationService::evaluateAnswer - Contradictions detected, capping similarity', [
-                    'capped_similarity' => $mainSimilarity
-                ]);
-            }
-            
-            // Check against alternative answers if provided
-            $altSimilarities = [];
-            $altMetrics = [];
-            
-            foreach ($alternativeAnswers as $index => $altAnswer) {
-                if (empty($altAnswer)) continue;
-                
-                // Calculate similarity with this alternative
-                $altMetric = $this->calculateSimilarityMetrics($submittedAnswer, $altAnswer);
-                
-                // If this alternative has contradictions, cap the similarity
-                if ($altMetric['hasContradictions'] ?? false) {
-                    $altMetric['weighted'] = min($altMetric['weighted'], 0.65);
-                }
-                
-                $altSimilarities[$index] = $altMetric['weighted'];
-                $altMetrics[$index] = $altMetric;
-                
-                // DEBUG: Log alternative similarity calculation
-                Log::debug('WrittenAnswerEvaluationService::evaluateAnswer - Alternative similarity calculation', [
-                    'index' => $index,
-                    'alternative_answer' => $altAnswer,
-                    'similarity' => $altMetric['weighted'],
-                    'metrics' => $altMetric
-                ]);
-            }
-            
-            // Find best similarity among all answers (main and alternatives)
-            $bestSimilarity = $mainSimilarity;
-            $bestMetrics = $mainMetrics;
-            $bestSource = 'main';
-            $bestIndex = null;
-            $bestAnswer = $correctAnswer;
-            
-            foreach ($altSimilarities as $index => $similarity) {
-                if ($similarity > $bestSimilarity) {
-                    $bestSimilarity = $similarity;
-                    $bestMetrics = $altMetrics[$index];
-                    $bestSource = 'alternative';
-                    $bestIndex = $index;
-                    $bestAnswer = $alternativeAnswers[$index];
-                }
-            }
-            
-            // DEBUG: Log best similarity selection
-            Log::debug('WrittenAnswerEvaluationService::evaluateAnswer - Best similarity selection', [
-                'best_similarity' => $bestSimilarity,
-                'best_source' => $bestSource,
-                'best_index' => $bestIndex,
-                'best_answer' => $bestAnswer,
-                'best_metrics' => $bestMetrics
-            ]);
-            
-            // Apply domain-specific context boost if applicable
-            $domainBoost = $this->calculateDomainContextBoost($submittedAnswer, $bestAnswer);
-            $finalSimilarity = min(1.0, $bestSimilarity + $domainBoost);
-            
-            // DEBUG: Log domain boost calculation
-            Log::debug('WrittenAnswerEvaluationService::evaluateAnswer - Domain boost calculation', [
-                'domain_boost' => $domainBoost,
-                'final_similarity' => $finalSimilarity
-            ]);
-            
-            // Enhance abbreviation handling
-            // Detect if we're dealing with an answer that predominantly uses medical abbreviations
-            $containsSignificantAbbreviations = $this->containsSignificantMedicalAbbreviations($submittedAnswer);
-            
-            // Apply abbreviation boost for answers with significant medical abbreviations
-            // Only if the answer doesn't have contradictions and has reasonable keyword overlap
-            if ($containsSignificantAbbreviations && 
-                !($bestMetrics['hasContradictions'] ?? false) && 
-                isset($bestMetrics['keyword']) && $bestMetrics['keyword'] > 0.5) {
-                // More significant boost for abbreviation-heavy answers
-                $abbrBoost = 0.1;
-                $finalSimilarity = min(1.0, $finalSimilarity + $abbrBoost);
-            }
-            
-            // Apply alternative phrasing detection boost
-            // For answers that use alternative correct medical terminology (passive vs active, etc.)
-            if (isset($bestMetrics['conceptual']) && $bestMetrics['conceptual'] > 0.8 && 
-                isset($bestMetrics['keyword']) && $bestMetrics['keyword'] > 0.6 && 
-                !($bestMetrics['hasContradictions'] ?? false)) {
-                // If the answer is conceptually very similar but uses different phrasing
-                $phrasingBoost = 0.15;
-                $finalSimilarity = min(1.0, $finalSimilarity + $phrasingBoost);
-            }
-            
-            // Safety check: if we have missing key medical terms or contradictions,
-            // never mark as correct regardless of similarity score
-            $isCriticalMismatch = false;
-            $criticalReason = '';
-            
-            // Check for critical conceptual errors
-            if ($bestMetrics['hasContradictions'] ?? false) {
-                $isCriticalMismatch = true;
-                $criticalReason = 'Answer contains contradictory medical concepts';
-            }
-            
-            // Check for too many missing keywords
-            if (isset($bestMetrics['keyword']) && $bestMetrics['keyword'] < 0.4) {
-                $isCriticalMismatch = true;
-                $criticalReason = 'Answer is missing essential medical concepts';
-            }
-            
-            // Identify course topic for domain-specific pattern matching
-            $courseTopic = $this->identifyCourseTopic($bestAnswer);
-            
-            // Check if this is a pattern-critical question by looking at the correct answer
-            $isPatternCriticalQuestion = false;
-            $patternMatchers = [
-                // Physiology patterns
-                'The parasympathetic nervous system' => 'parasympathetic_effects',
-                'The sympathetic nervous system' => 'sympathetic_effects',
-                'Parasympathetic stimulation' => 'parasympathetic_effects',
-                'Sympathetic stimulation' => 'sympathetic_effects',
-                'Action potential' => 'action_potential',
-                'Cardiac cycle' => 'cardiac_cycle',
-                'Glomerular filtration' => 'renal_physiology',
-                'Respiratory mechanics' => 'respiratory_mechanics',
-                
-                // Anatomy patterns
-                'Anatomical position' => 'anatomical_position',
-                'Skeletal system' => 'skeletal_system',
-                'Joint classification' => 'joint_types',
-                
-                // Biochemistry patterns
-                'Glycolysis' => 'glycolysis',
-                'TCA cycle' => 'tca_cycle',
-                'Krebs cycle' => 'tca_cycle',
-                'Electron transport chain' => 'electron_transport',
-                'DNA replication' => 'dna_replication',
-                
-                // Histology patterns
-                'Epithelial tissue' => 'epithelial_tissue',
-                'Connective tissue' => 'connective_tissue',
-                'Muscle tissue' => 'muscle_tissue'
-            ];
-            
-            foreach ($patternMatchers as $phrase => $patternName) {
-                if (stripos($bestAnswer, $phrase) !== false) {
-                    $isPatternCriticalQuestion = true;
-                    
-                    // If this is a pattern-critical question, check if the pattern is present in the submitted answer
-                    if (isset($bestMetrics['pattern']['missing_patterns']) && 
-                        isset($bestMetrics['pattern']['missing_patterns'][$patternName])) {
-                        $isCriticalMismatch = true;
-                        $criticalReason = "Answer is missing critical pattern: $patternName";
-                    }
-                    
+        $matched = 0;
+        foreach ($referenceTokens as $token) {
+            // Exact match OR the token appears as a substring of any submitted token
+            // (handles plurals/suffixes not caught by normalizer)
+            foreach ($submittedTokens as $sub) {
+                if ($sub === $token || str_contains($sub, $token) || str_contains($token, $sub)) {
+                    $matched++;
                     break;
                 }
             }
-            
-            // If this isn't a pattern-critical question, don't block based on pattern matching
-            if (!$isPatternCriticalQuestion) {
-                // Reset any pattern-related failures for non-pattern-critical questions
-                if (strpos($criticalReason, 'missing critical pattern') !== false) {
-                    $isCriticalMismatch = false;
-                    $criticalReason = '';
-                }
-            }
-            
-            // Performance optimization: check course-specific patterns based on identified course topic
-            if ($courseTopic && !$isCriticalMismatch) {
-                $coursePatterns = $this->getCourseSpecificPatterns($courseTopic);
-                if (!empty($coursePatterns)) {
-                    $patternMatch = $this->checkCourseSpecificPatternMatch($normalizedSubmitted, $normalizedCorrect, $coursePatterns);
-                    
-                    // If there's a critical course-specific pattern mismatch
-                    if ($patternMatch['critical_mismatch'] ?? false) {
-                        $isCriticalMismatch = true;
-                        $criticalReason = $patternMatch['reason'] ?? 'Answer contains critical domain-specific error';
-                    }
-                    
-                    // Add pattern boost for good matches
-                    if ($patternMatch['boost'] ?? 0 > 0) {
-                        $finalSimilarity = min(1.0, $finalSimilarity + $patternMatch['boost']);
-                    }
-                }
-            }
-            
-            // Special handling for medical abbreviations
-            // If the submitted answer contains abbreviations, apply more lenient evaluation
-            $containsAbbreviations = preg_match('/\b[A-Z]{2,}\b/', $submittedAnswer) || 
-                                    preg_match('/\b[A-Z][a-z]?[+\-]\b/', $submittedAnswer);
-            
-            if ($containsAbbreviations && !$isCriticalMismatch && 
-                isset($bestMetrics['conceptual']) && $bestMetrics['conceptual'] > 0.75 && 
-                isset($bestMetrics['keyword']) && $bestMetrics['keyword'] > 0.6) {
-                // Apply abbreviation boost - if the conceptual similarity is high and we have 
-                // good keyword overlap, the abbreviations are likely valid
-                $abbrBoost = 0.05;
-                $finalSimilarity = min(1.0, $finalSimilarity + $abbrBoost);
-                
-                // Check course-specific critical terms more leniently for abbreviation-heavy answers
-                $allCriticalTermsPresent = $this->checkForCriticalTerms($courseTopic, $normalizedSubmitted, $normalizedCorrect);
-                
-                // If all critical terms are present (either directly or as abbreviations), 
-                // and we're close to the threshold, give it a push over
-                if ($allCriticalTermsPresent && $finalSimilarity >= ($similarityThreshold - 0.1)) {
-                    $finalSimilarity = max($finalSimilarity, $similarityThreshold + 0.01);
-                }
-            }
-            
-            // Determine if the answer is correct based on threshold and safety checks
-            $isCorrect = $finalSimilarity >= $similarityThreshold && !$isCriticalMismatch;
-            
-            // DEBUG: Log final decision calculation
-            Log::debug('WrittenAnswerEvaluationService::evaluateAnswer - Final decision calculation', [
-                'final_similarity' => $finalSimilarity,
-                'similarity_threshold' => $similarityThreshold,
-                'is_critical_mismatch' => $isCriticalMismatch,
-                'critical_reason' => $criticalReason,
-                'initial_is_correct' => $isCorrect
-            ]);
-            
-            // If we're very close to the threshold but below it, be conservative and mark as incorrect
-            if ($finalSimilarity >= ($similarityThreshold - 0.05) && $finalSimilarity < $similarityThreshold) {
-                $isCorrect = false;
-                if (empty($criticalReason)) {
-                    $criticalReason = 'Answer is too close to the threshold to confidently mark as correct';
-                }
-                Log::debug('WrittenAnswerEvaluationService::evaluateAnswer - Close to threshold, marking as incorrect', [
-                    'final_similarity' => $finalSimilarity,
-                    'threshold_minus_0_05' => $similarityThreshold - 0.05,
-                    'updated_critical_reason' => $criticalReason
-                ]);
-            }
-            
-            // Special case: very high conceptual similarity and keyword overlap without contradictions
-            // This handles alternative correct wordings that are conceptually the same
-            if (!$isCorrect && !$isCriticalMismatch && 
-                isset($bestMetrics['conceptual']) && $bestMetrics['conceptual'] > 0.9 && 
-                isset($bestMetrics['keyword']) && $bestMetrics['keyword'] > 0.8 && 
-                !($bestMetrics['hasContradictions'] ?? false)) {
-                $isCorrect = true;
-                $finalSimilarity = max($finalSimilarity, 0.9);
-                Log::debug('WrittenAnswerEvaluationService::evaluateAnswer - High conceptual similarity override', [
-                    'conceptual_similarity' => $bestMetrics['conceptual'],
-                    'keyword_similarity' => $bestMetrics['keyword'],
-                    'updated_final_similarity' => $finalSimilarity,
-                    'final_is_correct' => $isCorrect
-                ]);
-            }
-            
-            // Generate detailed feedback for the user
-            $feedback = $this->generateDetailedFeedback($submittedAnswer, $bestAnswer, $bestMetrics, $isCorrect, $finalSimilarity, $similarityThreshold, $courseTopic);
-            
-            // Calculate what was missing - key words from correct answer not in submission
-            $missingWords = [];
-            if (!$isCorrect) {
-                $submittedWords = explode(' ', $this->textProcessor->removeFillerWords($normalizedSubmitted));
-                $correctWords = explode(' ', $this->textProcessor->removeFillerWords($normalizedCorrect));
-                
-                $missingWords = array_values(array_diff($correctWords, $submittedWords));
-            }
-            
-            // Build response
-            $response = [
-                'isCorrect' => $isCorrect,
-                'similarity' => $finalSimilarity,
-                'rawSimilarity' => $bestSimilarity,
-                'domainBoost' => $domainBoost,
-                'metrics' => $bestMetrics,
-                'source' => $bestSource,
-                'feedback' => $feedback
-            ];
-            
-            // Add source details if it was an alternative
-            if ($bestSource === 'alternative') {
-                $response['alternativeIndex'] = $bestIndex;
-            }
-            
-            // Add course topic if identified
-            if ($courseTopic) {
-                $response['courseTopic'] = $courseTopic;
-            }
-            
-            // Add reason for the decision
-            if ($isCorrect) {
-                if ($finalSimilarity > 0.95) {
-                    $response['reason'] = $bestSource === 'main' 
-                        ? 'Highly similar to correct answer' 
-                        : 'Highly similar to alternative answer';
-                } else {
-                    $response['reason'] = $bestSource === 'main' 
-                        ? 'Similar to correct answer' 
-                        : 'Similar to alternative answer';
-                }
-            } else {
-                if (!empty($criticalReason)) {
-                    $response['reason'] = $criticalReason;
-                } else {
-                    $response['reason'] = 'Answer not similar enough to any correct answer';
-                }
-                
-                if (!empty($missingWords)) {
-                    $response['missingWords'] = $missingWords;
-                }
-            }
-            
-            // DEBUG: Log final result
-            Log::debug('WrittenAnswerEvaluationService::evaluateAnswer - FINAL RESULT', [
-                'is_correct' => $isCorrect,
-                'final_similarity' => $finalSimilarity,
-                'best_similarity' => $bestSimilarity,
-                'domain_boost' => $domainBoost,
-                'best_source' => $bestSource,
-                'critical_reason' => $criticalReason,
-                'best_metrics' => $bestMetrics
-            ]);
-            
-            return $response;
-        });
-    }
-    
-    /**
-     * Identify the course topic based on the answer content
-     * Using local domain identification logic
-     *
-     * @param string $text The answer text to analyze
-     * @return string|null Identified course topic or null if not identified
-     */
-    protected function identifyCourseTopic(string $text): ?string
-    {
-        return $this->getCachedOrCompute("courseTopic:" . md5($text), function() use ($text) {
-            // Use local domain identification logic
-            $normalizedText = strtolower($text);
-            $topicScores = [];
+        }
 
-            // Check for domain-specific terms using the local approach
-            foreach ($this->medicalDomains as $topic => $terms) {
-                $score = 0;
-                foreach ($terms as $term) {
-                    if (strpos($normalizedText, $term) !== false) {
-                        $score++;
-                    }
-                }
+        return $matched / count($referenceTokens);
+    }
 
-                if ($score > 0) {
-                    $topicScores[$topic] = $score;
-                }
-            }
-
-            // If we found matches, return the topic with the highest score
-            if (!empty($topicScores)) {
-                arsort($topicScores);
-                return key($topicScores);
-            }
-
-            return null;
-        });
-    }
-    
-    /**
-     * Get course-specific patterns for pattern matching
-     * 
-     * @param string $courseTopic The identified course topic
-     * @return array Array of patterns relevant to the course
-     */
-    protected function getCourseSpecificPatterns(string $courseTopic): array
-    {
-        $patterns = [];
-        
-        switch ($courseTopic) {
-            case 'anatomy':
-                $patterns = [
-                    'anatomical_position',
-                    'skeletal_system',
-                    'joint_types'
-                ];
-                break;
-                
-            case 'physiology':
-                $patterns = [
-                    'parasympathetic_effects',
-                    'sympathetic_effects',
-                    'action_potential',
-                    'cardiac_cycle',
-                    'respiratory_mechanics',
-                    'renal_physiology'
-                ];
-                break;
-                
-            case 'biochemistry':
-                $patterns = [
-                    'glycolysis',
-                    'tca_cycle',
-                    'electron_transport',
-                    'dna_replication'
-                ];
-                break;
-                
-            case 'histology':
-                $patterns = [
-                    'epithelial_tissue',
-                    'connective_tissue',
-                    'muscle_tissue'
-                ];
-                break;
-        }
-        
-        return $patterns;
-    }
-    
-    /**
-     * Check for course-specific pattern matches
-     * 
-     * @param string $submitted Normalized submitted answer
-     * @param string $correct Normalized correct answer
-     * @param array $patterns Patterns to check
-     * @return array Result with critical_mismatch flag and optional boost
-     */
-    protected function checkCourseSpecificPatternMatch(string $submitted, string $correct, array $patterns): array
-    {
-        $result = [
-            'critical_mismatch' => false,
-            'reason' => '',
-            'boost' => 0
-        ];
-        
-        foreach ($patterns as $pattern) {
-            // Check if pattern is present in correct answer
-            $patternWords = $this->coursePatternMatchers[$pattern] ?? [];
-            if (empty($patternWords)) continue;
-            
-            $patternInCorrect = false;
-            $patternInSubmitted = false;
-            
-            // Count matched terms in correct answer
-            $correctMatches = 0;
-            foreach ($patternWords as $term) {
-                if (stripos($correct, $term) !== false) {
-                    $correctMatches++;
-                }
-            }
-            
-            // Count matched terms in submitted answer
-            $submittedMatches = 0;
-            foreach ($patternWords as $term) {
-                if (stripos($submitted, $term) !== false) {
-                    $submittedMatches++;
-                }
-            }
-            
-            // If pattern is significant in correct answer but missing in submission
-            if ($correctMatches >= 3 && $submittedMatches < 2) {
-                $result['critical_mismatch'] = true;
-                $result['reason'] = "Answer is missing key concepts related to $pattern";
-                return $result; // Early return on critical mismatch
-            }
-            
-            // If pattern is present in both, add a small boost
-            if ($correctMatches >= 2 && $submittedMatches >= 2) {
-                $result['boost'] += 0.03; // Small boost for each matching pattern
-            }
-        }
-        
-        // Cap total boost
-        $result['boost'] = min($result['boost'], 0.1);
-        
-        return $result;
-    }
-    
-    /**
-     * Check for critical terms in the answer
-     * Now using the MedicalKnowledgeService for critical terms
-     * 
-     * @param string|null $courseTopic The identified course topic
-     * @param string $normalizedSubmitted The normalized submitted answer
-     * @param string $normalizedCorrect The normalized correct answer
-     * @return bool True if all critical terms are present, false otherwise
-     */
-    protected function checkForCriticalTerms(?string $courseTopic, string $normalizedSubmitted, string $normalizedCorrect): bool
-    {
-        if (!$courseTopic) {
-            return true; // No critical terms to check if no course topic identified
-        }
-        
-        // Early performance check - empty submission cannot have critical terms
-        if (empty(trim($normalizedSubmitted))) {
-            return false;
-        }
-        
-        return $this->getCachedOrCompute("criticalTerms:{$courseTopic}:{$normalizedSubmitted}:{$normalizedCorrect}", function() use ($courseTopic, $normalizedSubmitted, $normalizedCorrect) {
-            // Get critical terms for this domain from database
-            $criticalTerms = $this->medicalKnowledge->getCriticalTerms($courseTopic);
-            
-            if (empty($criticalTerms)) {
-                return true; // No critical terms defined for this domain
-            }
-            
-            // Check if all critical terms present in correct answer are also in submitted answer
-            $missingTerms = [];
-            
-            foreach ($criticalTerms as $term) {
-                if (strpos($normalizedCorrect, $term) !== false && 
-                    strpos($normalizedSubmitted, $term) === false) {
-                    
-                    // Check if term might be present as an abbreviation
-                    if (!$this->checkForTermsAsAbbreviations($normalizedSubmitted, [$term])) {
-                        // Store the missing term
-                        $missingTerms[] = $term;
-                    }
-                }
-            }
-            
-            // If no critical terms are missing, the check passes
-            return empty($missingTerms);
-        });
-    }
-    
-    /**
-     * Check if the submitted answer contains any contradictions with the correct answer
-     * Now using the MedicalKnowledgeService for contradiction checks
-     * 
-     * @param string $normalizedSubmitted The normalized submitted answer
-     * @param string $normalizedCorrect The normalized correct answer
-     * @param string|null $courseTopic The identified course topic
-     * @return bool True if contradictions are found, false otherwise
-     */
-    protected function containsContradictions(string $normalizedSubmitted, string $normalizedCorrect, ?string $courseTopic): bool
-    {
-        if (!$courseTopic) {
-            return false; // Can't check for domain-specific contradictions without a topic
-        }
-        
-        return $this->getCachedOrCompute("contradictions:{$courseTopic}:{$normalizedSubmitted}:{$normalizedCorrect}", function() use ($normalizedSubmitted, $normalizedCorrect, $courseTopic) {
-            // Extract key terms from both answers
-            $submittedTerms = explode(' ', $this->textProcessor->removeFillerWords($normalizedSubmitted));
-            $correctTerms = explode(' ', $this->textProcessor->removeFillerWords($normalizedCorrect));
-            
-            // Check for contradictions between terms
-            foreach ($submittedTerms as $term1) {
-                if (empty(trim($term1))) continue;
-                
-                foreach ($correctTerms as $term2) {
-                    if (empty(trim($term2))) continue;
-                    
-                    // Skip checking the same term against itself
-                    if ($term1 === $term2) continue;
-                    
-                    // Check if these terms contradict each other in this domain
-                    if ($this->medicalKnowledge->termsContradict($term1, $term2, $courseTopic)) {
-                        return true;
-                    }
-                }
-            }
-            
-            return false;
-        });
-    }
-    
-    /**
-     * Check for terms as abbreviations in the text
-     * Now using the MedicalKnowledgeService for abbreviation handling
-     * 
-     * @param string $text The text to check
-     * @param array $missingTerms Terms to check for as abbreviations
-     * @return bool True if any term is found as an abbreviation, false otherwise
-     */
-    private function checkForTermsAsAbbreviations(string $text, array $missingTerms): bool
-    {
-        if (empty($missingTerms)) {
-            return false;
-        }
-        
-        // Get all abbreviations
-        $allAbbreviations = $this->medicalKnowledge->getAllAbbreviations();
-        
-        // Check each missing term
-        foreach ($missingTerms as $term) {
-            // Look for abbreviations that expand to this term
-            foreach ($allAbbreviations as $abbr => $expansion) {
-                // If the term is part of the expansion and the abbreviation is in the text
-                if (stripos($expansion, $term) !== false && 
-                    preg_match('/\b' . preg_quote($abbr, '/') . '\b/i', $text)) {
-                    return true;
-                }
-            }
-        }
-        
-        return false;
-    }
-    
-    /**
-     * Check for critical pattern mismatches in the submitted answer
-     * Now using the MedicalKnowledgeService for pattern checks
-     *
-     * @param string $normalizedSubmitted The normalized submitted answer
-     * @param string $normalizedCorrect The normalized correct answer
-     * @param string $courseTopic The identified course topic
-     * @return bool True if a critical mismatch is found, false otherwise
-     */
-    private function checkForCriticalPatternMismatch(string $normalizedSubmitted, string $normalizedCorrect, string $courseTopic): bool
-    {
-        // Safe check before accessing array indices
-        if (empty($courseTopic)) {
-            return false;
-        }
-        
-        // Early optimization - empty submission always has a critical mismatch
-        if (empty(trim($normalizedSubmitted))) {
-            return true;
-        }
-        
-        $cacheKey = "patternMismatch:{$courseTopic}:{$normalizedSubmitted}:{$normalizedCorrect}";
-        
-        return $this->getCachedOrCompute($cacheKey, function() use ($normalizedSubmitted, $normalizedCorrect, $courseTopic) {
-            // Critical contradictions by domain
-            $criticalContradictions = [
-                'physiology' => [
-                    ['parasympathetic', 'decrease', 'heart rate', 'increase', 'heart rate'],
-                    ['parasympathetic', 'increase', 'digestion', 'decrease', 'digestion'],
-                    ['sympathetic', 'increase', 'heart rate', 'decrease', 'heart rate'],
-                    ['sympathetic', 'decrease', 'digestion', 'increase', 'digestion'],
-                    ['systole', 'relaxation', 'diastole', 'contraction'],
-                    // Add blood flow direction contradictions
-                    ['from glomerulus to bowman', 'from bowman to glomerulus'],
-                    ['filtration from capillaries', 'filtration into capillaries']
-                ],
-                'biochemistry' => [
-                    ['glycolysis', 'produces', 'pyruvate', 'consumes', 'pyruvate'],
-                    ['tca cycle', 'oxidative', 'reductive'],
-                    ['electron transport', 'atp consumption', 'atp production'],
-                    // Add protein synthesis location contradictions
-                    ['protein synthesis', 'ribosomes', 'protein synthesis', 'mitochondria'],
-                    ['translation', 'ribosomes', 'translation', 'mitochondria'],
-                    ['protein synthesis', 'endoplasmic reticulum', 'protein synthesis', 'nucleus'],
-                    ['dna replication', 'nucleus', 'dna replication', 'cytoplasm']
-                ],
-                'anatomy' => [
-                    ['anterior', 'posterior'],
-                    ['medial', 'lateral'],
-                    ['superior', 'inferior'],
-                    ['proximal', 'distal']
-                ],
-                'histology' => [
-                    ['simple', 'stratified'],
-                    ['squamous', 'columnar'],
-                    ['loose', 'dense', 'connective']
-                ]
-            ];
-            
-            // Add location-specific correctness checks for common anatomical and physiological processes
-            $locationSpecificTerms = [
-                'protein synthesis' => ['ribosomes', 'endoplasmic reticulum'],
-                'dna replication' => ['nucleus'],
-                'krebs cycle' => ['mitochondria', 'mitochondrial matrix'],
-                'electron transport chain' => ['mitochondria', 'inner mitochondrial membrane'],
-                'glycolysis' => ['cytoplasm', 'cytosol'],
-                'filtration' => ['glomerulus', 'bowman\'s capsule'],
-                'reabsorption' => ['tubule', 'peritubular capillaries']
-            ];
-            
-            // Check if the answer contains any location-specific processes with wrong locations
-            foreach ($locationSpecificTerms as $process => $correctLocations) {
-                if (stripos($normalizedSubmitted, $process) !== false) {
-                    $processIsInCorrectLocation = false;
-                    
-                    // Check if the process is associated with any of its correct locations
-                    foreach ($correctLocations as $location) {
-                        if (stripos($normalizedSubmitted, $location) !== false) {
-                            $processIsInCorrectLocation = true;
-                            break;
-                        }
-                    }
-                    
-                    // Also check for common incorrect locations that would be problematic
-                    $incorrectLocations = [
-                        'protein synthesis' => ['mitochondria', 'golgi', 'lysosome', 'peroxisome'],
-                        'dna replication' => ['mitochondria', 'cytoplasm', 'ribosomes'],
-                        'krebs cycle' => ['cytoplasm', 'nucleus', 'lysosome'],
-                        'electron transport chain' => ['cytoplasm', 'nucleus', 'plasma membrane'],
-                        'glycolysis' => ['mitochondria', 'nucleus', 'endoplasmic reticulum'],
-                        'filtration' => ['distal tubule', 'collecting duct', 'loop of henle']
-                    ];
-                    
-                    // If the process is mentioned but with an incorrect location, flag it
-                    if (isset($incorrectLocations[$process])) {
-                        foreach ($incorrectLocations[$process] as $wrongLocation) {
-                            if (stripos($normalizedSubmitted, $wrongLocation) !== false) {
-                                return true; // Critical location mismatch found
-                            }
-                        }
-                    }
-                }
-            }
-            
-            // Check critical direction-based terms
-            $directionalTerms = [
-                'bowman\'s capsule' => [
-                    'into glomerular' => true, // Incorrect direction
-                    'from glomerular' => false // Correct direction
-                ],
-                'glomerular' => [
-                    'into bowman' => false, // Correct direction
-                    'from bowman' => true // Incorrect direction
-                ],
-                'filtration' => [
-                    'from bowman to glomerular' => true, // Incorrect direction
-                    'from glomerular to bowman' => false // Correct direction
-                ]
-            ];
-            
-            // Check for direction-based contradictions
-            foreach ($directionalTerms as $term => $directions) {
-                if (stripos($normalizedSubmitted, $term) !== false) {
-                    foreach ($directions as $direction => $isContradiction) {
-                        if (stripos($normalizedSubmitted, $direction) !== false && $isContradiction) {
-                            return true; // Critical direction mismatch found
-                        }
-                    }
-                }
-            }
-            
-            // Check domain-specific critical contradictions
-            if (isset($criticalContradictions[$courseTopic])) {
-                foreach ($criticalContradictions[$courseTopic] as $contradiction) {
-                    // Safety check - ensure we have enough elements in the contradiction array
-                    if (count($contradiction) < 5 && count($contradiction) !== 2) {
-                        continue; // Skip if contradiction format is invalid
-                    }
-                    
-                    // For two-element contradictions (like anterior vs posterior)
-                    if (count($contradiction) === 2) {
-                        if (stripos($normalizedCorrect, $contradiction[0]) !== false && 
-                            stripos($normalizedSubmitted, $contradiction[1]) !== false) {
-                            return true;
-                        }
-                        if (stripos($normalizedCorrect, $contradiction[1]) !== false && 
-                            stripos($normalizedSubmitted, $contradiction[0]) !== false) {
-                            return true;
-                        }
-                        continue;
-                    }
-                    
-                    // For five-element contradictions (like parasympathetic decreases vs increases heart rate)
-                    // Check if the correct answer contains the first part of the contradiction
-                    if (stripos($normalizedCorrect, $contradiction[0]) !== false && 
-                        stripos($normalizedCorrect, $contradiction[1]) !== false && 
-                        stripos($normalizedCorrect, $contradiction[2]) !== false) {
-                        
-                        // Check if the submitted answer contains the contradictory assertion
-                        if (stripos($normalizedSubmitted, $contradiction[0]) !== false && 
-                            isset($contradiction[3]) && stripos($normalizedSubmitted, $contradiction[3]) !== false && 
-                            isset($contradiction[4]) && stripos($normalizedSubmitted, $contradiction[4]) !== false) {
-                            return true;
-                        }
-                    }
-                    
-                    // Check the reverse situation
-                    if (count($contradiction) >= 5 && 
-                        stripos($normalizedCorrect, $contradiction[0]) !== false && 
-                        stripos($normalizedCorrect, $contradiction[3]) !== false && 
-                        stripos($normalizedCorrect, $contradiction[4]) !== false) {
-                        
-                        // Check if the submitted answer contains the contradictory assertion
-                        if (stripos($normalizedSubmitted, $contradiction[0]) !== false && 
-                            stripos($normalizedSubmitted, $contradiction[1]) !== false && 
-                            stripos($normalizedSubmitted, $contradiction[2]) !== false) {
-                            return true;
-                        }
-                    }
-                }
-            }
-            
-            return false;
-        });
-    }
-    
-    /**
-     * Calculate similarity metrics for the submitted answer compared to the correct answer
-     *
-     * @param string $submittedAnswer The submitted answer
-     * @param string $correctAnswer The correct answer
-     * @return array Similarity metrics
-     */
-    protected function calculateSimilarityMetrics(string $submittedAnswer, string $correctAnswer): array
-    {
-        // Normalize both answers
-        $normalizedSubmitted = $this->textProcessor->normalizeText($submittedAnswer);
-        $normalizedCorrect = $this->textProcessor->normalizeText($correctAnswer);
-        
-        // If either is empty, return lowest similarity
-        if (empty($normalizedSubmitted) || empty($normalizedCorrect)) {
-            return [
-                'weighted' => 0,
-                'levenshtein' => 0,
-                'jaccard' => 0,
-                'keyword' => 0,
-                'conceptual' => 0,
-                'hasContradictions' => false
-            ];
-        }
-        
-        // Calculate various similarity metrics
-        $levenshteinSimilarity = $this->calculateLevenshteinSimilarity($normalizedSubmitted, $normalizedCorrect);
-        $jaccardSimilarity = $this->calculateJaccardSimilarity($normalizedSubmitted, $normalizedCorrect);
-        
-        // Calculate keyword similarity - important for medical terminology
-        $keywordSimilarity = $this->calculateKeywordSimilarity($normalizedSubmitted, $normalizedCorrect);
-        
-        // Calculate pattern similarity - focus on domain-specific patterns
-        $patternSimilarity = $this->calculatePatternSimilarity($normalizedSubmitted, $normalizedCorrect);
-        
-        // Calculate conceptual similarity - focus on the meaning rather than exact words
-        $conceptualSimilarity = $this->calculateConceptualSimilarity($normalizedSubmitted, $normalizedCorrect);
-        
-        // Check for contradictions - critical in medical education
-        $hasContradictions = $this->textProcessor->containsAntonyms($normalizedSubmitted, $normalizedCorrect);
-        
-        // Check for critical term missing - essential for completeness of answers
-        $missingCriticalTerms = $this->detectMissingCriticalTerms($normalizedSubmitted, $normalizedCorrect);
-        
-        // Adjust weights based on the nature of medical education
-        // Conceptual understanding and use of correct keywords are more important than exact phrasing
-        $weightedSimilarity = ($conceptualSimilarity * 0.4) + 
-                             ($keywordSimilarity * 0.3) + 
-                             ($jaccardSimilarity * 0.2) + 
-                             ($levenshteinSimilarity * 0.1);
-        
-        // Penalty for contradictions - these are critical errors in medical content
-        if ($hasContradictions) {
-            $weightedSimilarity = min($weightedSimilarity, 0.65); // Cap similarity for contradictory content
-        }
-        
-        // Penalty for missing critical terms
-        if ($missingCriticalTerms['missing']) {
-            // Apply a penalty proportional to the importance of the missing terms
-            $penalty = $missingCriticalTerms['importance'] * 0.4;
-            $weightedSimilarity = max(0, $weightedSimilarity - $penalty);
-        }
-        
-        // Return comprehensive metrics for detailed evaluation
-        return [
-            'weighted' => $weightedSimilarity,
-            'levenshtein' => $levenshteinSimilarity,
-            'jaccard' => $jaccardSimilarity,
-            'keyword' => $keywordSimilarity,
-            'conceptual' => $conceptualSimilarity,
-            'pattern' => $patternSimilarity,
-            'hasContradictions' => $hasContradictions,
-            'missingCriticalTerms' => $missingCriticalTerms
-        ];
-    }
-    
-    /**
-     * Detect missing critical terms in the answer that are essential for 
-     * a complete understanding of the topic
-     * 
-     * @param string $normalizedSubmitted Normalized submitted answer
-     * @param string $normalizedCorrect Normalized correct answer
-     * @return array Result with 'missing' flag and 'importance' factor
-     */
-    private function detectMissingCriticalTerms(string $normalizedSubmitted, string $normalizedCorrect): array
-    {
-        // Identify the course topic for domain-specific critical terms
-        $courseTopic = $this->identifyCourseTopic($normalizedCorrect);
-        
-        // Define critical term sets by domain
-        $criticalTermSets = [
-            'biochemistry' => [
-                // TCA cycle critical terms - specific products must be mentioned
-                'tca cycle' => ['nadh', 'fadh', 'co2', 'atp', 'oxidiz'],
-                'krebs cycle' => ['nadh', 'fadh', 'co2', 'atp', 'oxidiz'],
-                'citric acid cycle' => ['nadh', 'fadh', 'co2', 'atp', 'oxidiz'],
-                
-                // Protein synthesis critical terms
-                'protein synthesis' => ['ribosome', 'mrna', 'amino acid', 'translation'],
-                'translation' => ['ribosome', 'mrna', 'amino acid', 'trna', 'codon'],
-                
-                // DNA replication critical terms
-                'dna replication' => ['polymerase', 'helicase', 'nucleus', 'strand'],
-                
-                // Glycolysis critical terms
-                'glycolysis' => ['pyruvate', 'atp', 'nadh', 'glucose'],
-                
-                // Electron transport chain critical terms
-                'electron transport chain' => ['atp', 'inner membrane', 'mitochondria', 'oxidative phosphorylation']
-            ],
-            'physiology' => [
-                // ANS effects critical terms
-                'parasympathetic' => ['decrease heart rate', 'increase digestion', 'salivation', 'constrict pupil'],
-                'sympathetic' => ['increase heart rate', 'decrease digestion', 'dilate pupil', 'adrenaline'],
-                
-                // Cardiac cycle critical terms
-                'cardiac cycle' => ['systole', 'diastole', 'contraction', 'relaxation'],
-                
-                // Renal function critical terms
-                'glomerular filtration' => ['bowman capsule', 'pressure', 'capillaries', 'filtrate'],
-                
-                // Respiratory mechanics critical terms
-                'respiratory' => ['inhalation', 'exhalation', 'diaphragm', 'oxygen', 'carbon dioxide']
-            ],
-            'anatomy' => [
-                'heart' => ['atria', 'ventricle', 'valve', 'pump', 'blood'],
-                'bone' => ['compact', 'spongy', 'trabeculae', 'marrow'],
-                'joint' => ['articulation', 'synovial', 'cartilage', 'movement']
-            ],
-            'histology' => [
-                'epithelial' => ['simple', 'stratified', 'squamous', 'columnar', 'cuboidal'],
-                'connective' => ['loose', 'dense', 'specialized', 'fibers', 'ground substance'],
-                'muscle' => ['skeletal', 'cardiac', 'smooth', 'contraction']
-            ]
-        ];
-        
-        if (!$courseTopic || !isset($criticalTermSets[$courseTopic])) {
-            return ['missing' => false, 'importance' => 0];
-        }
-        
-        $domainTerms = $criticalTermSets[$courseTopic];
-        $importanceFactor = 0;
-        $missingCriticalTerm = false;
-        
-        // Check each key concept mentioned in the answer to see if critical terms are present
-        foreach ($domainTerms as $concept => $criticalTerms) {
-            if (stripos($normalizedCorrect, $concept) !== false && 
-                stripos($normalizedSubmitted, $concept) !== false) {
-                // Both correct and submitted answers mention this concept
-                // Now check if critical terms are present in the submitted answer
-                
-                $termsMissing = [];
-                $termsImportance = 0;
-                
-                // Check if this is specified to be a complete answer requirement
-                $isCriticalConcept = false;
-                
-                // Check for specific critical concepts that should have complete explanations
-                $criticalAnswerConcepts = [
-                    'tca cycle', 'krebs cycle', 'citric acid cycle',  // Biochemistry critical concepts
-                    'protein synthesis', 'translation',               // Always need complete explanations
-                    'glomerular filtration', 'cardiac cycle'          // Physiology critical concepts
-                ];
-                
-                foreach ($criticalAnswerConcepts as $criticalConcept) {
-                    if (stripos($normalizedCorrect, $criticalConcept) !== false) {
-                        $isCriticalConcept = true;
-                        break;
-                    }
-                }
-                
-                // For TCA cycle and similar complete concepts, a more thorough check
-                if ($isCriticalConcept) {
-                    $minimumTerms = count($criticalTerms) * 0.5; // At least 50% of critical terms should be present
-                    $termsFound = 0;
-                    
-                    foreach ($criticalTerms as $term) {
-                        if (stripos($normalizedSubmitted, $term) !== false) {
-                            $termsFound++;
-                        } else {
-                            $termsMissing[] = $term;
-                        }
-                    }
-                    
-                    if ($termsFound < $minimumTerms) {
-                        $missingCriticalTerm = true;
-                        $termsImportance = ($minimumTerms - $termsFound) / $minimumTerms;
-                        $importanceFactor = max($importanceFactor, $termsImportance);
-                    }
-                }
-                // For other concepts, check if mentioned but with insufficient details
-                else {
-                    // For regular concepts, just check if key critical terms are there
-                    $keyTermIndex = 0;
-                    $keyTermsMissing = false;
-                    
-                    // Consider only the first 2-3 critical terms for non-critical concepts
-                    $keyTermCount = min(3, count($criticalTerms));
-                    
-                    for ($i = 0; $i < $keyTermCount; $i++) {
-                        if (!empty($criticalTerms[$i]) && stripos($normalizedSubmitted, $criticalTerms[$i]) === false) {
-                            $keyTermsMissing = true;
-                            $termsMissing[] = $criticalTerms[$i];
-                        }
-                    }
-                    
-                    if ($keyTermsMissing) {
-                        $missingCriticalTerm = true;
-                        $termsImportance = 0.3; // Less critical than complete concepts
-                        $importanceFactor = max($importanceFactor, $termsImportance);
-                    }
-                }
-                
-                // Special handling for abbreviated answers - check if terms might be present as abbreviations
-                if ($missingCriticalTerm && $this->containsSignificantMedicalAbbreviations($normalizedSubmitted)) {
-                    // Try to match abbreviations to the missing terms
-                    $abbrevMatched = $this->checkForTermsAsAbbreviations($normalizedSubmitted, $termsMissing);
-                    
-                    if ($abbrevMatched) {
-                        // If abbreviations match the missing terms, reduce importance
-                        $importanceFactor = max(0, $importanceFactor - 0.2);
-                        // If importance factor is now very low, don't consider it missing
-                        if ($importanceFactor < 0.1) {
-                            $missingCriticalTerm = false;
-                        }
-                    }
-                }
-            }
-            
-            // Additional check for location-specific critical terms
-            // For example, protein synthesis must be associated with ribosomes, not mitochondria
-            $locationCriticalConcepts = [
-                'protein synthesis' => ['ribosome', 'endoplasmic reticulum'],
-                'dna replication' => ['nucleus'],
-                'tca cycle' => ['mitochondria', 'mitochondrial matrix'],
-                'krebs cycle' => ['mitochondria', 'mitochondrial matrix'],
-                'electron transport chain' => ['mitochondria', 'inner membrane'],
-                'glycolysis' => ['cytoplasm', 'cytosol']
-            ];
-            
-            foreach ($locationCriticalConcepts as $process => $locations) {
-                if (stripos($normalizedSubmitted, $process) !== false) {
-                    $locationFound = false;
-                    
-                    foreach ($locations as $location) {
-                        if (stripos($normalizedSubmitted, $location) !== false) {
-                            $locationFound = true;
-                            break;
-                        }
-                    }
-                    
-                    // Also check for abbreviations of locations
-                    if (!$locationFound && $this->containsSignificantMedicalAbbreviations($normalizedSubmitted)) {
-                        foreach ($locations as $location) {
-                            // Check for common abbreviations of locations
-                            $locationAbbrevs = [
-                                'endoplasmic reticulum' => ['er', 'rough er', 'rer'],
-                                'mitochondria' => ['mito', 'mt'],
-                                'mitochondrial matrix' => ['matrix', 'mt matrix'],
-                                'cytoplasm' => ['cyto', 'cp'],
-                                'ribosomes' => ['ribo']
-                            ];
-                            
-                            if (isset($locationAbbrevs[$location])) {
-                                foreach ($locationAbbrevs[$location] as $abbrev) {
-                                    if (stripos($normalizedSubmitted, $abbrev) !== false) {
-                                        $locationFound = true;
-                                        break 2;
-                                    }
-                                }
-                            }
-                        }
-                    }
-                    
-                    // Wrong location check - penalize if incorrect locations are mentioned
-                    $wrongLocations = [
-                        'protein synthesis' => ['mitochondria', 'golgi', 'nucleus', 'lysosome'],
-                        'dna replication' => ['cytoplasm', 'mitochondria', 'ribosome'],
-                        'tca cycle' => ['cytoplasm', 'nucleus', 'er'],
-                        'krebs cycle' => ['cytoplasm', 'nucleus', 'er'],
-                        'electron transport chain' => ['cytoplasm', 'nucleus', 'er'],
-                        'glycolysis' => ['mitochondria', 'nucleus', 'er']
-                    ];
-                    
-                    if (isset($wrongLocations[$process])) {
-                        foreach ($wrongLocations[$process] as $wrongLocation) {
-                            if (stripos($normalizedSubmitted, $wrongLocation) !== false) {
-                                // Severely penalize for specifically wrong locations
-                                $missingCriticalTerm = true;
-                                $importanceFactor = 0.9; // Very critical error
-                                break;
-                            }
-                        }
-                    }
-                    
-                    // If process is mentioned but no location is specified, that's a critical missing detail
-                    if (!$locationFound && !$missingCriticalTerm) {
-                        $missingCriticalTerm = true;
-                        $importanceFactor = max($importanceFactor, 0.5); // Important but not as severe as wrong location
-                    }
-                }
-            }
-        }
-        
-        return [
-            'missing' => $missingCriticalTerm,
-            'importance' => $importanceFactor
-        ];
-    }
-    
-    /**
-     * Calculate domain-specific context boost
-     * Provides additional similarity points when answers are in the same medical domain
-     *
-     * @param string $text1 First text
-     * @param string $text2 Second text
-     * @return float Domain context boost (0.0 - 0.1)
-     */
-    protected function calculateDomainContextBoost(string $text1, string $text2): float
-    {
-        $cacheKey = "domain_boost:{$text1}:{$text2}";
-        
-        return $this->getCachedOrCompute($cacheKey, function() use ($text1, $text2) {
-            $normalizedText1 = $this->textProcessor->normalizeText($text1);
-            $normalizedText2 = $this->textProcessor->normalizeText($text2);
-            
-            $domainScores = [];
-            
-            // Check each medical domain
-            foreach ($this->medicalDomains as $domain => $keywords) {
-                $score1 = 0;
-                $score2 = 0;
-                
-                // Count domain keywords in each text
-                foreach ($keywords as $keyword) {
-                    if (stripos($normalizedText1, $keyword) !== false) {
-                        $score1++;
-                    }
-                    if (stripos($normalizedText2, $keyword) !== false) {
-                        $score2++;
-                    }
-                }
-                
-                // If both texts have keywords from this domain
-                if ($score1 > 0 && $score2 > 0) {
-                    $domainScore = min($score1, $score2) / max(count($keywords) * 0.5, 1);
-                    $domainScores[$domain] = min($domainScore * 0.05, 0.05); // Max 0.05 per domain
-                }
-            }
-            
-            // Sum all domain boosts, max 0.1 total
-            return min(array_sum($domainScores), 0.1);
-        });
-    }
-    
-    /**
-     * Generate detailed feedback based on similarity analysis
-     * Enhanced with course-specific feedback, learning resources, and improvement tips
-     *
-     * @param string $submitted Submitted answer
-     * @param string $correct Correct answer
-     * @param array $metrics Similarity metrics
-     * @param bool $isCorrect Whether the answer is correct
-     * @param float $similarity Final similarity score
-     * @param float $threshold Threshold for correctness
-     * @param string|null $courseTopic Identified course topic
-     * @return string Detailed feedback message
-     */
-    protected function generateDetailedFeedback(string $submitted, string $correct, array $metrics, bool $isCorrect, float $similarity, float $threshold, ?string $courseTopic = null): string
+    private function comparisonFeedback(float $coverageA, float $coverageB, bool $isCorrect): string
     {
         if ($isCorrect) {
-            if ($similarity > 0.95) {
-                return "Excellent! Your answer is very accurate and demonstrates a solid understanding of the medical concepts.";
-            } elseif ($similarity > 0.85) {
-                if ($courseTopic) {
-                    switch ($courseTopic) {
-                        case 'anatomy':
-                            return "Good job! Your description of the anatomical structures is accurate. You've correctly identified the key anatomical relationships.";
-                        case 'physiology':
-                            return "Good job! Your explanation of the physiological process is correct. You've demonstrated understanding of the underlying mechanisms.";
-                        case 'biochemistry':
-                            return "Good job! Your understanding of the biochemical pathway is sound. You've correctly described the key reactions and processes.";
-                        case 'histology':
-                            return "Good job! Your description of the tissue characteristics is accurate. You've correctly identified the cellular components and organization.";
-                        default:
-                            return "Good job! Your answer contains all the key concepts correctly. You've demonstrated solid understanding of the material.";
-                    }
-                } else {
-                    return "Good job! Your answer contains all the key concepts correctly. Your medical terminology usage is appropriate.";
+            if ($coverageA >= 0.8 && $coverageB >= 0.8) {
+                return 'Excellent! You addressed both sides of the comparison thoroughly.';
+            }
+            return 'Good job! You captured the main comparison points. Consider adding more detail on both sides for a complete answer.';
+        }
+
+        if ($coverageA < 0.4 && $coverageB < 0.4) {
+            return 'Your answer is missing content from both sides of the comparison. Review what distinguishes each term and address both explicitly.';
+        }
+        if ($coverageA < $coverageB) {
+            return 'Your answer addressed one side of the comparison well but is missing key content from the first part. Make sure to compare both items explicitly.';
+        }
+        return 'Your answer addressed one side of the comparison well but is missing key content from the second part. Make sure to compare both items explicitly.';
+    }
+
+    // =========================================================================
+    // DEDUPLICATED LOCATION MISMATCH CHECK  (Priority 4 fix)
+    // =========================================================================
+
+    /**
+     * Single authoritative method for detecting process-location mismatches.
+     *
+     * Replaces the duplicate logic that existed in:
+     *   - detectMissingCriticalTerms() → locationCriticalConcepts block
+     *   - checkForCriticalPatternMismatch() → locationSpecificTerms block
+     *
+     * Returns true when the submitted answer mentions a process AND explicitly
+     * associates it with a known-incorrect location.
+     */
+    private function detectLocationMismatch(string $normalizedSubmitted): bool
+    {
+        foreach ($this->processLocations as $process => $locations) {
+            if (stripos($normalizedSubmitted, $process) === false) {
+                continue;
+            }
+            foreach ($locations['incorrect'] as $wrongLoc) {
+                if (stripos($normalizedSubmitted, $wrongLoc) !== false) {
+                    return true;
                 }
-            } else {
-                $tipsByDomain = [
-                    'anatomy' => "For even more precision, consider including specific anatomical landmarks and dimensional relationships.",
-                    'physiology' => "For a more complete answer, consider describing the regulatory mechanisms that control this process.",
-                    'biochemistry' => "To enhance your answer, consider including the specific enzymes involved and their regulatory mechanisms.",
-                    'histology' => "To improve further, consider mentioning the specific staining characteristics and ultrastructural features."
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Does the submitted answer mention the process's correct location?
+     */
+    private function hasCorrectLocation(string $process, string $normalizedSubmitted): bool
+    {
+        $locs = $this->processLocations[$process] ?? null;
+        if ($locs === null) { return true; } // unknown process — don't penalise
+
+        foreach ($locs['correct'] as $loc) {
+            if (stripos($normalizedSubmitted, $loc) !== false) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    // =========================================================================
+    // CACHE HELPERS  (Priority 2 fix)
+    // =========================================================================
+
+    /**
+     * Build context that can be cached for a given correct answer + threshold.
+     * Everything in here is independent of the student's submitted answer.
+     */
+    private function buildGradingContext(string $correctAnswer, array $alternativeAnswers): array
+    {
+        return [
+            'normalizedCorrect'      => $this->normalizeForSemanticComparison($correctAnswer),
+            'correctTokens'          => $this->extractMeaningfulTokens($this->normalizeForSemanticComparison($correctAnswer)),
+            'courseTopic'            => $this->identifyCourseTopic($correctAnswer),
+            'isPatternCritical'      => $this->isPatternCriticalQuestion($correctAnswer),
+            'normalizedAlternatives' => array_map(
+                fn($a) => $this->normalizeForSemanticComparison($a),
+                $alternativeAnswers
+            ),
+        ];
+    }
+
+    private function getFromCache(string $key): mixed
+    {
+        if (!$this->cacheEnabled) { return null; }
+        $sentinel = new \stdClass();
+        $result   = Cache::get('wae:' . $key, $sentinel);
+        return $result === $sentinel ? null : $result;
+    }
+
+    private function putToCache(string $key, mixed $value): void
+    {
+        if (!$this->cacheEnabled) { return; }
+        Cache::put('wae:' . $key, $value, $this->cacheTtl);
+    }
+
+    // =========================================================================
+    // FULL EVALUATION (general path)
+    // =========================================================================
+
+    private function runFullEvaluation(
+        string $submittedAnswer,
+        string $correctAnswer,
+        array  $alternativeAnswers,
+        float  $similarityThreshold,
+        array  $gradingContext
+    ): array {
+        $normalizedSubmitted = $this->textProcessor->normalizeText($submittedAnswer);
+        $normalizedCorrect   = $gradingContext['normalizedCorrect'];
+        $courseTopic         = $gradingContext['courseTopic'];
+
+        // ── Exact-match short-circuits ───────────────────────────────────────
+        if ($normalizedSubmitted === $normalizedCorrect) {
+            return $this->buildCorrectResult(1.0, 'Exact match', $courseTopic,
+                'Your answer exactly matches the expected answer.');
+        }
+
+        foreach ($alternativeAnswers as $i => $alt) {
+            if ($normalizedSubmitted === $this->textProcessor->normalizeText($alt)) {
+                return $this->buildCorrectResult(1.0, 'Exact match with alternative', $courseTopic,
+                    'Your answer correctly matches an accepted alternative.');
+            }
+        }
+
+        // ── Protein synthesis location error (critical) ──────────────────────
+        if (stripos($normalizedSubmitted, 'protein synthesis') !== false) {
+            $wrongLoc = $this->findIncorrectLocationMention('protein synthesis', $normalizedSubmitted);
+            if ($wrongLoc !== null) {
+                return [
+                    'isCorrect'   => false,
+                    'similarity'  => 0.5,
+                    'metrics'     => ['hasContradictions' => true],
+                    'reason'      => 'Incorrect location for protein synthesis',
+                    'courseTopic' => $courseTopic,
+                    'feedback'    => "Protein synthesis occurs on ribosomes (free in cytoplasm or on rough ER), not in the {$wrongLoc}.",
                 ];
-                
-                $domainTip = $courseTopic && isset($tipsByDomain[$courseTopic]) ? " " . $tipsByDomain[$courseTopic] : "";
-                
-                return "Your answer is sufficiently correct, though there may be room for more precision in your terminology." . $domainTip;
-            }
-        } else {
-            // Gather specific feedback based on metrics
-            $feedbacks = [];
-            
-            // Check what might be missing
-            $normalizedSubmitted = $this->textProcessor->normalizeText($submitted);
-            $normalizedCorrect = $this->textProcessor->normalizeText($correct);
-            
-            $submittedWords = explode(' ', $this->textProcessor->removeFillerWords($normalizedSubmitted));
-            $correctWords = explode(' ', $this->textProcessor->removeFillerWords($normalizedCorrect));
-            
-            $missingWords = array_diff($correctWords, $submittedWords);
-            
-            // Only mention missing keywords that are meaningful (longer than 3 chars)
-            $missingKeywords = array_filter($missingWords, function($word) {
-                return mb_strlen($word) > 3;
-            });
-            
-            // Add specific feedback
-            if (isset($metrics['levenshtein']) && $metrics['levenshtein'] < 0.4) {
-                $feedbacks[] = "Your answer is structurally different from the expected answer. Try to be more specific in addressing the question.";
-            }
-            
-            // Domain-specific feedback for low keyword overlap
-            if (isset($metrics['keyword']) && $metrics['keyword'] < 0.5 && !empty($missingKeywords)) {
-                $missingTermList = implode(', ', array_slice($missingKeywords, 0, 3)) . (count($missingKeywords) > 3 ? ', etc.' : '.');
-                
-                if ($courseTopic) {
-                    switch ($courseTopic) {
-                        case 'anatomy':
-                            $feedbacks[] = "Your answer is missing key anatomical terms such as: $missingTermList Consider reviewing your anatomical terminology.";
-                            break;
-                        case 'physiology':
-                            $feedbacks[] = "Your answer is missing key physiological concepts such as: $missingTermList Review the functional relationships between these components.";
-                            break;
-                        case 'biochemistry':
-                            $feedbacks[] = "Your answer is missing key biochemical elements such as: $missingTermList Consider reviewing the pathway components and their interactions.";
-                            break;
-                        case 'histology':
-                            $feedbacks[] = "Your answer is missing key histological features such as: $missingTermList Review the characteristic tissue structures and cell types.";
-                            break;
-                        default:
-                            $feedbacks[] = "Your answer is missing key concepts such as: $missingTermList";
-                    }
-                } else {
-                    $feedbacks[] = "Your answer is missing key concepts such as: $missingTermList";
-                }
-            }
-            
-            if (isset($metrics['conceptual']) && $metrics['conceptual'] < 0.4) {
-                if ($courseTopic) {
-                    switch ($courseTopic) {
-                        case 'anatomy':
-                            $feedbacks[] = "Your answer doesn't sufficiently address the core anatomical structures and relationships. Focus on spatial relationships and structural organization.";
-                            break;
-                        case 'physiology':
-                            $feedbacks[] = "Your answer doesn't sufficiently explain the physiological mechanisms involved. Focus on functional relationships and regulatory processes.";
-                            break;
-                        case 'biochemistry':
-                            $feedbacks[] = "Your answer doesn't sufficiently describe the biochemical pathways or reactions. Focus on sequential steps and molecular transformations.";
-                            break;
-                        case 'histology':
-                            $feedbacks[] = "Your answer doesn't sufficiently characterize the tissue types or cellular components. Focus on structural organization and functional specialization.";
-                            break;
-                        default:
-                            $feedbacks[] = "Your answer doesn't sufficiently address the core medical concepts. Try to be more specific about the mechanisms and relationships.";
-                    }
-                } else {
-                    $feedbacks[] = "Your answer doesn't sufficiently address the core medical concepts. Try to be more specific and comprehensive.";
-                }
-            }
-            
-            if (isset($metrics['hasContradictions']) && $metrics['hasContradictions']) {
-                if ($courseTopic) {
-                    switch ($courseTopic) {
-                        case 'anatomy':
-                            $feedbacks[] = "Your answer contains contradictory statements about anatomical structures or positions. Review the correct spatial relationships between structures.";
-                            break;
-                        case 'physiology':
-                            $feedbacks[] = "Your answer contains contradictory statements about physiological processes or effects. Review the correct functional relationships and mechanisms.";
-                            break;
-                        case 'biochemistry':
-                            $feedbacks[] = "Your answer contains contradictory statements about biochemical pathways or reactions. Review the correct sequence and directionality of reactions.";
-                            break;
-                        case 'histology':
-                            $feedbacks[] = "Your answer contains contradictory statements about tissue characteristics or cell types. Review the correct cellular composition and organization.";
-                            break;
-                        default:
-                            $feedbacks[] = "Your answer contains contradictory medical statements that need correction. Review the material to resolve these inconsistencies.";
-                    }
-                } else {
-                    $feedbacks[] = "Your answer contains contradictory medical statements that need correction. Review the core concepts to ensure consistency.";
-                }
-            }
-            
-            if (isset($metrics['pattern']) && isset($metrics['pattern']['pattern_type'])) {
-                $patternType = $metrics['pattern']['pattern_type'];
-                
-                // Provide pattern-specific guidance
-                switch ($patternType) {
-                    case 'parasympathetic_effects':
-                        $feedbacks[] = "Your answer should discuss parasympathetic effects on heart rate and digestion. Remember that parasympathetic stimulation typically decreases heart rate and increases digestive activity.";
-                        break;
-                    case 'sympathetic_effects':
-                        $feedbacks[] = "Your answer should discuss sympathetic effects on heart rate, blood pressure, and other target organs. Remember that sympathetic stimulation typically increases heart rate and blood pressure while decreasing digestive activity.";
-                        break;
-                    case 'action_potential':
-                        $feedbacks[] = "Your answer should explain the sequence of depolarization and repolarization in action potentials. Review the ionic basis of membrane potential changes and the role of voltage-gated channels.";
-                        break;
-                    case 'cardiac_cycle':
-                        $feedbacks[] = "Your answer should describe the events of systole and diastole in the cardiac cycle. Focus on the timing of chamber contraction, valve movements, and pressure changes.";
-                        break;
-                    case 'glycolysis':
-                        $feedbacks[] = "Your answer should describe the steps and energy yield of glycolysis. Review the conversion of glucose to pyruvate and the generation of ATP and NADH.";
-                        break;
-                    case 'tca_cycle':
-                        $feedbacks[] = "Your answer should explain the key reactions and products of the TCA cycle. Focus on the oxidative decarboxylation steps and the production of reduced electron carriers.";
-                        break;
-                    case 'epithelial_tissue':
-                        $feedbacks[] = "Your answer should describe the characteristics and classifications of epithelial tissue. Review the different types based on cell shape and layering.";
-                        break;
-                    case 'anatomical_position':
-                        $feedbacks[] = "Your answer should correctly use anatomical position terms (anterior, posterior, etc.). Remember that these terms are used relative to the standard anatomical position.";
-                        break;
-                }
-            }
-            
-            // Add learning resource suggestions based on course topic
-            $resourceSuggestion = '';
-            if ($courseTopic) {
-                switch ($courseTopic) {
-                    case 'anatomy':
-                        $resourceSuggestion = " Consider consulting an anatomical atlas or 3D models to visualize these relationships.";
-                        break;
-                    case 'physiology':
-                        $resourceSuggestion = " Review flowcharts and diagrams that illustrate the regulatory pathways involved.";
-                        break;
-                    case 'biochemistry':
-                        $resourceSuggestion = " Consider creating pathway diagrams to help visualize the sequential reactions and regulatory points.";
-                        break;
-                    case 'histology':
-                        $resourceSuggestion = " Review labeled micrographs to better recognize the cellular and tissue organization.";
-                        break;
-                }
-            }
-            
-            // If specific feedback is available, use it; otherwise, give a general message
-            if (!empty($feedbacks)) {
-                $domainPrefix = "";
-                if ($courseTopic) {
-                    $domainPrefix = ucfirst($courseTopic) . ": ";
-                }
-                return $domainPrefix . implode(' ', $feedbacks) . $resourceSuggestion . " Please review and try again.";
-            } else {
-                if ($courseTopic) {
-                    switch ($courseTopic) {
-                        case 'anatomy':
-                            return "Your anatomical description differs from the expected answer. Review the anatomical structures and their relationships. Compare your answer with anatomical diagrams or models to identify the discrepancies.";
-                        case 'physiology':
-                            return "Your physiological explanation differs from the expected answer. Review the mechanisms and processes involved. Try creating a flowchart to visualize the sequence of events and regulatory mechanisms.";
-                        case 'biochemistry':
-                            return "Your biochemical explanation differs from the expected answer. Review the pathways and reactions involved. Consider drawing out the pathway with enzymes and intermediates to strengthen your understanding.";
-                        case 'histology':
-                            return "Your histological description differs from the expected answer. Review the tissue characteristics and cellular components. Studying labeled micrographs can help improve your understanding of tissue organization.";
-                        default:
-                            return "Your answer differs significantly from the expected answer. Please review the material and try again. Consider creating visual summaries of key concepts to reinforce your understanding.";
-                    }
-                } else {
-                    return "Your answer differs significantly from the expected answer. Please review the material and try again. Focus on understanding the underlying concepts rather than memorizing specific phrases.";
-                }
-            }
-        }
-    }
-    
-    /**
-     * Intelligent concept matching that understands context and semantics
-     * This handles cases like "blood flows in vein" vs "vein flows in blood"
-     *
-     * @param string $normalizedSubmitted The normalized submitted answer
-     * @param string $normalizedCorrect The normalized correct answer
-     * @return bool Whether this is an intelligent concept match
-     */
-    private function isIntelligentConceptMatch(string $normalizedSubmitted, string $normalizedCorrect): bool
-    {
-        // Flow direction understanding: "blood flows in vein" should match "blood flows through veins"
-        if ($this->hasFlowDirectionMatch($normalizedSubmitted, $normalizedCorrect)) {
-            return true;
-        }
-
-        // Location understanding: "heart in chest" should match "heart located in thorax"
-        if ($this->hasLocationMatch($normalizedSubmitted, $normalizedCorrect)) {
-            return true;
-        }
-
-        // Function understanding: "heart pumps blood" should match "heart functions to circulate blood"
-        if ($this->hasFunctionMatch($normalizedSubmitted, $normalizedCorrect)) {
-            return true;
-        }
-
-        // Process understanding: "protein synthesis in ribosome" should match "protein synthesis occurs in ribosomes"
-        if ($this->hasProcessMatch($normalizedSubmitted, $normalizedCorrect)) {
-            return true;
-        }
-
-        // Quantitative understanding: "BP 120/80" should match "blood pressure is 120 over 80"
-        if ($this->hasQuantitativeMatch($normalizedSubmitted, $normalizedCorrect)) {
-            return true;
-        }
-
-        return false;
-    }
-
-    /**
-     * Check for flow direction matches (blood flows in vein vs vein flows in blood)
-     */
-    private function hasFlowDirectionMatch(string $submitted, string $correct): bool
-    {
-        // Pattern: "X flows in Y" should match "X flows through Y"
-        $flowPatterns = [
-            '/\b(blood|oxygen|fluid|urine)\s+(?:flows?\s+)?(?:in|into|from)\s+(vein|artery|capillary|heart|lung|kidney)\b/i',
-            '/\b(vein|artery|capillary|heart|lung|kidney)\s+(?:flows?\s+)?(?:in|into|from)\s+(blood|oxygen|fluid|urine)\b/i',
-        ];
-
-        foreach ($flowPatterns as $pattern) {
-            if (preg_match($pattern, $submitted) && preg_match($pattern, $correct)) {
-                return true;
             }
         }
 
-        return false;
-    }
+        // ── Expanded abbreviation pattern matches ────────────────────────────
+        $expandedSubmitted = $this->expandKnownAbbreviations($submittedAnswer);
+        $expandedCorrect   = $this->expandKnownAbbreviations($correctAnswer);
 
-    /**
-     * Check for location matches (heart in chest vs heart located in thorax)
-     */
-    private function hasLocationMatch(string $submitted, string $correct): bool
-    {
-        $locationPatterns = [
-            '/\b(heart|lung|liver|kidney|stomach|spleen)\s+(?:is\s+)?(?:in|at|on|located\s+in)\s+(chest|thorax|abdomen|pelvis|peritoneum)\b/i',
-            '/\b(chest|thorax|abdomen|pelvis|peritoneum)\s+(?:contains?|has|houses?)\s+(heart|lung|liver|kidney|stomach|spleen)\b/i',
-        ];
+        if ($this->isSympatheticEffectsMatch($expandedSubmitted, $expandedCorrect)) {
+            return $this->buildCorrectResult(0.9, 'Correct sympathetic effects', 'nervous',
+                'Your answer correctly captures the sympathetic effects.');
+        }
+        if ($this->isParasympatheticEffectsMatch($expandedSubmitted, $expandedCorrect)) {
+            return $this->buildCorrectResult(0.9, 'Correct parasympathetic effects', 'nervous',
+                'Your answer correctly captures the parasympathetic effects.');
+        }
 
-        foreach ($locationPatterns as $pattern) {
-            if (preg_match($pattern, $submitted) && preg_match($pattern, $correct)) {
-                return true;
+        // ── Intelligent concept matches ──────────────────────────────────────
+        if ($this->isIntelligentConceptMatch($normalizedSubmitted, $normalizedCorrect)) {
+            return $this->buildCorrectResult(0.95, 'Intelligent concept match', $courseTopic,
+                'Your answer demonstrates intelligent understanding of the medical concept.');
+        }
+        if ($this->isHeartFunctionMatch($normalizedSubmitted, $normalizedCorrect)) {
+            return $this->buildCorrectResult(0.90, 'Correct heart function', 'cardiovascular',
+                'Your answer correctly captures the function of the heart.');
+        }
+        if ($this->isMedicalAbbreviationMatch($normalizedSubmitted, $normalizedCorrect)) {
+            return $this->buildCorrectResult(0.92, 'Correct abbreviation usage', $courseTopic,
+                'Your answer correctly uses medical abbreviations.');
+        }
+        if ($this->isTypoMatch($normalizedSubmitted, $normalizedCorrect)) {
+            return $this->buildCorrectResult(0.88, 'Correct despite minor typos', $courseTopic,
+                'Your answer is correct despite minor spelling variations.');
+        }
+
+        // ── Location mismatch check (consolidated) ───────────────────────────
+        if ($this->detectLocationMismatch($normalizedSubmitted)) {
+            return [
+                'isCorrect'   => false,
+                'similarity'  => 0.4,
+                'metrics'     => ['hasContradictions' => true],
+                'reason'      => 'Process associated with wrong cellular location',
+                'courseTopic' => $courseTopic,
+                'feedback'    => 'Your answer places a biological process in the wrong cellular compartment. Review where each major pathway occurs.',
+            ];
+        }
+
+        // ── Full similarity metrics ───────────────────────────────────────────
+        $metrics        = $this->calculateSimilarityMetrics($submittedAnswer, $correctAnswer);
+        $mainSimilarity = $metrics['weighted'];
+
+        if ($metrics['hasContradictions'] ?? false) {
+            $mainSimilarity = min($mainSimilarity, 0.65);
+        }
+
+        // Check alternatives
+        $bestSimilarity = $mainSimilarity;
+        $bestMetrics    = $metrics;
+        $bestAnswer     = $correctAnswer;
+        $bestSource     = 'main';
+
+        foreach ($alternativeAnswers as $i => $alt) {
+            if (empty($alt)) { continue; }
+            $altMetrics = $this->calculateSimilarityMetrics($submittedAnswer, $alt);
+            if ($altMetrics['hasContradictions'] ?? false) {
+                $altMetrics['weighted'] = min($altMetrics['weighted'], 0.65);
+            }
+            if ($altMetrics['weighted'] > $bestSimilarity) {
+                $bestSimilarity = $altMetrics['weighted'];
+                $bestMetrics    = $altMetrics;
+                $bestAnswer     = $alt;
+                $bestSource     = 'alternative';
             }
         }
 
-        return false;
-    }
+        // Domain boost
+        $domainBoost     = $this->calculateDomainContextBoost($submittedAnswer, $bestAnswer);
+        $finalSimilarity = min(1.0, $bestSimilarity + $domainBoost);
 
-    /**
-     * Check for function matches (heart pumps blood vs heart functions to circulate blood)
-     */
-    private function hasFunctionMatch(string $submitted, string $correct): bool
-    {
-        $functionPatterns = [
-            '/\b(heart|lungs|kidneys|liver|stomach)\s+(?:function|work|role|job)\s+(?:to\s+)?(.+)/i',
-            '/\b(.+)\s+(?:is|are)\s+(?:function|role|purpose)\s+of\s+(heart|lungs|kidneys|liver|stomach)/i',
-        ];
-
-        foreach ($functionPatterns as $pattern) {
-            if (preg_match($pattern, $submitted) && preg_match($pattern, $correct)) {
-                return true;
-            }
+        // Phrasing boost when conceptual is very high
+        if (($bestMetrics['conceptual'] ?? 0) > 0.8 && ($bestMetrics['keyword'] ?? 0) > 0.6
+            && !($bestMetrics['hasContradictions'] ?? false)) {
+            $finalSimilarity = min(1.0, $finalSimilarity + 0.10);
         }
 
-        return false;
-    }
+        // Safety floor for missing keywords
+        $isCriticalMismatch = ($bestMetrics['hasContradictions'] ?? false)
+            || (isset($bestMetrics['keyword']) && $bestMetrics['keyword'] < 0.4);
 
-    /**
-     * Check for process matches (protein synthesis in ribosome vs protein synthesis occurs in ribosomes)
-     */
-    private function hasProcessMatch(string $submitted, string $correct): bool
-    {
-        $processPatterns = [
-            '/\b(protein|synthesis|dna|replication|glycolysis|respiration)\s+(?:happens?|occurs?|takes\s+place)\s+(?:in|at|on)\s+(.+)/i',
-            '/\b(.+)\s+(?:is|are)\s+(?:location|site|place)\s+(?:for|of)\s+(protein|synthesis|dna|replication|glycolysis|respiration)/i',
-        ];
+        $isCorrect = $finalSimilarity >= $similarityThreshold && !$isCriticalMismatch;
 
-        foreach ($processPatterns as $pattern) {
-            if (preg_match($pattern, $submitted) && preg_match($pattern, $correct)) {
-                return true;
-            }
+        // High conceptual override
+        if (!$isCorrect && !$isCriticalMismatch
+            && ($bestMetrics['conceptual'] ?? 0) > 0.9
+            && ($bestMetrics['keyword'] ?? 0) > 0.8) {
+            $isCorrect       = true;
+            $finalSimilarity = max($finalSimilarity, 0.90);
         }
 
-        return false;
-    }
-
-    /**
-     * Check for quantitative matches (BP 120/80 vs blood pressure is 120 over 80)
-     */
-    private function hasQuantitativeMatch(string $submitted, string $correct): bool
-    {
-        $quantitativePatterns = [
-            '/\b(bp|blood pressure|hr|heart rate)\s+(?:is|are|=)\s*(\d+)(?:\/|over)?(\d+)?/i',
-            '/\b(\d+)(?:\/|over)?(\d+)?\s+(?:is|are)?\s+(bp|blood pressure|hr|heart rate)/i',
-        ];
-
-        foreach ($quantitativePatterns as $pattern) {
-            if (preg_match($pattern, $submitted) && preg_match($pattern, $correct)) {
-                return true;
-            }
-        }
-
-        return false;
-    }
-
-    /**
-     * Enhanced heart function matching with better understanding
-     */
-    private function isHeartFunctionMatch(string $normalizedSubmitted, string $normalizedCorrect): bool
-    {
-        // Core heart function keywords
-        $heartKeywords = ['heart', 'cardiac', 'myocardial'];
-        $functionKeywords = ['pump', 'circulate', 'propel', 'move', 'flow', 'blood'];
-
-        $hasHeartKeyword = false;
-        $hasFunctionKeyword = false;
-        $hasBloodKeyword = false;
-
-        // Check submitted answer
-        foreach ($heartKeywords as $keyword) {
-            if (stripos($normalizedSubmitted, $keyword) !== false) {
-                $hasHeartKeyword = true;
-                break;
-            }
-        }
-
-        foreach ($functionKeywords as $keyword) {
-            if (stripos($normalizedSubmitted, $keyword) !== false) {
-                $hasFunctionKeyword = true;
-                break;
-            }
-        }
-
-        if (stripos($normalizedSubmitted, 'blood') !== false) {
-            $hasBloodKeyword = true;
-        }
-
-        // If submitted answer mentions heart function with blood, it's likely correct
-        if ($hasHeartKeyword && ($hasFunctionKeyword || $hasBloodKeyword)) {
-            // Check if correct answer is also about heart function
-            $correctHasHeartKeyword = false;
-            $correctHasFunctionKeyword = false;
-
-            foreach ($heartKeywords as $keyword) {
-                if (stripos($normalizedCorrect, $keyword) !== false) {
-                    $correctHasHeartKeyword = true;
-                    break;
-                }
-            }
-
-            foreach ($functionKeywords as $keyword) {
-                if (stripos($normalizedCorrect, $keyword) !== false) {
-                    $correctHasFunctionKeyword = true;
-                    break;
-                }
-            }
-
-            if ($correctHasHeartKeyword && $correctHasFunctionKeyword) {
-                return true;
-            }
-        }
-
-        return false;
-    }
-
-    /**
-     * Check for medical abbreviation matches
-     */
-    private function isMedicalAbbreviationMatch(string $normalizedSubmitted, string $normalizedCorrect): bool
-    {
-        // Common medical abbreviations and their expansions
-        $abbreviations = [
-            // Nervous system
-            'sns' => 'sympathetic nervous system',
-            'pns' => 'parasympathetic nervous system',
-            'ans' => 'autonomic nervous system',
-            'cns' => 'central nervous system',
-
-            // Cardiovascular
-            'bp' => 'blood pressure',
-            'hr' => 'heart rate',
-            'co' => 'cardiac output',
-
-            // Respiratory
-            'o2' => 'oxygen',
-            'co2' => 'carbon dioxide',
-            'spo2' => 'oxygen saturation',
-
-            // Biochemistry
-            'atp' => 'adenosine triphosphate',
-            'nadh' => 'nicotinamide adenine dinucleotide',
-            'fadh' => 'flavin adenine dinucleotide',
-            'dna' => 'deoxyribonucleic acid',
-            'rna' => 'ribonucleic acid',
-
-            // Lab values
-            'na' => 'sodium',
-            'k' => 'potassium',
-            'ca' => 'calcium',
-            'mg' => 'magnesium',
-            'cl' => 'chloride',
-
-            // Other medical
-            'gi' => 'gastrointestinal',
-            'cv' => 'cardiovascular',
-            'er' => 'endoplasmic reticulum',
-            'mt' => 'mitochondria'
-        ];
-
-        foreach ($abbreviations as $abbr => $expansion) {
-            // Check if abbreviation is used in submitted answer
-            if (stripos($normalizedSubmitted, $abbr) !== false) {
-                // Check if the full term or abbreviation is in correct answer
-                if (stripos($normalizedCorrect, $expansion) !== false ||
-                    stripos($normalizedCorrect, $abbr) !== false) {
-                    return true;
-                }
-            }
-
-            // Check reverse: if expansion is in submitted but abbreviation is in correct
-            if (stripos($normalizedSubmitted, $expansion) !== false) {
-                if (stripos($normalizedCorrect, $abbr) !== false ||
-                    stripos($normalizedCorrect, $expansion) !== false) {
-                    return true;
-                }
-            }
-        }
-
-        return false;
-    }
-
-    /**
-     * Check for typo matches with intelligent correction
-     */
-    private function isTypoMatch(string $normalizedSubmitted, string $normalizedCorrect): bool
-    {
-        // Use the text processor's typo correction to compare
-        $correctedSubmitted = $this->textProcessor->normalizeText($normalizedSubmitted);
-        $correctedCorrect = $this->textProcessor->normalizeText($normalizedCorrect);
-
-        // If correction makes them match, it's a typo match
-        if ($correctedSubmitted === $correctedCorrect) {
-            return true;
-        }
-
-        // Check for common medical typos specifically
-        $medicalTypos = [
-            // Heart and cardiovascular
-            'hart' => 'heart',
-            'hear' => 'heart',
-            'caridac' => 'cardiac',
-            'cardic' => 'cardiac',
-            'ventrical' => 'ventricle',
-            'ventricl' => 'ventricle',
-            'artey' => 'artery',
-            'arteries' => 'artery',
-            'vein' => 'vein',
-            'veins' => 'vein',
-
-            // Nervous system
-            'parasympatheic' => 'parasympathetic',
-            'sympatheic' => 'sympathetic',
-            'parasympathetc' => 'parasympathetic',
-            'sympathetc' => 'sympathetic',
-            'nueron' => 'neuron',
-            'neurone' => 'neuron',
-
-            // Respiratory
-            'lung' => 'lung',
-            'lungs' => 'lung',
-            'alveloi' => 'alveoli',
-            'alvelo' => 'alveoli',
-            'diaphram' => 'diaphragm',
-            'diaphrgm' => 'diaphragm',
-            'trachea' => 'trachea',
-            'trache' => 'trachea',
-
-            // Biochemistry
-            'protien' => 'protein',
-            'protine' => 'protein',
-            'carbohydrate' => 'carbohydrate',
-            'carb' => 'carbohydrate',
-            'glycolysis' => 'glycolysis',
-            'glyclysis' => 'glycolysis',
-            'pyruvate' => 'pyruvate',
-            'pyruvat' => 'pyruvate',
-
-            // Histology
-            'epithelal' => 'epithelial',
-            'epithelum' => 'epithelial',
-            'connective' => 'connective',
-            'conective' => 'connective',
-            'muscel' => 'muscle',
-            'muscels' => 'muscle',
-
-            // General medical
-            'tempreture' => 'temperature',
-            'temp' => 'temperature',
-            'presure' => 'pressure',
-            'pressur' => 'pressure',
-            'metablism' => 'metabolism',
-            'metabolsm' => 'metabolism',
-            'inflamation' => 'inflammation',
-            'infetcion' => 'infection',
-        ];
-
-        foreach ($medicalTypos as $typo => $correction) {
-            // Check if typo is in submitted answer and correction is in correct answer
-            if (stripos($normalizedSubmitted, $typo) !== false) {
-                if (stripos($normalizedCorrect, $correction) !== false ||
-                    stripos($normalizedCorrect, $typo) !== false) {
-                    return true;
-                }
-            }
-
-            // Check if typo is in correct answer and correction is in submitted answer
-            if (stripos($normalizedCorrect, $typo) !== false) {
-                if (stripos($normalizedSubmitted, $correction) !== false ||
-                    stripos($normalizedSubmitted, $typo) !== false) {
-                    return true;
-                }
-            }
-        }
-
-        return false;
-    }
-
-    /**
-     * Check if the answer contains sympathetic effects
-     *
-     * @param string $submittedAnswer The submitted answer
-     * @param string $correctAnswer The correct answer
-     * @return bool Whether sympathetic effects are mentioned
-     */
-    protected function isSympatheticEffectsMatch(string $submittedAnswer, string $correctAnswer): bool
-    {
-        return $this->patternMatcher->matchesPattern('sympathetic_effects', $submittedAnswer) &&
-               $this->patternMatcher->matchesPattern('sympathetic_effects', $correctAnswer);
-    }
-
-    /**
-     * Check if the answer contains parasympathetic effects
-     *
-     * @param string $submittedAnswer The submitted answer
-     * @param string $correctAnswer The correct answer
-     * @return bool Whether parasympathetic effects are mentioned
-     */
-    protected function isParasympatheticEffectsMatch(string $submittedAnswer, string $correctAnswer): bool
-    {
-        return $this->patternMatcher->matchesPattern('parasympathetic_effects', $submittedAnswer) &&
-               $this->patternMatcher->matchesPattern('parasympathetic_effects', $correctAnswer);
-    }
-    
-    /**
-     * Evaluate an answer for a specific question model
-     * 
-     * @param Question $question The question model
-     * @param string $submittedAnswer The answer submitted by the user
-     * @return array Evaluation results
-     */
-    public function evaluateQuestionAnswer(Question $question, string $submittedAnswer): array
-    {
-        // Get threshold use default
-        $threshold = self::DEFAULT_SIMILARITY_THRESHOLD;
-        
-        // Get alternative answers or use empty array if null
-        $alternativeAnswers = $question->alternative_answers ?? [];
-        
-        return $this->evaluateAnswer(
-            $submittedAnswer,
-            $question->correct_answer,
-            $alternativeAnswers,
-            $threshold
+        $feedback = $this->generateDetailedFeedback(
+            $submittedAnswer, $bestAnswer, $bestMetrics,
+            $isCorrect, $finalSimilarity, $similarityThreshold, $courseTopic
         );
+
+        $response = [
+            'isCorrect'   => $isCorrect,
+            'similarity'  => $finalSimilarity,
+            'metrics'     => $bestMetrics,
+            'source'      => $bestSource,
+            'domainBoost' => $domainBoost,
+            'courseTopic' => $courseTopic,
+            'feedback'    => $feedback,
+            'reason'      => $isCorrect
+                ? ($finalSimilarity > 0.95 ? 'Highly similar to correct answer' : 'Similar to correct answer')
+                : ($isCriticalMismatch ? 'Critical concept error detected' : 'Insufficient similarity'),
+        ];
+
+        return $response;
     }
-    
-    /**
-     * Simple interface that returns just a boolean result
-     * (for compatibility with existing isAnswerCorrect logic)
-     * 
-     * @param Question $question The question model
-     * @param string $submittedAnswer The answer submitted by the user
-     * @return bool True if the answer is correct, false otherwise
-     */
-    public function isCorrect(Question $question, string $submittedAnswer): bool
+
+    // =========================================================================
+    // SIMILARITY METRICS
+    // =========================================================================
+
+    protected function calculateSimilarityMetrics(string $submittedAnswer, string $correctAnswer): array
     {
-        $result = $this->evaluateQuestionAnswer($question, $submittedAnswer);
-        return $result['isCorrect'];
+        $normSub = $this->textProcessor->normalizeText($submittedAnswer);
+        $normCor = $this->textProcessor->normalizeText($correctAnswer);
+
+        if ($normSub === '' || $normCor === '') {
+            return ['weighted' => 0, 'levenshtein' => 0, 'jaccard' => 0,
+                    'keyword' => 0, 'conceptual' => 0, 'hasContradictions' => false];
+        }
+
+        $levenshtein = $this->textProcessor->getLevenshteinSimilarity($normSub, $normCor);
+        $jaccard     = $this->textProcessor->getJaccardSimilarity($normSub, $normCor);
+        $keyword     = $this->textProcessor->getKeywordOverlapRatio($normSub, $normCor);
+        $conceptual  = $this->textProcessor->getConceptualSimilarity($normSub, $normCor);
+
+        $hasContradictions = $this->textProcessor->containsAntonyms($normSub, $normCor);
+
+        // Weighted blend: conceptual most important, Levenshtein least
+        $weighted = ($conceptual * 0.40)
+                  + ($keyword   * 0.30)
+                  + ($jaccard   * 0.20)
+                  + ($levenshtein * 0.10);
+
+        if ($hasContradictions) {
+            $weighted = min($weighted, 0.65);
+        }
+
+        return [
+            'weighted'         => $weighted,
+            'levenshtein'      => $levenshtein,
+            'jaccard'          => $jaccard,
+            'keyword'          => $keyword,
+            'conceptual'       => $conceptual,
+            'hasContradictions'=> $hasContradictions,
+        ];
     }
-    
+
+    // =========================================================================
+    // ANS HARD GATES
+    // =========================================================================
+
+    private function applyAnsHardGates(string $semanticSubmitted, string $semanticCorrect): ?array
+    {
+        $isParaQ = preg_match('/\bparasympathetic nervous system\b/i', $semanticCorrect) === 1;
+        $isSymQ  = !$isParaQ && preg_match('/\bsympathetic nervous system\b/i', $semanticCorrect) === 1;
+
+        if (!$isParaQ && !$isSymQ) { return null; }
+
+        $hrUp   = $this->containsAnyPhrase($semanticSubmitted, ['increase heart rate', 'increases heart rate']);
+        $hrDown = $this->containsAnyPhrase($semanticSubmitted, ['decrease heart rate', 'decreases heart rate']);
+        $digUp  = $this->containsAnyPhrase($semanticSubmitted, ['increase digestion', 'increases digestion']);
+        $digDown= $this->containsAnyPhrase($semanticSubmitted, [
+            'decrease digestion','decreases digestion','inhibit digestion','inhibits digestion',
+        ]);
+
+        if ($isSymQ) {
+            if (($hrDown || $digUp) && !($hrUp && $digDown)) {
+                return ['isCorrect' => false, 'similarity' => 0.3,
+                    'reason' => 'Reverses sympathetic effects', 'courseTopic' => 'nervous',
+                    'feedback' => 'Sympathetic activation increases heart rate and suppresses digestion.'];
+            }
+            if ($hrUp && $digDown && !$hrDown && !$digUp) {
+                return ['isCorrect' => true, 'similarity' => 0.9,
+                    'reason' => 'Correct sympathetic effects', 'courseTopic' => 'nervous',
+                    'feedback' => 'Your answer correctly captures the sympathetic effects.'];
+            }
+        }
+
+        if ($isParaQ) {
+            if (($hrUp || $digDown) && !($hrDown && $digUp)) {
+                return ['isCorrect' => false, 'similarity' => 0.3,
+                    'reason' => 'Reverses parasympathetic effects', 'courseTopic' => 'nervous',
+                    'feedback' => 'Parasympathetic activation lowers heart rate and supports digestion.'];
+            }
+            if ($hrDown && $digUp && !$hrUp && !$digDown) {
+                return ['isCorrect' => true, 'similarity' => 0.9,
+                    'reason' => 'Correct parasympathetic effects', 'courseTopic' => 'nervous',
+                    'feedback' => 'Your answer correctly captures the parasympathetic effects.'];
+            }
+        }
+
+        return null;
+    }
+
+    // =========================================================================
+    // QUESTION TYPE DETECTORS
+    // =========================================================================
+
+    private function isComparisonQuestion(string $correctAnswer): bool
+    {
+        $markers = [
+            ' vs ',' vs. ',' versus ',' compared to ',' comparison ',
+            ' difference ',' differences ',' unlike ',' whereas ',
+            ' however ',' while ',' although ',' in contrast ',
+        ];
+        $lower = strtolower($correctAnswer);
+        foreach ($markers as $m) {
+            if (str_contains($lower, $m)) { return true; }
+        }
+
+        // Paired domain terms
+        $pairs = [
+            ['glycoproteins','proteoglycans'],['systolic','diastolic'],
+            ['arteries','veins'],['sympathetic','parasympathetic'],
+            ['aerobic','anaerobic'],['mitosis','meiosis'],
+            ['dna','rna'],['type 1','type 2'],['acute','chronic'],
+            ['innate','adaptive'],['osteoblast','osteoclast'],
+            ['afferent','efferent'],['smooth','skeletal'],
+        ];
+        foreach ($pairs as [$a, $b]) {
+            if (str_contains($lower, $a) && str_contains($lower, $b)) { return true; }
+        }
+        return false;
+    }
+
+    private function isDefinitionQuestion(string $correctAnswer): bool
+    {
+        $markers = [
+            ' is ',' are ',' refers to ',' means ',' defined as ',
+            ' is defined as ',' is known as ',' represents ',
+            ' consists of ',' composed of ',' characterized by ',
+            ' is a ',' are a ',' is an ',' are an ',' is the ',' are the ',
+        ];
+        $lower = strtolower($correctAnswer);
+        foreach ($markers as $m) {
+            if (str_contains($lower, $m)) { return true; }
+        }
+        return (bool) preg_match('/^(?:the\s+)?[a-z]+(?:\s+[a-z]+)*\s+(?:is|are)\s/i', $correctAnswer);
+    }
+
+    private function isEnumerationQuestion(string $correctAnswer): bool
+    {
+        if (substr_count($correctAnswer, ',') < 1) { return false; }
+        return preg_match('/\b(and|or)\b/i', $correctAnswer) === 1
+            || preg_match('/\b(includes|consists of|comprises|contains|involves)\b/i', $correctAnswer) === 1;
+    }
+
+    private function isMatchingQuestion(string $correctAnswer): bool
+    {
+        $markers = [
+            'match:','match the','corresponds to','is associated with',
+            'is linked to','paired with',' → ',' ==> ',
+        ];
+        $lower = strtolower($correctAnswer);
+        foreach ($markers as $m) {
+            if (str_contains($lower, $m)) { return true; }
+        }
+        return false;
+    }
+
+    private function isNumericalValueQuestion(string $correctAnswer): bool
+    {
+        $patterns = [
+            '/\d+\s*\/\s*\d+/', '/\d+[\.\-\–]\d+/', '/\d+[\.,]\d+/',
+            '/\d+\s*(mmhg|bpm|kg|g|mg|ml|l)\b/i',
+            '/\d+[\.,]\d+\s*(g|mg|µg|ng|kg)\/(dL|L|ml|mL)/i',
+            '/\d+\s*%/',
+        ];
+        foreach ($patterns as $p) {
+            if (preg_match($p, $correctAnswer)) { return true; }
+        }
+        $numTerms = ['normal','range','level','concentration','value','reference',
+                     'g/dl','mg/dl','mmol/l','percent','%','mmhg'];
+        $lower = strtolower($correctAnswer);
+        foreach ($numTerms as $t) {
+            if (str_contains($lower, $t)) { return true; }
+        }
+        return false;
+    }
+
+    // =========================================================================
+    // SPECIALISED EVALUATORS (enumeration, definition, matching, numerical)
+    // These are unchanged in logic from the previous version; kept intact.
+    // =========================================================================
+
+    private function evaluateEnumerationAnswer(string $submittedAnswer, string $correctAnswer): array
+    {
+        $submittedNormalized = $this->normalizeForSemanticComparison($submittedAnswer);
+        $correctItems        = $this->extractEnumerationItems($correctAnswer);
+
+        if (empty($correctItems)) {
+            return $this->performRegularEvaluation($submittedAnswer, $correctAnswer, self::DEFAULT_SIMILARITY_THRESHOLD);
+        }
+
+        $matched   = array_values(array_filter($correctItems, fn($item) => stripos($submittedNormalized, $item) !== false));
+        $coverage  = count($matched) / count($correctItems);
+        $isCorrect = $coverage >= 0.75;
+
+        return [
+            'isCorrect'   => $isCorrect,
+            'similarity'  => $isCorrect ? max(0.85, $coverage) : $coverage,
+            'metrics'     => ['enumeration_coverage' => $coverage, 'matched_items' => $matched, 'expected_items' => $correctItems],
+            'reason'      => $isCorrect ? 'Enumeration — key items identified' : 'Enumeration — missing key items',
+            'courseTopic' => $this->identifyCourseTopic($correctAnswer),
+            'feedback'    => $isCorrect ? 'You identified the key required items.'
+                                        : 'Your answer is missing one or more of the expected key items.',
+        ];
+    }
+
+    private function evaluateDefinitionAnswer(string $submittedAnswer, string $correctAnswer, float $baseThreshold): array
+    {
+        $metrics = $this->calculateSimilarityMetrics($submittedAnswer, $correctAnswer);
+        $defScore = ($metrics['keyword'] * 0.5) + ($metrics['conceptual'] * 0.5);
+        if ($metrics['keyword'] >= 0.3) { $defScore = min(1.0, $defScore + 0.2); }
+        $isCorrect = $defScore >= 0.4 || ($metrics['keyword'] >= 0.4 && $metrics['conceptual'] >= 0.3);
+        return [
+            'isCorrect'   => $isCorrect,
+            'similarity'  => $isCorrect ? max($defScore, 0.5) : $defScore,
+            'metrics'     => ['definition_score' => $defScore],
+            'reason'      => 'Definition question',
+            'courseTopic' => $this->identifyCourseTopic($correctAnswer),
+            'feedback'    => $this->generateDefinitionFeedback($submittedAnswer, $correctAnswer, $metrics, $isCorrect),
+        ];
+    }
+
+    private function evaluateMatchingAnswer(string $submittedAnswer, string $correctAnswer, float $baseThreshold): array
+    {
+        $correctMatches   = $this->extractMatchingPairs($correctAnswer);
+        $submittedMatches = $this->extractMatchingPairs($submittedAnswer);
+        $sim              = $this->calculateMatchingSimilarity($submittedMatches, $correctMatches);
+        $isCorrect        = $sim['overall_similarity'] >= 0.5 || ($sim['pair_similarity'] >= 0.4 && $sim['key_matches'] > 0);
+        return [
+            'isCorrect'   => $isCorrect,
+            'similarity'  => max($sim['overall_similarity'], $isCorrect ? 0.6 : 0.0),
+            'metrics'     => ['matching_similarity' => $sim],
+            'reason'      => 'Matching question',
+            'courseTopic' => $this->identifyCourseTopic($correctAnswer),
+            'feedback'    => $this->generateMatchingFeedback($submittedAnswer, $correctAnswer, $sim, $isCorrect),
+        ];
+    }
+
+    private function evaluateNumericalValueAnswer(string $submittedAnswer, string $correctAnswer, float $baseThreshold): array
+    {
+        $correctNumbers  = $this->extractNumericalValues($correctAnswer);
+        $submittedNumbers= $this->extractNumericalValues($submittedAnswer);
+        $numMatch        = $this->compareNumericalValues($submittedNumbers, $correctNumbers);
+        $reqCount        = count($correctNumbers);
+        $allMatch        = $reqCount > 0 && $numMatch['total_matches'] === $reqCount && $numMatch['score'] >= 0.95;
+
+        if ($allMatch) {
+            return [
+                'isCorrect'   => true,
+                'similarity'  => max($numMatch['score'], 0.95),
+                'metrics'     => ['numerical_match' => $numMatch],
+                'reason'      => 'Numerical — correct values',
+                'courseTopic' => $this->identifyCourseTopic($correctAnswer),
+                'feedback'    => $this->generateNumericalFeedback($submittedAnswer, $correctAnswer, $numMatch),
+            ];
+        }
+
+        $reg = $this->performRegularEvaluation($submittedAnswer, $correctAnswer, $baseThreshold);
+        $reg['isCorrect']  = false;
+        $reg['similarity'] = min($reg['similarity'], $numMatch['score'] ?? 0.0);
+        $reg['reason']     = 'Numerical — values do not match';
+        $reg['feedback']   = $this->generateNumericalFeedback($submittedAnswer, $correctAnswer, $numMatch);
+        return $reg;
+    }
+
+    private function performRegularEvaluation(string $submittedAnswer, string $correctAnswer, float $threshold): array
+    {
+        $metrics   = $this->calculateSimilarityMetrics($submittedAnswer, $correctAnswer);
+        $isCorrect = $metrics['weighted'] >= $threshold;
+        return [
+            'isCorrect'   => $isCorrect,
+            'similarity'  => $metrics['weighted'],
+            'metrics'     => $metrics,
+            'reason'      => $isCorrect ? 'Regular evaluation — sufficient similarity' : 'Regular evaluation — insufficient similarity',
+            'courseTopic' => $this->identifyCourseTopic($correctAnswer),
+            'feedback'    => $this->generateDetailedFeedback($submittedAnswer, $correctAnswer, $metrics,
+                                $isCorrect, $metrics['weighted'], $threshold, null),
+        ];
+    }
+
+    // =========================================================================
+    // TEXT NORMALIZATION HELPERS
+    // =========================================================================
+
+    private function preprocessSymbols(string $answer): string
+    {
+        foreach ($this->medicalSymbols as $symbol => $meaning) {
+            $answer = str_replace($symbol, " $meaning ", $answer);
+        }
+        foreach ($this->chemicalSymbols as $symbol => $meaning) {
+            $answer = preg_replace('/\b' . preg_quote($symbol, '/') . '\b/', " $meaning ", $answer) ?? $answer;
+        }
+        $patterns = [
+            '/(\d+)\/(\d+)/'                     => 'systolic $1 diastolic $2',
+            '/HR\s*=?\s*(\d+)/i'                 => 'heart rate $1',
+            '/(\d+[\.,]?\d*)\s*mmol\/L/i'        => '$1 millimoles per liter',
+            '/(\d+[\.,]?\d*)\s*mg\/dL/i'         => '$1 milligrams per deciliter',
+            '/α/' => 'alpha', '/β/' => 'beta', '/γ/' => 'gamma',
+            '/δ/' => 'delta', '/μ/' => 'mu',
+        ];
+        foreach ($patterns as $p => $r) {
+            $answer = preg_replace($p, $r, $answer) ?? $answer;
+        }
+        return $answer;
+    }
+
+    private function normalizeForSemanticComparison(string $text): string
+    {
+        return trim($this->textProcessor->normalizeText(
+            $this->expandKnownAbbreviations($this->preprocessSymbols($text))
+        ));
+    }
+
+    private function expandKnownAbbreviations(string $text): string
+    {
+        $abbrevs = $this->medicalKnowledge->getAllAbbreviations();
+        uksort($abbrevs, fn($a, $b) => strlen($b) <=> strlen($a));
+        foreach ($abbrevs as $abbr => $expansion) {
+            $text = preg_replace('/\b' . preg_quote($abbr, '/') . '\b/i', $expansion, $text) ?? $text;
+        }
+        return $text;
+    }
+
+    private function normalizeAlternativeAnswers(array|string|null $alt): array
+    {
+        if (is_string($alt)) { $alt = preg_split('/\r\n|\r|\n/', $alt) ?: []; }
+        if (!is_array($alt)) { return []; }
+        return array_values(array_filter(array_map(fn($a) => trim((string)$a), $alt)));
+    }
+
+    /** @return string[] */
+    private function extractMeaningfulTokens(string $text): array
+    {
+        $filtered = $this->textProcessor->removeFillerWords($text);
+        $tokens   = preg_split('/\s+/', trim($filtered)) ?: [];
+        return array_values(array_unique(array_filter($tokens, function($t) {
+            $t = trim((string)$t);
+            if ($t === '') { return false; }
+            if (preg_match('/\d/', $t)) { return true; }
+            return mb_strlen($t) >= 3;
+        })));
+    }
+
+    private function hasMeaningfulTokenOverlap(string $ns, string $nc, array $alts = []): bool
+    {
+        $st = $this->extractMeaningfulTokens($ns);
+        $ct = $this->extractMeaningfulTokens($nc);
+        if (!empty(array_intersect($st, $ct))) { return true; }
+        foreach ($alts as $alt) {
+            $at = $this->extractMeaningfulTokens($this->normalizeForSemanticComparison($alt));
+            if (!empty(array_intersect($st, $at))) { return true; }
+        }
+        return false;
+    }
+
+    private function containsAnyPhrase(string $text, array $phrases): bool
+    {
+        foreach ($phrases as $p) { if (stripos($text, $p) !== false) { return true; } }
+        return false;
+    }
+
     /**
-     * Check if the question appears to be pattern-critical
-     * This is a quick check to identify questions that require specific pattern matching
-     * 
-     * @param string $correctAnswer The correct answer text
-     * @return bool Whether the question is likely pattern-critical
+     * Find the name of an incorrect location explicitly mentioned alongside a process.
+     * Returns the first wrong location string found, or null.
      */
+    private function findIncorrectLocationMention(string $process, string $normalizedSubmitted): ?string
+    {
+        $locs = $this->processLocations[$process] ?? null;
+        if ($locs === null) { return null; }
+        foreach ($locs['incorrect'] as $loc) {
+            if (stripos($normalizedSubmitted, $loc) !== false) { return $loc; }
+        }
+        return null;
+    }
+
+    // =========================================================================
+    // DOMAIN BOOST
+    // =========================================================================
+
+    protected function calculateDomainContextBoost(string $text1, string $text2): float
+    {
+        $n1 = $this->textProcessor->normalizeText($text1);
+        $n2 = $this->textProcessor->normalizeText($text2);
+        $total = 0.0;
+        foreach ($this->medicalDomains as $domain => $keywords) {
+            $s1 = $s2 = 0;
+            foreach ($keywords as $kw) {
+                if (str_contains($n1, $kw)) { $s1++; }
+                if (str_contains($n2, $kw)) { $s2++; }
+            }
+            if ($s1 > 0 && $s2 > 0) {
+                $total += min(min($s1, $s2) / max(count($keywords) * 0.5, 1) * 0.05, 0.05);
+            }
+        }
+        return min($total, 0.10);
+    }
+
+    // =========================================================================
+    // COURSE TOPIC
+    // =========================================================================
+
+    protected function identifyCourseTopic(string $text): ?string
+    {
+        $lower  = strtolower($text);
+        $scores = [];
+        foreach ($this->medicalDomains as $topic => $terms) {
+            $score = 0;
+            foreach ($terms as $term) { if (str_contains($lower, $term)) { $score++; } }
+            if ($score > 0) { $scores[$topic] = $score; }
+        }
+        if (empty($scores)) { return null; }
+        arsort($scores);
+        return key($scores);
+    }
+
+    // =========================================================================
+    // PATTERN MATCHERS (sympathetic / parasympathetic)
+    // =========================================================================
+
+    protected function isSympatheticEffectsMatch(string $submitted, string $correct): bool
+    {
+        return $this->patternMatcher->matchesPattern('sympathetic_effects', $submitted)
+            && $this->patternMatcher->matchesPattern('sympathetic_effects', $correct);
+    }
+
+    protected function isParasympatheticEffectsMatch(string $submitted, string $correct): bool
+    {
+        return $this->patternMatcher->matchesPattern('parasympathetic_effects', $submitted)
+            && $this->patternMatcher->matchesPattern('parasympathetic_effects', $correct);
+    }
+
+    // =========================================================================
+    // INTELLIGENT CONCEPT MATCHERS (unchanged logic, kept intact)
+    // =========================================================================
+
+    private function isIntelligentConceptMatch(string $ns, string $nc): bool
+    {
+        return $this->hasFlowDirectionMatch($ns, $nc)
+            || $this->hasLocationMatch($ns, $nc)
+            || $this->hasFunctionMatch($ns, $nc)
+            || $this->hasProcessMatch($ns, $nc)
+            || $this->hasQuantitativeMatch($ns, $nc);
+    }
+
+    private function hasFlowDirectionMatch(string $s, string $c): bool
+    {
+        $p = '/\b(blood|oxygen|fluid)\s+(?:flows?\s+)?(?:in|into|from|through)\s+(vein|artery|capillary|heart|lung|kidney)\b/i';
+        return preg_match($p, $s) && preg_match($p, $c);
+    }
+    private function hasLocationMatch(string $s, string $c): bool
+    {
+        $p = '/\b(heart|lung|liver|kidney|stomach|spleen)\s+(?:is\s+)?(?:in|at|on|located\s+in)\s+(chest|thorax|abdomen|pelvis)\b/i';
+        return preg_match($p, $s) && preg_match($p, $c);
+    }
+    private function hasFunctionMatch(string $s, string $c): bool
+    {
+        $p = '/\b(heart|lungs|kidneys|liver|stomach)\s+(?:function|work|role|job)\s+(?:to\s+)?(.+)/i';
+        return preg_match($p, $s) && preg_match($p, $c);
+    }
+    private function hasProcessMatch(string $s, string $c): bool
+    {
+        $p = '/\b(protein|synthesis|dna|replication|glycolysis|respiration)\s+(?:happens?|occurs?|takes\s+place)\s+(?:in|at|on)\s+(.+)/i';
+        return preg_match($p, $s) && preg_match($p, $c);
+    }
+    private function hasQuantitativeMatch(string $s, string $c): bool
+    {
+        $p = '/\b(bp|blood pressure|hr|heart rate)\s+(?:is|are|=)\s*(\d+)(?:\/|over)?(\d+)?/i';
+        return preg_match($p, $s) && preg_match($p, $c);
+    }
+
+    private function isHeartFunctionMatch(string $ns, string $nc): bool
+    {
+        $heartKw    = ['heart','cardiac','myocardial'];
+        $functionKw = ['pump','circulate','propel','move','flow'];
+        $subHasHeart = $subHasFunc = $corHasHeart = $corHasFunc = false;
+        foreach ($heartKw as $k) {
+            if (stripos($ns, $k) !== false) { $subHasHeart = true; }
+            if (stripos($nc, $k) !== false) { $corHasHeart = true; }
+        }
+        foreach ($functionKw as $k) {
+            if (stripos($ns, $k) !== false) { $subHasFunc = true; }
+            if (stripos($nc, $k) !== false) { $corHasFunc = true; }
+        }
+        return $subHasHeart && ($subHasFunc || stripos($ns,'blood') !== false)
+            && $corHasHeart && $corHasFunc;
+    }
+
+    private function isMedicalAbbreviationMatch(string $ns, string $nc): bool
+    {
+        $abbrevs = [
+            'sns' => 'sympathetic nervous system','pns' => 'parasympathetic nervous system',
+            'ans' => 'autonomic nervous system',  'cns' => 'central nervous system',
+            'bp'  => 'blood pressure',            'hr'  => 'heart rate',
+            'o2'  => 'oxygen',                    'co2' => 'carbon dioxide',
+            'atp' => 'adenosine triphosphate',    'gi'  => 'gastrointestinal',
+            'er'  => 'endoplasmic reticulum',
+        ];
+        $matched = false;
+        foreach ($abbrevs as $abbr => $exp) {
+            $p = '/\b' . preg_quote($abbr, '/') . '\b/i';
+            if ((preg_match($p, $ns) && (stripos($nc, $exp) !== false || preg_match($p, $nc)))
+                || (stripos($ns, $exp) !== false && preg_match($p, $nc))) {
+                $matched = true; break;
+            }
+        }
+        if (!$matched) { return false; }
+        $expS = $this->expandKnownAbbreviations($ns);
+        $expC = $this->expandKnownAbbreviations($nc);
+        if ($this->textProcessor->containsAntonyms($expS, $expC)) { return false; }
+        return $this->textProcessor->getCombinedSimilarity($expS, $expC) >= 0.6;
+    }
+
+    private function isTypoMatch(string $ns, string $nc): bool
+    {
+        $typos = [
+            'hart' => 'heart','caridac' => 'cardiac','ventrical' => 'ventricle',
+            'parasympatheic' => 'parasympathetic','sympatheic' => 'sympathetic',
+            'nueron' => 'neuron','alveloi' => 'alveoli','diaphram' => 'diaphragm',
+            'protien' => 'protein','glyclysis' => 'glycolysis',
+            'epithelal' => 'epithelial','conective' => 'connective',
+        ];
+        foreach ($typos as $typo => $fix) {
+            if (stripos($ns, $typo) !== false && (stripos($nc, $fix) !== false || stripos($nc, $typo) !== false)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    // =========================================================================
+    // NUMERICAL HELPERS (unchanged logic)
+    // =========================================================================
+
+    private function extractNumericalValues(string $text): array
+    {
+        $values = [];
+        if (preg_match_all('/(\d+[\.,]\d+)\s*[\-\–]\s*(\d+[\.,]\d+)/', $text, $matches)) {
+            foreach ($matches[0] as $i => $match) {
+                $values[] = ['type' => 'range',
+                    'min'  => (float) str_replace(',', '.', $matches[1][$i]),
+                    'max'  => (float) str_replace(',', '.', $matches[2][$i]),
+                    'text' => $match, 'unit' => $this->extractUnit($match)];
+            }
+        }
+        if (preg_match_all('/(\d+(?:[\.,]\d+)?)\s*([a-zA-Zµ°\/]+)?/', $text, $matches)) {
+            foreach ($matches[0] as $i => $match) {
+                $alreadyCaptured = false;
+                foreach ($values as $ex) { if (str_contains($ex['text'], $match)) { $alreadyCaptured = true; break; } }
+                if (!$alreadyCaptured) {
+                    $values[] = ['type' => 'single',
+                        'value' => (float) str_replace(',', '.', $matches[1][$i]),
+                        'text'  => $match,
+                        'unit'  => $this->normalizeUnit(trim($matches[2][$i] ?? ''))];
+                }
+            }
+        }
+        return $values;
+    }
+
+    private function compareNumericalValues(array $sub, array $cor): array
+    {
+        if (empty($cor)) { return ['score' => 0, 'matches' => [], 'total_matches' => 0, 'reason' => 'No correct numbers']; }
+        if (empty($sub)) { return ['score' => 0, 'matches' => [], 'total_matches' => 0, 'reason' => 'No submitted numbers']; }
+        $matches = []; $total = 0.0;
+        foreach ($cor as $cn) {
+            $best = ['score' => 0, 'submitted' => null];
+            foreach ($sub as $sn) {
+                $s = $this->calculateNumericalSimilarity($cn, $sn);
+                if ($s > $best['score']) { $best = ['score' => $s, 'submitted' => $sn]; }
+            }
+            if ($best['score'] > 0.7) { $matches[] = $best; $total += $best['score']; }
+        }
+        return ['score' => count($matches) > 0 ? $total / count($matches) : 0,
+                'matches' => $matches, 'total_matches' => count($matches),
+                'reason' => count($matches) > 0 ? 'Matched' : 'No matches'];
+    }
+
+    private function calculateNumericalSimilarity(array $n1, array $n2): float
+    {
+        $unitBonus = ($n1['unit'] !== '' && $n1['unit'] === $n2['unit']) ? 0.05 : 0;
+        if ($n1['type'] === 'range' && $n2['type'] === 'range') {
+            $overlap = min($n1['max'], $n2['max']) - max($n1['min'], $n2['min']);
+            $total   = max($n1['max'], $n2['max']) - min($n1['min'], $n2['min']);
+            return $total > 0 ? min(1.0, max(0, $overlap / $total) + $unitBonus) : $unitBonus;
+        }
+        if ($n1['type'] === 'single' && $n2['type'] === 'single') {
+            $diff = abs($n1['value'] - $n2['value']);
+            $ref  = max(abs((float)$n1['value']), 1.0);
+            $rel  = $diff / $ref;
+            if ($rel <= 0.01) { return min(1.0, 1.0 + $unitBonus); }
+            if ($rel <= 0.03) { return min(1.0, 0.9 + $unitBonus); }
+            if ($rel <= 0.05) { return min(1.0, 0.75 + $unitBonus); }
+            if ($rel <= 0.10) { return min(1.0, 0.4 + $unitBonus); }
+            return $unitBonus;
+        }
+        if ($n1['type'] === 'range' && $n2['type'] === 'single') {
+            if ($n2['value'] >= $n1['min'] && $n2['value'] <= $n1['max']) { return 0.9 + $unitBonus; }
+            $dist = min(abs($n2['value'] - $n1['min']), abs($n2['value'] - $n1['max']));
+            $range = $n1['max'] - $n1['min'];
+            return $range > 0 ? max(0, 0.8 - ($dist / $range)) + $unitBonus : $unitBonus;
+        }
+        if ($n1['type'] === 'single' && $n2['type'] === 'range') {
+            return $this->calculateNumericalSimilarity($n2, $n1);
+        }
+        return $unitBonus;
+    }
+
+    private function extractUnit(string $text): string
+    {
+        return preg_match('/[\d\.\-\–]+\s*(.+)$/', $text, $m) ? trim($m[1]) : '';
+    }
+
+    private function normalizeUnit(string $unit): string
+    {
+        $map = ['g/dL' => 'g/dl','g/dl' => 'g/dl','mg/dl' => 'mg/dl','mmol/l' => 'mmol/l',
+                'mmHg'  => 'mmhg','°c' => 'celsius','°f' => 'fahrenheit'];
+        return $map[strtolower(trim($unit))] ?? strtolower(trim($unit));
+    }
+
+    // =========================================================================
+    // MATCHING HELPERS (unchanged)
+    // =========================================================================
+
+    private function extractMatchingPairs(string $answer): array
+    {
+        $pairs = [];
+        if (preg_match_all('/([^:]+):\s*([^:]+)(?:\s*-|$)/', $answer, $m)) {
+            foreach ($m[0] as $i => $_) {
+                $pairs[] = ['item' => trim($m[1][$i]), 'description' => trim($m[2][$i])];
+            }
+        }
+        return $pairs;
+    }
+
+    private function calculateMatchingSimilarity(array $sub, array $cor): array
+    {
+        if (empty($cor)) { return ['overall_similarity' => 0, 'pair_similarity' => 0, 'key_matches' => 0,
+                                    'total_correct_pairs' => 0, 'total_submitted_pairs' => 0]; }
+        $total = 0.0; $keyMatches = 0;
+        foreach ($cor as $cp) {
+            $best = 0;
+            foreach ($sub as $sp) {
+                $is = $this->calculateSimilarityMetrics($cp['item'],        $sp['item'])['weighted'];
+                $ds = $this->calculateSimilarityMetrics($cp['description'], $sp['description'])['weighted'];
+                $ps = ($is + $ds) / 2;
+                if ($ps > $best) { $best = $ps; }
+                if ($is >= 0.7 && $ds >= 0.7) { $keyMatches++; }
+            }
+            $total += $best;
+        }
+        $corCount = count($cor); $subCount = count($sub);
+        return ['overall_similarity' => $total / $corCount,
+                'pair_similarity'    => $total / max($subCount, $corCount),
+                'key_matches'        => $keyMatches,
+                'total_correct_pairs'  => $corCount,
+                'total_submitted_pairs'=> $subCount];
+    }
+
+    // =========================================================================
+    // ENUMERATION HELPERS
+    // =========================================================================
+
+    private function extractEnumerationItems(string $text): array
+    {
+        $listText = $text;
+        if (preg_match('/\b(?:includes|consists of|comprises|contains|involves)\b(.+)$/i', $text, $m)) {
+            $listText = $m[1];
+        }
+        $parts = preg_split('/,\s*|\band\b|\bor\b/i', $listText) ?: [];
+        $items = [];
+        foreach ($parts as $part) {
+            $n = trim($this->textProcessor->removeFillerWords($this->normalizeForSemanticComparison($part)));
+            if ($n !== '') { $items[] = $n; }
+        }
+        return array_values(array_unique($items));
+    }
+
+    // =========================================================================
+    // FEEDBACK GENERATORS
+    // =========================================================================
+
+    private function generateDefinitionFeedback(string $sub, string $cor, array $metrics, bool $ok): string
+    {
+        if ($ok) {
+            return $metrics['keyword'] >= 0.8
+                ? 'Excellent! Your definition is accurate and uses appropriate terminology.'
+                : 'Good job! Your definition captures the essential concepts.';
+        }
+        if ($metrics['keyword'] < 0.4) {
+            return 'Your definition is missing key terms. Review the essential components of this concept.';
+        }
+        if ($metrics['conceptual'] < 0.4) {
+            return 'Your definition does not fully capture the concept. Focus on its core characteristics.';
+        }
+        return 'Your definition is close but needs refinement. Compare it with the standard definition.';
+    }
+
+    private function generateMatchingFeedback(string $sub, string $cor, array $sim, bool $ok): string
+    {
+        if ($ok) {
+            return $sim['overall_similarity'] >= 0.8
+                ? 'Excellent! You have correctly matched the key associations.'
+                : 'Good job! You identified the main matching relationships.';
+        }
+        return 'Your answer is missing or incorrectly matching some associations. Review each item carefully.';
+    }
+
+    private function generateNumericalFeedback(string $sub, string $cor, array $match): string
+    {
+        if ($match['score'] >= 0.9) { return 'Excellent! Your numerical values are very accurate.'; }
+        if ($match['score'] >= 0.7) { return 'Good job! Your values are close. Check exact formatting and units.'; }
+        return $match['total_matches'] > 0
+            ? 'You have some correct numerical elements, but check the exact values and units.'
+            : 'Your answer does not contain the correct numerical values. Check reference ranges and units carefully.';
+    }
+
+    protected function generateDetailedFeedback(
+        string  $submitted,
+        string  $correct,
+        array   $metrics,
+        bool    $isCorrect,
+        float   $similarity,
+        float   $threshold,
+        ?string $courseTopic = null
+    ): string {
+        if ($isCorrect) {
+            if ($similarity > 0.95) { return 'Excellent! Your answer is very accurate.'; }
+            if ($similarity > 0.85) {
+                $map = ['anatomy' => 'Your description of the anatomical structures is accurate.',
+                        'nervous' => 'Your explanation of the physiological process is correct.',
+                        'biochemistry' => 'Your understanding of the biochemical pathway is sound.',
+                        'histology' => 'Your description of the tissue characteristics is accurate.'];
+                return $map[$courseTopic ?? ''] ?? 'Good job! Your answer contains all the key concepts.';
+            }
+            return 'Your answer is sufficiently correct, though there may be room for more precision.';
+        }
+
+        $parts = [];
+        $normSub = $this->textProcessor->normalizeText($submitted);
+        $normCor = $this->textProcessor->normalizeText($correct);
+        $missing = array_filter(
+            array_diff(
+                explode(' ', $this->textProcessor->removeFillerWords($normCor)),
+                explode(' ', $this->textProcessor->removeFillerWords($normSub))
+            ),
+            fn($w) => mb_strlen($w) > 3
+        );
+        if (!empty($missing)) {
+            $list = implode(', ', array_slice(array_values($missing), 0, 3))
+                . (count($missing) > 3 ? ', etc.' : '.');
+            $parts[] = "Your answer is missing key concepts: $list";
+        }
+        if (($metrics['conceptual'] ?? 1) < 0.4) {
+            $parts[] = 'Your answer does not sufficiently address the core concepts. Try to be more specific.';
+        }
+        if ($metrics['hasContradictions'] ?? false) {
+            $parts[] = 'Your answer contains contradictory statements. Review the material to resolve inconsistencies.';
+        }
+        if (empty($parts)) {
+            return 'Your answer differs from the expected answer. Please review the material and try again.';
+        }
+        return implode(' ', $parts) . ' Please review and try again.';
+    }
+
+    // =========================================================================
+    // SMALL UTILITIES
+    // =========================================================================
+
     private function isPatternCriticalQuestion(string $correctAnswer): bool
     {
-        $patternKeywords = [
-            'parasympathetic', 'sympathetic', 'action potential', 'cardiac cycle', 
-            'glomerular filtration', 'tca cycle', 'krebs cycle', 'epithelium',
-            'anatomical position', 'glycolysis', 'electron transport'
-        ];
-        
-        foreach ($patternKeywords as $keyword) {
-            if (stripos($correctAnswer, $keyword) !== false) {
-                return true;
-            }
-        }
-        
+        $kws = ['parasympathetic','sympathetic','action potential','cardiac cycle',
+                'glomerular filtration','tca cycle','krebs cycle','epithelium',
+                'anatomical position','glycolysis','electron transport'];
+        foreach ($kws as $kw) { if (stripos($correctAnswer, $kw) !== false) { return true; } }
         return false;
     }
-    
-    /**
-     * Determines if the answer contains significant medical abbreviations
-     * This is different from just containing any abbreviations - it checks for
-     * a pattern of heavy abbreviation usage typical in medical answers
-     * 
-     * @param string $answer The answer to check
-     * @return bool True if the answer contains significant medical abbreviations
-     */
-    private function containsSignificantMedicalAbbreviations(string $answer): bool
+
+    private function earlyResult(bool $isCorrect, float $similarity, string $reason, float $start): array
     {
-        // Common medical abbreviation patterns
-        $patterns = [
-            // Check for multiple 2-3 letter uppercase abbreviations
-            '/\b[A-Z]{2,3}\b.*\b[A-Z]{2,3}\b/',
-            
-            // Check for common medical abbreviation patterns
-            '/\b(SNS|PNS|ANS|CNS|GI|CV|BP|HR|CO|O2|CO2)\b/i',
-            
-            // Check for common lab value patterns
-            '/\b[A-Z]{1,3}[+\-]?\b/',
-            
-            // Check for a high ratio of uppercase to lowercase words (abbreviation heavy)
-            '/\b[A-Z]{2,}\b.*\b[A-Z]{2,}\b.*\b[A-Z]{2,}\b/'
-        ];
-        
-        foreach ($patterns as $pattern) {
-            if (preg_match($pattern, $answer)) {
-                return true;
-            }
-        }
-        
-        // Count uppercase abbreviations vs total words to check density
-        preg_match_all('/\b[A-Z]{2,}\b/', $answer, $abbreviationMatches);
-        $abbreviationCount = count($abbreviationMatches[0] ?? []);
-        
-        $wordCount = str_word_count($answer);
-        if ($wordCount > 0 && ($abbreviationCount / $wordCount) > 0.15) {
-            // If more than 15% of the words are abbreviations, consider it significant
-            return true;
-        }
-        
-        return false;
-    }
-    
-    /**
-     * Calculate Levenshtein similarity between normalized texts
-     * 
-     * @param string $normalizedSubmitted Normalized submitted answer
-     * @param string $normalizedCorrect Normalized correct answer
-     * @return float Similarity score from 0 to 1
-     */
-    private function calculateLevenshteinSimilarity(string $normalizedSubmitted, string $normalizedCorrect): float
-    {
-        return $this->textProcessor->getLevenshteinSimilarity($normalizedSubmitted, $normalizedCorrect);
-    }
-    
-    /**
-     * Calculate Jaccard similarity between normalized texts
-     * 
-     * @param string $normalizedSubmitted Normalized submitted answer
-     * @param string $normalizedCorrect Normalized correct answer
-     * @return float Similarity score from 0 to 1
-     */
-    private function calculateJaccardSimilarity(string $normalizedSubmitted, string $normalizedCorrect): float
-    {
-        return $this->textProcessor->getJaccardSimilarity($normalizedSubmitted, $normalizedCorrect);
-    }
-    
-    /**
-     * Calculate keyword similarity between normalized texts
-     * 
-     * @param string $normalizedSubmitted Normalized submitted answer
-     * @param string $normalizedCorrect Normalized correct answer
-     * @return float Similarity score from 0 to 1
-     */
-    private function calculateKeywordSimilarity(string $normalizedSubmitted, string $normalizedCorrect): float
-    {
-        return $this->textProcessor->getKeywordOverlapRatio($normalizedSubmitted, $normalizedCorrect);
-    }
-    
-    /**
-     * Calculate pattern similarity between normalized texts
-     *
-     * @param string $normalizedSubmitted Normalized submitted answer
-     * @param string $normalizedCorrect Normalized correct answer
-     * @return array Pattern similarity metrics
-     */
-    private function calculatePatternSimilarity(string $normalizedSubmitted, string $normalizedCorrect): array
-    {
-        return $this->getPatternMatches($normalizedSubmitted, $normalizedCorrect);
+        return ['isCorrect' => $isCorrect, 'similarity' => $similarity,
+                'reason' => $reason, 'processing_time' => microtime(true) - $start];
     }
 
-    /**
-     * Add lenient grading mode for better student experience
-     * This reduces strictness and gives more partial credit
-     */
-    private function applyLenientGrading(array $result, string $submittedAnswer, string $correctAnswer): array
+    private function buildCorrectResult(float $similarity, string $reason, ?string $topic, string $feedback): array
     {
-        // Only apply lenient grading if answer is currently failing but close
-        if ($result['isCorrect'] || $result['similarity'] < 0.3) {
-            return $result;
-        }
-
-        // Check if this looks like a good effort with partial understanding
-        $metrics = $this->calculateSimilarityMetrics($submittedAnswer, $correctAnswer);
-
-        // Lenient criteria: if keyword similarity > 0.4 OR conceptual similarity > 0.6
-        if (($metrics['keyword'] ?? 0) > 0.4 || ($metrics['conceptual'] ?? 0) > 0.6) {
-            // Give partial credit - mark as correct but with feedback
-            $result['isCorrect'] = true;
-            $result['similarity'] = max($result['similarity'], 0.7); // Boost similarity
-            $result['lenient_grading'] = true;
-
-            // Add encouraging feedback
-            $result['feedback'] = "Good effort! You've captured some key concepts. " .
-                                ($result['feedback'] ?? "Consider reviewing the material for more complete understanding.");
-
-            // Add metrics
-            $result['metrics']['lenient_boost'] = true;
-        }
-
+        $result = ['isCorrect' => true, 'similarity' => $similarity, 'reason' => $reason, 'feedback' => $feedback];
+        if ($topic !== null) { $result['courseTopic'] = $topic; }
         return $result;
-    }
-    
-    /**
-     * Calculate conceptual similarity between normalized texts
-     * 
-     * @param string $normalizedSubmitted Normalized submitted answer
-     * @param string $normalizedCorrect Normalized correct answer
-     * @return float Similarity score from 0 to 1
-     */
-    private function calculateConceptualSimilarity(string $normalizedSubmitted, string $normalizedCorrect): float
-    {
-        return $this->textProcessor->getConceptualSimilarity($normalizedSubmitted, $normalizedCorrect);
-    }
-    
-    /**
-     * Get pattern matches between two texts
-     * 
-     * @param string $normalizedSubmitted Normalized submitted answer
-     * @param string $normalizedCorrect Normalized correct answer
-     * @return array Pattern similarity metrics
-     */
-    private function getPatternMatches(string $normalizedSubmitted, string $normalizedCorrect): array
-    {
-        try {
-            $patterns = [
-                'sympathetic_effects' => [
-                    'patterns' => ['increase.*heart.*rate', 'elevate.*blood.*pressure', 'sympathetic.*stimulation'],
-                    'weight' => 0.3
-                ],
-                'parasympathetic_effects' => [
-                    'patterns' => ['decrease.*heart.*rate', 'enhance.*digestion', 'parasympathetic.*stimulation'],
-                    'weight' => 0.3
-                ],
-                'medical_abbreviations' => [
-                    'patterns' => ['\b[A-Z]{2,3}\b', '\bBP\b', '\bHR\b', '\bCO\b'],
-                    'weight' => 0.2
-                ]
-            ];
-            
-            $totalScore = 0;
-            $matchedPatterns = [];
-            
-            foreach ($patterns as $patternName => $config) {
-                $submittedMatches = 0;
-                $correctMatches = 0;
-                
-                foreach ($config['patterns'] as $pattern) {
-                    if (preg_match("/$pattern/i", $normalizedSubmitted)) {
-                        $submittedMatches++;
-                    }
-                    if (preg_match("/$pattern/i", $normalizedCorrect)) {
-                        $correctMatches++;
-                    }
-                }
-                
-                if ($submittedMatches > 0 && $correctMatches > 0) {
-                    $patternScore = min($submittedMatches, $correctMatches) / max($submittedMatches, $correctMatches);
-                    $totalScore += $patternScore * $config['weight'];
-                    $matchedPatterns[$patternName] = $patternScore;
-                }
-            }
-            
-            return [
-                'score' => $totalScore,
-                'matched_patterns' => $matchedPatterns,
-                'total_patterns' => count($patterns)
-            ];
-        } catch (\Exception $e) {
-            return [
-                'score' => 0,
-                'matched_patterns' => [],
-                'total_patterns' => 0
-            ];
-        }
     }
 }

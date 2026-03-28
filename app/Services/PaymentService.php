@@ -34,8 +34,12 @@ class PaymentService
      */
     protected function validatePaymentEssentials(User $user, Course $course, array $paymentData): void
     {
+        if (!$course->canBePurchased()) {
+            throw new \Exception('This course does not require payment.');
+        }
+
         // 🔥 VALIDATE ONLY_CRITICAL: amount and transaction_id existence
-        if ($course->price > 0 && (!isset($paymentData['amount']) || $paymentData['amount'] != $course->price)) {
+        if (!isset($paymentData['amount']) || $paymentData['amount'] != $course->price) {
             throw new \Exception('Payment amount does not match course price');
         }
 

@@ -322,7 +322,7 @@ class GradingService
         
         // OPTIMIZED QUERY: Eager load relationships and select only needed fields
         $questions = Question::select([
-                'id', 'question', 'question_type', 'correct_answer', 
+                'id', 'question', 'question_type', 'correct_answer', 'explanation',
                 'option_a', 'option_b', 'option_c', 'option_d', 'topic_id', 'source'
             ])
             ->with([
@@ -598,29 +598,30 @@ class GradingService
      *
      * @param Question $question
      * @param string $submittedAnswer
-     * @return bool
+     * @return array
      */
-    private function evaluateWrittenAnswer(Question $question, string $submittedAnswer): bool
+    private function evaluateWrittenQuestion(Question $question, string $submittedAnswer): array
     {
         try {
-            $evaluation = $this->writtenAnswerEvaluationService->evaluateAnswer(
-                $submittedAnswer,
-                $question->correct_answer,
-                [], // alternativeAnswers parameter
-                0.7 // similarityThreshold parameter
-            );
-
-            // Use the correct key from WrittenAnswerEvaluationService response
-            return $evaluation['isCorrect'] ?? false;
+            return $this->writtenAnswerEvaluationService->evaluateQuestionAnswer($question, $submittedAnswer);
         } catch (\Exception $e) {
             Log::error('Written answer evaluation failed', [
                 'question_id' => $question->id,
                 'error' => $e->getMessage()
             ]);
             
-            // Fallback to exact match if evaluation fails
-            return strtolower(trim($submittedAnswer)) === strtolower(trim($question->correct_answer));
+            return [
+                'isCorrect' => $question->matchesWrittenAnswerFallback($submittedAnswer),
+                'feedback' => 'We could not fully analyze the wording, so a conservative fallback check was used.',
+            ];
         }
+    }
+
+    private function evaluateWrittenAnswer(Question $question, string $submittedAnswer): bool
+    {
+        $evaluation = $this->evaluateWrittenQuestion($question, $submittedAnswer);
+
+        return (bool) ($evaluation['isCorrect'] ?? false);
     }
 
     /**
@@ -912,7 +913,18 @@ class GradingService
 
         // OPTIMIZATION: Get all source question counts in a single query to avoid N+1 problem
         if ($firstQuestion) {
-            $sourceCounts = Question::where('topic_id', $firstQuestion->topic_id)
+            $sourceCounts = Question::where(function ($query) use ($firstQuestion) {
+                    $query->where('topic_id', $firstQuestion->topic_id);
+
+                    if (DB::getDriverName() === 'sqlite') {
+                        $query->orWhereRaw(
+                            "(',' || REPLACE(COALESCE(extra_topic, ''), ' ', '') || ',') LIKE ?",
+                            ['%,' . $firstQuestion->topic_id . ',%']
+                        );
+                    } else {
+                        $query->orWhereRaw('FIND_IN_SET(?, REPLACE(extra_topic, " ", "")) > 0', [$firstQuestion->topic_id]);
+                    }
+                })
                 ->selectRaw('source, COUNT(*) as total_questions')
                 ->groupBy('source')
                 ->pluck('total_questions', 'source')
@@ -953,7 +965,7 @@ class GradingService
             
             if (!$isCorrect) {
                 $incorrectAnswers[$question->id] = [
-                    'submitted_answer' => $submittedAnswer ?? 'unanswered',
+                    'submitted_answer' => $this->sanitizeAnswerForResponse($submittedAnswer),
                     'correct_answer' => $question->correct_answer,
                     'explanation' => $question->explanation,
                 ];
@@ -983,6 +995,17 @@ class GradingService
             'new_level' => $xpResult['newLevel'],
             'mistakes' => $gradingResult['mistakes']
         ];
+    }
+
+    private function sanitizeAnswerForResponse(mixed $answer): string
+    {
+        $normalized = $answer ?? 'unanswered';
+
+        if (! is_scalar($normalized)) {
+            $normalized = 'unanswered';
+        }
+
+        return htmlspecialchars((string) $normalized, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
     }
 
     /**
@@ -1024,7 +1047,15 @@ class GradingService
                 'source' => $question->source,
                 'answer' => $answer
             ]);
-            $isCorrect = $this->evaluateAnswer($question, $answer);
+            $writtenEvaluation = null;
+
+            if ($question->question_type === Question::TYPE_WRITTEN) {
+                $writtenEvaluation = $this->evaluateWrittenQuestion($question, $answer);
+                $isCorrect = (bool) ($writtenEvaluation['isCorrect'] ?? false);
+            } else {
+                $isCorrect = $this->evaluateAnswer($question, $answer);
+            }
+
             $hadExistingMistake = Mistake::query()
                 ->where('user_id', $user->id)
                 ->where('question_id', $question->id)
@@ -1051,13 +1082,20 @@ class GradingService
             }
             $this->updateTutorProgress($user, $question, $topic, $isCorrect);
             $this->checkAndCreateTutorAttempt($user, $question, $topic);
-            $message = $isCorrect ? 'Correct!' : 'Incorrect. Try again!';
+            $message = $writtenEvaluation['feedback']
+                ?? ($isCorrect ? 'Correct!' : 'Incorrect. Try again!');
+            $explanation = $question->explanation;
+
+            if ($question->question_type === Question::TYPE_WRITTEN && !$isCorrect && !empty($writtenEvaluation['feedback'])) {
+                $explanation = trim($writtenEvaluation['feedback'] . "\n\n" . (string) $question->explanation);
+            }
+
             return [
                 'success' => true,
                 'is_correct' => $isCorrect,
                 'message' => $message,
                 'correct_answer' => $question->correct_answer,
-                'explanation' => $question->explanation,
+                'explanation' => $explanation,
                 'source_progress' => $this->getTutorSourceProgress($user, $topic, $question->source)
             ];
         } catch (\Exception $e) {

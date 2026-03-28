@@ -12,7 +12,7 @@ class DeleteViewController extends Controller
 {
     public function __construct()
     {
-        $this->middleware('auth', 'admin');
+        $this->middleware(['auth', 'admin']);
     }
 
     /**
@@ -21,7 +21,7 @@ class DeleteViewController extends Controller
     public function index()
     {
         try {
-            $cacheKey = QuizUltraConsolidatedCacheService::generateCacheKey('delete_index', ['user_id' => auth()->id() ?? 'guest']);
+            $cacheKey = \App\Services\QuizUltraConsolidatedCacheService::generateCacheKey('delete_index', ['user_id' => auth()->id() ?? 'guest']);
             
             $data = Cache::remember($cacheKey, 600, function () {
                 $stats = [

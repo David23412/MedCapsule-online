@@ -441,16 +441,17 @@
             return;
         }
 
-        if (targetScore < 50 || targetScore > 100) {
-            alert('Please enter a target score between 50 and 100');
-            return;
-        }
+        const saveBtn = document.querySelector('#goalModal .btn-primary');
+        const originalBtnText = saveBtn.innerHTML;
+        saveBtn.disabled = true;
+        saveBtn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Saving...';
 
         fetch(profilePageConfig.updateGoalRoute, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                'X-Requested-With': 'XMLHttpRequest'
             },
             body: JSON.stringify({
                 weekly_goal: goal,
@@ -463,7 +464,65 @@
             .then(data => {
                 if (data.success) {
                     window.closeGoalModal();
-                    location.reload();
+                    
+                    // Update the DOM in-place
+                    profilePageConfig.weeklyGoal = goal;
+                    profilePageConfig.dailyStudyMinutes = dailyStudyMinutes;
+                    profilePageConfig.plannerFocus = plannerFocus;
+                    profilePageConfig.examDate = examDate;
+
+                    // Update goal text (e.g., "/ 50")
+                    const goalDisplay = document.querySelector('.study-goals-card .d-flex.align-items-baseline span:last-child');
+                    if (goalDisplay) {
+                        goalDisplay.textContent = `/ ${goal}`;
+                    }
+
+                    // Update progress bar percentage
+                    const currentQuestions = parseInt(document.querySelector('.study-goals-card .d-flex.align-items-baseline span:first-child')?.textContent || '0');
+                    const newPercent = Math.min(100, Math.round((currentQuestions / goal) * 100));
+                    const progressBar = document.querySelector('.study-goals-card .progress-bar');
+                    if (progressBar) {
+                        progressBar.style.width = `${newPercent}%`;
+                    }
+                    const percentDisplay = document.querySelector('.study-goals-card .d-flex.justify-content-between.align-items-center span:last-child');
+                    if (percentDisplay) {
+                        percentDisplay.textContent = `${newPercent}%`;
+                    }
+
+                    // Update badges
+                    const badges = document.querySelectorAll('.study-goals-card .badge');
+                    if (badges.length >= 2) {
+                        badges[0].textContent = `${dailyStudyMinutes}m / day`;
+                        badges[1].textContent = plannerFocus.replace('_', ' ');
+                        
+                        // Handle exam date badge
+                        if (examDate) {
+                            const dateObj = new Date(examDate);
+                            const options = { year: 'numeric', month: 'short', day: 'numeric' };
+                            const formattedDate = dateObj.toLocaleDateString('en-US', options);
+                            
+                            if (badges.length >= 3) {
+                                badges[2].textContent = `Exam ${formattedDate}`;
+                            } else {
+                                // Create new badge if it didn't exist
+                                const badgeContainer = document.querySelector('.study-goals-card .d-flex.flex-wrap');
+                                if (badgeContainer) {
+                                    const newBadge = document.createElement('span');
+                                    newBadge.className = 'badge rounded-pill text-bg-light';
+                                    newBadge.style.padding = '0.55rem 0.85rem';
+                                    newBadge.style.fontWeight = '600';
+                                    newBadge.textContent = `Exam ${formattedDate}`;
+                                    badgeContainer.appendChild(newBadge);
+                                }
+                            }
+                        }
+                    }
+
+                    // Show success micro-interaction
+                    if (progressBar) {
+                        progressBar.classList.add('pulse');
+                        setTimeout(() => progressBar.classList.remove('pulse'), 1000);
+                    }
                 } else {
                     alert('Failed to save goal. Please try again.');
                 }
@@ -471,6 +530,70 @@
             .catch(error => {
                 console.error('Error saving goal:', error);
                 alert('Failed to save goal. Please try again.');
+            })
+            .finally(() => {
+                saveBtn.disabled = false;
+                saveBtn.innerHTML = originalBtnText;
             });
     };
+
+    // Cross-Tab Sync: Listen for quiz completions in other tabs
+    window.addEventListener('storage', function(e) {
+        if (e.key === 'quizProgressUpdate') {
+            console.log('Quiz completion detected in another tab. Refreshing profile stats...');
+            refreshProfileStats();
+        }
+    });
+
+    // Also listen for local events
+    document.addEventListener('sourceProgressUpdated', function() {
+        console.log('Local progress update detected. Refreshing profile stats...');
+        refreshProfileStats();
+    });
+
+    function refreshProfileStats() {
+        // Fetch the latest progress data from the existing AJAX endpoint
+        fetch('/profile/progress', {
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+                'Accept': 'application/json'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.accuracy_rate !== undefined) {
+                // Update Accuracy Card
+                const accuracyValue = document.querySelector('.accuracy-card .stats-value');
+                if (accuracyValue) {
+                    accuracyValue.textContent = `${data.accuracy_rate.toFixed(1)}%`;
+                }
+                const accuracySub = document.querySelector('.accuracy-card small');
+                if (accuracySub) {
+                    accuracySub.textContent = `Based on ${data.total_questions_attempted} attempts`;
+                }
+
+                // Update Total Questions Card
+                const totalQuestionsValue = document.querySelectorAll('.stats-card .stats-value')[3]; // 4th card
+                if (totalQuestionsValue) {
+                    totalQuestionsValue.textContent = data.total_questions_attempted;
+                }
+
+                // Update Charts
+                if (distributionChart) {
+                    const safeTotal = data.total_questions_attempted > 0 ? data.total_questions_attempted : 1;
+                    distributionChart.data.datasets[0].data = [data.correct_answers_count, data.total_questions_attempted - data.correct_answers_count];
+                    distributionChart.data.labels = [
+                        `Correct (${Math.round(data.correct_answers_count / safeTotal * 100)}%)`,
+                        `Incorrect (${Math.round((data.total_questions_attempted - data.correct_answers_count) / safeTotal * 100)}%)`
+                    ];
+                    distributionChart.update('none'); // Update without animation for a "live" feel
+                }
+
+                // Note: performanceChart update would require the full chartData array, 
+                // which /profile/progress might not return. If needed, we could fetch another endpoint.
+                // For now, accuracy and distribution are high-impact.
+            }
+        })
+        .catch(err => console.error('Error refreshing profile stats:', err));
+    }
 })();

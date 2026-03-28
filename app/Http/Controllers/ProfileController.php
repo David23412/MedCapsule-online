@@ -9,6 +9,7 @@ use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\Storage;
 use Carbon\Carbon;
 use App\Models\QuizAttempt;
 use App\Services\PerformanceTrackingService;
@@ -30,17 +31,61 @@ class ProfileController extends Controller
     public function getProgress()
     {
         $user = Auth::user();
-        
-        // Optionally sync the count to ensure accuracy (can be disabled for performance)
-        // $user->syncCorrectAnswersCount();
-        
+        $courseCompletionPercentages = $this->getCourseCompletionPercentages($user->id);
+
         return response()->json([
             'correct_answers_count' => $user->getTotalCorrectAnswers(),
             'total_questions_attempted' => $user->total_questions_attempted ?? 0,
             'accuracy_rate' => $user->total_questions_attempted > 0 
                 ? round(($user->getTotalCorrectAnswers() / $user->total_questions_attempted) * 100, 1) 
-                : 0
+                : 0,
+            'xp' => (int) ($user->xp ?? 0),
+            'level' => (int) floor(((int) ($user->xp ?? 0)) / 1000) + 1,
+            'course_completion_percentages' => $courseCompletionPercentages,
         ]);
+    }
+
+    private function getCourseCompletionPercentages(int $userId): array
+    {
+        $totalTopicsByCourse = DB::table('topics')
+            ->select('course_id', DB::raw('COUNT(*) as total_topics'))
+            ->groupBy('course_id')
+            ->pluck('total_topics', 'course_id');
+
+        if ($totalTopicsByCourse->isEmpty()) {
+            return [];
+        }
+
+        $completedTopicsByCourse = DB::query()
+            ->fromSub(function ($query) use ($userId) {
+                $query->from('user_topic_progress')
+                    ->join('topics', 'user_topic_progress.topic_id', '=', 'topics.id')
+                    ->where('user_topic_progress.user_id', $userId)
+                    ->select(
+                        'topics.course_id',
+                        'topics.id as topic_id',
+                        DB::raw('MAX(user_topic_progress.percentage_grade) as max_percentage')
+                    )
+                    ->groupBy('topics.course_id', 'topics.id');
+            }, 'topic_progress')
+            ->select(
+                'course_id',
+                DB::raw('SUM(CASE WHEN max_percentage >= 90 THEN 1 ELSE 0 END) as completed_topics')
+            )
+            ->groupBy('course_id')
+            ->pluck('completed_topics', 'course_id');
+
+        return $totalTopicsByCourse
+            ->mapWithKeys(function ($totalTopics, $courseId) use ($completedTopicsByCourse) {
+                $totalTopics = (int) $totalTopics;
+                $completedTopics = (int) ($completedTopicsByCourse[$courseId] ?? 0);
+                $percentage = $totalTopics > 0
+                    ? (int) round(($completedTopics / $totalTopics) * 100)
+                    : 0;
+
+                return [(string) $courseId => $percentage];
+            })
+            ->all();
     }
 
     public function show()
@@ -295,10 +340,20 @@ class ProfileController extends Controller
             if ($request->hasFile('profile_picture')) {
                 // Delete old profile picture if exists (secure deletion)
                 if ($user->profile_picture_url) {
-                    $oldPath = str_replace('storage/', '', $user->profile_picture_url);
-                    $oldFilePath = storage_path('app/public/' . $oldPath);
-                    if (file_exists($oldFilePath)) {
-                        unlink($oldFilePath);
+                    $oldPath = str_starts_with($user->profile_picture_url, 'uploads/')
+                        ? substr($user->profile_picture_url, strlen('uploads/'))
+                        : $user->profile_picture_url;
+
+                    $candidatePaths = [
+                        Storage::disk('secure_uploads')->path($oldPath),
+                        storage_path('app/uploads/' . $oldPath),
+                    ];
+
+                    foreach ($candidatePaths as $oldFilePath) {
+                        if (file_exists($oldFilePath)) {
+                            unlink($oldFilePath);
+                            break;
+                        }
                     }
                 }
 

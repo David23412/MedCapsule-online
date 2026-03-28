@@ -50,8 +50,12 @@ class CourseActionController extends Controller
                 ->with('info', 'You are already enrolled in this course.');
         }
 
+        if ($course->isSurveyUnlockable() && $user->requiresSurveyUnlockForCourse($course)) {
+            return redirect($user->freeCourseSurveyRedirectFor($course));
+        }
+
         // Check if course requires payment
-        if ($course->price > 0) {
+        if ($course->isPaidAccess()) {
             // Check for completed payment
             $hasValidPayment = $user->payments()
                 ->where('course_id', $courseId)
@@ -66,6 +70,8 @@ class CourseActionController extends Controller
 
         // Enroll the user
         $user->courses()->attach($courseId, [
+            'is_enrolled' => true,
+            'access_level' => $course->defaultEnrollmentAccessLevel(),
             'enrolled_at' => now()
         ]);
 

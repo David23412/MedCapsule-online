@@ -453,8 +453,13 @@ class ReportIntegritySeal
                 }
             }
 
-            // Try using git command if available
-            $output = shell_exec("git cat-file -e {$commitSHA} 2>/dev/null; echo $?");
+            if (!preg_match('/^[a-f0-9]{40}$/i', $commitSHA)) {
+                return false;
+            }
+
+            // Keep the git probe argument-escaped even though SHAs are regex-validated.
+            $escapedCommitSHA = escapeshellarg($commitSHA);
+            $output = shell_exec("git cat-file -e {$escapedCommitSHA} 2>/dev/null; echo $?");
             if (trim($output) === '0') {
                 return true;
             }

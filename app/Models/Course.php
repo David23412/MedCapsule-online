@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Validation\ValidationException;
 use App\Events\CourseUpdated;
 
 class Course extends Model
@@ -14,6 +15,27 @@ class Course extends Model
     use HasFactory;
 
     protected static ?array $availableCourseUserPlannerPivotColumns = null;
+    protected ?array $accessTransitionSnapshot = null;
+
+    public const ACCESS_TYPE_FREE = 'free';
+    public const ACCESS_TYPE_PREVIEW = 'preview';
+    public const ACCESS_TYPE_PAID = 'paid';
+
+    public const ACCESS_TYPES = [
+        self::ACCESS_TYPE_FREE,
+        self::ACCESS_TYPE_PREVIEW,
+        self::ACCESS_TYPE_PAID,
+    ];
+
+    public const SURVEY_UNLOCK_ACCESS_TYPES = [
+        self::ACCESS_TYPE_FREE,
+        self::ACCESS_TYPE_PREVIEW,
+    ];
+
+    public const PURCHASABLE_ACCESS_TYPES = [
+        self::ACCESS_TYPE_PREVIEW,
+        self::ACCESS_TYPE_PAID,
+    ];
 
     protected $fillable = [
         'name',
@@ -120,30 +142,102 @@ class Course extends Model
 
     public function scopeFree($query)
     {
-        return $query->where(function ($builder) {
-            $builder->where('price', 0)->orWhereNull('price');
-        });
+        return $query->where('access_type', self::ACCESS_TYPE_FREE);
+    }
+
+    public function scopeSurveyUnlockable($query)
+    {
+        return $query->whereIn('access_type', self::SURVEY_UNLOCK_ACCESS_TYPES);
+    }
+
+    public function scopePurchasable($query)
+    {
+        return $query->whereIn('access_type', self::PURCHASABLE_ACCESS_TYPES);
     }
 
     public function isFree(): bool
     {
-        return $this->price == 0 || $this->price === null;
+        return $this->isFreeAccess();
     }
 
     // New access type methods
     public function isFreeAccess(): bool
     {
-        return $this->access_type === 'free';
+        return $this->normalizedAccessType() === self::ACCESS_TYPE_FREE;
     }
 
     public function isPreviewAccess(): bool
     {
-        return $this->access_type === 'preview';
+        return $this->normalizedAccessType() === self::ACCESS_TYPE_PREVIEW;
     }
 
     public function isPaidAccess(): bool
     {
-        return $this->access_type === 'paid';
+        return $this->normalizedAccessType() === self::ACCESS_TYPE_PAID;
+    }
+
+    public function isSurveyUnlockable(): bool
+    {
+        return in_array($this->normalizedAccessType(), self::SURVEY_UNLOCK_ACCESS_TYPES, true);
+    }
+
+    public function defaultEnrollmentAccessLevel(): string
+    {
+        return $this->isPreviewAccess()
+            ? User::COURSE_ACCESS_PREVIEW
+            : User::COURSE_ACCESS_FULL;
+    }
+
+    public function hasPurchasePrice(): bool
+    {
+        return $this->price !== null && (float) $this->price > 0;
+    }
+
+    public function canBePurchased(): bool
+    {
+        return in_array($this->normalizedAccessType(), self::PURCHASABLE_ACCESS_TYPES, true)
+            && $this->hasPurchasePrice();
+    }
+
+    public function normalizedAccessType(): string
+    {
+        return static::normalizeAccessType($this->access_type);
+    }
+
+    public static function normalizeAccessType(?string $accessType): string
+    {
+        return in_array($accessType, self::ACCESS_TYPES, true)
+            ? $accessType
+            : self::ACCESS_TYPE_PAID;
+    }
+
+    public static function normalizePriceForAccessType(?string $accessType, mixed $price): ?float
+    {
+        $normalizedAccessType = static::normalizeAccessType($accessType);
+
+        if ($normalizedAccessType === self::ACCESS_TYPE_FREE) {
+            return 0.0;
+        }
+
+        if ($price === '' || $price === null) {
+            return $normalizedAccessType === self::ACCESS_TYPE_PAID ? null : 0.0;
+        }
+
+        return round((float) $price, 2);
+    }
+
+    public static function accessPolicyValidationMessage(?string $accessType, mixed $price): ?string
+    {
+        $normalizedAccessType = static::normalizeAccessType($accessType);
+        $normalizedPrice = static::normalizePriceForAccessType($normalizedAccessType, $price);
+
+        if ($normalizedAccessType === self::ACCESS_TYPE_PAID
+            && ($normalizedPrice === null || $normalizedPrice <= 0)
+        ) {
+            return 'Paid courses must have a price greater than 0.';
+        }
+
+        return null;
     }
 
     public function canUserAccessTopic(User $user, Topic $topic): bool
@@ -337,7 +431,11 @@ class Course extends Model
     // Format price with currency
     public function getFormattedPriceAttribute()
     {
-        if (!$this->price || $this->price <= 0) {
+        if (!$this->canBePurchased()) {
+            if ($this->isPreviewAccess()) {
+                return 'Preview';
+            }
+
             return 'Free';
         }
         
@@ -407,26 +505,71 @@ class Course extends Model
             }
         });
 
+        static::saving(function ($course) {
+            $accessType = $course->access_type;
+
+            if (!in_array($accessType, self::ACCESS_TYPES, true)) {
+                $originalAccessType = $course->getOriginal('access_type');
+
+                $accessType = in_array($originalAccessType, self::ACCESS_TYPES, true)
+                    ? $originalAccessType
+                    : (((float) ($course->price ?? $course->getOriginal('price') ?? 0)) > 0
+                        ? self::ACCESS_TYPE_PAID
+                        : self::ACCESS_TYPE_FREE);
+            }
+
+            $course->access_type = static::normalizeAccessType($accessType);
+            $course->price = static::normalizePriceForAccessType($course->access_type, $course->price);
+
+            $validationMessage = static::accessPolicyValidationMessage($course->access_type, $course->price);
+            if ($validationMessage !== null) {
+                throw ValidationException::withMessages([
+                    'price' => $validationMessage,
+                ]);
+            }
+        });
+
+        static::updating(function ($course) {
+            $course->accessTransitionSnapshot = [
+                'price' => $course->getOriginal('price'),
+                'access_type' => $course->getOriginal('access_type'),
+            ];
+        });
+
         static::updated(function ($course) {
-            // 🚀 BULLETPROOF PRICE CHANGE LOGIC - ENHANCED VERSION
-            if ($course->isDirty('price')) {
-                $originalPrice = $course->getOriginal('price');
+            $transitionSnapshot = $course->accessTransitionSnapshot ?? [
+                'price' => $course->getOriginal('price'),
+                'access_type' => $course->getOriginal('access_type'),
+            ];
+
+            $priceChanged = $course->wasChanged('price');
+            $accessTypeChanged = $course->wasChanged('access_type');
+
+            $originalAccessType = static::normalizeAccessType($transitionSnapshot['access_type'] ?? null);
+            $newAccessType = static::normalizeAccessType($course->access_type);
+
+            if ($priceChanged || $accessTypeChanged) {
+                $originalPrice = $transitionSnapshot['price'] ?? null;
                 $newPrice = $course->price;
 
-                \Illuminate\Support\Facades\Log::info('💰 Course price change detected', [
+                \Illuminate\Support\Facades\Log::info('Course access policy updated', [
                     'course_id' => $course->id,
                     'course_name' => $course->name,
                     'old_price' => $originalPrice,
                     'new_price' => $newPrice,
+                    'old_access_type' => $originalAccessType,
+                    'new_access_type' => $newAccessType,
                     'user_id' => auth()->id()
                 ]);
 
-                // SCENARIO 1: FREE TO PAID - Revoke all enrollments (EXCEPT ADMINS)
-                if ($originalPrice <= 0 && $newPrice > 0) {
+                // Access policy moved into paid mode: remove legacy survey-based student access.
+                if ($accessTypeChanged && $originalAccessType !== self::ACCESS_TYPE_PAID && $newAccessType === self::ACCESS_TYPE_PAID) {
                     try {
-                        \Illuminate\Support\Facades\Log::info('🔒 Course changed from FREE to PAID - revoking enrollments', [
+                        \Illuminate\Support\Facades\Log::info('🔒 Course changed into paid access - revoking student enrollments', [
                             'course_id' => $course->id,
                             'course_name' => $course->name,
+                            'old_access_type' => $originalAccessType,
+                            'new_access_type' => $newAccessType,
                             'old_price' => $originalPrice,
                             'new_price' => $newPrice
                         ]);
@@ -459,7 +602,7 @@ class Course extends Model
                         });
 
                     } catch (\Exception $e) {
-                        \Illuminate\Support\Facades\Log::error('❌ Failed to revoke enrollments for paid course', [
+                        \Illuminate\Support\Facades\Log::error('❌ Failed to revoke enrollments for paid-access course', [
                             'course_id' => $course->id,
                             'course_name' => $course->name,
                             'error' => $e->getMessage(),
@@ -469,29 +612,29 @@ class Course extends Model
                     }
                 }
 
-                // SCENARIO 2: PAID TO FREE - keep enrollments unchanged; survey unlock handles preview access
-                elseif ($originalPrice > 0 && $newPrice == 0) {
-                    \Illuminate\Support\Facades\Log::info('🆓 Course changed from PAID to FREE - preview access will now be managed by survey unlock', [
+                // Paid policy removed: existing explicit enrollments remain valid.
+                elseif ($accessTypeChanged && $originalAccessType === self::ACCESS_TYPE_PAID && $newAccessType !== self::ACCESS_TYPE_PAID) {
+                    \Illuminate\Support\Facades\Log::info('🆓 Course changed away from paid access - preserving existing enrollments', [
                         'course_id' => $course->id,
                         'course_name' => $course->name,
+                        'old_access_type' => $originalAccessType,
+                        'new_access_type' => $newAccessType,
                         'old_price' => $originalPrice,
                         'new_price' => $newPrice
                     ]);
                 }
 
-                // SCENARIO 3: PAID TO PAID - Keep all existing enrollments (no action needed)
-                elseif ($originalPrice > 0 && $newPrice > 0) {
-                    \Illuminate\Support\Facades\Log::info('💰 Course price changed (PAID to PAID) - preserving all enrollments', [
+                elseif ($priceChanged && $newAccessType === self::ACCESS_TYPE_PAID) {
+                    \Illuminate\Support\Facades\Log::info('💰 Paid course price changed - preserving existing entitlements', [
                         'course_id' => $course->id,
                         'course_name' => $course->name,
                         'old_price' => $originalPrice,
                         'new_price' => $newPrice
                     ]);
-
-                    // EXPLICITLY PRESERVE ENROLLMENTS - no revocation should happen
-                    // This prevents any accidental enrollment loss during price updates
                 }
             }
+
+            $course->accessTransitionSnapshot = null;
 
             // Clear caches AFTER price change logic to prevent interference
             $course->clearCaches();
@@ -652,8 +795,7 @@ class Course extends Model
             return $this->image;
         }
 
-        // If it's a local file path, construct the proper URL
-        // Files are stored via secure_uploads disk, symlink: public/uploads -> storage/app/uploads
+        // If it's a local file path, construct the route-backed URL.
         return url('/uploads/' . $this->image);
     }
 

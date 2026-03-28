@@ -268,10 +268,14 @@ class GradingServiceTest extends TestCase
         ]);
 
         // Mock written answer evaluation
-        $this->writtenAnswerEvaluationService->shouldReceive('evaluateAnswer')
+        $this->writtenAnswerEvaluationService->shouldReceive('evaluateQuestionAnswer')
             ->once()
-            ->with('Paris', 'Paris', [], Mockery::any())
-            ->andReturn(['confidence' => 0.9]);
+            ->with(Mockery::on(function ($arg) use ($question) {
+                return $arg instanceof Question
+                    && (int) $arg->id === (int) $question->id
+                    && $arg->question_type === 'written';
+            }), 'Paris')
+            ->andReturn(['isCorrect' => true, 'similarity' => 1.0]);
 
         // Mock other dependencies
         $this->userStatsService->shouldReceive('updateAfterQuizAttempt')
@@ -465,10 +469,19 @@ class GradingServiceTest extends TestCase
             $this->writtenAnswerEvaluationService
         );
         
-        $questions = Question::factory()->count(3)->create();
         $user = User::factory()->create();
         $course = Course::factory()->create();
         $topic = Topic::factory()->create(['course_id' => $course->id]);
+        $questions = Question::factory()->count(3)->create([
+            'topic_id' => $topic->id,
+            'question_type' => Question::TYPE_MULTIPLE_CHOICE,
+            'source' => 'Test Source',
+            'correct_answer' => 'A',
+            'option_a' => 'A',
+            'option_b' => 'B',
+            'option_c' => 'C',
+            'option_d' => 'D',
+        ]);
 
         $this->userStatsService->shouldReceive('updateAfterQuizAttempt')
             ->once()
@@ -489,8 +502,9 @@ class GradingServiceTest extends TestCase
         $this->assertLessThan(0.2, $endTime - $startTime); // Should complete in under 200ms
         
         // Verify single evaluation worked
-        $this->assertArrayHasKey('sourceData', $result);
-        $this->assertCount(1, $result['sourceData']); // Should have one source
+        $this->assertArrayHasKey('source_progress', $result);
+        $this->assertArrayHasKey('Test Source', $result['source_progress']);
+        $this->assertCount(1, $result['source_progress']);
     }
 
     #[\PHPUnit\Framework\Attributes\Test]
@@ -508,8 +522,13 @@ class GradingServiceTest extends TestCase
         ]);
 
         // Mock written answer evaluation failure
-        $this->writtenAnswerEvaluationService->shouldReceive('evaluateAnswer')
+        $this->writtenAnswerEvaluationService->shouldReceive('evaluateQuestionAnswer')
             ->once()
+            ->with(Mockery::on(function ($arg) use ($question) {
+                return $arg instanceof Question
+                    && (int) $arg->id === (int) $question->id
+                    && $arg->question_type === 'written';
+            }), 'Paris')
             ->andThrow(new \Exception('Evaluation service unavailable'));
 
         // Mock other dependencies
@@ -571,6 +590,45 @@ class GradingServiceTest extends TestCase
         $this->assertTrue($result['success']);
         $this->assertFalse($result['is_correct']);
         $this->assertEquals('A', $result['correct_answer']);
+    }
+
+    #[\PHPUnit\Framework\Attributes\Test]
+    public function it_returns_written_feedback_in_tutor_mode()
+    {
+        $user = User::factory()->create();
+        $topic = Topic::factory()->create();
+        $question = Question::factory()->create([
+            'topic_id' => $topic->id,
+            'question' => 'What does the sympathetic nervous system do?',
+            'correct_answer' => 'It increases heart rate and decreases digestion',
+            'question_type' => Question::TYPE_WRITTEN,
+            'source' => 'Test Source',
+            'explanation' => 'Sympathetic activation raises heart rate and slows digestion.',
+        ]);
+
+        $this->writtenAnswerEvaluationService->shouldReceive('evaluateQuestionAnswer')
+            ->once()
+            ->with(Mockery::on(function ($arg) use ($question) {
+                return $arg instanceof Question
+                    && (int) $arg->id === (int) $question->id
+                    && $arg->question_type === Question::TYPE_WRITTEN;
+            }), 'SNS decreases HR and increases digestion')
+            ->andReturn([
+                'isCorrect' => false,
+                'similarity' => 0.32,
+                'feedback' => 'You reversed the sympathetic effects.',
+            ]);
+
+        $result = $this->gradingService->gradeTutorAnswer(
+            $user,
+            $question,
+            'SNS decreases HR and increases digestion'
+        );
+
+        $this->assertTrue($result['success']);
+        $this->assertFalse($result['is_correct']);
+        $this->assertSame('You reversed the sympathetic effects.', $result['message']);
+        $this->assertStringStartsWith('You reversed the sympathetic effects.', $result['explanation']);
     }
 
     #[\PHPUnit\Framework\Attributes\Test]
@@ -695,7 +753,7 @@ class GradingServiceTest extends TestCase
         
         $this->assertNotNull($mistake);
         $this->assertEquals('B', $mistake->submitted_answer);
-        $this->assertEquals('A', $mistake->correct_answer);
+        $this->assertEquals('A', $mistake->question->correct_answer);
     }
 
     #[\PHPUnit\Framework\Attributes\Test]

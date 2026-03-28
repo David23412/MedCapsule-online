@@ -150,18 +150,41 @@ class CourseService
                 $course = Course::findOrFail($courseId);
 
                 // Check enrollment status using optimized cache (PRESERVED)
-                $cacheKey = "user_course_optimization_data_{$user->id}";
-                $userCourseData = Cache::get($cacheKey);
+                $userCourseData = $this->getUserCourseOptimizationData($user);
 
                 // Handle case where cache might be null
-                if ($userCourseData && isset($userCourseData['enrolled_course_ids']) &&
-                    in_array($courseId, $userCourseData['enrolled_course_ids'])) {
+                if (($userCourseData['course_access_levels'][$courseId] ?? null) !== null) {
                     throw new \Exception('User is already enrolled in this course');
+                }
+
+                if (!$user->isAdmin()) {
+                    if ($course->isSurveyUnlockable()) {
+                        if ($user->requiresSurveyUnlockForCourse($course)) {
+                            return [
+                                'success' => false,
+                                'message' => config('free_course_survey.description'),
+                                'redirect_to' => $user->freeCourseSurveyRedirectFor($course),
+                            ];
+                        }
+                    } else {
+                        $hasCompletedPayment = DB::table('payments')
+                            ->where('user_id', $user->id)
+                            ->where('course_id', $course->id)
+                            ->where('status', 'completed')
+                            ->exists();
+
+                        if (!$hasCompletedPayment) {
+                            return [
+                                'success' => false,
+                                'message' => 'You need to purchase this course to access its content.',
+                            ];
+                        }
+                    }
                 }
 
                 $user->enrollInCourse(
                     $courseId,
-                    $course->isFree() ? User::COURSE_ACCESS_PREVIEW : User::COURSE_ACCESS_FULL
+                    $course->defaultEnrollmentAccessLevel()
                 );
 
                 // Clear existing caches (PRESERVED)
@@ -209,6 +232,7 @@ class CourseService
                 'description' => 'required|string|max:2000',
                 'image_file' => 'nullable|file|max:5120',
                 'image_url' => 'nullable|url|max:2048',
+                'access_type' => 'required|string|in:free,preview,paid',
                 'color' => 'required|string|regex:/^#[a-fA-F0-9]{6}$/',
                 'title_color' => 'required|string|regex:/^#[a-fA-F0-9]{6}$/',
                 'academic_year' => 'required|string|in:YEAR 1 - SEMESTER 1,YEAR 1 - SEMESTER 2,YEAR 2 - SEMESTER 1,YEAR 2 - SEMESTER 2,YEAR 3 - SEMESTER 1,YEAR 3 - SEMESTER 2,YEAR 4 - SEMESTER 1,YEAR 4 - SEMESTER 2,YEAR 5 - SEMESTER 1,YEAR 5 - SEMESTER 2,YEAR 6 - SEMESTER 1,YEAR 6 - SEMESTER 2,SAT,EST,ACT',
@@ -216,11 +240,29 @@ class CourseService
             ], [
                 'name.unique' => 'A course with this name already exists.',
                 'image_file.max' => 'The image may not be greater than 5MB.',
+                'access_type.required' => 'Choose how students should access this course.',
+                'access_type.in' => 'Choose a valid access policy for this course.',
                 'color.regex' => 'Color must be a valid hex color code (e.g., #FF5733).',
                 'title_color.regex' => 'Title color must be a valid hex color code (e.g., #FF5733).',
                 'academic_year.required' => 'Academic year is required.',
                 'academic_year.in' => 'Please select a valid academic year.'
             ])->validated();
+
+            $validated['access_type'] = Course::normalizeAccessType($validated['access_type'] ?? null);
+            $validated['price'] = Course::normalizePriceForAccessType(
+                $validated['access_type'],
+                $validated['price'] ?? null
+            );
+
+            if ($policyValidationMessage = Course::accessPolicyValidationMessage($validated['access_type'], $validated['price'])) {
+                return [
+                    'success' => false,
+                    'message' => $policyValidationMessage,
+                    'errors' => [
+                        'price' => [$policyValidationMessage],
+                    ],
+                ];
+            }
 
             // PRESERVE existing image handling logic
             $imageUrl = null;
@@ -231,7 +273,8 @@ class CourseService
                     $uploadResult = $this->fileUploadService->processSecureUpload(
                         $data['image_file'],
                         'images',
-                        'course-images'
+                        'course-images',
+                        'public'
                     );
 
                     $imageUrl = $uploadResult['storage_path'];
@@ -274,7 +317,8 @@ class CourseService
                 'color' => $validated['color'],
                 'title_color' => $validated['title_color'],
                 'academic_year' => $validated['academic_year'],
-                'price' => $validated['price'] ?? null
+                'price' => $validated['price'] ?? null,
+                'access_type' => $validated['access_type'],
             ]);
 
             // Increment cache version to invalidate all course caches (PRESERVED)
@@ -443,7 +487,7 @@ class CourseService
                 $course->has_pending_payment = false;
                 $course->completion_percentage = 0;
                 $course->mastered_topics_count = 0;
-                $course->is_free_course = $course->isFree();
+                $course->is_free_course = $course->isSurveyUnlockable();
                 $course->requires_survey_unlock = false;
                 $course->access_level = null;
                 $course->is_preview_access = false;
@@ -464,23 +508,9 @@ class CourseService
             return;
         }
 
-        // Use existing optimized bulk cache (PRESERVED)
-        $cacheKey = "user_course_optimization_data_{$user->id}";
-        $userCourseData = Cache::remember($cacheKey, 300, function() use ($user) {
-            $enrolledCourseIds = $user->courses()->pluck('courses.id')->toArray();
+        $completionPercentages = $this->loadCourseCompletionPercentages($courses, $user->id);
 
-            return [
-                'enrolled_course_ids' => $enrolledCourseIds,
-                'course_access_levels' => $user->getCourseAccessLevels($enrolledCourseIds),
-                'pending_payment_course_ids' => DB::table('payments')
-                    ->where('user_id', $user->id)
-                    ->whereIn('status', ['pending', 'pending_verification'])
-                    ->pluck('course_id')
-                    ->map(static fn ($courseId) => (int) $courseId)
-                    ->toArray(),
-                'is_admin' => $user->isAdmin()
-            ];
-        });
+        $userCourseData = $this->getUserCourseOptimizationData($user);
 
         // Use cached data for instant lookups (PRESERVED)
         foreach ($courses as $course) {
@@ -493,8 +523,8 @@ class CourseService
                 $course->is_enrolled = $course->access_level !== null;
             }
 
-            $course->is_free_course = $course->isFree();
-            $course->requires_survey_unlock = $course->is_free_course && $user->requiresSurveyUnlockForCourse($course);
+            $course->is_free_course = $course->isSurveyUnlockable();
+            $course->requires_survey_unlock = $user->requiresSurveyUnlockForCourse($course);
             $course->is_preview_access = $course->access_level === User::COURSE_ACCESS_PREVIEW;
             $course->preview_topics_count = $course->is_preview_access
                 ? (int) config('free_course_survey.preview_topics_count', 5)
@@ -503,8 +533,7 @@ class CourseService
             // PRESERVE existing payment check logic
             $course->has_pending_payment = in_array($course->id, $userCourseData['pending_payment_course_ids'] ?? []);
 
-            // Default values (PRESERVED)
-            $course->completion_percentage = 0;
+            $course->completion_percentage = $completionPercentages[$course->id] ?? 0;
             $course->mastered_topics_count = 0;
 
             // Format enrolled users for display (PRESERVED)
@@ -519,6 +548,52 @@ class CourseService
             $course->has_more = ($course->enrolled_users_count ?? 0) > $previewLimit;
             $course->enrolled_users_count = $course->enrolled_users_count ?? 0;
         }
+    }
+
+    private function loadCourseCompletionPercentages(EloquentCollection $courses, int $userId): array
+    {
+        $courseIds = $courses->pluck('id')->filter()->values();
+        if ($courseIds->isEmpty()) {
+            return [];
+        }
+
+        $totalTopicsByCourse = DB::table('topics')
+            ->select('course_id', DB::raw('COUNT(*) as total_topics'))
+            ->whereIn('course_id', $courseIds)
+            ->groupBy('course_id')
+            ->pluck('total_topics', 'course_id');
+
+        $completedTopicsByCourse = DB::query()
+            ->fromSub(function ($query) use ($userId, $courseIds) {
+                $query->from('user_topic_progress')
+                    ->join('topics', 'user_topic_progress.topic_id', '=', 'topics.id')
+                    ->where('user_topic_progress.user_id', $userId)
+                    ->whereIn('topics.course_id', $courseIds)
+                    ->select(
+                        'topics.course_id',
+                        'topics.id as topic_id',
+                        DB::raw('MAX(user_topic_progress.percentage_grade) as max_percentage')
+                    )
+                    ->groupBy('topics.course_id', 'topics.id');
+            }, 'topic_progress')
+            ->select(
+                'course_id',
+                DB::raw('SUM(CASE WHEN max_percentage >= 90 THEN 1 ELSE 0 END) as completed_topics')
+            )
+            ->groupBy('course_id')
+            ->pluck('completed_topics', 'course_id');
+
+        return $courseIds
+            ->mapWithKeys(function ($courseId) use ($totalTopicsByCourse, $completedTopicsByCourse) {
+                $totalTopics = (int) ($totalTopicsByCourse[$courseId] ?? 0);
+                $completedTopics = (int) ($completedTopicsByCourse[$courseId] ?? 0);
+                $percentage = $totalTopics > 0
+                    ? (int) round(($completedTopics / $totalTopics) * 100)
+                    : 0;
+
+                return [$courseId => $percentage];
+            })
+            ->all();
     }
 
     private function loadEnrolledPreviewData(EloquentCollection $courses, int $perCourseLimit): SupportCollection
@@ -597,15 +672,9 @@ class CourseService
         if (!$user) return false;
         if ($user->isAdmin()) return true;
 
-        $cacheKey = "user_course_optimization_data_{$user->id}";
-        $userCourseData = Cache::get($cacheKey);
+        $userCourseData = $this->getUserCourseOptimizationData($user);
 
-        // Handle case where cache might be null
-        if (!$userCourseData || !isset($userCourseData['enrolled_course_ids'])) {
-            return false;
-        }
-
-        return in_array($courseId, $userCourseData['enrolled_course_ids']);
+        return ($userCourseData['course_access_levels'][$courseId] ?? null) !== null;
     }
 
     /**
@@ -616,7 +685,54 @@ class CourseService
     {
         Cache::increment('courses_cache_version');
         Cache::forget('courses_available_years_v1');
-        Cache::forget("user_course_optimization_data_" . auth()->id());
+
+        if ($user = auth()->user()) {
+            Cache::forget($this->userCourseOptimizationCacheKey($user));
+        }
+    }
+
+    private function getUserCourseOptimizationData(User $user): array
+    {
+        $cacheKey = $this->userCourseOptimizationCacheKey($user);
+        $expectedSignature = $user->courseAccessStateSignature();
+        $cachedData = Cache::get($cacheKey);
+
+        if (
+            is_array($cachedData)
+            && ($cachedData['access_state_signature'] ?? null) === $expectedSignature
+        ) {
+            return $cachedData;
+        }
+
+        $freshData = $this->buildUserCourseOptimizationData($user, $expectedSignature);
+        Cache::put($cacheKey, $freshData, 300);
+
+        return $freshData;
+    }
+
+    private function buildUserCourseOptimizationData(User $user, string $accessStateSignature): array
+    {
+        $enrolledCourseIds = $user->courses()
+            ->pluck('courses.id')
+            ->map(static fn ($courseId) => (int) $courseId)
+            ->all();
+
+        return [
+            'access_state_signature' => $accessStateSignature,
+            'course_access_levels' => $user->getCourseAccessLevels($enrolledCourseIds),
+            'pending_payment_course_ids' => DB::table('payments')
+                ->where('user_id', $user->id)
+                ->whereIn('status', ['pending', 'pending_verification'])
+                ->pluck('course_id')
+                ->map(static fn ($courseId) => (int) $courseId)
+                ->toArray(),
+            'is_admin' => $user->isAdmin(),
+        ];
+    }
+
+    private function userCourseOptimizationCacheKey(User $user): string
+    {
+        return "user_course_optimization_data_{$user->id}";
     }
 
     /**

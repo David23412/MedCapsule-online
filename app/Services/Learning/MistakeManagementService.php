@@ -437,6 +437,7 @@ class MistakeManagementService
 
             $usedRating = null;
             $isCorrect = false;
+            $writtenFeedback = null;
 
             if (is_numeric($response) && (int) $response >= 1 && (int) $response <= 5) {
                 $usedRating = (int) $response;
@@ -445,7 +446,10 @@ class MistakeManagementService
                 $selectedAnswer = (string) $response;
 
                 if (isset($mistake->question->question_type) && $mistake->question->question_type === 'written') {
-                    $isCorrect = $mistake->question->isAnswerCorrect($selectedAnswer);
+                    $evaluation = app(\App\Services\WrittenAnswerEvaluationService::class)
+                        ->evaluateQuestionAnswer($mistake->question, $selectedAnswer);
+                    $isCorrect = (bool) ($evaluation['isCorrect'] ?? false);
+                    $writtenFeedback = $evaluation['feedback'] ?? null;
                 } else {
                     $isCorrect = strtolower(trim($selectedAnswer)) === strtolower(trim($mistake->question->correct_answer));
                 }
@@ -497,7 +501,7 @@ class MistakeManagementService
                 'same_day_relearn_step' => (int) ($mistake->same_day_relearn_step ?? 0),
                 'needs_same_day_relearn' => $this->needsSameDayRelearn($mistake, $resolvedMode),
                 'hesitation_score' => (float) ($mistake->hesitation_score ?? 0),
-                'message' => $isCorrect ? 'Correct!' : 'Incorrect. Try again!'
+                'message' => $writtenFeedback ?? ($isCorrect ? 'Correct!' : 'Incorrect. Try again!')
             ];
         });
     }

@@ -64,4 +64,24 @@ class MistakeServiceTest extends TestCase
         $this->assertCount(1, $payload['courses']);
         $this->assertSame($this->course->id, $payload['courses']->first()->id);
     }
+
+    public function test_it_does_not_record_a_mistake_for_a_semantically_correct_written_answer(): void
+    {
+        $question = Question::factory()->create([
+            'topic_id' => $this->topic->id,
+            'question_type' => Question::TYPE_WRITTEN,
+            'question' => 'Describe the parasympathetic nervous system effect.',
+            'correct_answer' => 'The parasympathetic nervous system decreases heart rate and increases digestion',
+            'source' => 'Assiut',
+        ]);
+
+        $mistake = $this->service->recordMistake(
+            $this->user->id,
+            $question->id,
+            'PNS decreases HR and increases GI activity'
+        );
+
+        $this->assertNull($mistake);
+        $this->assertDatabaseCount('mistakes', 0);
+    }
 }

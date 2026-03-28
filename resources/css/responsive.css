@@ -718,3 +718,49 @@ fieldset {
 /* ============================================================================
    END OF RESPONSIVE CSS FOUNDATION
    ============================================================================ */
+
+/* =========================================================================
+   MOBILE INPUT iOS ZOOM PREVENTION & TOUCH TARGETS
+   ========================================================================= */
+@media screen and (max-width: 768px) {
+  /* Prevent iOS auto-zoom on inputs */
+  input[type="text"],
+  input[type="password"],
+  input[type="email"],
+  input[type="number"],
+  input[type="tel"],
+  input[type="url"],
+  input[type="search"],
+  textarea,
+  select {
+    font-size: 16px !important;
+    min-height: 48px; /* Touch target size */
+  }
+
+  /* Ensure buttons have minimum touch target */
+  button, .btn {
+    min-height: 48px;
+  }
+
+  /* Make tables responsive by default */
+  table {
+    display: block !important;
+    overflow-x: auto !important;
+    white-space: nowrap !important;
+    width: 100% !important;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Make images responsive by default */
+  img, svg, video {
+    max-width: 100% !important;
+    height: auto !important;
+  }
+
+  /* Prevent horizontal scroll bleed */
+  body, html {
+    overflow-x: hidden;
+    width: 100%;
+    position: relative;
+  }
+}

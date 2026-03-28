@@ -37,7 +37,7 @@ class VideoController extends Controller
                 ->select('id', 'topic_id', 'youtube_video_id', 'title')
                 ->with([
                     'topic:id,course_id',
-                    'topic.course:id,price',
+                    'topic.course:id,access_type,price',
                 ])
                 ->findOrFail($video->id);
 
@@ -57,7 +57,7 @@ class VideoController extends Controller
             $course = $video->topic->course;
             $isAdmin = $user->isAdmin();
             $isEnrolled = $user->hasAccessToCourse($course->id);
-            $isFreeCourse = !$course->price || $course->price <= 0;
+            $isSurveyUnlockable = $course->isSurveyUnlockable();
 
             // SECURITY: Enhanced authorization logic
             if (!$isAdmin && !$isEnrolled) {
@@ -67,7 +67,7 @@ class VideoController extends Controller
                     'course_id' => $course->id,
                     'is_admin' => $isAdmin,
                     'is_enrolled' => $isEnrolled,
-                    'is_free_course' => $isFreeCourse,
+                    'is_survey_unlockable' => $isSurveyUnlockable,
                     'execution_time_ms' => round((microtime(true) - $startTime) * 1000, 2)
                 ]);
 
@@ -346,48 +346,6 @@ class VideoController extends Controller
         $currentVersion = Cache::get('videos_cache_version', 1);
         Cache::put('videos_cache_version', $currentVersion + 1, 86400);
     }
-
-
-
-    /**
-     * Upload a video file
-     */
-    public function uploadVideo(Request $request): JsonResponse
-    {
-        try {
-            $request->validate([
-                'video' => 'required|file|mimes:mp4,webm,ogg,quicktime|max:512000', // 500MB max
-                'topic_id' => 'nullable|exists:topics,id',
-                'title' => 'nullable|string|max:255'
-            ]);
-
-            $file = $request->file('video');
-            $fileName = time() . '_' . $file->getClientOriginalName();
-            $filePath = $file->storeAs('videos', $fileName, 'public');
-            
-            // Create video record
-            $video = Video::create([
-                'topic_id' => $request->topic_id,
-                'title' => $request->title ?: $file->getClientOriginalName(),
-                'youtube_video_id' => null, // Not a YouTube video
-                'duration' => 0 // Default duration
-            ]);
-
-            return response()->json([
-                'success' => true,
-                'message' => 'Video uploaded successfully!',
-                'video_id' => $video->id,
-                'video_url' => $video->video_url,
-                'title' => $video->title
-            ]);
-        } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Failed to upload video: ' . $e->getMessage()
-            ], 500);
-        }
-    }
-
     /**
      * 🚀 NUCLEAR OPTIMIZED: Delete video with enhanced security and performance
      *
@@ -456,31 +414,6 @@ class VideoController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to delete video. Please try again.'
-            ], 500);
-        }
-    }
-
-    /**
-     * Get video stream data using secure token
-     */
-    public function getVideoStream($token): JsonResponse
-    {
-        try {
-            // For now, return a simple response - you can implement token validation later
-            // This is where you'd validate the token and return the actual video data
-            
-            return response()->json([
-                'success' => true,
-                'video_id' => 'sample_video_123', // This would come from token validation
-                'video_url' => '/storage/videos/sample_video.mp4', // This would be the actual video URL
-                'title' => 'Sample Video',
-                'expires_at' => now()->addHours(2)->toISOString()
-            ]);
-            
-        } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Failed to get video stream.'
             ], 500);
         }
     }

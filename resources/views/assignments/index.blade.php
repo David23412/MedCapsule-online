@@ -2150,19 +2150,19 @@
 
     <!-- Stats -->
     <div class="stats-grid">
-        <div class="stat-card stat-active">
+        <div class="stat-card stat-active" data-stat="active">
             <div class="stat-number">{{ $assignments->filter(function($a) { return $a->getCurrentStatusAttribute() === 'active'; })->count() }}</div>
             <div class="stat-label">Active</div>
         </div>
-        <div class="stat-card stat-overdue">
+        <div class="stat-card stat-overdue" data-stat="overdue">
             <div class="stat-number">{{ $assignments->filter(function($a) { return $a->getCurrentStatusAttribute() === 'overdue'; })->count() }}</div>
             <div class="stat-label">Overdue</div>
         </div>
-        <div class="stat-card stat-completed">
+        <div class="stat-card stat-completed" data-stat="completed">
             <div class="stat-number">{{ $assignments->filter(function($a) { return $a->getCurrentStatusAttribute() === 'completed'; })->count() }}</div>
             <div class="stat-label">Completed</div>
         </div>
-        <div class="stat-card">
+        <div class="stat-card" data-stat="total">
             <div class="stat-number">{{ $assignments->count() }}</div>
             <div class="stat-label">Total</div>
         </div>
@@ -2170,7 +2170,7 @@
 
     <!-- Ultra-slim Filters -->
     <div class="filters">
-        <form method="GET" action="{{ route('assignments.index') }}">
+        <form method="GET" action="{{ route('assignments.index') }}" id="assignmentFiltersForm">
             <div class="filter-grid">
                 <div class="filter-item">
                     <span class="filter-label">Status:</span>
@@ -2207,7 +2207,7 @@
                     <button type="submit" class="btn btn-primary btn-sm">
                         <i class="fas fa-filter"></i>
                     </button>
-                    <a href="{{ route('assignments.index') }}" class="btn btn-outline btn-sm">
+                    <a href="{{ route('assignments.index') }}" class="btn btn-outline btn-sm assignment-filters-reset">
                         <i class="fas fa-times"></i>
                     </a>
                 </div>
@@ -2421,10 +2421,12 @@ function initializeEditForm(assignmentId) {
         .then(data => {
             if (data.success) {
                 showModalAlert('Assignment updated successfully!', 'success');
-                setTimeout(() => {
-                    closeEditModal();
-                    location.reload();
-                }, 1500);
+                closeEditModal();
+                refreshAssignmentsIndex(window.location.href, { pushState: false, preserveScroll: true })
+                    .catch(error => {
+                        console.error('Failed to refresh assignments after update:', error);
+                        showModalAlert('Assignment updated, but the page did not refresh cleanly.', 'error');
+                    });
             } else {
                 showModalAlert(data.message || 'Error updating assignment', 'error');
                 submitBtn.innerHTML = originalBtnText;
@@ -2466,296 +2468,262 @@ function showModalAlert(message, type) {
     }, 5000);
 }
 
-// Minimal assignment management
-document.addEventListener('DOMContentLoaded', function() {
+const assignmentsIndexUrl = @json(route('assignments.index'));
+let assignmentCardObserver = null;
 
-    // LETHAL PAGE TRANSITION HANDLER
-    document.addEventListener('beforeunload', function() {
-        const preloader = document.getElementById('preloader');
-        if (preloader) {
-            preloader.classList.remove('hidden');
-            navbar.style.opacity = '0';
-        }
-    });
-    
-    // View Toggle Functionality
-    const viewToggle = document.getElementById('viewToggle');
+function setAssignmentViewMode(mode) {
     const assignmentGrid = document.querySelector('.assignment-grid');
     const gridIcon = document.getElementById('gridIcon');
     const listIcon = document.getElementById('listIcon');
     const viewText = document.getElementById('viewText');
-    
-    // Load saved view preference
-    const savedView = localStorage.getItem('assignmentViewMode') || 'grid';
-    if (savedView === 'stacked') {
-        assignmentGrid.classList.add('stacked-view');
-        gridIcon.style.display = 'none';
-        listIcon.style.display = 'inline';
-        viewText.textContent = 'List';
+
+    if (!assignmentGrid || !gridIcon || !listIcon || !viewText) {
+        return;
     }
-    
+
+    const isStacked = mode === 'stacked';
+    assignmentGrid.classList.toggle('stacked-view', isStacked);
+    gridIcon.style.display = isStacked ? 'none' : 'inline';
+    listIcon.style.display = isStacked ? 'inline' : 'none';
+    viewText.textContent = isStacked ? 'List' : 'Grid';
+    localStorage.setItem('assignmentViewMode', isStacked ? 'stacked' : 'grid');
+}
+
+function applySavedAssignmentView() {
+    setAssignmentViewMode(localStorage.getItem('assignmentViewMode') || 'grid');
+}
+
+function initializeViewToggle() {
+    const viewToggle = document.getElementById('viewToggle');
+    if (!viewToggle || viewToggle.dataset.bound === 'true') {
+        return;
+    }
+
+    viewToggle.dataset.bound = 'true';
     viewToggle.addEventListener('click', function() {
-        const isStacked = assignmentGrid.classList.contains('stacked-view');
-        
-        if (isStacked) {
-            // Switch to grid view
-            assignmentGrid.classList.remove('stacked-view');
-            gridIcon.style.display = 'inline';
-            listIcon.style.display = 'none';
-            viewText.textContent = 'Grid';
-            localStorage.setItem('assignmentViewMode', 'grid');
-        } else {
-            // Switch to stacked view
-            assignmentGrid.classList.add('stacked-view');
-            gridIcon.style.display = 'none';
-            listIcon.style.display = 'inline';
-            viewText.textContent = 'List';
-            localStorage.setItem('assignmentViewMode', 'stacked');
+        const assignmentGrid = document.querySelector('.assignment-grid');
+        const nextMode = assignmentGrid && assignmentGrid.classList.contains('stacked-view')
+            ? 'grid'
+            : 'stacked';
+
+        setAssignmentViewMode(nextMode);
+
+        if (assignmentGrid) {
+            assignmentGrid.style.opacity = '0.8';
+            setTimeout(() => {
+                assignmentGrid.style.opacity = '1';
+            }, 150);
         }
-        
-        // Smooth transition effect
-        assignmentGrid.style.opacity = '0.8';
-        setTimeout(() => {
-            assignmentGrid.style.opacity = '1';
-        }, 150);
     });
-    
-    // Auto-submit on select change for instant filtering
-    const selects = document.querySelectorAll('.form-select');
-    selects.forEach(select => {
-        select.addEventListener('change', function() {
-            const form = this.closest('form');
-            const submitBtn = form.querySelector('button[type="submit"]');
-            submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
-            form.submit();
-        });
-    });
-    
-    // Intersection Observer for smooth card animations
-    const observerOptions = {
-        threshold: 0.1,
-        rootMargin: '0px 0px -50px 0px'
-    };
-    
-    const observer = new IntersectionObserver((entries) => {
+}
+
+function observeAssignmentCards() {
+    if (assignmentCardObserver) {
+        assignmentCardObserver.disconnect();
+    }
+
+    assignmentCardObserver = new IntersectionObserver((entries) => {
         entries.forEach(entry => {
             if (entry.isIntersecting) {
                 entry.target.style.opacity = '1';
                 entry.target.style.transform = 'translateY(0)';
             }
         });
-    }, observerOptions);
-    
-    // Observe all cards for smooth scroll animations
-    document.querySelectorAll('.assignment-card, .stat-card').forEach(card => {
-        observer.observe(card);
+    }, {
+        threshold: 0.1,
+        rootMargin: '0px 0px -50px 0px'
     });
-    
-    // Smooth scroll to top on page load
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-});
 
-// Simple assignment manager - delete and refresh
-class SimpleAssignmentManager {
-    async deleteAssignment(assignmentId) {
-        const card = document.querySelector(`[data-assignment-id="${assignmentId}"]`);
-        
-        if (card) {
-            card.style.opacity = "0.5";
-            card.style.pointerEvents = "none";
+    document.querySelectorAll('.assignment-card, .stat-card').forEach(card => {
+        assignmentCardObserver.observe(card);
+    });
+}
+
+function getTopLevelAlert(container) {
+    if (!container) {
+        return null;
+    }
+
+    return Array.from(container.children).find(child =>
+        child.classList && child.classList.contains('alert')
+    ) || null;
+}
+
+function setFiltersLoading(form, isLoading) {
+    if (!form) {
+        return;
+    }
+
+    const submitBtn = form.querySelector('button[type="submit"]');
+    if (!submitBtn) {
+        return;
+    }
+
+    if (isLoading) {
+        if (!submitBtn.dataset.originalHtml) {
+            submitBtn.dataset.originalHtml = submitBtn.innerHTML;
         }
-        
-        try {
-            const response = await fetch(`/assignments/${assignmentId}`, {
-                method: "DELETE",
-                headers: {
-                    "X-CSRF-TOKEN": document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
-                    "Content-Type": "application/json",
-                    "Accept": "application/json"
-                }
-            });
-            
-            const data = await response.json();
-            
-            if (data.success) {
-                console.log("✅ Assignment deleted - refreshing page");
-                window.location.reload();
-                return true;
-            } else {
-                throw new Error(data.message || "Failed to delete");
-            }
-        } catch (error) {
-            console.error("❌ Delete failed:", error);
-            
-            if (card) {
-                card.style.opacity = "1";
-                card.style.pointerEvents = "auto";
-            }
-            
-            alert("Failed to delete assignment");
-            return false;
+        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+        submitBtn.disabled = true;
+        return;
+    }
+
+    submitBtn.innerHTML = submitBtn.dataset.originalHtml || submitBtn.innerHTML;
+    submitBtn.disabled = false;
+}
+
+function buildAssignmentsFilterUrl(form) {
+    const url = new URL(form?.action || assignmentsIndexUrl, window.location.origin);
+    url.search = '';
+
+    if (!form) {
+        return url;
+    }
+
+    const formData = new FormData(form);
+    for (const [key, value] of formData.entries()) {
+        const normalizedValue = String(value).trim();
+        if (normalizedValue !== '') {
+            url.searchParams.append(key, normalizedValue);
         }
     }
-    
-    // Check if we need to force refresh immediately
-    checkForceRefresh() {
-        // Check for Laravel flash message indicating new assignments were created
-        const successMessage = document.querySelector('.alert-success');
-        if (successMessage && successMessage.textContent.includes('Successfully created')) {
-            console.log("🚀 New assignments detected - forcing immediate sync");
-            this.syncWithServer(true); // Force refresh bypasses cache
-        }
-        
-        // Also check URL parameters for force refresh
-        const urlParams = new URLSearchParams(window.location.search);
-        if (urlParams.get('refresh') === 'true') {
-            console.log("🚀 URL refresh parameter detected - forcing immediate sync");
-            this.syncWithServer(true);
-        }
+
+    return url;
+}
+
+function initializeAssignmentFilters() {
+    const filtersForm = document.getElementById('assignmentFiltersForm');
+    if (!filtersForm || filtersForm.dataset.bound === 'true') {
+        return;
     }
-    
-    async syncWithServer() {
-        try {
-            const response = await fetch('/assignments/api/list', {
-                headers: {
-                    'X-Requested-With': 'XMLHttpRequest',
-                    'Accept': 'application/json'
-                }
-            });
-            
-            if (!response.ok) return false;
-            
-            const data = await response.json();
-            if (data.success) {
-                this.updateUI(data.assignments);
-                this.lastSync = Date.now();
-            }
-        } catch (error) {
-            console.error("Sync failed:", error);
-        }
+
+    filtersForm.dataset.bound = 'true';
+
+    filtersForm.querySelectorAll('.form-select').forEach(select => {
+        select.addEventListener('change', function() {
+            const nextUrl = buildAssignmentsFilterUrl(filtersForm);
+            refreshAssignmentsIndex(nextUrl, { pushState: true, preserveScroll: true });
+        });
+    });
+
+    const resetLink = filtersForm.querySelector('.assignment-filters-reset');
+    if (resetLink) {
+        resetLink.addEventListener('click', function(event) {
+            event.preventDefault();
+            refreshAssignmentsIndex(assignmentsIndexUrl, { pushState: true, preserveScroll: false });
+        });
     }
-    
-    // Update UI with server data - SIMPLE & DIRECT
-    updateUI(serverAssignments) {
-        const container = document.querySelector(".assignments-container");
-        if (!container) return;
-        
-        // Get current DOM assignments
-        const currentCards = container.querySelectorAll('[data-assignment-id]');
-        const currentIds = new Set(Array.from(currentCards).map(card => 
-            parseInt(card.getAttribute('data-assignment-id'))
-        ));
-        
-        // Get server assignment IDs
-        const serverIds = new Set(serverAssignments.map(a => a.id));
-        
-        // Remove assignments that don't exist on server
-        currentIds.forEach(id => {
-            if (!serverIds.has(id)) {
-                const card = container.querySelector(`[data-assignment-id="${id}"]`);
-                if (card) {
-                    console.log(`🗑️ Removing assignment ${id} - not on server`);
-                    this.animateRemoval(card);
-                }
+}
+
+function initializeAssignmentsPageUI(options = {}) {
+    initializeViewToggle();
+    applySavedAssignmentView();
+    initializeAssignmentFilters();
+    observeAssignmentCards();
+
+    if (options.scrollToTop) {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+}
+
+async function refreshAssignmentsIndex(nextUrl = window.location.href, options = {}) {
+    const { pushState = false, preserveScroll = true } = options;
+    const currentScrollY = window.scrollY;
+    const form = document.getElementById('assignmentFiltersForm');
+    const requestUrl = nextUrl instanceof URL ? nextUrl : new URL(nextUrl, window.location.origin);
+
+    setFiltersLoading(form, true);
+
+    try {
+        const response = await fetch(requestUrl.toString(), {
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+                'Accept': 'text/html'
+            },
+            credentials: 'same-origin'
+        });
+
+        if (!response.ok) {
+            throw new Error(`Failed to refresh assignments: ${response.status}`);
+        }
+
+        const html = await response.text();
+        const parsed = new DOMParser().parseFromString(html, 'text/html');
+        const parsedMainContent = parsed.querySelector('.main-content');
+        const currentMainContent = document.querySelector('.main-content');
+
+        if (!parsedMainContent || !currentMainContent) {
+            throw new Error('Unable to parse refreshed assignments content');
+        }
+
+        const sections = ['.stats-grid', '.filters', '.assignment-grid.assignments-container'];
+        sections.forEach(selector => {
+            const currentSection = document.querySelector(selector);
+            const newSection = parsed.querySelector(selector);
+
+            if (currentSection && newSection) {
+                currentSection.replaceWith(newSection.cloneNode(true));
             }
         });
-        
-        // Update count
-        this.updateCount(serverAssignments.length);
+
+        const currentAlert = getTopLevelAlert(currentMainContent);
+        if (currentAlert) {
+            currentAlert.remove();
+        }
+
+        const newAlert = getTopLevelAlert(parsedMainContent);
+        const pageHeader = document.querySelector('.page-header');
+        if (newAlert && pageHeader) {
+            pageHeader.before(newAlert.cloneNode(true));
+        }
+
+        if (pushState) {
+            window.history.pushState({}, '', requestUrl.toString());
+        }
+
+        initializeAssignmentsPageUI();
+
+        if (preserveScroll) {
+            window.scrollTo({ top: currentScrollY });
+        }
+    } finally {
+        setFiltersLoading(document.getElementById('assignmentFiltersForm'), false);
     }
-    
-    // Animate card removal
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    const navbar = document.querySelector('.navbar');
+
+    document.addEventListener('beforeunload', function() {
+        const preloader = document.getElementById('preloader');
+        if (preloader) {
+            preloader.classList.remove('hidden');
+        }
+
+        if (navbar) {
+            navbar.style.opacity = '0';
+        }
+    });
+
+    initializeAssignmentsPageUI({ scrollToTop: true });
+});
+
+window.addEventListener('popstate', function() {
+    refreshAssignmentsIndex(window.location.href, { pushState: false, preserveScroll: false }).catch(error => {
+        console.error('Failed to restore assignments state from history:', error);
+    });
+});
+
+class SimpleAssignmentManager {
     animateRemoval(card) {
-        card.style.transition = "all 0.3s ease";
-        card.style.transform = "scale(0)";
-        card.style.opacity = "0";
+        card.style.transition = 'all 0.3s ease';
+        card.style.transform = 'scale(0.95)';
+        card.style.opacity = '0';
         setTimeout(() => card.remove(), 300);
     }
-    
-    // Update assignment count
-    updateCount(count) {
-        const countElement = document.querySelector(".assignment-count");
-        if (countElement) countElement.textContent = count;
-        
-        const headerCount = document.querySelector(".header-assignment-count");
-        if (headerCount) headerCount.textContent = `${count} Assignment${count !== 1 ? "s" : ""}`;
-    }
-    
-    startSync() {
-        setInterval(() => {
-            if (Date.now() - this.lastSync > 30000) {
-                this.syncWithServer();
-            }
-        }, 10000);
-        
-        setTimeout(() => this.syncWithServer(), 1000);
-    }
-    
-    forceSync() {
-        this.syncWithServer();
-    }
-    
-    // Handle assignment deletion - INSTANT & RELIABLE
-    async deleteAssignment(assignmentId) {
-        console.log(`🗑️ Deleting assignment ${assignmentId}`);
-        
-        // Immediately hide from UI
-        const card = document.querySelector(`[data-assignment-id="${assignmentId}"]`);
-        if (card) {
-            card.style.transition = "all 0.3s ease";
-            card.style.transform = "scale(0.95)";
-            card.style.opacity = "0.5";
-            card.style.pointerEvents = "none";
-        }
-        
-        try {
-            const response = await fetch(`/assignments/${assignmentId}`, {
-                method: "DELETE",
-                headers: {
-                    "X-CSRF-TOKEN": document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
-                    "Content-Type": "application/json",
-                    "Accept": "application/json"
-                }
-            });
-            
-            const data = await response.json();
-            
-            if (data.success) {
-                console.log("✅ Assignment deleted successfully");
-                
-                // Remove from UI immediately
-                if (card) {
-                    this.animateRemoval(card);
-                }
-                
-                // Show success message
-                this.showMessage("Deleted", "success");
-                
-                // Sync with server after 2 seconds to ensure consistency
-                setTimeout(() => this.syncWithServer(), 2000);
-                
-                return true;
-            } else {
-                throw new Error(data.message || "Failed to delete");
-            }
-        } catch (error) {
-            console.error("❌ Delete failed:", error);
-            
-            // Restore card on error
-            if (card) {
-                card.style.transform = "scale(1)";
-                card.style.opacity = "1";
-                card.style.pointerEvents = "auto";
-            }
-            
-            this.showMessage("Delete failed", "error");
-            return false;
-        }
-    }
-    
-    // Show simple message
+
     showMessage(text, type) {
-        const message = document.createElement("div");
+        const message = document.createElement('div');
         message.textContent = text;
         message.style.cssText = `
             position: fixed;
@@ -2769,13 +2737,55 @@ class SimpleAssignmentManager {
             z-index: 10000;
             animation: slideInRight 0.3s ease;
         `;
-        
+
         document.body.appendChild(message);
         setTimeout(() => message.remove(), 3000);
     }
+
+    async deleteAssignment(assignmentId) {
+        const card = document.querySelector(`[data-assignment-id="${assignmentId}"]`);
+
+        if (card) {
+            card.style.opacity = '0.5';
+            card.style.pointerEvents = 'none';
+        }
+
+        try {
+            const response = await fetch(`/assignments/${assignmentId}`, {
+                method: 'DELETE',
+                headers: {
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json'
+                }
+            });
+
+            const data = await response.json();
+            if (!data.success) {
+                throw new Error(data.message || 'Failed to delete assignment');
+            }
+
+            if (card) {
+                this.animateRemoval(card);
+            }
+
+            this.showMessage('Deleted', 'success');
+            await refreshAssignmentsIndex(window.location.href, { pushState: false, preserveScroll: true });
+            return true;
+        } catch (error) {
+            console.error('Delete failed:', error);
+
+            if (card) {
+                card.style.opacity = '1';
+                card.style.pointerEvents = 'auto';
+            }
+
+            this.showMessage('Delete failed', 'error');
+            return false;
+        }
+    }
 }
 
-// Initialize simple manager
 const assignmentManager = new SimpleAssignmentManager();
 
 // Open progress modal
@@ -2941,20 +2951,10 @@ window.deleteAssignment = function(assignmentId) {
 }
 
 function forceRefreshAssignments() {
-    window.location.reload();
-}
-
-// 🚀 INSTANT REFRESH: Auto-refresh if we detect assignment creation success
-document.addEventListener('DOMContentLoaded', function() {
-    // Check for success messages indicating new assignments
-    const alerts = document.querySelectorAll('.alert-success');
-    alerts.forEach(alert => {
-        if (alert.textContent.includes('Successfully created') && alert.textContent.includes('assignment')) {
-            console.log("🚀 Assignment creation detected - forcing immediate refresh");
-            setTimeout(() => window.location.reload(), 500);
-        }
+    refreshAssignmentsIndex(window.location.href, { pushState: false, preserveScroll: true }).catch(error => {
+        console.error('Manual assignments refresh failed:', error);
     });
-});
+}
 
 // Add CSS animations
 const style = document.createElement("style");
@@ -2991,11 +2991,14 @@ window.updateOverdueAssignments = function() {
     enforceRealTimeStatus();
 }
 
-function enforceRealTimeStatus(assignmentId = null) {
-    const btn = event.target;
-    const originalHTML = btn.innerHTML;
-    btn.innerHTML = '<i class="fas fa-refresh fa-spin"></i>';
-    btn.disabled = true;
+function enforceRealTimeStatus(assignmentId = null, triggerElement = null) {
+    const btn = triggerElement || (typeof event !== 'undefined' ? event.target : null);
+    const originalHTML = btn ? btn.innerHTML : null;
+
+    if (btn) {
+        btn.innerHTML = '<i class="fas fa-refresh fa-spin"></i>';
+        btn.disabled = true;
+    }
     
     const payload = assignmentId ? { assignment_id: assignmentId } : {};
     
@@ -3010,22 +3013,24 @@ function enforceRealTimeStatus(assignmentId = null) {
     .then(response => response.json())
     .then(data => {
         if (data.success) {
-            // Show instant feedback
-            btn.innerHTML = '<i class="fas fa-check text-success"></i> UPDATED!';
-            
-            // Reload page to show updated statuses
-            setTimeout(() => {
-                location.reload();
-            }, 500);
+            if (btn) {
+                btn.innerHTML = '<i class="fas fa-check text-success"></i> UPDATED!';
+            }
+
+            return refreshAssignmentsIndex(window.location.href, { pushState: false, preserveScroll: true });
         } else {
-            btn.innerHTML = originalHTML;
-            btn.disabled = false;
+            if (btn) {
+                btn.innerHTML = originalHTML;
+                btn.disabled = false;
+            }
             alert('Error: ' + data.message);
         }
     })
     .catch(error => {
-        btn.innerHTML = originalHTML;
-        btn.disabled = false;
+        if (btn) {
+            btn.innerHTML = originalHTML;
+            btn.disabled = false;
+        }
         console.error('Real-time enforcement error:', error);
         alert('An error occurred during real-time status enforcement');
     });

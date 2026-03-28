@@ -69,9 +69,22 @@ class CourseController extends Controller
         $validatedData = $request->validate([
             'name' => 'required|string|max:255',
             'description' => 'nullable|string',
-            'price' => 'required|numeric|min:0',
+            'access_type' => 'required|string|in:free,preview,paid',
+            'price' => 'nullable|numeric|min:0',
             'type' => 'required|string|in:medical,custom',
         ]);
+
+        $validatedData['access_type'] = Course::normalizeAccessType($validatedData['access_type'] ?? null);
+        $validatedData['price'] = Course::normalizePriceForAccessType(
+            $validatedData['access_type'],
+            $validatedData['price'] ?? null
+        );
+
+        if ($policyValidationMessage = Course::accessPolicyValidationMessage($validatedData['access_type'], $validatedData['price'])) {
+            return redirect()->back()
+                ->withInput()
+                ->withErrors(['price' => $policyValidationMessage]);
+        }
         
         $course = Course::create($validatedData);
         
@@ -137,9 +150,22 @@ class CourseController extends Controller
             $validatedData = $request->validate([
                 'name' => 'required|string|max:255',
                 'description' => 'nullable|string',
-                'price' => 'required|numeric|min:0',
+                'access_type' => 'required|string|in:free,preview,paid',
+                'price' => 'nullable|numeric|min:0',
                 'type' => 'required|string|in:medical,custom',
             ]);
+
+            $validatedData['access_type'] = Course::normalizeAccessType($validatedData['access_type'] ?? null);
+            $validatedData['price'] = Course::normalizePriceForAccessType(
+                $validatedData['access_type'],
+                $validatedData['price'] ?? null
+            );
+
+            if ($policyValidationMessage = Course::accessPolicyValidationMessage($validatedData['access_type'], $validatedData['price'])) {
+                return redirect()->back()
+                    ->withInput()
+                    ->withErrors(['price' => $policyValidationMessage]);
+            }
             
             // Handle course type change
             $oldType = $course->type ?? 'medical';

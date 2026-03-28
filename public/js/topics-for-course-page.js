@@ -16,10 +16,15 @@
         const randomQuizModal = document.getElementById('randomQuizModal');
         const assignmentIconCircle = document.querySelector('.assignment-icon-circle');
         const assignmentCircle = document.querySelector('.assignment-circle');
+        const progressCountElement = document.querySelector('.progress-count');
+        const progressPercentElement = document.querySelector('.progress-percent');
+        const topicProgressSegments = Array.from(document.querySelectorAll('.topics-progress-segment[data-topic-id]'));
         const questionLimit = document.getElementById('questionLimit');
         const timeLimit = document.getElementById('timeLimit');
         const courseCheckboxes = document.querySelectorAll('#randomQuizModal input[name="selected_courses[]"]');
         const sidebarStorageKey = 'medcapsule-topics-sidebar-collapsed';
+        const recentProgressRoute = topicsPageConfig.recentProgressRoute || '/api/progress/recent-updates';
+        let latestProgressSyncTimestamp = 0;
 
         const perfStore = window.__topicsPerfStore || (window.__topicsPerfStore = {
             data: new Map(),
@@ -165,6 +170,267 @@
             link.as = 'document';
             link.href = url;
             document.head.appendChild(link);
+        }
+
+        function normalizeTimestamp(value) {
+            const numericValue = Number(value || 0);
+            if (!Number.isFinite(numericValue)) {
+                return 0;
+            }
+
+            return numericValue > 9999999999 ? Math.floor(numericValue / 1000) : numericValue;
+        }
+
+        function getOverallTopicPercentage(detail) {
+            const overallPercentage = Number(detail?.overall_topic_progress?.overall?.percentage);
+            if (Number.isFinite(overallPercentage)) {
+                return Math.max(0, Math.min(100, overallPercentage));
+            }
+
+            if (detail?.allSourcesMastered) {
+                return 100;
+            }
+
+            return null;
+        }
+
+        function updateCourseProgressSummary(topicId, percentage) {
+            if (!topicProgressSegments.length || percentage === null) {
+                return;
+            }
+
+            const targetSegment = document.querySelector(`.topics-progress-segment[data-topic-id="${topicId}"]`);
+            if (!targetSegment) {
+                return;
+            }
+
+            targetSegment.classList.toggle('is-mastered', percentage >= 80);
+
+            const totalTopics = topicProgressSegments.length;
+            const masteredCount = topicProgressSegments.filter(segment => segment.classList.contains('is-mastered')).length;
+            const masteredPercentage = totalTopics > 0 ? Math.round((masteredCount / totalTopics) * 100) : 0;
+
+            if (progressCountElement) {
+                progressCountElement.textContent = `${masteredCount} of ${totalTopics} complete`;
+            }
+
+            if (progressPercentElement) {
+                progressPercentElement.textContent = `${masteredPercentage}%`;
+            }
+        }
+
+        function updateTopicCardProgress(detail) {
+            const { topicId, assignmentId, mode } = detail;
+            if (mode === 'tutor') {
+                return false;
+            }
+
+            let targetCard = null;
+
+            if (assignmentId) {
+                targetCard = document.querySelector(`[data-assignment-id="${assignmentId}"]`);
+            } else {
+                targetCard = document.querySelector(`[data-topic-id="${topicId}"][data-has-assignment="false"]`);
+            }
+
+            if (!targetCard) {
+                return false;
+            }
+
+            const newPercent = getOverallTopicPercentage(detail);
+
+            const gradeBadge = targetCard.querySelector('.grade-badge');
+            if (gradeBadge && newPercent !== null) {
+                gradeBadge.className = 'grade-badge';
+                if (newPercent >= 100) {
+                    gradeBadge.classList.add('grade-mastered');
+                    gradeBadge.innerHTML = '<i class="fas fa-star"></i> Mastered';
+                } else if (newPercent >= 66) {
+                    gradeBadge.classList.add('grade-good');
+                    gradeBadge.innerHTML = '<i class="fas fa-check"></i> Good';
+                } else if (newPercent >= 33) {
+                    gradeBadge.classList.add('grade-in-progress');
+                    gradeBadge.innerHTML = '<i class="fas fa-sync-alt"></i> In Progress';
+                } else {
+                    gradeBadge.classList.add('grade-bad');
+                    gradeBadge.innerHTML = '<i class="fas fa-times"></i> Just Started';
+                }
+            }
+
+            const progressBar = targetCard.querySelector('.progress .progress-bar');
+            const progressLabel = targetCard.querySelector('.progress-label span:last-child');
+
+            if (progressBar && newPercent !== null) {
+                progressBar.style.width = `${newPercent}%`;
+            }
+
+            if (progressLabel && newPercent !== null) {
+                progressLabel.textContent = `${newPercent.toFixed(1)}%`;
+            }
+
+            const statItem = targetCard.querySelector('.topic-actions .stat-item');
+            if (statItem && newPercent !== null) {
+                if (newPercent >= 100) {
+                    statItem.innerHTML = '<i class="fas fa-check-circle text-success"></i> Mastered';
+                } else if (newPercent >= 66) {
+                    statItem.innerHTML = '<i class="fas fa-check text-success"></i> Good';
+                } else if (newPercent >= 33) {
+                    statItem.innerHTML = '<i class="fas fa-sync-alt text-info"></i> Making progress';
+                } else {
+                    statItem.innerHTML = '<i class="fas fa-rocket text-primary"></i> Just getting started';
+                }
+            }
+
+            const quizBtn = targetCard.querySelector('.start-quiz-btn span');
+            if (quizBtn && quizBtn.textContent.trim() === 'Start Quiz') {
+                quizBtn.textContent = 'Retake Quiz';
+            }
+
+            if (!assignmentId) {
+                updateCourseProgressSummary(topicId, newPercent);
+            } else {
+                updateAssignmentProgress(assignmentId, targetCard);
+            }
+
+            return true;
+        }
+
+        function applyProgressUpdate(detail) {
+            const hasMatchingTopicCard = detail?.assignmentId
+                ? Boolean(document.querySelector(`[data-assignment-id="${detail.assignmentId}"]`))
+                : Boolean(document.querySelector(`[data-topic-id="${detail?.topicId}"][data-has-assignment="false"]`));
+            const hasMatchingHeaderSegment = Boolean(document.querySelector(`.topics-progress-segment[data-topic-id="${detail?.topicId}"]`));
+            const isCurrentModalTopic = sourceTopicId && Number(sourceTopicId.value || 0) === Number(detail?.topicId || 0);
+            const shouldApply = hasMatchingTopicCard || hasMatchingHeaderSegment || isCurrentModalTopic;
+
+            if (!shouldApply) {
+                return;
+            }
+
+            const timestamp = normalizeTimestamp(detail?.timestamp);
+            if (timestamp > 0 && timestamp <= latestProgressSyncTimestamp) {
+                return;
+            }
+
+            if (timestamp > 0) {
+                latestProgressSyncTimestamp = timestamp;
+            }
+
+            const progress = detail?.progress || detail?.sourceProgress || {};
+            const availableSources = Array.isArray(detail?.availableSources)
+                ? detail.availableSources
+                : Object.keys(progress);
+
+            if (sourceModal && sourceModal.classList.contains('show') && progress && Object.keys(progress).length > 0) {
+                updateSourcesContainer({
+                    progress,
+                    availableSources
+                });
+            }
+
+            updateTopicCardProgress({
+                ...detail,
+                progress,
+                availableSources
+            });
+        }
+
+        function hydrateProgressFromStorage() {
+            try {
+                const rawUpdate = localStorage.getItem('quizProgressUpdate');
+                if (!rawUpdate) {
+                    return;
+                }
+
+                applyProgressUpdate(JSON.parse(rawUpdate));
+            } catch (error) {
+                console.error('Failed to hydrate quiz progress from storage:', error);
+            }
+        }
+
+        function applyAssignmentCompletion(detail) {
+            const assignmentId = Number(detail?.assignmentId || 0);
+            if (!assignmentId) {
+                return;
+            }
+
+            const targetCard = document.querySelector(`[data-assignment-id="${assignmentId}"]`);
+            if (!targetCard) {
+                return;
+            }
+
+            targetCard.dataset.assignmentStatus = 'completed';
+            targetCard.classList.remove('assignment-active', 'assignment-overdue');
+            targetCard.classList.add('assignment-completed');
+
+            const statusBar = targetCard.querySelector('.assignment-status-bar');
+            if (statusBar) {
+                statusBar.className = 'assignment-status-bar assignment-completed';
+            }
+
+            const assignmentInfo = targetCard.querySelector('.assignment-info-minimal');
+            if (assignmentInfo) {
+                assignmentInfo.innerHTML = '<span><i class="fas fa-check-circle text-success"></i> Assignment completed</span>';
+            }
+
+            const countdown = targetCard.querySelector('.assignment-countdown-minimal');
+            if (countdown) {
+                pauseCountdown(countdown);
+                countdown.remove();
+            }
+
+            const statItem = targetCard.querySelector('.stat-item');
+            if (statItem) {
+                statItem.innerHTML = '<i class="fas fa-check-circle text-success"></i>Assignment Completed';
+            }
+
+            const actionButton = targetCard.querySelector('.start-quiz-btn');
+            if (actionButton) {
+                actionButton.style.pointerEvents = 'none';
+                actionButton.style.opacity = '0.65';
+                actionButton.innerHTML = '<span>Completed</span><i class="fas fa-check"></i>';
+            }
+        }
+
+        function hydrateAssignmentCompletionFromStorage() {
+            try {
+                const rawCompletion = localStorage.getItem('assignmentCompleted');
+                if (!rawCompletion) {
+                    return;
+                }
+
+                applyAssignmentCompletion(JSON.parse(rawCompletion));
+            } catch (error) {
+                console.error('Failed to hydrate assignment completion from storage:', error);
+            }
+        }
+
+        async function fetchRecentProgressUpdates() {
+            try {
+                const response = await fetch(`${recentProgressRoute}?since=${latestProgressSyncTimestamp}`, {
+                    method: 'GET',
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'Accept': 'application/json'
+                    },
+                    credentials: 'same-origin'
+                });
+
+                if (!response.ok) {
+                    return;
+                }
+
+                const data = await response.json();
+                if (!data.success || !Array.isArray(data.updates)) {
+                    return;
+                }
+
+                data.updates
+                    .sort((a, b) => normalizeTimestamp(a.timestamp) - normalizeTimestamp(b.timestamp))
+                    .forEach(update => applyProgressUpdate(update));
+            } catch (error) {
+                console.error('Failed to fetch recent topic progress updates:', error);
+            }
         }
 
         const topicSearch = document.getElementById('topicSearch');
@@ -423,38 +689,39 @@
         });
 
         document.addEventListener('sourceProgressUpdated', function(e) {
-            const { topicId, progress, availableSources, allSourcesMastered, assignmentId, mode } = e.detail;
+            applyProgressUpdate(e.detail);
+        });
 
-            if (progress) {
-                updateSourcesContainer({
-                    progress: progress,
-                    availableSources: availableSources
-                });
-            }
-
-            if (mode !== 'tutor') {
-                let targetCard = null;
-
-                if (assignmentId) {
-                    targetCard = document.querySelector(`[data-assignment-id="${assignmentId}"]`);
-                } else {
-                    targetCard = document.querySelector(`[data-topic-id="${topicId}"][data-has-assignment="false"]`);
-                }
-
-                if (targetCard) {
-                    const gradeBadge = targetCard.querySelector('.grade-badge');
-                    if (gradeBadge) {
-                        gradeBadge.className = `grade-badge ${allSourcesMastered ? 'grade-mastered' : 'grade-good'}`;
-                        gradeBadge.innerHTML = allSourcesMastered
-                            ? '<i class="fas fa-star"></i> Mastered'
-                            : '<i class="fas fa-check"></i> Good';
-                    }
-
-                    if (assignmentId) {
-                        updateAssignmentProgress(assignmentId, targetCard);
-                    }
+        // 🔥 NEW: Cross-tab communication via storage event
+        window.addEventListener('storage', function(e) {
+            if (e.key === 'quizProgressUpdate' && e.newValue) {
+                try {
+                    const data = JSON.parse(e.newValue);
+                    console.log('📦 Real-time progress update detected from another tab:', data);
+                    applyProgressUpdate({
+                        ...data,
+                        mode: data.mode || 'quiz'
+                    });
+                } catch (err) {
+                    console.error('Error parsing storage update:', err);
                 }
             }
+
+            if (e.key === 'assignmentCompleted' && e.newValue) {
+                try {
+                    applyAssignmentCompletion(JSON.parse(e.newValue));
+                } catch (err) {
+                    console.error('Error parsing assignment completion update:', err);
+                }
+            }
+        });
+
+        hydrateProgressFromStorage();
+        hydrateAssignmentCompletionFromStorage();
+        fetchRecentProgressUpdates();
+        window.addEventListener('pageshow', fetchRecentProgressUpdates);
+        document.addEventListener('assignmentCompleted', function(e) {
+            applyAssignmentCompletion(e.detail);
         });
 
         let sourceSelectionModal;
@@ -744,14 +1011,17 @@
 
         async function loadRandomQuizSources() {
             const selectedCourses = Array.from(courseCheckboxes).filter(cb => cb.checked).map(cb => cb.value);
-            const sourceSelect = document.getElementById('sourceSelect');
+            const container = document.getElementById('sourceCheckboxContainer');
+            const placeholder = document.getElementById('sourcePlaceholder');
 
             if (selectedCourses.length === 0) {
-                sourceSelect.innerHTML = '<option value="">Select courses first</option>';
+                container.innerHTML = '<div class="text-center text-muted py-3" id="sourcePlaceholder"><i class="fas fa-info-circle mb-2"></i><p class="mb-0">Select courses above to load available sources.</p></div>';
                 return;
             }
 
-            sourceSelect.innerHTML = '<option disabled selected>Loading sources...</option>';
+            if (placeholder) {
+                placeholder.innerHTML = '<div class="text-center py-3"><div class="spinner-border spinner-border-sm text-primary" role="status"></div><span class="ms-2">Loading sources...</span></div>';
+            }
 
             try {
                 const queryParams = new URLSearchParams();
@@ -773,37 +1043,68 @@
                 if (data.success && data.sources && data.sources.length > 0) {
                     renderRandomQuizSources(data.sources);
                 } else {
-                    sourceSelect.innerHTML = '<option value="">No sources available</option>';
+                    container.innerHTML = '<div class="text-center text-muted py-3"><i class="fas fa-exclamation-circle mb-2"></i><p class="mb-0">No sources available for selected courses.</p></div>';
                 }
             } catch (error) {
                 console.error('Error loading sources:', error);
-                sourceSelect.innerHTML = '<option value="">Error loading sources</option>';
+                container.innerHTML = '<div class="text-center text-danger py-3"><i class="fas fa-exclamation-triangle mb-2"></i><p class="mb-0">Error loading sources.</p></div>';
             }
         }
 
         function renderRandomQuizSources(sources) {
-            const sourceSelect = document.getElementById('sourceSelect');
-            sourceSelect.innerHTML = '';
+            const container = document.getElementById('sourceCheckboxContainer');
+            if (!container) return;
+            
+            container.innerHTML = '';
 
             if (sources.length === 0) {
-                const option = document.createElement('option');
-                option.disabled = true;
-                option.textContent = 'No sources available';
-                sourceSelect.appendChild(option);
+                container.innerHTML = '<div class="text-center text-muted py-3"><p class="mb-0">No sources available</p></div>';
                 return;
             }
 
-            const allOption = document.createElement('option');
-            allOption.value = 'all';
-            allOption.textContent = 'All Sources';
-            allOption.selected = true;
-            sourceSelect.appendChild(allOption);
+            // Create "All Sources" checkbox
+            const allDiv = document.createElement('div');
+            allDiv.className = 'form-check custom-checkbox';
+            allDiv.innerHTML = `
+                <input class="form-check-input" type="checkbox" name="sources[]" value="all" id="sourceAll" checked>
+                <label class="form-check-label" for="sourceAll">All Sources</label>
+            `;
+            container.appendChild(allDiv);
 
-            sources.forEach(source => {
-                const option = document.createElement('option');
-                option.value = source.name;
-                option.textContent = `${source.name} (${source.question_count} questions)`;
-                sourceSelect.appendChild(option);
+            const sourceAllCheckbox = allDiv.querySelector('#sourceAll');
+
+            sources.forEach((source, index) => {
+                const div = document.createElement('div');
+                div.className = 'form-check custom-checkbox';
+                div.innerHTML = `
+                    <input class="form-check-input source-specific-checkbox" type="checkbox" name="sources[]" value="${source.name}" id="source${index}">
+                    <label class="form-check-label" for="source${index}">
+                        ${source.name} <span class="text-muted small">(${source.question_count})</span>
+                    </label>
+                `;
+                container.appendChild(div);
+
+                const checkbox = div.querySelector('input');
+                checkbox.addEventListener('change', function() {
+                    if (this.checked) {
+                        sourceAllCheckbox.checked = false;
+                    } else {
+                        // If all specific checkboxes are unchecked, check "All"
+                        const anyChecked = container.querySelector('.source-specific-checkbox:checked');
+                        if (!anyChecked) {
+                            sourceAllCheckbox.checked = true;
+                        }
+                    }
+                });
+            });
+
+            sourceAllCheckbox.addEventListener('change', function() {
+                if (this.checked) {
+                    // Uncheck all specific checkboxes
+                    container.querySelectorAll('.source-specific-checkbox').forEach(cb => {
+                        cb.checked = false;
+                    });
+                }
             });
         }
 
@@ -817,9 +1118,9 @@
                     return false;
                 }
 
-                const sourceSelect = document.getElementById('sourceSelect');
-                if (!sourceSelect.value) {
-                    alert('Please select a source for the random quiz.');
+                const selectedSources = this.querySelectorAll('input[name="sources[]"]:checked');
+                if (selectedSources.length === 0) {
+                    alert('Please select at least one source for the random quiz.');
                     return false;
                 }
 
@@ -843,7 +1144,7 @@
                 const params = new URLSearchParams();
 
                 for (const [key, value] of formData.entries()) {
-                    if (key === 'selected_courses[]' || key === 'selected_sources[]') {
+                    if (key === 'selected_courses[]' || key === 'sources[]') {
                         params.append(key, value);
                     } else {
                         params.append(key, value);

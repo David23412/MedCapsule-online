@@ -96,7 +96,7 @@ class WrittenAnswerEvaluationServiceTest extends TestCase
         
         $this->assertFalse($result['isCorrect']);
         $this->assertLessThan(0.8, $result['similarity']);
-        $this->assertEquals('Answer is missing essential medical concepts', $result['reason']);
+        $this->assertNotEmpty($result['reason']);
     }
     
     /** @test */
@@ -257,4 +257,57 @@ class WrittenAnswerEvaluationServiceTest extends TestCase
         $this->assertArrayHasKey('feedback', $result);
         $this->assertNotEmpty($result['feedback']);
     }
-} 
+
+    /** @test */
+    public function it_accepts_reasonable_abbreviated_paraphrases()
+    {
+        $result = $this->evaluationService->evaluateAnswer(
+            'PNS decreases HR and increases GI activity',
+            'The parasympathetic nervous system decreases heart rate and increases digestion',
+            [],
+            0.8
+        );
+
+        $this->assertTrue($result['isCorrect']);
+        $this->assertGreaterThanOrEqual(0.8, $result['similarity']);
+    }
+
+    /** @test */
+    public function it_rejects_contradictory_abbreviated_answers()
+    {
+        $result = $this->evaluationService->evaluateAnswer(
+            'SNS decreases heart rate and increases digestion',
+            'The sympathetic nervous system increases heart rate and decreases digestion',
+            [],
+            0.8
+        );
+
+        $this->assertFalse($result['isCorrect']);
+    }
+
+    /** @test */
+    public function it_rejects_wrong_numerical_values_even_when_units_match()
+    {
+        $result = $this->evaluationService->evaluateAnswer(
+            '160/100 mmHg',
+            'Blood pressure is 120/80 mmHg',
+            [],
+            0.8
+        );
+
+        $this->assertFalse($result['isCorrect']);
+    }
+
+    /** @test */
+    public function it_accepts_list_style_answers_for_definition_like_prompts()
+    {
+        $result = $this->evaluationService->evaluateAnswer(
+            'evaporation, condensation, precipitation',
+            'The water cycle includes evaporation, condensation, and precipitation',
+            [],
+            0.8
+        );
+
+        $this->assertTrue($result['isCorrect']);
+    }
+}

@@ -408,9 +408,10 @@
             cursor: pointer;
             transition: all 0.3s ease;
             margin-top: 2rem;
-            margin-bottom: 45px !important; /* BULLETPROOF: Always ensure space for progress bar */
+            margin-bottom: 2rem;
             position: relative;
-            z-index: 1;
+            z-index: 1000;
+            min-height: 54px; /* Touch target */
         }
 
         /* ============================================================================
@@ -434,58 +435,47 @@
                 max-width: 100%;
                 border-radius: 0;
                 padding: 0.75rem 1rem;
+                /* Move progress bar to TOP on mobile */
+                top: 70px; /* Below navbar */
+                bottom: auto;
                 left: 0;
                 transform: translateX(0);
                 width: 100vw;
+                box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
             }
             
             .progress-bar-container.hidden {
-                transform: translateY(120%) !important;
+                transform: translateY(-120%) !important;
             }
             
             .progress-bar-container:not(.hidden) {
                 transform: translateY(0) !important;
             }
+
+            /* Fix submit button to BOTTOM on mobile */
+            .submit-btn {
+                position: fixed !important;
+                bottom: 0;
+                left: 0;
+                right: 0;
+                margin: 0 !important;
+                border-radius: 0;
+                padding-bottom: calc(1rem + env(safe-area-inset-bottom)) !important;
+            }
+
+            /* Add padding to the form so content isn't hidden behind fixed submit */
+            #quiz-form {
+                padding-bottom: 100px; 
+            }
+            
+            /* Responsive question text size */
+            .question-text {
+                font-size: 1.1rem !important; /* Minimum 16px equivalent */
+                line-height: 1.6;
+            }
         }
         
         @media (max-width: 480px) {
-            .progress-bar-container {
-                padding: 0.5rem 0.75rem;
-                font-size: 0.85rem;
-            }
-            
-            .progress-text {
-                font-size: 0.8rem;
-            }
-            
-            .timer {
-                font-size: 0.8rem;
-            }
-        }
-
-        /* BULLETPROOF: Handle very small screens */
-        @media (max-width: 320px) {
-            .progress-bar-container {
-                padding: 0.6rem !important;
-                min-height: 60px !important;
-            }
-            
-            .submit-btn {
-                margin-bottom: 65px !important;
-            }
-        }
-
-        /* BULLETPROOF: Handle landscape orientation on mobile */
-        @media (max-height: 500px) and (orientation: landscape) {
-            .progress-bar-container {
-                padding: 0.5rem 1rem !important;
-                min-height: 50px !important;
-            }
-            
-            .submit-btn {
-                margin-bottom: 55px !important;
-            }
-        }
 
         /* BULLETPROOF: Handle iOS Safari bottom bar */
         @supports (padding-bottom: env(safe-area-inset-bottom)) {
@@ -509,6 +499,7 @@
                 transition: none !important;
             }
         }
+    }
 
         .progress-bar {
             width: 100%;
@@ -542,40 +533,73 @@
 
         .question-box {
             background: white;
-            border-radius: 8px;
-            padding: 1.5rem;
-            margin-bottom: 1.5rem;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            border-radius: 12px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+            border: 1px solid #edf2f7;
+        }
+
+        .question-content-wrapper {
+            display: flex;
+            gap: 2.5rem;
+            align-items: flex-start;
+            width: 100%;
+        }
+
+        .question-main {
+            flex: 1;
+            min-width: 0;
         }
 
         .question-text {
-            font-size: 1.4rem;
-            font-weight: 425;
-            color: #000000;
-            margin-bottom: 1rem;
-            line-height: 1.5;
+            font-size: 1.5rem;
+            color: #1a202c;
+            font-weight: 600;
+            margin-bottom: 1.5rem;
+            line-height: 1.4;
         }
 
-        .question-box.has-image {
-            padding-bottom: 1rem;
+        .question-image-container {
+            flex: 0 0 450px;
+            max-width: 45%;
+            display: flex;
+            justify-content: center;
         }
 
         .question-image {
-            max-width: 100%;
-            max-height: 300px;
-            width: auto;
+            width: 100%;
             height: auto;
-            border-radius: 8px;
-            margin: 1rem auto;
-            display: block;
+            max-height: 550px;
+            border-radius: 12px;
             object-fit: contain;
-            transform: perspective(1000px) rotateY(-2deg);
-            transition: transform 0.3s ease;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+            border: 1px solid #e2e8f0;
+            transition: all 0.4s cubic-bezier(0.165, 0.84, 0.44, 1);
         }
 
         .question-image:hover {
-            transform: perspective(1000px) rotateY(0deg);
+            transform: scale(1.02);
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.15);
+        }
+
+        /* Stack on smaller screens */
+        @media (max-width: 992px) {
+            .question-content-wrapper {
+                flex-direction: column;
+                gap: 1.5rem;
+            }
+
+            .question-image-container {
+                flex: none;
+                width: 100%;
+                max-width: 100%;
+                margin: 1rem 0;
+            }
+
+            .question-image {
+                max-height: 400px;
+            }
         }
 
         .options {
@@ -589,7 +613,9 @@
         }
 
         .form-check label {
-            display: block;
+            display: flex;
+            align-items: center;
+            min-height: 48px; /* Touch target size */
             padding: 1rem;
             background-color: #f8f9fa;
             border: 1px solid #dee2e6;
@@ -598,6 +624,7 @@
             transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
             margin: 0;
             outline: 1.5px solid transparent;
+            font-size: 1.05rem; /* Ensure readable font size */
         }
 
         .form-check label:hover {
@@ -685,20 +712,30 @@
         }
 
         .explanation-review-card {
-            margin-top: 12px;
-            padding: 12px 14px;
+            margin-top: 16px;
+            padding: 14px 16px;
             border-radius: 10px;
-            background: #eff6ff;
-            border: 1px solid #dbeafe;
+            background: #f0f7ff;
+            border: none;
+            border-left: 4px solid #007bff;
             color: #1e3a8a;
             font-size: 0.95rem;
-            line-height: 1.55;
-            box-shadow: none;
+            line-height: 1.6;
+        }
+
+        .explanation-review-card strong {
+            display: block;
+            margin-bottom: 6px;
+            font-size: 0.88rem;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            color: #007bff;
         }
 
         .explanation-review-text {
-            margin-top: 6px;
+            margin-top: 4px;
             color: #334155;
+            line-height: 1.65;
         }
 
 
@@ -1131,20 +1168,30 @@
         }
 
         .explanation-review-card {
-            margin-top: 12px;
-            padding: 12px 14px;
+            margin-top: 16px;
+            padding: 14px 16px;
             border-radius: 10px;
-            background: #eff6ff;
-            border: 1px solid #dbeafe;
+            background: #f0f7ff;
+            border: none;
+            border-left: 4px solid #007bff;
             color: #1e3a8a;
             font-size: 0.95rem;
-            line-height: 1.55;
-            box-shadow: none;
+            line-height: 1.6;
+        }
+
+        .explanation-review-card strong {
+            display: block;
+            margin-bottom: 6px;
+            font-size: 0.88rem;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            color: #007bff;
         }
 
         .explanation-review-text {
-            margin-top: 6px;
+            margin-top: 4px;
             color: #334155;
+            line-height: 1.65;
         }
 
         .xp-total {
@@ -1287,89 +1334,76 @@
                             @include('components.question-written', ['question' => $question])
                         @else
                             <div class="question-box {{ $question->image_url ? 'has-image' : '' }}" data-question-id="{{ $question->id }}">
-                                <div class="d-flex justify-content-between align-items-start">
-                                    <div class="question-text flex-grow-1">
-                                        {{ $question->question }}
-                                        
-                                        @if(!empty($question->exam_origin_text))
-                                            <div class="text-muted small mt-2">
-                                                <i class="fas fa-certificate"></i> {{ $question->exam_origin_text }}
+                                <div class="question-content-wrapper">
+                                    <div class="question-main">
+                                        <div class="d-flex justify-content-between align-items-start">
+                                            <div class="question-text flex-grow-1">
+                                                {{ $question->question }}
                                             </div>
-                                        @endif
-                                    </div>
-                                    
-                                    <div class="ms-2 d-flex flex-column align-items-end gap-1">
-                                        @if(!empty($question->enhanced_source_badges))
-                                            @foreach($question->enhanced_source_badges as $badge)
-                                                @if(str_contains($badge, 'HIGH YIELD'))
-                                                    <span class="badge bg-danger text-white" style="font-size: 0.7rem; padding: 0.3rem 0.6rem; font-weight: 600;">
-                                                        🔥 {{ $badge }}
-                                                    </span>
-                                                @elseif(str_contains($badge, 'REPEATED'))
-                                                    <span class="badge bg-warning text-dark" style="font-size: 0.7rem; padding: 0.3rem 0.6rem; font-weight: 600;">
-                                                        📈 {{ $badge }}
-                                                    </span>
-                                                @else
-                                                    <span class="badge bg-primary text-white" style="font-size: 0.75rem; padding: 0.25rem 0.5rem;">
-                                                        {{ $badge }}
-                                                    </span>
+                                            
+                                            <div class="ms-2 d-flex flex-column align-items-end gap-1">
+                                                @if(!empty($question->enhanced_source_badges))
+                                                    @foreach($question->enhanced_source_badges as $badge)
+                                                        {{-- Filter out the badge for the current topic being viewed (redundant) --}}
+                                                        @if(isset($topic) && strtoupper($topic->name) === strtoupper($badge))
+                                                            @continue
+                                                        @endif
+                                                        
+                                                        @if(str_contains($badge, 'HIGH YIELD'))
+                                                            <span class="badge bg-danger text-white" style="font-size: 0.7rem; padding: 0.3rem 0.6rem; font-weight: 600;">
+                                                                🔥 {{ $badge }}
+                                                            </span>
+                                                        @elseif(str_contains($badge, 'REPEATED'))
+                                                            <span class="badge bg-warning text-dark" style="font-size: 0.7rem; padding: 0.3rem 0.6rem; font-weight: 600;">
+                                                                📈 {{ $badge }}
+                                                            </span>
+                                                        @else
+                                                            <span class="badge bg-primary text-white" style="font-size: 0.75rem; padding: 0.25rem 0.5rem;">
+                                                                {{ $badge }}
+                                                            </span>
+                                                        @endif
+                                                    @endforeach
+                                                @endif
+                                            </div>
+                                        </div>
+
+                                        {{-- Options will be rendered here --}}
+                                        <div class="options">
+                                            @php
+                                                $rawOptions = [
+                                                    'A' => $question->option_a,
+                                                    'B' => $question->option_b,
+                                                    'C' => $question->option_c,
+                                                    'D' => $question->option_d
+                                                ];
+                                            @endphp
+                                            @foreach($rawOptions as $key => $optionValue)
+                                                @if(!empty($optionValue))
+                                                    <div class="form-check">
+                                                        <input class="form-check-input" type="radio" 
+                                                            name="answers[{{ $question->id }}]" 
+                                                            id="option_{{ $question->id }}_{{ $key }}" 
+                                                            value="{{ $key }}">
+                                                        <label class="form-check-label" for="option_{{ $question->id }}_{{ $key }}">
+                                                            {{ $key }}. {{ $optionValue }}
+                                                        </label>
+                                                    </div>
                                                 @endif
                                             @endforeach
-                                        @endif
-                                        
-                                        @if($question->exam_frequency_score > 0)
-                                            <div class="text-muted small" style="font-size: 0.65rem;">
-                                                Score: {{ number_format($question->exam_frequency_score, 2) }}
-                                            </div>
-                                        @endif
+                                        </div>
                                     </div>
-                                </div>
 
-                                @if($question->image_url)
-                                    <img src="{{ asset($question->image_url) }}"
-                                         alt="Question image"
-                                         class="question-image"
-                                         onerror="this.style.display='none'">
-                                @endif
-
-                                @php
-                                    $rawOptions = [
-                                        'A' => $question->option_a,
-                                        'B' => $question->option_b,
-                                        'C' => $question->option_c,
-                                        'D' => $question->option_d,
-                                    ];
-                                    $cleanedOptions = [];
-                                    $realOptionCount = 0;
-                                    foreach ($rawOptions as $letter => $optText) {
-                                        $clean = is_null($optText) ? '' : trim($optText);
-                                        $cleanedOptions[$letter] = $clean;
-                                        if ($clean !== '' && $clean !== '-') {
-                                            $realOptionCount++;
-                                        }
-                                    }
-                                @endphp
-
-                                <div class="options">
-                                    @foreach($cleanedOptions as $option => $cleanText)
-                                        @if($cleanText !== '' && $cleanText !== '-')
-                                            @php
-                                                $optionField = 'option_' . strtolower($option);
-                                            @endphp
-                                            <div class="form-check">
-                                                <input type="radio"
-                                                       name="answers[{{ $question->id }}]"
-                                                       value="{{ $option }}"
-                                                       id="q{{ $question->id }}_{{ strtolower($option) }}"
-                                                       class="form-check-input">
-                                                <label for="q{{ $question->id }}_{{ strtolower($option) }}" class="form-check-label">
-                                                    {{ $option }}. {{ $cleanText }}
-                                                </label>
-                                            </div>
-                                        @endif
-                                    @endforeach
+                                    @if($question->image_url)
+                                        <div class="question-image-container">
+                                            <img src="{{ asset($question->image_url) }}"
+                                                 alt="Question image"
+                                                 class="question-image"
+                                                 onerror="this.style.display='none'">
+                                        </div>
+                                    @endif
                                 </div>
                             </div>
+
                         @endif
                     @endforeach
 
@@ -2249,9 +2283,10 @@
                                     assignmentId: null, // Regular quiz - no assignment context
                                     @endif
                                     progress: data.source_progress,
+                                    overall_topic_progress: data.overall_topic_progress, // 🔥 NEW: Include overall topic progress
                                     availableSources: Object.keys(data.source_progress),
                                 allSourcesMastered: Object.values(data.source_progress).every(p => p.percentage >= 90),
-                                timestamp: Date.now()
+                                timestamp: Math.floor(Date.now() / 1000)
                             };
                             
                             // Store in localStorage for cross-page communication
@@ -2277,7 +2312,9 @@
                                     @else
                                     assignmentId: null,
                                     @endif
+                                    mode: 'quiz',
                                     progress: data.source_progress,
+                                    overall_topic_progress: data.overall_topic_progress,
                                     availableSources: Object.keys(data.source_progress),
                                     allSourcesMastered: Object.values(data.source_progress).every(p => p.percentage >= 90),
                                     userId: {{ auth()->id() }}

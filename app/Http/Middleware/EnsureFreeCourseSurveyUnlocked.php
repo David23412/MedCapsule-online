@@ -20,7 +20,7 @@ class EnsureFreeCourseSurveyUnlocked
 
         $course = $this->resolveCourseFromRequest($request);
 
-        if (!$course || !$course->isFree()) {
+        if (!$course || !$course->isSurveyUnlockable()) {
             return $next($request);
         }
 
@@ -53,24 +53,24 @@ class EnsureFreeCourseSurveyUnlocked
         }
 
         if (is_numeric($courseParameter)) {
-            return Course::query()->select('id', 'price')->find((int) $courseParameter);
+            return Course::query()->select('id', 'access_type', 'price')->find((int) $courseParameter);
         }
 
         $courseIdParameter = $route->parameter('courseId');
         if (is_numeric($courseIdParameter)) {
-            return Course::query()->select('id', 'price')->find((int) $courseIdParameter);
+            return Course::query()->select('id', 'access_type', 'price')->find((int) $courseIdParameter);
         }
 
         $topicParameter = $route->parameter('topic');
         if ($topicParameter instanceof Topic) {
-            return $topicParameter->course()->select('id', 'price')->first();
+            return $topicParameter->course()->select('id', 'access_type', 'price')->first();
         }
 
         if (is_numeric($topicParameter)) {
             $topic = Topic::query()->select('id', 'course_id')->find((int) $topicParameter);
 
             if ($topic) {
-                return Course::query()->select('id', 'price')->find($topic->course_id);
+                return Course::query()->select('id', 'access_type', 'price')->find($topic->course_id);
             }
         }
 

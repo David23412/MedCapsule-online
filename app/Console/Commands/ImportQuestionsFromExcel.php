@@ -172,6 +172,12 @@ class ImportQuestionsFromExcel extends Command
             if (!empty($questionData['topic_id'])) {
                 $allExtraTopicIds = array_diff($allExtraTopicIds, [(int)$questionData['topic_id']]);
             }
+            
+            // Assign as comma-separated string natively to the DB extra_topic column
+            $validExtraTopicIds = array_filter(array_unique($allExtraTopicIds));
+            if (!empty($validExtraTopicIds)) {
+                $questionData['extra_topic'] = implode(',', $validExtraTopicIds);
+            }
 
             // Handle image
             $imageFilename = trim($data['image_filename'] ?? '');
@@ -227,14 +233,6 @@ class ImportQuestionsFromExcel extends Command
                     $this->stats['imported']++;
                 }
 
-                // Handle extra topic relationships with cleaner Eloquent sync
-                if (!empty($allExtraTopicIds)) {
-                    $validExtraTopicIds = array_filter(array_unique($allExtraTopicIds));
-                    if (!empty($validExtraTopicIds)) {
-                        $question->topics()->syncWithoutDetaching($validExtraTopicIds);
-                    }
-                }
-                
                 // Update exam frequency score after linking
                 $question->updateExamFrequencyScore();
             } else {

@@ -56,7 +56,13 @@ class AdminMiddleware
                 'ip' => $request->ip()
             ]);
 
-            return redirect()->route('home')->with('error', 'Access denied. Administrator privileges required.');
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'error' => 'Access denied. Administrator privileges required.',
+                ], 403);
+            }
+
+            abort(403, 'Access denied. Administrator privileges required.');
         }
 
         // Log admin access

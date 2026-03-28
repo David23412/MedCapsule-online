@@ -89,14 +89,14 @@ class MistakeService
      * @param int $userId
      * @param int $questionId
      * @param string $submittedAnswer
-     * @return Mistake
+     * @return Mistake|null
      */
-    public function recordMistake(int $userId, int $questionId, string $submittedAnswer): Mistake
+    public function recordMistake(int $userId, int $questionId, string $submittedAnswer): ?Mistake
     {
         return DB::transaction(function () use ($userId, $questionId, $submittedAnswer) {
             $question = Question::findOrFail($questionId);
 
-            if ($submittedAnswer === $question->correct_answer) {
+            if ($question->isAnswerCorrect($submittedAnswer)) {
                 // This case should ideally be handled in the controller before calling the service
                 // but we add a check here for robustness.
                 return null;

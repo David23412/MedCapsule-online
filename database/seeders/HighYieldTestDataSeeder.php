@@ -46,38 +46,21 @@ class HighYieldTestDataSeeder extends Seeder
             // Make first 3 questions HIGH YIELD (appear in 3+ exams)
             if ($index < 3) {
                 $examSubset = array_slice($createdExamTopics, 0, 3);
-                foreach ($examSubset as $examTopic) {
-                    DB::table('question_topic_links')->insert([
-                        'question_id' => $question->id,
-                        'topic_id' => $examTopic->id,
-                        'created_at' => now(),
-                        'updated_at' => now(),
-                    ]);
-                }
+                $extraTopicIds = $examSubset->pluck('id')->implode(',');
+                $question->update(['extra_topic' => $extraTopicIds]);
                 $highYieldCount++;
             }
             // Make next 2 questions REPEATED (appear in 2 exams)
             elseif ($index < 5) {
                 $examSubset = array_slice($createdExamTopics, 0, 2);
-                foreach ($examSubset as $examTopic) {
-                    DB::table('question_topic_links')->insert([
-                        'question_id' => $question->id,
-                        'topic_id' => $examTopic->id,
-                        'created_at' => now(),
-                        'updated_at' => now(),
-                    ]);
-                }
+                $extraTopicIds = $examSubset->pluck('id')->implode(',');
+                $question->update(['extra_topic' => $extraTopicIds]);
                 $repeatedCount++;
             }
             // Make next 2 questions appear in 1 exam only
             elseif ($index < 7) {
                 $examTopic = $createdExamTopics[0];
-                DB::table('question_topic_links')->insert([
-                    'question_id' => $question->id,
-                    'topic_id' => $examTopic->id,
-                    'created_at' => now(),
-                    'updated_at' => now(),
-                ]);
+                $question->update(['extra_topic' => $examTopic->id]);
             }
         }
         

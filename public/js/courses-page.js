@@ -405,6 +405,64 @@
                 card.style.transform = 'translateY(0)';
             });
         });
+
+        // AJAX Enrollment Handler
+        document.querySelectorAll('.ajax-enroll-btn').forEach(btn => {
+            btn.addEventListener('click', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+
+                const courseId = this.dataset.courseId;
+                const enrollUrl = this.dataset.enrollUrl;
+                const topicsUrl = this.dataset.topicsUrl;
+                const originalContent = this.innerHTML;
+
+                // Visual feedback: Start loading
+                this.disabled = true;
+                this.innerHTML = '<i class="fas fa-spinner fa-spin"></i> <span>Enrolling...</span>';
+
+                fetch(enrollUrl, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                        'X-Requested-With': 'XMLHttpRequest'
+                    },
+                    body: JSON.stringify({ course_id: courseId })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        // Success! Transform button to "Enter Course"
+                        this.classList.remove('enroll', 'free');
+                        this.classList.add('continue');
+                        this.innerHTML = '<i class="fas fa-play"></i> <span>Enter Course</span>';
+                        this.disabled = false;
+
+                        // Update click behavior to go to topics
+                        this.onclick = function() {
+                            window.location.href = topicsUrl;
+                        };
+
+                        // Optional: Show a subtle success toast if available
+                        if (window.showToast) {
+                            window.showToast('Successfully enrolled!', 'success');
+                        }
+                    } else {
+                        // Error handling
+                        this.innerHTML = originalContent;
+                        this.disabled = false;
+                        alert(data.message || 'Enrollment failed. Please try again.');
+                    }
+                })
+                .catch(error => {
+                    console.error('Enrollment error:', error);
+                    this.innerHTML = originalContent;
+                    this.disabled = false;
+                    alert('An error occurred during enrollment.');
+                });
+            });
+        });
     });
 
     window.addEventListener('load', function() {
@@ -425,6 +483,74 @@
         }
     });
 
+    function updateCourseCardProgress(courseProgressMap = {}) {
+        document.querySelectorAll('.course-card[data-course-id]').forEach(card => {
+            const courseId = card.dataset.courseId;
+            const rawPercentage = Number(courseProgressMap[courseId] ?? 0);
+            const percentage = Number.isFinite(rawPercentage)
+                ? Math.max(0, Math.min(100, rawPercentage))
+                : 0;
+
+            const progressContainer = card.querySelector('.progress-container');
+            const progressFill = card.querySelector('.progress-fill');
+            const progressPercentage = card.querySelector('.progress-percentage');
+
+            if (progressContainer) {
+                progressContainer.setAttribute('aria-valuenow', String(Math.round(percentage)));
+            }
+
+            if (progressFill) {
+                progressFill.style.width = `${percentage}%`;
+            }
+
+            if (progressPercentage) {
+                progressPercentage.textContent = `${Math.round(percentage)}%`;
+            }
+        });
+    }
+
+    function applyUserProgressSnapshot(data = {}) {
+        if (data.correct_answers_count !== undefined && data.correct_answers_count !== correctAnswers) {
+            updateProgress(data.correct_answers_count);
+            const countNode = document.getElementById('correctCount');
+            if (countNode) {
+                countNode.textContent = data.correct_answers_count;
+            }
+        }
+
+        if (data.course_completion_percentages) {
+            updateCourseCardProgress(data.course_completion_percentages);
+        }
+    }
+
+    function fetchUserProgressSnapshot() {
+        return fetch('/profile/progress', {
+            method: 'GET',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest',
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+            },
+            credentials: 'same-origin'
+        }).then(response => {
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+
+            return response.json();
+        });
+    }
+
+    function refreshUserProgressInstantly() {
+        fetchUserProgressSnapshot()
+            .then(data => {
+                applyUserProgressSnapshot(data);
+            })
+            .catch(error => {
+                console.warn('Live progress refresh failed:', error.message);
+            });
+    }
+
     function pollUserProgress() {
         if (
             window.location.hostname.includes('ngrok') ||
@@ -435,29 +561,9 @@
             return;
         }
 
-        fetch('/profile/progress', {
-            method: 'GET',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-Requested-With': 'XMLHttpRequest',
-                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
-            },
-            credentials: 'same-origin'
-        })
-            .then(response => {
-                if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
-                }
-                return response.json();
-            })
+        fetchUserProgressSnapshot()
             .then(data => {
-                if (data.correct_answers_count !== undefined && data.correct_answers_count !== correctAnswers) {
-                    updateProgress(data.correct_answers_count);
-                    const countNode = document.getElementById('correctCount');
-                    if (countNode) {
-                        countNode.textContent = data.correct_answers_count;
-                    }
-                }
+                applyUserProgressSnapshot(data);
             })
             .catch(error => {
                 console.log('Progress polling error (will retry):', error.message);
@@ -496,6 +602,15 @@
             stopProgressPolling();
         }
     });
+
+    window.addEventListener('storage', function(event) {
+        if (event.key === 'quizProgressUpdate' || event.key === 'assignmentCompleted') {
+            refreshUserProgressInstantly();
+        }
+    });
+
+    document.addEventListener('sourceProgressUpdated', refreshUserProgressInstantly);
+    document.addEventListener('assignmentCompleted', refreshUserProgressInstantly);
 
     try {
         const goalModalElement = document.getElementById('goalModal');
@@ -682,6 +797,16 @@
 
         const paymentModal = new bootstrap.Modal(paymentModalElement);
 
+        function persistPendingPayment(courseId) {
+            const pendingData = {
+                timestamp: Date.now(),
+                courseId,
+                status: 'pending',
+            };
+
+            localStorage.setItem(`payment_pending_${courseId}`, JSON.stringify(pendingData));
+        }
+
         document.querySelectorAll('.show-payment-modal').forEach(button => {
             button.addEventListener('click', function() {
                 const courseId = this.dataset.courseId;
@@ -726,6 +851,7 @@
                                     .then(data => {
                                         if (data.success) {
                                             paymentModal.hide();
+                                            persistPendingPayment(courseId);
                                             const originalButton = document.getElementById(`paymentBtn_${courseId}`);
                                             if (!originalButton) {
                                                 return;
@@ -887,16 +1013,47 @@
             })
                 .then(response => response.json())
                 .then(data => {
-                    if (data.success && data.completed_courses) {
-                        data.completed_courses.forEach(courseId => {
-                            updateButtonToAccessCourse(courseId);
+                    if (!data.success) {
+                        return;
+                    }
+
+                    (data.pending_courses || []).forEach(courseId => {
+                        updateButtonToPendingCourse(courseId);
+                    });
+
+                    if ((data.rejected_courses || []).length > 0) {
+                        data.rejected_courses.forEach(courseId => {
                             localStorage.removeItem(`payment_pending_${courseId}`);
                         });
+
+                        window.location.reload();
+                        return;
                     }
+
+                    (data.completed_courses || []).forEach(courseId => {
+                        updateButtonToAccessCourse(courseId);
+                        localStorage.removeItem(`payment_pending_${courseId}`);
+                    });
                 })
                 .catch(error => {
                     console.error('Error checking payment status:', error);
                 });
+        }
+
+        function updateButtonToPendingCourse(courseId) {
+            const button = document.querySelector(`#paymentBtn_${courseId}`);
+            if (!button || button.textContent.includes('Payment Pending')) {
+                return;
+            }
+
+            button.innerHTML = '<i class="fas fa-clock" style="color: #ea580c;"></i> <span style="color: #ea580c; font-weight: bold;">Payment Pending</span>';
+            button.disabled = true;
+            button.style.backgroundColor = '#fff7ed';
+            button.style.borderColor = '#fed7aa';
+            button.style.color = '#ea580c';
+            button.style.cursor = 'default';
+            button.style.pointerEvents = 'none';
+            button.classList.remove('show-payment-modal');
         }
 
         function updateButtonToAccessCourse(courseId) {

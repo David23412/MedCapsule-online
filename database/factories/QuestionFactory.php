@@ -17,7 +17,7 @@ class QuestionFactory extends Factory
      */
     public function definition(): array
     {
-        $questionTypes = ['multiple_choice', 'true_false', 'fill_in_blank', 'essay'];
+        $questionTypes = ['multiple_choice', 'written'];
         
         $questionType = $this->faker->randomElement($questionTypes);
         
@@ -27,7 +27,6 @@ class QuestionFactory extends Factory
             'explanation' => $this->faker->optional(0.8)->paragraph(),
             'image_url' => $this->faker->optional(0.3)->imageUrl(640, 480, 'medical'),
             'source' => $this->faker->optional(0.7)->randomElement(['Assuit', 'Cairo', 'Alexandria', 'Mansoura', 'Ain Shams']),
-            'last_attempted_at' => $this->faker->optional(0.6)->dateTimeBetween('-6 months', 'now'),
             'created_at' => $this->faker->dateTimeBetween('-1 year', 'now'),
             'updated_at' => $this->faker->dateTimeBetween('-1 month', 'now'),
             'question_type' => $questionType,
@@ -41,11 +40,7 @@ class QuestionFactory extends Factory
             $questionData['option_c'] = $options[2];
             $questionData['option_d'] = $options[3];
             $questionData['correct_answer'] = $this->faker->randomElement(['A', 'B', 'C', 'D']);
-        } elseif ($questionType === 'true_false') {
-            $questionData['correct_answer'] = $this->faker->boolean() ? 'True' : 'False';
-        } elseif ($questionType === 'fill_in_blank') {
-            $questionData['correct_answer'] = $this->generateFillInBlankAnswer();
-        } elseif ($questionType === 'essay') {
+        } elseif ($questionType === 'written') {
             $questionData['correct_answer'] = $this->generateEssayAnswer();
         }
 
@@ -70,31 +65,7 @@ class QuestionFactory extends Factory
                 'What is the role of the pancreas?',
                 'Which vitamin is essential for blood clotting?'
             ],
-            'true_false' => [
-                'The heart has four chambers.',
-                'Diabetes can be cured with medication.',
-                'Blood pressure should always be below 120/80.',
-                'The liver is the largest internal organ.',
-                'Red blood cells carry oxygen.',
-                'Insulin is produced by the pancreas.',
-                'White blood cells fight infection.',
-                'The nervous system controls breathing.',
-                'The pancreas produces digestive enzymes.',
-                'Vitamin K is important for bone health.'
-            ],
-            'fill_in_blank' => [
-                'The heart pumps _____ throughout the body.',
-                'Diabetes is characterized by high _____ levels.',
-                'Blood pressure is measured in _____ and _____.',
-                'The _____ filters waste from the blood.',
-                '_____ cells carry oxygen in the blood.',
-                '_____ regulates blood sugar levels.',
-                '_____ cells fight infection.',
-                'The _____ system controls body functions.',
-                'The _____ produces insulin.',
-                '_____ is essential for blood clotting.'
-            ],
-            'essay' => [
+            'written' => [
                 'Explain the cardiovascular system and its main components.',
                 'Describe the pathophysiology of diabetes mellitus.',
                 'Discuss the importance of blood pressure regulation.',
@@ -153,27 +124,6 @@ class QuestionFactory extends Factory
     }
 
     /**
-     * Generate fill-in-the-blank answer.
-     */
-    private function generateFillInBlankAnswer(): string
-    {
-        $answers = [
-            'blood',
-            'glucose',
-            'systolic, diastolic',
-            'kidneys',
-            'red blood',
-            'insulin',
-            'white blood',
-            'nervous',
-            'pancreas',
-            'vitamin K'
-        ];
-
-        return $this->faker->randomElement($answers);
-    }
-
-    /**
      * Generate essay answer.
      */
     private function generateEssayAnswer(): string
@@ -207,6 +157,7 @@ class QuestionFactory extends Factory
         $options = $this->generateMultipleChoiceOptions();
         return $this->state(fn (array $attributes) => [
             'question' => $this->generateQuestionText('multiple_choice'),
+            'question_type' => 'multiple_choice',
             'option_a' => $options[0],
             'option_b' => $options[1],
             'option_c' => $options[2],
@@ -216,24 +167,14 @@ class QuestionFactory extends Factory
     }
 
     /**
-     * Create a true/false question.
-     */
-    public function trueFalse(): static
-    {
-        return $this->state(fn (array $attributes) => [
-            'question' => $this->generateQuestionText('true_false'),
-            'correct_answer' => $this->faker->boolean() ? 'True' : 'False',
-        ]);
-    }
-
-    /**
      * Create an essay question.
      */
     public function essay(): static
     {
         return $this->state(fn (array $attributes) => [
-            'question' => $this->generateQuestionText('essay'),
+            'question' => $this->generateQuestionText('written'),
+            'question_type' => 'written',
             'correct_answer' => $this->generateEssayAnswer(),
         ]);
     }
-} 
+}

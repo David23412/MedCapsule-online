@@ -314,6 +314,7 @@ class ComprehensiveWebsiteSeeder extends Seeder
                     'course_id' => $course->id,
                     'name' => $topicInfo['name'],
                     'case_type' => $topicInfo['type'], // 'quiz', 'cases', 'practical'
+                    'is_exam' => rand(0, 100) < 30, // 30% chance to be an exam topic
                     'display_order' => $index + 1,
                 ]);
                 $createdTopics[] = $topic;

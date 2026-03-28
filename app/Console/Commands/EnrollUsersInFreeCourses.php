@@ -22,100 +22,76 @@ class EnrollUsersInFreeCourses extends Command
      *
      * @var string
      */
-    protected $description = 'Enroll all users in all free courses (price = 0 or null)';
+    protected $description = 'Backfill survey-unlocked users into survey-unlockable courses';
 
     /**
      * Execute the console command.
      */
     public function handle()
     {
-        $this->info('🔄 Starting enrollment of all users in free courses...');
+        $this->info('🔄 Starting survey-unlocked course access backfill...');
 
-        // Get all free courses
-        $freeCourses = Course::where(function($query) {
-            $query->where('price', 0)
-                  ->orWhereNull('price');
-        })->get();
+        $freeCourses = Course::query()
+            ->surveyUnlockable()
+            ->get();
 
         if ($freeCourses->isEmpty()) {
-            $this->error('❌ No free courses found!');
+            $this->error('❌ No survey-unlockable courses found.');
             return 1;
         }
 
-        $this->info("📚 Found {$freeCourses->count()} free courses:");
+        $this->info("📚 Found {$freeCourses->count()} survey-unlockable courses:");
         foreach ($freeCourses as $course) {
-            $this->line("  - Course {$course->id}: {$course->name} (Price: {$course->price})");
+            $this->line("  - Course {$course->id}: {$course->name} ({$course->normalizedAccessType()})");
         }
 
-        // Get all users
-        $users = User::all();
+        $users = User::query()
+            ->where('role', '!=', User::ROLE_ADMIN)
+            ->get();
         $this->info("👥 Found {$users->count()} users to process");
 
         $totalEnrollments = 0;
-        $skippedEnrollments = 0;
-
-        $force = $this->option('force');
+        $eligibleUsers = 0;
+        $skippedUsers = 0;
 
         foreach ($users as $user) {
             $this->info("🔄 Processing user {$user->id}: {$user->name} ({$user->email})");
 
-            foreach ($freeCourses as $course) {
-                // Check if already enrolled
-                $existingEnrollment = DB::table('course_user')
-                    ->where('user_id', $user->id)
-                    ->where('course_id', $course->id)
-                    ->first();
+            if (!$user->hasUnlockedFreeCourses()) {
+                $this->line('  ⏭️  Survey not unlocked; skipping');
+                $skippedUsers++;
+                continue;
+            }
 
-                if ($existingEnrollment && $existingEnrollment->is_enrolled && !$force) {
-                    $this->line("  ⏭️  Already enrolled in course {$course->id} ({$course->name})");
-                    $skippedEnrollments++;
-                    continue;
-                }
+            $eligibleUsers++;
 
-                try {
-                    // Enroll or update enrollment
-                    DB::table('course_user')->updateOrInsert(
-                        [
-                            'user_id' => $user->id,
-                            'course_id' => $course->id
-                        ],
-                        [
-                            'is_enrolled' => true,
-                            'enrolled_at' => $existingEnrollment->enrolled_at ?? now(),
-                            'updated_at' => now()
-                        ]
-                    );
+            try {
+                $enrolledCount = $user->ensureFreeCourseAccess();
+                $totalEnrollments += $enrolledCount;
 
-                    $this->line("  ✅ Enrolled in course {$course->id} ({$course->name})");
-                    $totalEnrollments++;
+                $this->line("  ✅ Ensured access for {$enrolledCount} course(s)");
 
-                    Log::info('User enrolled in free course via command', [
-                        'user_id' => $user->id,
-                        'user_name' => $user->name,
-                        'course_id' => $course->id,
-                        'course_name' => $course->name,
-                        'forced' => $force
-                    ]);
-
-                } catch (\Exception $e) {
-                    $this->error("  ❌ Failed to enroll user {$user->id} in course {$course->id}: {$e->getMessage()}");
-                    Log::error('Failed to enroll user in free course', [
-                        'user_id' => $user->id,
-                        'course_id' => $course->id,
-                        'error' => $e->getMessage()
-                    ]);
-                }
+                Log::info('Survey-unlocked course access backfill completed for user', [
+                    'user_id' => $user->id,
+                    'user_name' => $user->name,
+                    'enrollment_count' => $enrolledCount,
+                    'forced' => (bool) $this->option('force'),
+                ]);
+            } catch (\Exception $e) {
+                $this->error("  ❌ Failed to ensure access for user {$user->id}: {$e->getMessage()}");
+                Log::error('Failed to ensure survey-unlocked course access', [
+                    'user_id' => $user->id,
+                    'error' => $e->getMessage()
+                ]);
             }
         }
 
-        $this->info("🎉 Enrollment process completed!");
+        $this->info('🎉 Backfill completed.');
         $this->info("📊 Summary:");
-        $this->info("  - Total enrollments processed: {$totalEnrollments}");
-        $this->info("  - Enrollments skipped: {$skippedEnrollments}");
-        $this->info("  - Total potential enrollments: " . ($users->count() * $freeCourses->count()));
+        $this->info("  - Eligible users: {$eligibleUsers}");
+        $this->info("  - Users skipped (locked): {$skippedUsers}");
+        $this->info("  - Course enrollments repaired: {$totalEnrollments}");
 
-        // Verify the enrollment worked
-        $this->info("🔍 Verifying enrollment...");
         $verificationStats = [];
         foreach ($freeCourses as $course) {
             $enrolledCount = DB::table('course_user')
@@ -125,17 +101,18 @@ class EnrollUsersInFreeCourses extends Command
             $verificationStats[$course->id] = $enrolledCount;
         }
 
-        $this->info("📈 Final enrollment counts:");
+        $this->info('📈 Final active enrollment counts:');
         foreach ($verificationStats as $courseId => $count) {
             $course = $freeCourses->find($courseId);
             $this->line("  - Course {$courseId} ({$course->name}): {$count} enrolled users");
         }
 
-        Log::info('Bulk free course enrollment completed', [
+        Log::info('Survey-unlocked course access backfill completed', [
             'total_users' => $users->count(),
-            'free_courses' => $freeCourses->count(),
+            'eligible_users' => $eligibleUsers,
+            'survey_unlockable_courses' => $freeCourses->count(),
             'enrollments_processed' => $totalEnrollments,
-            'enrollments_skipped' => $skippedEnrollments,
+            'users_skipped' => $skippedUsers,
             'final_stats' => $verificationStats
         ]);
 

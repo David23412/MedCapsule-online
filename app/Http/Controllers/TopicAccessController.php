@@ -44,7 +44,7 @@ use Illuminate\Http\Response;
             }
 
             // LETHAL OPTIMIZATION: Ultra-aggressive caching for topic access
-            $cacheKey = QuizUltraConsolidatedCacheService::generateCacheKey('topic_access', [
+            $cacheKey = \App\Services\QuizUltraConsolidatedCacheService::generateCacheKey('topic_access', [
                 'topic_id' => $topic->id,
                 'user_id' => $user->id,
                 'timestamp' => now()->format('Y-m-d-H')

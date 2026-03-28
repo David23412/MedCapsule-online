@@ -64,31 +64,20 @@ class Topic extends Model
         return $this->hasMany(Question::class)->orderBy('id'); // Ensure questions are ordered
     }
 
-    // Many-to-many relationship for questions linked to this topic
+    // DEPRECATED: Use allQuestions() or the extra_topic column
     public function linkedQuestions()
     {
-        return $this->belongsToMany(Question::class, 'question_topic_links')
-            ->withTimestamps()
-            ->orderBy('id');
+        return collect();
     }
 
-    // Get all questions for this topic (both direct and linked)
+    // Get all questions for this topic (both direct and linked via extra_topic)
     public function allQuestions()
     {
-        // For exam topics, return only direct questions to preserve the original exam set
-        if ($this->isExamTopic()) {
-            return $this->questions()
-                ->with(['topic', 'topics'])
-                ->get();
-        }
-        
-        // For lecture topics, get all questions (direct + linked)
-        $directIds = $this->questions()->pluck('id');
-        $linkedIds = $this->linkedQuestions()->pluck('questions.id');
-        $allIds = $directIds->concat($linkedIds)->unique();
-
-        return Question::whereIn('id', $allIds)
-            ->with(['topic', 'topics'])
+        return Question::where(function($q) {
+                $q->where('topic_id', $this->id)
+                  ->orWhereRaw('FIND_IN_SET(?, REPLACE(extra_topic, " ", "")) > 0', [$this->id]);
+            })
+            ->with(['topic']) 
             ->orderBy('id')
             ->get();
     }
@@ -275,16 +264,10 @@ class Topic extends Model
         }
 
         return Cache::remember("topic:{$this->id}:questions_count", 3600, function () {
-            // For exam topics: only direct questions
-            if ($this->is_exam) {
-                return $this->questions()->count();
-            }
-            
-            // For lecture topics: count distinct union of direct and linked
-            $directIds = $this->questions()->select('questions.id');
-            $linkedIds = $this->linkedQuestions()->select('questions.id');
-            
-            return $directIds->union($linkedIds)->count();
+            return Question::where(function($q) {
+                    $q->where('topic_id', $this->id)
+                      ->orWhereRaw('FIND_IN_SET(?, REPLACE(extra_topic, " ", "")) > 0', [$this->id]);
+                })->count();
         });
     }
 

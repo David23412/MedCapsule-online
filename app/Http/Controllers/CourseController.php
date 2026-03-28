@@ -91,7 +91,33 @@ class CourseController extends Controller
         );
 
         if ($result['success']) {
+            if ($request->ajax()) {
+                return response()->json([
+                    'success' => true,
+                    'message' => $result['message'],
+                    'redirect' => route('topics.forCourse', $courseId)
+                ]);
+            }
             return redirect()->back()->with('success', $result['message']);
+        }
+
+        if (!empty($result['redirect_to'])) {
+            if ($request->ajax()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => $result['message'] ?? 'Enrollment failed',
+                    'redirect' => $result['redirect_to'],
+                ], 423);
+            }
+
+            return redirect($result['redirect_to']);
+        }
+
+        if ($request->ajax()) {
+            return response()->json([
+                'success' => false,
+                'message' => $result['message'] ?? 'Enrollment failed'
+            ], 400);
         }
 
         return redirect()->back()->with('error', $result['message'] ?? 'Enrollment failed');
@@ -107,6 +133,13 @@ class CourseController extends Controller
         if ($result['success']) {
             return redirect()->route('courses.index')
                 ->with('success', $result['message']);
+        }
+
+        if (!empty($result['errors'])) {
+            return redirect()->back()
+                ->withInput()
+                ->withErrors($result['errors'])
+                ->with('error', $result['message'] ?? 'Failed to create course');
         }
 
         return redirect()->back()

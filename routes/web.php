@@ -1,7 +1,6 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
-use App\Http\Middleware\SecurityHeaders;
 use Illuminate\Http\Request;
 use App\Http\Controllers\{
     CourseController,
@@ -17,7 +16,6 @@ use App\Http\Controllers\{
     App\Http\Controllers\Admin\PaymentController,
     PaymentSettingsController,
     PaymentLogController,
-    DeleteController,
     AssignmentController,
     StudentAssignmentController,
     TopicLockingController
@@ -49,6 +47,20 @@ $serveStorageFile = function (string $basePath, string $path, array $headers = [
     ], $headers));
 };
 
+$serveFirstExistingStorageFile = function (array $basePaths, string $path, array $headers = []) use ($serveStorageFile) {
+    foreach ($basePaths as $basePath) {
+        try {
+            return $serveStorageFile($basePath, $path, $headers);
+        } catch (\Symfony\Component\HttpKernel\Exception\HttpException $e) {
+            if ($e->getStatusCode() !== 404) {
+                throw $e;
+            }
+        }
+    }
+
+    abort(404);
+};
+
 // Public routes
 Route::view('/', 'landing')->name('landing');
 Route::get('/home', [CourseController::class, 'index'])->name('home');
@@ -75,7 +87,9 @@ Route::prefix('api/assignments')->middleware('auth')->group(function () {
 });
 
 // Active users count API - Public endpoint for all users
-Route::get('/api/active-users', [StatusController::class, 'activeUsers'])->name('api.active-users');
+Route::get('/api/active-users', [StatusController::class, 'activeUsers'])
+    ->middleware('throttle:public-status')
+    ->name('api.active-users');
 
 // ADMIN ROUTES - Protected with admin middleware
 Route::middleware(['auth', 'admin'])->group(function () {
@@ -140,11 +154,10 @@ Route::middleware(['auth', 'admin'])->group(function () {
 // Auth routes
 require __DIR__.'/auth.php';
 
-// 🔒 INTEGRATE SECURITY HEADERS MIDDLEWARE - MEGA LETHAL PROTECTION
-Route::middleware(['web', SecurityHeaders::class])->group(function () use ($serveStorageFile) {
+Route::group([], function () use ($serveStorageFile, $serveFirstExistingStorageFile) {
 
     // Protected routes
-    Route::middleware('auth')->group(function () use ($serveStorageFile) {
+    Route::middleware('auth')->group(function () use ($serveStorageFile, $serveFirstExistingStorageFile) {
     // User progress route
     Route::get('/profile/progress', [ProfileController::class, 'getProgress'])->name('user.progress');
 
@@ -219,21 +232,21 @@ Route::middleware(['web', SecurityHeaders::class])->group(function () use ($serv
         ->middleware(['auth', 'admin']);
     
     // Delete Management Routes
-    Route::get('/admin/delete', [DeleteController::class, 'index'])->name('admin.delete.index');
-    Route::get('/admin/delete/courses', [DeleteController::class, 'showCourses'])->name('admin.delete.courses');
-    Route::get('/admin/delete/topics', [DeleteController::class, 'showTopics'])->name('admin.delete.topics');
-    Route::get('/admin/delete/questions', [DeleteController::class, 'showQuestions'])->name('admin.delete.questions');
-    Route::get('/admin/delete/users', [DeleteController::class, 'showUsers'])->name('admin.delete.users');
+    Route::get('/admin/delete', [\App\Http\Controllers\Admin\DeleteViewController::class, 'index'])->name('admin.delete.index');
+    Route::get('/admin/delete/courses', [\App\Http\Controllers\Admin\DeleteViewController::class, 'showCourses'])->name('admin.delete.courses');
+    Route::get('/admin/delete/topics', [\App\Http\Controllers\Admin\DeleteViewController::class, 'showTopics'])->name('admin.delete.topics');
+    Route::get('/admin/delete/questions', [\App\Http\Controllers\Admin\DeleteViewController::class, 'showQuestions'])->name('admin.delete.questions');
+    Route::get('/admin/delete/users', [\App\Http\Controllers\Admin\DeleteViewController::class, 'showUsers'])->name('admin.delete.users');
     
     // Delete Action Routes
-    Route::delete('/admin/delete/course/{id}', [DeleteController::class, 'deleteCourse'])->name('admin.delete.course');
-    Route::delete('/admin/delete/topic/{id}', [DeleteController::class, 'deleteTopic'])->name('admin.delete.topic');
-    Route::delete('/admin/delete/question/{id}', [DeleteController::class, 'deleteQuestion'])->name('admin.delete.question');
-    Route::delete('/admin/delete/user/{id}', [DeleteController::class, 'deleteUser'])->name('admin.delete.user');
-    Route::post('/admin/delete/questions/bulk', [DeleteController::class, 'bulkDeleteQuestions'])->name('admin.delete.questions.bulk');
+    Route::delete('/admin/delete/course/{id}', [\App\Http\Controllers\Admin\DeleteActionController::class, 'deleteCourse'])->name('admin.delete.course');
+    Route::delete('/admin/delete/topic/{id}', [\App\Http\Controllers\Admin\DeleteActionController::class, 'deleteTopic'])->name('admin.delete.topic');
+    Route::delete('/admin/delete/question/{id}', [\App\Http\Controllers\Admin\DeleteActionController::class, 'deleteQuestion'])->name('admin.delete.question');
+    Route::delete('/admin/delete/user/{id}', [\App\Http\Controllers\Admin\DeleteActionController::class, 'deleteUser'])->name('admin.delete.user');
+    Route::post('/admin/delete/questions/bulk', [\App\Http\Controllers\Admin\DeleteActionController::class, 'bulkDeleteQuestions'])->name('admin.delete.questions.bulk');
     
     // Delete Preview API
-    Route::get('/admin/delete/preview', [DeleteController::class, 'getDeletionPreview'])->name('admin.delete.preview');
+    Route::get('/admin/delete/preview', [\App\Http\Controllers\Admin\DeleteApiController::class, 'getDeletionPreview'])->name('admin.delete.preview');
     
     // Course enrollment and topic routes
     Route::post('/courses/{course}/enroll', [CourseController::class, 'enroll'])->name('courses.enroll');
@@ -302,10 +315,10 @@ Route::middleware(['web', SecurityHeaders::class])->group(function () use ($serv
     Route::prefix('random-quiz')->name('random-quiz.')->group(function () {
         Route::post('/generate', [App\Http\Controllers\Quiz\OptimizedRandomQuizController::class, 'generateRandomQuiz'])
             ->name('generate')
-            ->middleware(['throttle:random-quiz,10,1']); // 10 random quiz generations per minute
+            ->middleware(['throttle:random-quiz']); // 10 random quiz generations per minute
         Route::post('/grade', [App\Http\Controllers\Quiz\OptimizedRandomQuizController::class, 'gradeRandomQuiz'])
             ->name('grade')
-            ->middleware(['throttle:random-quiz-grading,30,1']); // 30 random quiz gradings per minute
+            ->middleware(['throttle:random-quiz-grading']); // 30 random quiz gradings per minute
         Route::get('/stats', [App\Http\Controllers\Quiz\OptimizedRandomQuizController::class, 'getRandomQuizStats'])
             ->name('stats')
             ->middleware(['throttle:30,1']); // 30 stats requests per minute
@@ -323,13 +336,19 @@ Route::middleware(['web', SecurityHeaders::class])->group(function () use ($serv
     });
 
     // Profile picture serving route (FIXED: Use correct storage location for secure_uploads disk)
-    Route::get('/uploads/profile-pictures/{path}', function ($path) use ($serveStorageFile) {
-        return $serveStorageFile(storage_path('app/uploads/profile-pictures'), $path);
+    Route::get('/uploads/profile-pictures/{path}', function ($path) use ($serveFirstExistingStorageFile) {
+        return $serveFirstExistingStorageFile([
+            storage_path('app/private/uploads/profile-pictures'),
+            storage_path('app/uploads/profile-pictures'),
+        ], $path);
     })->where('path', '.*');
 
     // Course image serving route (public access)
-    Route::get('/uploads/course-images/{path}', function ($path) use ($serveStorageFile) {
-        return $serveStorageFile(storage_path('app/public/course-images'), $path);
+    Route::get('/uploads/course-images/{path}', function ($path) use ($serveFirstExistingStorageFile) {
+        return $serveFirstExistingStorageFile([
+            storage_path('app/public/course-images'),
+            storage_path('app/uploads/course-images'),
+        ], $path);
     })->where('path', '.*');
 
     // Question image serving route (public access)
@@ -558,18 +577,39 @@ Route::middleware(['auth', 'tutor'])->prefix('tutor')->name('tutor.')->group(fun
 
 // Video access endpoints (moved from API routes for session-based auth)
 Route::middleware(['auth'])->prefix('api')->group(function () {
-    Route::get('/video-access/{video}', [App\Http\Controllers\VideoController::class, 'getVideoAccess']);
+    Route::get('/video-access/{video}', [App\Http\Controllers\VideoController::class, 'getVideoAccess'])
+        ->middleware('throttle:video-tokens');
     // Support both GET and POST for video token generation
-    Route::get('/video-token/{video}', [App\Http\Controllers\VideoProxyController::class, 'generateSecureToken']);
-    Route::post('/video-token/{video}', [App\Http\Controllers\VideoProxyController::class, 'generateSecureToken']);
-    Route::get('/video-stream/{token}', [App\Http\Controllers\VideoProxyController::class, 'serveVideo']);
+    Route::get('/video-token/{video}', [App\Http\Controllers\VideoProxyController::class, 'generateSecureToken'])
+        ->middleware('throttle:video-tokens');
+    Route::post('/video-token/{video}', [App\Http\Controllers\VideoProxyController::class, 'generateSecureToken'])
+        ->middleware('throttle:video-tokens');
+    Route::get('/video-stream/{token}', [App\Http\Controllers\VideoProxyController::class, 'serveVideo'])
+        ->middleware('throttle:video-tokens');
     
     // Simple video details endpoint for YouTube videos
-    Route::get('/video/{video}', function($videoId) {
-        $video = \App\Models\Video::find($videoId);
-        if (!$video) {
-            return response()->json(['success' => false, 'message' => 'Video not found']);
+    Route::get('/video/{video}', function (\App\Models\Video $video) {
+        $user = auth()->user();
+
+        $video->loadMissing('topic.course');
+
+        if (! $video->topic || ! $video->topic->course) {
+            return response()->json(['success' => false, 'message' => 'Video not found'], 404);
         }
+
+        $course = $video->topic->course;
+
+        if (! $user->isAdmin() && ! $user->hasAccessToCourse($course->id)) {
+            return response()->json(['success' => false, 'message' => 'Access denied.'], 403);
+        }
+
+        if (! $user->isAdmin() && $user->isTopicPreviewLocked($video->topic)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'This video is outside the free preview.',
+            ], 403);
+        }
+
         return response()->json([
             'success' => true,
             'video' => [
@@ -580,7 +620,7 @@ Route::middleware(['auth'])->prefix('api')->group(function () {
                 'duration' => $video->duration
             ]
         ]);
-    });
+    })->middleware('throttle:video-tokens');
     
 
 });

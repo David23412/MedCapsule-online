@@ -135,14 +135,21 @@ class Kernel extends ConsoleKernel
                 ->runInBackground()
                 ->appendOutputTo(storage_path('logs/study-reminders.log'));
 
-        // 🚀 AUTOMATIC ENROLLMENT MAINTENANCE - Keep all users enrolled in free courses
-        $schedule->command('enroll:free-courses --force')
+        // Keep survey-unlocked enrollments aligned with the current course access policy.
+        $schedule->command('enroll:free-courses')
                 ->weekly()
                 ->sundays()
                 ->at('03:30')
                 ->withoutOverlapping()
                 ->runInBackground()
                 ->appendOutputTo(storage_path('logs/free-course-enrollment.log'));
+
+        // Prune expired operational rows and internal telemetry to limit database bloat.
+        $schedule->command('db:prune-operational-data')
+                ->daily()
+                ->at('03:45')
+                ->withoutOverlapping()
+                ->appendOutputTo(storage_path('logs/database-prune.log'));
     }
 
     /**

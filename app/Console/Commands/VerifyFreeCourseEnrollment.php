@@ -21,36 +21,37 @@ class VerifyFreeCourseEnrollment extends Command
      *
      * @var string
      */
-    protected $description = 'Verify that all users are enrolled in all free courses';
+    protected $description = 'Verify survey-unlocked enrollment state for survey-unlockable courses';
 
     /**
      * Execute the console command.
      */
     public function handle()
     {
-        $this->info('=== FREE COURSE ENROLLMENT VERIFICATION ===');
+        $this->info('=== SURVEY-UNLOCKED COURSE ACCESS VERIFICATION ===');
         
-        // Get all free courses
-        $freeCourses = Course::where(function($query) {
-            $query->where('price', 0)
-                  ->orWhereNull('price');
-        })->get();
+        $freeCourses = Course::query()
+            ->surveyUnlockable()
+            ->get();
         
-        $this->info("Found {$freeCourses->count()} free courses:");
+        $this->info("Found {$freeCourses->count()} survey-unlockable courses:");
         foreach ($freeCourses as $course) {
-            $this->line("- {$course->name} (ID: {$course->id}, Price: " . ($course->price ?? 'NULL') . ")");
+            $this->line("- {$course->name} (ID: {$course->id}, Access: {$course->normalizedAccessType()})");
         }
         
         $this->newLine();
         
         // Get all users
-        $users = User::all();
+        $users = User::query()
+            ->where('role', '!=', User::ROLE_ADMIN)
+            ->get();
         $this->info("Found {$users->count()} users:");
         
         $allCorrect = true;
         
         foreach ($users as $user) {
             $this->line("Checking user: {$user->name} ({$user->email})");
+            $shouldHaveSurveyAccess = $user->hasUnlockedFreeCourses();
             
             foreach ($freeCourses as $course) {
                 $enrollment = DB::table('course_user')
@@ -58,25 +59,28 @@ class VerifyFreeCourseEnrollment extends Command
                     ->where('course_id', $course->id)
                     ->first();
                 
-                if (!$enrollment) {
-                    $this->error("  ✗ NOT enrolled in {$course->name}");
+                if ($shouldHaveSurveyAccess && !$enrollment) {
+                    $this->error("  ✗ Missing enrollment for {$course->name}");
                     $allCorrect = false;
-                } elseif (!$enrollment->is_enrolled) {
-                    $this->error("  ✗ Enrolled but status is 'inactive' for {$course->name}");
+                } elseif ($shouldHaveSurveyAccess && !(bool) $enrollment->is_enrolled) {
+                    $this->error("  ✗ Enrollment exists but is inactive for {$course->name}");
+                    $allCorrect = false;
+                } elseif (!$shouldHaveSurveyAccess && $enrollment && (bool) $enrollment->is_enrolled) {
+                    $this->error("  ✗ Locked user still has active enrollment in {$course->name}");
                     $allCorrect = false;
                 } else {
-                    $this->line("  ✓ Enrolled in {$course->name} (active)");
+                    $status = $shouldHaveSurveyAccess ? 'active as expected' : 'locked as expected';
+                    $this->line("  ✓ {$course->name}: {$status}");
                 }
             }
             $this->newLine();
         }
         
         if ($allCorrect) {
-            $this->info('✅ All users are properly enrolled in all free courses!');
+            $this->info('✅ Survey-based course access is consistent.');
         } else {
-            $this->error('❌ Some enrollment issues found. Run the backfill script to fix.');
+            $this->error('❌ Some survey-based enrollment issues were found. Run the backfill command to repair them.');
         }
-        
         return $allCorrect ? 0 : 1;
     }
-} 
+}

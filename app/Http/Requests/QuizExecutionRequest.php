@@ -3,9 +3,15 @@
 namespace App\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Contracts\Validation\Validator;
+use Illuminate\Http\Exceptions\HttpResponseException;
 
 class QuizExecutionRequest extends FormRequest
 {
+    private const MAX_SINGLE_ANSWER_BYTES = 50_000;
+    private const MAX_TOTAL_ANSWER_BYTES = 1_000_000;
+    private const PAYLOAD_ERROR_PREFIX = '__payload_too_large__';
+
     /**
      * Backward-compatible quiz mode aliases.
      */
@@ -31,8 +37,21 @@ class QuizExecutionRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'answers' => 'nullable|array',
-            'answers.*' => 'nullable|string|max:1000',
+            'answers' => [
+                'nullable',
+                'array',
+                function (string $attribute, mixed $value, \Closure $fail): void {
+                    $this->validateAnswersSize($value, $fail);
+                },
+            ],
+            'answers.*' => [
+                'nullable',
+                'string',
+                'max:' . self::MAX_SINGLE_ANSWER_BYTES,
+                function (string $attribute, mixed $value, \Closure $fail): void {
+                    $this->validateAnswerContent($value, $fail);
+                },
+            ],
             'time_taken' => 'nullable|integer|min:0|max:7200', // Max 2 hours
             'duration_seconds' => 'nullable|integer|min:0|max:7200',
             'quiz_mode' => 'nullable|string|in:practice,exam,quiz,tutor,random',
@@ -41,6 +60,18 @@ class QuizExecutionRequest extends FormRequest
             'mode' => 'nullable|string|in:practice,exam,quiz,tutor,random',
             'assignment_id' => 'nullable|integer|exists:assignments,id',
         ];
+    }
+
+    public function withValidator(Validator $validator): void
+    {
+        $validator->after(function (Validator $validator): void {
+            $answers = $this->input('answers', []);
+            $duration = (int) ($this->input('duration_seconds', $this->input('time_taken', 0)));
+
+            if (is_array($answers) && $duration > 0 && count($answers) > 0 && $duration < count($answers)) {
+                $validator->errors()->add('time_taken', 'Time taken is too short for the number of questions.');
+            }
+        });
     }
 
     /**
@@ -84,5 +115,89 @@ class QuizExecutionRequest extends FormRequest
             'duration_seconds' => $duration,
             'time_taken' => $duration,
         ]);
+    }
+
+    protected function failedValidation(Validator $validator): void
+    {
+        $errors = collect($validator->errors()->toArray());
+        $status = 422;
+
+        if ($errors->flatten()->contains(fn (string $message) => str_starts_with($message, self::PAYLOAD_ERROR_PREFIX))) {
+            $status = 413;
+            $errors = $errors->map(fn (array $messages) => array_map(
+                fn (string $message): string => str_replace(self::PAYLOAD_ERROR_PREFIX, '', $message),
+                $messages
+            ));
+        }
+
+        throw new HttpResponseException(
+            response()->json([
+                'success' => false,
+                'error' => $status === 413 ? 'Request payload too large.' : 'Invalid quiz submission data.',
+                'validation_errors' => $errors->toArray(),
+            ], $status)
+        );
+    }
+
+    protected function prepareForValidation(): void
+    {
+        $answers = $this->input('answers', []);
+
+        if (is_array($answers)) {
+            $sanitizedAnswers = [];
+
+            foreach ($answers as $questionId => $answer) {
+                if (! is_numeric($questionId)) {
+                    continue;
+                }
+
+                $sanitizedAnswers[$questionId] = is_string($answer) ? trim($answer) : $answer;
+            }
+
+            $this->merge(['answers' => $sanitizedAnswers]);
+        }
+    }
+
+    private function validateAnswersSize(mixed $answers, \Closure $fail): void
+    {
+        if (! is_array($answers)) {
+            return;
+        }
+
+        $totalSize = 0;
+
+        foreach ($answers as $questionId => $answer) {
+            if (! is_string($answer)) {
+                continue;
+            }
+
+            $answerSize = strlen($answer);
+            $totalSize += $answerSize;
+
+            if ($answerSize > self::MAX_SINGLE_ANSWER_BYTES) {
+                $fail(self::PAYLOAD_ERROR_PREFIX . "Answer for question {$questionId} is too large.");
+                return;
+            }
+        }
+
+        if ($totalSize > self::MAX_TOTAL_ANSWER_BYTES) {
+            $fail(self::PAYLOAD_ERROR_PREFIX . 'Total submission size too large.');
+        }
+    }
+
+    private function validateAnswerContent(mixed $answer, \Closure $fail): void
+    {
+        if (! is_string($answer) || $answer === '') {
+            return;
+        }
+
+        if (strpos($answer, "\0") !== false) {
+            $fail('Answer contains invalid characters.');
+            return;
+        }
+
+        if (preg_match('/<script[^>]*>.*?<\/script>/is', $answer)) {
+            $fail('Answer contains potentially dangerous content.');
+        }
     }
 }

@@ -14,9 +14,7 @@ use App\Events\LiveUserCountUpdated;
 | API Routes
 |--------------------------------------------------------------------------
 |
-| Here is where you can register API routes for your application. These
-| routes are loaded by the RouteServiceProvider within a group which
-| is assigned the "api" middleware group. Enjoy building your API!
+| Register API endpoints for the application here.
 |
 */
 
@@ -148,9 +146,4 @@ Route::middleware('auth')->group(function () {
             'study_streak_days' => auth()->user()->study_streak_days ?? 0
         ]);
     });
-    
-    // Video management routes
-    Route::post('/upload-video', [VideoController::class, 'uploadVideo']);
-    Route::post('/video-token/{videoId}', [VideoController::class, 'getVideoAccess']);
-    Route::get('/video-stream/{token}', [VideoController::class, 'getVideoStream']);
 }); 

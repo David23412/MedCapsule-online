@@ -212,11 +212,38 @@
                                 <div class="row">
                                     <div class="col-md-6">
                                         <div class="form-group mb-3">
+                                            <label for="access_type" class="form-label">{{ __('Access Policy') }}</label>
+                                            <select id="access_type" class="form-select @error('access_type') is-invalid @enderror" name="access_type" required>
+                                                <option value="{{ \App\Models\Course::ACCESS_TYPE_FREE }}" {{ old('access_type', $course->access_type) === \App\Models\Course::ACCESS_TYPE_FREE ? 'selected' : '' }}>
+                                                    Free access
+                                                </option>
+                                                <option value="{{ \App\Models\Course::ACCESS_TYPE_PREVIEW }}" {{ old('access_type', $course->access_type) === \App\Models\Course::ACCESS_TYPE_PREVIEW ? 'selected' : '' }}>
+                                                    Preview access
+                                                </option>
+                                                <option value="{{ \App\Models\Course::ACCESS_TYPE_PAID }}" {{ old('access_type', $course->access_type) === \App\Models\Course::ACCESS_TYPE_PAID ? 'selected' : '' }}>
+                                                    Paid access
+                                                </option>
+                                            </select>
+                                            <small class="form-text text-muted">
+                                                Access policy controls whether the course is survey-unlocked, preview-only, or paid.
+                                            </small>
+                                            @error('access_type')
+                                                <span class="invalid-feedback" role="alert">
+                                                    <strong>{{ $message }}</strong>
+                                                </span>
+                                            @enderror
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="form-group mb-3">
                                             <label for="price" class="form-label">{{ __('Price') }}</label>
                                             <div class="input-group">
                                                 <span class="input-group-text">$</span>
-                                                <input id="price" type="number" step="0.01" class="form-control @error('price') is-invalid @enderror" name="price" value="{{ old('price', $course->price) }}" required>
+                                                <input id="price" type="number" step="0.01" class="form-control @error('price') is-invalid @enderror" name="price" value="{{ old('price', $course->price) }}">
                                             </div>
+                                            <small class="form-text text-muted">
+                                                Free courses should be 0. Preview courses can optionally have an upgrade price. Paid courses must be greater than 0.
+                                            </small>
                                             @error('price')
                                                 <span class="invalid-feedback" role="alert">
                                                     <strong>{{ $message }}</strong>
@@ -224,6 +251,8 @@
                                             @enderror
                                         </div>
                                     </div>
+                                </div>
+                                <div class="row">
                                     <div class="col-md-6">
                                         <div class="form-group mb-3">
                                             <label for="is_published" class="form-label">{{ __('Published') }}</label>

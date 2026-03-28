@@ -24,7 +24,6 @@ use Illuminate\Support\Facades\Log;
  * ✅ Strict-Transport-Security (HSTS) - Enforces HTTPS
  * ✅ X-Permitted-Cross-Domain-Policies - Controls Flash/PDF behavior
  * ✅ Referrer-Policy - Controls referrer information leakage
- * ✅ Feature-Policy - Controls browser features and APIs
  * ✅ X-XSS-Protection - Additional XSS protection
  */
 class SecurityHeaders
@@ -33,22 +32,50 @@ class SecurityHeaders
      * Content Security Policy directives
      * Note: These are base directives. Dynamic domains (like ngrok) are added in applyCSPHeaders()
      */
-    private const CSP_DIRECTIVES = [
+    private const CSP_BASE_DIRECTIVES = [
         "default-src 'self' blob:",
-        "script-src 'self' 'unsafe-inline' 'unsafe-eval' blob: https://code.jquery.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://www.youtube.com https://youtube.com https://www.youtube-nocookie.com https://youtube-nocookie.com",
-        "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com",
         "font-src 'self' https://fonts.gstatic.com data: https://cdnjs.cloudflare.com",
         "img-src 'self' data: https: blob:",
         "media-src 'self' https: blob:",
         "object-src 'none'",
         "base-uri 'self'",
         "form-action 'self'",
-        "frame-src 'self' https://www.youtube.com https://youtube.com https://www.youtube-nocookie.com https://youtube-nocookie.com", // ✅ Allow YouTube embeds
-        "frame-ancestors 'none'", // Equivalent to X-Frame-Options: DENY
-        "connect-src 'self' https://www.youtube.com https://youtube.com https://www.youtube-nocookie.com https://youtube-nocookie.com https://www.googleapis.com https://fonts.googleapis.com https://fonts.gstatic.com", // ✅ Allow YouTube API
+        "frame-src 'self' https://www.youtube.com https://youtube.com https://www.youtube-nocookie.com https://youtube-nocookie.com",
+        "frame-ancestors 'none'",
         "worker-src 'self' blob:",
         "upgrade-insecure-requests",
-        "block-all-mixed-content"
+        "block-all-mixed-content",
+    ];
+
+    private const SCRIPT_SOURCES = [
+        "'self'",
+        'blob:',
+        'https://code.jquery.com',
+        'https://cdn.jsdelivr.net',
+        'https://cdnjs.cloudflare.com',
+        'https://www.youtube.com',
+        'https://youtube.com',
+        'https://www.youtube-nocookie.com',
+        'https://youtube-nocookie.com',
+    ];
+
+    private const STYLE_SOURCES = [
+        "'self'",
+        "'unsafe-inline'",
+        'https://fonts.googleapis.com',
+        'https://cdn.jsdelivr.net',
+        'https://cdnjs.cloudflare.com',
+    ];
+
+    private const CONNECT_SOURCES = [
+        "'self'",
+        'https://www.youtube.com',
+        'https://youtube.com',
+        'https://www.youtube-nocookie.com',
+        'https://youtube-nocookie.com',
+        'https://www.googleapis.com',
+        'https://fonts.googleapis.com',
+        'https://fonts.gstatic.com',
     ];
 
     /**
@@ -61,26 +88,25 @@ class SecurityHeaders
         'Referrer-Policy' => 'strict-origin-when-cross-origin', // Control referrer leakage
         'X-XSS-Protection' => '1; mode=block', // Additional XSS protection
         'Strict-Transport-Security' => 'max-age=31536000; includeSubDomains; preload', // HSTS
-        'Expect-CT' => 'max-age=86400, enforce', // Certificate Transparency
     ];
 
     /**
-     * Feature policy directives (controls browser features)
+     * Permissions policy directives (controls browser features)
      */
-    private const FEATURE_POLICY = [
-        "camera 'none'",
-        "microphone 'none'",
-        "geolocation 'none'",
-        "gyroscope 'none'",
-        "magnetometer 'none'",
-        "payment 'self'",
-        "usb 'none'",
-        "autoplay 'none'",
-        "fullscreen 'self'",
-        "accelerometer 'none'",
-        "ambient-light-sensor 'none'",
-        "battery 'none'",
-        "document-domain 'none'"
+    private const PERMISSIONS_POLICY = [
+        'accelerometer=()',
+        'ambient-light-sensor=()',
+        'autoplay=()',
+        'battery=()',
+        'camera=()',
+        'document-domain=()',
+        'fullscreen=(self)',
+        'geolocation=()',
+        'gyroscope=()',
+        'magnetometer=()',
+        'microphone=()',
+        'payment=(self)',
+        'usb=()',
     ];
 
     /**
@@ -101,14 +127,12 @@ class SecurityHeaders
             $this->applyFeaturePolicyHeaders($response);
             $this->applyAdditionalSecurityHeaders($response);
 
-            // Log security headers application
-            Log::info('Security headers applied', [
-                'url' => $request->fullUrl(),
-                'method' => $request->method(),
-                'user_agent' => $request->userAgent(),
-                'ip' => $request->ip(),
-                'user_id' => auth()->id() ?? 'guest'
-            ]);
+            if (app()->isLocal() && config('app.debug')) {
+                Log::debug('Security headers applied', [
+                    'path' => $request->path(),
+                    'method' => $request->method(),
+                ]);
+            }
         }
 
         return $response;
@@ -167,15 +191,6 @@ class SecurityHeaders
         foreach (self::SECURITY_HEADERS as $header => $value) {
             $headers->set($header, $value);
         }
-
-        // Add custom security headers based on environment
-        if (config('app.env') === 'production') {
-            $headers->set('X-Environment', 'production');
-            $headers->set('X-Security-Level', 'maximum');
-        } else {
-            $headers->set('X-Environment', config('app.env'));
-            $headers->set('X-Security-Level', 'development');
-        }
     }
 
     /**
@@ -187,33 +202,15 @@ class SecurityHeaders
     {
         $headers = $response->headers;
 
-        // Get current app URL (including ngrok domains)
-        $appUrl = config('app.url');
-        $parsedUrl = parse_url($appUrl);
-        $appDomain = ($parsedUrl['scheme'] ?? 'https') . '://' . ($parsedUrl['host'] ?? 'localhost');
-        
-        // Add current domain to CSP directives dynamically
-        $cspDirectives = self::CSP_DIRECTIVES;
-        
-        // Update style-src to include current domain (for ngrok support)
-        foreach ($cspDirectives as $key => $directive) {
-            if (strpos($directive, 'style-src') === 0) {
-                $cspDirectives[$key] = $directive . ' ' . $appDomain;
-            }
-            if (strpos($directive, 'script-src') === 0) {
-                $cspDirectives[$key] = $directive . ' ' . $appDomain;
-            }
-            if (strpos($directive, 'connect-src') === 0) {
-                $cspDirectives[$key] = $directive . ' ' . $appDomain;
-            }
-        }
+        $scriptNonce = $this->injectScriptNonce($response);
+        $cspDirectives = $this->buildCspDirectives($scriptNonce);
 
         // Apply CSP directives
         $cspValue = implode('; ', $cspDirectives);
         $headers->set('Content-Security-Policy', $cspValue);
 
         // Apply CSP report-only for monitoring (in development)
-        if (config('app.env') !== 'production' && config('app.debug')) {
+        if (config('app.env') !== 'production' && config('app.debug') && \Illuminate\Support\Facades\Route::has('csp-report')) {
             $reportUri = route('csp-report', [], false);
             $cspReportValue = $cspValue . "; report-uri {$reportUri}";
             $headers->set('Content-Security-Policy-Report-Only', $cspReportValue);
@@ -221,20 +218,69 @@ class SecurityHeaders
     }
 
     /**
-     * Apply Feature Policy headers
+     * Apply Permissions Policy headers
      *
      * @param mixed $response
      */
     private function applyFeaturePolicyHeaders($response): void
     {
         $headers = $response->headers;
+        $headers->set('Permissions-Policy', implode(', ', self::PERMISSIONS_POLICY));
+    }
 
-        // Apply Feature Policy (newer standard)
-        $featurePolicyValue = implode('; ', self::FEATURE_POLICY);
-        $headers->set('Feature-Policy', $featurePolicyValue);
+    /**
+     * Build CSP directives for the current response.
+     */
+    private function buildCspDirectives(?string $scriptNonce = null): array
+    {
+        $scriptSources = self::SCRIPT_SOURCES;
 
-        // Also apply Permissions Policy (newer name for Feature Policy)
-        $headers->set('Permissions-Policy', $featurePolicyValue);
+        if ($scriptNonce !== null) {
+            $scriptSources[] = "'nonce-{$scriptNonce}'";
+        }
+
+        return array_merge(
+            self::CSP_BASE_DIRECTIVES,
+            [
+                'script-src '.implode(' ', $scriptSources),
+                'script-src-elem '.implode(' ', $scriptSources),
+                "script-src-attr 'unsafe-inline'",
+                'style-src '.implode(' ', self::STYLE_SOURCES),
+                'connect-src '.implode(' ', self::CONNECT_SOURCES),
+            ]
+        );
+    }
+
+    /**
+     * Add a shared CSP nonce to every script element in the HTML response.
+     */
+    private function injectScriptNonce($response): ?string
+    {
+        if (! method_exists($response, 'getContent') || ! method_exists($response, 'setContent')) {
+            return null;
+        }
+
+        $content = $response->getContent();
+
+        if (! is_string($content) || stripos($content, '<script') === false) {
+            return null;
+        }
+
+        $nonce = base64_encode(random_bytes(18));
+        $escapedNonce = htmlspecialchars($nonce, ENT_QUOTES, 'UTF-8');
+        $updatedContent = preg_replace(
+            '/<script\b(?![^>]*\bnonce=)/i',
+            '<script nonce="'.$escapedNonce.'"',
+            $content
+        );
+
+        if (! is_string($updatedContent)) {
+            return null;
+        }
+
+        $response->setContent($updatedContent);
+
+        return $nonce;
     }
 
     /**
@@ -250,10 +296,6 @@ class SecurityHeaders
         $headers->remove('X-Powered-By');
         $headers->remove('Server');
 
-        // Add custom security headers
-        $headers->set('X-Content-Security-Policy', $headers->get('Content-Security-Policy')); // For older browsers
-        $headers->set('X-WebKit-CSP', $headers->get('Content-Security-Policy')); // For WebKit-based browsers
-
         // Add cache control for sensitive pages
         if ($this->isSensitivePage()) {
             $headers->set('Cache-Control', 'no-cache, no-store, must-revalidate');
@@ -264,10 +306,9 @@ class SecurityHeaders
         // Add security-related caching headers
         $headers->set('X-DNS-Prefetch-Control', 'off'); // Prevent DNS prefetching
         $headers->set('X-Download-Options', 'noopen'); // Prevent downloads from opening automatically
-
-        // Add custom headers for additional security
-        $headers->set('X-Custom-Security-Header', 'MegaLethal-Protection-Enabled');
-        $headers->set('X-Request-ID', uniqid('req_', true));
+        $headers->set('Cross-Origin-Opener-Policy', 'same-origin');
+        $headers->set('Cross-Origin-Resource-Policy', 'same-origin');
+        $headers->set('Origin-Agent-Cluster', '?1');
     }
 
     /**
@@ -310,8 +351,8 @@ class SecurityHeaders
     {
         return [
             'security_headers' => self::SECURITY_HEADERS,
-            'csp_directives' => self::CSP_DIRECTIVES,
-            'feature_policy' => self::FEATURE_POLICY,
+            'csp_directives' => $this->buildCspDirectives('test-nonce'),
+            'permissions_policy' => self::PERMISSIONS_POLICY,
             'applied_to' => [
                 'html_responses' => true,
                 'successful_responses' => true,
@@ -320,7 +361,6 @@ class SecurityHeaders
             'environment_specific' => [
                 'production' => [
                     'strict_hsts' => true,
-                    'certificate_transparency' => true
                 ],
                 'development' => [
                     'csp_report_only' => true,
@@ -374,8 +414,8 @@ class SecurityHeaders
         $testResults = [];
         $expectedHeaders = array_merge(
             self::SECURITY_HEADERS,
-            ['Content-Security-Policy' => implode('; ', self::CSP_DIRECTIVES)],
-            ['Feature-Policy' => implode('; ', self::FEATURE_POLICY)]
+            ['Content-Security-Policy' => implode('; ', $this->buildCspDirectives('test-nonce'))],
+            ['Permissions-Policy' => implode(', ', self::PERMISSIONS_POLICY)]
         );
 
         // This would typically be called from a test route

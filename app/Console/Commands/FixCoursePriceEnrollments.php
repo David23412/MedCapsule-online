@@ -39,7 +39,8 @@ class FixCoursePriceEnrollments extends Command
         $this->line("📚 Current Course Status:");
         $this->line("   Name: {$course->name}");
         $this->line("   Price: {$course->price} EGP");
-        $this->line("   Is Paid: " . ($course->price > 0 ? "YES ✅" : "NO ❌"));
+        $this->line("   Access Policy: {$course->normalizedAccessType()}");
+        $this->line("   Is Paid: " . ($course->isPaidAccess() ? "YES ✅" : "NO ❌"));
         $this->newLine();
 
         // Count current enrollments
@@ -88,7 +89,7 @@ class FixCoursePriceEnrollments extends Command
         // Fix enrollments
         $this->line("🔒 Fixing Enrollments:");
 
-        if ($course->price > 0 && $this->option('revoke-student-access')) {
+        if ($course->isPaidAccess() && $this->option('revoke-student-access')) {
             $revokedCount = DB::table('course_user as cu')
                 ->join('users as u', 'cu.user_id', '=', 'u.id')
                 ->where('cu.course_id', $courseId)
@@ -104,11 +105,11 @@ class FixCoursePriceEnrollments extends Command
             } else {
                 $this->warn("No incorrect enrollments found to revoke");
             }
-        } elseif ($course->price > 0 && !$this->option('revoke-student-access')) {
+        } elseif ($course->isPaidAccess() && !$this->option('revoke-student-access')) {
             $this->warn("This course is PAID but --revoke-student-access flag not provided");
             $this->warn("Use --revoke-student-access to revoke non-admin access");
         } else {
-            $this->info("✅ This is a FREE course, no enrollment fixes needed");
+            $this->info("✅ This course is not paid, so revoking student access is not needed");
         }
 
         $this->newLine();
@@ -131,14 +132,14 @@ class FixCoursePriceEnrollments extends Command
         $this->line("   Final total enrollments: {$finalAllEnrollments}");
         $this->line("   Final student enrollments: {$finalStudentEnrollments}");
 
-        if ($course->price > 0) {
+        if ($course->isPaidAccess()) {
             if ($finalStudentEnrollments === 0) {
                 $this->info("SUCCESS: No students have access to paid course ✅");
             } else {
                 $this->error("REMAINING ISSUE: {$finalStudentEnrollments} students still have access!");
             }
         } else {
-            $this->info("This is a FREE course, students can have access ✅");
+            $this->info("This course is not paid, so student access can remain ✅");
         }
 
         $this->newLine();

@@ -64,7 +64,7 @@
             justify-content: space-between;
             align-items: center;
             width: 100%;
-            max-width: 1200px;
+            max-width: 1550px;
             margin: 0 auto;
             padding: 0;
         }
@@ -158,7 +158,7 @@
             padding: 2.5rem;
             border-radius: 12px;
             box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
-            max-width: 1200px;
+            max-width: 1550px;
             margin: 0 auto;
         }
 
@@ -172,14 +172,20 @@
 
         .question-content {
             display: flex;
-            gap: 2rem;
+            gap: 2.5rem;
             align-items: flex-start;
             margin-bottom: 2rem;
+            width: 100%;
+        }
+
+        .question-main {
+            flex: 1;
+            min-width: 0;
         }
 
         .question-text-container {
             flex: 1;
-            min-width: 0; /* Prevents flex item from overflowing */
+            min-width: 0;
         }
 
         /* When there's no image, text takes full width */
@@ -340,15 +346,26 @@
         }
 
         .question-image {
-            width: 380px;
-            flex-shrink: 0;
+            flex: 0 0 450px;
+            max-width: 45%;
+            display: flex;
+            justify-content: center;
         }
 
         .question-image img {
             width: 100%;
             height: auto;
-            border-radius: 8px;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            max-height: 550px;
+            border-radius: 12px;
+            object-fit: contain;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+            border: 1px solid #e2e8f0;
+            transition: all 0.4s cubic-bezier(0.165, 0.84, 0.44, 1);
+        }
+
+        .question-image img:hover {
+            transform: scale(1.02);
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.15);
         }
 
         .options-container {
@@ -1067,6 +1084,11 @@
                 padding: 0.75rem;
                 margin-bottom: 1rem;
                 border-radius: 8px;
+                position: sticky;
+                top: 60px;
+                z-index: 998;
+                background: white;
+                box-shadow: 0 4px 6px rgba(0,0,0,0.05);
             }
             
             .timer {
@@ -1142,14 +1164,39 @@
                 margin-top: 1.25rem;
                 flex-direction: column;
                 gap: 0.75rem;
+                padding-bottom: 60px; /* Ensure content isn't hidden behind fixed button */
             }
             
             .btn {
                 padding: 0.875rem 1.25rem;
                 font-size: 1rem;
                 width: 100%;
-                min-height: 44px;
+                min-height: 54px; /* Touch target */
                 touch-action: manipulation;
+            }
+            
+            .actions-left {
+                width: 100%;
+                margin-bottom: 0.5rem;
+            }
+            
+            .actions-left .btn {
+                position: fixed !important;
+                bottom: 0;
+                left: 0;
+                right: 0;
+                margin: 0 !important;
+                border-radius: 0;
+                z-index: 1000;
+                box-shadow: 0 -4px 10px rgba(0,0,0,0.1);
+                padding-bottom: calc(1rem + env(safe-area-inset-bottom)) !important;
+            }
+
+            .btn-dont-know {
+                width: 44px; /* Larger touch target */
+                height: 44px;
+                font-size: 1.1rem;
+                align-self: flex-start;
             }
         }
 
@@ -1706,6 +1753,8 @@
             .nav-arrow-btn {
                 padding: 0.625rem 1rem;
                 font-size: 0.9rem;
+                min-width: 44px;
+                min-height: 44px;
             }
         }
 
@@ -1812,55 +1861,80 @@
             <!-- Questions Container -->
             @foreach($questions as $index => $question)
                 <div class="question-card" id="question-{{ $index + 1 }}" style="{{ $index === 0 ? '' : 'display: none;' }}">
+                    @php
+                        $qObj = is_array($question) ? $question['question'] : $question;
+                    @endphp
                     <div class="question-content">
-                        <div class="question-text-container">
-                            <div class="question-text">
-                                {{ is_array($question) ? $question['question']->question : $question->question }}
+                        <div class="question-main">
+                            <div class="d-flex justify-content-between align-items-start mb-3">
+                                <div class="question-text-container">
+                                    <div class="question-text">
+                                        {{ is_array($question) ? $question['question']->question : $question->question }}
+                                    </div>
+                                </div>
+                                <div class="ms-2 d-flex flex-column align-items-end gap-1">
+                                    @if(!empty($qObj->enhanced_source_badges))
+                                        @foreach($qObj->enhanced_source_badges as $badge)
+                                            @if(isset($topic) && strtoupper($topic->name) === strtoupper($badge))
+                                                @continue
+                                            @endif
+                                            @if(str_contains($badge, 'HIGH YIELD'))
+                                                <span class="badge bg-danger text-white" style="font-size: 0.7rem; padding: 0.3rem 0.6rem; font-weight: 600; white-space: nowrap;">
+                                                    🔥 {{ $badge }}
+                                                </span>
+                                            @elseif(str_contains($badge, 'REPEATED'))
+                                                <span class="badge bg-warning text-dark" style="font-size: 0.7rem; padding: 0.3rem 0.6rem; font-weight: 600; white-space: nowrap;">
+                                                    📈 {{ $badge }}
+                                                </span>
+                                            @else
+                                                <span class="badge bg-primary text-white" style="font-size: 0.75rem; padding: 0.25rem 0.5rem; white-space: nowrap;">
+                                                    {{ $badge }}
+                                                </span>
+                                            @endif
+                                        @endforeach
+                                    @endif
+                                </div>
+                            </div>
+
+                            @php
+                                $rawOptions = [
+                                    'A' => $qObj->option_a,
+                                    'B' => $qObj->option_b,
+                                    'C' => $qObj->option_c,
+                                    'D' => $qObj->option_d,
+                                ];
+                                $cleanedOptions = [];
+                                $realOptionCount = 0;
+                                foreach ($rawOptions as $letter => $optText) {
+                                    $clean = is_null($optText) ? '' : trim($optText);
+                                    $cleanedOptions[$letter] = $clean;
+                                    if ($clean !== '' && $clean !== '-') {
+                                        $realOptionCount++;
+                                    }
+                                }
+                            @endphp
+
+                            <div class="options-container" data-question-id="{{ $qObj->id ?? '' }}">
+                                @if(($qObj->question_type ?? null) === 'multiple_choice')
+                                    @foreach($cleanedOptions as $letter => $cleanOption)
+                                        @if($cleanOption !== '' && $cleanOption !== '-')
+                                            <div class="option-card" data-option="{{ $letter }}">
+                                                <span class="option-letter">{{ $letter }}</span>
+                                                <div class="option-content">{{ $cleanOption }}</div>
+                                            </div>
+                                        @endif
+                                    @endforeach
+                                @else
+                                    <div class="written-answer-container">
+                                        <textarea class="form-control written-answer" rows="4" placeholder="Type your answer here..."></textarea>
+                                    </div>
+                                @endif
                             </div>
                         </div>
 
-                        @php
-                            $qObj = is_array($question) ? $question['question'] : $question;
-                        @endphp
                         @if($qObj->image_url ?? false)
                             <div class="question-image">
                                 <img src="{{ asset($qObj->image_url) }}" alt="Question Image" class="img-fluid">
-                            </div>
-                        @endif
-                    </div>
-
-                    @php
-                        // Build cleaned options array and count how many are real (non-empty, not "-")
-                        $rawOptions = [
-                            'A' => $qObj->option_a,
-                            'B' => $qObj->option_b,
-                            'C' => $qObj->option_c,
-                            'D' => $qObj->option_d,
-                        ];
-                        $cleanedOptions = [];
-                        $realOptionCount = 0;
-                        foreach ($rawOptions as $letter => $optText) {
-                            $clean = is_null($optText) ? '' : trim($optText);
-                            $cleanedOptions[$letter] = $clean;
-                            if ($clean !== '' && $clean !== '-') {
-                                $realOptionCount++;
-                            }
-                        }
-                    @endphp
-
-                    <div class="options-container" data-question-id="{{ $qObj->id ?? '' }}">
-                        @if(($qObj->question_type ?? null) === 'multiple_choice')
-                            @foreach($cleanedOptions as $letter => $cleanOption)
-                                @if($cleanOption !== '' && $cleanOption !== '-')
-                                    <div class="option-card" data-option="{{ $letter }}">
-                                        <span class="option-letter">{{ $letter }}</span>
-                                        <div class="option-content">{{ $cleanOption }}</div>
-                                    </div>
-                                @endif
-                            @endforeach
-                        @else
-                            <div class="written-answer-container">
-                                <textarea class="form-control written-answer" rows="4" placeholder="Type your answer here..."></textarea>
                             </div>
                         @endif
                     </div>

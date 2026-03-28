@@ -224,7 +224,7 @@ class QuizService
             'questions.id', 'questions.topic_id', 'questions.question', 'questions.question_type',
             'questions.option_a', 'questions.option_b', 'questions.option_c', 'questions.option_d',
             'questions.correct_answer', 'questions.explanation', 'questions.image_url', 'questions.source',
-            'questions.alternative_answers', 'questions.exam_appearances_count'
+            'questions.alternative_answers', 'questions.exam_appearances_count', 'questions.extra_topic'
         ])
         ->whereNotNull('questions.question') // Ensure question content exists
         ->where('questions.question', '!=', '') // Ensure question is not empty
@@ -240,15 +240,10 @@ class QuizService
             // For exam topics, only pull questions whose main topic is this exam
             $query->where('questions.topic_id', $topic->id);
         } else {
-            // For lecture topics, pull main topic questions + pivot linked questions
+            // For lecture topics, pull main topic questions + extra_topic column (comma-separated string)
             $query->where(function($q) use ($topic) {
                 $q->where('questions.topic_id', $topic->id)
-                  ->orWhereExists(function ($sub) use ($topic) {
-                      $sub->select(\Illuminate\Support\Facades\DB::raw(1))
-                          ->from('question_topic_links')
-                          ->whereColumn('question_topic_links.question_id', 'questions.id')
-                          ->where('question_topic_links.topic_id', $topic->id);
-                  });
+                  ->orWhereRaw('FIND_IN_SET(?, REPLACE(questions.extra_topic, " ", "")) > 0', [$topic->id]);
             });
         }
 
@@ -305,7 +300,10 @@ class QuizService
         $cacheKey = "topic:{$topic->id}:available_sources";
         
         return $this->cacheService->remember($cacheKey, function () use ($topic) {
-            return Question::where('topic_id', $topic->id)
+            return Question::where(function($q) use ($topic) {
+                    $q->where('questions.topic_id', $topic->id)
+                      ->orWhereRaw('FIND_IN_SET(?, REPLACE(questions.extra_topic, " ", "")) > 0', [$topic->id]);
+                })
                 ->distinct()
                 ->pluck('source')
                 ->filter()
@@ -326,7 +324,10 @@ class QuizService
         $cacheKey = "topic:{$topic->id}:*";
         
         return $this->cacheService->remember($cacheKey, function () use ($topic, $sources) {
-            $questionsQuery = Question::where('topic_id', $topic->id);
+            $questionsQuery = Question::where(function($q) use ($topic) {
+                $q->where('questions.topic_id', $topic->id)
+                  ->orWhereRaw('FIND_IN_SET(?, REPLACE(questions.extra_topic, " ", "")) > 0', [$topic->id]);
+            });
             
             if (!in_array('all', $sources)) {
                 $questionsQuery->whereIn('source', $sources);
@@ -354,7 +355,10 @@ class QuizService
      */
     private function getSourceBreakdown(Topic $topic, array $sources): array
     {
-        $query = Question::where('topic_id', $topic->id);
+        $query = Question::where(function($q) use ($topic) {
+            $q->where('questions.topic_id', $topic->id)
+              ->orWhereRaw('FIND_IN_SET(?, REPLACE(questions.extra_topic, " ", "")) > 0', [$topic->id]);
+        });
         
         if (!in_array('all', $sources)) {
             $query->whereIn('source', $sources);
@@ -376,7 +380,10 @@ class QuizService
      */
     public function getRandomQuestions(Topic $topic, int $count = 10, array $sources = ['all']): \Illuminate\Database\Eloquent\Collection
     {
-        $questionsQuery = Question::query()->where('topic_id', $topic->id);
+        $questionsQuery = Question::query()->where(function($q) use ($topic) {
+            $q->where('questions.topic_id', $topic->id)
+              ->orWhereRaw('FIND_IN_SET(?, REPLACE(questions.extra_topic, " ", "")) > 0', [$topic->id]);
+        });
 
         if (!in_array('all', $sources)) {
             $questionsQuery->whereIn('source', $sources);
@@ -408,7 +415,10 @@ class QuizService
      */
     public function getQuestionsByDifficulty(Topic $topic, string $difficulty, array $sources = ['all']): \Illuminate\Database\Eloquent\Collection
     {
-        $questionsQuery = Question::where('topic_id', $topic->id);
+        $questionsQuery = Question::where(function($q) use ($topic) {
+            $q->where('questions.topic_id', $topic->id)
+              ->orWhereRaw('FIND_IN_SET(?, REPLACE(questions.extra_topic, " ", "")) > 0', [$topic->id]);
+        });
         
         if (!in_array('all', $sources)) {
             $questionsQuery->whereIn('source', $sources);
@@ -542,7 +552,10 @@ class QuizService
             $sources = array_map('trim', $sources);
             
             // Get questions for the topic with source filtering
-            $questionsQuery = Question::where('topic_id', $topic->id);
+            $questionsQuery = Question::where(function($q) use ($topic) {
+                $q->where('questions.topic_id', $topic->id)
+                  ->orWhereRaw('FIND_IN_SET(?, REPLACE(questions.extra_topic, " ", "")) > 0', [$topic->id]);
+            });
             
             // Apply source filtering if specific sources are selected
             if (!in_array('all', $sources)) {
@@ -671,8 +684,21 @@ class QuizService
                 $courseIds = $userCourses;
             }
 
-            // SMART QUERY: Build with efficient deletion checks
+            // SMART QUERY: Build with efficient deletion checks (including linked questions and extra topics)
             $questionsQuery = Question::query()
+                ->where(function($q) use ($courseIds) {
+                    // Include questions from topics in the specified courses
+                    $q->whereHas('topic', function($query) use ($courseIds) {
+                        $query->whereIn('course_id', $courseIds);
+                    })
+                    // Also include questions with extra topics from those courses
+                    ->orWhereExists(function ($sub) use ($courseIds) {
+                        $sub->select(\Illuminate\Support\Facades\DB::raw(1))
+                            ->from('topics')
+                            ->whereRaw('FIND_IN_SET(topics.id, REPLACE(questions.extra_topic, " ", "")) > 0')
+                            ->whereIn('topics.course_id', $courseIds);
+                    });
+                })
                 ->whereNotNull('question') // Ensure question content exists
                 ->where('question', '!=', '') // Ensure question is not empty
                 ->select([
@@ -681,11 +707,6 @@ class QuizService
                     'correct_answer', 'explanation', 'image_url', 'source',
                     'alternative_answers'
                 ]);
-
-            // Apply course filtering with validated course IDs
-            $questionsQuery->whereHas('topic', function($query) use ($courseIds) {
-                $query->whereIn('course_id', $courseIds);
-            });
 
             // Apply source filtering
             if (!in_array('all', $sources)) {
@@ -719,7 +740,7 @@ class QuizService
                     'id', 'topic_id', 'question', 'question_type',
                     'option_a', 'option_b', 'option_c', 'option_d',
                     'correct_answer', 'explanation', 'image_url', 'source',
-                    'alternative_answers', 'similarity_threshold'
+                    'alternative_answers'
                 ])
                 ->whereIn('id', $selectedIds)
                 ->get()
@@ -952,7 +973,10 @@ class QuizService
         
         return $this->cacheService->remember($cacheKey, 300, function () use ($topic, $sources) {
             // LETHAL QUERY: Build with explicit deletion checks
-            $query = Question::where('topic_id', $topic->id)
+            $query = Question::where(function($q) use ($topic) {
+                    $q->where('topic_id', $topic->id)
+                      ->orWhereRaw('FIND_IN_SET(?, REPLACE(extra_topic, " ", "")) > 0', [$topic->id]);
+                })
                 ->whereNotNull('question') // Ensure question content exists
                 ->where('question', '!=', '') // Ensure question is not empty
                 ->orderBy('id');
@@ -964,10 +988,13 @@ class QuizService
             $questions = $query->get();
             
             // NUCLEAR VERIFICATION: Filter out deleted questions while maintaining Eloquent Collection
-            $validQuestions = $questions->filter(function ($question) {
+            $validQuestions = $questions->filter(function ($question) use ($topic) {
                 // Real-time database check for each question
-                $exists = Question::where('id', $question->id)
-                    ->where('topic_id', $question->topic_id)
+                    $exists = Question::where('id', $question->id)
+                        ->where(function($q) use ($topic, $question) {
+                            $q->where('topic_id', $question->topic_id)
+                              ->orWhereRaw('FIND_IN_SET(?, REPLACE(extra_topic, " ", "")) > 0', [$topic->id]);
+                        })
                     ->whereNotNull('question')
                     ->where('question', '!=', '')
                     ->exists();
@@ -1168,7 +1195,10 @@ class QuizService
     private function buildQuestionsQuery(Topic $topic, array $sources)
     {
         $query = Question::select('id', 'question', 'options', 'correct_answer', 'explanation', 'source')
-            ->where('topic_id', $topic->id);
+            ->where(function($q) use ($topic) {
+                $q->where('topic_id', $topic->id)
+                  ->orWhereRaw('FIND_IN_SET(?, REPLACE(extra_topic, " ", "")) > 0', [$topic->id]);
+            });
             
         if (!in_array('all', $sources)) {
             $query->whereIn('source', $sources);

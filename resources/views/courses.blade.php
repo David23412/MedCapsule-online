@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>MedCapsule</title>
 
@@ -542,12 +542,27 @@
                                     <i class="fas fa-play"></i>
                                     Continue Learning
                                 </a>
-                            @elseif (!$course->price || $course->price <= 0)
+                            @elseif ($course->isPreviewAccess() && !$course->is_enrolled)
+                                <button type="button"
+                                        class="action-btn enroll free ajax-enroll-btn"
+                                        data-course-id="{{ $course->id }}"
+                                        data-enroll-url="{{ route('courses.enroll', $course->id) }}"
+                                        data-topics-url="{{ route('topics.forCourse', $course->id) }}"
+                                        aria-label="Start preview of {{ $course->name }}">
+                                    <i class="fas fa-eye"></i>
+                                    <span>Start Preview (Free)</span>
+                                </button>
+                            @elseif ($course->isFreeAccess())
                                 <!-- FIXED: Free course - show "Start Learning" button (will auto-enroll) -->
-                                <a href="{{ route('topics.forCourse', $course->id) }}" class="action-btn enroll free" aria-label="Start learning {{ $course->name }} (Free course)">
+                                <button type="button"
+                                        class="action-btn enroll free ajax-enroll-btn"
+                                        data-course-id="{{ $course->id }}"
+                                        data-enroll-url="{{ route('courses.enroll', $course->id) }}"
+                                        data-topics-url="{{ route('topics.forCourse', $course->id) }}"
+                                        aria-label="Start learning {{ $course->name }} (Free course)">
                                     <i class="fas fa-play"></i>
                                     <span>Start Learning (Free)</span>
-                                </a>
+                                </button>
                             @elseif ($course->has_pending_payment)
                                 <!-- User has pending payment - show pending button -->
                                 <button type="button" class="action-btn enroll" id="paymentBtn_{{ $course->id }}" disabled style="background: #fff7ed; border-color: #fed7aa; color: #ea580c; cursor: not-allowed;" aria-label="Payment pending for {{ $course->name }}">
@@ -562,7 +577,12 @@
                                 </button>
                             @endif
                         @else
-                            @if (!$course->price || $course->price <= 0)
+                            @if ($course->isPreviewAccess())
+                                <a href="{{ route('login') }}" class="action-btn enroll free" aria-label="Sign in to start preview of {{ $course->name }}">
+                                    <i class="fas fa-eye"></i>
+                                    Sign in to Start Preview
+                                </a>
+                            @elseif ($course->isFreeAccess())
                                 <a href="{{ route('login') }}" class="action-btn enroll free" aria-label="Sign in to start {{ $course->name }} (Free course)">
                                     <i class="fas fa-play"></i>
                                     Sign in to Start (Free)
@@ -673,8 +693,8 @@
     </script>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js" defer></script>
-    <script src="{{ asset('js/courses-page.js') }}" defer></script>
-    <script src="{{ asset('js/free-course-survey.js') }}" defer></script>
+    <script src="{{ asset('js/courses-page.js') }}?v={{ filemtime(public_path('js/courses-page.js')) }}" defer></script>
+    <script src="{{ asset('js/free-course-survey.js') }}?v={{ filemtime(public_path('js/free-course-survey.js')) }}" defer></script>
 
     <!-- Floating Contact Button -->
     <div class="floating-contact">

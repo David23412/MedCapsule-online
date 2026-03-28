@@ -1,29 +1,35 @@
 <div class="question-box written-question {{ $question->image_url ? 'has-image' : '' }}" data-question-id="{{ $question->id }}">
-    <div class="question-text">
-        {{ $question->question }}
-    </div>
+    <div class="question-content-wrapper">
+        <div class="question-main">
+            <div class="question-text">
+                {{ $question->question }}
+            </div>
 
-    @if($question->image_url)
-        <img src="{{ asset($question->image_url) }}" 
-             alt="Question image" 
-             class="question-image"
-             onerror="this.style.display='none'">
-    @endif
-
-    <div class="written-answer-container">
-        <div class="form-group">
-            <textarea 
-                name="answers[{{ $question->id }}]" 
-                id="written_answer_{{ $question->id }}" 
-                class="form-control written-answer" 
-                rows="4" 
-                placeholder="Type your answer here..."
-                data-question-id="{{ $question->id }}"></textarea>
-            <div class="answer-feedback" id="feedback_{{ $question->id }}"></div>
-            <div class="answer-character-count">
-                <span id="char_count_{{ $question->id }}">0</span> characters
+            <div class="written-answer-container">
+                <div class="form-group">
+                    <textarea 
+                        name="answers[{{ $question->id }}]" 
+                        id="written_answer_{{ $question->id }}" 
+                        class="form-control written-answer" 
+                        rows="4" 
+                        placeholder="Type your answer here..."
+                        data-question-id="{{ $question->id }}"></textarea>
+                    <div class="answer-feedback" id="feedback_{{ $question->id }}"></div>
+                    <div class="answer-character-count">
+                        <span id="char_count_{{ $question->id }}">0</span> characters
+                    </div>
+                </div>
             </div>
         </div>
+
+        @if($question->image_url)
+            <div class="question-image-container">
+                <img src="{{ asset($question->image_url) }}" 
+                     alt="Question image" 
+                     class="question-image"
+                     onerror="this.style.display='none'">
+            </div>
+        @endif
     </div>
 </div>
 

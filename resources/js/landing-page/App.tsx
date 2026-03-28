@@ -8,6 +8,8 @@ import {
 
 gsap.registerPlugin(ScrollTrigger);
 
+const FEATURE_CARD_CLASS = "bg-white p-5 md:p-7 rounded-[2rem] md:rounded-[2.5rem] border border-gray-100 shadow-[0_8px_30px_rgb(0,0,0,0.04)] hover:shadow-[0_20px_50px_rgba(8,_112,_184,_0.1)] transition-all duration-700 relative overflow-hidden h-[22rem] sm:h-96 md:h-96 w-full max-w-[24rem] md:max-w-none md:w-auto mx-auto md:mx-0 flex flex-col cursor-default group";
+
 // --- SUB-COMPONENTS FOR ANIMATED ARTIFACTS ---
 
 // ─── CARD 1: MCQ QUESTION CARD ───────────────────────────────────────────────
@@ -124,7 +126,7 @@ const MCQCard = () => {
   return (
     <div
       ref={cardRef}
-      className="bg-white p-7 rounded-[2.5rem] border border-gray-100 shadow-[0_8px_30px_rgb(0,0,0,0.04)] hover:shadow-[0_20px_50px_rgba(8,_112,_184,_0.1)] transition-all duration-700 relative overflow-hidden h-96 flex flex-col group cursor-default"
+      className={FEATURE_CARD_CLASS}
       style={{ opacity: fading ? 0 : 1, transition: 'opacity 0.36s ease, transform 0.5s ease' }}
     >
       <div className="absolute top-0 right-0 w-32 h-32 bg-blue-50/30 rounded-full -mr-16 -mt-16 blur-3xl pointer-events-none" />
@@ -224,7 +226,7 @@ const WeakTopicsPanel = () => {
   }, [cycle]);
 
   return (
-    <div className="bg-white p-7 rounded-[2.5rem] border border-gray-100 shadow-[0_8px_30px_rgb(0,0,0,0.04)] hover:shadow-[0_20px_50px_rgba(8,_112,_184,_0.1)] transition-all duration-700 relative overflow-hidden h-96 flex flex-col cursor-default group">
+    <div className={FEATURE_CARD_CLASS}>
       <div className="absolute top-0 right-0 w-32 h-32 bg-amber-50/30 rounded-full -mr-16 -mt-16 blur-3xl pointer-events-none" />
 
       <div className="mb-4 relative z-10">
@@ -391,7 +393,7 @@ const PerformanceChart = () => {
   const yTicks = [100, 90, 50, 0];
 
   return (
-    <div className="bg-white p-7 rounded-[2.5rem] border border-gray-100 shadow-[0_8px_30px_rgb(0,0,0,0.04)] hover:shadow-[0_20px_50px_rgba(8,_112,_184,_0.1)] transition-all duration-700 relative overflow-hidden h-96 flex flex-col cursor-default group">
+    <div className={FEATURE_CARD_CLASS}>
       <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-50/20 rounded-full -mr-16 -mt-16 blur-3xl pointer-events-none" />
 
       <div className="mb-4 relative z-10">
@@ -1015,15 +1017,15 @@ export default function App({ isAuthenticated = false, appUrl, user }: AppProps)
         {/* FEATURES OVERLAY (Revealed by GSAP) */}
         <div
           ref={featuresContentRef}
-          className="absolute inset-0 z-30 bg-white flex items-center justify-center pt-24 pointer-events-none"
+          className="absolute inset-0 z-30 bg-white flex items-start md:items-center justify-center overflow-y-auto md:overflow-hidden pt-20 md:pt-24 pb-8 md:pb-0 pointer-events-none"
         >
-          <div className="max-w-7xl mx-auto px-6 w-full pointer-events-auto">
-            <div className="text-center mb-16">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 w-full min-h-full pointer-events-auto">
+            <div className="text-center mb-8 md:mb-16">
               <h3 className="font-mono text-xs text-plasma uppercase tracking-widest mb-4">Core Study Tools</h3>
-              <h4 className="font-heading text-4xl text-charcoal font-bold font-heading">Master your medical curriculum.</h4>
+              <h4 className="font-heading text-3xl md:text-4xl text-charcoal font-bold font-heading">Master your medical curriculum.</h4>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-5 md:gap-8 px-1 md:px-0 pb-4 md:pb-0">
               <MCQCard />
               <WeakTopicsPanel />
               <PerformanceChart />
@@ -1140,7 +1142,7 @@ export default function App({ isAuthenticated = false, appUrl, user }: AppProps)
             <div className="protocol-step-3 absolute inset-0 flex flex-col md:flex-row items-center gap-12 w-full opacity-0 pointer-events-none">
               <div className="flex-1 text-center md:text-left">
                 <div className="font-mono text-6xl text-plasma/20 font-bold mb-4">03</div>
-                <h4 className="font-heading text-4xl font-bold text-charcoal mb-4">Track Mastery.</h4>
+                <h4 className="font-heading text-4xl font-bold text-charcoal mb-4">Track Progress.</h4>
                 <p className="font-body text-charcoal-dim text-lg">See what is improving, what is slipping, and exactly where to focus next to keep your momentum compounding.</p>
               </div>
               <div className="flex-1 flex justify-center items-center h-64 relative bg-white border border-gray-100 rounded-2xl shadow-clinical overflow-hidden">

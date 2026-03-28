@@ -25,14 +25,18 @@ class ProgressUpdateController extends Controller
             $validated = $request->validate([
                 'topicId' => 'required|integer',
                 'assignmentId' => 'nullable|integer',
+                'mode' => 'nullable|string|in:quiz,tutor',
                 'progress' => 'nullable|array',
+                'overall_topic_progress' => 'nullable|array',
                 'availableSources' => 'nullable|array',
                 'allSourcesMastered' => 'nullable|boolean',
                 'userId' => 'required|integer'
             ]);
 
             // Provide defaults for optional fields
+            $validated['mode'] = $validated['mode'] ?? 'quiz';
             $validated['progress'] = $validated['progress'] ?? [];
+            $validated['overall_topic_progress'] = $validated['overall_topic_progress'] ?? [];
             $validated['availableSources'] = $validated['availableSources'] ?? [];
             $validated['allSourcesMastered'] = $validated['allSourcesMastered'] ?? false;
 

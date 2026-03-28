@@ -54,6 +54,12 @@ class TutorMiddleware
             'ip' => $request->ip()
         ]);
         
-        return redirect()->route('home')->with('error', 'Access denied. Only administrators and tutors can access this area.');
+        if ($request->expectsJson()) {
+            return response()->json([
+                'error' => 'Access denied. Only administrators and tutors can access this area.',
+            ], 403);
+        }
+
+        abort(403, 'Access denied. Only administrators and tutors can access this area.');
     }
-}
+} 

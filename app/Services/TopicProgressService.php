@@ -133,12 +133,58 @@ class TopicProgressService
             return [];
         }
 
-        $sourceTotalsByTopic = Question::query()
+        $directCounts = Question::query()
             ->whereIn('topic_id', $topicIds)
             ->selectRaw('topic_id, source, COUNT(*) as total')
             ->groupBy('topic_id', 'source')
-            ->get()
-            ->groupBy('topic_id');
+            ->get();
+
+        $sourceTotalsByTopic = $directCounts->groupBy('topic_id')->map(function ($rows) {
+            return $rows->map(function ($row) {
+                return (object) [
+                    'source' => $row->source,
+                    'total' => (int) $row->total,
+                ];
+            })->values();
+        });
+
+        $linkedQuestions = Question::query()
+            ->whereNotNull('extra_topic')
+            ->where('extra_topic', '!=', '')
+            ->where(function ($query) use ($topicIds) {
+                foreach ($topicIds as $topicId) {
+                    $query->orWhereRaw('FIND_IN_SET(?, REPLACE(extra_topic, " ", "")) > 0', [$topicId]);
+                }
+            })
+            ->get(['topic_id', 'source', 'extra_topic']);
+
+        foreach ($linkedQuestions as $question) {
+            $linkedTopicIds = collect(explode(',', (string) $question->extra_topic))
+                ->map(fn ($id) => (int) trim($id))
+                ->filter(fn ($id) => $id > 0)
+                ->unique()
+                ->values();
+
+            foreach ($linkedTopicIds as $linkedTopicId) {
+                if (!$topicIds->contains($linkedTopicId) || $linkedTopicId === (int) $question->topic_id) {
+                    continue;
+                }
+
+                $topicRows = $sourceTotalsByTopic->get($linkedTopicId, collect());
+                $existingRow = $topicRows->firstWhere('source', $question->source);
+
+                if ($existingRow) {
+                    $existingRow->total++;
+                } else {
+                    $topicRows->push((object) [
+                        'source' => $question->source,
+                        'total' => 1,
+                    ]);
+                }
+
+                $sourceTotalsByTopic->put($linkedTopicId, $topicRows->values());
+            }
+        }
 
         $latestAttemptDates = QuizAttempt::query()
             ->where('user_id', $userId)
@@ -167,10 +213,18 @@ class TopicProgressService
         $progressByTopic = [];
 
         foreach ($topicIds as $topicId) {
-            $sourceTotals = ($sourceTotalsByTopic->get($topicId) ?? collect())
-                ->pluck('total', 'source')
-                ->map(fn ($total) => (int) $total)
-                ->toArray();
+            // Merge counts from direct and extra topics, summing up duplicates
+            $sourceTotals = [];
+            $topicRows = $sourceTotalsByTopic->get($topicId) ?? collect();
+            
+            foreach ($topicRows as $row) {
+                $source = $row->source;
+                $count = (int) $row->total;
+                if (!isset($sourceTotals[$source])) {
+                    $sourceTotals[$source] = 0;
+                }
+                $sourceTotals[$source] += $count;
+            }
 
             if (empty($sourceTotals)) {
                 $progressByTopic[$topicId] = [

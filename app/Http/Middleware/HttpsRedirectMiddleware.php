@@ -18,30 +18,36 @@ class HttpsRedirectMiddleware
      */
     public function handle(Request $request, Closure $next): Response
     {
-        // Check if we should force HTTPS
-        if (env('FORCE_HTTPS', false) || config('app.force_https', false) || $this->isNgrokEnvironment($request)) {
+        $shouldForceHttps = (bool) (config('app.force_https', false) || env('FORCE_HTTPS', false));
+
+        if (
+            ! $shouldForceHttps &&
+            app()->environment(['local', 'testing']) &&
+            env('ENABLE_NGROK_COMPAT', false) &&
+            $this->isNgrokEnvironment($request)
+        ) {
+            $shouldForceHttps = true;
+        }
+
+        if ($shouldForceHttps) {
             // Force HTTPS for all URLs
             URL::forceScheme('https');
-            
-            // Set secure cookie settings for HTTPS
-            if (!$request->secure()) {
-                // Only redirect GET requests, not POST/PUT/DELETE
-                if ($request->isMethod('get')) {
-                    return redirect()->secure($request->getRequestUri(), 301);
-                }
+
+            if (! $request->secure()) {
+                $secureUrl = preg_replace('/^http:/i', 'https:', $request->fullUrl()) ?: $request->fullUrl();
+
+                // Preserve the original method and body for non-GET requests.
+                return redirect()->to($secureUrl, 308);
             }
-            
+
             // Set security headers for HTTPS
             $response = $next($request);
-            
-            if (method_exists($response, 'headers')) {
-                $response->headers->set('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
-                $response->headers->set('X-Content-Type-Options', 'nosniff');
-                $response->headers->set('X-Frame-Options', 'DENY');
-                $response->headers->set('X-XSS-Protection', '1; mode=block');
-                $response->headers->set('Referrer-Policy', 'strict-origin-when-cross-origin');
-            }
-            
+            $response->headers->set('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
+            $response->headers->set('X-Content-Type-Options', 'nosniff');
+            $response->headers->set('X-Frame-Options', 'DENY');
+            $response->headers->set('X-XSS-Protection', '1; mode=block');
+            $response->headers->set('Referrer-Policy', 'strict-origin-when-cross-origin');
+
             return $response;
         }
         

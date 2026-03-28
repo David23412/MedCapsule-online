@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\Assignment;
+use App\Models\Question;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
 use App\Services\NotificationTriggerService;
@@ -85,7 +86,7 @@ class AssignmentCompletionService
         $topic = $assignment->topic;
         $source = $assignment->assigned_source;
         
-        $questions = DB::table('questions')
+        $questions = Question::query()
             ->where('topic_id', $topic->id)
             ->where('source', $source)
             ->get();
@@ -94,7 +95,7 @@ class AssignmentCompletionService
         $correctAnswers = 0;
         
         foreach ($questions as $question) {
-            if (isset($answers[$question->id]) && $answers[$question->id] === $question->correct_answer) {
+            if (isset($answers[$question->id]) && $question->isAnswerCorrect((string) $answers[$question->id])) {
                 $correctAnswers++;
             }
         }
@@ -118,7 +119,7 @@ class AssignmentCompletionService
     {
         $topic = $assignment->topic;
         
-        $questions = DB::table('questions')
+        $questions = Question::query()
             ->where('topic_id', $topic->id)
             ->get();
             
@@ -126,7 +127,7 @@ class AssignmentCompletionService
         $correctAnswers = 0;
         
         foreach ($questions as $question) {
-            if (isset($answers[$question->id]) && $answers[$question->id] === $question->correct_answer) {
+            if (isset($answers[$question->id]) && $question->isAnswerCorrect((string) $answers[$question->id])) {
                 $correctAnswers++;
             }
         }

@@ -49,12 +49,10 @@ return [
 
         'secure_uploads' => [
             'driver' => 'local',
-            'root' => storage_path('app/uploads'), // Outside web root for security
-            'url' => env('APP_URL').'/uploads', // Add URL for profile pictures
-            'visibility' => 'private', // Files not publicly accessible
+            'root' => storage_path('app/private/uploads'),
+            'visibility' => 'private',
             'throw' => false,
             'report' => false,
-            'serve' => true, // Allow serving of uploaded files
         ],
 
         's3' => [
@@ -85,7 +83,6 @@ return [
 
     'links' => [
         public_path('storage') => storage_path('app/public'),
-        public_path('uploads') => storage_path('app/uploads'),
     ],
 
 ];

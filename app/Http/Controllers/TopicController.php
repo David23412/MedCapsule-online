@@ -86,7 +86,7 @@ class TopicController extends Controller
         // Convert courseId to integer and find course
         $requestedCourseId = (int) $courseId;
         $course = Course::query()
-            ->select('id', 'name', 'created_at', 'type', 'price')
+            ->select('id', 'name', 'created_at', 'type', 'access_type', 'price')
             ->find($requestedCourseId);
         
         if (!$course) {
@@ -116,19 +116,25 @@ class TopicController extends Controller
                 return redirect($user->freeCourseSurveyRedirectFor($course));
             }
 
-            $pendingPayment = Payment::query()
-                ->where('user_id', $user->id)
-                ->where('course_id', $course->id)
-                ->where('status', 'pending')
-                ->exists();
+            if ($course->isSurveyUnlockable()) {
+                $user->enrollInCourse($course->id, $course->defaultEnrollmentAccessLevel());
+                \Illuminate\Support\Facades\Cache::forget("user_course_optimization_data_{$user->id}");
+                \Illuminate\Support\Facades\Cache::forget("courses_metadata_{$user->id}_all_v1"); // Attempt to clear some course caches for UI update
+            } else {
+                $pendingPayment = Payment::query()
+                    ->where('user_id', $user->id)
+                    ->where('course_id', $course->id)
+                    ->where('status', 'pending')
+                    ->exists();
 
-            if ($pendingPayment) {
+                if ($pendingPayment) {
+                    return redirect()->route('courses.index')
+                        ->with('info', 'Your payment for this course is pending verification. You will receive access once your payment is confirmed.');
+                }
+
                 return redirect()->route('courses.index')
-                    ->with('info', 'Your payment for this course is pending verification. You will receive access once your payment is confirmed.');
+                    ->with('error', 'You need to purchase this course to access its content.');
             }
-
-            return redirect()->route('courses.show', $course->id)
-                ->with('error', 'You need to purchase this course to access its content.');
         }
 
         $hasFullCourseAccess = $user->hasFullAccessToCourse($course);
@@ -239,25 +245,10 @@ class TopicController extends Controller
         } else {
             $candidateCourses = \App\Models\Course::query()
                 ->select('courses.id', 'courses.name')
-                ->where(function($query) use ($user) {
-                // User must be enrolled
-                $query->whereHas('users', function($subQuery) use ($user) {
+                ->whereHas('users', function($subQuery) use ($user) {
                     $subQuery->where('user_id', $user->id)
                             ->where('is_enrolled', true);
                 })
-                // AND user has paid successfully OR course is free
-                ->where(function($accessQuery) use ($user) {
-                    // Either course is free
-                    $accessQuery->where(function($freeQuery) {
-                        $freeQuery->where('price', 0)->orWhereNull('price');
-                    })
-                    // OR user has completed payment
-                    ->orWhereHas('payments', function($paymentQuery) use ($user) {
-                        $paymentQuery->where('user_id', $user->id)
-                                   ->where('status', 'completed');
-                    });
-                });
-            })
                 ->orderBy('name')
                 ->get();
 
@@ -361,25 +352,11 @@ class TopicController extends Controller
                 $accessibleCourses = \App\Models\Course::whereIn('id', $courseIds)->get();
             } else {
                 $candidateCourses = \App\Models\Course::whereIn('id', $courseIds)
-                    ->where(function($query) use ($user) {
-                        // User must be enrolled
-                        $query->whereHas('users', function($subQuery) use ($user) {
-                            $subQuery->where('user_id', $user->id)
-                                    ->where('is_enrolled', true);
-                        })
-                        // AND user has paid successfully OR course is free
-                        ->where(function($accessQuery) use ($user) {
-                            // Either course is free
-                            $accessQuery->where(function($freeQuery) {
-                                $freeQuery->where('price', 0)->orWhereNull('price');
-                            })
-                            // OR user has completed payment
-                            ->orWhereHas('payments', function($paymentQuery) use ($user) {
-                                $paymentQuery->where('user_id', $user->id)
-                                           ->where('status', 'completed');
-                            });
-                        });
-                    })->get();
+                    ->whereHas('users', function($subQuery) use ($user) {
+                        $subQuery->where('user_id', $user->id)
+                                ->where('is_enrolled', true);
+                    })
+                    ->get();
 
                 $accessMap = $user->hasAccessToCourses($candidateCourses->pluck('id')->all());
                 $accessibleCourses = $candidateCourses
@@ -481,8 +458,11 @@ class TopicController extends Controller
                 ], 403);
             }
 
-            // Get available sources and their question counts for this topic
-            $sourceCounts = Question::where('topic_id', $topic->id)
+            // Get available sources and their question counts for this topic (including linked questions)
+            $sourceCounts = Question::where(function($q) use ($topic) {
+                    $q->where('topic_id', $topic->id)
+                      ->orWhereRaw('FIND_IN_SET(?, REPLACE(extra_topic, " ", "")) > 0', [$topic->id]);
+                })
                 ->whereNotNull('source')
                 ->selectRaw('source, COUNT(*) as count')
                 ->groupBy('source')
@@ -598,7 +578,7 @@ class TopicController extends Controller
                     return redirect($user->freeCourseSurveyRedirectFor($topic->course_id));
                 }
 
-                return redirect()->route('courses.show', $topic->course_id)
+                return redirect()->route('courses.index')
                     ->with('error', 'You need to purchase this course to access its content.');
             }
 

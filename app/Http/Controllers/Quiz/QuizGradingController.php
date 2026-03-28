@@ -11,6 +11,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 
 /**
  * Quiz Grading Controller - Handles quiz grading and scoring operations
@@ -36,7 +37,7 @@ class QuizGradingController extends Controller
     public function submit(QuizExecutionRequest $request, $course, $topic): JsonResponse
     {
         try {
-            $validated = $request->validated();
+            $validated = $request->getValidatedWithDefaults();
             $userId = auth()->id();
 
             // Convert to integers and validate course-topic relationship
@@ -79,6 +80,20 @@ class QuizGradingController extends Controller
                 'data' => $gradingResult
             ]);
 
+        } catch (\InvalidArgumentException $e) {
+            $status = Str::contains(Str::lower($e->getMessage()), ['payload', 'too large', 'exceeds maximum']) ? 413 : 422;
+
+            Log::warning('Quiz submission rejected', [
+                'error' => $e->getMessage(),
+                'quiz_id' => $topic,
+                'user_id' => auth()->id(),
+                'status' => $status,
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'error' => $e->getMessage(),
+            ], $status);
         } catch (\Exception $e) {
             Log::error("Quiz submission failed", [
                 'error' => $e->getMessage(),
@@ -87,6 +102,7 @@ class QuizGradingController extends Controller
             ]);
 
             return response()->json([
+                'success' => false,
                 'error' => 'Failed to submit quiz'
             ], 500);
         }

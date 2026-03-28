@@ -11,7 +11,7 @@
     </script>
     
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
@@ -40,6 +40,18 @@
     <link rel="stylesheet" href="/css/responsive-navigation.css">
 </head>
 <body>
+    {{-- Mobile-only sticky top bar --}}
+    <header class="topics-mobile-header" id="topicsMobileHeader">
+        <button class="topics-mobile-hamburger" id="topicsMobileHamburger" aria-label="Open navigation menu" aria-expanded="false" aria-controls="topicsSidebar">
+            <span></span><span></span><span></span>
+        </button>
+        <span class="topics-mobile-course-name">{{ $course->name }}</span>
+        <a href="{{ route('home') }}" class="topics-mobile-home-link" aria-label="Home">
+            <i class="fas fa-home"></i>
+        </a>
+    </header>
+    {{-- Offcanvas backdrop --}}
+    <div class="topics-sidebar-backdrop" id="topicsSidebarBackdrop" aria-hidden="true"></div>
     @php
         $profileImageUrl = $currentUserView['profile_image_url'] ?? Auth::user()->getProfileImageUrl();
         $profileFallbackUrl = $currentUserView['profile_fallback_url'] ?? ('https://ui-avatars.com/api/?name=' . urlencode(Auth::user()->name) . '&size=200&background=007bff&color=ffffff');
@@ -63,11 +75,15 @@
         $canViewPlannerDebug = Auth::user()->isAdmin() || Auth::user()->isTutor();
     @endphp
 
-    <div class="sidebar">
+    <div class="sidebar" id="topicsSidebar" role="navigation" aria-label="Course navigation">
         <button type="button" class="sidebar-toggle" id="sidebarToggle" aria-label="Collapse sidebar" aria-expanded="true">
             <span class="sidebar-toggle-chevron" aria-hidden="true">
                 <i class="fas fa-chevron-left"></i>
             </span>
+        </button>
+        {{-- Mobile-only close button inside the drawer --}}
+        <button type="button" class="topics-sidebar-close-btn" id="topicsSidebarCloseBtn" aria-label="Close navigation">
+            <i class="fas fa-times"></i>
         </button>
 
         <a href="{{ route('home') }}" class="sidebar-logo">
@@ -350,13 +366,14 @@
                         <div class="mb-4">
                             <div class="setting-header">
                                 <i class="fas fa-book text-warning"></i>
-                                <label for="sourceSelect" class="form-label mb-2">Select Sources</label>
+                                <label class="form-label mb-2">Select Sources</label>
                             </div>
-                            <select class="form-select custom-select" id="sourceSelect" name="selected_sources[]" required>
-                                <option value="">Select sources</option>
-                                <!-- Sources will be loaded dynamically -->
-                                <option disabled>Loading sources...</option>
-                            </select>
+                            <div class="courses-container" id="sourceCheckboxContainer">
+                                <div class="text-center text-muted py-3" id="sourcePlaceholder">
+                                    <i class="fas fa-info-circle mb-2"></i>
+                                    <p class="mb-0">Select courses above to load available sources.</p>
+                                </div>
+                            </div>
                         </div>
 
                         <div class="mb-4">
@@ -488,7 +505,11 @@
                         $topicProgress = $topic->userProgress->first();
                         $isMastered = $topicProgress && ($topicProgress->percentage_grade ?? 0) >= 80;
                     @endphp
-                    <span class="topics-progress-segment{{ $isMastered ? ' is-mastered' : '' }}" aria-hidden="true"></span>
+                    <span
+                        class="topics-progress-segment{{ $isMastered ? ' is-mastered' : '' }}"
+                        data-topic-id="{{ $topic->id }}"
+                        aria-hidden="true"
+                    ></span>
                 @endforeach
             </div>
         </div>
@@ -859,6 +880,7 @@
         window.TopicsPageConfig = {
             randomQuizRoute: @json(route('quiz.random.show')),
             randomTutorRoute: @json(route('quiz.random.tutor')),
+            recentProgressRoute: @json(route('progress.recent-updates')),
             taskCelebration: @json([
                 'awarded_now' => $gamePlan['awarded_now'] ?? 0,
                 'just_completed_tasks' => $gamePlan['just_completed_tasks'] ?? [],
@@ -869,5 +891,38 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js" defer crossorigin="anonymous"></script>
     <script src="https://cdn.jsdelivr.net/npm/alpinejs@2.8.2/dist/alpine.min.js" defer crossorigin="anonymous"></script>
     <script src="{{ asset('js/topics-for-course-page.js') }}" defer></script>
+
+    <script>
+    /* Mobile Sidebar (Offcanvas) Toggle */
+    (function() {
+        var hamburger = document.getElementById('topicsMobileHamburger');
+        var sidebar   = document.getElementById('topicsSidebar');
+        var backdrop  = document.getElementById('topicsSidebarBackdrop');
+        var closeBtn  = document.getElementById('topicsSidebarCloseBtn');
+
+        function openSidebar() {
+            sidebar.classList.add('is-open');
+            backdrop.classList.add('is-visible');
+            document.body.classList.add('topics-sidebar-open');
+            hamburger && hamburger.setAttribute('aria-expanded', 'true');
+        }
+
+        function closeSidebar() {
+            sidebar.classList.remove('is-open');
+            backdrop.classList.remove('is-visible');
+            document.body.classList.remove('topics-sidebar-open');
+            hamburger && hamburger.setAttribute('aria-expanded', 'false');
+        }
+
+        hamburger  && hamburger.addEventListener('click', function() {
+            sidebar.classList.contains('is-open') ? closeSidebar() : openSidebar();
+        });
+        backdrop   && backdrop.addEventListener('click', closeSidebar);
+        closeBtn   && closeBtn.addEventListener('click', closeSidebar);
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') closeSidebar();
+        });
+    })();
+    </script>
 </body>
 </html>

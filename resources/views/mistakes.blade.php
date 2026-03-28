@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>MedCapsule</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
@@ -19,6 +19,17 @@
     {{-- Desktop styles only --}}
 </head>
 <body>
+    {{-- Mobile-only sticky top bar --}}
+    <header class="mistakes-mobile-header" id="mistakesMobileHeader">
+        <button class="mistakes-mobile-hamburger" id="mistakesMobileHamburger" aria-label="Open navigation menu" aria-expanded="false">
+            <span></span><span></span><span></span>
+        </button>
+        <span class="mistakes-mobile-title">Review Mistakes</span>
+        <a href="{{ route('home') }}" class="mistakes-mobile-home" aria-label="Home">
+            <i class="fas fa-home"></i>
+        </a>
+    </header>
+    <div class="mistakes-sidebar-backdrop" id="mistakesSidebarBackdrop" aria-hidden="true"></div>
     <!-- SAFE PRELOADER - WON'T BREAK ANYTHING -->
     @include('components.lightning-preloader')
 
@@ -40,9 +51,12 @@
         }
     @endphp
 
-    <div class="sidebar">
+    <div class="sidebar" id="mistakesSidebar" role="navigation" aria-label="Review navigation">
         <button type="button" class="sidebar-toggle" id="sidebarToggle" aria-label="Collapse sidebar" aria-expanded="true">
             <i class="fas fa-chevron-left"></i>
+        </button>
+        <button type="button" class="mistakes-sidebar-close-btn" id="mistakesSidebarCloseBtn" aria-label="Close navigation">
+            <i class="fas fa-times"></i>
         </button>
 
         <a href="{{ route('home') }}" class="sidebar-logo">
@@ -305,118 +319,113 @@
             @else
                 @foreach($mistakes as $mistake)
                         <div class="mistake-card" data-question-id="{{ $mistake->question_id }}">
-                        <!-- Normal Mode Content -->
-                        <div class="normal-mode-content">
                             <button class="remove-question" onclick="removeMistake({{ $mistake->question_id }})">
                                 <i class="fas fa-times"></i>
                             </button>
-                            <div class="question-text">
-    <!-- No hardcoded indicator -->
-                                <p>{{ $mistake->question->question }}</p>
-                                @if($mistake->question->image_url)
-                                    <img src="{{ asset($mistake->question->image_url) }}" alt="Question Image" class="question-image">
-                                @endif
-                                
-                                <!-- No top indicator -->
-                                
 
-                            </div>
-                            <div class="answers">
-                                <div class="options">
-                                    @php
-                                        $submittedOption = $mistake->submitted_answer;
-                                        $correctOption = $mistake->question->correct_answer;
-                                        $isUnanswered = ($submittedOption === 'unanswered' || $submittedOption === '' || $submittedOption === null || $mistake->skipped);
-                                    @endphp
-                                    
-                                    <!-- Submitted Answer Display -->
-                                    <div class="answer-section">
-                                        <h4 class="answer-label">Your answer:</h4>
-                                        <div class="form-check">
-                                            @if($isUnanswered)
-                                                <!-- Unanswered Question - Normal Styling -->
-                                                <label class="form-check-label incorrect">
-                                                    UNANSWERED
-                                                </label>
-                                            @elseif($mistake->question->question_type === 'written')
-                                                <!-- Written Question - Show Submitted Text -->
-                                                <label class="form-check-label incorrect">
-                                                    {{ $submittedOption }}
-                                                </label>
-                                            @else
-                                                <!-- Multiple Choice - Show Submitted Option -->
-                                                <input class="form-check-input" type="radio" disabled checked>
-                                                <label class="form-check-label incorrect">
-                                                    @if(in_array(strtolower($submittedOption), ['a', 'b', 'c', 'd']))
-                                                        {{ $mistake->question->{'option_'.strtolower($submittedOption)} }}
-                                                    @else
-                                                        {{ $submittedOption }}
-                                                    @endif
-                                                </label>
-                                            @endif
-                                        </div>
-                                    </div>
-
-                                    <!-- Correct Answer -->
-                                    <div class="answer-section">
-                                        <h4 class="answer-label">Correct answer:</h4>
-                                        <div class="form-check">
-                                            @if($mistake->question->question_type === 'written')
-                                                <span class="written-correct-answer d-none">{{ $mistake->question->correct_answer }}</span>
-                                                <label class="form-check-label correct">
-                                                    {{ $mistake->question->correct_answer }}
-                                                </label>
-                                            @else
-                                                <label class="form-check-label correct">
-                                                    {{ $mistake->question->{'option_'.strtolower($correctOption)} }}
-                                                </label>
-                                            @endif
-                                        </div>
-                                    </div>
+                            <div class="normal-mode-content{{ $mistake->question->image_url ? ' has-question-image' : ' no-question-image' }}">
+                                <div class="question-text">
+                                    <p>{{ $mistake->question->question }}</p>
+                                    @if($mistake->question->image_url)
+                                        <img src="{{ asset($mistake->question->image_url) }}" alt="Question Image" class="question-image">
+                                    @endif
                                 </div>
-                                @if($mistake->question->explanation)
-                                    <div class="mt-3 explanation-wrapper">
-                                        <button class="explanation-toggle" type="button" data-explanation-target="explanation-{{ $mistake->question_id }}" aria-expanded="false" aria-controls="explanation-{{ $mistake->question_id }}">
-                                            <i class="fas fa-lightbulb"></i>
-                                        </button>
-                                        <div class="explanation-panel" id="explanation-{{ $mistake->question_id }}">
-                                            <div class="explanation-content">
-                                                {{ $mistake->question->explanation }}
+
+                                <div class="answers">
+                                    <div class="options">
+                                        @php
+                                            $submittedOption = $mistake->submitted_answer;
+                                            $correctOption = $mistake->question->correct_answer;
+                                            $isUnanswered = ($submittedOption === 'unanswered' || $submittedOption === '' || $submittedOption === null || $mistake->skipped);
+                                        @endphp
+                                        
+                                        <!-- Submitted Answer Display -->
+                                        <div class="answer-section">
+                                            <h4 class="answer-label">Your answer:</h4>
+                                            <div class="form-check">
+                                                @if($isUnanswered)
+                                                    <label class="form-check-label incorrect">
+                                                        UNANSWERED
+                                                    </label>
+                                                @elseif($mistake->question->question_type === 'written')
+                                                    <label class="form-check-label incorrect">
+                                                        {{ $submittedOption }}
+                                                    </label>
+                                                @else
+                                                    <input class="form-check-input" type="radio" disabled checked>
+                                                    <label class="form-check-label incorrect">
+                                                        @if(in_array(strtolower($submittedOption), ['a', 'b', 'c', 'd']))
+                                                            {{ $mistake->question->{'option_'.strtolower($submittedOption)} }}
+                                                        @else
+                                                            {{ $submittedOption }}
+                                                        @endif
+                                                    </label>
+                                                @endif
+                                            </div>
+                                        </div>
+
+                                        <!-- Correct Answer -->
+                                        <div class="answer-section">
+                                            <h4 class="answer-label">Correct answer:</h4>
+                                            <div class="form-check">
+                                                @if($mistake->question->question_type === 'written')
+                                                    <span class="written-correct-answer d-none">{{ $mistake->question->correct_answer }}</span>
+                                                    <label class="form-check-label correct">
+                                                        {{ $mistake->question->correct_answer }}
+                                                    </label>
+                                                @else
+                                                    <label class="form-check-label correct">
+                                                        {{ $mistake->question->{'option_'.strtolower($correctOption)} }}
+                                                    </label>
+                                                @endif
                                             </div>
                                         </div>
                                     </div>
-                                @endif
-                                <div class="info-boxes">
-                                    @if($mistake->skipped)
-                                    <div class="info-box" style="border-color: #5dade2; background-color: rgba(93, 173, 226, 0.15);">
-                                        <i class="fas fa-forward" style="color: #2980b9;"></i>
-                                        <div class="info-box-value" style="color: #2980b9;">skipped</div>
-                                    </div>
+
+                                    @if($mistake->question->explanation)
+                                        <div class="mt-3 explanation-wrapper">
+                                            <button class="explanation-toggle" type="button" data-explanation-target="explanation-{{ $mistake->question_id }}" aria-expanded="false" aria-controls="explanation-{{ $mistake->question_id }}">
+                                                <i class="fas fa-lightbulb"></i>
+                                            </button>
+                                            <div class="explanation-panel" id="explanation-{{ $mistake->question_id }}">
+                                                <div class="explanation-content">
+                                                    {{ $mistake->question->explanation }}
+                                                </div>
+                                            </div>
+                                        </div>
                                     @endif
-                                    <div class="info-box">
-                                        <div class="info-box-label">Date</div>
-                                        <div class="info-box-value">{{ $mistake->last_attempt_date->format('M j, Y') }}</div>
+
+                                    <div class="info-boxes">
+                                        @if($mistake->skipped)
+                                        <div class="info-box" style="border-color: #5dade2; background-color: rgba(93, 173, 226, 0.15);">
+                                            <i class="fas fa-forward" style="color: #2980b9;"></i>
+                                            <div class="info-box-value" style="color: #2980b9;">skipped</div>
+                                        </div>
+                                        @endif
+                                        <div class="info-box">
+                                            <label class="info-box-label">Date</label>
+                                            <span class="info-box-value">{{ $mistake->last_attempt_date->format('M j, Y') }}</span>
+                                        </div>
+                                        @if($mistake->question->topic && $mistake->question->topic->course)
+                                        <div class="info-box">
+                                            <label class="info-box-label">Topic</label>
+                                            <span class="info-box-value">{{ $mistake->question->topic->name }}</span>
+                                        </div>
+                                        <div class="info-box">
+                                            <label class="info-box-label">Course</label>
+                                            <span class="info-box-value">{{ $mistake->question->topic->course->name }}</span>
+                                        </div>
+                                        @endif
                                     </div>
-                                    @if($mistake->question->topic && $mistake->question->topic->course)
-                                    <div class="info-box">
-                                        <div class="info-box-label">Topic</div>
-                                        <div class="info-box-value">{{ $mistake->question->topic->name }}</div>
-                                    </div>
-                                    <div class="info-box">
-                                        <div class="info-box-label">Course</div>
-                                        <div class="info-box-value">{{ $mistake->question->topic->course->name }}</div>
-                                    </div>
-                                    @endif
                                 </div>
                             </div>
-                        </div>
 
-                        <!-- Flashcard Mode Content -->
-                        <div class="flashcard-content">
-                            <div class="card-face card-front"></div>
-                            <div class="card-face card-back"></div>
+                            <!-- Flashcard Mode Content -->
+                            <div class="flashcard-content">
+                                <div class="card-face card-front"></div>
+                                <div class="card-face card-back"></div>
+                            </div>
                         </div>
-                    </div>
                 @endforeach
             @endif
             </div>
@@ -433,6 +442,34 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js" defer></script>
     <script src="{{ asset('js/mistakes-page.js') }}?v={{ filemtime(public_path('js/mistakes-page.js')) }}" defer></script>
 
-    {{-- No mobile JS --}}
+    <script>
+    /* Mobile Sidebar (Offcanvas) Toggle — Mistakes Page */
+    (function() {
+        var hamburger = document.getElementById('mistakesMobileHamburger');
+        var sidebar   = document.getElementById('mistakesSidebar');
+        var backdrop  = document.getElementById('mistakesSidebarBackdrop');
+        var closeBtn  = document.getElementById('mistakesSidebarCloseBtn');
+        function openSidebar() {
+            sidebar.classList.add('is-open');
+            backdrop.classList.add('is-visible');
+            document.body.classList.add('mistakes-sidebar-open');
+            hamburger && hamburger.setAttribute('aria-expanded', 'true');
+        }
+        function closeSidebar() {
+            sidebar.classList.remove('is-open');
+            backdrop.classList.remove('is-visible');
+            document.body.classList.remove('mistakes-sidebar-open');
+            hamburger && hamburger.setAttribute('aria-expanded', 'false');
+        }
+        hamburger && hamburger.addEventListener('click', function() {
+            sidebar.classList.contains('is-open') ? closeSidebar() : openSidebar();
+        });
+        backdrop  && backdrop.addEventListener('click', closeSidebar);
+        closeBtn  && closeBtn.addEventListener('click', closeSidebar);
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') closeSidebar();
+        });
+    })();
+    </script>
 </body>
 </html>

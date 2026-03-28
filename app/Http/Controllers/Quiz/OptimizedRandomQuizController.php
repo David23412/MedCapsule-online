@@ -36,10 +36,16 @@ class OptimizedRandomQuizController extends Controller
         $questionCount = (int) $request->input('question_limit', 10);
         $durationMinutes = (float) $request->input('duration_minutes', 15);
         $selectedCourseIds = $request->input('selected_courses', []);
-        $selectedSource = $request->input('selected_sources', 'all'); // Single source selection
+        $selectedSources = $request->input('sources', ['all']);
+        
+        if (!is_array($selectedSources)) {
+            $selectedSources = [$selectedSources];
+        }
 
-        // Convert single source to array format expected by QuizService
-        $selectedSources = $selectedSource === 'all' ? ['all'] : [$selectedSource];
+        // Handle 'all' option within the array
+        if (in_array('all', $selectedSources)) {
+            $selectedSources = ['all'];
+        }
 
         // Generate a random quiz for display
         $user = auth()->user();
@@ -106,10 +112,16 @@ class OptimizedRandomQuizController extends Controller
         $questionCount = (int) $request->input('question_limit', 10);
         $durationMinutes = (float) $request->input('duration_minutes', 15);
         $selectedCourseIds = $request->input('selected_courses', []);
-        $selectedSource = $request->input('selected_sources', 'all'); // Single source selection
+        $selectedSources = $request->input('sources', ['all']);
 
-        // Convert single source to array format expected by QuizService
-        $selectedSources = $selectedSource === 'all' ? ['all'] : [$selectedSource];
+        if (!is_array($selectedSources)) {
+            $selectedSources = [$selectedSources];
+        }
+
+        // Handle 'all' option within the array
+        if (in_array('all', $selectedSources)) {
+            $selectedSources = ['all'];
+        }
 
         // Generate a random quiz for display
         $user = auth()->user();
@@ -334,7 +346,7 @@ class OptimizedRandomQuizController extends Controller
     public function getRandomQuizStats(): JsonResponse
     {
         try {
-            $cacheKey = QuizUltraConsolidatedCacheService::generateCacheKey('random_quiz_stats', [
+            $cacheKey = \App\Services\QuizUltraConsolidatedCacheService::generateCacheKey('random_quiz_stats', [
                 'user_id' => auth()->id()
             ]);
             

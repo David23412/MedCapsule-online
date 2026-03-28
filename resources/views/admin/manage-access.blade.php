@@ -1821,7 +1821,7 @@
                                         @if(isset($courses) && $courses->count() > 0)
                                             @foreach($courses as $course)
                                                 <option value="{{ isset($course->id) ? $course->id : '' }}" {{ old('course_id') == $course->id ? 'selected' : '' }} data-price="{{ isset($course->price) ? $course->price : 0 }}">
-                                                    {{ isset($course->name) ? $course->name : 'Unknown Course' }} @if(isset($course->price) && $course->price > 0)({{ $course->price }} EGP)@else(Free)@endif
+                                                    {{ isset($course->name) ? $course->name : 'Unknown Course' }} ({{ $course->formatted_price ?? 'N/A' }})
                                                 </option>
                                             @endforeach
                                         @else
@@ -2917,7 +2917,7 @@
                                     '<span class="badge bg-success">✓ Enrolled</span>' : 
                                     '<span class="badge bg-secondary">✗ Not Enrolled</span>';
                                 
-                                const priceText = course.price > 0 ? `(${course.price} EGP)` : '(Free)';
+                                const priceText = course.formatted_price ? `(${course.formatted_price})` : '';
                                 
                                 courseSelect.append(`
                                     <option value="${course.id}" data-enrolled="${isEnrolled}" data-price="${course.price}">
@@ -2946,7 +2946,7 @@
                     @foreach($courses as $course)
                         courseSelect.append(`
                             <option value="{{ $course->id }}" data-price="{{ $course->price }}">
-                                {{ $course->name }} @if($course->price > 0)({{ $course->price }} EGP)@else(Free)@endif
+                                {{ $course->name }} ({{ $course->formatted_price ?? 'N/A' }})
                             </option>
                         `);
                     @endforeach

@@ -225,16 +225,34 @@
                             </div>
                         </div>
 
+                        <div class="mb-4">
+                            <label for="access_type" class="form-label">Course Access Policy</label>
+                            <select class="form-select" id="access_type" name="access_type" required>
+                                <option value="{{ \App\Models\Course::ACCESS_TYPE_FREE }}" {{ old('access_type', \App\Models\Course::ACCESS_TYPE_FREE) === \App\Models\Course::ACCESS_TYPE_FREE ? 'selected' : '' }}>
+                                    Free access
+                                </option>
+                                <option value="{{ \App\Models\Course::ACCESS_TYPE_PREVIEW }}" {{ old('access_type') === \App\Models\Course::ACCESS_TYPE_PREVIEW ? 'selected' : '' }}>
+                                    Preview access
+                                </option>
+                                <option value="{{ \App\Models\Course::ACCESS_TYPE_PAID }}" {{ old('access_type') === \App\Models\Course::ACCESS_TYPE_PAID ? 'selected' : '' }}>
+                                    Paid access
+                                </option>
+                            </select>
+                            <div class="form-text text-muted" id="accessPolicyHelp">
+                                Free courses unlock full access after the survey. Preview courses unlock limited topics. Paid courses require payment for access.
+                            </div>
+                        </div>
+
                         <!-- Course Pricing -->
                         <div class="mb-4">
-                            <label class="form-label">Course Price</label>
+                            <label class="form-label">Course Pricing</label>
                             <div class="form-text text-muted mb-3">
-                                Leave price as 0 for free courses. Set a price to require payment before enrollment.
+                                Price is commerce metadata. Access is controlled by the policy above.
                             </div>
 
                             <div class="row">
                                 <div class="col-md-12">
-                                    <label for="price" class="form-label">Price (EGP)</label>
+                                    <label for="price" class="form-label" id="priceLabel">Price (EGP)</label>
                                     <input type="number"
                                            class="form-control"
                                            id="price"
@@ -242,9 +260,9 @@
                                            value="{{ old('price', '0') }}"
                                            min="0"
                                            step="0.01"
-                                           placeholder="0 for free course">
-                                    <div class="form-text text-muted">
-                                        Price is in Egyptian Pounds (EGP). Set to 0 for free courses.
+                                           placeholder="0.00">
+                                    <div class="form-text text-muted" id="priceHelp">
+                                        Free courses are forced to 0. Preview courses can optionally include an upgrade price. Paid courses must have a price greater than 0.
                                     </div>
                                 </div>
                             </div>
@@ -536,6 +554,7 @@ const imageUrlInput = document.getElementById('image_url');
 const imageFileInput = document.getElementById('image_file');
 const colorInput = document.getElementById('color');
 const titleColorInput = document.getElementById('title_color');
+const accessTypeInput = document.getElementById('access_type');
 const priceInput = document.getElementById('price');
 const academicYearInput = document.getElementById('academic_year');
 
@@ -549,6 +568,9 @@ const previewActionBtn = document.getElementById('previewActionBtn');
 const previewActionText = document.getElementById('previewActionText');
 const colorPreview = document.getElementById('colorPreview');
 const titleColorPreview = document.getElementById('titleColorPreview');
+const accessPolicyHelp = document.getElementById('accessPolicyHelp');
+const priceLabel = document.getElementById('priceLabel');
+const priceHelp = document.getElementById('priceHelp');
 const colorPickerButtons = document.querySelectorAll('.color-picker-trigger');
 
 // Image upload elements
@@ -560,6 +582,58 @@ const fileName = document.getElementById('fileName');
 const removeImageBtn = document.getElementById('removeImage');
 
 let currentImageSource = null; // 'file' or 'url'
+let lastMonetizedPrice = (() => {
+    const initialPrice = parseFloat(priceInput.value);
+    return Number.isFinite(initialPrice) && initialPrice > 0 ? priceInput.value : '';
+})();
+
+function formatPriceLabel(value) {
+    const price = parseFloat(value);
+
+    if (!Number.isFinite(price) || price <= 0) {
+        return null;
+    }
+
+    return price % 1 === 0 ? String(price) : price.toFixed(2);
+}
+
+function syncAccessPolicyForm() {
+    const accessType = accessTypeInput.value;
+    const currentPrice = parseFloat(priceInput.value);
+
+    if (Number.isFinite(currentPrice) && currentPrice > 0) {
+        lastMonetizedPrice = priceInput.value;
+    }
+
+    if (accessType === 'free') {
+        priceInput.value = '0';
+        priceInput.readOnly = true;
+        priceInput.placeholder = '0.00';
+        priceLabel.textContent = 'Price (EGP)';
+        accessPolicyHelp.textContent = 'Free courses unlock full access after the survey.';
+        priceHelp.textContent = 'Free courses are always stored with a price of 0.';
+        return;
+    }
+
+    priceInput.readOnly = false;
+
+    if (accessType === 'preview') {
+        priceLabel.textContent = 'Upgrade Price (EGP)';
+        priceInput.placeholder = 'Optional';
+        accessPolicyHelp.textContent = 'Preview courses unlock limited topics after the survey. Add a price only if users can upgrade to the full course.';
+        priceHelp.textContent = 'Leave this blank or 0 for preview-only access, or set a price for an upgrade path.';
+        return;
+    }
+
+    priceLabel.textContent = 'Price (EGP)';
+    priceInput.placeholder = 'Required';
+    accessPolicyHelp.textContent = 'Paid courses stay locked until payment is completed.';
+    priceHelp.textContent = 'Paid courses must have a price greater than 0.';
+
+    if (!Number.isFinite(currentPrice) || currentPrice <= 0) {
+        priceInput.value = lastMonetizedPrice;
+    }
+}
 
 function openNativeColorPicker(input) {
     if (!input) {
@@ -614,6 +688,8 @@ async function handleScreenColorPick(button) {
 }
 
 function updatePreview() {
+    syncAccessPolicyForm();
+
     // Update title text
     previewTitle.textContent = nameInput.value || 'Course Preview';
 
@@ -666,18 +742,29 @@ function updatePreview() {
     if (colorPreview) colorPreview.style.backgroundColor = courseColor;
     if (titleColorPreview) titleColorPreview.style.backgroundColor = titleColor;
 
-    // Update action button based on price
-    const price = parseFloat(priceInput.value) || 0;
-    if (price > 0) {
+    // Update action button based on access policy
+    const accessType = accessTypeInput.value;
+    const formattedPrice = formatPriceLabel(priceInput.value);
+
+    if (accessType === 'paid') {
         previewActionBtn.style.background = '#f3f4f6';
         previewActionBtn.style.color = '#6b7280';
         previewActionBtn.querySelector('i').className = 'fas fa-lock';
-        previewActionText.textContent = `Pay ${price} EGP to Access`;
+        previewActionText.textContent = formattedPrice
+            ? `Unlock for ${formattedPrice} EGP`
+            : 'Set paid price';
+    } else if (accessType === 'preview') {
+        previewActionBtn.style.background = '#2563eb';
+        previewActionBtn.style.color = 'white';
+        previewActionBtn.querySelector('i').className = 'fas fa-eye';
+        previewActionText.textContent = formattedPrice
+            ? `Start Preview, Upgrade ${formattedPrice} EGP`
+            : 'Start Preview';
     } else {
         previewActionBtn.style.background = '#16a34a';
         previewActionBtn.style.color = 'white';
         previewActionBtn.querySelector('i').className = 'fas fa-play';
-        previewActionText.textContent = 'Start Learning (Free)';
+        previewActionText.textContent = 'Unlock via Survey';
     }
 
     // Simulate random topics count for preview
@@ -803,9 +890,11 @@ document.getElementById('url-tab').addEventListener('click', () => {
 });
 
 // Add event listeners for real-time updates
-[nameInput, descriptionInput, imageUrlInput, colorInput, titleColorInput, priceInput].forEach(input => {
+[nameInput, descriptionInput, imageUrlInput, colorInput, titleColorInput, accessTypeInput, priceInput].forEach(input => {
     input.addEventListener('input', updatePreview);
 });
+
+accessTypeInput.addEventListener('change', updatePreview);
 
 colorPickerButtons.forEach(button => {
     button.addEventListener('click', () => {
@@ -824,6 +913,7 @@ function debounceUpdatePreview() {
 }
 
 // Initial setup
+syncAccessPolicyForm();
 updatePreview();
 </script>
 @endsection

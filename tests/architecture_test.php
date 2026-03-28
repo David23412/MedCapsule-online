@@ -12,7 +12,6 @@ use Illuminate\Support\Facades\DB;
 // Helper to clear test data
 function cleanup() {
     DB::statement('SET FOREIGN_KEY_CHECKS=0;');
-    DB::table('question_topic_links')->truncate();
     Question::query()->delete();
     Topic::query()->delete();
     Course::query()->delete();
@@ -55,13 +54,8 @@ $q2 = Question::create([
     'question' => 'What is the right atrium?',
     'correct_answer' => 'A'
 ]);
-// Add pivot link
-DB::table('question_topic_links')->insert([
-    'question_id' => $q2->id,
-    'topic_id' => $lectureTopic->id,
-    'created_at' => now(),
-    'updated_at' => now(),
-]);
+// Add extra topic
+$q2->update(['extra_topic' => $lectureTopic->id]);
 $q2->updateExamFrequencyScore();
 echo "Question created: ID={$q2->id}, Topic={$q2->topic_id} (Exam), Linked Topic={$lectureTopic->id} (Lecture)\n";
 echo "Exam Count: {$q2->exam_appearances_count}\n";
@@ -69,13 +63,9 @@ assert($q2->exam_appearances_count == 1, "Only main topic is exam topic, pivot i
 
 // --- TEST 3: Multiple Exam links ---
 echo "\nTest 3: Multiple exam links...\n";
-// Suppose it's also in Mid 2021
-DB::table('question_topic_links')->insert([
-    'question_id' => $q2->id,
-    'topic_id' => $midExamTopic->id,
-    'created_at' => now(),
-    'updated_at' => now(),
-]);
+// Add another exam to extra topics
+$currentExtra = $q2->extra_topic ? $q2->extra_topic . ',' : '';
+$q2->update(['extra_topic' => $currentExtra . $midExamTopic->id]);
 $q2->updateExamFrequencyScore();
 echo "Linked Topic={$midExamTopic->id} (Exam)\n";
 echo "New Exam Count: {$q2->exam_appearances_count}\n";
@@ -116,27 +106,13 @@ $allExtraTopicIds = [ (int)$lectureTopic->id, (int)$lectureTopic2->id ];
 // Remove main
 $allExtraTopicIds = array_diff($allExtraTopicIds, [(int)$newData['topic_id']]);
 
-// Simulating the pivot logic in importer
-$existingLinks = DB::table('question_topic_links')
-    ->where('question_id', $existing->id)
-    ->pluck('topic_id')
-    ->toArray();
-$newTopicIds = array_diff($allExtraTopicIds, $existingLinks);
-
-echo "New pivot topics to add: " . implode(',', $newTopicIds) . "\n";
-foreach ($newTopicIds as $tid) {
-    DB::table('question_topic_links')->insert([
-        'question_id' => $existing->id,
-        'topic_id' => $tid,
-        'created_at' => now(),
-        'updated_at' => now(),
-    ]);
-}
+// Simulating the extra_topic logic in importer
+$existing->update(['extra_topic' => implode(',', $allExtraTopicIds)]);
 $existing->refresh();
 $existing->updateExamFrequencyScore();
 echo "Final Exam Count after re-import: {$existing->exam_appearances_count}\n";
 assert($existing->exam_appearances_count == 2, "Main topic(Exam) + Mid 2021(Exam) = 2. Lecture links don't count.");
-echo "Final Pivot Topics for Q2: " . implode(',', DB::table('question_topic_links')->where('question_id', $existing->id)->pluck('topic_id')->toArray()) . "\n";
+echo "Final Extra Topics for Q2: " . ($existing->extra_topic ?? 'none') . "\n";
 // Should be: LectureTopic, MidExamTopic, LectureTopic2 (Valves)
 
 // --- TEST 7: Duplicate Question Prevention ---

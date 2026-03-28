@@ -361,8 +361,19 @@ class QuizAttempt extends Model
     private static function calculateTopicProgress($userId, $topicId, $studyMode)
     {
         try {
-            // STEP 1: Get total questions available in this topic by source (OPTIMIZED: Single query)
-            $totalQuestionsBySource = \App\Models\Question::where('topic_id', $topicId)
+            // STEP 1: Get total questions available in this topic by source (including linked questions)
+            $totalQuestionsBySource = \App\Models\Question::where(function($q) use ($topicId) {
+                    $q->where('topic_id', $topicId);
+
+                    if (\Illuminate\Support\Facades\DB::getDriverName() === 'sqlite') {
+                        $q->orWhereRaw(
+                            "(',' || REPLACE(COALESCE(extra_topic, ''), ' ', '') || ',') LIKE ?",
+                            ['%,' . $topicId . ',%']
+                        );
+                    } else {
+                        $q->orWhereRaw('FIND_IN_SET(?, REPLACE(extra_topic, " ", "")) > 0', [$topicId]);
+                    }
+                })
                 ->selectRaw('source, COUNT(*) as total')
                 ->groupBy('source')
                 ->pluck('total', 'source')
@@ -478,8 +489,19 @@ class QuizAttempt extends Model
     private static function getTutorSourceProgress($userId, $topicId)
     {
         try {
-            // Get total questions available in this topic by source
-            $totalQuestionsBySource = \App\Models\Question::where('topic_id', $topicId)
+            // Get total questions available in this topic by source (including linked questions)
+            $totalQuestionsBySource = \App\Models\Question::where(function($q) use ($topicId) {
+                    $q->where('topic_id', $topicId);
+
+                    if (\Illuminate\Support\Facades\DB::getDriverName() === 'sqlite') {
+                        $q->orWhereRaw(
+                            "(',' || REPLACE(COALESCE(extra_topic, ''), ' ', '') || ',') LIKE ?",
+                            ['%,' . $topicId . ',%']
+                        );
+                    } else {
+                        $q->orWhereRaw('FIND_IN_SET(?, REPLACE(extra_topic, " ", "")) > 0', [$topicId]);
+                    }
+                })
                 ->selectRaw('source, COUNT(*) as total')
                 ->groupBy('source')
                 ->pluck('total', 'source')

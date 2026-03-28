@@ -36,10 +36,8 @@ class FreeCourseSurveyService
     public function freeCourses(): Collection
     {
         return Course::query()
-            ->select('id', 'name', 'price')
-            ->where(function ($query) {
-                $query->where('price', 0)->orWhereNull('price');
-            })
+            ->select('id', 'name', 'access_type', 'price')
+            ->surveyUnlockable()
             ->orderBy('name')
             ->get();
     }

@@ -10,11 +10,11 @@ use App\Http\Controllers\Auth\{
 Route::middleware('guest')->group(function () {
     // Show login form and login submission
     Route::get('login', [LoginController::class, 'showLoginForm'])->name('login');
-    Route::post('login', [LoginController::class, 'login']);
+    Route::post('login', [LoginController::class, 'login'])->middleware('throttle:login');
 
     // Show registration form and register submission
     Route::get('register', [RegisterController::class, 'showRegistrationForm'])->name('register');
-    Route::post('register', [RegisterController::class, 'register']);
+    Route::post('register', [RegisterController::class, 'register'])->middleware('throttle:register');
 });
 
 // Authenticated Routes (Only for logged-in users)

@@ -249,6 +249,9 @@ class QuizReadController extends Controller
                 ],
             ];
 
+            // ✅ ZERO N+1 BADGE ENRICHMENT
+            \App\Models\Question::enrichWithBadges($questionsCollection, $topicModel->id);
+
             return view('solve_quiz', $viewData);
 
         } catch (\Exception $e) {

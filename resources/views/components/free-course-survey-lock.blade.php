@@ -39,7 +39,6 @@
                 <div class="survey-progress-label">تقدّم الاستبيان</div>
                 <div class="survey-progress-value" id="surveyProgressValue"></div>
             </div>
-            <div class="survey-save-status" id="surveySaveStatus">يتم الحفظ تلقائياً</div>
         </div>
 
         <div class="survey-progress-track">
@@ -62,6 +61,9 @@
                     </div>
 
                     <h2 class="survey-question-title">{{ $question['prompt'] }}</h2>
+                    @unless($question['required'] ?? false)
+                        <p class="survey-optional-hint">يمكنك ترك هذا السؤال فارغاً ثم إرسال الاستبيان وفتح الكورسات مباشرة.</p>
+                    @endunless
 
                     @if (($question['type'] ?? null) === 'single_choice')
                         <div class="survey-options-grid">
@@ -89,7 +91,14 @@
             <div class="survey-actions">
                 <button type="button" class="survey-btn survey-btn-secondary" id="surveyPrevBtn">السابق</button>
                 <button type="button" class="survey-btn survey-btn-primary" id="surveyNextBtn">التالي</button>
-                <button type="submit" class="survey-btn survey-btn-primary" id="surveySubmitBtn">إرسال وفتح الكورسات</button>
+                <button
+                    type="submit"
+                    class="survey-btn survey-btn-primary"
+                    id="surveySubmitBtn"
+                    data-default-label="إرسال وفتح الكورسات"
+                    data-skip-label="تخطي وإرسال وفتح الكورسات"
+                    data-submitting-label="جاري فتح الكورسات..."
+                >إرسال وفتح الكورسات</button>
             </div>
         </form>
     </div>

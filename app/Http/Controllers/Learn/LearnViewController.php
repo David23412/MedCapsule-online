@@ -35,7 +35,7 @@ class LearnViewController extends Controller
             $courseFilter = $request->input('course');
             
             // LETHAL CACHING: Ultra-aggressive caching for mistakes
-            $cacheKey = QuizUltraConsolidatedCacheService::generateCacheKey('learn_mistakes', [
+            $cacheKey = \App\Services\QuizUltraConsolidatedCacheService::generateCacheKey('learn_mistakes', [
                 'user_id' => $userId,
                 'mode' => $mode,
                 'course_filter' => $courseFilter,
@@ -78,7 +78,7 @@ class LearnViewController extends Controller
             $userId = auth()->id();
             $courseFilter = $request->input('course');
             
-            $cacheKey = QuizUltraConsolidatedCacheService::generateCacheKey('updated_mistakes', [
+            $cacheKey = \App\Services\QuizUltraConsolidatedCacheService::generateCacheKey('updated_mistakes', [
                 'user_id' => $userId,
                 'course_filter' => $courseFilter,
                 'timestamp' => now()->format('Y-m-d-H-i')

@@ -74,12 +74,8 @@ class RegisterController extends Controller
 
     public function register(\App\Http\Requests\RegisterRequest $request)
     {
-        Log::info('Registration attempt', ['email' => $request->email]);
-
         try {
             $validated = $request->validated();
-
-            Log::info('Validation passed', ['email' => $validated['email']]);
 
             // Create the user
             $user = User::create([
@@ -91,8 +87,6 @@ class RegisterController extends Controller
                 'survey_completed' => false,
                 'free_courses_unlocked' => false,
             ]);
-
-            Log::info('User created', ['user_id' => $user->id]);
 
             // Log the user in
             Auth::login($user);
@@ -106,11 +100,7 @@ class RegisterController extends Controller
             request()->session()->put('auth.logged_in_at', now()->timestamp);
             request()->session()->save();
 
-            Log::info('User logged in', ['user_id' => $user->id]);
-
             if (Auth::check()) {
-                Log::info('Auth check passed', ['user_id' => $user->id]);
-                
                 // 🔔 TRIGGER MEDCAPSULE WELCOME NOTIFICATION FOR NEW USER
                 try {
                     \App\Services\NotificationTriggerService::onUserWelcome($user);
@@ -130,7 +120,11 @@ class RegisterController extends Controller
             }
 
         } catch (\Illuminate\Validation\ValidationException $e) {
-            Log::warning('Validation failed', ['errors' => $e->errors()]);
+            Log::warning('Registration validation failed', [
+                'fields' => array_keys($e->errors()),
+                'ip' => $request->ip(),
+            ]);
+
             return redirect()->back()
                 ->withErrors($e->errors())
                 ->withInput($request->except('password', 'password_confirmation'));
@@ -138,12 +132,13 @@ class RegisterController extends Controller
         } catch (\Exception $e) {
             Log::error('Registration failed', [
                 'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
+                'exception' => get_class($e),
+                'ip' => $request->ip(),
             ]);
             
             return redirect()->back()
                 ->withInput($request->except('password', 'password_confirmation'))
-                ->withErrors(['error' => 'Registration failed: ' . $e->getMessage()]);
+                ->withErrors(['error' => 'Registration failed. Please try again.']);
         }
     }
 }

@@ -4,8 +4,11 @@ namespace App\Providers;
 
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\View;
+use Illuminate\Cache\RateLimiting\Limit;
+use Illuminate\Http\Request;
 use App\Services\PaymentService;
 use App\Services\PaymentSecurityService;
 use App\Services\AdvancedCacheService;
@@ -13,6 +16,7 @@ use App\Services\NavigationViewDataService;
 use App\Services\PerformanceMonitorService;
 use App\Models\Question;
 use App\Observers\QuestionObserver;
+use Illuminate\Support\Str;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -60,6 +64,7 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         Schema::defaultStringLength(191);
+        $this->configureRateLimiting();
 
         // Register model observers (cache invalidation, etc.)
         Question::observe(QuestionObserver::class);
@@ -82,6 +87,45 @@ class AppServiceProvider extends ServiceProvider
             $view->with(
                 app(NavigationViewDataService::class)->getSharedData(auth()->user())
             );
+        });
+    }
+
+    private function configureRateLimiting(): void
+    {
+        RateLimiter::for('api', function (Request $request) {
+            return Limit::perMinute(60)->by($request->user()?->id ?: $request->ip());
+        });
+
+        RateLimiter::for('login', function (Request $request) {
+            $email = Str::lower((string) $request->input('email'));
+
+            return [
+                Limit::perMinute(5)->by($email.'|'.$request->ip()),
+                Limit::perHour(25)->by($request->ip()),
+            ];
+        });
+
+        RateLimiter::for('register', function (Request $request) {
+            return [
+                Limit::perMinute(3)->by($request->ip()),
+                Limit::perHour(10)->by($request->ip()),
+            ];
+        });
+
+        RateLimiter::for('public-status', function (Request $request) {
+            return Limit::perMinute(30)->by($request->ip());
+        });
+
+        RateLimiter::for('video-tokens', function (Request $request) {
+            return Limit::perMinute(20)->by((string) ($request->user()?->id ?: $request->ip()));
+        });
+
+        RateLimiter::for('random-quiz', function (Request $request) {
+            return Limit::perMinute(10)->by((string) ($request->user()?->id ?: $request->ip()));
+        });
+
+        RateLimiter::for('random-quiz-grading', function (Request $request) {
+            return Limit::perMinute(30)->by((string) ($request->user()?->id ?: $request->ip()));
         });
     }
 

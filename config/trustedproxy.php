@@ -1,5 +1,17 @@
 <?php
 
+use App\Support\TrustedNetworkConfiguration;
+
+$configuredProxies = TrustedNetworkConfiguration::trustedProxies(
+    env('TRUSTED_PROXIES')
+);
+
+$configuredHosts = TrustedNetworkConfiguration::trustedHosts(
+    env('TRUSTED_HOSTS', ''),
+    (string) env('APP_URL', ''),
+    filter_var(env('ENABLE_NGROK_COMPAT', false), FILTER_VALIDATE_BOOL)
+);
+
 return [
     /*
     |--------------------------------------------------------------------------
@@ -10,7 +22,7 @@ return [
     | proxies, but this is not recommended for production.
     |
     */
-    'proxies' => env('TRUSTED_PROXIES', '*'),
+    'proxies' => $configuredProxies,
 
     /*
     |--------------------------------------------------------------------------
@@ -21,7 +33,6 @@ return [
     |
     */
     'headers' => \Illuminate\Http\Request::HEADER_X_FORWARDED_FOR |
-                 \Illuminate\Http\Request::HEADER_X_FORWARDED_HOST |
                  \Illuminate\Http\Request::HEADER_X_FORWARDED_PORT |
                  \Illuminate\Http\Request::HEADER_X_FORWARDED_PROTO |
                  \Illuminate\Http\Request::HEADER_X_FORWARDED_AWS_ELB,
@@ -34,13 +45,5 @@ return [
     | Set trusted host patterns for ngrok and other development tools.
     |
     */
-    'hosts' => [
-        env('APP_URL'),
-        '*.ngrok-free.dev',
-        '*.ngrok-free.app',
-        '*.ngrok.io',
-        'localhost',
-        '127.0.0.1',
-        '*.medcapsule.com',
-    ],
+    'hosts' => TrustedNetworkConfiguration::hostPatterns($configuredHosts),
 ];

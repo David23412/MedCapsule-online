@@ -594,17 +594,18 @@
             transform: translateX(3px);
         }
 
-        /* 🚀 OPTIMIZED: Reduced animation complexity for performance */
         .mistake-card {
             background: white;
             border-radius: 24px;
             padding: 2.5rem;
-            margin-bottom: 2.25rem;
+            margin-bottom: 3rem;
             box-shadow: 0 4px 20px rgba(0, 0, 0, 0.06),
                       0 0 0 1px rgba(0, 0, 0, 0.03);
-            transition: box-shadow 0.2s ease, transform 0.2s ease; /* Simplified transition */
+            transition: box-shadow 0.2s ease, transform 0.2s ease;
             position: relative;
             overflow: hidden;
+            border: 1px solid #edf2f7;
+            width: 100%;
         }
 
         .mistake-card::before {
@@ -613,25 +614,14 @@
             top: 0;
             left: 0;
             width: 100%;
-            height: 5px;
-            background: linear-gradient(135deg, #2563eb, #1d4ed8);
+            height: 4px;
+            background: linear-gradient(90deg, #3b82f6, #2563eb);
             opacity: 0;
-            transition: opacity 0.2s ease; /* Faster transition */
-        }
-
-        .mistake-card:hover {
-            transform: translateY(-2px); /* Reduced movement for performance */
-            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.08),
-                      0 0 0 1px rgba(0, 0, 0, 0.02);
+            transition: opacity 0.3s ease;
         }
 
         .mistake-card:hover::before {
             opacity: 1;
-        }
-
-        /* 🚀 PERFORMANCE: Removed complex gradient overlay */
-        .mistake-card::after {
-            display: none; /* Removed for performance */
         }
 
         .remove-question {
@@ -643,72 +633,118 @@
             color: #ff4d4d;
             font-size: 1rem;
             cursor: pointer;
-            padding: 0.5rem;
+            padding: 0;
             border-radius: 12px;
             width: 36px;
             height: 36px;
             display: flex;
             align-items: center;
             justify-content: center;
-            transition: all 0.2s ease;
-            box-shadow: 0 2px 8px rgba(255, 77, 77, 0.1);
-            z-index: 10;
+            transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            box-shadow: 0 4px 12px rgba(255, 77, 77, 0.15);
+            z-index: 50;
         }
 
         .remove-question:hover {
             background-color: #ff4d4d;
             color: white;
             transform: scale(1.1) rotate(90deg);
-            box-shadow: 0 4px 12px rgba(255, 77, 77, 0.2);
+            box-shadow: 0 6px 16px rgba(255, 77, 77, 0.3);
         }
 
-        .question-section {
-            border-bottom: 2px solid #f0f2f5;
-            padding-bottom: 2rem;
-            margin-right: 3rem;
+        /* OPTIMIZED Side-by-Side Grid */
+        .normal-mode-content {
+            display: grid;
+            grid-template-columns: 1fr 480px;
+            grid-template-rows: auto auto auto; /* row 1: text, row 2: answers, row 3: explanation */
+            gap: 0 3.5rem;
+            width: 100%;
+            align-items: start;
+        }
+
+        .normal-mode-content.no-question-image {
+            grid-template-columns: minmax(0, 1fr);
+            gap: 0;
         }
 
         .question-text {
-            font-size: 1.3rem;
-            color: #2c3e50;
+            display: contents; /* Unwraps children for grid positioning */
+        }
+
+        .question-text p {
+            grid-column: 1;
+            grid-row: 1;
+            font-size: 1.65rem; /* Increased from 1.4rem */
+            color: #1a202c;
             font-weight: 600;
-            line-height: 1.6;
-            margin-bottom: 1.5rem;
-            padding-right: 4rem; /* Only add padding to prevent text from reaching button area */
+            margin-bottom: 0.25rem; /* Ultra tight spacing preserved */
+            line-height: 1.45;
             word-wrap: break-word;
+            padding-right: 1.5rem;
+            align-self: start;
+        }
+
+        .normal-mode-content.no-question-image .question-text p {
+            padding-right: 0;
+            max-width: 100%;
+        }
+
+        .question-image {
+            grid-column: 2;
+            grid-row: 1 / span 2;
+            width: 100%;
+            height: auto;
+            max-height: 460px;
+            border-radius: 16px;
+            object-fit: contain;
+            box-shadow: 0 12px 30px rgba(0, 0, 0, 0.08);
+            border: 1px solid #e2e8f0;
+            transition: all 0.4s cubic-bezier(0.165, 0.84, 0.44, 1);
+            margin-top: 3rem; /* Pushed further down to clear red X button */
+            align-self: start;
+        }
+
+        .question-image:hover {
+            transform: scale(1.02);
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.15);
+        }
+
+        .answers {
+            display: contents;
+        }
+
+        .options {
+            grid-column: 1;
+            grid-row: 2;
+            margin-top: 0;
+            padding-bottom: 1.5rem;
+            display: flex;
+            flex-direction: column;
+            gap: 0.85rem; /* Tighter gap between options */
+            align-self: start;
         }
 
         .answer-section {
-            margin-bottom: 1rem;
+            margin-bottom: 0.75rem;
         }
 
         .answer-label {
-            font-size: 1.08rem;
+            font-size: 1.05rem;
             font-weight: 700;
-            color: #000000;
-            margin-bottom: 0.5rem;
+            color: #475569;
+            margin-bottom: 0.35rem;
             font-family: 'Poppins', sans-serif;
             letter-spacing: 0.01em;
         }
 
-        .answer-text {
-            flex: 1;
-            font-size: 1.2rem;
-            line-height: 1.65;
-        }
-
-        .answers {
-            position: relative;
-            padding-bottom: 4.25rem;
-        }
-
-        .info-boxes {
+        /* Info boxes (Pills) absolute relative to the MISTAKE CARD, not answers column */
+        .mistake-card .info-boxes {
             position: absolute;
-            bottom: 1.25rem;
-            right: 1.25rem;
+            bottom: 1.5rem;
+            right: 2.5rem;
             display: flex;
-            gap: 0.5rem;
-            z-index: 1;
+            gap: 0.6rem;
+            z-index: 5;
         }
 
         .info-box {
@@ -744,52 +780,66 @@
             color: #000000;
         }
 
-        .info-box i {
-            font-size: 0.75rem;
-            color: #64748b;
-        }
-
-
-
-        .topic-badge, .time-badge {
+        /* Minimal bulb design */
+        .explanation-toggle {
             display: inline-flex;
             align-items: center;
-            padding: 0.8rem 1.5rem;
-            border-radius: 12px;
-            font-size: 1rem;
-            color: #4a5568;
-            background: #f8fafc;
-            border: 2px solid #e2e8f0;
-            font-weight: 500;
-            transition: all 0.3s ease;
+            justify-content: center;
+            background: none;
+            border: none;
+            padding: 0;
+            cursor: pointer;
+            color: #0ea5e9;
+            transition: all 0.2s ease;
         }
 
-        .topic-badge:hover, .time-badge:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+        .explanation-toggle:hover {
+            transform: translateY(-1px);
+            color: #2563eb;
         }
 
-        .topic-badge i, .time-badge i {
-            margin-right: 0.8rem;
-            color: #3498db;
+        .explanation-toggle i {
             font-size: 1.1rem;
         }
 
-        .question-image {
-            max-width: 100%;
-            height: auto;
-            max-height: 300px;
-            border-radius: 8px;
-            margin: 1rem 0;
-            display: block;
+        /* Responsive Overrides */
+        @media (max-width: 992px) {
+            .normal-mode-content {
+                display: flex;
+                flex-direction: column;
+                gap: 1.5rem;
+            }
+
+            .question-text { display: block; } /* Revert display: contents on mobile */
+
+            .question-image {
+                width: 100%;
+                max-width: 100%;
+                margin: 1rem 0;
+                max-height: 400px;
+            }
+
+            .answers {
+                display: block; /* Back to normal for mobile */
+                padding-bottom: 2rem;
+            }
+
+            .options {
+                padding-bottom: 0;
+            }
+
+            .explanation-wrapper {
+                padding-bottom: 1rem;
+            }
+
+            .info-boxes {
+                position: static;
+                margin-top: 1.5rem;
+                justify-content: flex-start;
+                flex-wrap: wrap;
+            }
         }
 
-        .options {
-            display: flex;
-            flex-direction: column;
-            gap: 0.95rem;
-            margin-top: 1.15rem;
-        }
 
         .form-check {
             margin: 0;
@@ -1008,12 +1058,13 @@
         }
 
         .explanation-wrapper {
-            margin-top: 1rem;
+            margin-top: 0.25rem;
             display: flex;
             flex-direction: column;
             align-items: flex-start;
-            gap: 0.6rem;
+            gap: 0.8rem;
             width: 100%;
+            padding-bottom: 3.5rem; /* Space for pills */
         }
 
         .explanation-toggle {
@@ -1485,7 +1536,7 @@
             justify-content: center;
             border-radius: 16px;
             background: #ffffff;
-            padding: 3rem;
+            padding: 2.5rem 4.5rem;
             border: 2px solid #e2e8f0;
             box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
             transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
@@ -1504,6 +1555,10 @@
 
         .mistake-card.flashcard-mode:hover {
             transform: none; /* Remove any hover transform */
+        }
+
+        .mistake-card.flashcard-mode .remove-question {
+            display: none !important;
         }
 
         .mistake-card.flashcard-mode .card-front {
@@ -1527,39 +1582,39 @@
 
         .mistake-card.flashcard-mode .question-text {
             display: flex;
-            flex-direction: column;
+            flex-direction: row;
             align-items: center;
-            justify-content: center;
-            gap: 1.5rem;
+            justify-content: space-between;
+            gap: 4.5rem;
             width: 100%;
-            max-width: 920px;
+            max-width: 1300px;
             margin: 0 auto;
             padding: 0;
-            text-align: center;
+            text-align: left;
         }
 
         .mistake-card.flashcard-mode .question-text p {
-            font-size: 1.9rem;
-            font-weight: 500;
+            font-size: 2.25rem; /* Increased from 1.95rem */
+            font-weight: 600;
             color: #1e293b;
-            line-height: 1.7;
+            line-height: 1.55;
             margin: 0;
-            text-align: center;
+            text-align: left;
             padding-right: 0;
-            width: 100%;
+            flex: 1;
         }
 
         .mistake-card.flashcard-mode .question-text .question-image {
-            flex-shrink: 0;
-            width: min(100%, 520px);
-            max-width: 500px;
+            flex: 0 0 520px;
+            width: 520px;
+            max-width: 50%;
             height: auto;
-            max-height: 400px;
+            max-height: 420px;
             object-fit: contain;
-            border-radius: 12px;
-            margin: 0 auto;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-            border: 2px solid #e2e8f0;
+            border-radius: 16px;
+            margin: 0;
+            box-shadow: 0 12px 28px rgba(0, 0, 0, 0.12);
+            border: 1px solid #e2e8f0;
         }
 
         .mistake-card.flashcard-mode .correct-answer {
@@ -1653,3 +1708,247 @@
         body.sidebar-collapsed .coming-soon-overlay {
             display: none;
         }
+
+/* ==============================================
+   MISTAKES PAGE — MOBILE RESPONSIVE OVERHAUL
+   < 768px
+   ============================================== */
+
+/* Mobile sticky header (hidden on desktop) */
+.mistakes-mobile-header { display: none; }
+.mistakes-sidebar-close-btn { display: none; }
+
+.mistakes-sidebar-backdrop {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(15, 23, 42, 0.45);
+    z-index: 1998;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.28s ease;
+    backdrop-filter: blur(2px);
+}
+.mistakes-sidebar-backdrop.is-visible {
+    opacity: 1;
+    pointer-events: auto;
+}
+body.mistakes-sidebar-open { overflow: hidden; }
+
+@media (max-width: 767.98px) {
+
+    /* Reset desktop zoom */
+    html { font-size: 16px !important; }
+    body { zoom: 1 !important; }
+
+    /* Mobile sticky top bar */
+    .mistakes-mobile-header {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        position: sticky;
+        top: 0;
+        z-index: 2100;
+        height: 56px;
+        padding: 0 1rem;
+        background: #ffffff;
+        border-bottom: 1px solid #e8ecf0;
+        box-shadow: 0 2px 12px rgba(15,23,42,0.06);
+    }
+
+    .mistakes-mobile-hamburger {
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        gap: 5px;
+        flex-shrink: 0;
+        width: 44px;
+        height: 44px;
+        padding: 0 10px;
+        background: none;
+        border: none;
+        cursor: pointer;
+        border-radius: 10px;
+        transition: background 0.18s;
+    }
+    .mistakes-mobile-hamburger:hover { background: #f1f5f9; }
+    .mistakes-mobile-hamburger span {
+        display: block;
+        width: 22px;
+        height: 2px;
+        border-radius: 2px;
+        background: #334155;
+    }
+
+    .mistakes-mobile-title {
+        flex: 1;
+        font-size: 0.92rem;
+        font-weight: 700;
+        color: #0f172a;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .mistakes-mobile-home {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 44px;
+        height: 44px;
+        color: #64748b;
+        font-size: 1rem;
+        border-radius: 10px;
+        text-decoration: none;
+        flex-shrink: 0;
+        transition: background 0.15s, color 0.15s;
+    }
+    .mistakes-mobile-home:hover { background: #f1f5f9; color: #1d4ed8; }
+
+    /* Backdrop */
+    .mistakes-sidebar-backdrop { display: block; }
+
+    /* Sidebar: offcanvas drawer */
+    .sidebar {
+        position: fixed !important;
+        top: 0 !important;
+        left: 0 !important;
+        bottom: 0 !important;
+        width: 290px !important;
+        max-width: 85vw;
+        transform: translateX(-100%);
+        transition: transform 0.28s cubic-bezier(0.4,0,0.2,1), box-shadow 0.28s ease;
+        z-index: 1999 !important;
+        overflow-y: auto;
+        overscroll-behavior: contain;
+    }
+    .sidebar.is-open {
+        transform: translateX(0);
+        box-shadow: 6px 0 32px rgba(15,23,42,0.18);
+    }
+
+    /* Close button inside drawer */
+    .mistakes-sidebar-close-btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        position: absolute;
+        top: 14px;
+        right: 14px;
+        width: 36px;
+        height: 36px;
+        border-radius: 10px;
+        background: #f1f5f9;
+        border: none;
+        color: #475569;
+        font-size: 0.9rem;
+        cursor: pointer;
+        z-index: 2000;
+        transition: background 0.15s, color 0.15s;
+    }
+    .mistakes-sidebar-close-btn:hover { background: #e2e8f0; color: #0f172a; }
+
+    /* Hide desktop collapse toggle */
+    .sidebar-toggle { display: none !important; }
+
+    /* Logo: room for close button */
+    .sidebar-logo { padding-right: 3rem; }
+
+    /* Main content: full width */
+    .main-content,
+    body.sidebar-collapsed .main-content {
+        margin-left: 0 !important;
+        padding: 0.75rem 0 3rem !important;
+    }
+
+    .container { padding: 0 0.875rem !important; }
+
+    /* Page header */
+    .header-section {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.875rem;
+        padding: 1rem 0 0.75rem;
+        margin-bottom: 0.75rem;
+    }
+    .header-section h1 {
+        font-size: clamp(1.75rem, 9vw, 2.75rem) !important;
+        line-height: 1;
+        letter-spacing: -0.02em;
+    }
+    .flashcard-mode-toggle,
+    .learn-mistakes-btn {
+        width: 100% !important;
+        justify-content: center;
+        min-height: 48px;
+        font-size: 1rem;
+    }
+
+    /* Filter section */
+    .filter-section { margin-bottom: 1rem; }
+    .filter-section form {
+        flex-direction: column !important;
+        gap: 0.75rem !important;
+    }
+    .filter-section select {
+        width: 100% !important;
+        min-width: 0 !important;
+        font-size: 16px !important;
+        min-height: 48px;
+        padding: 0.75rem 1rem;
+    }
+    .filter-section .btn-outline-secondary {
+        width: 100% !important;
+        min-height: 44px;
+        margin-top: 0 !important;
+    }
+
+    /* Mistake cards */
+    .mistake-card {
+        padding: 1.25rem 1rem 1rem;
+        border-radius: 16px;
+        margin-bottom: 1rem;
+    }
+
+    .question-text {
+        font-size: 1.05rem !important;
+        line-height: 1.55;
+        padding-right: 2.75rem;
+        margin-bottom: 0.875rem;
+    }
+
+    .remove-question {
+        width: 40px;
+        height: 40px;
+        top: 1rem;
+        right: 0.875rem;
+    }
+
+    /* Info boxes: flow inline instead of absolute-positioned */
+    .answers { padding-bottom: 0; }
+    .info-boxes {
+        position: static !important;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.4rem;
+        margin-top: 0.875rem;
+    }
+
+    .answer-label { font-size: 0.9rem; }
+    .form-check-label { font-size: 0.95rem; }
+    .explanation-content { font-size: 0.95rem; line-height: 1.65; }
+
+    /* Flashcard mode */
+    .mistake-card.flashcard-mode .flashcard-content { min-height: 220px; }
+    .mistake-card.flashcard-mode .card-face { padding: 1.25rem; }
+    .mistake-card.flashcard-mode .question-text p { font-size: 1.25rem; padding-right: 0; }
+
+    /* Empty state */
+    .empty-state { padding: 2rem 1rem; }
+}
+
+@media (max-width: 399.98px) {
+    .header-section h1 { font-size: 1.5rem !important; }
+    .mistake-card { padding: 1rem 0.875rem; }
+    .question-text { font-size: 0.95rem !important; }
+}

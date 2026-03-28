@@ -3,42 +3,66 @@
     <div class="container">
         <a class="navbar-brand" href="{{ route('home') }}">MedCapsule</a>
         
-        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+        <button class="navbar-toggler border-0 p-2" type="button" data-bs-toggle="offcanvas" data-bs-target="#navbarNavOffcanvas" aria-controls="navbarNavOffcanvas" aria-expanded="false" aria-label="Toggle navigation" style="min-height: 44px; min-width: 44px;">
             <span class="navbar-toggler-icon"></span>
         </button>
+
+        @auth
+            <!-- Desktop-only XP Bar (Extreme Premium) -->
+            <div class="d-none d-lg-flex align-items-center ms-4 flex-grow-1 header-xp-container" style="max-width: 300px;" title="Your Level Progress">
+                <div class="xp-label me-2 small fw-bold text-muted">LVL <span id="header-user-level">{{ Auth::user()->level }}</span></div>
+                <div class="progress flex-grow-1" style="height: 10px; border-radius: 10px; background: rgba(0,0,0,0.05); overflow: hidden; box-shadow: inset 0 1px 2px rgba(0,0,0,0.1);">
+                    <div id="header-xp-bar" 
+                         class="progress-bar" 
+                         role="progressbar" 
+                         style="width: {{ (Auth::user()->xp % 1000) / 10 }}%; 
+                                background: linear-gradient(90deg, #7e57c2, #b388ff); 
+                                border-radius: 10px;
+                                transition: width 1s cubic-bezier(0.34, 1.56, 0.64, 1);">
+                    </div>
+                </div>
+                <div class="ms-2 small fw-bold text-muted" id="header-xp-text" style="min-width: 60px;">{{ Auth::user()->xp % 1000 }}/1000</div>
+            </div>
+        @endauth
         
-        <div class="collapse navbar-collapse" id="navbarNav">
-            <ul class="navbar-nav ms-auto align-items-center">
-                <li class="nav-item">
-                    <x-live-user-counter />
-                </li>
-                
-                @guest
-                    <li class="nav-item">
-                        <a class="nav-link" href="{{ route('login') }}">Login</a>
+        <div class="offcanvas true-mobile-offcanvas offcanvas-end" tabindex="-1" id="navbarNavOffcanvas" aria-labelledby="navbarNavOffcanvasLabel">
+            <div class="offcanvas-header border-bottom d-lg-none">
+                <h5 class="offcanvas-title fw-bold text-primary" id="navbarNavOffcanvasLabel">Menu</h5>
+                <button type="button" class="btn-close text-reset p-3" data-bs-dismiss="offcanvas" aria-label="Close" style="min-height: 44px; min-width: 44px;"></button>
+            </div>
+            <div class="offcanvas-body">
+                <ul class="navbar-nav ms-auto align-items-center w-100 mobile-nav-stack">
+                    <li class="nav-item mobile-nav-item">
+                        <x-live-user-counter />
                     </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="{{ route('register') }}">Sign Up</a>
-                    </li>
-                @else
-                    <x-navigation-dropdown />
                     
-                    <!-- Notification Bell Component -->
-                    <x-notification-bell :unread-count="$navigationUnreadCount" />
-                    
-                    <li class="nav-item pe-2">
-                        <a href="{{ route('profile') }}" class="nav-link">
-                            @php($navImageUrl = $navigationProfileImageUrl)
-                            <div class="profile-circle {{ !$navImageUrl ? 'no-image' : '' }}"
-                                 style="{{ $navImageUrl ? 'background-image: url(' . $navImageUrl . ');' : '' }}">
-                                @if(!$navImageUrl)
-                                    {{ substr($navigationUser?->name ?? Auth::user()->name, 0, 1) }}
-                                @endif
-                            </div>
-                        </a>
-                    </li>
-                @endguest
-            </ul>
+                    @guest
+                        <li class="nav-item mobile-nav-item">
+                            <a class="nav-link w-100 mobile-nav-link" href="{{ route('login') }}">Login</a>
+                        </li>
+                        <li class="nav-item mobile-nav-item">
+                            <a class="nav-link w-100 mobile-nav-link" href="{{ route('register') }}">Sign Up</a>
+                        </li>
+                    @else
+                        <x-navigation-dropdown />
+                        
+                        <!-- Notification Bell Component -->
+                        <x-notification-bell :unread-count="$navigationUnreadCount" />
+                        
+                        <li class="nav-item pe-2 mobile-nav-item mt-lg-0 mt-3 d-flex justify-content-center">
+                            <a href="{{ route('profile') }}" class="nav-link d-flex align-items-center justify-content-center" style="min-height: 44px; min-width: 44px;">
+                                @php($navImageUrl = $navigationProfileImageUrl)
+                                <div class="profile-circle {{ !$navImageUrl ? 'no-image' : '' }}"
+                                     style="{{ $navImageUrl ? 'background-image: url(' . $navImageUrl . ');' : '' }}">
+                                    @if(!$navImageUrl)
+                                        {{ substr($navigationUser?->name ?? Auth::user()->name, 0, 1) }}
+                                    @endif
+                                </div>
+                            </a>
+                        </li>
+                    @endguest
+                </ul>
+            </div>
         </div>
     </div>
 </nav>
@@ -77,12 +101,38 @@
         padding: 0.5rem 1rem;
         border-radius: 6px;
         transition: all 0.3s ease;
+        min-height: 44px; /* Touch target size */
+        display: flex;
+        align-items: center;
     }
 
     .nav-link:hover {
         color: #007bff;
         background-color: #f8f9fa;
         transform: translateY(-1px);
+    }
+    
+    /* Mobile Offcanvas Enhancements */
+    @media (max-width: 991px) {
+        .true-mobile-offcanvas {
+            width: 85% !important;
+            max-width: 400px;
+        }
+        .mobile-nav-stack {
+            flex-direction: column;
+            align-items: flex-start !important;
+        }
+        .mobile-nav-item {
+            width: 100%;
+            margin-bottom: 0.5rem;
+        }
+        .mobile-nav-item .dropdown, .mobile-nav-item .x-notification-bell {
+            width: 100%;
+        }
+        .mobile-nav-link {
+            padding: 12px 16px;
+            font-size: 1.1rem;
+        }
     }
 
     .dropdown-menu {
@@ -541,3 +591,66 @@
         }
     });
 </script>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const headerXpBar = document.getElementById('header-xp-bar');
+        const headerXpText = document.getElementById('header-xp-text');
+        const headerLevel = document.getElementById('header-user-level');
+
+        if (!headerXpBar) return;
+
+        function updateHeaderXP(data) {
+            if (data && data.new_xp !== undefined) {
+                const xpInLevel = data.new_xp % 1000;
+                const level = Math.floor(data.new_xp / 1000) + 1;
+                const percent = (xpInLevel / 1000) * 100;
+
+                headerXpBar.style.width = percent + '%';
+                headerXpText.textContent = xpInLevel + '/1000';
+                
+                if (headerLevel.textContent != level) {
+                    headerLevel.textContent = level;
+                    headerLevel.classList.add('pulse-animation');
+                    setTimeout(() => headerLevel.classList.remove('pulse-animation'), 2000);
+                    
+                    if (window.confetti) {
+                        window.confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 } });
+                    }
+                }
+            } else {
+                fetch('/profile/progress', {
+                    headers: { 'X-Requested-With': 'XMLHttpRequest' }
+                })
+                .then(r => r.json())
+                .then(d => {
+                    if (d.xp !== undefined) {
+                        updateHeaderXP({ new_xp: d.xp });
+                    }
+                });
+            }
+        }
+
+        window.addEventListener('storage', function(e) {
+            if (e.key === 'quizProgressUpdate') {
+                updateHeaderXP();
+            }
+        });
+
+        document.addEventListener('sourceProgressUpdated', function(e) {
+            updateHeaderXP(e.detail);
+        });
+    });
+</script>
+
+<style>
+    @keyframes pulse-animation {
+        0% { transform: scale(1); color: #7e57c2; }
+        50% { transform: scale(1.5); color: #ffca28; text-shadow: 0 0 10px rgba(255, 202, 40, 0.5); }
+        100% { transform: scale(1); color: #7e57c2; }
+    }
+    .pulse-animation {
+        display: inline-block;
+        animation: pulse-animation 2s ease;
+    }
+</style>

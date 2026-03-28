@@ -59,16 +59,24 @@ class SecurityTest extends TestCase
     /** @test */
     public function command_injection_is_prevented()
     {
-        // Test that exec() calls are not present in critical files
-        $criticalFiles = [
-            'app/Services/PaymentReceiptValidator.php',
-            'app/Http/Controllers/UserCourseController.php',
-            'app/Http/Controllers/PaymentSettingsController.php'
-        ];
-        
+        $criticalFiles = array_filter([
+            app_path('Services/PaymentSecurityService.php'),
+            app_path('Services/PaymentService.php'),
+            app_path('Services/SecurePaymentService.php'),
+            app_path('Http/Controllers/UserCourseController.php'),
+            app_path('Http/Controllers/Admin/PaymentController.php'),
+        ], 'is_file');
+
+        $dangerousCalls = ['exec(', 'shell_exec(', 'passthru(', 'system(', 'proc_open(', 'popen('];
+
+        $this->assertNotEmpty($criticalFiles, 'No payment-critical files were found for command-injection checks.');
+
         foreach ($criticalFiles as $file) {
             $content = file_get_contents($file);
-            $this->assertStringNotContainsString('exec(', $content, "File $file contains exec() call");
+
+            foreach ($dangerousCalls as $dangerousCall) {
+                $this->assertStringNotContainsString($dangerousCall, $content, "File {$file} contains {$dangerousCall}");
+            }
         }
     }
 

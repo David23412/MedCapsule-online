@@ -172,12 +172,7 @@ class EventDrivenGradingService
             // Try AI evaluation if available
             if (app()->bound('App\Services\WrittenAnswerEvaluationService')) {
                 $evaluationService = app('App\Services\WrittenAnswerEvaluationService');
-                $evaluation = $evaluationService->evaluateAnswer(
-                    $submittedAnswer,
-                    $question->correct_answer,
-                    $question->alternative_answers ?? [],
-                    0.8
-                );
+                $evaluation = $evaluationService->evaluateQuestionAnswer($question, $submittedAnswer);
                 return $evaluation['isCorrect'] ?? false;
             }
         } catch (\Exception $e) {
@@ -187,8 +182,7 @@ class EventDrivenGradingService
             ]);
         }
         
-        // Fallback to exact match
-        return strtolower(trim($submittedAnswer)) === strtolower(trim($question->correct_answer));
+        return $question->matchesWrittenAnswerFallback($submittedAnswer);
     }
     
     /**

@@ -77,31 +77,37 @@
                             @include('components.question-written', ['question' => $question])
                         @else
                             <div class="question-box {{ $question->image_url ? 'has-image' : '' }}" data-question-id="{{ $question->id }}">
-                                <div class="question-text">{{ $question->question }}</div>
+                                <div class="question-content-wrapper">
+                                    <div class="question-main">
+                                        <div class="question-text">{{ $question->question }}</div>
 
-                            @if($question->image_url)
-                                    <img src="{{ asset($question->image_url) }}" 
-                                        alt="Question image"
-                                         class="question-image"
-                                        onerror="this.style.display='none'">
-                            @endif
+                                        <div class="options">
+                                            @foreach(['A', 'B', 'C', 'D'] as $option)
+                                                @php
+                                                    $optionField = 'option_' . strtolower($option);
+                                                @endphp
+                                                    <div class="form-check">
+                                                        <input type="radio" 
+                                                               name="answers[{{ $question->id }}]" 
+                                                               value="{{ $option }}" 
+                                                           id="q{{ $question->id }}_{{ strtolower($option) }}" 
+                                                           class="form-check-input">
+                                                    <label for="q{{ $question->id }}_{{ strtolower($option) }}" class="form-check-label">
+                                                        {{ $option }}. {{ $question->$optionField }}
+                                                        </label>
+                                                    </div>
+                                            @endforeach
+                                        </div>
+                                    </div>
 
-                                <div class="options">
-                                    @foreach(['A', 'B', 'C', 'D'] as $option)
-                                        @php
-                                            $optionField = 'option_' . strtolower($option);
-                                        @endphp
-                                            <div class="form-check">
-                                                <input type="radio" 
-                                                       name="answers[{{ $question->id }}]" 
-                                                       value="{{ $option }}" 
-                                                   id="q{{ $question->id }}_{{ strtolower($option) }}" 
-                                                   class="form-check-input">
-                                            <label for="q{{ $question->id }}_{{ strtolower($option) }}" class="form-check-label">
-                                                {{ $option }}. {{ $question->$optionField }}
-                                                </label>
-                                            </div>
-                                    @endforeach
+                                    @if($question->image_url)
+                                        <div class="question-image-container">
+                                            <img src="{{ asset($question->image_url) }}" 
+                                                alt="Question image"
+                                                class="question-image"
+                                                onerror="this.style.display='none'">
+                                        </div>
+                                    @endif
                                 </div>
                             </div>
                             @endif

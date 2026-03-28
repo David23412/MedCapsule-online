@@ -10,6 +10,7 @@ class PatternMatcherService
 {
     private $cacheEnabled = false;
     private $cacheTtl = 3600;
+    private array $customPatterns = [];
 
     /**
      * Medical pattern definitions
@@ -179,12 +180,14 @@ class PatternMatcherService
      */
     public function matchesPattern(string $patternName, string $text): bool
     {
-        if (!isset($this->medicalPatterns[$patternName])) {
+        $registeredPatterns = $this->getRegisteredPatterns();
+
+        if (!isset($registeredPatterns[$patternName])) {
             return false;
         }
 
         $text = strtolower($text);
-        $patterns = $this->medicalPatterns[$patternName]['patterns'];
+        $patterns = $registeredPatterns[$patternName]['patterns'];
 
         foreach ($patterns as $pattern) {
             if (preg_match($pattern, $text)) {
@@ -200,13 +203,15 @@ class PatternMatcherService
      */
     public function getPatternScore(string $patternName, string $text): float
     {
-        if (!isset($this->medicalPatterns[$patternName])) {
+        $registeredPatterns = $this->getRegisteredPatterns();
+
+        if (!isset($registeredPatterns[$patternName])) {
             return 0.0;
         }
 
         $text = strtolower($text);
-        $patterns = $this->medicalPatterns[$patternName]['patterns'];
-        $weight = $this->medicalPatterns[$patternName]['weight'];
+        $patterns = $registeredPatterns[$patternName]['patterns'];
+        $weight = $registeredPatterns[$patternName]['weight'];
 
         $matches = 0;
         foreach ($patterns as $pattern) {
@@ -232,7 +237,7 @@ class PatternMatcherService
         $matches = [];
         $text = strtolower($text);
 
-        foreach ($this->medicalPatterns as $patternName => $config) {
+        foreach ($this->getRegisteredPatterns() as $patternName => $config) {
             $score = $this->getPatternScore($patternName, $text);
             if ($score > 0) {
                 $matches[$patternName] = [
@@ -247,12 +252,68 @@ class PatternMatcherService
     }
 
     /**
+     * Identify patterns in a single text payload.
+     */
+    public function identifyPatterns(string $text): array
+    {
+        return $this->getMatchingPatterns($text);
+    }
+
+    /**
+     * Return patterns shared by submitted and correct text.
+     */
+    public function getPatternMatches(string $submittedText, string $correctText): array
+    {
+        $matches = [];
+        $submittedText = strtolower($submittedText);
+        $correctText = strtolower($correctText);
+
+        foreach ($this->getRegisteredPatterns() as $patternName => $_config) {
+            $submittedScore = $this->getPatternScore($patternName, $submittedText);
+            $correctScore = $this->getPatternScore($patternName, $correctText);
+
+            if ($submittedScore <= 0 || $correctScore <= 0) {
+                continue;
+            }
+
+            $confidence = min($submittedScore, $correctScore) / max($submittedScore, $correctScore);
+
+            $matches[] = [
+                'pattern' => $patternName,
+                'description' => str_replace('_', ' ', $patternName),
+                'confidence' => (float) max(0.0, min(1.0, $confidence)),
+            ];
+        }
+
+        return $matches;
+    }
+
+    /**
+     * Register an additional matcher at runtime.
+     */
+    public function registerPatternMatcher(string $name, array $patterns, float $weight = 0.5): void
+    {
+        $this->customPatterns[$name] = [
+            'patterns' => $patterns,
+            'weight' => max(0.0, min(1.0, $weight)),
+        ];
+    }
+
+    /**
+     * Return all registered patterns, including runtime additions.
+     */
+    public function getRegisteredPatterns(): array
+    {
+        return array_merge($this->medicalPatterns, $this->customPatterns);
+    }
+
+    /**
      * Get specific matched patterns
      */
     private function getMatchedPatterns(string $patternName, string $text): array
     {
         $matched = [];
-        $patterns = $this->medicalPatterns[$patternName]['patterns'];
+        $patterns = $this->getRegisteredPatterns()[$patternName]['patterns'] ?? [];
 
         foreach ($patterns as $pattern) {
             if (preg_match($pattern, $text, $matches)) {

@@ -10,6 +10,16 @@ class MedicalKnowledgeService
 {
     private $cacheEnabled = false;
     private $cacheTtl = 3600;
+    private array $processLocations = [
+        'protein synthesis' => ['ribosome', 'ribosomes', 'rough endoplasmic reticulum', 'endoplasmic reticulum'],
+        'translation' => ['ribosome', 'ribosomes', 'rough endoplasmic reticulum', 'endoplasmic reticulum'],
+        'dna replication' => ['nucleus'],
+        'glycolysis' => ['cytoplasm', 'cytosol'],
+        'krebs cycle' => ['mitochondria', 'mitochondrial matrix'],
+        'tca cycle' => ['mitochondria', 'mitochondrial matrix'],
+        'electron transport chain' => ['inner mitochondrial membrane', 'mitochondria'],
+        'glomerular filtration' => ['glomerulus', 'bowman', 'bowmans capsule', 'bowman capsule'],
+    ];
 
     /**
      * Critical terms by medical domain
@@ -83,6 +93,37 @@ class MedicalKnowledgeService
     }
 
     /**
+     * Identify the closest medical domain for a text sample.
+     */
+    public function identifyDomain(string $text): ?string
+    {
+        $text = strtolower($text);
+        $scores = [];
+
+        foreach ($this->criticalTerms as $domain => $terms) {
+            $score = 0;
+
+            foreach ($terms as $term) {
+                if (stripos($text, strtolower($term)) !== false) {
+                    $score++;
+                }
+            }
+
+            if ($score > 0) {
+                $scores[$domain] = $score;
+            }
+        }
+
+        if (empty($scores)) {
+            return null;
+        }
+
+        arsort($scores);
+
+        return array_key_first($scores);
+    }
+
+    /**
      * Check if two terms contradict each other in a domain
      */
     public function termsContradict(string $term1, string $term2, string $domain): bool
@@ -148,6 +189,32 @@ class MedicalKnowledgeService
     public function isAbbreviation(string $term): bool
     {
         return isset($this->abbreviations[strtoupper($term)]);
+    }
+
+    /**
+     * Return accepted locations for a biological process.
+     */
+    public function getCorrectLocations(string $process): array
+    {
+        $process = strtolower(trim($process));
+
+        return $this->processLocations[$process] ?? [];
+    }
+
+    /**
+     * Check whether a location is valid for the given process.
+     */
+    public function isLocationCorrectForProcess(string $process, string $location): bool
+    {
+        $location = strtolower(trim($location));
+
+        foreach ($this->getCorrectLocations($process) as $acceptedLocation) {
+            if ($acceptedLocation === $location || str_contains($location, $acceptedLocation) || str_contains($acceptedLocation, $location)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**

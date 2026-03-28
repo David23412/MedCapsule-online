@@ -213,40 +213,73 @@
 
         .question-box {
             background: white;
-            border-radius: 8px;
-            padding: 1.5rem;
-            margin-bottom: 1.5rem;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            border-radius: 12px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+            border: 1px solid #edf2f7;
+        }
+
+        .question-content-wrapper {
+            display: flex;
+            gap: 2.5rem;
+            align-items: flex-start;
+            width: 100%;
+        }
+
+        .question-main {
+            flex: 1;
+            min-width: 0;
         }
 
         .question-text {
-            font-size: 1.4rem;
-            color: #000000;
-            font-weight: 425;
-            margin-bottom: 1rem;
-            line-height: 1.5;
+            font-size: 1.5rem;
+            color: #1a202c;
+            font-weight: 600;
+            margin-bottom: 2rem;
+            line-height: 1.4;
         }
 
-        .question-box.has-image {
-            padding-bottom: 1rem;
+        .question-image-container {
+            flex: 0 0 450px;
+            max-width: 45%;
+            display: flex;
+            justify-content: center;
         }
 
         .question-image {
-            max-width: 100%;
-            max-height: 300px;
-            width: auto;
+            width: 100%;
             height: auto;
-            border-radius: 8px;
-            margin: 1rem auto;
-            display: block;
+            max-height: 550px;
+            border-radius: 12px;
             object-fit: contain;
-            transform: perspective(1000px) rotateY(-2deg);
-            transition: transform 0.3s ease;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+            border: 1px solid #e2e8f0;
+            transition: all 0.4s cubic-bezier(0.165, 0.84, 0.44, 1);
         }
 
         .question-image:hover {
-            transform: perspective(1000px) rotateY(0deg);
+            transform: scale(1.02);
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.15);
+        }
+
+        /* Stack on smaller screens */
+        @media (max-width: 992px) {
+            .question-content-wrapper {
+                flex-direction: column;
+                gap: 1.5rem;
+            }
+
+            .question-image-container {
+                flex: none;
+                width: 100%;
+                max-width: 100%;
+                margin: 1rem 0;
+            }
+
+            .question-image {
+                max-height: 400px;
+            }
         }
 
         .options {

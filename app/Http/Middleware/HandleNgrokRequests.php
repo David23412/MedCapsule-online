@@ -9,13 +9,16 @@ class HandleNgrokRequests
 {
     public function handle(Request $request, Closure $next)
     {
-        if (str_contains($request->getHost(), 'ngrok-free.app') || str_contains($request->getHost(), 'ngrok-free.dev')) {
+        if (
+            app()->environment(['local', 'testing']) &&
+            env('ENABLE_NGROK_COMPAT', false) &&
+            (str_contains($request->getHost(), 'ngrok-free.app') || str_contains($request->getHost(), 'ngrok-free.dev'))
+        ) {
             // Configure session for ngrok
             config([
                 'session.domain' => '',  // Empty domain for ngrok
                 'session.secure' => true,  // Enable secure for HTTPS ngrok
                 'session.same_site' => 'none',  // Required for cross-site
-                'session.http_only' => false,  // Allow JavaScript access for ngrok
                 'app.url' => $request->getSchemeAndHttpHost(),
             ]);
 

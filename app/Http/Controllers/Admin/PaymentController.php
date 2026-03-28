@@ -9,6 +9,7 @@ use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Cache;
 use App\Services\NotificationTriggerService;
 
 class PaymentController extends Controller
@@ -56,6 +57,7 @@ class PaymentController extends Controller
 
         // Enroll user in course
         $payment->user->enrollInCourse($payment->course_id, \App\Models\User::COURSE_ACCESS_FULL);
+        $this->clearUserCourseAccessCache($payment->user_id);
 
         // 🔔 TRIGGER PAYMENT ACCEPTED NOTIFICATION
         NotificationTriggerService::onPaymentAccepted($payment->user, [
@@ -85,6 +87,7 @@ class PaymentController extends Controller
 
         // Update payment to rejected
         $payment->update(['status' => 'rejected']);
+        $this->clearUserCourseAccessCache($payment->user_id);
 
         return response()->json([
             'success' => true,
@@ -129,14 +132,16 @@ class PaymentController extends Controller
         // Get the authenticated user
         $user = auth()->user();
 
-        // Check if user is admin or if course is free
-        if (!$user->isAdmin() && $course->price > 0) {
-            // For non-free courses, check if user already paid or has pending payment
-            if ($course->hasUserPaid($user->id) || $course->hasUserPendingPayment($user->id)) {
-                return response()->json([
-                    'error' => 'You have already paid for this course or have a pending payment'
-                ], 400);
-            }
+        if (!$course->canBePurchased()) {
+            return response()->json([
+                'error' => 'This course does not require payment.'
+            ], 400);
+        }
+
+        if (!$user->isAdmin() && ($course->hasUserPaid($user->id) || $course->hasUserPendingPayment($user->id))) {
+            return response()->json([
+                'error' => 'You have already paid for this course or have a pending payment'
+            ], 400);
         }
 
         // Course details for payment modal
@@ -172,15 +177,18 @@ class PaymentController extends Controller
 
             $user = auth()->user();
 
-            // Check if user is admin or if course is free
-            if (!$user->isAdmin() && $course->price > 0) {
-                // For non-free courses, check if user already paid or has pending payment
-                if ($course->hasUserPaid($user->id) || $course->hasUserPendingPayment($user->id)) {
-                    return response()->json([
-                        'success' => false,
-                        'message' => 'You have already paid for this course or have a pending payment'
-                    ], 400);
-                }
+            if (!$course->canBePurchased()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'This course does not require payment.'
+                ], 400);
+            }
+
+            if (!$user->isAdmin() && ($course->hasUserPaid($user->id) || $course->hasUserPendingPayment($user->id))) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'You have already paid for this course or have a pending payment'
+                ], 400);
             }
 
             // Validate the request
@@ -190,8 +198,8 @@ class PaymentController extends Controller
                 'amount' => 'required|numeric|min:0'
             ]);
 
-            // Check if amount matches course price (for non-free courses)
-            if ($course->price > 0 && $request->amount != $course->price) {
+            // Check if amount matches course price
+            if ($request->amount != $course->price) {
                 return response()->json([
                     'success' => false,
                     'message' => 'Payment amount does not match course price'
@@ -221,6 +229,8 @@ class PaymentController extends Controller
                 'created_at' => now(),
                 'updated_at' => now()
             ]);
+
+            $this->clearUserCourseAccessCache($user->id);
 
             // Log the payment submission
             Log::info('Payment submitted', [
@@ -264,5 +274,10 @@ class PaymentController extends Controller
                 'message' => 'An error occurred while processing your payment. Please try again.'
             ], 500);
         }
+    }
+
+    private function clearUserCourseAccessCache(int $userId): void
+    {
+        Cache::forget("user_course_optimization_data_{$userId}");
     }
 }

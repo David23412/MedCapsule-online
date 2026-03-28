@@ -162,6 +162,9 @@ class QuizExecutionController extends Controller
             ],
         ];
 
+        // ✅ ZERO N+1 BADGE ENRICHMENT: resolve all topic names in one query
+        \App\Models\Question::enrichWithBadges($questions, $topic->id);
+
         return view('solve_quiz', $viewData);
     }
 

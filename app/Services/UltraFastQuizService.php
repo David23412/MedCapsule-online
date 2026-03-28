@@ -23,12 +23,59 @@ class UltraFastQuizService
     private const MEMORY_LIMIT = 64 * 1024 * 1024; // 64MB
     private const QUERY_LIMIT = 5; // Max 5 queries per operation
 
-    private $redis;
+    private $redis = null;
+    private bool $redisAvailable = false;
     private $queryCount = 0;
 
     public function __construct()
     {
-        $this->redis = Redis::connection();
+        $this->initializeRedisConnection();
+    }
+
+    private function initializeRedisConnection(): void
+    {
+        try {
+            $this->redis = Redis::connection();
+            $this->redisAvailable = true;
+        } catch (\Throwable $e) {
+            $this->redis = null;
+            $this->redisAvailable = false;
+
+            Log::warning('UltraFastQuizService: Redis unavailable, continuing without Redis cache', [
+                'error' => $e->getMessage(),
+            ]);
+        }
+    }
+
+    private function canUseRedis(): bool
+    {
+        return $this->redisAvailable && $this->redis !== null;
+    }
+
+    private function deleteFromRedis(array|string $keys): void
+    {
+        if (!$this->canUseRedis()) {
+            return;
+        }
+
+        $keys = array_values(array_filter((array) $keys, static fn ($key) => is_string($key) && $key !== ''));
+
+        if ($keys === []) {
+            return;
+        }
+
+        try {
+            if (count($keys) === 1) {
+                $this->redis->del($keys[0]);
+            } else {
+                $this->redis->del($keys);
+            }
+        } catch (\Throwable $e) {
+            Log::warning('UltraFastQuizService: Redis delete failed', [
+                'keys' => $keys,
+                'error' => $e->getMessage(),
+            ]);
+        }
     }
 
     /**
@@ -53,8 +100,7 @@ class UltraFastQuizService
                 !isset($cached['cache_status']) ||
                 !isset($cached['memory_usage_mb'])) {
                 // Invalid cache structure, clear it and fall through to fresh query
-                $this->redis->del($cacheKey);
-                $this->redis->del($cacheKey . ':hot');
+                $this->deleteFromRedis([$cacheKey, $cacheKey . ':hot']);
             } else {
                 Log::info('🚀 ULTRA-FAST CACHE HIT', [
                     'topic_id' => $topic->id,
@@ -109,7 +155,7 @@ class UltraFastQuizService
                 'questions.id', 'questions.topic_id', 'questions.question', 'questions.question_type',
                 'questions.option_a', 'questions.option_b', 'questions.option_c', 'questions.option_d',
                 'questions.correct_answer', 'questions.explanation', 'questions.image_url', 'questions.source',
-                'questions.alternative_answers', 'questions.exam_appearances_count'
+                'questions.alternative_answers', 'questions.exam_appearances_count', 'questions.extra_topic'
             ])
             ->whereNotNull('questions.question')
             ->where('questions.question', '!=', '')
@@ -118,21 +164,7 @@ class UltraFastQuizService
             });
 
         // Add topic filtering logic based on exam vs lecture
-        if ($topic->is_exam) {
-            // For exam topics, only pull questions whose main topic is this exam
-            $query->where('questions.topic_id', $topic->id);
-        } else {
-            // For lecture topics, pull main topic questions + pivot linked questions
-            $query->where(function($q) use ($topic) {
-                $q->where('questions.topic_id', $topic->id)
-                  ->orWhereExists(function ($sub) use ($topic) {
-                      $sub->select(\Illuminate\Support\Facades\DB::raw(1))
-                          ->from('question_topic_links')
-                          ->whereColumn('question_topic_links.question_id', 'questions.id')
-                          ->where('question_topic_links.topic_id', $topic->id);
-                  });
-            });
-        }
+        $this->applyTopicFilter($query, $topic);
 
         return $query->orderBy('questions.id')->get();
     }
@@ -165,10 +197,14 @@ class UltraFastQuizService
      */
     private function getFromRedis(string $key): ?array
     {
+        if (!$this->canUseRedis()) {
+            return null;
+        }
+
         try {
             $data = $this->redis->get($key);
             return $data ? json_decode($data, true) : null;
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             Log::warning('Redis get failed', ['key' => $key, 'error' => $e->getMessage()]);
             return null;
         }
@@ -176,9 +212,13 @@ class UltraFastQuizService
 
     private function storeInRedis(string $key, array $data, int $ttl): void
     {
+        if (!$this->canUseRedis()) {
+            return;
+        }
+
         try {
             $this->redis->setex($key, $ttl, json_encode($data));
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             Log::warning('Redis store failed', ['key' => $key, 'error' => $e->getMessage()]);
         }
     }
@@ -235,14 +275,24 @@ class UltraFastQuizService
      */
     public function clearQuizCache(Topic $topic): void
     {
-        $pattern = $this->buildCacheKey('quiz_*', $topic->id, ['*']);
+        // Force increment cache version specifically for this topic
+        $versionKey = "quiz_questions_version:topic_{$topic->id}";
+        Cache::increment($versionKey);
+
+        // Scan returns prefixed keys if phpredis is used, so we wildcard prefix too
+        $pattern = "*ultra_fast:*:topic_{$topic->id}:*";
         $keys = $this->scanMatchingKeys($pattern);
 
         if (!empty($keys)) {
-            $this->redis->del($keys);
+            // Strip the implicit Redis prefix if present before passing to del() 
+            $cleanKeys = array_map(function($key) {
+                return preg_replace('/^.*ultra_fast:/', 'ultra_fast:', $key);
+            }, $keys);
+
+            $this->deleteFromRedis($cleanKeys);
             Log::info('🚀 NUCLEAR CACHE CLEARED', [
                 'topic_id' => $topic->id,
-                'keys_cleared' => count($keys)
+                'keys_cleared' => count($cleanKeys)
             ]);
         }
     }
@@ -286,21 +336,28 @@ class UltraFastQuizService
 
     private function scanMatchingKeys(string $pattern, int $count = 100): array
     {
-        $matched = [];
-        $cursor = null;
+        if (!$this->canUseRedis()) {
+            return [];
+        }
 
-        do {
-            $keys = $this->redis->scan($cursor, $pattern, $count);
-            if ($keys === false) {
-                $keys = [];
-            }
+        // Using `keys` is more reliable across different Redis drivers (PhpRedis vs Predis)
+        // than custom iterating `scan`.
+        try {
+            $keys = $this->redis->keys($pattern);
+        } catch (\Throwable $e) {
+            Log::warning('UltraFastQuizService: Redis key scan failed', [
+                'pattern' => $pattern,
+                'error' => $e->getMessage(),
+            ]);
 
-            foreach ($keys as $key) {
-                $matched[] = $key;
-            }
-        } while ((int) $cursor !== 0);
+            return [];
+        }
 
-        return $matched;
+        if (empty($keys) || $keys === false) {
+            return [];
+        }
+
+        return is_array($keys) ? $keys : [$keys];
     }
 
     /**
@@ -323,8 +380,7 @@ class UltraFastQuizService
                 !isset($cached['written']) ||
                 !isset($cached['sources'])) {
                 // Invalid cache structure, clear it and fall through to fresh query
-                $this->redis->del($cacheKey);
-                $this->redis->del($cacheKey . ':hot');
+                $this->deleteFromRedis([$cacheKey, $cacheKey . ':hot']);
             } else {
                 Log::info('🚀 ULTRA-FAST STATS CACHE HIT', [
                     'topic_id' => $topic->id,
@@ -387,27 +443,31 @@ class UltraFastQuizService
                 COUNT(*) as total_questions,
                 SUM(CASE WHEN question_type = "multiple_choice" THEN 1 ELSE 0 END) as multiple_choice,
                 SUM(CASE WHEN question_type = "written" THEN 1 ELSE 0 END) as written
-            ')
-            ->where('topic_id', $topic->id)
-            ->whereNotNull('question')
-            ->where('question', '!=', '')
+            ');
+            
+        $this->applyTopicFilter($query, $topic);
+        
+        $query->whereNotNull('questions.question')
+            ->where('questions.question', '!=', '')
             ->when(!in_array('all', $sources), function($query) use ($sources) {
-                return $query->whereIn('source', $sources);
+                return $query->whereIn('questions.source', $sources);
             });
 
         $mainStats = $query->first();
 
         // Get source breakdown in a separate optimized query
         $this->incrementQueryCounter();
-        $sourceStats = Question::selectRaw('source, COUNT(*) as count')
-            ->where('topic_id', $topic->id)
-            ->whereNotNull('question')
-            ->where('question', '!=', '')
+        $sourceQuery = Question::selectRaw('questions.source, COUNT(*) as count');
+        
+        $this->applyTopicFilter($sourceQuery, $topic);
+        
+        $sourceStats = $sourceQuery->whereNotNull('questions.question')
+            ->where('questions.question', '!=', '')
             ->when(!in_array('all', $sources), function($query) use ($sources) {
-                return $query->whereIn('source', $sources);
+                return $query->whereIn('questions.source', $sources);
             })
-            ->groupBy('source')
-            ->pluck('count', 'source')
+            ->groupBy('questions.source')
+            ->pluck('count', 'questions.source')
             ->toArray();
 
         return [
@@ -438,8 +498,7 @@ class UltraFastQuizService
                 !isset($cached['best_score']) ||
                 !isset($cached['improvement_trend'])) {
                 // Invalid cache structure, clear it and fall through to fresh query
-                $this->redis->del($cacheKey);
-                $this->redis->del($cacheKey . ':hot');
+                $this->deleteFromRedis([$cacheKey, $cacheKey . ':hot']);
             } else {
                 Log::info('🚀 ULTRA-FAST USER STATS CACHE HIT', [
                     'topic_id' => $topic->id,
@@ -583,13 +642,15 @@ class UltraFastQuizService
 
         // NUCLEAR QUERY: Get distinct sources in one optimized query
         $this->incrementQueryCounter();
-        $sources = Question::where('topic_id', $topic->id)
-            ->whereNotNull('question')
-            ->where('question', '!=', '')
-            ->whereNotNull('source')
-            ->where('source', '!=', '')
+        $query = Question::query();
+        $this->applyTopicFilter($query, $topic);
+        
+        $sources = $query->whereNotNull('questions.question')
+            ->where('questions.question', '!=', '')
+            ->whereNotNull('questions.source')
+            ->where('questions.source', '!=', '')
             ->distinct()
-            ->pluck('source')
+            ->pluck('questions.source')
             ->toArray();
 
         // Always include 'all' as the first option
@@ -606,5 +667,19 @@ class UltraFastQuizService
         ]);
 
         return $result;
+    }
+
+    /**
+     * Apply the correct topic filtering logic including linked questions and extra topics
+     * @param \Illuminate\Database\Eloquent\Builder $query
+     * @param Topic $topic
+     * @return \Illuminate\Database\Eloquent\Builder
+     */
+    private function applyTopicFilter($query, Topic $topic)
+    {
+        return $query->where(function($q) use ($topic) {
+            $q->where('questions.topic_id', $topic->id)
+              ->orWhereRaw('FIND_IN_SET(?, REPLACE(questions.extra_topic, " ", "")) > 0', [$topic->id]);
+        });
     }
 }

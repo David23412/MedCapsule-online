@@ -89,6 +89,9 @@ class QuizTutorController extends Controller
                 'questions_count' => count($quizData['questions'])
             ]);
             
+            // ✅ ZERO N+1 BADGE ENRICHMENT
+            \App\Models\Question::enrichWithBadges($quizData['questions'], $topic->id);
+
             return view('tutor_mode', [
                 'topic' => $quizData['topic'],
                 'questions' => $quizData['questions'],
@@ -204,8 +207,7 @@ class QuizTutorController extends Controller
 
                 $isCorrect = false;
                 if ($userAnswer) {
-                    // Check if answer is correct (case-insensitive)
-                    $isCorrect = trim(strtolower($userAnswer)) === trim(strtolower($question->correct_answer));
+                    $isCorrect = $question->isAnswerCorrect((string) $userAnswer);
                     $totalQuestions++;
                     if ($isCorrect) {
                         $totalCorrect++;

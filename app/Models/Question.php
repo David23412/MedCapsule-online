@@ -36,7 +36,8 @@ class Question extends Model
         'source',
         'concept',
         'alternative_answers',
-        'exam_appearances_count'
+        'exam_appearances_count',
+        'extra_topic'
     ];
 
     protected $casts = [
@@ -82,65 +83,100 @@ class Question extends Model
         });
     }
 
-    // Define many-to-many relationship: A Question can belong to multiple Topics
-    public function topics()
+    // Define topics relationship: Consolidates main topic and extra_topic string into a single collection
+    public function getTopicsAttribute()
     {
-        return $this->belongsToMany(Topic::class, 'question_topic_links')
-            ->withTimestamps();
-    }
-
-    // Get additional topics (excluding the main/source topic)
-    public function additionalTopics()
-    {
-        return $this->belongsToMany(Topic::class, 'question_topic_links')
-            ->where('topic_id', '!=', $this->topic_id)
-            ->withTimestamps();
-    }
-
-    // Get exam source topics (topics with is_exam = true)
-    public function getExamSourceTopicsAttribute()
-    {
-        return $this->topics->filter(function ($topic) {
-            return $topic->is_exam;
-        });
-    }
-
-    // Get exam source relationships (pivot data)
-    public function examSourceLinks()
-    {
-        return $this->belongsToMany(Topic::class, 'question_topic_links')
-            ->where('topics.is_exam', true)
-            ->withTimestamps();
-    }
-
-    // Get source badges for UI display
-    public function getSourceBadgesAttribute(): array
-    {
-        $badges = [];
+        $topicIds = collect([$this->topic_id]);
         
-        // Check main topic first
-        if ($this->topic && $this->topic->is_exam) {
-            $badges[] = strtoupper($this->topic->name);
-        }
-        
-        // Check additional topics
-        foreach ($this->exam_source_topics as $topic) {
-            $badgeName = strtoupper($topic->name);
-            if (!in_array($badgeName, $badges)) {
-                $badges[] = $badgeName;
+        if (!empty($this->extra_topic)) {
+            $extraIds = explode(',', $this->extra_topic);
+            foreach ($extraIds as $id) {
+                $topicIds->push((int) trim($id));
             }
         }
         
-        return $badges;
+        return Topic::whereIn('id', $topicIds->unique()->filter())->get();
+    }
+
+    // DEPRECATED: Pivot table removed. User extra_topic string instead.
+    public function additionalTopics()
+    {
+        return collect();
+    }
+
+    /**
+     * ✅ ZERO N+1: Enrich an entire question collection with badge data in ONE query.
+     * Call this in the controller before passing questions to a Blade view.
+     *
+     * @param \Illuminate\Support\Collection|\Illuminate\Database\Eloquent\Collection $questions
+     * @param int $currentTopicId  The topic the student is currently viewing (its name badge is hidden).
+     */
+    public static function enrichWithBadges($questions, int $currentTopicId): void
+    {
+        // 1. Collect every extra topic ID referenced across all questions
+        $allExtraIds = collect();
+        foreach ($questions as $q) {
+            $raw = is_array($q) ? ($q['extra_topic'] ?? null) : ($q->extra_topic ?? null);
+            if (!empty($raw)) {
+                foreach (explode(',', $raw) as $id) {
+                    $allExtraIds->push((int) trim($id));
+                }
+            }
+        }
+
+        // 2. Single query to resolve all needed topic names
+        $topicNames = [];
+        if ($allExtraIds->isNotEmpty()) {
+            $topicNames = Topic::whereIn('id', $allExtraIds->unique()->filter()->values())
+                ->pluck('name', 'id')
+                ->all();
+        }
+
+        // 3. Assign the pre-computed badge array to each question (no further DB hits)
+        foreach ($questions as $q) {
+            $qObj = is_array($q) ? $q : $q;
+            $badges = [];
+
+            $count = (int) (is_array($qObj) ? ($qObj['exam_appearances_count'] ?? 0) : ($qObj->exam_appearances_count ?? 0));
+            if ($count >= 3) {
+                $badges[] = '🔥 HIGH YIELD';
+            } elseif ($count >= 2) {
+                $badges[] = '📈 REPEATED';
+            }
+
+            $raw = is_array($qObj) ? ($qObj['extra_topic'] ?? null) : ($qObj->extra_topic ?? null);
+            if (!empty($raw)) {
+                $mainTopicId = (int) (is_array($qObj) ? ($qObj['topic_id'] ?? 0) : ($qObj->topic_id ?? 0));
+                foreach (explode(',', $raw) as $idStr) {
+                    $id = (int) trim($idStr);
+                    // Skip the question's own main topic and the currently-viewed topic
+                    if ($id === $mainTopicId || $id === $currentTopicId) {
+                        continue;
+                    }
+                    if (isset($topicNames[$id])) {
+                        $name = strtoupper($topicNames[$id]);
+                        if (!in_array($name, $badges, true)) {
+                            $badges[] = $name;
+                        }
+                    }
+                }
+            }
+
+            // Stamp as a plain attribute so Blade reads it without triggering accessors
+            if (!is_array($qObj)) {
+                $qObj->setRelation('_badges_resolved', collect()); // mark as processed
+                $qObj->enhanced_source_badges_computed = $badges;
+            }
+        }
     }
 
     // Check if question belongs to an exam topic
     public function isFromExam(): bool
     {
-        return !empty($this->source_badges) || $this->exam_appearances_count > 0;
+        return $this->exam_appearances_count > 0;
     }
 
-    // Get exam frequency level for psychological impact
+    // Get exam frequency level
     public function getExamFrequencyLevelAttribute(): string
     {
         if ($this->exam_appearances_count >= 5) return 'Very High';
@@ -150,71 +186,87 @@ class Question extends Model
         return 'None';
     }
 
-    // Get enhanced source badges with frequency indicators
+    // Get exam frequency score (numeric)
+    public function getExamFrequencyScoreAttribute(): int
+    {
+        return $this->exam_appearances_count;
+    }
+
+    /**
+     * Returns badges. If enrichWithBadges() was called on the collection this is free.
+     * Falls back to the N+1 path only when called individually (e.g. Tinker).
+     */
     public function getEnhancedSourceBadgesAttribute(): array
     {
+        // Fast path: already computed by enrichWithBadges()
+        if (isset($this->enhanced_source_badges_computed)) {
+            return $this->enhanced_source_badges_computed;
+        }
+
+        // Slow fallback (single question, e.g. Tinker)
         $badges = [];
-        
-        // Add exam frequency badges
         if ($this->exam_appearances_count >= 3) {
             $badges[] = '🔥 HIGH YIELD';
         } elseif ($this->exam_appearances_count >= 2) {
             $badges[] = '📈 REPEATED';
         }
-        
-        // Add original source badges
-        foreach ($this->source_badges as $badge) {
-            $badges[] = $badge;
+        foreach ($this->topics as $topic) {
+            if ($topic->id === $this->topic_id) continue;
+            $name = strtoupper($topic->name);
+            if (!in_array($name, $badges, true)) {
+                $badges[] = $name;
+            }
         }
-        
+        return $badges;
+    }
+
+    // source_badges kept for backward compat but only used in single-question context
+    public function getSourceBadgesAttribute(): array
+    {
+        $badges = [];
+        foreach ($this->topics as $topic) {
+            if ($topic->id === $this->topic_id) continue;
+            $name = strtoupper($topic->name);
+            if (!in_array($name, $badges, true)) $badges[] = $name;
+        }
         return $badges;
     }
 
     // Get exam origin text for trust signals
+    // Get source text for under the question (excluding the current owner topic)
     public function getExamOriginTextAttribute(): string
     {
-        $examTopics = $this->examSourceLinks;
-        if ($examTopics->isEmpty()) {
+        $extraTopics = $this->topics->filter(fn($t) => $t->id != $this->topic_id);
+
+        if ($extraTopics->isEmpty()) {
             return '';
         }
         
-        $origins = $examTopics->map(function ($topic) {
-            return $topic->name;
-        })->toArray();
+        $origins = $extraTopics->map(fn($topic) => $topic->name)->toArray();
         
         return 'Source: ' . implode(', ', $origins);
     }
 
-    // Calculate and update exam frequency score
+    // Calculate and update recurrence count based on extra_topic string
     public function updateExamFrequencyScore(): void
     {
-        // Get all unique topic IDs for this question (main + linked)
-        $topicIds = DB::table('question_topic_links')
-            ->where('question_id', $this->id)
-            ->pluck('topic_id')
-            ->push($this->topic_id)
-            ->filter()
-            ->unique();
-            
-        // Count how many are exam topics
-        $examCount = Topic::whereIn('id', $topicIds)
-            ->where('is_exam', true)
-            ->count();
-        
+        if (empty($this->extra_topic)) {
+            $this->update(['exam_appearances_count' => 0]);
+            return;
+        }
+
+        $extraIds = array_filter(explode(',', $this->extra_topic));
         $this->update([
-            'exam_appearances_count' => $examCount
+            'exam_appearances_count' => count($extraIds)
         ]);
     }
 
     /**
-     * Scope for questions from any exam source.
+     * Scope for questions that have at least one link.
      */
     public function scopeFromExam($query)
     {
-        return $query->where(function ($q) {
-            $q->whereHas('topic', fn($t) => $t->where('is_exam', true))
-              ->orWhereHas('topics', fn($t) => $t->where('is_exam', true));
-        });
+        return $query->whereNotNull('extra_topic')->where('extra_topic', '!=', '');
     }
 
     /**
@@ -223,12 +275,6 @@ class Question extends Model
     public function scopeHighYield($query)
     {
         return $query->where('exam_appearances_count', '>=', 3);
-    }
-
-    // Get dynamic exam frequency score
-    public function getExamFrequencyScoreAttribute(): float
-    {
-        return min($this->exam_appearances_count * 2.5, 10.0);
     }
 
     /**
@@ -356,19 +402,34 @@ class Question extends Model
                 if (empty($safeSubmittedAnswer)) {
                     return false;
                 }
-                return $this->isWrittenAnswerCorrect($safeSubmittedAnswer);
-            } catch (\Exception $e) {
+
+                $evaluationService = app(\App\Services\WrittenAnswerEvaluationService::class);
+
+                if (app()->environment('testing')) {
+                    $evaluationService->setCacheConfig(false);
+                }
+
+                return (bool) $evaluationService->isCorrect($this, $safeSubmittedAnswer);
+            } catch (\Throwable $e) {
                 // Log error but don't crash
                 Log::error('Error checking written answer', [
                     'question_id' => $this->id,
                     'error' => $e->getMessage()
                 ]);
                 // Default to false on error
-                return false;
+                return $this->matchesWrittenAnswerFallback((string) $submittedAnswer);
             }
         }
         
         return false;
+    }
+
+    /**
+     * Legacy fallback used when the main written evaluator is unavailable.
+     */
+    public function matchesWrittenAnswerFallback(string $submittedAnswer): bool
+    {
+        return $this->isWrittenAnswerCorrect($submittedAnswer);
     }
 
     /**
@@ -553,7 +614,7 @@ class Question extends Model
                 'best_similarity' => $similarityScore
             ]);
             return false;
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             // Log error but don't crash
             Log::error('Error in written answer comparison', [
                 'question_id' => $this->id,
@@ -806,7 +867,8 @@ class Question extends Model
             $similarity = ($wordOverlapRatio * 0.7) + ($charSimilarity * 0.3);
             
             // PERFORMANCE MONITORING: Log slow calculations
-            $executionTime = microtime(true) - LARAVEL_START;
+            $executionStart = defined('LARAVEL_START') ? LARAVEL_START : microtime(true);
+            $executionTime = microtime(true) - $executionStart;
             if ($executionTime > 0.1) { // 100ms threshold
                 Log::warning('Text similarity calculation slow', [
                     'execution_time' => round($executionTime * 1000, 2) . 'ms',

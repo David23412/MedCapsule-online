@@ -52,6 +52,19 @@ class CourseFactory extends Factory
     {
         return $this->state(fn (array $attributes) => [
             'price' => 0,
+            'access_type' => \App\Models\Course::ACCESS_TYPE_FREE,
+            'type' => 'medical',
+        ]);
+    }
+
+    /**
+     * Create a preview course.
+     */
+    public function preview(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'price' => 0,
+            'access_type' => \App\Models\Course::ACCESS_TYPE_PREVIEW,
             'type' => 'medical',
         ]);
     }
@@ -63,6 +76,7 @@ class CourseFactory extends Factory
     {
         return $this->state(fn (array $attributes) => [
             'price' => fake()->randomElement([99.99, 149.99, 199.99, 299.99]),
+            'access_type' => \App\Models\Course::ACCESS_TYPE_PAID,
             'type' => 'medical',
         ]);
     }

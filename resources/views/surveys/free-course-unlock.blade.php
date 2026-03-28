@@ -41,7 +41,6 @@
                     <div class="survey-progress-label">Survey progress</div>
                     <div class="survey-progress-value" id="surveyProgressValue"></div>
                 </div>
-                <div class="survey-save-status" id="surveySaveStatus">Autosaving</div>
             </div>
 
             <div class="survey-progress-track">
@@ -64,6 +63,9 @@
                         </div>
 
                         <h2 class="survey-question-title">{{ $question['prompt'] }}</h2>
+                        @unless($question['required'])
+                            <p class="survey-optional-hint">You can leave this blank and unlock the course right away.</p>
+                        @endunless
 
                         @if ($question['type'] === 'single_choice')
                             <div class="survey-options-grid">
@@ -93,7 +95,14 @@
                 <div class="survey-actions">
                     <button type="button" class="survey-btn survey-btn-secondary" id="surveyPrevBtn">Previous</button>
                     <button type="button" class="survey-btn survey-btn-primary" id="surveyNextBtn">Next</button>
-                    <button type="submit" class="survey-btn survey-btn-primary" id="surveySubmitBtn">Unlock Course</button>
+                    <button
+                        type="submit"
+                        class="survey-btn survey-btn-primary"
+                        id="surveySubmitBtn"
+                        data-default-label="Unlock Course"
+                        data-skip-label="Skip and Unlock Course"
+                        data-submitting-label="Unlocking..."
+                    >Unlock Course</button>
                 </div>
             </form>
         </main>

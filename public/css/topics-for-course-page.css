@@ -1612,3 +1612,476 @@ body.sidebar-collapsed .coming-soon-overlay {
         pointer-events: auto;
     }
 }
+
+/* =============================================
+   MOBILE OFFCANVAS SIDEBAR & MOBILE HEADER
+   Applied only on screens < 768px
+   ============================================= */
+
+/* ─── Mobile-only sticky top bar ─── */
+.topics-mobile-header {
+    display: none; /* hidden on desktop */
+}
+
+/* ─── Mobile close button inside sidebar (hidden on desktop) ─── */
+.topics-sidebar-close-btn {
+    display: none;
+}
+
+/* ─── Backdrop overlay (hidden by default) ─── */
+.topics-sidebar-backdrop {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(15, 23, 42, 0.45);
+    z-index: 1998;
+    opacity: 0;
+    pointer-events: none; /* ← CRITICAL: don't block clicks when invisible */
+    transition: opacity 0.28s ease;
+    backdrop-filter: blur(2px);
+}
+
+.topics-sidebar-backdrop.is-visible {
+    opacity: 1;
+    pointer-events: auto; /* allow click-to-close when visible */
+}
+
+/* ─── Body scroll-lock when sidebar is open ─── */
+body.topics-sidebar-open {
+    overflow: hidden;
+}
+
+@media (max-width: 767.98px) {
+    /* Reset the 72% zoom that was applied for desktop */
+    body {
+        zoom: 1 !important;
+    }
+
+    /* ── Mobile sticky top bar ─────────────────── */
+    .topics-mobile-header {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        position: sticky;
+        top: 0;
+        left: 0;
+        right: 0;
+        z-index: 2100; /* above sidebar (1999) and backdrop (1998) */
+        height: 56px;
+        padding: 0 1rem;
+        background: #ffffff;
+        border-bottom: 1px solid #e8ecf0;
+        box-shadow: 0 2px 12px rgba(15, 23, 42, 0.06);
+    }
+
+    .topics-mobile-hamburger {
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        gap: 5px;
+        flex-shrink: 0;
+        width: 44px;
+        height: 44px;
+        padding: 0 10px;
+        background: none;
+        border: none;
+        cursor: pointer;
+        border-radius: 10px;
+        transition: background 0.18s ease;
+    }
+
+    .topics-mobile-hamburger:hover {
+        background: #f1f5f9;
+    }
+
+    .topics-mobile-hamburger span {
+        display: block;
+        width: 22px;
+        height: 2px;
+        border-radius: 2px;
+        background: #334155;
+        transition: transform 0.22s ease, opacity 0.22s ease;
+    }
+
+    .topics-mobile-course-name {
+        flex: 1;
+        font-size: 0.92rem;
+        font-weight: 700;
+        color: #0f172a;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        letter-spacing: -0.01em;
+    }
+
+    .topics-mobile-home-link {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 44px;
+        height: 44px;
+        color: #64748b;
+        font-size: 1rem;
+        border-radius: 10px;
+        text-decoration: none;
+        flex-shrink: 0;
+        transition: background 0.15s, color 0.15s;
+    }
+
+    .topics-mobile-home-link:hover {
+        background: #f1f5f9;
+        color: #1d4ed8;
+    }
+
+    /* ── Backdrop ─────────────────────────────── */
+    .topics-sidebar-backdrop {
+        display: block; /* make it exist in the layout */
+        /* pointer-events: none is already set above -- only active when .is-visible */
+    }
+
+    /* ── Sidebar: offcanvas drawer ────────────── */
+    .sidebar {
+        /* Slide off-screen to the left by default */
+        position: fixed !important;
+        top: 0 !important;
+        left: 0 !important;
+        bottom: 0 !important;
+        width: 290px !important;
+        max-width: 85vw;
+        transform: translateX(-100%);
+        transition: transform 0.28s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.28s ease;
+        z-index: 1999 !important;
+        border-right: 1px solid #e2e8f0;
+        box-shadow: none;
+        overflow-y: auto;
+        overscroll-behavior: contain;
+    }
+
+    .sidebar.is-open {
+        transform: translateX(0);
+        box-shadow: 6px 0 32px rgba(15, 23, 42, 0.18);
+    }
+
+    /* Mobile close button inside drawer */
+    .topics-sidebar-close-btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        position: absolute;
+        top: 14px;
+        right: 14px;
+        width: 36px;
+        height: 36px;
+        border-radius: 10px;
+        background: #f1f5f9;
+        border: none;
+        color: #475569;
+        font-size: 0.9rem;
+        cursor: pointer;
+        z-index: 2000;
+        transition: background 0.15s, color 0.15s;
+    }
+
+    .topics-sidebar-close-btn:hover {
+        background: #e2e8f0;
+        color: #0f172a;
+    }
+
+    /* Hide the desktop collapse toggle on mobile */
+    .sidebar-toggle {
+        display: none !important;
+    }
+
+    /* Ensure sidebar-logo has room for the close button */
+    .sidebar-logo {
+        padding-right: 3rem;
+    }
+
+    /* ── Main content: full-width, with top padding for sticky bar ── */
+    .main-content,
+    body.sidebar-collapsed .main-content {
+        margin-left: 0 !important;
+        padding-top: 0 !important;
+        padding-bottom: 5rem;
+    }
+
+    /* ── Course Header ────────────────────────── */
+    .course-header {
+        padding: 1.25rem 1rem 1rem;
+        min-height: auto;
+        margin-bottom: 0;
+    }
+
+    .course-header::after {
+        display: none;
+    }
+
+    .course-progress {
+        padding-left: 0;
+        gap: 0.65rem;
+    }
+
+    .progress-text-title {
+        font-size: clamp(1.4rem, 7vw, 2.2rem) !important;
+        white-space: normal;
+    }
+
+    .progress-heading-row {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.25rem;
+    }
+
+    .progress-meta {
+        gap: 0.5rem;
+        justify-content: flex-start;
+        flex-wrap: wrap;
+    }
+
+    .progress-count,
+    .progress-percent {
+        font-size: 0.82rem;
+    }
+
+    .topics-progress-track {
+        gap: 0.2rem;
+    }
+
+    .topics-progress-segment {
+        min-width: 6px;
+        height: 8px;
+    }
+
+    /* ── Case filter pills: horizontal scroll ─── */
+    .case-filters {
+        display: flex !important;
+        flex-direction: row !important;
+        flex-wrap: nowrap !important;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        scroll-snap-type: x mandatory;
+        gap: 0.5rem !important;
+        padding: 0.75rem 1rem !important;
+        margin-bottom: 0 !important;
+        /* hide scrollbar */
+        scrollbar-width: none;
+        -ms-overflow-style: none;
+    }
+
+    .case-filters::-webkit-scrollbar {
+        display: none;
+    }
+
+    .case-filter,
+    .random-link,
+    .mistakes-link {
+        flex-shrink: 0 !important;
+        scroll-snap-align: start;
+        /* reset stacking overrides from topics.css */
+        width: auto !important;
+        justify-content: center;
+        padding: 0.5rem 1rem !important;
+        font-size: 0.82rem !important;
+        min-height: 40px;
+        border-radius: 50px !important;
+        margin-bottom: 0 !important;
+    }
+
+    .assignment-icon-circle {
+        flex-shrink: 0;
+        scroll-snap-align: start;
+    }
+
+    /* ── Search bar ───────────────────────────── */
+    .search-container {
+        padding: 0.5rem 1rem;
+    }
+
+    .search-input {
+        font-size: 16px !important; /* iOS zoom prevention */
+        padding: 0.7rem 2.5rem 0.7rem 2.5rem;
+    }
+
+    /* ── Topics container ─────────────────────── */
+    .topics-container {
+        padding: 0.75rem 0.875rem !important;
+        max-width: 100% !important;
+    }
+
+    /* ── Individual topic card ────────────────── */
+    .topic-card {
+        padding: 1rem 1rem 1rem !important;
+        border-radius: 14px !important;
+        margin-bottom: 0.875rem !important;
+    }
+
+    .topic-info {
+        flex-direction: column !important;
+        align-items: stretch !important;
+        gap: 0.5rem;
+        margin-bottom: 0.75rem !important;
+    }
+
+    .topic-main {
+        padding-right: 0 !important;
+    }
+
+    .topic-name {
+        font-size: 1rem !important;
+        line-height: 1.35 !important;
+        gap: 0.5rem !important;
+    }
+
+    .grade-badge {
+        align-self: flex-start;
+        font-size: 0.78rem;
+        padding: 0.35rem 0.75rem;
+    }
+
+    .topic-actions {
+        flex-direction: column !important;
+        gap: 0.75rem !important;
+        margin-top: 0.75rem !important;
+        align-items: stretch !important;
+    }
+
+    .start-quiz-btn {
+        width: 100% !important;
+        justify-content: center !important;
+        padding: 0.875rem 1.25rem !important;
+        font-size: 0.95rem !important;
+        min-height: 48px !important; /* 44px+ touch target */
+        touch-action: manipulation;
+    }
+
+    .stat-item {
+        font-size: 0.82rem;
+    }
+
+    .progress-container {
+        margin-top: 0.75rem;
+    }
+
+    .progress {
+        height: 7px;
+    }
+
+    .progress-label {
+        font-size: 0.72rem;
+    }
+
+    .last-attempt {
+        font-size: 0.75rem;
+    }
+
+    /* ── Assignment cards ────────────────────── */
+    .assignment-status-bar {
+        padding: 0.75rem 1rem !important;
+        margin: -1rem -1rem 0.875rem -1rem !important;
+        width: calc(100% + 2rem) !important;
+        border-radius: 14px 14px 0 0 !important;
+        min-height: auto !important;
+    }
+
+    .assignment-info-minimal {
+        flex-wrap: wrap;
+        gap: 0.4rem;
+    }
+
+    /* ── Video play button: inside card on mobile ── */
+    .topic-with-video-container {
+        position: relative;
+    }
+
+    .video-play-btn {
+        position: static !important;
+        right: auto !important;
+        top: auto !important;
+        transform: none !important;
+        align-self: flex-start;
+        width: 40px !important;
+        height: 40px !important;
+        margin-top: 0.5rem;
+    }
+
+    /* Place video btn naturally after the card action area */
+    .topic-with-video-container .topic-card {
+        width: 100% !important;
+    }
+
+    .topic-with-video-container {
+        display: flex;
+        flex-direction: column;
+    }
+
+    /* ── Modals: full-screen on mobile ─────────── */
+    .modal-dialog {
+        margin: 0.5rem !important;
+        max-height: calc(100vh - 1rem);
+    }
+
+    .modal-content {
+        border-radius: 16px !important;
+    }
+
+    .modal-body {
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
+        /* Prevent max-height cutoff */
+        max-height: 60vh;
+    }
+
+    /* Larger touch targets for form controls inside modals */
+    .modal .form-check-input,
+    .modal .form-check-label {
+        min-height: 44px;
+        display: flex;
+        align-items: center;
+    }
+
+    .modal select,
+    .modal input[type="text"],
+    .modal input[type="email"],
+    .modal input[type="password"] {
+        font-size: 16px !important; /* iOS zoom prevention */
+        min-height: 48px;
+    }
+
+    /* ── Toast: full width on mobile ───────────── */
+    .task-toast-stack {
+        top: auto;
+        bottom: calc(env(safe-area-inset-bottom, 0px) + 16px);
+        right: 12px;
+        left: 12px;
+    }
+
+    .task-toast {
+        min-width: unset;
+        max-width: 100%;
+    }
+
+    /* ── Empty state ───────────────────────────── */
+    .empty-state {
+        padding: 2rem 1rem;
+    }
+}
+
+/* Extra small phones (< 400px) */
+@media (max-width: 399.98px) {
+    .topics-mobile-course-name {
+        font-size: 0.8rem;
+    }
+
+    .topic-card {
+        padding: 0.875rem !important;
+    }
+
+    .topic-name {
+        font-size: 0.92rem !important;
+    }
+
+    .progress-text-title {
+        font-size: 1.25rem !important;
+    }
+}
+

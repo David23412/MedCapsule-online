@@ -56,16 +56,40 @@ class StatusController extends Controller
             return response()->json(['success' => false]);
         }
 
-        $completedCourses = Payment::where('user_id', $userId)
+        $latestStatuses = Payment::where('user_id', $userId)
             ->whereIn('course_id', $courseIds)
-            ->where('status', 'completed')
-            ->pluck('course_id')
-            ->map(static fn ($courseId) => (int) $courseId)
-            ->all();
+            ->orderByDesc('id')
+            ->get(['course_id', 'status'])
+            ->unique('course_id')
+            ->values();
+
+        $completedCourses = [];
+        $pendingCourses = [];
+        $rejectedCourses = [];
+
+        foreach ($latestStatuses as $payment) {
+            $courseId = (int) $payment->course_id;
+
+            if ($payment->status === 'completed') {
+                $completedCourses[] = $courseId;
+                continue;
+            }
+
+            if (in_array($payment->status, ['pending', 'pending_verification'], true)) {
+                $pendingCourses[] = $courseId;
+                continue;
+            }
+
+            if (in_array($payment->status, ['rejected', 'failed', 'expired'], true)) {
+                $rejectedCourses[] = $courseId;
+            }
+        }
 
         return response()->json([
             'success' => true,
             'completed_courses' => $completedCourses,
+            'pending_courses' => $pendingCourses,
+            'rejected_courses' => $rejectedCourses,
         ]);
     }
 

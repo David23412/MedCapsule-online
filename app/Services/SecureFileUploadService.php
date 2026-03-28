@@ -88,10 +88,16 @@ class SecureFileUploadService
      * @param UploadedFile $file
      * @param string $category (images|documents|videos)
      * @param string $directory
+     * @param string $disk
      * @return array
      * @throws \Exception
      */
-    public function processSecureUpload(UploadedFile $file, string $category = 'images', string $directory = 'uploads'): array
+    public function processSecureUpload(
+        UploadedFile $file,
+        string $category = 'images',
+        string $directory = 'uploads',
+        string $disk = 'secure_uploads'
+    ): array
     {
         // Validate file exists and is valid
         if (!$file->isValid()) {
@@ -114,10 +120,12 @@ class SecureFileUploadService
         $storagePath = $this->generateSecureStoragePath($directory, $secureFilename);
 
         // Store file securely
-        $storedPath = $this->storeFileSecurely($file, $storagePath);
+        $storedPath = $this->storeFileSecurely($file, $storagePath, $disk);
 
         // Set secure permissions
-        $this->setSecurePermissions($storedPath);
+        $this->setSecurePermissions($storedPath, $disk);
+
+        $publicUrl = $this->publicUrlForDisk($disk, $storedPath);
 
         Log::info('Secure file upload completed', [
             'original_name' => $file->getClientOriginalName(),
@@ -125,7 +133,8 @@ class SecureFileUploadService
             'size' => $file->getSize(),
             'mime_type' => $file->getMimeType(),
             'category' => $category,
-            'storage_path' => $storedPath
+            'storage_path' => $storedPath,
+            'disk' => $disk,
         ]);
 
         return [
@@ -133,7 +142,7 @@ class SecureFileUploadService
             'original_name' => $file->getClientOriginalName(),
             'secure_name' => $secureFilename,
             'storage_path' => $storedPath,
-            'public_url' => Storage::url($storedPath),
+            'public_url' => $publicUrl,
             'size' => $file->getSize(),
             'mime_type' => $file->getMimeType(),
         ];
@@ -335,17 +344,18 @@ class SecureFileUploadService
      *
      * @param UploadedFile $file
      * @param string $path
+     * @param string $disk
      * @return string
      * @throws \Exception
      */
-    private function storeFileSecurely(UploadedFile $file, string $path): string
+    private function storeFileSecurely(UploadedFile $file, string $path, string $disk): string
     {
         try {
-            // Store file in secure location (outside web root)
+            // Store file on the requested disk after validation and scanning.
             $storedPath = $file->storeAs(
                 dirname($path),
                 basename($path),
-                'secure_uploads' // Use secure disk
+                $disk
             );
 
             if (!$storedPath) {
@@ -357,6 +367,7 @@ class SecureFileUploadService
         } catch (\Exception $e) {
             Log::error('File storage failed', [
                 'path' => $path,
+                'disk' => $disk,
                 'error' => $e->getMessage()
             ]);
             throw new \Exception('File storage failed: ' . $e->getMessage());
@@ -367,10 +378,11 @@ class SecureFileUploadService
      * Set secure file permissions
      *
      * @param string $path
+     * @param string $disk
      */
-    private function setSecurePermissions(string $path): void
+    private function setSecurePermissions(string $path, string $disk): void
     {
-        $fullPath = Storage::disk('secure_uploads')->path($path);
+        $fullPath = Storage::disk($disk)->path($path);
 
         if (file_exists($fullPath)) {
             // Set secure permissions (644 for files, 755 for directories)
@@ -382,6 +394,15 @@ class SecureFileUploadService
                 chmod($parentDir, 0755);
             }
         }
+    }
+
+    private function publicUrlForDisk(string $disk, string $path): ?string
+    {
+        if (config("filesystems.disks.{$disk}.visibility") !== 'public') {
+            return null;
+        }
+
+        return Storage::disk($disk)->url($path);
     }
 
     /**

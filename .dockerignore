@@ -6,7 +6,10 @@ storage/logs/*
 storage/framework/views/*
 storage/framework/cache/data/*
 node_modules/
-scripts/
+vendor/
+public/build/
+scripts/*
+!scripts/patch-laravel-vite-plugin.mjs
 tests/
 docs/
 .gitattributes

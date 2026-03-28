@@ -21,7 +21,6 @@
     const submitButton = document.getElementById('surveySubmitBtn');
     const progressFill = document.getElementById('surveyProgressFill');
     const progressValue = document.getElementById('surveyProgressValue');
-    const saveStatus = document.getElementById('surveySaveStatus');
     const successOverlay = document.getElementById('surveySuccessOverlay');
     const triggers = document.querySelectorAll('.free-course-survey-trigger');
 
@@ -31,6 +30,9 @@
 
     const totalSteps = questionCards.length;
     const initialDraft = config.draft || null;
+    const defaultSubmitLabel = submitButton?.dataset.defaultLabel || submitButton?.textContent?.trim() || 'Unlock Course';
+    const skipSubmitLabel = submitButton?.dataset.skipLabel || defaultSubmitLabel;
+    const submittingLabel = submitButton?.dataset.submittingLabel || defaultSubmitLabel;
     const escapeSelectorValue = (value) => {
         if (window.CSS && typeof window.CSS.escape === 'function') {
             return window.CSS.escape(String(value));
@@ -82,6 +84,7 @@
                     answers[questionId] = input.value;
                     updateOptionStates(card);
                     clearError(questionId);
+                    renderSubmitButtonLabel();
                     queueSave();
                 });
             });
@@ -97,6 +100,7 @@
         textarea.addEventListener('input', () => {
             answers[questionId] = textarea.value.trim();
             clearError(questionId);
+            renderSubmitButtonLabel();
             queueSave();
         });
     });
@@ -134,8 +138,8 @@
         }
 
         submitButton.disabled = true;
-        submitButton.textContent = 'Unlocking...';
-        saveStatus.textContent = 'Submitting survey';
+        submitButton.textContent = submittingLabel;
+        setSaveStatus('Submitting survey');
 
         const response = await fetch(config.submitUrl, {
             method: 'POST',
@@ -155,13 +159,13 @@
 
         if (!response.ok) {
             submitButton.disabled = false;
-            submitButton.textContent = 'Unlock Course';
-            saveStatus.textContent = 'Unable to submit survey';
+            renderSubmitButtonLabel();
+            setSaveStatus('Unable to submit survey');
             return;
         }
 
         successOverlay.hidden = false;
-        saveStatus.textContent = payload.message;
+        setSaveStatus(payload.message);
 
         window.setTimeout(() => {
             window.location.href = payload.redirect_to;
@@ -257,6 +261,7 @@
         prevButton.hidden = currentStep === 1;
         nextButton.hidden = currentStep === totalSteps;
         submitButton.hidden = currentStep !== totalSteps;
+        renderSubmitButtonLabel();
 
         const activeCard = questionCards[currentStep - 1];
         activeCard?.scrollIntoView({ block: 'nearest' });
@@ -371,13 +376,37 @@
         });
     }
 
+    function renderSubmitButtonLabel() {
+        if (!submitButton) {
+            return;
+        }
+
+        const activeCard = questionCards[currentStep - 1];
+        const isLastStep = currentStep === totalSteps;
+        const isOptional = activeCard?.dataset.required !== 'true';
+        const value = getQuestionValue(activeCard);
+        const isEmpty = typeof value === 'undefined' || value === null || String(value).trim() === '';
+
+        submitButton.textContent = isLastStep && isOptional && isEmpty
+            ? skipSubmitLabel
+            : defaultSubmitLabel;
+    }
+
+    function setSaveStatus(message) {
+        const saveStatus = document.getElementById('surveySaveStatus');
+        if (saveStatus) {
+            saveStatus.textContent = message;
+        }
+    }
+
     function queueSave() {
-        saveStatus.textContent = 'Saving progress...';
+        setSaveStatus('Saving progress...');
 
         window.clearTimeout(saveTimeout);
         saveTimeout = window.setTimeout(() => {
             saveDraft().catch(() => {
-                saveStatus.textContent = 'Unable to save progress';
+                setSaveStatus('Unable to save progress');
+                console.warn('Unable to save survey draft');
             });
         }, 350);
     }
@@ -404,6 +433,6 @@
             throw new Error('Draft save failed');
         }
 
-        saveStatus.textContent = 'Saved';
+        setSaveStatus('Saved');
     }
 })();
