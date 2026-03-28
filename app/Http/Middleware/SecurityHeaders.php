@@ -43,8 +43,6 @@ class SecurityHeaders
         "frame-src 'self' https://www.youtube.com https://youtube.com https://www.youtube-nocookie.com https://youtube-nocookie.com",
         "frame-ancestors 'none'",
         "worker-src 'self' blob:",
-        "upgrade-insecure-requests",
-        "block-all-mixed-content",
     ];
 
     private const SCRIPT_SOURCES = [
@@ -87,7 +85,6 @@ class SecurityHeaders
         'X-Permitted-Cross-Domain-Policies' => 'none', // Control Flash/PDF policies
         'Referrer-Policy' => 'strict-origin-when-cross-origin', // Control referrer leakage
         'X-XSS-Protection' => '1; mode=block', // Additional XSS protection
-        'Strict-Transport-Security' => 'max-age=31536000; includeSubDomains; preload', // HSTS
     ];
 
     /**

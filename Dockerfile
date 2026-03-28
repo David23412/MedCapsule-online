@@ -1,4 +1,4 @@
-FROM php:8.3-apache AS app-base
+FROM php:8.4-apache AS app-base
 
 RUN apt-get update && apt-get install -y \
     cron \
@@ -27,7 +27,7 @@ COPY --from=composer:2 /usr/bin/composer /usr/local/bin/composer
 WORKDIR /var/www/html
 COPY . /var/www/html
 
-RUN composer install --no-dev --optimize-autoloader --no-interaction \
+RUN COMPOSER_PROCESS_TIMEOUT=1200 composer install --no-dev --optimize-autoloader --no-interaction \
     && mkdir -p \
         /var/www/html/storage/logs \
         /var/www/html/storage/framework/cache/data \
