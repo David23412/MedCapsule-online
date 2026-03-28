@@ -13,13 +13,12 @@ return new class extends Migration
                 $table->id();
                 $table->string('name');
                 $table->string('email')->unique();
-                $table->string('number', 20)->nullable();
+                $table->string('number', 20);
                 $table->timestamp('email_verified_at')->nullable();
                 $table->string('password');
                 $table->unsignedTinyInteger('role')->default(3); // 1=admin,2=tutor,3=student (SSOT)
                 $table->integer('weekly_goal')->default(50);
                 $table->date('exam_date')->nullable();
-                $table->unsignedTinyInteger('target_score')->default(80);
                 $table->unsignedSmallInteger('daily_study_minutes')->default(90);
                 $table->string('planner_focus')->default('balanced');
                 $table->string('repair_mode', 20)->nullable();

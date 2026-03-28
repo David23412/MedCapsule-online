@@ -259,7 +259,7 @@ class ProfileController extends Controller
             'week_start_label' => $weekStart->format('M d'),
             'week_end_label' => $weekEnd->format('M d'),
             'exam_date' => optional($user->exam_date)->format('Y-m-d'),
-            'target_score' => (int) ($user->target_score ?? 80),
+            'target_score' => 80,
             'daily_study_minutes' => (int) ($user->daily_study_minutes ?? 90),
             'planner_focus' => $user->planner_focus ?? 'balanced',
             'repair_mode' => $user->repair_mode,
@@ -464,7 +464,6 @@ class ProfileController extends Controller
             $validated = $request->validate([
                 'weekly_goal' => 'required|integer|min:10|max:500',
                 'exam_date' => 'nullable|date|after_or_equal:today',
-                'target_score' => 'required|integer|min:50|max:100',
                 'daily_study_minutes' => 'required|integer|min:30|max:480',
                 'planner_focus' => 'required|in:balanced,new_topics,revision,exam_prep',
                 'repair_mode' => 'nullable|in:easy,hard,spaced',
@@ -474,7 +473,6 @@ class ProfileController extends Controller
             $user = auth()->user();
             $user->weekly_goal = $validated['weekly_goal'];
             $user->exam_date = $validated['exam_date'] ?? null;
-            $user->target_score = $validated['target_score'];
             $user->daily_study_minutes = $validated['daily_study_minutes'];
             $user->planner_focus = $validated['planner_focus'];
             $user->repair_mode = $validated['repair_mode'] ?? null;
@@ -489,7 +487,7 @@ class ProfileController extends Controller
                 'message' => 'Planner settings updated successfully!',
                 'weekly_goal' => $user->weekly_goal,
                 'exam_date' => optional($user->exam_date)->format('Y-m-d'),
-                'target_score' => $user->target_score,
+                'target_score' => 80,
                 'daily_study_minutes' => $user->daily_study_minutes,
                 'planner_focus' => $user->planner_focus,
                 'repair_mode' => $user->repair_mode,
@@ -589,7 +587,7 @@ class ProfileController extends Controller
                 ],
                 'defaults' => [
                     'exam_date' => optional($user->exam_date)->format('Y-m-d'),
-                    'target_score' => (int) ($user->target_score ?? 80),
+                    'target_score' => 80,
                     'daily_study_minutes' => (int) ($user->daily_study_minutes ?? 90),
                     'planner_focus' => (string) ($user->planner_focus ?? 'balanced'),
                     'repair_mode' => $user->repair_mode,

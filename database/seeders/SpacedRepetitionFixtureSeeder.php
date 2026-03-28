@@ -76,7 +76,6 @@ class SpacedRepetitionFixtureSeeder extends Seeder
                     'role' => 3,
                     'weekly_goal' => 120,
                     'daily_study_minutes' => 120,
-                    'target_score' => 88,
                     'planner_focus' => $profile['planner_focus'],
                     'exam_date' => now()->addWeeks(8)->toDateString(),
                     'email_verified_at' => now(),

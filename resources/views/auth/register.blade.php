@@ -151,7 +151,7 @@
 
                             <div class="mb-3">
                                 <label for="number" class="form-label">Number</label>
-                                <input id="number" type="tel" class="form-control @error('number') is-invalid @enderror" name="number" value="{{ old('number') }}" required autocomplete="tel">
+                                <input id="number" type="tel" class="form-control @error('number') is-invalid @enderror" name="number" value="{{ old('number') }}" required minlength="4" maxlength="20" pattern="[0-9+\-\s()]+" autocomplete="tel">
                                 @error('number')
                                     <div class="invalid-feedback">{{ $message }}</div>
                                 @enderror

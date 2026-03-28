@@ -12,6 +12,8 @@ use App\Services\QuizCacheService;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Session;
+use App\Services\SessionSecurityService;
 
 class RegisterController extends Controller
 {
@@ -99,6 +101,15 @@ class RegisterController extends Controller
             request()->session()->put('auth.user_id', $user->id);
             request()->session()->put('auth.logged_in_at', now()->timestamp);
             request()->session()->save();
+
+            $user->update([
+                'active_session_token' => Session::getId(),
+                'session_created_at' => now(),
+                'device_fingerprint' => app(SessionSecurityService::class)->generateDeviceFingerprint($request),
+                'last_login_ip' => $request->ip(),
+                'last_user_agent' => $request->userAgent(),
+                'last_security_check' => now(),
+            ]);
 
             if (Auth::check()) {
                 // 🔔 TRIGGER MEDCAPSULE WELCOME NOTIFICATION FOR NEW USER

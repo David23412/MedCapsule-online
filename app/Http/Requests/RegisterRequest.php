@@ -17,7 +17,7 @@ class RegisterRequest extends FormRequest
         return [
             'name' => 'required|string|max:255',
             'email' => 'required|email|max:255|unique:users,email',
-            'number' => 'required|string|max:20',
+            'number' => ['required', 'string', 'min:4', 'max:20', 'regex:/^[0-9+\-\s()]+$/'],
             'university' => ['required', 'string', 'max:255', Rule::in([
                 'Assiut University',
                 'Cairo University',
@@ -38,6 +38,8 @@ class RegisterRequest extends FormRequest
             'email.required' => 'Email is required',
             'email.unique' => 'This email is already registered',
             'number.required' => 'Number is required',
+            'number.min' => 'Number must be at least 4 characters',
+            'number.regex' => 'Number may only contain digits, spaces, parentheses, plus signs, or hyphens',
             'university.required' => 'University is required',
             'university.in' => 'Please select a valid university from the list',
             'password.required' => 'Password is required',
