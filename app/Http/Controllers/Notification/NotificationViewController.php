@@ -22,22 +22,12 @@ class NotificationViewController extends Controller
         try {
             $user = auth()->user();
             $limit = $request->get('limit', 100);
-            
-            // LETHAL CACHING: Ultra-aggressive caching for notifications
-            $cacheKey = "notifications_{$user->id}_{$limit}_" . now()->format('Y-m-d-H-i');
-            
-            $data = \Illuminate\Support\Facades\Cache::remember($cacheKey, 300, function () use ($user, $limit) {
-                return [
-                    'notifications' => UniversalNotificationService::getNotifications($user, $limit),
-                    'unread_count' => UniversalNotificationService::getUnreadCount($user)
-                ];
-            });
-            
+
             return response()->json([
                 'success' => true,
-                'notifications' => $data['notifications'],
-                'unread_count' => $data['unread_count']
-            ]);
+                'notifications' => UniversalNotificationService::getNotifications($user, $limit),
+                'unread_count' => UniversalNotificationService::getUnreadCount($user)
+            ])->header('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0');
         } catch (\Exception $e) {
             \Illuminate\Support\Facades\Log::error('Notification index failed', [
                 'error' => $e->getMessage(),
@@ -55,18 +45,11 @@ class NotificationViewController extends Controller
     {
         try {
             $user = auth()->user();
-            
-            // LETHAL CACHING: Ultra-aggressive caching for notification stats
-            $cacheKey = "notification_stats_{$user->id}_" . now()->format('Y-m-d-H');
-            
-            $stats = \Illuminate\Support\Facades\Cache::remember($cacheKey, 1800, function () use ($user) {
-                return UniversalNotificationService::getStats($user);
-            });
-            
+
             return response()->json([
                 'success' => true,
-                'stats' => $stats
-            ]);
+                'stats' => UniversalNotificationService::getStats($user)
+            ])->header('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0');
         } catch (\Exception $e) {
             \Log::error('Method execution failed', ['error' => $e->getMessage()]);
             return response()->json(['success' => false, 'message' => 'Operation failed'], 500);
