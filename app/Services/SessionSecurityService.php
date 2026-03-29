@@ -192,12 +192,14 @@ class SessionSecurityService
     }
 
     /**
-     * Detect if two different IPs are using the same account concurrently
+     * Detect if two different IPs are using the same account concurrently.
+     *
+     * @param array|null $recentIps  Pre-fetched IPs to avoid a redundant cache read
+     *                               when called from validateSessionSecurity().
      */
-    public function detectConcurrentUsage(int $userId, string $currentIp): bool
+    public function detectConcurrentUsage(int $userId, string $currentIp, ?array $recentIps = null): bool
     {
-        $key = "recent_ips_{$userId}";
-        $ips = Cache::get($key, []);
+        $ips = $recentIps ?? Cache::get("recent_ips_{$userId}", []);
         
         // If we see more than 1 IP in the last 2 minutes, it's highly suspicious
         if (count($ips) > 1 && !in_array($currentIp, $ips)) {
@@ -240,9 +242,11 @@ class SessionSecurityService
             return $result;
         }
 
-        // 3. CONCURRENT IP LOCK
-        $currentIP = $request->ip();
-        if ($this->detectConcurrentUsage($user->id, $currentIP)) {
+        // 3. CONCURRENT IP LOCK — read recent_ips once and reuse for the
+        // detectSessionHijacking check below to avoid two cache reads of the same key.
+        $currentIP  = $request->ip();
+        $recentIps  = $this->getRecentRequestIPs($user->id);
+        if ($this->detectConcurrentUsage($user->id, $currentIP, $recentIps)) {
             $result = [
                 'valid' => false,
                 'action' => 'force_logout',
@@ -252,7 +256,7 @@ class SessionSecurityService
         }
 
         // Advanced security checks (these can still run even if the above checks pass, for additional layers)
-        if ($this->detectSessionHijacking($user, $request)) {
+        if ($this->detectSessionHijacking($user, $request, $recentIps)) {
             $result = [
                 'valid' => false,
                 'action' => 'force_logout',
@@ -275,9 +279,12 @@ class SessionSecurityService
     }
 
     /**
-     * Check if session is potentially hijacked
+     * Check if session is potentially hijacked.
+     *
+     * @param array|null $recentIps  Pre-fetched IPs passed from validateSessionSecurity()
+     *                               to avoid reading the same cache key twice per request.
      */
-    public function detectSessionHijacking(User $user, Request $request): bool
+    public function detectSessionHijacking(User $user, Request $request, ?array $recentIps = null): bool
     {
         $currentFingerprint = $this->generateDeviceFingerprint($request);
         $currentIp = $request->ip();
@@ -295,9 +302,9 @@ class SessionSecurityService
             $suspiciousActivity = true;
         }
 
-        // Multiple rapid requests from different IPs
-        $recentIps = $this->getRecentRequestIPs($user->id);
-        if (count($recentIps) > 2) {
+        // Multiple rapid requests from different IPs — reuse pre-fetched list when available
+        $ips = $recentIps ?? $this->getRecentRequestIPs($user->id);
+        if (count($ips) > 2) {
             $suspiciousActivity = true;
         }
 

@@ -12,6 +12,18 @@ use Symfony\Component\HttpFoundation\Response;
 class PerformanceMonitoring
 {
     /**
+     * In-memory debounce for updateDailyStats: unix timestamp of the last write.
+     * updateDailyStats runs in every request's terminating() callback, issuing
+     * 2 cache ops (read + write) regardless of how recently it last ran.
+     * Debouncing to once every DAILY_STATS_INTERVAL seconds per PHP-FPM worker
+     * eliminates the vast majority of those cache ops while keeping the counters
+     * accurate enough for operational dashboards.
+     */
+    private static int $dailyStatsLastUpdated = 0;
+
+    /** Minimum seconds between consecutive daily-stats cache writes per worker. */
+    private const DAILY_STATS_INTERVAL = 5;
+    /**
      * Handle an incoming request.
      */
     public function handle(Request $request, Closure $next): Response
@@ -100,6 +112,13 @@ class PerformanceMonitoring
 
     private function updateDailyStats(array $metrics): void
     {
+        // Debounce: skip if we already wrote daily stats within this worker recently.
+        $now = time();
+        if (($now - self::$dailyStatsLastUpdated) < self::DAILY_STATS_INTERVAL) {
+            return;
+        }
+        self::$dailyStatsLastUpdated = $now;
+
         $dailyKey = 'daily_performance_stats_' . now()->format('Y-m-d');
         $stats    = Cache::get($dailyKey, [
             'total_requests' => 0,
