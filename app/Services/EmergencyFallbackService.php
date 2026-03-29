@@ -318,8 +318,20 @@ class EmergencyFallbackService
             return true;
         }
 
-        // Check if critical systems are failing
-        if (!HealthCheckService::quickHealthCheck()) {
+        // Rate-limit the expensive DB+cache health check to at most once every 30 seconds.
+        // Without this, every single HTTP request triggers DB::select('SELECT 1') + Cache::put().
+        try {
+            $isHealthy = \Illuminate\Support\Facades\Cache::remember(
+                'system_health_ok',
+                30,
+                fn() => HealthCheckService::quickHealthCheck()
+            );
+        } catch (\Exception $e) {
+            // Cache is unavailable — run the check directly
+            $isHealthy = HealthCheckService::quickHealthCheck();
+        }
+
+        if (!$isHealthy) {
             return self::activateEmergencyMode('Critical systems health check failed');
         }
 

@@ -59,20 +59,21 @@ class TrackUserActivity
             // Log detailed activity for authenticated users
             $this->logUserActivity($request);
         } else {
-            // For visitors, check if they already have a session with the same fingerprint
-            $existingSession = DB::table('sessions')
-                ->where('fingerprint', $fingerprint)
-                ->where('last_activity', '>=', now()->subMinutes(5)->timestamp)
-                ->first();
+            // For visitors, apply the same in-memory debounce used for authenticated users.
+            // Previously this ran a DB SELECT (fingerprint lookup) on every unauthenticated
+            // request, which was a guaranteed DB hit for every guest page load.
+            $sessionId = session()->getId();
+            $now = time();
 
-            if (!$existingSession) {
-                // Only create a new visitor session if no recent session exists with the same fingerprint
+            if (!isset(self::$sessionLastWritten[$sessionId]) ||
+                ($now - self::$sessionLastWritten[$sessionId]) >= self::SESSION_WRITE_INTERVAL) {
+                self::$sessionLastWritten[$sessionId] = $now;
                 DB::table('sessions')
-                    ->where('id', session()->getId())
+                    ->where('id', $sessionId)
                     ->update([
                         'ip_address' => $request->ip(),
                         'user_agent' => $request->userAgent(),
-                        'last_activity' => now()->timestamp,
+                        'last_activity' => $now,
                         'is_visitor' => true,
                         'fingerprint' => $fingerprint
                     ]);
