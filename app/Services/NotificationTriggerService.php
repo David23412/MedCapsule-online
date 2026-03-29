@@ -736,13 +736,10 @@ class NotificationTriggerService
             return true;
         }
 
-        if (Cache::has($cacheKey)) {
-            return false;
-        }
-
-        Cache::put($cacheKey, true, now()->addDay());
-
-        return true;
+        // Cache::add() is an atomic put-if-not-exists: returns true when the key was
+        // written (i.e. reminder is new), false when it already existed (already sent).
+        // Replaces the previous Cache::has() + Cache::put() two-operation pattern.
+        return Cache::add($cacheKey, true, now()->addDay());
     }
 
     /**
