@@ -58,7 +58,7 @@ class HomePageService
                 return (int) AdminSetting::get('fake_students_count', 0);
             }
 
-            return User::where('role', 0)->count();
+            return User::where('role', User::ROLE_STUDENT)->count();
         });
     }
 

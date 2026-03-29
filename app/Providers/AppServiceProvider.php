@@ -46,10 +46,6 @@ class AppServiceProvider extends ServiceProvider
             return new PerformanceMonitorService();
         });
 
-        $this->app->singleton(\App\Services\PerformanceMonitorService::class, function ($app) {
-            return new \App\Services\PerformanceMonitorService();
-        });
-
         // FIXED: Register existing services for compatibility
         $this->app->singleton(\App\Services\SecurePaymentService::class, function ($app) {
             return new \App\Services\SecurePaymentService();
@@ -78,15 +74,18 @@ class AppServiceProvider extends ServiceProvider
         // FIXED: Set up global performance monitoring
         $this->setupGlobalPerformanceMonitoring();
 
+        $perRequestCache = [];
         View::composer([
             'partials.navigation',
             'components.notification-bell',
             'partials.profile-picture-upload',
             'components.responsive-navigation',
-        ], function ($view): void {
-            $view->with(
-                app(NavigationViewDataService::class)->getSharedData(auth()->user())
-            );
+        ], function ($view) use (&$perRequestCache): void {
+            $userId = auth()->id() ?? 'guest';
+            if (!array_key_exists($userId, $perRequestCache)) {
+                $perRequestCache[$userId] = app(NavigationViewDataService::class)->getSharedData(auth()->user());
+            }
+            $view->with($perRequestCache[$userId]);
         });
     }
 

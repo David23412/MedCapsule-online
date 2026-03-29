@@ -79,15 +79,6 @@ class UltraPerformanceServiceProvider extends ServiceProvider
                 ]);
             }
         });
-
-        // Listen for cache events
-        $this->app['events']->listen('Illuminate\Cache\Events\CacheHit', function ($event) {
-            \Cache::increment('cache_hits_total');
-        });
-
-        $this->app['events']->listen('Illuminate\Cache\Events\CacheMissed', function ($event) {
-            \Cache::increment('cache_misses_total');
-        });
     }
 
     private function shouldSkipBootForConsole(): bool

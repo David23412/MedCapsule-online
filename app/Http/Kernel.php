@@ -41,7 +41,6 @@ class Kernel extends HttpKernel
             \App\Http\Middleware\SingleSessionMiddleware::class,
             \App\Http\Middleware\TrackUserActivity::class,
             \App\Http\Middleware\PerformanceMonitoring::class,
-            \App\Http\Middleware\CourseCacheBuster::class,
         ],
 
         'api' => [

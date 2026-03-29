@@ -7,6 +7,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Session;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Cache;
 use App\Services\UserActivityLogService;
 
 class TrackUserActivity
@@ -21,19 +22,24 @@ class TrackUserActivity
     public function handle(Request $request, Closure $next)
     {
         $fingerprint = $this->generateFingerprint($request);
-        
+
         if (Auth::check()) {
-            // For logged-in users, update their session
-            DB::table('sessions')
-                ->where('id', session()->getId())
-                ->update([
-                    'user_id' => Auth::id(),
-                    'ip_address' => $request->ip(),
-                    'user_agent' => $request->userAgent(),
-                    'last_activity' => now()->timestamp,
-                    'is_visitor' => false,
-                    'fingerprint' => $fingerprint
-                ]);
+            // Debounce the DB session write: update at most once per minute per session.
+            $sessionId = session()->getId();
+            $debounceKey = 'session_updated_' . $sessionId;
+
+            if (Cache::add($debounceKey, 1, 60)) {
+                DB::table('sessions')
+                    ->where('id', $sessionId)
+                    ->update([
+                        'user_id' => Auth::id(),
+                        'ip_address' => $request->ip(),
+                        'user_agent' => $request->userAgent(),
+                        'last_activity' => now()->timestamp,
+                        'is_visitor' => false,
+                        'fingerprint' => $fingerprint
+                    ]);
+            }
 
             // Log detailed activity for authenticated users
             $this->logUserActivity($request);
