@@ -66,17 +66,7 @@ class UltraPerformanceServiceProvider extends ServiceProvider
 
     private function registerPerformanceEvents(): void
     {
-        // Listen for application events to optimize performance
-        $this->app['events']->listen('Illuminate\Database\Events\QueryExecuted', function ($event) {
-            // Monitor slow queries
-            if ($event->time > 100) {
-                \Log::warning('Slow query detected', [
-                    'sql' => $event->sql,
-                    'duration_ms' => $event->time,
-                    'connection' => $event->connectionName
-                ]);
-            }
-        });
+        // Slow query logging handled by PerformanceMonitoring middleware (opt-in via config)
     }
 
     private function shouldSkipBootForConsole(): bool
