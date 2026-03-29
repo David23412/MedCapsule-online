@@ -245,7 +245,6 @@ class UniversalNotificationService
         $cacheMiss = new \stdClass();
         $cachedNotification = Cache::get($duplicateKey, $cacheMiss);
         if ($cachedNotification !== $cacheMiss) {
-            Log::info("⚡ DUPLICATE BLOCKED: {$type} for user {$userId}");
             return $cachedNotification;
         }
 
@@ -275,8 +274,6 @@ class UniversalNotificationService
         // Prepend new notification
         array_unshift($existingNotifications, $notification);
         self::persistNotifications($userId, self::normalizeNotifications($existingNotifications));
-
-        Log::info("🐆 NOTIFICATION CREATED: {$type} for user {$userId} in " . round((microtime(true) - $now) * 1000, 2) . 'ms');
 
         return $notification;
     }
@@ -719,8 +716,6 @@ class UniversalNotificationService
                 $cacheKey => $optimizedNotifications,
                 $unreadKey => $unreadCount
             ], 86400 * 30);
-
-            Log::info("🧹 MEMORY OPTIMIZATION: Removed {$removedCount} old notifications for user {$userId}, saved {$memorySaved}% memory");
         }
 
         return [

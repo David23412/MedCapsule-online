@@ -62,8 +62,6 @@ class UltraPerformanceServiceProvider extends ServiceProvider
 
         // Register performance events
         $this->registerPerformanceEvents();
-
-        \Log::info('UltraPerformanceServiceProvider: All duplicate services eliminated! Using ULTRA CONSOLIDATED CACHE SERVICE!');
     }
 
     private function registerPerformanceEvents(): void

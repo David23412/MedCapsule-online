@@ -49,14 +49,6 @@ class NotificationTriggerService
                     $quizData,
                     $notificationData['priority']
                 );
-
-                Log::info("🐆 NUCLEAR NOTIFICATION: {$notificationData['type']} sent for {$activityType}", [
-                    'user_id' => $user->id,
-                    'score' => $percentage,
-                    'activity_type' => $activityType,
-                    'notification_type' => $notificationData['type'],
-                    'result' => $result
-                ]);
             } else {
                 Log::warning("🐆 NUCLEAR NOTIFICATION: No notification data for activity {$activityType}", [
                     'user_id' => $user->id,
@@ -82,10 +74,6 @@ class NotificationTriggerService
                     $quizData,
                     'normal'
                 );
-                Log::info("🐆 FALLBACK NOTIFICATION: Sent basic quiz completion", [
-                    'user_id' => $user->id,
-                    'percentage' => $percentage
-                ]);
             } catch (\Exception $fallbackError) {
                 Log::error('🐆 FALLBACK NOTIFICATION FAILED', [
                     'user_id' => $user->id,
@@ -202,12 +190,6 @@ class NotificationTriggerService
             ['course' => $courseName, 'is_free' => $isFree],
             $isFree ? 'high' : 'normal'
         );
-
-        Log::info('Course enrollment notifications sent', [
-            'user_id' => $user->id,
-            'course' => $courseName,
-            'is_free' => $isFree
-        ]);
     }
 
     // 🆓 NEW: Welcome notification for new users (LOGIN TRIGGERED)
@@ -221,10 +203,6 @@ class NotificationTriggerService
             ['platform' => 'medcapsule'],
             'blue' // NEW: Special priority for blue border
         );
-
-        Log::info('Welcome notification sent', [
-            'user_id' => $user->id
-        ]);
     }
 
     // 🔑 NEW: Login welcome notification (SHOULD BE CALLED ON LOGIN)
@@ -239,11 +217,6 @@ class NotificationTriggerService
         if (!$recentWelcome) {
             self::onUserWelcome($user);
         }
-
-        Log::info('Login processed for welcome notification', [
-            'user_id' => $user->id,
-            'welcome_sent' => !$recentWelcome
-        ]);
     }
 
     // 📈 COURSE PROGRESS NOTIFICATIONS
@@ -274,12 +247,6 @@ class NotificationTriggerService
                 'high'
             );
         }
-
-        Log::info('Course progress notifications sent', [
-            'user_id' => $user->id,
-            'course' => $courseName,
-            'progress' => $progressPercentage
-        ]);
     }
 
     // 🎯 NEW: Topic mastery notification (GREEN BORDER)
@@ -293,12 +260,6 @@ class NotificationTriggerService
             ['topic' => $topicName, 'course' => $courseName],
             'mastery' // NEW: Special priority for green border
         );
-
-        Log::info('Topic mastery notification sent', [
-            'user_id' => $user->id,
-            'topic' => $topicName,
-            'course' => $courseName
-        ]);
     }
 
     // 💎 NEW: Course mastery notification (PREMIUM DEEP BLUE BORDER)
@@ -312,11 +273,6 @@ class NotificationTriggerService
             ['course' => $courseName],
             'premium' // NEW: Special priority for deep blue border
         );
-
-        Log::info('Course mastery notification sent', [
-            'user_id' => $user->id,
-            'course' => $courseName
-        ]);
     }
 
     // 🆙 NEW: Level up notification (FIERY BORDER)
@@ -330,12 +286,6 @@ class NotificationTriggerService
             ['level' => $newLevel, 'context' => $context],
             'fiery' // NEW: Special priority for fiery border
         );
-
-        Log::info('Level up notification sent', [
-            'user_id' => $user->id,
-            'level' => $newLevel,
-            'context' => $context
-        ]);
     }
 
     // 📝 ASSIGNMENT NOTIFICATIONS
@@ -364,11 +314,6 @@ class NotificationTriggerService
             ],
             'high'
         );
-
-        Log::info('Assignment notification sent', [
-            'student_id' => $student->id,
-            'assignment_id' => $assignment->id
-        ]);
     }
 
     /**
@@ -403,13 +348,6 @@ class NotificationTriggerService
                 'normal'
             );
         }
-
-        Log::info('Assignment completion notifications sent', [
-            'user_id' => $user->id,
-            'assignment_id' => $assignmentId,
-            'score' => $percentage,
-            'assignment_title' => $assignmentTitle
-        ]);
     }
 
     /**
@@ -451,13 +389,6 @@ class NotificationTriggerService
                 );
             }
         }
-
-        Log::info('Assignment reminder sent', [
-            'user_id' => $user->id,
-            'assignment_id' => $assignment->id,
-            'hours_until_due' => $hoursUntilDue,
-            'is_overdue' => $isOverdue
-        ]);
     }
 
 
@@ -478,13 +409,6 @@ class NotificationTriggerService
             $paymentData,
             'orange' // 🔥 ORANGE BORDER FOR PAYMENT SUBMITTED
         );
-
-        Log::info('Payment submitted notification sent', [
-            'user_id' => $user->id,
-            'amount' => $amount,
-            'course' => $courseName,
-            'transaction_id' => $providerTransaction
-        ]);
     }
 
     public static function onPaymentAccepted(User $user, array $paymentData)
@@ -504,12 +428,6 @@ class NotificationTriggerService
 
         // Also trigger course access granted notification
         self::onAdminGrantsCourseAccess($user, $courseName);
-
-        Log::info('Payment accepted notification sent', [
-            'user_id' => $user->id,
-            'amount' => $amount,
-            'course' => $courseName
-        ]);
     }
 
     public static function onPaymentSuccess(User $user, array $paymentData)
@@ -526,12 +444,6 @@ class NotificationTriggerService
             $paymentData,
             'blue' // 💙 BLUE BORDER FOR SUCCESS
         );
-
-        Log::info('Payment success notification sent', [
-            'user_id' => $user->id,
-            'amount' => $amount,
-            'course' => $courseName
-        ]);
     }
 
     /**
@@ -549,13 +461,6 @@ class NotificationTriggerService
             ['course' => $courseName, 'granted_by' => $adminName],
             'normal'
         );
-
-        Log::info('Course access granted by admin', [
-            'user_id' => $user->id,
-            'course' => $courseName,
-            'admin_id' => $admin?->id,
-            'admin_name' => $adminName
-        ]);
     }
 
     public static function onPaymentFailed(User $user, array $paymentData)
@@ -579,11 +484,6 @@ class NotificationTriggerService
             $paymentData,
             'normal'
         );
-
-        Log::info('Payment failed notifications sent', [
-            'user_id' => $user->id,
-            'course' => $courseName
-        ]);
     }
 
     // 🔥 COMPREHENSIVE STUDY STREAK SYSTEM WITH PERSONALIZED MILESTONES
@@ -600,12 +500,6 @@ class NotificationTriggerService
                 ['streak_days' => $streakDays, 'milestone' => $milestone['name']],
                 $milestone['priority']
             );
-
-            Log::info('Study streak milestone notification sent', [
-                'user_id' => $user->id,
-                'streak_days' => $streakDays,
-                'milestone' => $milestone['name']
-            ]);
         }
     }
 
@@ -761,10 +655,6 @@ class NotificationTriggerService
             [],
             'normal'
         );
-
-        Log::info('Streak reset notification sent', [
-            'user_id' => $user->id
-        ]);
     }
 
     // ⚠️ REVIEW & WARNING NOTIFICATIONS
@@ -792,12 +682,6 @@ class NotificationTriggerService
             ], $context),
             $priority
         );
-
-        Log::info('Review mistakes reminder sent', [
-            'user_id' => $user->id,
-            'mistake_count' => $mistakeCount,
-            'priority' => $priority,
-        ]);
     }
 
     /**
@@ -843,13 +727,6 @@ class NotificationTriggerService
             ], $context),
             $priority
         );
-
-        Log::info('Weak topics reminder sent', [
-            'user_id' => $user->id,
-            'topic_count' => $topicCount,
-            'topics' => $topicNames,
-            'priority' => $priority,
-        ]);
     }
 
     private static function allowReminder(string $cacheKey, bool $force = false): bool
@@ -881,12 +758,6 @@ class NotificationTriggerService
             ['skipped_count' => $skippedCount, 'session_type' => $sessionType],
             'normal'
         );
-
-        Log::info('Skipped questions notification sent', [
-            'user_id' => $user->id,
-            'skipped_count' => $skippedCount,
-            'session_type' => $sessionType
-        ]);
     }
 
     // 🎯 MILESTONE NOTIFICATIONS
@@ -901,11 +772,6 @@ class NotificationTriggerService
                 ['correct_answers' => $correctAnswers],
                 'exotic' // NEW: Special priority for deep purple border
             );
-
-            Log::info('Correct answers milestone notification sent', [
-                'user_id' => $user->id,
-                'correct_answers' => $correctAnswers
-            ]);
         }
     }
 
@@ -920,11 +786,6 @@ class NotificationTriggerService
             [],
             'normal'
         );
-
-        Log::info('System update notification sent', [
-            'user_id' => $user->id,
-            'message' => $updateMessage
-        ]);
     }
 
     public static function onSuccess(User $user, string $message)
@@ -937,11 +798,6 @@ class NotificationTriggerService
             [],
             'normal'
         );
-
-        Log::info('Success notification sent', [
-            'user_id' => $user->id,
-            'message' => $message
-        ]);
     }
 
 

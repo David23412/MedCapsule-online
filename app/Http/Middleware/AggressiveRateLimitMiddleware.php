@@ -57,15 +57,6 @@ class AggressiveRateLimitMiddleware
         // Determine rate limit type based on request
         $rateLimitType = $this->determineRateLimitType($request, $type);
         
-        Log::info('Rate limit check started', [
-            'request_id' => $requestId,
-            'identifier' => $identifier,
-            'type' => $rateLimitType,
-            'url' => $request->fullUrl(),
-            'method' => $request->method(),
-            'user_id' => auth()->id()
-        ]);
-        
         // Check if IP is temporarily blocked
         if ($this->isTemporarilyBlocked($identifier)) {
             return $this->rateLimitResponse('TEMPORARILY_BLOCKED', $requestId, $identifier);
@@ -91,12 +82,6 @@ class AggressiveRateLimitMiddleware
         
         // Track response status for failure pattern detection
         $this->trackResponseStatus($identifier, $response->getStatusCode(), $requestId);
-        
-        Log::info('Rate limit check passed', [
-            'request_id' => $requestId,
-            'identifier' => $identifier,
-            'type' => $rateLimitType
-        ]);
         
         return $response;
     }

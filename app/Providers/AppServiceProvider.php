@@ -215,7 +215,7 @@ class AppServiceProvider extends ServiceProvider
     {
         // FIXED: Monitor database queries globally
         \DB::listen(function ($query) {
-            if ($query->time <= 1000) { // Only process slow queries (>1 second)
+            if ($query->time <= 1000) { // Only process slow queries (>= 1 second)
                 return;
             }
 

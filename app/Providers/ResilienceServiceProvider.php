@@ -112,23 +112,6 @@ class ResilienceServiceProvider extends ServiceProvider
      */
     private function setupQueueMonitoring(): void
     {
-        // Set up queue event listeners
-        \Queue::before(function (\Illuminate\Queue\Events\JobProcessing $event) {
-            // Log job start
-            \Log::debug('Job processing started', [
-                'job' => $event->job->getName(),
-                'queue' => $event->job->getQueue()
-            ]);
-        });
-        
-        \Queue::after(function (\Illuminate\Queue\Events\JobProcessed $event) {
-            // Log job completion
-            \Log::debug('Job processing completed', [
-                'job' => $event->job->getName(),
-                'queue' => $event->job->getQueue()
-            ]);
-        });
-        
         \Queue::failing(function (\Illuminate\Queue\Events\JobFailed $event) {
             // Log job failure and attempt recovery
             \Log::error('Job failed', [
