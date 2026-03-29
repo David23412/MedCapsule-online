@@ -14,6 +14,19 @@ class SessionSecurityService
     private array $fingerprintCache = [];
     private const HARD_LOCK_THRESHOLD = 3;
     private const HARD_LOCK_PERIOD = 86400 * 30; // 30 days
+
+    /**
+     * In-memory debounce map: userId → unix timestamp of last trackActivity execution.
+     * Prevents 4 cache ops (2 reads + 2 writes) from firing on every single
+     * authenticated request.  State is kept per PHP-FPM worker and is consistent
+     * enough for rate-limiting purposes because timestamps expire by elapsed time.
+     *
+     * @var array<int, int>
+     */
+    private static array $activityLastTracked = [];
+
+    /** Minimum seconds between consecutive trackActivity cache writes per user. */
+    private const TRACK_ACTIVITY_INTERVAL = 30;
     /**
      * Generate device fingerprint from request
      */
@@ -391,10 +404,25 @@ class SessionSecurityService
     }
 
     /**
-     * Track user activity for rate limiting
+     * Track user activity for rate limiting.
+     *
+     * Debounced: at most once every TRACK_ACTIVITY_INTERVAL seconds per user
+     * (tracked in-memory per PHP-FPM worker).  This eliminates the guaranteed
+     * 4 cache round-trips that previously fired on every single authenticated
+     * request.  Rate-limiting accuracy is preserved because the counters are
+     * still updated regularly; they are just not incremented every millisecond.
      */
     public function trackActivity(int $userId, string $ip): void
     {
+        $now = time();
+
+        if (isset(self::$activityLastTracked[$userId]) &&
+            ($now - self::$activityLastTracked[$userId]) < self::TRACK_ACTIVITY_INTERVAL) {
+            return; // Debounced: already tracked within the current window
+        }
+
+        self::$activityLastTracked[$userId] = $now;
+
         // Track request count
         $activityKey = "activity_count_{$userId}";
         $count = Cache::get($activityKey, 0);

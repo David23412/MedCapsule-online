@@ -84,15 +84,11 @@ class PerformanceMonitoring
     private function storePerformanceMetrics(string $requestId, array $metrics): void
     {
         try {
-            $cacheKey       = 'performance_metrics_' . now()->format('Y-m-d-H');
-            $currentMetrics = Cache::get($cacheKey, []);
-            $currentMetrics[] = $metrics;
-
-            if (count($currentMetrics) > 1000) {
-                $currentMetrics = array_slice($currentMetrics, -1000);
-            }
-
-            Cache::put($cacheKey, $currentMetrics, now()->addHours(2));
+            // The per-request raw-metrics array (performance_metrics_Y-m-d-H) was
+            // previously read, appended, and re-written on every single request,
+            // growing to up to 1,000 items.  No other part of the codebase reads
+            // that key, so the serialisation overhead was pure waste.  The
+            // lightweight daily-stats aggregation below is all that is needed.
             $this->updateDailyStats($metrics);
         } catch (\Exception $e) {
             Log::error('Failed to store performance metrics', [
