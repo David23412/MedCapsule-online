@@ -48,16 +48,20 @@ jobs:
     steps:
       - name: Deploy to production droplet
         uses: appleboy/ssh-action@v1.2.0
+        env:
+          GHCR_PULL_TOKEN: ${{ secrets.GHCR_PULL_TOKEN }}
+          GHCR_USERNAME: ${{ secrets.GHCR_USERNAME }}
         with:
           host: ${{ secrets.DEPLOY_HOST }}
           username: ${{ secrets.DEPLOY_USER }}
           key: ${{ secrets.DEPLOY_SSH_KEY }}
           port: 22
+          envs: GHCR_PULL_TOKEN,GHCR_USERNAME
           script_stop: true
           script: |
             set -e
             cd /var/www/medcapsule
-            echo "${{ secrets.GHCR_PULL_TOKEN }}" | docker login ghcr.io -u "${{ secrets.GHCR_USERNAME }}" --password-stdin
+            echo "$GHCR_PULL_TOKEN" | docker login ghcr.io -u "$GHCR_USERNAME" --password-stdin
             docker compose pull app
             docker compose up -d app
             docker compose exec -T app php artisan migrate --force
