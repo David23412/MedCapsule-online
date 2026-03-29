@@ -7,12 +7,24 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Session;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Cache;
 use App\Services\UserActivityLogService;
 
 class TrackUserActivity
 {
     protected $activityLogService;
+
+    /**
+     * In-memory timestamp map: sessionId → unix timestamp of last DB write.
+     * Avoids a Redis round-trip on every request. Works correctly across
+     * multiple requests in the same PHP-FPM worker because timestamps expire
+     * based on elapsed time, not process boundaries.
+     *
+     * @var array<string, int>
+     */
+    private static array $sessionLastWritten = [];
+
+    /** Debounce interval in seconds. */
+    private const SESSION_WRITE_INTERVAL = 60;
 
     public function __construct(UserActivityLogService $activityLogService)
     {
@@ -24,18 +36,21 @@ class TrackUserActivity
         $fingerprint = $this->generateFingerprint($request);
 
         if (Auth::check()) {
-            // Debounce the DB session write: update at most once per minute per session.
+            // Debounce the DB session write: at most once per minute per session,
+            // tracked purely in memory to avoid any cache round-trip.
             $sessionId = session()->getId();
-            $debounceKey = 'session_updated_' . $sessionId;
+            $now = time();
 
-            if (Cache::add($debounceKey, 1, 60)) {
+            if (!isset(self::$sessionLastWritten[$sessionId]) ||
+                ($now - self::$sessionLastWritten[$sessionId]) >= self::SESSION_WRITE_INTERVAL) {
+                self::$sessionLastWritten[$sessionId] = $now;
                 DB::table('sessions')
                     ->where('id', $sessionId)
                     ->update([
                         'user_id' => Auth::id(),
                         'ip_address' => $request->ip(),
                         'user_agent' => $request->userAgent(),
-                        'last_activity' => now()->timestamp,
+                        'last_activity' => $now,
                         'is_visitor' => false,
                         'fingerprint' => $fingerprint
                     ]);

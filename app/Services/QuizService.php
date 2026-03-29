@@ -17,6 +17,9 @@ class QuizService
 {
     protected $cacheService;
 
+    /** @var bool|null Cached result of Schema::hasColumn('questions', 'difficulty') */
+    private static ?bool $hasDifficultyColumn = null;
+
     public function __construct(Core\UltraConsolidatedCacheService $cacheService)
     {
         $this->cacheService = $cacheService;
@@ -36,17 +39,6 @@ class QuizService
     public function initializeQuiz(User $user, Course $course, Topic $topic, array $sources = ['all'], string $mode = 'quiz'): array
     {
         try {
-            Log::info('📌 Quiz Initialization Attempt', [
-                'user_id' => $user->id,
-                'user_name' => $user->name,
-                'is_admin' => $user->role === 'admin',
-                'course_id' => $course->id,
-                'topic_id' => $topic->id,
-                'mode' => $mode,
-                'sources' => $sources,
-                'request_url' => request()->fullUrl()
-            ]);
-
             // Validate course-topic relationship
             $this->validateCourseTopicRelationship($course, $topic);
 
@@ -67,14 +59,6 @@ class QuizService
 
             // Store session data
             $this->storeQuizSessionData($sources, $mode);
-
-            Log::info('✅ Quiz initialized successfully', [
-                'topic_id' => $topic->id,
-                'questions_count' => $questions->count(),
-                'course_id' => $course->id,
-                'sources' => $sources,
-                'mode' => $mode
-            ]);
 
             return [
                 'success' => true,
@@ -180,10 +164,6 @@ class QuizService
             $sources = ['all'];
         }
 
-        Log::info('Normalized sources for quiz', [
-            'sources' => $sources
-        ]);
-
         return $sources;
     }
 
@@ -205,12 +185,6 @@ class QuizService
         $questions = $this->cacheService->remember($cacheKey, function () use ($topic, $sources) {
             return $this->getQuestionsFromDatabase($topic, $sources);
         }, 1800); // 30 minutes
-
-        Log::info('OPTIMIZED: Questions retrieved with smart caching', [
-            'topic_id' => $topic->id,
-            'questions_count' => $questions->count(),
-            'sources' => $sources,
-        ]);
 
         return $questions;
     }
@@ -542,12 +516,6 @@ class QuizService
     public function generateQuizQuestions(Topic $topic, array $sources = ['all'], ?User $user = null): array
     {
         try {
-            Log::info('Generating quiz questions', [
-                'topic_id' => $topic->id,
-                'sources' => $sources,
-                'user_id' => $user?->id
-            ]);
-
             // Trim all source values to avoid whitespace issues
             $sources = array_map('trim', $sources);
             
@@ -563,13 +531,7 @@ class QuizService
             }
             
             $questions = $questionsQuery->get();
-            Log::info('DEBUG: generateQuizQuestions', [
-                'topic_id' => $topic->id,
-                'sources' => $sources,
-                'questions_found' => $questions->count(),
-                'first_question' => $questions->first()
-            ]);
-            
+
             if ($questions->isEmpty()) {
                 Log::warning('No questions available for topic with selected sources', [
                     'topic_id' => $topic->id,
@@ -591,12 +553,6 @@ class QuizService
             if ($questions->count() > $maxQuestions) {
                 $questions = $questions->take($maxQuestions);
             }
-
-            Log::info('Quiz questions generated successfully', [
-                'topic_id' => $topic->id,
-                'questions_count' => $questions->count(),
-                'sources' => $sources
-            ]);
 
             return [
                 'success' => true,
@@ -630,14 +586,6 @@ class QuizService
             $sources = $options['sources'] ?? ['all'];
             $excludeTopics = $options['exclude_topics'] ?? [];
             $courseIds = $options['course_ids'] ?? [];
-
-            Log::info('OPTIMIZED LETHAL FIX: Generating random quiz with smart validation', [
-                'user_id' => $user->id,
-                'question_count' => $questionCount,
-                'difficulty' => $difficulty,
-                'sources' => $sources,
-                'course_ids' => $courseIds
-            ]);
 
             // SECURITY FIX: Validate user access to specified courses.
             // Random quiz must only run on fully unlocked courses to prevent
@@ -719,7 +667,7 @@ class QuizService
             }
 
             // Apply difficulty filtering if specified and column exists
-            if ($difficulty !== 'mixed' && \Schema::hasColumn('questions', 'difficulty')) {
+            if ($difficulty !== 'mixed' && $this->questionTableHasDifficultyColumn()) {
                 $questionsQuery->where('difficulty', $difficulty);
             }
 
@@ -759,13 +707,6 @@ class QuizService
 
             // Group questions by topic for better organization
             $questionsByTopic = $validQuestions->groupBy('topic_id');
-
-            Log::info('OPTIMIZED LETHAL FIX: Random quiz generated with smart validation', [
-                'user_id' => $user->id,
-                'questions_count' => $validQuestions->count(),
-                'topics_count' => $questionsByTopic->count(),
-                'validation_type' => 'smart_batch_check'
-            ]);
 
             return [
                 'success' => true,
@@ -844,18 +785,7 @@ class QuizService
      */
     public function generateTutorQuiz(Topic $topic, array $sources = ['all'], ?User $user = null): array
     {
-        Log::info('DEBUG: generateTutorQuiz called', [
-            'topic_id' => $topic->id,
-            'sources' => $sources,
-            'user_id' => $user?->id
-        ]);
         try {
-            Log::info('Generating tutor quiz', [
-                'topic_id' => $topic->id,
-                'sources' => $sources,
-                'user_id' => $user?->id
-            ]);
-
             // Get questions for tutor mode
             $result = $this->generateQuizQuestions($topic, $sources, $user);
             
@@ -881,11 +811,6 @@ class QuizService
                     'related_concepts' => $this->getRelatedConcepts($question)
                 ];
             });
-
-            Log::info('Tutor quiz generated successfully', [
-                'topic_id' => $topic->id,
-                'questions_count' => $tutorQuestions->count()
-            ]);
 
             return [
                 'success' => true,
@@ -1116,9 +1041,6 @@ class QuizService
             'queries_executed' => $queriesAfter - $metrics['queries_before']
         ];
 
-        // Log performance data
-        Log::info('Quiz Performance Metrics', array_merge($performance, $additionalData));
-
         // Clean up
         unset(self::$performanceMetrics[$trackingId]);
 
@@ -1205,5 +1127,19 @@ class QuizService
         }
         
         return $query;
+    }
+
+    /**
+     * Check whether the questions table has a 'difficulty' column.
+     * Result is cached in a static property so SHOW COLUMNS is only issued once
+     * per PHP-FPM worker lifetime.
+     */
+    private function questionTableHasDifficultyColumn(): bool
+    {
+        if (self::$hasDifficultyColumn === null) {
+            self::$hasDifficultyColumn = \Schema::hasColumn('questions', 'difficulty');
+        }
+
+        return self::$hasDifficultyColumn;
     }
 }

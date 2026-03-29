@@ -65,27 +65,24 @@ class AppServiceProvider extends ServiceProvider
         // Register model observers (cache invalidation, etc.)
         Question::observe(QuestionObserver::class);
 
-        // FIXED: Initialize performance monitoring on boot
-        $this->initializePerformanceMonitoring();
-
         // FIXED: Warm critical caches on application start
         $this->warmCriticalCaches();
 
         // FIXED: Set up global performance monitoring
         $this->setupGlobalPerformanceMonitoring();
 
-        $perRequestCache = [];
         View::composer([
             'partials.navigation',
             'components.notification-bell',
             'partials.profile-picture-upload',
             'components.responsive-navigation',
-        ], function ($view) use (&$perRequestCache): void {
-            $userId = auth()->id() ?? 'guest';
-            if (!array_key_exists($userId, $perRequestCache)) {
-                $perRequestCache[$userId] = app(NavigationViewDataService::class)->getSharedData(auth()->user());
+        ], function ($view): void {
+            // Use request attributes as a true per-request store (safe for both FPM and Octane).
+            $req = request();
+            if (!$req->attributes->has('_nav_shared_data')) {
+                $req->attributes->set('_nav_shared_data', app(NavigationViewDataService::class)->getSharedData(auth()->user()));
             }
-            $view->with($perRequestCache[$userId]);
+            $view->with($req->attributes->get('_nav_shared_data'));
         });
     }
 
@@ -218,20 +215,21 @@ class AppServiceProvider extends ServiceProvider
     {
         // FIXED: Monitor database queries globally
         \DB::listen(function ($query) {
-            $performanceService = app(PerformanceMonitorService::class);
-
-            if ($query->time > 1000) { // Log slow queries (>1 second)
-                $operationId = $performanceService->startOperation('slow_query', [
-                    'sql' => $query->sql,
-                    'bindings' => $query->bindings,
-                    'connection' => $query->connectionName
-                ]);
-
-                $performanceService->endOperation($operationId, [
-                    'execution_time_ms' => $query->time,
-                    'query_type' => $this->getQueryType($query->sql)
-                ]);
+            if ($query->time <= 1000) { // Only process slow queries (>1 second)
+                return;
             }
+
+            $performanceService = app(PerformanceMonitorService::class);
+            $operationId = $performanceService->startOperation('slow_query', [
+                'sql' => $query->sql,
+                'bindings' => $query->bindings,
+                'connection' => $query->connectionName
+            ]);
+
+            $performanceService->endOperation($operationId, [
+                'execution_time_ms' => $query->time,
+                'query_type' => $this->getQueryType($query->sql)
+            ]);
         });
 
         // FIXED: Monitor HTTP requests globally

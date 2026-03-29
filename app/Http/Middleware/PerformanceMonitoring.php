@@ -110,9 +110,9 @@ class PerformanceMonitoring
             ]);
         }
         
-        // Store metrics for dashboard (if enabled)
+        // Store metrics for dashboard (if enabled) — deferred to run after response is sent
         if (config('medcapsule.analytics.track_user_activity', true)) {
-            $this->storePerformanceMetrics($requestId, [
+            $metrics = [
                 'route' => $request->route() ? $request->route()->getName() : 'unknown',
                 'method' => $request->method(),
                 'status_code' => $response->getStatusCode(),
@@ -121,7 +121,10 @@ class PerformanceMonitoring
                 'query_count' => $queryCount,
                 'user_id' => auth()->id(),
                 'timestamp' => now(),
-            ]);
+            ];
+            app()->terminating(function () use ($requestId, $metrics) {
+                $this->storePerformanceMetrics($requestId, $metrics);
+            });
         }
         
         return $response;
