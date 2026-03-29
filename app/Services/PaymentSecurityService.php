@@ -103,27 +103,26 @@ class PaymentSecurityService
     }
 
     /**
-     * Check if user is blocked from payments
+     * Check if user is blocked from payments.
+     *
+     * Uses a per-user cache key instead of fetching and scanning a shared list,
+     * eliminating the previous O(n) in_array() scan and full-list deserialisation.
      */
     public function isUserBlocked(string $userId): bool
     {
-        $blockedUsers = Cache::get('blocked_payment_users', []);
-
-        return in_array($userId, $blockedUsers);
+        return Cache::has("payment_blocked:{$userId}");
     }
 
     /**
-     * Block user from payments (temporary)
+     * Block user from payments (temporary).
+     *
+     * Stores the block as an individual cache key per user so that:
+     *  - isUserBlocked() is a single O(1) lookup, not a full-list fetch + in_array scan.
+     *  - Concurrent calls cannot race and lose each other's writes (no read-modify-write cycle).
      */
     public function blockUser(string $userId, int $durationMinutes = 60): void
     {
-        $blockedUsers = Cache::get('blocked_payment_users', []);
-        $blockedUsers[] = $userId;
-
-        // Remove duplicates
-        $blockedUsers = array_unique($blockedUsers);
-
-        Cache::put('blocked_payment_users', $blockedUsers, $durationMinutes * 60);
+        Cache::put("payment_blocked:{$userId}", true, $durationMinutes * 60);
 
         $this->logSecurityEvent('user_blocked', [
             'user_id' => $userId,
