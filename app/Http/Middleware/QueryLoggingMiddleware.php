@@ -62,7 +62,6 @@ class QueryLoggingMiddleware
         
         // Log all requests in debug mode
         if (config('app.debug')) {
-            Log::info('📊 Request performance metrics', $performanceData);
         }
         
         // Disable query logging to free memory

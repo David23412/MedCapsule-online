@@ -86,11 +86,6 @@ class SimilarityEngine
             $startTime = microtime(true);
 
             // DEBUG: Log the expanded texts being processed
-            Log::debug('SimilarityEngine Processing Expanded Texts', [
-                'original_text1' => $expandedText1,
-                'original_text2' => $expandedText2,
-                'cache_key' => $cacheKey
-            ]);
 
             $results = [
                 'cosine' => $this->calculateCosineSimilarity($expandedText1, $expandedText2),
@@ -267,12 +262,6 @@ class SimilarityEngine
             $tokens2 = $this->enhancedTokenizeAndNormalize($text2);
 
             // DEBUG: Log medical tokenization
-            Log::debug('Medical Similarity Tokenization:', [
-                'text1' => $text1,
-                'text2' => $text2,
-                'tokens1' => $tokens1,
-                'tokens2' => $tokens2
-            ]);
 
             $medicalMatches = 0;
             $totalMedicalTerms = 0;
@@ -295,13 +284,6 @@ class SimilarityEngine
 
             $result = $totalMedicalTerms > 0 ? $medicalMatches / $totalMedicalTerms : 0.0;
 
-            Log::debug('Medical Similarity Result:', [
-                'text1' => $text1,
-                'text2' => $text2,
-                'totalMedicalTerms' => $totalMedicalTerms,
-                'medicalMatches' => $medicalMatches,
-                'result' => $result
-            ]);
 
             return $result;
         });
@@ -439,12 +421,6 @@ class SimilarityEngine
         }
 
         // DEBUG: Log weight calculation
-        Log::debug('Algorithm Weights Calculated:', [
-            'medical_strength' => $medicalStrength,
-            'avg_length' => $avgLength,
-            'weights' => $adjustedWeights,
-            'weights_sum' => array_sum($adjustedWeights)
-        ]);
 
         return $adjustedWeights;
     }
@@ -924,16 +900,6 @@ class SimilarityEngine
         $hasNonZeroValues = array_sum(array_map('abs', $vector1)) > 0 || array_sum(array_map('abs', $vector2)) > 0;
 
         if ($hasZeroValues && $hasNonZeroValues) {
-            Log::debug('Cosine Similarity Debug:', [
-                'vector1_count' => count($vector1),
-                'vector2_count' => count($vector2),
-                'vector1_sample' => array_slice($vector1, 0, 10),
-                'vector2_sample' => array_slice($vector2, 0, 10),
-                'vector1_sum' => array_sum($vector1),
-                'vector2_sum' => array_sum($vector2),
-                'vector1_has_zeros' => in_array(0, $vector1),
-                'vector2_has_zeros' => in_array(0, $vector2)
-            ]);
         }
 
         $dotProduct = 0;
@@ -970,14 +936,6 @@ class SimilarityEngine
         $cosine = max(-1.0, min(1.0, $cosine));
 
         if ($cosine == 0.0 && $hasNonZeroValues) {
-            Log::debug('Zero Cosine Result Debug:', [
-                'dot_product' => $dotProduct,
-                'magnitude1' => $magnitude1,
-                'magnitude2' => $magnitude2,
-                'cosine' => $cosine,
-                'vector1_nonzero' => count(array_filter($vector1, fn($v) => $v != 0)),
-                'vector2_nonzero' => count(array_filter($vector2, fn($v) => $v != 0))
-            ]);
         }
 
         return $cosine;
@@ -1071,12 +1029,6 @@ class SimilarityEngine
 
         // Log every 100 calculations for monitoring
         if (count($this->algorithmStats) % 100 === 0) {
-            Log::info('Similarity Engine Stats', [
-                'total_calculations' => count($this->algorithmStats),
-                'average_ensemble_score' => array_sum(array_column($this->algorithmStats, 'ensemble')) / count($this->algorithmStats),
-                'average_confidence' => array_sum(array_column($this->algorithmStats, 'confidence')) / count($this->algorithmStats),
-                'average_processing_time' => array_sum(array_column($this->algorithmStats, 'processing_time')) / count($this->algorithmStats)
-            ]);
         }
     }
 
@@ -1116,16 +1068,11 @@ class SimilarityEngine
     private function enhancedTokenizeAndNormalize(string $text): array
     {
         // DEBUG: Log original text
-        Log::debug('Enhanced Tokenization Input:', ['text' => $text]);
 
         // First, expand common medical abbreviations
         $expandedText = $this->expandMedicalAbbreviations($text);
 
         // DEBUG: Log expanded text
-        Log::debug('Enhanced Tokenization After Expansion:', [
-            'original' => $text,
-            'expanded' => $expandedText
-        ]);
 
         // Remove punctuation and convert to lowercase
         $text = preg_replace('/[^\w\s]/', ' ', strtolower($expandedText));
@@ -1144,10 +1091,6 @@ class SimilarityEngine
         $finalTokens = array_values($tokens);
 
         // DEBUG: Log final tokens
-        Log::debug('Enhanced Tokenization Final Tokens:', [
-            'original' => $text,
-            'tokens' => $finalTokens
-        ]);
 
         return $finalTokens;
     }
@@ -1250,14 +1193,6 @@ class SimilarityEngine
     private function calculateEnhancedVectorCosine(array $vector1, array $vector2): float
     {
         // DEBUG: Log input vectors for consistency checking
-        Log::debug('Vector Cosine Input Check:', [
-            'vector1_count' => count($vector1),
-            'vector2_count' => count($vector2),
-            'vector1_sample' => array_slice($vector1, 0, 5),
-            'vector2_sample' => array_slice($vector2, 0, 5),
-            'vector1_sum' => array_sum($vector1),
-            'vector2_sum' => array_sum($vector2)
-        ]);
 
         $dotProduct = 0;
         $magnitude1 = 0;
@@ -1309,12 +1244,6 @@ class SimilarityEngine
             $cosine = 0.0;
         }
 
-        Log::debug('Vector Cosine Result:', [
-            'dot_product' => $dotProduct,
-            'magnitude1' => $magnitude1,
-            'magnitude2' => $magnitude2,
-            'cosine' => $cosine
-        ]);
 
         return $cosine;
     }

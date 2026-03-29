@@ -79,7 +79,6 @@ class HomePageService
         $data = Cache::get($cacheKey);
 
         if (!$data || !$this->isCacheHealthy()) {
-            Log::info('BULLETPROOF: Cache miss or unhealthy, fetching fresh data');
             $data = $this->fetchFreshHomeData();
             Cache::put($cacheKey, $data, 3600);
 
@@ -358,10 +357,6 @@ class HomePageService
                 Cache::forget($key);
             }
 
-            Log::info('BULLETPROOF: Home page cache manually invalidated', [
-                'keys_cleared' => count($cacheKeys),
-                'timestamp' => now()->toISOString()
-            ]);
 
             return true;
         } catch (\Exception $e) {
@@ -378,7 +373,6 @@ class HomePageService
     public function forceRefresh(): array
     {
         try {
-            Log::info('BULLETPROOF: Force cache refresh initiated');
             $this->invalidateCache();
             return $this->getHomePageData();
         } catch (\Exception $e) {

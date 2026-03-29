@@ -90,12 +90,6 @@ class SecureInputValidationRequest extends FormRequest
                 function ($attribute, $value, $fail) {
                     $cleanValue = $this->sanitizeInput($value);
                     if ($cleanValue !== $value) {
-                        Log::info('Input sanitized', [
-                            'user_id' => auth()->id(),
-                            'attribute' => $attribute,
-                            'original_length' => strlen($value),
-                            'cleaned_length' => strlen($cleanValue)
-                        ]);
                     }
                 },
             ],
@@ -165,12 +159,6 @@ class SecureInputValidationRequest extends FormRequest
         $validator->after(function ($validator) {
             // Log validation attempts
             if ($validator->fails()) {
-                Log::info('Input validation failed', [
-                    'user_id' => auth()->id(),
-                    'errors' => $validator->errors()->toArray(),
-                    'input_count' => count(request()->all()),
-                    'ip' => request()->ip()
-                ]);
             }
         });
     }

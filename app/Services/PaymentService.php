@@ -301,10 +301,6 @@ class PaymentService
             // In a real implementation, this would update payment settings
             // For now, we'll just log the settings
 
-            Log::info('Payment settings updated', [
-                'settings' => $settings,
-                'updated_by' => auth()->id()
-            ]);
 
             return [
                 'success' => true,

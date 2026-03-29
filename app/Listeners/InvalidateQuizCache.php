@@ -49,16 +49,6 @@ class InvalidateQuizCache implements ShouldQueue
                 $this->clearCourseCompletionCache($userId, $topicId);
             }
 
-            Log::info('Quiz cache invalidated', [
-                'quiz_attempt_id' => $quizAttempt->id,
-                'user_id' => $userId,
-                'topic_id' => $topicId,
-                'is_random_quiz' => $isRandomQuiz,
-                'score' => $event->score,
-                'total_questions' => $event->totalQuestions,
-                'percentage' => $event->percentage,
-                'timestamp' => now()
-            ]);
         } catch (\Exception $e) {
             Log::error('Error invalidating quiz cache', [
                 'quiz_attempt_id' => $event->quizAttempt->id,
@@ -83,11 +73,6 @@ class InvalidateQuizCache implements ShouldQueue
                 // Use the Course model's method to clear completion cache
                 $course->clearUserCompletionCache($userId);
                 
-                Log::info('Course completion cache cleared', [
-                    'user_id' => $userId,
-                    'course_id' => $course->id,
-                    'topic_id' => $topicId
-                ]);
             }
         } catch (\Exception $e) {
             Log::error('Error clearing course completion cache', [

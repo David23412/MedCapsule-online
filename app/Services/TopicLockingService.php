@@ -45,10 +45,6 @@ class TopicLockingService
             $this->invalidateCache($topic);
             
             // Log the action
-            Log::info('Topic locked', [
-                'topic_id' => $topic->id,
-                'tutor_id' => $tutor->id
-            ]);
             
             DB::commit();
             return true;
@@ -93,10 +89,6 @@ class TopicLockingService
             $this->invalidateCache($topic);
             
             // Log the action
-            Log::info('Topic unlocked', [
-                'topic_id' => $topic->id,
-                'tutor_id' => $tutor->id
-            ]);
             
             DB::commit();
             return true;

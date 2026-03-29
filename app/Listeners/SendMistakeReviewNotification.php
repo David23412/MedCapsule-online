@@ -33,11 +33,6 @@ class SendMistakeReviewNotification implements ShouldQueue
                 $event->mistakeCount
             );
             
-            Log::info('Mistake review notification sent', [
-                'user_id' => $event->user->id,
-                'mistake_count' => $event->mistakeCount,
-                'topic_breakdown' => $event->topicBreakdown
-            ]);
         } catch (\Exception $e) {
             Log::error('Failed to send mistake review notification', [
                 'user_id' => $event->user->id,

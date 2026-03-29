@@ -37,12 +37,6 @@ class InvalidateNotificationCache implements ShouldQueue
             // Clear notification count caches
             $this->cacheService->clearNotificationCountCaches($userId);
 
-            Log::info('Notification cache invalidated', [
-                'notification_id' => $notification->id,
-                'user_id' => $userId,
-                'type' => $notification->type,
-                'timestamp' => now()
-            ]);
         } catch (\Exception $e) {
             Log::error('Error invalidating notification cache', [
                 'notification_id' => $event->notification->id,

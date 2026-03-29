@@ -116,12 +116,6 @@ class QuizAttempt extends Model
                 $ultraKey = "ultra_cache:" . md5($progressKey);
                 \Illuminate\Support\Facades\Cache::forget($ultraKey);
                 
-                \Log::info('Profile cache cleared after quiz attempt', [
-                    'user_id' => $quizAttempt->user_id,
-                    'quiz_type' => $quizAttempt->quiz_type,
-                    'study_mode' => $quizAttempt->study_mode,
-                    'duration_seconds' => $quizAttempt->duration_seconds
-                ]);
             } catch (\Exception $e) {
                 \Log::warning('Failed to clear profile cache', [
                     'error' => $e->getMessage(),
@@ -208,15 +202,6 @@ class QuizAttempt extends Model
             }
             $model->question_data = $questionData;
             
-            \Log::info('QuizAttempt being created', [
-                'user_id' => $model->user_id,
-                'topic_id' => $model->topic_id,
-                'quiz_type' => $model->quiz_type,
-                'study_mode' => $model->study_mode,
-                'source' => $model->source,
-                'score' => $model->score,
-                'total_questions' => $model->total_questions
-            ]);
         });
 
         static::updating(function ($model) {
@@ -318,10 +303,6 @@ class QuizAttempt extends Model
             $cutoffDate = now()->subDays($daysOld);
             $deletedCount = self::where('created_at', '<', $cutoffDate)->delete();
             
-            \Log::info('Cleaned up old quiz attempts', [
-                'deleted_count' => $deletedCount,
-                'cutoff_date' => $cutoffDate->toDateString()
-            ]);
             
             return $deletedCount;
         } catch (\Exception $e) {
@@ -715,12 +696,6 @@ class QuizAttempt extends Model
                 $createdAttempts[] = $attempt['attempt'];
             }
 
-            \Log::info('Created multiple source attempts with shared attempt_id', [
-                'attempt_id' => $attemptId,
-                'user_id' => $baseData['user_id'],
-                'topic_id' => $baseData['topic_id'],
-                'sources_count' => count($sourceAttempts)
-            ]);
 
             return [
                 'attempts' => $createdAttempts,
@@ -851,22 +826,12 @@ class QuizAttempt extends Model
             $cacheKey = "topic_progress_{$userId}_{$topicId}_{$studyMode}";
             \Illuminate\Support\Facades\Cache::forget($cacheKey);
             if (config('app.debug')) {
-                \Log::debug("Progress cache cleared", [
-                    'user_id' => $userId,
-                    'topic_id' => $topicId,
-                    'study_mode' => $studyMode,
-                    'cache_key' => $cacheKey
-                ]);
             }
         } else {
             // Clear both quiz and tutor caches
             \Illuminate\Support\Facades\Cache::forget("topic_progress_{$userId}_{$topicId}_quiz");
             \Illuminate\Support\Facades\Cache::forget("topic_progress_{$userId}_{$topicId}_tutor");
             if (config('app.debug')) {
-                \Log::debug("All progress caches cleared", [
-                    'user_id' => $userId,
-                    'topic_id' => $topicId
-                ]);
             }
         }
     }

@@ -17,11 +17,6 @@ class CourseObserver
     {
         $this->clearAllCourseCaches();
 
-        Log::info('Course created, caches cleared', [
-            'course_id' => $course->id,
-            'is_free' => $this->isFreeCourse($course),
-            'auto_enrollment_triggered' => false
-        ]);
     }
 
     /**
@@ -36,29 +31,13 @@ class CourseObserver
         if ($course->isDirty('price')) {
             $newPrice = $course->price;
 
-            Log::info('💰 Course price changed - applying simple logic', [
-                'course_id' => $course->id,
-                'course_name' => $course->name,
-                'new_price' => $newPrice
-            ]);
 
-            if ($newPrice == 0 || $newPrice === null) {
-                Log::info('✅ Course is now free; access will be granted through the free-course survey preview flow', [
-                    'course_id' => $course->id,
-                ]);
-            } else {
+            if ($newPrice != 0 && $newPrice !== null) {
                 // 💰 PRICE NOW > 0: REVOKE ALL ENROLLMENTS
                 $this->revokeAllEnrollmentsFromCourse($course);
-                Log::info('✅ Revoked all enrollments from now-paid course', [
-                    'course_id' => $course->id
-                ]);
             }
         }
 
-        Log::info('Course updated', [
-            'course_id' => $course->id,
-            'changes' => $course->getChanges()
-        ]);
     }
 
     /**
@@ -67,7 +46,6 @@ class CourseObserver
     public function deleted(Course $course): void
     {
         $this->clearAllCourseCaches();
-        Log::info('Course deleted, caches cleared', ['course_id' => $course->id]);
     }
 
     /**
@@ -76,7 +54,6 @@ class CourseObserver
     public function restored(Course $course): void
     {
         $this->clearAllCourseCaches();
-        Log::info('Course restored, caches cleared', ['course_id' => $course->id]);
     }
 
     /**
@@ -85,7 +62,6 @@ class CourseObserver
     public function forceDeleted(Course $course): void
     {
         $this->clearAllCourseCaches();
-        Log::info('Course force deleted, caches cleared', ['course_id' => $course->id]);
     }
 
     /**
@@ -175,10 +151,6 @@ class CourseObserver
                     'enrollments_revoked' => $studentEnrollmentCount
                 ]);
             } else {
-                \Illuminate\Support\Facades\Log::info('☑️ NUCLEAR CHECK: No student enrollments found in paid course', [
-                    'course_id' => $course->id,
-                    'course_name' => $course->name
-                ]);
             }
 
         } catch (\Exception $e) {
@@ -205,9 +177,6 @@ class CourseObserver
                            ->toArray();
 
             if (empty($userIds)) {
-                \Illuminate\Support\Facades\Log::info('No non-admin users found for enrollment', [
-                    'course_id' => $course->id
-                ]);
                 return;
             }
 
@@ -241,12 +210,6 @@ class CourseObserver
                 }
             }
 
-            \Illuminate\Support\Facades\Log::info('🎉 NUCLEAR ENROLLMENT: Auto-enrolled all non-admin users in FREE course', [
-                'course_id' => $course->id,
-                'course_name' => $course->name,
-                'users_enrolled' => $enrolledCount,
-                'total_eligible_users' => count($userIds)
-            ]);
 
         } catch (\Exception $e) {
             \Illuminate\Support\Facades\Log::error('Failed to auto-enroll users in free course', [

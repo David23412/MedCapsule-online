@@ -220,10 +220,6 @@ class MistakeService
 
         // SURGICAL OPTIMIZATION: Reduced logging frequency for production
         if (app()->environment('local', 'testing')) {
-            Log::info('Cleared surgical mistake caches for user', [
-                'user_id' => $userId,
-                'cache_keys_cleared' => count($cacheKeys) + count($userCourseIds ?? [])
-            ]);
         }
     }
 

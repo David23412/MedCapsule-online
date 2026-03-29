@@ -146,11 +146,6 @@ class UltraConsolidatedCacheService
         }
 
         if (config('app.debug')) {
-            Log::debug('UltraConsolidatedCache: Cached result', [
-                'key' => $key,
-                'duration_ms' => round($duration, 2),
-                'compressed' => $this->isCompressedPayload($encodedResult)
-            ]);
         }
 
         return $result;
@@ -627,14 +622,6 @@ class UltraConsolidatedCacheService
 
             $durationMs = (microtime(true) - $startedAt) * 1000;
             
-            Log::info('Smart cache invalidation completed', [
-                'type' => $type,
-                'id' => $id,
-                'pattern_count' => count($affectedKeys),
-                'keys_invalidated' => $invalidatedCount,
-                'strategy' => 'scan',
-                'duration_ms' => round($durationMs, 2)
-            ]);
             
         } catch (\Exception $e) {
             Log::error('Smart cache invalidation failed', [

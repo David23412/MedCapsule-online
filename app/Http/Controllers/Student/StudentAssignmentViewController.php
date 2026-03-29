@@ -26,7 +26,6 @@ class StudentAssignmentViewController extends Controller
     public function index(Request $request): View
     {
         if (app()->environment('local', 'testing')) {
-            Log::info('Method index called', ['user_id' => auth()->id(), 'timestamp' => now()]);
         }
         
         $filters = $request->only(['status', 'course_id']);
@@ -65,7 +64,6 @@ class StudentAssignmentViewController extends Controller
     public function show(Assignment $assignment): View
     {
         if (app()->environment('local', 'testing')) {
-            Log::info('Method show called', ['user_id' => auth()->id(), 'timestamp' => now()]);
         }
         $this->authorize('view', $assignment);
         
@@ -80,7 +78,6 @@ class StudentAssignmentViewController extends Controller
     public function history(): View
     {
         if (app()->environment('local', 'testing')) {
-            Log::info('Method history called', ['user_id' => auth()->id(), 'timestamp' => now()]);
         }
         $completedAssignments = $this->assignmentService->getStudentAssignments(
             auth()->id(), 
@@ -98,15 +95,6 @@ class StudentAssignmentViewController extends Controller
     public function start(Assignment $assignment): RedirectResponse
     {
         if (app()->environment('local', 'testing')) {
-            Log::info('Method start called', [
-                'user_id' => auth()->id(), 
-                'assignment_id' => $assignment->id,
-                'assignment_status' => $assignment->status,
-                'can_be_completed' => $assignment->canBeCompleted(),
-                'is_locked' => $assignment->isLocked(),
-                'topic_locked' => $assignment->topic->is_locked ?? false,
-                'timestamp' => now()
-            ]);
         }
         
         $this->authorize('view', $assignment);
@@ -129,10 +117,6 @@ class StudentAssignmentViewController extends Controller
         ]);
         
         if (app()->environment('local', 'testing')) {
-            Log::info('Redirecting to quiz', [
-                'assignment_id' => $assignment->id,
-                'quiz_url' => $quizUrl
-            ]);
         }
 
         return redirect($quizUrl);

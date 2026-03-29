@@ -32,11 +32,6 @@ class SendStudyStreakNotification implements ShouldQueue
                 // LETHAL FIX: Use new notification system for streak reset
                 \App\Services\NotificationTriggerService::onStreakReset($event->user);
                 
-                Log::info('Streak reset notification sent', [
-                    'user_id' => $event->user->id,
-                    'previous_streak' => $event->previousStreak,
-                    'new_streak' => $event->newStreak
-                ]);
             } else {
                 // LETHAL FIX: Use new notification system for streak milestones
                 $milestones = [1, 2, 3, 7, 14, 30, 60, 100];
@@ -44,10 +39,6 @@ class SendStudyStreakNotification implements ShouldQueue
                 if (in_array($event->newStreak, $milestones) && $event->newStreak > $event->previousStreak) {
                     \App\Services\NotificationTriggerService::onStudyStreak($event->user, $event->newStreak);
                     
-                    Log::info('Streak milestone notification sent', [
-                        'user_id' => $event->user->id,
-                        'streak' => $event->newStreak
-                    ]);
                 }
             }
         } catch (\Exception $e) {

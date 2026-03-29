@@ -33,13 +33,6 @@ class SendWeakTopicNotification implements ShouldQueue
                 $event->topic->name
             );
             
-            Log::info('Weak topic notification sent', [
-                'user_id' => $event->user->id,
-                'topic_id' => $event->topic->id,
-                'topic_name' => $event->topic->name,
-                'average_score' => $event->averageScore,
-                'attempt_count' => $event->attemptCount
-            ]);
         } catch (\Exception $e) {
             Log::error('Failed to send weak topic notification', [
                 'user_id' => $event->user->id,

@@ -84,7 +84,6 @@ class EmergencyFallbackService
                 self::storeEmergencyData('emergency_mode_history', $deactivationData);
                 self::deleteEmergencyData('emergency_mode');
 
-                Log::info('Emergency mode deactivated', $deactivationData);
             }
 
             return true;

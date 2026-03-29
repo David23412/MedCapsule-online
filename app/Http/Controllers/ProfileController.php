@@ -373,13 +373,6 @@ class ProfileController extends Controller
 
                     $cacheBust = time();
 
-                    \Log::info('Secure profile picture upload completed', [
-                        'user_id' => $user->id,
-                        'secure_filename' => $uploadResult['secure_name'],
-                        'original_filename' => $uploadResult['original_name'],
-                        'storage_path' => $uploadResult['storage_path'],
-                        'cache_bust' => $cacheBust
-                    ]);
 
                     // Check if it's an AJAX request
                     if (request()->ajax() || request()->wantsJson()) {

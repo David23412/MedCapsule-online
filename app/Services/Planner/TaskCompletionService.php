@@ -242,19 +242,11 @@ class TaskCompletionService
     private function evaluateProgressionQuizTask(array $task, ?Topic $topic, PlannerContext $context): array
     {
         if (!($topic instanceof Topic)) {
-            Log::debug('evaluateProgressionQuizTask: no topic', ['task_id' => $task['id']]);
             return $this->result('pending', 0.0, false);
         }
 
         $matchingAttempts = $this->matchingTopicAttempts($task, $context->attemptSignals);
         if ($matchingAttempts->isEmpty()) {
-            Log::debug('evaluateProgressionQuizTask: no matching attempts', [
-                'task_id' => $task['id'],
-                'topic_id' => $topic->id,
-                'required_mode' => $this->resolveRequiredStudyMode($task),
-                'required_source' => $task['source'] ?? null,
-                'attempts_today_count' => count($context->attemptSignals['topic_attempts_today'] ?? []),
-            ]);
             return $this->result('pending', 0.0, false);
         }
 
@@ -264,13 +256,6 @@ class TaskCompletionService
         $passReady = (bool) ($profile['stage_two_pass_ready'] ?? false);
         $fallbackUsed = (bool) ($profile['stage_two_fallback_used'] ?? false);
 
-        Log::debug('evaluateProgressionQuizTask: profile signals', [
-            'task_id' => $task['id'],
-            'stage_two_pass_ready' => $passReady,
-            'stage_two_accuracy' => $accuracy,
-            'stage_two_question_count' => $questionCount,
-            'stage_two_fallback_used' => $fallbackUsed,
-        ]);
 
         if ($passReady) {
             return $this->result('complete', 1.0, true, [

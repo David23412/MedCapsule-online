@@ -40,11 +40,6 @@ class SendSkippedQuestionNotification implements ShouldQueue
                 ]
             );
             
-            Log::info('Skipped questions notification sent', [
-                'user_id' => $event->user->id,
-                'skipped_count' => $event->skippedCount,
-                'topic_breakdown' => $event->topicBreakdown
-            ]);
         } catch (\Exception $e) {
             Log::error('Failed to send skipped questions notification', [
                 'user_id' => $event->user->id,

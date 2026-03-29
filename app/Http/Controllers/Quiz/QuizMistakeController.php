@@ -45,7 +45,6 @@ class QuizMistakeController extends Controller
             
             // SURGICAL OPTIMIZATION: Only log in development
             if (app()->environment('local', 'testing')) {
-                Log::info('Loading mistakes', ['user_id' => $userId, 'course_filter' => $courseFilter]);
             }
 
             // 🎯 SMART HYBRID: Ultra-short cache (10 seconds) for near-instant updates
@@ -182,12 +181,6 @@ class QuizMistakeController extends Controller
             $mistakesByCourse = $mistakes->groupBy('question.topic.course.name');
 
             $executionTime = (microtime(true) - $startTime) * 1000;
-            Log::info('🎯 SMART HYBRID mistakes loaded', [
-                'request_id' => $requestId,
-                'execution_time_ms' => round($executionTime, 2),
-                'mistakes_count' => $mistakes->count(),
-                'cache_status' => 'SMART HYBRID - 10sec cache with instant invalidation'
-            ]);
 
             return view('mistakes', [
                 'mistakes' => $mistakes,
@@ -288,11 +281,6 @@ class QuizMistakeController extends Controller
 
             // SURGICAL OPTIMIZATION: Reduced logging for production performance
             if (app()->environment('local', 'testing')) {
-                Log::info("🎯 Surgical cache invalidation completed", [
-                    'user_id' => $userId,
-                    'cache_keys_cleared' => count($cacheKeys),
-                    'strategy' => 'surgical_precision'
-                ]);
             }
 
         } catch (\Exception $e) {

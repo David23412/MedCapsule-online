@@ -115,11 +115,6 @@ class CourseActionController extends Controller
             // Clear course-related caches
             $this->clearCourseCaches();
 
-            Log::info('New course created', [
-                'course_id' => $course->id,
-                'course_name' => $course->name,
-                'created_by' => auth()->id()
-            ]);
 
             return redirect()->route('admin.courses')
                 ->with('success', 'Course "' . $course->name . '" created successfully!');

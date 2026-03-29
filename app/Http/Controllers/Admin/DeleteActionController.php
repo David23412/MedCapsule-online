@@ -79,17 +79,6 @@ class DeleteActionController extends Controller
 
             DB::commit();
 
-            Log::info('Course deleted successfully', [
-                'course_id' => $id,
-                'course_name' => $courseName,
-                'deleted_by' => auth()->id(),
-                'stats' => [
-                    'topics_deleted' => $topicCount,
-                    'questions_deleted' => $questionCount,
-                    'users_detached' => $userCount,
-                    'payments_deleted' => $paymentCount
-                ]
-            ]);
 
             return redirect()->route('admin.delete.courses')
                 ->with('success', "Course '{$courseName}' and all related data ({$topicCount} topics, {$questionCount} questions) have been deleted successfully.");
@@ -142,16 +131,6 @@ class DeleteActionController extends Controller
 
             DB::commit();
 
-            Log::info('Topic deleted successfully', [
-                'topic_id' => $id,
-                'topic_name' => $topicName,
-                'course_name' => $courseName,
-                'deleted_by' => auth()->id(),
-                'stats' => [
-                    'questions_deleted' => $questionCount,
-                    'quiz_attempts_deleted' => $quizAttemptCount
-                ]
-            ]);
 
             return redirect()->route('admin.delete.topics')
                 ->with('success', "Topic '{$topicName}' from course '{$courseName}' and all related data ({$questionCount} questions) have been deleted successfully.");
@@ -203,16 +182,6 @@ class DeleteActionController extends Controller
 
             DB::commit();
 
-            Log::info('Question marked as deleted successfully', [
-                'question_id' => $id,
-                'question_text' => $questionText,
-                'topic_name' => $topicName,
-                'course_name' => $courseName,
-                'deleted_by' => auth()->id(),
-                'stats' => [
-                    'mistakes_count' => $mistakeCount
-                ]
-            ]);
 
             return redirect()->route('admin.delete.questions')
                 ->with('success', "Question from '{$topicName}' ({$courseName}) has been marked as deleted successfully.");
@@ -269,17 +238,6 @@ class DeleteActionController extends Controller
 
             DB::commit();
 
-            Log::info('User deleted successfully', [
-                'user_id' => $id,
-                'user_name' => $userName,
-                'user_email' => $userEmail,
-                'deleted_by' => auth()->id(),
-                'stats' => [
-                    'quiz_attempts_deleted' => $quizAttemptCount,
-                    'mistakes_deleted' => $mistakeCount,
-                    'payments_deleted' => $paymentCount
-                ]
-            ]);
 
             return redirect()->route('admin.delete.users')
                 ->with('success', "User '{$userName}' ({$userEmail}) and all related data have been deleted successfully.");
@@ -337,11 +295,6 @@ class DeleteActionController extends Controller
 
             DB::commit();
 
-            Log::info('Bulk question deletion completed', [
-                'question_ids' => $questionIds,
-                'marked_as_deleted_count' => $deletedCount,
-                'deleted_by' => auth()->id()
-            ]);
 
             return redirect()->route('admin.delete.questions')
                 ->with('success', "Successfully marked {$deletedCount} questions as deleted.");

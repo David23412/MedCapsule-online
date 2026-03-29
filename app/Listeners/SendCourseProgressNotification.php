@@ -51,12 +51,6 @@ class SendCourseProgressNotification implements ShouldQueue
                 );
             }
             
-            Log::info('Course progress notification sent', [
-                'user_id' => $event->user->id,
-                'course_id' => $event->course->id,
-                'progress_percentage' => $event->progressPercentage,
-                'is_completion' => $event->isCompletion
-            ]);
         } catch (\Exception $e) {
             Log::error('Failed to send course progress notification', [
                 'user_id' => $event->user->id,

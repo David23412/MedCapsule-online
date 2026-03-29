@@ -27,7 +27,6 @@ class AssignmentLifecycleService
         $result = $assignment->delete();
         
         if ($result) {
-            Log::info("Assignment {$assignment->id} deleted successfully.");
         } else {
             Log::error("Failed to delete assignment {$assignment->id}.");
         }
@@ -65,7 +64,6 @@ class AssignmentLifecycleService
         foreach ($assignmentsToExpire as $assignment) {
             $assignment->status = Assignment::STATUS_EXPIRED;
             $assignment->save();
-            Log::info("Expired assignment {$assignment->id}");
         }
     }
 

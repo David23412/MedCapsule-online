@@ -126,11 +126,6 @@ class NuclearNotificationOptimization extends Command
             $this->line("  Cache notifications still working: " . collect(\Cache::get('user_notifications_1', []))->count() . " records");
             $this->line("  System status: ✅ OPTIMIZED");
             
-            Log::info('Nuclear notification optimization completed', [
-                'records_deleted' => $dbNotifications,
-                'table_size_freed' => $tableSize,
-                'memory_saved_mb' => $memorySaved
-            ]);
             
             return Command::SUCCESS;
             

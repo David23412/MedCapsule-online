@@ -79,11 +79,6 @@ class CourseEnrollmentController extends Controller
             Cache::forget("course_students_{$course->id}");
             Cache::forget("course_enrollment_stats");
 
-            Log::info('User enrolled in course', [
-                'user_id' => $user->id,
-                'course_id' => $course->id,
-                'admin_id' => auth()->id()
-            ]);
 
             return response()->json([
                 'success' => true,

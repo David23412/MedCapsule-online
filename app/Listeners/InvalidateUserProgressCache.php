@@ -44,13 +44,6 @@ class InvalidateUserProgressCache implements ShouldQueue
             // Clear course completion cache to reflect updated progress
             $this->clearCourseCompletionCache($userId, $topicId);
 
-            Log::info('User progress cache invalidated', [
-                'user_id' => $userId,
-                'topic_id' => $topicId,
-                'study_mode' => $studyMode,
-                'percentage' => $event->percentage,
-                'timestamp' => now()
-            ]);
         } catch (\Exception $e) {
             Log::error('Error invalidating user progress cache', [
                 'user_id' => $event->userId,
@@ -75,11 +68,6 @@ class InvalidateUserProgressCache implements ShouldQueue
                 // Use the Course model's method to clear completion cache
                 $course->clearUserCompletionCache($userId);
                 
-                Log::info('Course completion cache cleared from user progress update', [
-                    'user_id' => $userId,
-                    'course_id' => $course->id,
-                    'topic_id' => $topicId
-                ]);
             }
         } catch (\Exception $e) {
             Log::error('Error clearing course completion cache from user progress update', [

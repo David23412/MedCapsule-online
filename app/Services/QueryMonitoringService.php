@@ -281,12 +281,6 @@ class QueryMonitoringService
         $summary = $this->getPerformanceSummary();
         $recommendations = $this->getOptimizationRecommendations();
         
-        Log::info('Query performance summary', [
-            'summary' => $summary,
-            'recommendations' => $recommendations,
-            'url' => request()->url(),
-            'method' => request()->method()
-        ]);
         
         // Alert if thresholds exceeded
         if (!empty($summary['thresholds_exceeded'])) {

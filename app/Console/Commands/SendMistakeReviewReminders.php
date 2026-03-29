@@ -72,11 +72,6 @@ class SendMistakeReviewReminders extends Command
                     $this->line("Sent reminder to user #{$user->id} ({$user->name}) - {$mistakeCount} mistakes to review");
                     $reminderCount++;
 
-                    Log::info('Mistake review reminder sent', [
-                        'user_id' => $user->id,
-                        'mistake_count' => $mistakeCount,
-                        'command' => 'SendMistakeReviewReminders'
-                    ]);
                 }
                 catch (\Exception $e) {
                     $this->error("Failed to send reminder to user #{$user->id}: " . $e->getMessage());

@@ -77,11 +77,6 @@ class QuizReadController extends Controller
                 'cache_status' => 'optimized'
             ]);
 
-            Log::info("🚀 ULTRA-FAST QUIZ INDEX", [
-                'user_id' => auth()->id(),
-                'quiz_count' => $quizzes->count(),
-                'execution_ms' => $performanceData['duration_ms'] ?? 0
-            ]);
 
             return response()->json([
                 'success' => true,
@@ -197,12 +192,6 @@ class QuizReadController extends Controller
                     'cache_status' => 'ultra_fast_redis'
                 ]);
 
-                Log::info("🚀 ULTRA-FAST QUIZ DETAILS", [
-                    'quiz_id' => $topicId,
-                    'topic_name' => $topicModel->name,
-                    'user_id' => auth()->id(),
-                    'execution_ms' => $performanceData['duration_ms'] ?? 0
-                ]);
 
                 return response()->json([
                     'success' => true,
@@ -217,12 +206,6 @@ class QuizReadController extends Controller
                 'cache_status' => 'ultra_fast_redis'
             ]);
 
-            Log::info("🚀 ULTRA-FAST QUIZ DETAILS", [
-                'quiz_id' => $topicId,
-                'topic_name' => $topicModel->name,
-                'user_id' => auth()->id(),
-                'execution_ms' => $performanceData['duration_ms'] ?? 0
-            ]);
 
             // Prepare data for Blade view
             $questionsCollection = collect($quizData['questions'])->map(function ($question) {
@@ -344,13 +327,6 @@ class QuizReadController extends Controller
                 'cache_status' => 'ultra_fast_redis'
             ]);
 
-            Log::info("🚀 ULTRA-FAST QUIZ RESULTS", [
-                'quiz_id' => $id,
-                'topic_name' => $topic->name,
-                'user_id' => auth()->id(),
-                'attempts_count' => $recentAttempts->count(),
-                'execution_ms' => $performanceData['duration_ms'] ?? 0
-            ]);
 
             return response()->json([
                 'success' => true,

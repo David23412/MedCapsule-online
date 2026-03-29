@@ -71,12 +71,6 @@ class LearnController extends Controller
             extract($cachedData);
 
             $executionTime = (microtime(true) - $startTime) * 1000;
-            Log::info('Learn mistakes loaded successfully', [
-                'request_id' => $requestId,
-                'execution_time_ms' => round($executionTime, 2),
-                'mistakes_count' => $mistakes->count(),
-                'courses_count' => $courses->count()
-            ]);
 
             return view('mistakes.learn', [
                 'mistakes' => $mistakes,
@@ -127,11 +121,6 @@ class LearnController extends Controller
             $result = $this->mistakeService->getUpdatedMistakesCount($userId, $mode);
 
             $executionTime = (microtime(true) - $startTime) * 1000;
-            Log::info('Updated mistakes retrieved successfully', [
-                'request_id' => $requestId,
-                'execution_time_ms' => round($executionTime, 2),
-                'mistakes_count' => $result['mistakes_count']
-            ]);
 
             return response()->json($result);
         } catch (\Exception $e) {
@@ -185,11 +174,6 @@ class LearnController extends Controller
             $result = $this->mistakeService->reviewMistake($userId, $questionId, $selectedAnswer, $timeSpent, $mode, $confidence, $interactionSignals);
 
             $executionTime = (microtime(true) - $startTime) * 1000;
-            Log::info('Review completed successfully', [
-                'request_id' => $requestId,
-                'execution_time_ms' => round($executionTime, 2),
-                'is_correct' => $result['is_correct'] ?? false
-            ]);
 
             return response()->json($result, $result['success'] ? 200 : 404);
 
@@ -232,12 +216,6 @@ class LearnController extends Controller
             }
 
             $executionTime = (microtime(true) - $startTime) * 1000;
-            Log::info('Review session started successfully', [
-                'request_id' => $requestId,
-                'execution_time_ms' => round($executionTime, 2),
-                'mistakes_count' => $mistakes->count(),
-                'mode' => $mode
-            ]);
 
             return view('mistakes.review', compact('mistakes', 'mode'));
 
@@ -268,12 +246,6 @@ class LearnController extends Controller
             $result = $this->mistakeService->removeMistake($userId, $questionId);
 
             $executionTime = (microtime(true) - $startTime) * 1000;
-            Log::info('Mistake removal completed', [
-                'request_id' => $requestId,
-                'execution_time_ms' => round($executionTime, 2),
-                'question_id' => $questionId,
-                'success' => $result['success']
-            ]);
 
             return response()->json($result, $result['success'] ? 200 : 404);
 

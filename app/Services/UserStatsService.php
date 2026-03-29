@@ -74,15 +74,6 @@ class UserStatsService
                 }
             }
 
-            Log::info('User stats updated successfully', [
-                'user_id' => $user->id,
-                'questionsAttempted' => $questionsAttempted,
-                'correctAnswers' => $correctAnswers,
-                'durationSeconds' => $durationSeconds,
-                'xpEarned' => $xpEarned,
-                'study_streak_days' => $user->study_streak_days,
-                'last_study_date' => $user->last_study_date,
-            ]);
         } catch (\Exception $e) {
             Log::error('Failed to update user stats after quiz attempt', [
                 'user_id' => $user->id,

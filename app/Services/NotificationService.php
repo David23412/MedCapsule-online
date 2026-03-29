@@ -835,12 +835,6 @@ class NotificationService
             // Send notification to all admins
             FacadeNotification::send($admins, $notification);
             
-            Log::info('Payment notification sent to admins', [
-                'payment_id' => $payment->id,
-                'reason' => $reason,
-                'admin_count' => $admins->count(),
-                'priority' => $priority
-            ]);
             
             return true;
         } catch (\Exception $e) {
@@ -933,11 +927,6 @@ class NotificationService
                 $admin->notify(new \App\Notifications\DailyPaymentDigest($pendingCount, $highPriorityCount));
             }
             
-            Log::info('Daily payment digest sent to admins', [
-                'pending_count' => $pendingCount,
-                'high_priority_count' => $highPriorityCount,
-                'admin_count' => $admins->count()
-            ]);
             
             return true;
         } catch (\Exception $e) {

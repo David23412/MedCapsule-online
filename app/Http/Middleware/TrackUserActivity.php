@@ -15,9 +15,9 @@ class TrackUserActivity
 
     /**
      * In-memory timestamp map: sessionId → unix timestamp of last DB write.
-     * Avoids a Redis round-trip on every request. Works correctly across
-     * multiple requests in the same PHP-FPM worker because timestamps expire
-     * based on elapsed time, not process boundaries.
+     * Avoids repeated database writes on every request within the debounce window.
+     * Works correctly across multiple requests in the same PHP-FPM worker because
+     * timestamps expire based on elapsed time, not process boundaries.
      *
      * @var array<string, int>
      */

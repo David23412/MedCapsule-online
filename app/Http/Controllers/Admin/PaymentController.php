@@ -233,14 +233,6 @@ class PaymentController extends Controller
             $this->clearUserCourseAccessCache($user->id);
 
             // Log the payment submission
-            Log::info('Payment submitted', [
-                'payment_id' => $payment->id,
-                'user_id' => $user->id,
-                'course_id' => $course->id,
-                'amount' => $request->amount,
-                'payment_method' => $request->payment_method,
-                'transaction_id' => $request->transaction_id
-            ]);
 
             // 🔔 TRIGGER PAYMENT SUBMITTED NOTIFICATION
             NotificationTriggerService::onPaymentSubmitted($user, [

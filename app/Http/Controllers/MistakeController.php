@@ -30,10 +30,6 @@ class MistakeController extends Controller
 
         // SURGICAL OPTIMIZATION: Only log in development for performance
         if (app()->environment('local', 'testing')) {
-            Log::info('Mistakes fetched for user.', [
-                'user_id' => $userId,
-                'mistake_count' => $data['mistakes']->count(),
-            ]);
         }
 
         return view('mistakes', [
@@ -64,13 +60,11 @@ class MistakeController extends Controller
         if ($mistake) {
             // SURGICAL OPTIMIZATION: Only log in development
             if (app()->environment('local', 'testing')) {
-                Log::info('Mistake recorded successfully.', ['mistake_id' => $mistake->id]);
             }
             return response()->json(['message' => 'Mistake recorded.']);
         } else {
             // SURGICAL OPTIMIZATION: Only log in development
             if (app()->environment('local', 'testing')) {
-                Log::info('Correct answer submitted, no mistake recorded.', ['question_id' => $validated['question_id']]);
             }
             return response()->json(['message' => 'Correct answer, no mistake recorded.']);
         }
@@ -97,7 +91,6 @@ class MistakeController extends Controller
         $deleted = $this->mistakeService->deleteMistake($userId, $questionId);
 
         if ($deleted) {
-            Log::info('Mistake deleted successfully.', ['user_id' => $userId, 'question_id' => $questionId]);
             return redirect()->route('review.index')->with('success', 'Mistake removed.');
         } else {
             Log::warning('Attempted to delete a non-existent mistake.', ['user_id' => $userId, 'question_id' => $questionId]);
@@ -114,7 +107,6 @@ class MistakeController extends Controller
         $deleted = $this->mistakeService->deleteMistake($userId, $question_id);
 
         if ($deleted) {
-            Log::info('Mistake removed via AJAX.', ['user_id' => $userId, 'question_id' => $question_id]);
             return response()->json(['success' => true]);
         } else {
             Log::warning('Attempted to remove a non-existent mistake via AJAX.', ['user_id' => $userId, 'question_id' => $question_id]);
@@ -138,7 +130,6 @@ class MistakeController extends Controller
         $mistake = $this->mistakeService->skipMistake($userId, $question_id, $mode);
 
         if ($mistake) {
-            Log::info('Mistake skipped successfully.', ['mistake_id' => $mistake->id]);
             return response()->json([
                 'success' => true,
                 'message' => 'Question skipped for now.',
@@ -162,7 +153,6 @@ class MistakeController extends Controller
 
         try {
             $mistake = $this->mistakeService->rateMistake($userId, $questionId, $rating, $mode);
-            Log::info('Mistake rated successfully.', ['mistake_id' => $mistake->id]);
             return response()->json([
                 'success' => true,
                 'message' => 'Mistake rated.',

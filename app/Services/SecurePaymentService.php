@@ -16,12 +16,6 @@ class SecurePaymentService
 
         try {
             // Log payment attempt
-            Log::info('Secure payment processing started', [
-                'user_id' => $paymentData['user_id'] ?? null,
-                'course_id' => $paymentData['course_id'] ?? null,
-                'amount' => $paymentData['amount'] ?? null,
-                'method' => $paymentData['payment_method'] ?? null
-            ]);
 
             // Basic validation
             $this->validatePaymentRequest($paymentData);
@@ -31,10 +25,6 @@ class SecurePaymentService
 
             // Log success
             $processingTime = microtime(true) - $startTime;
-            Log::info('Secure payment processing completed', [
-                'processing_time' => $processingTime,
-                'result' => $result
-            ]);
 
             return $result;
 
@@ -223,7 +213,6 @@ class SecurePaymentService
      */
     public function handlePaymentCallback(array $callbackData): array
     {
-        Log::info('Payment callback received', $callbackData);
 
         // Process the callback data
         // This would typically update the payment status in the database

@@ -29,12 +29,6 @@ class UserService
 
             $roleName = $user->isAdmin() ? 'Admin' : 'Student';
 
-            Log::info('Admin status toggled', [
-                'user_id' => $user->id,
-                'new_role' => $newRole,
-                'role_name' => $roleName,
-                'admin_id' => $admin->id
-            ]);
 
             return [
                 'success' => true,
