@@ -20,14 +20,26 @@ return new class extends Migration
         }
 
         if (Schema::hasColumn('users', 'number')) {
-            DB::table('users')
-                ->whereNull('number')
-                ->orWhere('number', '')
-                ->update([
-                    'number' => DB::raw("CONCAT('missing-', id)"),
-                ]);
+            $driver = DB::getDriverName();
+            if ($driver === 'mysql' || $driver === 'mariadb') {
+                DB::table('users')
+                    ->whereNull('number')
+                    ->orWhere('number', '')
+                    ->update([
+                        'number' => DB::raw("CONCAT('missing-', id)"),
+                    ]);
+            } else {
+                DB::table('users')
+                    ->whereNull('number')
+                    ->orWhere('number', '')
+                    ->update([
+                        'number' => DB::raw("'missing-' || id"),
+                    ]);
+            }
 
-            DB::statement('ALTER TABLE users MODIFY number VARCHAR(20) NOT NULL');
+            Schema::table('users', function (Blueprint $table) {
+                $table->string('number', 20)->nullable(false)->change();
+            });
         }
     }
 
@@ -44,7 +56,9 @@ return new class extends Migration
         }
 
         if (Schema::hasColumn('users', 'number')) {
-            DB::statement('ALTER TABLE users MODIFY number VARCHAR(20) NULL');
+            Schema::table('users', function (Blueprint $table) {
+                $table->string('number', 20)->nullable()->change();
+            });
         }
     }
 };

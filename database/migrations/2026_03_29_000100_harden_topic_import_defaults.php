@@ -12,10 +12,13 @@ return new class extends Migration
             return;
         }
 
-        DB::unprepared('DROP TRIGGER IF EXISTS topics_before_insert_defaults');
-        DB::unprepared('DROP TRIGGER IF EXISTS topics_before_update_defaults');
+        $driver = DB::getDriverName();
 
-        DB::unprepared(<<<'SQL'
+        if ($driver === 'mysql' || $driver === 'mariadb') {
+            DB::unprepared('DROP TRIGGER IF EXISTS topics_before_insert_defaults');
+            DB::unprepared('DROP TRIGGER IF EXISTS topics_before_update_defaults');
+
+            DB::unprepared(<<<'SQL'
 CREATE TRIGGER topics_before_insert_defaults
 BEFORE INSERT ON topics
 FOR EACH ROW
@@ -42,7 +45,7 @@ BEGIN
 END
 SQL);
 
-        DB::unprepared(<<<'SQL'
+            DB::unprepared(<<<'SQL'
 CREATE TRIGGER topics_before_update_defaults
 BEFORE UPDATE ON topics
 FOR EACH ROW
@@ -68,6 +71,10 @@ BEGIN
     END IF;
 END
 SQL);
+        } elseif ($driver === 'sqlite') {
+            // SQLite triggers use different syntax; the application layer handles these
+            // defaults, so no triggers are needed for testing environments.
+        }
     }
 
     public function down(): void
