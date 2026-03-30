@@ -8,19 +8,11 @@ document.addEventListener('DOMContentLoaded', function() {
             const timeTakenField = document.getElementById('time-taken');
             const timerDisplay = document.getElementById('timer');
             
-            // BRUTAL DEBUG LOGGING
-            console.log('ELEMENTS FOUND:');
-            console.log('Progress Bar Container:', progressBarContainer);
-            console.log('Submit Button:', submitBtn);
-            
             // NUCLEAR FALLBACK - WAIT AND TRY AGAIN
             if (!progressBarContainer || !submitBtn) {
                 setTimeout(() => {
                     progressBarContainer = document.getElementById('progress-bar-container') || document.querySelector('.progress-bar-container');
                     submitBtn = document.getElementById('submit-btn') || document.querySelector('.submit-btn') || document.querySelector('button[type="submit"]');
-                    console.log('FALLBACK ELEMENTS FOUND:');
-                    console.log('Progress Bar Container:', progressBarContainer);
-                    console.log('Submit Button:', submitBtn);
                     initializeProgressBarSystem();
                 }, 500);
             } else {
@@ -324,7 +316,6 @@ document.addEventListener('DOMContentLoaded', function() {
                             if (percentage === 100) {
                                 // Direct confetti call for perfect scores - SAFARI-CORRECTED POSITIONING
                                 if (typeof confetti !== 'undefined') {
-                                    console.log('✅ Using direct confetti');
                                     // Detect if the browser is Safari
                                     const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
                                     let originX = 0.62; // Default to center for all other browsers
@@ -342,13 +333,10 @@ document.addEventListener('DOMContentLoaded', function() {
                                         colors: ['#FFD700', '#FFA500', '#FF69B4', '#00CED1', '#98FB98'],
                                         zIndex: 10000
                                     });
-                                } else {
-                                    console.log('❌ No confetti library available');
                                 }
                             } else if (percentage >= 70) {
                                 // Direct confetti call for good scores - SAFARI-CORRECTED POSITIONING
                                 if (typeof confetti !== 'undefined') {
-                                    console.log('✅ Using direct confetti');
                                     // Detect if the browser is Safari
                                     const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
                                     let originX = 0.62; // Default to center for all other browsers
@@ -366,8 +354,6 @@ document.addEventListener('DOMContentLoaded', function() {
                                         colors: ['#FFD700', '#FFA500', '#FF69B4', '#00CED1', '#98FB98'],
                                         zIndex: 10000
                                     });
-                                } else {
-                                    console.log('❌ No confetti library available');
                                 }
                             }
                         });
@@ -538,10 +524,7 @@ document.addEventListener('DOMContentLoaded', function() {
                                         label.classList.add('incorrect');
                                     }
 
-                                    console.log(`🔍 RANDOM QUIZ REVIEW: Question ${questionId} - Option "${input.value}": Correct=${isCorrectAnswer}, Selected=${isSelectedAnswer}, Incorrect=${isIncorrectSelection}`);
-                                }
                             });
-
                             const optionsContainer = questionBox.querySelector('.options');
                             const explanationCard = buildExplanationCard(explanation);
                             if (optionsContainer && explanationCard) {
@@ -602,10 +585,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
         // EDGE/SAFARI CONFETTI TEST FUNCTION
         window.testConfetti = function() {
-            console.log('🎯 MANUAL CONFETTI TEST TRIGGERED');
-
             if (typeof confetti !== 'undefined') {
-                console.log('✅ Direct confetti library available - testing...');
                 // Use Safari-corrected positioning for test
                 const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
                 let originX = 0.62; // Default to center for all other browsers
@@ -621,7 +601,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 });
                 alert('Testing direct confetti... check if confetti appears!');
             } else {
-                console.log('❌ No confetti system available');
                 alert('ERROR: No confetti library loaded! Check browser or network issues.');
             }
         };
@@ -644,14 +623,9 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         }
 
-        console.log('🔥 NUCLEAR OVERRIDE ACTIVATED 🔥');
-        
-        // WAIT FOR EVERYTHING TO LOAD THEN ACTIVATE NUCLEAR SYSTEM
+        // Initialize progress bar visibility control on load
         window.addEventListener('load', function() {
             setTimeout(function() {
-                console.log('🚀 INITIALIZING NUCLEAR PROGRESS BAR DESTROYER 🚀');
-                
-                // FIND ELEMENTS WITH EXTREME PREJUDICE
                 const progressBar = document.getElementById('progress-bar-container') || 
                                   document.querySelector('.progress-bar-container') ||
                                   document.querySelector('[class*="progress"]');
@@ -661,12 +635,7 @@ document.addEventListener('DOMContentLoaded', function() {
                                    document.querySelector('button[type="submit"]') ||
                                    document.querySelector('[class*="submit"]');
                 
-                console.log('🎯 TARGETS ACQUIRED:');
-                console.log('Progress Bar:', progressBar);
-                console.log('Submit Button:', submitButton);
-                
                 if (!progressBar || !submitButton) {
-                    console.error('❌ TARGETS NOT FOUND - ABORTING MISSION');
                     return;
                 }
                 
