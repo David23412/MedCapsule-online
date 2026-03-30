@@ -84,7 +84,7 @@ jobs:
       env:
         DB_CONNECTION: sqlite
         DB_DATABASE: database/database.sqlite
-      run: ./vendor/bin/phpunit --coverage-clover coverage.xml
+      run: ./vendor/bin/phpunit --coverage-clover coverage.xml -d memory_limit=512M
       
     - name: 📊 Upload Coverage to Codecov
       uses: codecov/codecov-action@v3

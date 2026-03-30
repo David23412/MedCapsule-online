@@ -14,7 +14,7 @@
             min-height: 100vh;
             overflow-x: hidden;
             line-height: 1.6;
-            zoom: 0.7; /* Zoom out to 70% for better overall view */
+            font-size: 87.5%; /* 14px base: replaces non-standard zoom: 0.7 */
         }
 
         .navbar {
@@ -2948,9 +2948,9 @@
    ============================================== */
 
 @media (max-width: 767.98px) {
-    /* Reset the 70% desktop zoom — makes text tiny on phones */
+    /* Restore full font-size on mobile — desktop uses 87.5% for layout density */
     body {
-        zoom: 1 !important;
+        font-size: 100% !important;
         overflow-x: hidden;
     }
 
