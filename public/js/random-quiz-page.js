@@ -314,43 +314,23 @@ document.addEventListener('DOMContentLoaded', function() {
                         // Trigger confetti AFTER popup is shown and positioned
                         requestAnimationFrame(() => {
                             if (percentage === 100) {
-                                // Direct confetti call for perfect scores - SAFARI-CORRECTED POSITIONING
+                                // Direct confetti call for perfect scores
                                 if (typeof confetti !== 'undefined') {
-                                    // Detect if the browser is Safari
-                                    const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
-                                    let originX = 0.62; // Default to center for all other browsers
-
-                                    // If it is Safari, apply a corrected origin value to counteract zoom effect
-                                    if (isSafari) {
-                                        // Fine-tuned for perfect centering - using 0.47 for optimal positioning
-                                        originX = 0.47;
-                                    }
-
                                     confetti({
                                         particleCount: 100,
                                         spread: 70,
-                                        origin: { x: originX, y: 0.45 },
+                                        origin: { x: 0.5, y: 0.45 },
                                         colors: ['#FFD700', '#FFA500', '#FF69B4', '#00CED1', '#98FB98'],
                                         zIndex: 10000
                                     });
                                 }
                             } else if (percentage >= 70) {
-                                // Direct confetti call for good scores - SAFARI-CORRECTED POSITIONING
+                                // Direct confetti call for good scores
                                 if (typeof confetti !== 'undefined') {
-                                    // Detect if the browser is Safari
-                                    const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
-                                    let originX = 0.62; // Default to center for all other browsers
-
-                                    // If it is Safari, apply a corrected origin value to counteract zoom effect
-                                    if (isSafari) {
-                                        // Fine-tuned for perfect centering - using 0.47 for optimal positioning
-                                        originX = 0.47;
-                                    }
-
                                     confetti({
                                         particleCount: 100,
                                         spread: 70,
-                                        origin: { x: originX, y: 0.45 },
+                                        origin: { x: 0.5, y: 0.45 },
                                         colors: ['#FFD700', '#FFA500', '#FF69B4', '#00CED1', '#98FB98'],
                                         zIndex: 10000
                                     });
@@ -562,22 +542,10 @@ document.addEventListener('DOMContentLoaded', function() {
 
         // Function to create confetti
         function createConfetti() {
-            // SAFARI-SPECIFIC CONFETTI POSITIONING FIX
-            // Detect if the browser is Safari
-            const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
-            let originX = 0.62; // Default to center for all other browsers
-
-            // If it is Safari, apply a corrected origin value to counteract zoom effect
-            if (isSafari) {
-                // Fine-tuned for perfect centering - using 0.48 for optimal positioning
-                originX = 0.48;
-            }
-
-            // SAFARI-CORRECTED CONFETTI - Consistent positioning across browsers
             confetti({
                 particleCount: 100,
                 spread: 70,
-                origin: { x: originX, y: 0.45 },
+                origin: { x: 0.5, y: 0.45 },
                 colors: ['#FFD700', '#FFA500', '#FF69B4', '#00CED1', '#98FB98'],
                 zIndex: 10000
             });
@@ -586,16 +554,10 @@ document.addEventListener('DOMContentLoaded', function() {
         // EDGE/SAFARI CONFETTI TEST FUNCTION
         window.testConfetti = function() {
             if (typeof confetti !== 'undefined') {
-                // Use Safari-corrected positioning for test
-                const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
-                let originX = 0.62; // Default to center for all other browsers
-                if (isSafari) {
-                    originX = 0.47; // Fine-tuned for perfect centering
-                }
                 confetti({
                     particleCount: 100,
                     spread: 70,
-                    origin: { x: originX, y: 0.45 },
+                    origin: { x: 0.5, y: 0.45 },
                     colors: ['#FFD700', '#FFA500', '#FF69B4', '#00CED1', '#98FB98'],
                     zIndex: 10000
                 });
@@ -617,8 +579,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
                 // Return safely decoded text
                 return decodedText;
-            } catch (e) {
-                console.error('Error decoding HTML entities:', e);
+            } catch (_e) {
                 return text; // Return the original text if decoding fails
             }
         }

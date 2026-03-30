@@ -33,7 +33,6 @@
             font-family: 'Poppins', sans-serif;
             margin: 0;
             padding: 0;
-            zoom: 0.75;
             -webkit-text-size-adjust: 100%;
         }
 
