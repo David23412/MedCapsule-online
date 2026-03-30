@@ -70,6 +70,7 @@
         }
         .form-control {
             border-radius: 5px;
+            font-size: 1rem; /* Minimum 16px to prevent iOS auto-zoom */
         }
         .form-control:focus {
             border-color: #007bff;

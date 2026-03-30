@@ -477,19 +477,21 @@
         
         @media (max-width: 480px) {
 
-        /* BULLETPROOF: Handle iOS Safari bottom bar */
+        /* Handle iOS Safari bottom bar */
         @supports (padding-bottom: env(safe-area-inset-bottom)) {
             .progress-bar-container {
                 padding-bottom: calc(1.2rem + env(safe-area-inset-bottom)) !important;
             }
         }
 
-        /* BULLETPROOF: Prevent any possible z-index conflicts */
+        /* Prevent any possible z-index conflicts */
         .progress-bar-container {
             isolation: isolate !important;
         }
 
-        /* BULLETPROOF: Ensure smooth animations on all devices */
+        }
+
+        /* Ensure smooth animations on all devices */
         @media (prefers-reduced-motion: reduce) {
             .progress-bar-container {
                 transition: none !important;
@@ -499,7 +501,6 @@
                 transition: none !important;
             }
         }
-    }
 
         .progress-bar {
             width: 100%;
