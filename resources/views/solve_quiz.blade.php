@@ -1062,6 +1062,49 @@
             .popup-score {
                 font-size: 3rem;
             }
+
+            /* Mobile quiz optimizations */
+            .question-box {
+                padding: 1rem;
+            }
+
+            .question-text {
+                font-size: 1rem !important;
+                line-height: 1.6;
+            }
+
+            .form-check label {
+                font-size: 0.95rem;
+                padding: 0.875rem 0.75rem;
+                min-height: 48px; /* Apple HIG touch target */
+            }
+
+            .main-content {
+                margin-top: 70px;
+            }
+
+            /* Prevent horizontal overflow on small screens */
+            .quiz-interface {
+                padding: 0;
+            }
+
+            h1 {
+                font-size: 1.25rem;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .question-text {
+                font-size: 0.95rem !important;
+            }
+
+            .form-check label {
+                font-size: 0.9rem;
+            }
+
+            .options {
+                gap: 0.5rem;
+            }
         }
 
         /* Answer Review Styles */
