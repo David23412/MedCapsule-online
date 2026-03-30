@@ -42,27 +42,38 @@ class QuizReadController extends Controller
         ]);
 
         try {
-            // Get user's accessible topics and courses
-            $user = auth()->user();
+            // Get user's accessible topics and courses — eager load course + latest quiz attempt
+            $user   = auth()->user();
+            $userId = $user->id;
+
             $accessibleTopics = $user->courses()
-                ->with('topics')
+                ->with([
+                    'topics.course:id,name',
+                    'topics' => fn ($q) => $q->withCount('questions'),
+                ])
                 ->get()
                 ->pluck('topics')
                 ->flatten()
                 ->reject(fn ($topic) => $user->isTopicPreviewLocked($topic))
                 ->values();
 
-            $quizzes = $accessibleTopics->map(function ($topic) {
+            // Batch-load last quiz attempt per topic to avoid N queries inside map
+            $topicIds = $accessibleTopics->pluck('id')->all();
+            $lastAttempts = \App\Models\QuizAttempt::whereIn('topic_id', $topicIds)
+                ->where('user_id', $userId)
+                ->orderByDesc('created_at')
+                ->get()
+                ->unique('topic_id')
+                ->keyBy('topic_id');
+
+            $quizzes = $accessibleTopics->map(function ($topic) use ($lastAttempts) {
                 return [
-                    'id' => $topic->id,
-                    'title' => $topic->name,
-                    'course_name' => $topic->course->name,
-                    'total_questions' => $topic->questions_count,
-                    'available_sources' => $this->ultraFastQuizService->getAvailableSources($topic),
-                    'last_attempt' => $topic->quizAttempts()
-                        ->where('user_id', auth()->id())
-                        ->latest()
-                        ->first()
+                    'id'               => $topic->id,
+                    'title'            => $topic->name,
+                    'course_name'      => $topic->course->name,
+                    'total_questions'  => $topic->questions_count,
+                    'available_sources'=> $this->ultraFastQuizService->getAvailableSources($topic),
+                    'last_attempt'     => $lastAttempts->get($topic->id),
                 ];
             });
 

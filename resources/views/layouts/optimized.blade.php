@@ -309,7 +309,7 @@
     @stack('scripts')
     
     <!-- PERFORMANCE: Analytics and monitoring (load asynchronously) -->
-    <script async src="https://www.googletagmanager.com/gtag/js?id=GA_MEASUREMENT_ID" defer></script>
+    <script async src="https://www.googletagmanager.com/gtag/js?id=GA_MEASUREMENT_ID"></script>
     <script>
         window.dataLayer = window.dataLayer || [];
         function gtag(){dataLayer.push(arguments);}
