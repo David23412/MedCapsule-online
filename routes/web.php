@@ -5,7 +5,6 @@ use App\Http\Controllers\{
     CourseController,
     TopicController,
     QuestionController,
-    QuizController,
     MistakeController,
     LearnController,
     UserCourseController,

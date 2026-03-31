@@ -61,14 +61,6 @@ class Kernel extends ConsoleKernel
                 ->withoutOverlapping()
                 ->appendOutputTo(storage_path('logs/payment-digest.log'));
                 
-        // Summarize old payment logs monthly to prevent database bloat
-        $schedule->command('payments:summarize-logs --days=90 --batch=200 --force')
-                ->monthly()
-                ->sundays()
-                ->at('03:00')
-                ->withoutOverlapping()
-                ->appendOutputTo(storage_path('logs/payment-logs-summary.log'));
-
         // Clean up old quiz attempts weekly
         $schedule->command('quiz:cleanup-attempts')
             ->weekly()
@@ -177,7 +169,6 @@ class Kernel extends ConsoleKernel
         Commands\ProcessPendingPayments::class,
         Commands\CleanupPaymentProofs::class,
         Commands\SendPaymentDigest::class,
-        Commands\SummarizePaymentLogs::class,
         Commands\CleanupNotifications::class,
         Commands\LockOverdueAssignments::class,
         Commands\ExpireTimeLimitedAssignments::class,

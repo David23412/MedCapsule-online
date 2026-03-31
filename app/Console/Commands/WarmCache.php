@@ -3,7 +3,7 @@
 namespace App\Console\Commands;
 
 use Illuminate\Console\Command;
-use App\Services\Performance\AdvancedCachingService;
+use App\Services\Audit\Performance\AdvancedCachingService;
 
 class WarmCache extends Command
 {

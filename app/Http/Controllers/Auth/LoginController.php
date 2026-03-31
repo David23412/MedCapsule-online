@@ -9,7 +9,6 @@ use App\Services\Core\UltraConsolidatedCacheService;
 use App\Services\SessionSecurityService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Log;
-use App\Services\QuizPerformanceService;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Cache;

@@ -5,7 +5,6 @@ namespace App\Http\Controllers\Quiz;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\RandomQuizRequest;
 use App\Services\QuizService;
-use App\Services\QuizCacheService;
 use App\Services\QuizPerformanceService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;

@@ -10,9 +10,7 @@ use App\Http\Requests\CoursePreviewRequest;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\DB;
-use App\Services\QuizPerformanceService;
 use Illuminate\Support\Facades\Cache;
-use App\Services\QuizCacheService;
 
 class CoursePreviewController extends Controller
 {
