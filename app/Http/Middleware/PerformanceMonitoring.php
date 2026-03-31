@@ -22,7 +22,7 @@ class PerformanceMonitoring
     private static int $dailyStatsLastUpdated = 0;
 
     /** Minimum seconds between consecutive daily-stats cache writes per worker. */
-    private const DAILY_STATS_INTERVAL = 5;
+    private const DAILY_STATS_INTERVAL = 30;
     /**
      * Handle an incoming request.
      */

@@ -72,13 +72,15 @@ class Topic extends Model
     // Get all questions for this topic (both direct and linked via extra_topic)
     public function allQuestions()
     {
-        return Question::where(function($q) {
-                $q->where('topic_id', $this->id)
-                  ->orWhereRaw('FIND_IN_SET(?, REPLACE(extra_topic, " ", "")) > 0', [$this->id]);
-            })
-            ->with(['topic']) 
-            ->orderBy('id')
-            ->get();
+        return Cache::remember("topic:{$this->id}:all_questions", 3600, function () {
+            return Question::where(function($q) {
+                    $q->where('topic_id', $this->id)
+                      ->orWhereRaw('FIND_IN_SET(?, REPLACE(extra_topic, " ", "")) > 0', [$this->id]);
+                })
+                ->with(['topic'])
+                ->orderBy('id')
+                ->get();
+        });
     }
 
     public function isExamTopic(): bool
@@ -349,10 +351,14 @@ class Topic extends Model
         // Clear the cache whenever a topic is updated or deleted
         static::updated(function ($topic) {
             Cache::forget("topic:{$topic->id}:questions_count");
+            Cache::forget("topic:{$topic->id}:all_questions");
+            Cache::forget("topic:{$topic->id}:all_sources");
         });
 
         static::deleted(function ($topic) {
             Cache::forget("topic:{$topic->id}:questions_count");
+            Cache::forget("topic:{$topic->id}:all_questions");
+            Cache::forget("topic:{$topic->id}:all_sources");
         });
     }
 
@@ -371,11 +377,14 @@ class Topic extends Model
         if (array_key_exists('total_duration', $this->attributes)) {
             return (int) $this->attributes['total_duration'];
         }
-        
-        return QuizAttempt::where('user_id', auth()->id())
-            ->where('topic_id', $this->id)
-    // 💀 N+1 WARNING: This accessor accesses 'total_duration' - consider eager loading
-            ->sum('duration_seconds');
+
+        return (int) Cache::remember(
+            $this->getCacheKey(auth()->id(), 'total_duration'),
+            1800,
+            fn () => QuizAttempt::where('user_id', auth()->id())
+                ->where('topic_id', $this->id)
+                ->sum('duration_seconds')
+        );
     }
 
     /**
@@ -384,7 +393,6 @@ class Topic extends Model
     public function getFormattedDurationAttribute(): string
     {
         $duration = $this->total_duration;
-    // 💀 N+1 WARNING: This accessor accesses 'id' - consider eager loading
         $minutes = floor($duration / 60);
         return $minutes . ' min';
     }
@@ -399,16 +407,22 @@ class Topic extends Model
         if (array_key_exists('all_sources_mastered', $this->attributes)) {
             return (bool) $this->attributes['all_sources_mastered'];
         }
-        
-        $progress = QuizAttempt::getTopicProgress(auth()->id(), $this->id);
-        if (empty($progress['sources'])) return false;
 
-        foreach ($progress['sources'] as $sourceProgress) {
-            if ($sourceProgress['percentage'] < 100) {
-                return false;
+        return (bool) Cache::remember(
+            $this->getCacheKey(auth()->id(), 'all_sources_mastered'),
+            1800,
+            function () {
+                $progress = QuizAttempt::getTopicProgress(auth()->id(), $this->id);
+                if (empty($progress['sources'])) return false;
+
+                foreach ($progress['sources'] as $sourceProgress) {
+                    if ($sourceProgress['percentage'] < 100) {
+                        return false;
+                    }
+                }
+
+                return true;
             }
-        }
-        
-        return true;
+        );
     }
 }

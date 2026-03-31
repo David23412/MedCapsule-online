@@ -213,27 +213,32 @@ class AppServiceProvider extends ServiceProvider
      */
     private function setupGlobalPerformanceMonitoring(): void
     {
-        // FIXED: Monitor database queries globally
-        \DB::listen(function ($query) {
-            if ($query->time <= 1000) { // Skip queries faster than 1 second
-                return;
-            }
+        // Only enable slow-query logging when debug mode or performance monitoring is on.
+        // The DB::listen() closure runs on EVERY query even when it early-returns,
+        // adding measurable overhead in production.
+        if (config('app.debug') || config('medcapsule.performance.monitoring_enabled', false)) {
+            \DB::listen(function ($query) {
+                if ($query->time <= 1000) {
+                    return;
+                }
 
-            $performanceService = app(PerformanceMonitorService::class);
-            $operationId = $performanceService->startOperation('slow_query', [
-                'sql' => $query->sql,
-                'bindings' => $query->bindings,
-                'connection' => $query->connectionName
-            ]);
+                $performanceService = app(PerformanceMonitorService::class);
+                $operationId = $performanceService->startOperation('slow_query', [
+                    'sql' => $query->sql,
+                    'bindings' => $query->bindings,
+                    'connection' => $query->connectionName
+                ]);
 
-            $performanceService->endOperation($operationId, [
-                'execution_time_ms' => $query->time,
-                'query_type' => $this->getQueryType($query->sql)
-            ]);
-        });
+                $performanceService->endOperation($operationId, [
+                    'execution_time_ms' => $query->time,
+                    'query_type' => $this->getQueryType($query->sql)
+                ]);
+            });
+        }
 
-        // FIXED: Monitor HTTP requests globally
-        if (app()->runningInConsole() === false) {
+        // Only monitor HTTP requests when not running in console
+        if (app()->runningInConsole() === false &&
+            (config('app.debug') || config('medcapsule.performance.monitoring_enabled', false))) {
             $this->app['events']->listen('kernel.handling', function () {
                 $performanceService = app(PerformanceMonitorService::class);
                 $request = request();
@@ -272,7 +277,7 @@ class AppServiceProvider extends ServiceProvider
             });
         }
 
-        // FIXED: Monitor queue jobs
+        // Monitor queue jobs (low overhead — only fires during queue worker)
         $this->app['events']->listen('Illuminate\Queue\Events\JobProcessing', function ($event) {
             $performanceService = app(PerformanceMonitorService::class);
 

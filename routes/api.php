@@ -8,6 +8,7 @@ use Illuminate\Support\Facades\DB;
 use App\Http\Controllers\VideoController;
 use App\Http\Controllers\VideoProxyController;
 use App\Events\LiveUserCountUpdated;
+use Illuminate\Support\Facades\Cache;
 
 /*
 |--------------------------------------------------------------------------
@@ -25,33 +26,33 @@ Route::middleware('auth')->get('/user', function (Request $request) {
 // Active users count API
 Route::get('/active-users', function() {
     try {
-        $fiveMinutesAgo = now()->subMinutes(5)->timestamp;
-        
-        // Get count of unique visitors based on fingerprint
-        $visitorCount = DB::table('sessions')
-            ->where('last_activity', '>=', $fiveMinutesAgo)
-            ->where('is_visitor', true)
-            ->distinct('fingerprint')
-            ->count();
+        $data = Cache::remember('api:active_users_count', 30, function () {
+            $fiveMinutesAgo = now()->subMinutes(5)->timestamp;
 
-        // Get count of unique logged-in users
-        $loggedInCount = DB::table('sessions')
-            ->where('last_activity', '>=', $fiveMinutesAgo)
-            ->where('is_visitor', false)
-            ->whereNotNull('user_id')
-            ->distinct('user_id')
-            ->count();
-        
-        $totalCount = $visitorCount + $loggedInCount;
+            $visitorCount = DB::table('sessions')
+                ->where('last_activity', '>=', $fiveMinutesAgo)
+                ->where('is_visitor', true)
+                ->distinct('fingerprint')
+                ->count();
 
-        // Broadcast the event with the total count
-        LiveUserCountUpdated::dispatch($totalCount);
+            $loggedInCount = DB::table('sessions')
+                ->where('last_activity', '>=', $fiveMinutesAgo)
+                ->where('is_visitor', false)
+                ->whereNotNull('user_id')
+                ->distinct('user_id')
+                ->count();
 
-        return response()->json([
-            'count' => $totalCount,
-            'visitors' => $visitorCount,
-            'users' => $loggedInCount
-        ]);
+            return [
+                'count' => $visitorCount + $loggedInCount,
+                'visitors' => $visitorCount,
+                'users' => $loggedInCount
+            ];
+        });
+
+        // Broadcast outside cache so it fires on every poll
+        LiveUserCountUpdated::dispatch($data['count']);
+
+        return response()->json($data);
     } catch (\Exception $e) {
         // Return a default response instead of exposing the error
         return response()->json([
@@ -101,18 +102,20 @@ Route::middleware(['auth', 'role:admin,tutor'])->group(function () {
 // Get question counts by source for a topic
 Route::get('/topic/{topic}/question-counts', function($topicId) {
     try {
-        $sourceCounts = Question::query()
-            ->where('topic_id', $topicId)
-            ->whereNotNull('source')
-            ->selectRaw('source, COUNT(*) as total')
-            ->groupBy('source')
-            ->pluck('total', 'source');
+        $counts = Cache::remember("api:topic:{$topicId}:question_counts", 3600, function () use ($topicId) {
+            $sourceCounts = Question::query()
+                ->where('topic_id', $topicId)
+                ->whereNotNull('source')
+                ->selectRaw('source, COUNT(*) as total')
+                ->groupBy('source')
+                ->pluck('total', 'source');
 
-        $counts = [
-            'total' => (int) Question::where('topic_id', $topicId)->count(),
-            'sources' => $sourceCounts,
-        ];
-        
+            return [
+                'total' => (int) Question::where('topic_id', $topicId)->count(),
+                'sources' => $sourceCounts,
+            ];
+        });
+
         return response()->json($counts);
     } catch (\Exception $e) {
         return response()->json(['error' => 'Failed to get question counts'], 500);
@@ -122,15 +125,17 @@ Route::get('/topic/{topic}/question-counts', function($topicId) {
 // Get available sources for a topic (for assignment creation)
 Route::get('/topics/{topicId}/sources', function($topicId) {
     try {
-        $sources = \DB::table('questions')
-            ->where('topic_id', $topicId)
-            ->select('source')
-            ->distinct()
-            ->whereNotNull('source')
-            ->where('source', '!=', '')
-            ->pluck('source')
-            ->toArray();
-        
+        $sources = Cache::remember("api:topic:{$topicId}:sources", 3600, function () use ($topicId) {
+            return \DB::table('questions')
+                ->where('topic_id', $topicId)
+                ->select('source')
+                ->distinct()
+                ->whereNotNull('source')
+                ->where('source', '!=', '')
+                ->pluck('source')
+                ->toArray();
+        });
+
         return response()->json($sources);
     } catch (\Exception $e) {
         return response()->json(['error' => 'Failed to get sources'], 500);
