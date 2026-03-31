@@ -404,10 +404,6 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/notifications/mark-all-read', [NotificationActionController::class, 'markAllAsRead'])->name('notifications.mark-all-read');
 });
 
-// Keep this for backward compatibility, but we've moved the routes to standard auth middleware
-Route::middleware('auth:sanctum')->group(function () {
-    // API routes that require Sanctum auth would go here
-});
 
 // Healthcheck route for monitoring
 Route::get('/health', [App\Http\Controllers\Api\StatusController::class, 'health']);
