@@ -1,5 +1,5 @@
 /* Only keep critical overrides that are not in topics.css */
-body{font-family:'Poppins',sans-serif;background-color:#f8f9fa;zoom:0.75;margin:0;padding:0;line-height:1.6;-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale}
+body{font-family:'Poppins',sans-serif;background-color:#f8f9fa;zoom:.72;margin:0;padding:0;line-height:1.6;-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale}
 
 :root {
     --topics-sidebar-scale-compensation: 1.1111111111;
