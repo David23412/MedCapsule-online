@@ -252,9 +252,9 @@ class TopicController extends Controller
                 ->orderBy('name')
                 ->get();
 
-            $accessMap = $user->hasAccessToCourses($candidateCourses->pluck('id')->all());
+            $accessLevels = $user->getCourseAccessLevels($candidateCourses->pluck('id')->all());
             $availableCourses = $candidateCourses
-                ->filter(fn ($availableCourse) => ($accessMap[$availableCourse->id] ?? false) && $user->hasFullAccessToCourse($availableCourse))
+                ->filter(fn ($availableCourse) => ($accessLevels[$availableCourse->id] ?? null) === \App\Models\User::COURSE_ACCESS_FULL)
                 ->values();
         }
 
@@ -358,9 +358,9 @@ class TopicController extends Controller
                     })
                     ->get();
 
-                $accessMap = $user->hasAccessToCourses($candidateCourses->pluck('id')->all());
+                $accessLevels = $user->getCourseAccessLevels($candidateCourses->pluck('id')->all());
                 $accessibleCourses = $candidateCourses
-                    ->filter(fn ($course) => ($accessMap[$course->id] ?? false) && $user->hasFullAccessToCourse($course))
+                    ->filter(fn ($course) => ($accessLevels[$course->id] ?? null) === \App\Models\User::COURSE_ACCESS_FULL)
                     ->values();
             }
 

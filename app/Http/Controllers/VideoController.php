@@ -411,4 +411,42 @@ class VideoController extends Controller
 
         return null;
     }
+
+    /**
+     * Get video details for YouTube videos (simple JSON endpoint).
+     */
+    public function show(Video $video): JsonResponse
+    {
+        $user = auth()->user();
+
+        $video->loadMissing('topic.course');
+
+        if (! $video->topic || ! $video->topic->course) {
+            return response()->json(['success' => false, 'message' => 'Video not found'], 404);
+        }
+
+        $course = $video->topic->course;
+
+        if (! $user->isAdmin() && ! $user->hasAccessToCourse($course->id)) {
+            return response()->json(['success' => false, 'message' => 'Access denied.'], 403);
+        }
+
+        if (! $user->isAdmin() && $user->isTopicPreviewLocked($video->topic)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'This video is outside the free preview.',
+            ], 403);
+        }
+
+        return response()->json([
+            'success' => true,
+            'video' => [
+                'id' => $video->id,
+                'title' => $video->title,
+                'youtube_video_id' => $video->youtube_video_id,
+                'description' => $video->description,
+                'duration' => $video->duration
+            ]
+        ]);
+    }
 }

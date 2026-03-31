@@ -106,4 +106,9 @@ class StatusController extends Controller
             ]);
         }
     }
+
+    public function health(): JsonResponse
+    {
+        return response()->json(['status' => 'ok'], 200);
+    }
 }

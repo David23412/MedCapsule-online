@@ -1,7 +1,6 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
-use Illuminate\Http\Request;
 use App\Http\Controllers\{
     CourseController,
     TopicController,
@@ -12,10 +11,7 @@ use App\Http\Controllers\{
     HomeController,
     UserCourseController,
     ProfileController,
-    StudySessionController,
     Admin\PaymentController,
-    PaymentSettingsController,
-    PaymentLogController,
     AssignmentController,
     StudentAssignmentController,
     TopicLockingController
@@ -24,42 +20,6 @@ use App\Http\Controllers\Api\StatusController;
 use App\Http\Controllers\FreeCourseSurveyController;
 use App\Http\Controllers\Notification\NotificationViewController;
 use App\Http\Controllers\Notification\NotificationActionController;
-use Illuminate\Support\Facades\DB;
-
-$serveStorageFile = function (string $basePath, string $path, array $headers = []) {
-    $baseDirectory = realpath($basePath);
-    abort_if($baseDirectory === false, 404);
-
-    $relativePath = ltrim($path, '/');
-    $requestedPath = realpath($baseDirectory . DIRECTORY_SEPARATOR . $relativePath);
-
-    abort_if($requestedPath === false || !is_file($requestedPath), 404);
-    abort_if(
-        $requestedPath !== $baseDirectory && !str_starts_with($requestedPath, $baseDirectory . DIRECTORY_SEPARATOR),
-        404
-    );
-
-    $mimeType = mime_content_type($requestedPath) ?: 'application/octet-stream';
-
-    return response()->file($requestedPath, array_merge([
-        'Content-Type' => $mimeType,
-        'Cache-Control' => 'public, max-age=31536000',
-    ], $headers));
-};
-
-$serveFirstExistingStorageFile = function (array $basePaths, string $path, array $headers = []) use ($serveStorageFile) {
-    foreach ($basePaths as $basePath) {
-        try {
-            return $serveStorageFile($basePath, $path, $headers);
-        } catch (\Symfony\Component\HttpKernel\Exception\HttpException $e) {
-            if ($e->getStatusCode() !== 404) {
-                throw $e;
-            }
-        }
-    }
-
-    abort(404);
-};
 
 // Public routes
 Route::view('/', 'landing')->name('landing');
@@ -102,52 +62,14 @@ Route::middleware(['auth', 'admin'])->group(function () {
     Route::post('/manage-access/revoke', [UserCourseController::class, 'revoke'])->name('admin.user-course.revoke');
     
     // Admin Settings Routes
-    Route::post('/admin/settings/update', function(\Illuminate\Http\Request $request) {
-        $validated = $request->validate([
-            'key' => 'required|string',
-            'value' => 'required',
-            'type' => 'required|in:string,boolean,integer,float,json'
-        ]);
-        
-        \App\Models\AdminSetting::set($validated['key'], $validated['value'], $validated['type']);
-        
-        return response()->json(['success' => true, 'message' => 'Setting updated successfully']);
-    })->name('admin.settings.update');
+    Route::post('/admin/settings/update', [\App\Http\Controllers\Admin\AdminSettingsController::class, 'update'])->name('admin.settings.update');
     
-    Route::get('/admin/settings/{key}', function(string $key) {
-        $value = \App\Models\AdminSetting::get($key);
-        return response()->json(['value' => $value]);
-    })->name('admin.settings.get');
+    Route::get('/admin/settings/{key}', [\App\Http\Controllers\Admin\AdminSettingsController::class, 'get'])->name('admin.settings.get');
     
     // Course Fake Enrolled Routes
-    Route::post('/admin/courses/{course}/fake-enrolled', function(\Illuminate\Http\Request $request, \App\Models\Course $course) {
-        $validated = $request->validate([
-            'fake_enrolled_enabled' => 'required|boolean',
-            'fake_enrolled_count' => 'required|integer|min:0|max:9999'
-        ]);
-        
-        $course->update($validated);
-        
-        return response()->json(['success' => true, 'message' => 'Course fake enrolled settings updated']);
-    })->name('admin.courses.fake-enrolled.update');
+    Route::post('/admin/courses/{course}/fake-enrolled', [\App\Http\Controllers\Admin\AdminSettingsController::class, 'updateFakeEnrolled'])->name('admin.courses.fake-enrolled.update');
     
-    Route::post('/admin/courses/fake-enrolled/bulk', function(\Illuminate\Http\Request $request) {
-        $validated = $request->validate([
-            'courses' => 'required|array',
-            'courses.*.id' => 'required|exists:courses,id',
-            'courses.*.fake_enrolled_enabled' => 'required|boolean',
-            'courses.*.fake_enrolled_count' => 'required|integer|min:0|max:9999'
-        ]);
-        
-        foreach ($validated['courses'] as $courseData) {
-            \App\Models\Course::where('id', $courseData['id'])->update([
-                'fake_enrolled_enabled' => $courseData['fake_enrolled_enabled'],
-                'fake_enrolled_count' => $courseData['fake_enrolled_count']
-            ]);
-        }
-        
-        return response()->json(['success' => true, 'message' => 'All courses updated successfully']);
-    })->name('admin.courses.fake-enrolled.bulk');
+    Route::post('/admin/courses/fake-enrolled/bulk', [\App\Http\Controllers\Admin\AdminSettingsController::class, 'bulkUpdateFakeEnrolled'])->name('admin.courses.fake-enrolled.bulk');
 });
 // Route removed - restore functionality is handled by revoke method (toggle)
 
@@ -210,13 +132,7 @@ Route::group([], function () use ($serveStorageFile, $serveFirstExistingStorageF
         Route::delete('/admin/videos/{video}', [App\Http\Controllers\VideoController::class, 'destroy'])->name('admin.videos.destroy');
 
         // API route for getting course topics
-        Route::get('/api/courses/{course}/topics', function($courseId) {
-            $topics = \App\Models\Topic::where('course_id', $courseId)
-                ->select('id', 'name')
-                ->orderBy('display_order')
-                ->get();
-            return response()->json($topics);
-        });
+        Route::get('/api/courses/{course}/topics', [\App\Http\Controllers\Admin\AdminSettingsController::class, 'getCourseTopics']);
         Route::get('/manage-access/user-courses/{userId}', [UserCourseController::class, 'userCourses'])->name('admin.user-course.user-courses');
         Route::post('/manage-access/toggle-admin', [UserCourseController::class, 'toggleAdmin'])->name('admin.user-course.toggle-admin');
         // TEMPORARY: Move payments route outside admin middleware group for testing
@@ -255,23 +171,7 @@ Route::group([], function () use ($serveStorageFile, $serveFirstExistingStorageF
     Route::post('/courses/{course}/enroll', [CourseController::class, 'enroll'])->name('courses.enroll');
     
     // Handle legacy/invalid course IDs by redirecting to available course
-    Route::get('/topics/{courseId}', function($courseId) {
-        $courseId = (int) $courseId;
-        
-        // Check if course exists
-        if (!\App\Models\Course::find($courseId)) {
-            // Redirect to first available course
-            $firstCourse = \App\Models\Course::first();
-            if ($firstCourse) {
-                return redirect("/topics/{$firstCourse->id}")
-                    ->with('info', "Course {$courseId} not found. Redirected to available course.");
-            }
-            abort(404, "No courses available");
-        }
-        
-        // Course exists, proceed normally
-        return app(TopicController::class)->forCourse($courseId);
-    })->name('topics.forCourse')->where('courseId', '[0-9]+')->middleware('free.course.survey');
+    Route::get('/topics/{courseId}', [TopicController::class, 'forCourse'])->name('topics.forCourse')->where('courseId', '[0-9]+')->middleware('free.course.survey');
     Route::get('/topics/course/{courseId}', [TopicController::class, 'forCourse'])->name('topics.forCourseLegacy')->where('courseId', '[0-9]+')->middleware('free.course.survey');
     Route::get('/courses/{course}/cases', [TopicController::class, 'casesForCourse'])->name('cases.forCourse')->middleware('free.course.survey');
     Route::get('/courses/{course}/cases-count', [TopicController::class, 'casesCount'])->name('cases.count')->middleware('free.course.survey');
@@ -339,30 +239,16 @@ Route::group([], function () use ($serveStorageFile, $serveFirstExistingStorageF
     });
 
     // Profile picture serving route (FIXED: Use correct storage location for secure_uploads disk)
-    Route::get('/uploads/profile-pictures/{path}', function ($path) use ($serveFirstExistingStorageFile) {
-        return $serveFirstExistingStorageFile([
-            storage_path('app/private/uploads/profile-pictures'),
-            storage_path('app/uploads/profile-pictures'),
-        ], $path);
-    })->where('path', '.*');
+    Route::get('/uploads/profile-pictures/{path}', [\App\Http\Controllers\FileServeController::class, 'profilePicture'])->where('path', '.*');
 
     // Course image serving route (public access)
-    Route::get('/uploads/course-images/{path}', function ($path) use ($serveFirstExistingStorageFile) {
-        return $serveFirstExistingStorageFile([
-            storage_path('app/public/course-images'),
-            storage_path('app/uploads/course-images'),
-        ], $path);
-    })->where('path', '.*');
+    Route::get('/uploads/course-images/{path}', [\App\Http\Controllers\FileServeController::class, 'courseImage'])->where('path', '.*');
 
     // Question image serving route (public access)
-    Route::get('/uploads/questions/{path}', function ($path) use ($serveStorageFile) {
-        return $serveStorageFile(storage_path('app/public/questions'), $path);
-    })->where('path', '.*');
+    Route::get('/uploads/questions/{path}', [\App\Http\Controllers\FileServeController::class, 'questionImage'])->where('path', '.*');
 
     // Dashboard redirect
-    Route::get('/dashboard', function () {
-        return redirect('/courses');
-    })->name('dashboard');
+    Route::redirect('/dashboard', '/courses')->name('dashboard');
 
     // Payment Routes
     Route::prefix('payments')->name('payments.')->group(function () {
@@ -417,28 +303,7 @@ Route::group([], function () use ($serveStorageFile, $serveFirstExistingStorageF
         // AJAX endpoints for assignment creation
         Route::get('/courses/{course}/topics', [AssignmentController::class, 'getTopicsForCourse'])->name('course.topics');
         Route::get('/courses/{course}/students', [AssignmentController::class, 'getStudentsForCourse'])->name('course.students');
-        Route::get('/topics/{topicId}/sources', function($topicId) {
-            try {
-                \Log::info('Loading sources for topic ID: ' . $topicId);
-                $sources = \DB::table('questions')
-                    ->where('topic_id', $topicId)
-                    ->select('source')
-                    ->distinct()
-                    ->whereNotNull('source')
-                    ->where('source', '!=', '')
-                    ->pluck('source')
-                    ->toArray();
-                
-                return response()->json($sources);
-            } catch (\Exception $e) {
-                \Log::error('Error fetching topic sources: ' . $e->getMessage(), [
-                    'topic_id' => $topicId,
-                    'error' => $e->getMessage()
-                ]);
-                
-                return response()->json([], 500);
-            }
-        })->name('topic.sources');
+        Route::get('/topics/{topicId}/sources', [AssignmentController::class, 'getTopicSources'])->name('topic.sources');
         
 
         
@@ -549,9 +414,7 @@ Route::middleware('auth:sanctum')->group(function () {
 });
 
 // Healthcheck route for monitoring
-Route::get('/health', function() {
-    return response()->json(['status' => 'ok'], 200);
-});
+Route::get('/health', [App\Http\Controllers\Api\StatusController::class, 'health']);
 
 // Admin Tutor Management Routes (Admin & Tutor Access)
 Route::middleware(['auth', 'tutor'])->prefix('admin/tutors')->name('admin.tutors.')->group(function () {
@@ -593,39 +456,8 @@ Route::middleware(['auth'])->prefix('api')->group(function () {
         ->middleware('throttle:video-tokens');
     
     // Simple video details endpoint for YouTube videos
-    Route::get('/video/{video}', function (\App\Models\Video $video) {
-        $user = auth()->user();
-
-        $video->loadMissing('topic.course');
-
-        if (! $video->topic || ! $video->topic->course) {
-            return response()->json(['success' => false, 'message' => 'Video not found'], 404);
-        }
-
-        $course = $video->topic->course;
-
-        if (! $user->isAdmin() && ! $user->hasAccessToCourse($course->id)) {
-            return response()->json(['success' => false, 'message' => 'Access denied.'], 403);
-        }
-
-        if (! $user->isAdmin() && $user->isTopicPreviewLocked($video->topic)) {
-            return response()->json([
-                'success' => false,
-                'message' => 'This video is outside the free preview.',
-            ], 403);
-        }
-
-        return response()->json([
-            'success' => true,
-            'video' => [
-                'id' => $video->id,
-                'title' => $video->title,
-                'youtube_video_id' => $video->youtube_video_id,
-                'description' => $video->description,
-                'duration' => $video->duration
-            ]
-        ]);
-    })->middleware('throttle:video-tokens');
+    Route::get('/video/{video}', [App\Http\Controllers\VideoController::class, 'show'])
+        ->middleware('throttle:video-tokens');
     
 
 });

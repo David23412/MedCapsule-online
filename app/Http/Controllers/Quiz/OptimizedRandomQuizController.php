@@ -71,20 +71,24 @@ class OptimizedRandomQuizController extends Controller
         // Keep selected course labels limited to fully accessible courses.
         $selectedCourses = collect();
         if (!empty($selectedCourseIds)) {
-            $selectedCourses = Course::query()
+            $courses = Course::query()
                 ->select('id', 'name')
                 ->whereIn('id', $selectedCourseIds)
-                ->get()
-                ->filter(fn (Course $course) => $user->hasFullAccessToCourse($course))
+                ->get();
+            $accessLevels = $user->getCourseAccessLevels($courses->pluck('id')->all());
+            $selectedCourses = $courses
+                ->filter(fn (Course $course) => ($accessLevels[$course->id] ?? null) === \App\Models\User::COURSE_ACCESS_FULL)
                 ->values();
         }
 
         // Fallback to first fully accessible enrolled course if none selected
         if ($selectedCourses->isEmpty()) {
-            $selectedCourses = $user->courses()
+            $enrolledCourses = $user->courses()
                 ->select('courses.id', 'courses.name')
-                ->get()
-                ->filter(fn (Course $course) => $user->hasFullAccessToCourse($course))
+                ->get();
+            $accessLevels = $user->getCourseAccessLevels($enrolledCourses->pluck('id')->all());
+            $selectedCourses = $enrolledCourses
+                ->filter(fn (Course $course) => ($accessLevels[$course->id] ?? null) === \App\Models\User::COURSE_ACCESS_FULL)
                 ->take(1)
                 ->values();
             if ($selectedCourses->isEmpty()) {
@@ -146,20 +150,24 @@ class OptimizedRandomQuizController extends Controller
         // Keep selected course labels limited to fully accessible courses.
         $selectedCourses = collect();
         if (!empty($selectedCourseIds)) {
-            $selectedCourses = Course::query()
+            $courses = Course::query()
                 ->select('id', 'name')
                 ->whereIn('id', $selectedCourseIds)
-                ->get()
-                ->filter(fn (Course $course) => $user->hasFullAccessToCourse($course))
+                ->get();
+            $accessLevels = $user->getCourseAccessLevels($courses->pluck('id')->all());
+            $selectedCourses = $courses
+                ->filter(fn (Course $course) => ($accessLevels[$course->id] ?? null) === \App\Models\User::COURSE_ACCESS_FULL)
                 ->values();
         }
 
         // Fallback to first fully accessible enrolled course if none selected
         if ($selectedCourses->isEmpty()) {
-            $selectedCourses = $user->courses()
+            $enrolledCourses = $user->courses()
                 ->select('courses.id', 'courses.name')
-                ->get()
-                ->filter(fn (Course $course) => $user->hasFullAccessToCourse($course))
+                ->get();
+            $accessLevels = $user->getCourseAccessLevels($enrolledCourses->pluck('id')->all());
+            $selectedCourses = $enrolledCourses
+                ->filter(fn (Course $course) => ($accessLevels[$course->id] ?? null) === \App\Models\User::COURSE_ACCESS_FULL)
                 ->take(1)
                 ->values();
             if ($selectedCourses->isEmpty()) {
