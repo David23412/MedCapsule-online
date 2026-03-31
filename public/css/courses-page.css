@@ -14,7 +14,7 @@
             min-height: 100vh;
             overflow-x: hidden;
             line-height: 1.6;
-            zoom: 0.7; /* Zoom out to 70% for better overall view */
+            zoom: 0.75; /* Zoom out to 75% for better overall view */
         }
 
         .navbar {
