@@ -1,12 +1,17 @@
         @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600;700&display=swap');
 
+        /* Review mistakes page zoom fix - 80% scale */
+        html {
+            font-size: 12.8px; /* 80% of 16px */
+        }
+        
         body {
             font-family: 'Poppins', sans-serif;
             background: linear-gradient(135deg, #f6f9fc, #f1f4f8);
             margin: 0;
             padding: 0;
             min-height: 100vh;
-            zoom: 0.75;
+            zoom: 0.80; /* Zoom out 20% */
             -webkit-text-size-adjust: 100%; /* Prevent Safari text auto-sizing */
         }
 
