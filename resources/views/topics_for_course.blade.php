@@ -531,9 +531,6 @@
                         <i class="fas fa-chevron-right"></i>
                     </button>
                 </div>
-                <div class="progress-indicator">
-                    <span id="progressIndicatorText">1-{{ min($segmentsToShow, $totalTopics) }} of {{ $totalTopics }}</span>
-                </div>
             </div>
         </div>
     </header>
@@ -952,9 +949,8 @@
         const prevBtn = document.getElementById('progressPrevBtn');
         const nextBtn = document.getElementById('progressNextBtn');
         const track = document.getElementById('topicsProgressTrack');
-        const indicator = document.getElementById('progressIndicatorText');
         
-        if (!prevBtn || !nextBtn || !track || !indicator) return;
+        if (!prevBtn || !nextBtn || !track) return;
         
         const allTopics = @json($topics->values()->toArray());
         const totalTopics = allTopics.length;
@@ -963,7 +959,6 @@
         
         function updateSegments() {
             const endIndex = Math.min(currentIndex + segmentsToShow, totalTopics);
-            const startIndex = currentIndex + 1;
             
             // Clear current segments
             track.innerHTML = '';
@@ -984,9 +979,6 @@
                 
                 track.appendChild(segment);
             }
-            
-            // Update indicator
-            indicator.textContent = `${startIndex}-${endIndex} of ${totalTopics}`;
             
             // Update button states
             prevBtn.disabled = currentIndex === 0;

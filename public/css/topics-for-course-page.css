@@ -2102,8 +2102,8 @@ body.topics-sidebar-open {
 .progress-nav-btn {
     width: 32px;
     height: 32px;
-    border: 1px solid #e2e8f0;
-    background: #ffffff;
+    border: none;
+    background: transparent;
     border-radius: 6px;
     display: flex;
     align-items: center;
@@ -2115,8 +2115,7 @@ body.topics-sidebar-open {
 }
 
 .progress-nav-btn:hover:not(:disabled) {
-    background: #f8fafc;
-    border-color: #cbd5e1;
+    background: rgba(100, 116, 139, 0.1);
     color: #475569;
 }
 
@@ -2130,13 +2129,6 @@ body.topics-sidebar-open {
     display: flex;
     gap: 3px;
     padding: 0 0.5rem;
-}
-
-.progress-indicator {
-    text-align: center;
-    font-size: 0.75rem;
-    color: #64748b;
-    font-weight: 500;
 }
 
 .topics-progress-segment {
