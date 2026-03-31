@@ -93,10 +93,10 @@ Route::middleware(['auth', 'role:admin,tutor'])->group(function () {
     Route::get('/course/{course}/locked-topics', 'App\Http\Controllers\TopicLockingController@getLockedTopics');
     
     // Get topics locked by the current tutor
-    Route::get('/my-locked-topics', 'App\Http\Controllers\TopicLockingController@getMyLockedTopics');
+    Route::get('/my-locked-topics', 'App\Http\Controllers\TopicLocking\TopicLockingApiController@getMyLockedTopics');
     
     // Get lock information for a topic
-    Route::get('/topic/{topic}/lock-info', 'App\Http\Controllers\TopicLockingController@getLockInfo');
+    Route::get('/topic/{topic}/lock-info', 'App\Http\Controllers\TopicLocking\TopicLockingApiController@getLockInfo');
 });
 
 // Get question counts by source for a topic

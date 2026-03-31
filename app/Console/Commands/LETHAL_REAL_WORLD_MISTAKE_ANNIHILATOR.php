@@ -11,7 +11,7 @@ use App\Models\Mistake;
 use App\Models\Assignment;
 use App\Models\QuizAttempt;
 use App\Services\GradingService;
-use App\Http\Controllers\Quiz\QuizExecutionController;
+use App\Http\Controllers\Quiz\QuizGradingController;
 use App\Http\Controllers\Quiz\OptimizedRandomQuizController;
 use App\Http\Controllers\Quiz\QuizTutorController;
 use App\Http\Controllers\MistakeController;
@@ -796,8 +796,8 @@ class LETHAL_REAL_WORLD_MISTAKE_ANNIHILATOR extends Command
                 'mode' => 'quiz'
             ]);
             
-            $controller = app(\App\Http\Controllers\Quiz\QuizExecutionController::class);
-            $response = $controller->grade($request, $course, $topic);
+            $controller = app(\App\Http\Controllers\Quiz\QuizGradingController::class);
+            $response = $controller->submit($request, $course, $topic);
             
             $responseData = $response->getData(true);
             
@@ -1016,7 +1016,7 @@ class LETHAL_REAL_WORLD_MISTAKE_ANNIHILATOR extends Command
             // Test all critical services
             $services = [
                 GradingService::class,
-                QuizExecutionController::class,
+                QuizGradingController::class,
                 OptimizedRandomQuizController::class,
                 MistakeController::class
             ];
@@ -1179,7 +1179,7 @@ class LETHAL_REAL_WORLD_MISTAKE_ANNIHILATOR extends Command
         $this->info('💥 PHASE 3: CONTROLLER ANNIHILATION BOMBARDMENT');
         $this->info('===============================================');
         
-        $this->runLethalTest('Controller - QuizExecutionController Obliteration', function() {
+        $this->runLethalTest('Controller - QuizGradingController Obliteration', function() {
             $user = $this->realUsers->random();
             $course = $this->realCourses->random();
             $topic = $this->realTopics->where('course_id', $course->id)->first();
@@ -1202,7 +1202,7 @@ class LETHAL_REAL_WORLD_MISTAKE_ANNIHILATOR extends Command
                 $testCases['all_unanswered'][$question->id] = '';
             }
             
-            $controller = app(QuizExecutionController::class);
+            $controller = app(QuizGradingController::class);
             
             foreach ($testCases as $caseName => $answers) {
                 $request = new Request([
@@ -1212,7 +1212,7 @@ class LETHAL_REAL_WORLD_MISTAKE_ANNIHILATOR extends Command
                 ]);
                 
                 $startTime = microtime(true);
-                $response = $controller->grade($request, $course, $topic);
+                $response = $controller->submit($request, $course, $topic);
                 $endTime = microtime(true);
                 
                 $responseData = $response->getData(true);

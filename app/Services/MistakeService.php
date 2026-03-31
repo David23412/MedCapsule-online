@@ -52,8 +52,12 @@ class MistakeService
             $mistakeIdsToUpdate = $mistakes->where('skipped', null)->pluck('id');
             if ($mistakeIdsToUpdate->isNotEmpty()) {
                 Mistake::whereIn('id', $mistakeIdsToUpdate)->update(['skipped' => false]);
-                // Refresh the collection to reflect the change
-                $mistakes = $mistakesQuery->get(); 
+                // Update collection in-memory instead of re-querying
+                $mistakes->each(function ($mistake) use ($mistakeIdsToUpdate) {
+                    if ($mistakeIdsToUpdate->contains($mistake->id)) {
+                        $mistake->skipped = false;
+                    }
+                });
             }
 
             return [

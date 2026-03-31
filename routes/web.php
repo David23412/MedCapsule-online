@@ -76,10 +76,10 @@ Route::middleware(['auth', 'admin'])->group(function () {
 // Auth routes
 require __DIR__.'/auth.php';
 
-Route::group([], function () use ($serveStorageFile, $serveFirstExistingStorageFile) {
+Route::group([], function () {
 
     // Protected routes
-    Route::middleware('auth')->group(function () use ($serveStorageFile, $serveFirstExistingStorageFile) {
+    Route::middleware('auth')->group(function () {
     // User progress route
     Route::get('/profile/progress', [ProfileController::class, 'getProgress'])->name('user.progress');
 
@@ -316,10 +316,6 @@ Route::group([], function () use ($serveStorageFile, $serveFirstExistingStorageF
             ->middleware(['throttle:30,1']);
         Route::get('/counter/data', [AssignmentController::class, 'getCounterData'])
             ->name('counter.data');
-        Route::get('/courses/{course}/topics', [AssignmentController::class, 'getTopicsForCourse'])
-            ->name('course.topics');
-        Route::get('/courses/{course}/students', [AssignmentController::class, 'getStudentsForCourse'])
-            ->name('course.students');
         Route::post('/update-overdue', [AssignmentController::class, 'updateOverdue'])
             ->name('update-overdue')
             ->middleware(['throttle:5,1']);
