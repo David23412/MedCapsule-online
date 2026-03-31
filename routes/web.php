@@ -224,6 +224,9 @@ Route::group([], function () use ($serveStorageFile, $serveFirstExistingStorageF
         Route::get('/manage-access/enrollments', [UserCourseController::class, 'getEnrollments'])->name('admin.user-course.enrollments');
         Route::get('/manage-access/user-enrollments', [UserCourseController::class, 'getUserEnrollments'])->name('admin.user-course.user-enrollments');
         Route::post('/manage-access/payment-settings', [UserCourseController::class, 'updatePaymentSettings'])->name('admin.payment-settings.update');
+
+        // Course Management Resource Routes
+        Route::resource('admin/courses', \App\Http\Controllers\Admin\CourseController::class)->names('admin.courses');
     });
 
     // ✅ FIXED: Payments route with proper admin protection

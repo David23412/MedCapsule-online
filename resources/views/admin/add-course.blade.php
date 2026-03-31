@@ -288,7 +288,88 @@
             </div>
         </div>
     </div>
+
+    <!-- Existing Courses Management Section -->
+    <div class="card shadow mt-5">
+        <div class="card-header bg-dark text-white py-4 d-flex justify-content-between align-items-center">
+            <h3 class="mb-0"><i class="fas fa-list me-2"></i>Existing Courses</h3>
+            <div class="input-group w-50">
+                <span class="input-group-text"><i class="fas fa-search"></i></span>
+                <input type="text" id="courseSearch" class="form-control" placeholder="Search courses by name...">
+            </div>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th style="width: 80px;">Preview</th>
+                            <th>Course Name</th>
+                            <th>Academic Year</th>
+                            <th>Policy</th>
+                            <th>Status</th>
+                            <th class="text-end px-4">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="coursesTableBody">
+                        @foreach($courses as $course)
+                            <tr class="course-row" data-name="{{ strtolower($course->name) }}">
+                                <td class="ps-3">
+                                    <div style="width: 50px; height: 50px; border-radius: 8px; background-color: {{ $course->color }}; background-image: url('{{ $course->image_url }}'); background-size: cover; background-position: center; border: 1px solid #ddd;"></div>
+                                </td>
+                                <td>
+                                    <div class="fw-bold">{{ $course->name }}</div>
+                                    <small class="text-muted">{{ Str::limit($course->description, 50) }}</small>
+                                </td>
+                                <td>
+                                    <span class="badge bg-outline-secondary text-dark border">{{ $course->academic_year }}</span>
+                                </td>
+                                <td>
+                                    @if($course->access_type === 'free')
+                                        <span class="badge bg-success">Free</span>
+                                    @elseif($course->access_type === 'preview')
+                                        <span class="badge bg-info">Preview</span>
+                                    @else
+                                        <span class="badge bg-primary">Paid ({{ $course->price }} EGP)</span>
+                                    @endif
+                                </td>
+                                <td>
+                                    @if($course->is_published)
+                                        <span class="text-success"><i class="fas fa-check-circle me-1"></i>Published</span>
+                                    @else
+                                        <span class="text-warning"><i class="fas fa-clock me-1"></i>Draft</span>
+                                    @endif
+                                </td>
+                                <td class="text-end px-4">
+                                    <a href="{{ route('admin.courses.edit', $course->id) }}" class="btn btn-sm btn-outline-primary">
+                                        <i class="fas fa-edit"></i> Edit
+                                    </a>
+                                </td>
+                            </tr>
+                        @endforeach
+                    </tbody>
+                </table>
+            </div>
+            @if($courses->isEmpty())
+                <div class="text-center py-5">
+                    <i class="fas fa-graduation-cap fa-3x text-muted mb-3"></i>
+                    <p class="text-muted">No courses found. Start by creating one above!</p>
+                </div>
+            @endif
+        </div>
+    </div>
 </div>
+
+<script>
+// Course search functionality
+document.getElementById('courseSearch')?.addEventListener('input', function(e) {
+    const searchTerm = e.target.value.toLowerCase();
+    document.querySelectorAll('.course-row').forEach(row => {
+        const name = row.dataset.name;
+        row.style.display = name.includes(searchTerm) ? '' : 'none';
+    });
+});
+</script>
 
 <style>
 .preview-card {

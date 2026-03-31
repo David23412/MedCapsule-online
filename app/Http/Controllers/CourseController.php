@@ -68,7 +68,8 @@ class CourseController extends Controller
      */
     public function showAddCourseForm()
     {
-        return view('admin.add-course');
+        $courses = \App\Models\Course::orderBy('created_at', 'desc')->get();
+        return view('admin.add-course', compact('courses'));
     }
 
     /**

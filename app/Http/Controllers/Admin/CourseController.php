@@ -11,12 +11,16 @@ use App\Services\QuizPerformanceService;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Cache;
 use App\Services\QuizUltraConsolidatedCacheService;
+use App\Services\CourseService;
 
 class CourseController extends Controller
 {
-    public function __construct()
+    protected $courseService;
+
+    public function __construct(CourseService $courseService)
     {
         $this->middleware(['auth']);
+        $this->courseService = $courseService;
     }
 
     /**
@@ -145,47 +149,29 @@ class CourseController extends Controller
     public function update(Request $request, $id)
     {
         try {
-            $course = Course::findOrFail($id);
-            
-            $validatedData = $request->validate([
-                'name' => 'required|string|max:255',
-                'description' => 'nullable|string',
-                'access_type' => 'required|string|in:free,preview,paid',
-                'price' => 'nullable|numeric|min:0',
-                'type' => 'required|string|in:medical,custom',
-            ]);
+            $result = $this->courseService->updateCourse((int)$id, $request->all());
 
-            $validatedData['access_type'] = Course::normalizeAccessType($validatedData['access_type'] ?? null);
-            $validatedData['price'] = Course::normalizePriceForAccessType(
-                $validatedData['access_type'],
-                $validatedData['price'] ?? null
-            );
-
-            if ($policyValidationMessage = Course::accessPolicyValidationMessage($validatedData['access_type'], $validatedData['price'])) {
+            if (!$result['success']) {
                 return redirect()->back()
                     ->withInput()
-                    ->withErrors(['price' => $policyValidationMessage]);
+                    ->withErrors($result['errors'] ?? [])
+                    ->with('error', $result['message']);
             }
-            
-            // Handle course type change
-            $oldType = $course->type ?? 'medical';
-            $newType = $validatedData['type'] ?? 'medical';
-            
-            // If changing from medical to custom, log the change
-            if ($oldType === 'medical' && $newType === 'custom') {
-            }
-            
-            $course->update($validatedData);
-            
-            // Clear any cached course data
-            Cache::forget("course_{$id}");
-            
+
             return redirect()->route('admin.courses.index')
-                             ->with('success', 'Course updated successfully');
-        
+                ->with('success', $result['message']);
+
         } catch (\Exception $e) {
-            \Log::error('Method execution failed', ['error' => $e->getMessage()]);
-            return response()->json(['success' => false, 'message' => 'Operation failed'], 500);
+            Log::error("Course update endpoint error", [
+                'course_id' => $id,
+                'error' => $e->getMessage()
+            ]);
+            
+            if ($request->ajax() || $request->wantsJson()) {
+                return response()->json(['error' => 'Failed to update course.'], 500);
+            }
+
+            return redirect()->back()->with('error', 'An unexpected error occurred.');
         }
     }
 

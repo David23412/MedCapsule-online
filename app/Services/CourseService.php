@@ -344,6 +344,97 @@ class CourseService
     }
 
     /**
+     * UPDATE EXISTING COURSE
+     */
+    public function updateCourse(int $courseId, array $data): array
+    {
+        $operationId = $this->performanceMonitor->startOperation('course_update_service');
+
+        try {
+            $course = Course::findOrFail($courseId);
+
+            $validated = validator($data, [
+                'name' => 'required|string|max:255|unique:courses,name,' . $courseId,
+                'description' => 'required|string|max:2000',
+                'image_file' => 'nullable|file|max:5120',
+                'image_url' => 'nullable|url|max:2048',
+                'access_type' => 'required|string|in:free,preview,paid',
+                'color' => 'required|string|regex:/^#[a-fA-F0-9]{6}$/',
+                'title_color' => 'required|string|regex:/^#[a-fA-F0-9]{6}$/',
+                'academic_year' => 'required|string|in:YEAR 1 - SEMESTER 1,YEAR 1 - SEMESTER 2,YEAR 2 - SEMESTER 1,YEAR 2 - SEMESTER 2,YEAR 3 - SEMESTER 1,YEAR 3 - SEMESTER 2,YEAR 4 - SEMESTER 1,YEAR 4 - SEMESTER 2,YEAR 5 - SEMESTER 1,YEAR 5 - SEMESTER 2,YEAR 6 - SEMESTER 1,YEAR 6 - SEMESTER 2,SAT,EST,ACT',
+                'price' => 'nullable|numeric|min:0|max:999999.99',
+                'type' => 'required|string|in:medical,custom',
+                'is_published' => 'required|boolean'
+            ], [
+                'name.unique' => 'A course with this name already exists.',
+                'image_file.max' => 'The image may not be greater than 5MB.',
+                'color.regex' => 'Color must be a valid hex color code.',
+                'title_color.regex' => 'Title color must be a valid hex color code.'
+            ])->validated();
+
+            $validated['access_type'] = Course::normalizeAccessType($validated['access_type'] ?? null);
+            $validated['price'] = Course::normalizePriceForAccessType(
+                $validated['access_type'],
+                $validated['price'] ?? null
+            );
+
+            if ($policyValidationMessage = Course::accessPolicyValidationMessage($validated['access_type'], $validated['price'])) {
+                return [
+                    'success' => false,
+                    'message' => $policyValidationMessage,
+                    'errors' => ['price' => [$policyValidationMessage]],
+                ];
+            }
+
+            $updateData = [
+                'name' => $validated['name'],
+                'description' => $validated['description'],
+                'color' => $validated['color'],
+                'title_color' => $validated['title_color'],
+                'academic_year' => $validated['academic_year'],
+                'price' => $validated['price'] ?? null,
+                'access_type' => $validated['access_type'],
+                'type' => $validated['type'],
+                'is_published' => $validated['is_published']
+            ];
+
+            if (isset($data['image_file']) && $data['image_file']) {
+                try {
+                    $uploadResult = $this->fileUploadService->processSecureUpload(
+                        $data['image_file'],
+                        'images',
+                        'course-images',
+                        'public'
+                    );
+                    $updateData['image'] = $uploadResult['storage_path'];
+                } catch (\Exception $e) {
+                    return ['success' => false, 'message' => 'File upload failed: ' . $e->getMessage()];
+                }
+            } elseif (isset($validated['image_url']) && $validated['image_url']) {
+                if ($this->isValidImageUrl($validated['image_url'])) {
+                    $updateData['image'] = $validated['image_url'];
+                }
+            }
+
+            $course->update($updateData);
+            $this->clearCourseCaches();
+
+            return [
+                'success' => true,
+                'data' => compact('course'),
+                'message' => 'Course "' . $course->name . '" updated successfully!'
+            ];
+
+        } catch (\Exception $e) {
+            Log::error('Failed to update course', ['error' => $e->getMessage(), 'course_id' => $courseId]);
+            return ['success' => false, 'message' => 'Failed to update course.'];
+        } finally {
+            $this->performanceMonitor->endOperation($operationId);
+        }
+    }
+
+
+    /**
      * BUILD COURSE QUERY
      * Preserves exact query building logic from CourseController
      * Enhanced with CourseFilterService functionality
@@ -351,12 +442,7 @@ class CourseService
     private function buildCourseQuery(?int $userId, bool $isLoggedIn, ?string $selectedYear): \Illuminate\Database\Eloquent\Builder
     {
         $query = Course::query()->withCount([
-            'topics as topics_count' => function ($query) {
-                $query->where('name', 'NOT LIKE', '%cases%');
-            },
-            'topics as cases_count' => function ($query) {
-                $query->where('name', 'LIKE', '%cases%');
-            },
+            'topics as topics_count',
             'enrolledUsers as enrolled_users_count'
         ]);
 

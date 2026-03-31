@@ -743,7 +743,6 @@ export default function App({ isAuthenticated = false, appUrl, user }: AppProps)
   useEffect(() => {
     // Basic GSAP context for easy cleanup
     const ctx = gsap.context(() => {
-
       // 1. THE CAPSULE SPLIT & HERO TRANSITION
       const splitTimeline = gsap.timeline({
         scrollTrigger: {
@@ -768,8 +767,8 @@ export default function App({ isAuthenticated = false, appUrl, user }: AppProps)
       );
 
       // Reveal Features by moving them up into the viewport
-      splitTimeline.fromTo(featuresContentRef.current,
-        { opacity: 0, y: 300, scale: 0.9 },
+      gsap.set(featuresContentRef.current, { opacity: 0, y: 300, scale: 0.9 });
+      splitTimeline.to(featuresContentRef.current,
         { opacity: 1, y: 0, scale: 1, duration: 0.5, ease: "power2.out" },
         0.2
       );
@@ -986,10 +985,10 @@ export default function App({ isAuthenticated = false, appUrl, user }: AppProps)
       </nav>
 
       {/* ////// 1. HERO SECTION ////// */}
-      <section ref={heroRef} className="h-screen w-full relative flex flex-col items-center justify-center overflow-hidden bg-[radial-gradient(circle_at_center,#F0EFF4_0%,#FFFFFF_100%)]">
+      <section ref={heroRef} className="min-h-screen md:h-screen w-full relative flex flex-col items-center md:justify-center overflow-hidden bg-[radial-gradient(circle_at_center,#F0EFF4_0%,#FFFFFF_100%)] pt-20 md:pt-0">
 
         {/* Typography */}
-        <div className="text-center z-10 max-w-5xl px-6 relative top-[-5vh]">
+        <div className="text-center z-10 max-w-5xl px-6 relative md:top-[-5vh] mt-24 md:mt-0 mb-4 md:mb-0">
           <div className="font-mono text-plasma text-xs tracking-[0.2em] font-bold mb-6 uppercase tracking-widest">
             &Delta; THE EGYPTIAN STANDARD
           </div>
@@ -1001,7 +1000,8 @@ export default function App({ isAuthenticated = false, appUrl, user }: AppProps)
           </h2>
         </div>
 
-        <div className="absolute top-[68vh] left-1/2 -translate-x-1/2 flex justify-center items-center w-80 h-32 z-20 pointer-events-none">
+        {/* Pill split animation */}
+        <div className="relative md:absolute md:top-[68vh] md:left-1/2 md:-translate-x-1/2 flex justify-center items-center w-80 h-32 z-20 pointer-events-none mt-8 md:mt-0">
           <div ref={pillLeftRef} className="absolute inset-y-0 left-0 w-1/2 overflow-hidden">
             <div className="w-80 h-32 absolute left-0 origin-left">
               {renderPill()}
@@ -1014,18 +1014,21 @@ export default function App({ isAuthenticated = false, appUrl, user }: AppProps)
           </div>
         </div>
 
-        {/* FEATURES OVERLAY (Revealed by GSAP) */}
+        {/* FEATURES OVERLAY (Revealed by GSAP on desktop; always visible on mobile) */}
+        {/* On mobile: relative + auto-height so cards are naturally scrollable with the page */}
+        {/* On desktop: absolute + opacity:0 initially, GSAP animates it in via scroll */}
         <div
           ref={featuresContentRef}
-          className="absolute inset-0 z-30 bg-white flex items-start md:items-center justify-center overflow-y-auto md:overflow-hidden pt-20 md:pt-24 pb-8 md:pb-0 pointer-events-none"
+          className="relative md:absolute md:inset-0 z-30 bg-white flex items-start md:items-center justify-center overflow-visible md:overflow-hidden pt-6 md:pt-24 pb-8 md:pb-0"
+          style={{ opacity: 1 }}
         >
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 w-full min-h-full pointer-events-auto">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 w-full">
             <div className="text-center mb-8 md:mb-16">
               <h3 className="font-mono text-xs text-plasma uppercase tracking-widest mb-4">Core Study Tools</h3>
               <h4 className="font-heading text-3xl md:text-4xl text-charcoal font-bold font-heading">Master your medical curriculum.</h4>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-5 md:gap-8 px-1 md:px-0 pb-4 md:pb-0">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-5 md:gap-8 px-1 md:px-0 pb-8 md:pb-0">
               <MCQCard />
               <WeakTopicsPanel />
               <PerformanceChart />
@@ -1168,20 +1171,9 @@ export default function App({ isAuthenticated = false, appUrl, user }: AppProps)
       </section>
 
       {/* ////// 3. PRICING SECTION ////// */}
-      <section className="py-32 bg-white relative overflow-hidden">
+      <section className="hidden py-32 bg-white relative overflow-hidden">
         
-        {/* Coming Soon Overlay */}
-        <div className="absolute inset-0 z-20 flex flex-col items-center justify-center pointer-events-none">
-          <div className="font-mono text-plasma text-xs tracking-[0.2em] font-bold mb-4 uppercase opacity-70">
-            Membership Access
-          </div>
-          <h2 className="font-heading font-bold text-5xl md:text-7xl text-charcoal tracking-tight opacity-90 text-center">
-            Coming Soon
-          </h2>
-        </div>
-
-        {/* Blurred Content */}
-        <div className="max-w-7xl mx-auto px-6 filter blur-lg opacity-50 pointer-events-none select-none grayscale-[0.2] transition-all duration-700">
+        <div className="max-w-7xl mx-auto px-6">
           <div className="text-center mb-20">
             <h3 className="font-mono text-xs text-plasma uppercase tracking-widest mb-4">Pricing & Access</h3>
             <h4 className="font-heading text-4xl text-charcoal font-bold">Select Your Mastery Tier.</h4>
