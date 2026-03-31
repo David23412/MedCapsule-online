@@ -1,5 +1,7 @@
 name: Build and Publish Image
 
+# Deploys on every push to main. Tests run in parallel via tests.yml
+# but do not gate deployment for instant updates.
 on:
   push:
     branches: [main]
