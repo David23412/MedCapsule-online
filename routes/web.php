@@ -529,6 +529,15 @@ Route::group([], function () use ($serveStorageFile, $serveFirstExistingStorageF
             ->name('locked.topics');
     });
     });
+
+});
+
+// Root route - redirect to courses for authenticated users, login for guests
+Route::get('/', function () {
+    if (auth()->check()) {
+        return redirect()->route('courses.index');
+    }
+    return redirect()->route('login');
 });
 
 // Notification routes - simplified implementation
