@@ -49,12 +49,6 @@ class SendTopicUnlockNotification implements ShouldQueue
                 ]
             );
             
-            Log::info('Topic unlock notification sent', [
-                'student_id' => $event->student->id,
-                'tutor_id' => $event->tutor->id,
-                'topic_id' => $event->topic->id,
-                'topic_name' => $event->topic->name
-            ]);
         } catch (\Exception $e) {
             Log::error('Failed to send topic unlock notification', [
                 'student_id' => $event->student->id,

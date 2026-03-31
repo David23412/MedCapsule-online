@@ -126,10 +126,6 @@ class SendAssignmentReminders extends Command
         
         $this->info("🎉 Assignment reminder process complete. Sent {$remindersSent} reminders.");
         
-        Log::info('Assignment reminders sent', [
-            'total_assignments_checked' => $assignments->count(),
-            'reminders_sent' => $remindersSent
-        ]);
         
         return 0;
     }

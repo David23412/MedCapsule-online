@@ -173,12 +173,6 @@ class CourseController extends Controller
             
             // If changing from medical to custom, log the change
             if ($oldType === 'medical' && $newType === 'custom') {
-                Log::info('Course type changed from medical to custom', [
-                    'course_id' => $course->id,
-                    'course_name' => $course->name,
-                    'user_id' => auth()->id(),
-                    'user_name' => auth()->user()->name
-                ]);
             }
             
             $course->update($validatedData);

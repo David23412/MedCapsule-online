@@ -43,13 +43,6 @@ class InvalidatePaymentCache implements ShouldQueue
             // Clear payment-specific caches
             $this->cacheService->clearPaymentCaches($payment->id, $userId);
 
-            Log::info('Payment cache invalidated', [
-                'payment_id' => $payment->id,
-                'user_id' => $userId,
-                'course_ids' => $courseIds,
-                'amount' => $payment->amount,
-                'timestamp' => now()
-            ]);
         } catch (\Exception $e) {
             Log::error('Error invalidating payment cache', [
                 'payment_id' => $event->payment->id,

@@ -68,11 +68,6 @@ class QuizGradingController extends Controller
                 $this->clearQuizCaches($topicId, $userId);
                 $this->performanceService->track('quiz_submit', 0.001);
 
-                Log::info('Quiz submitted and graded', [
-                    'quiz_id' => $topicId,
-                    'user_id' => $userId,
-                    'score' => $gradingResult['score'] ?? 0,
-                ]);
             });
 
             return response()->json([
@@ -201,11 +196,6 @@ class QuizGradingController extends Controller
 
             $this->performanceService->track("quiz_recalculate_grade", 0.001);
 
-            Log::info("Quiz grade recalculated", [
-                'quiz_id' => $quizId,
-                'user_id' => $userId,
-                'admin_id' => auth()->id()
-            ]);
 
             return response()->json([
                 'success' => true,

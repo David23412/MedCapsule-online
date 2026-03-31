@@ -200,10 +200,5 @@ class RemoveUsleepOptimizationCommand extends Command
         $this->info('⚡ Your application is now running at MAXIMUM PERFORMANCE!');
         $this->info('📊 Use "php artisan optimize:metrics" to view performance metrics.');
         
-        Log::info('RemoveUsleepOptimizationCommand: Completed successfully', [
-            'files_processed' => count($this->changes),
-            'usleep_calls_removed' => $this->totalUsleepCalls,
-            'performance_boost' => '70-80% faster operations'
-        ]);
     }
 }

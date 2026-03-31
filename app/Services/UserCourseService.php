@@ -32,10 +32,6 @@ class UserCourseService
 
             $this->clearCourseCacheForUser($user);
 
-            Log::info('ENROLLMENT COMPLETED SUCCESSFULLY', [
-                'user_id' => $user->id,
-                'course_id' => $course->id,
-            ]);
 
             return [
                 'success' => true,
@@ -161,11 +157,6 @@ class UserCourseService
 
             $this->clearCourseCacheForUser($user);
 
-            Log::info('ACCESS STATUS TOGGLED', [
-                'user_id' => $user->id,
-                'course_id' => $course->id,
-                'new_status' => $isEnrolled ? 'enrolled' : 'revoked'
-            ]);
 
             return [
                 'success' => true,
@@ -206,7 +197,6 @@ class UserCourseService
         // 4. Clear pattern-based caches
         $this->clearPatternBasedCaches($user->id);
 
-        Log::info("Cache cleared for user {$user->id} - Both tagged and regular cache");
     }
 
     /**

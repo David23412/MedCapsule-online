@@ -4,7 +4,6 @@ namespace App\Http\Middleware;
 
 use Closure;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Session;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
 use App\Services\UserActivityLogService;
@@ -12,6 +11,34 @@ use App\Services\UserActivityLogService;
 class TrackUserActivity
 {
     protected $activityLogService;
+
+    /**
+     * In-memory timestamp map: sessionId → unix timestamp of last DB write.
+     * Avoids repeated database writes on every request within the debounce window.
+     * Works correctly across multiple requests in the same PHP-FPM worker because
+     * timestamps expire based on elapsed time, not process boundaries.
+     *
+     * @var array<string, int>
+     */
+    private static array $sessionLastWritten = [];
+
+    /** Debounce interval in seconds. */
+    private const SESSION_WRITE_INTERVAL = 60;
+
+    /**
+     * In-memory debounce: sessionId → timestamp of last generic `page_view` log.
+     * Generic page_view entries are noise — every GET request triggers one.
+     * Throttling them to at most once per PAGE_VIEW_LOG_INTERVAL seconds per
+     * session drastically reduces `user_activity_logs` INSERT pressure while
+     * preserving accurate logging of all meaningful actions (course_view,
+     * quiz_attempt, course_enroll, payment_action, etc.).
+     *
+     * @var array<string, int>
+     */
+    private static array $pageViewLastLogged = [];
+
+    /** Seconds between consecutive `page_view` log entries per session. */
+    private const PAGE_VIEW_LOG_INTERVAL = 60;
 
     public function __construct(UserActivityLogService $activityLogService)
     {
@@ -21,37 +48,52 @@ class TrackUserActivity
     public function handle(Request $request, Closure $next)
     {
         $fingerprint = $this->generateFingerprint($request);
-        
+
         if (Auth::check()) {
-            // For logged-in users, update their session
-            DB::table('sessions')
-                ->where('id', session()->getId())
-                ->update([
-                    'user_id' => Auth::id(),
-                    'ip_address' => $request->ip(),
-                    'user_agent' => $request->userAgent(),
-                    'last_activity' => now()->timestamp,
-                    'is_visitor' => false,
-                    'fingerprint' => $fingerprint
-                ]);
+            // Debounce the DB session write: at most once per minute per session,
+            // tracked purely in memory to avoid any cache round-trip.
+            $sessionId = session()->getId();
+            $now = time();
 
-            // Log detailed activity for authenticated users
-            $this->logUserActivity($request);
-        } else {
-            // For visitors, check if they already have a session with the same fingerprint
-            $existingSession = DB::table('sessions')
-                ->where('fingerprint', $fingerprint)
-                ->where('last_activity', '>=', now()->subMinutes(5)->timestamp)
-                ->first();
-
-            if (!$existingSession) {
-                // Only create a new visitor session if no recent session exists with the same fingerprint
+            if (!isset(self::$sessionLastWritten[$sessionId]) ||
+                ($now - self::$sessionLastWritten[$sessionId]) >= self::SESSION_WRITE_INTERVAL) {
+                self::$sessionLastWritten[$sessionId] = $now;
                 DB::table('sessions')
-                    ->where('id', session()->getId())
+                    ->where('id', $sessionId)
+                    ->update([
+                        'user_id' => Auth::id(),
+                        'ip_address' => $request->ip(),
+                        'user_agent' => $request->userAgent(),
+                        'last_activity' => $now,
+                        'is_visitor' => false,
+                        'fingerprint' => $fingerprint
+                    ]);
+            }
+
+            // Defer activity logging until after the response has been sent so
+            // it never adds to user-visible latency.  The User object is captured
+            // now while Auth is still active; the request is captured by reference
+            // (it is the same singleton for the lifetime of the PHP process).
+            $user = Auth::user();
+            app()->terminating(function () use ($request, $user) {
+                $this->logUserActivity($request, $user);
+            });
+        } else {
+            // For visitors, apply the same in-memory debounce used for authenticated users.
+            // Previously this ran a DB SELECT (fingerprint lookup) on every unauthenticated
+            // request, which was a guaranteed DB hit for every guest page load.
+            $sessionId = session()->getId();
+            $now = time();
+
+            if (!isset(self::$sessionLastWritten[$sessionId]) ||
+                ($now - self::$sessionLastWritten[$sessionId]) >= self::SESSION_WRITE_INTERVAL) {
+                self::$sessionLastWritten[$sessionId] = $now;
+                DB::table('sessions')
+                    ->where('id', $sessionId)
                     ->update([
                         'ip_address' => $request->ip(),
                         'user_agent' => $request->userAgent(),
-                        'last_activity' => now()->timestamp,
+                        'last_activity' => $now,
                         'is_visitor' => true,
                         'fingerprint' => $fingerprint
                     ]);
@@ -74,9 +116,14 @@ class TrackUserActivity
     }
 
     /**
-     * Log user activity based on the request
+     * Log user activity based on the request.
+     *
+     * Called from app()->terminating() so it runs after the response has already
+     * been delivered — zero impact on user-perceived latency.
+     *
+     * @param  \App\Models\User  $user  Pre-captured before Auth context is torn down
      */
-    private function logUserActivity(Request $request): void
+    private function logUserActivity(Request $request, $user): void
     {
         try {
             // Only log for non-admin routes and non-API routes
@@ -84,7 +131,6 @@ class TrackUserActivity
                 return;
             }
 
-            $user = Auth::user();
             $path = $request->path();
             $method = $request->method();
 
@@ -92,6 +138,20 @@ class TrackUserActivity
             $action = $this->determineAction($path, $method);
             
             if ($action) {
+                // Debounce generic page_view events: they fire on every GET request
+                // and generate enormous INSERT volume without analytical value.
+                // Specific meaningful actions (course_view, quiz_attempt, etc.)
+                // are always logged immediately.
+                if ($action === 'page_view') {
+                    $sessionId = session()->getId();
+                    $now = time();
+                    if (isset(self::$pageViewLastLogged[$sessionId]) &&
+                        ($now - self::$pageViewLastLogged[$sessionId]) < self::PAGE_VIEW_LOG_INTERVAL) {
+                        return;
+                    }
+                    self::$pageViewLastLogged[$sessionId] = $now;
+                }
+
                 $data = [
                     'path' => $path,
                     'method' => $method,
@@ -128,7 +188,7 @@ class TrackUserActivity
             // Don't let logging errors break the application
             \Log::warning('Failed to log user activity', [
                 'error' => $e->getMessage(),
-                'user_id' => Auth::id(),
+                'user_id' => $user->id ?? null,
                 'url' => $request->fullUrl()
             ]);
         }

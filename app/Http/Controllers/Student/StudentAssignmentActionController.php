@@ -25,7 +25,6 @@ class StudentAssignmentActionController extends Controller
     public function complete(Assignment $assignment, Request $request): JsonResponse
     {
         if (app()->environment('local', 'testing')) {
-            Log::info('Method complete called', ['user_id' => auth()->id(), 'timestamp' => now()]);
         }
         $this->authorize('complete', $assignment);
 
@@ -73,7 +72,6 @@ class StudentAssignmentActionController extends Controller
     public function requestExtension(Assignment $assignment, Request $request): JsonResponse
     {
         if (app()->environment('local', 'testing')) {
-            Log::info('Method requestExtension called', ['user_id' => auth()->id(), 'timestamp' => now()]);
         }
         $this->authorize('view', $assignment);
 

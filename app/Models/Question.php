@@ -453,11 +453,6 @@ class Question extends Model
             // Immediately reject extremely short answers (single letters/characters)
             // If the correct answer is more than 3 characters, reject single character answers
             if (strlen($correctAnswer) > 3 && strlen($submittedAnswer) <= 1) {
-                Log::info('Answer rejected - too short', [
-                    'question_id' => $this->id,
-                    'submitted_length' => strlen($submittedAnswer),
-                    'correct_length' => strlen($correctAnswer)
-                ]);
                 return false;
             }
             
@@ -469,18 +464,10 @@ class Question extends Model
             
             // More stringent length check for short correct answers (to prevent "m" matching "midbrain")
             if (strlen($correctAnswer) < 10 && $lengthRatio < 0.5) {
-                Log::info('Answer rejected - too short for short answer question', [
-                    'question_id' => $this->id,
-                    'ratio' => $lengthRatio
-                ]);
                 return false;
             }
             
             if ($lengthMismatch) {
-                Log::info('Answer length mismatch', [
-                    'question_id' => $this->id,
-                    'ratio' => $lengthRatio
-                ]);
             }
             
             // 2. Check exact match first (fastest path)
@@ -528,11 +515,6 @@ class Question extends Model
                 $adjustedThreshold += 0.05;
             }
             
-            Log::info('Using adjusted threshold', [
-                'question_id' => $this->id,
-                'base_threshold' => $baseThreshold,
-                'adjusted_threshold' => $adjustedThreshold
-            ]);
             
             // 5. Normalize and compare texts
             $normalizedSubmitted = $this->normalizeTextForComparison($submittedAnswer);
@@ -545,35 +527,19 @@ class Question extends Model
             $sharedWordCount = count(array_intersect($submittedWords, $correctWords));
             
             if ($sharedWordCount === 0) {
-                Log::info('No shared words after normalization, rejecting immediately', [
-                    'question_id' => $this->id
-                ]);
                 return false;
             }
             
             // 7. Calculate similarity
-            $similarityScore = $this->calculateTextSimilarity($normalizedSubmitted, $normalizedCorrect);            Log::info('Similarity calculation complete', [
-                'question_id' => $this->id,
-                'score' => $similarityScore,
-                'threshold' => $adjustedThreshold,
-                'submitted' => substr($submittedAnswer, 0, 50) . (strlen($submittedAnswer) > 50 ? '...' : '')
-            ]);
+            $similarityScore = $this->calculateTextSimilarity($normalizedSubmitted, $normalizedCorrect);
             
             // 8. Check if similarity exceeds threshold
             if ($similarityScore >= $adjustedThreshold) {
                 // Even with high similarity, check for critical negations
                 if ($this->containsOppositeNegation($submittedAnswer, $correctAnswer)) {
-                    Log::info('Answer rejected due to opposite negation', [
-                        'question_id' => $this->id
-                    ]);
                     return false;
                 }
                 
-                Log::info('Answer accepted by similarity check', [
-                    'question_id' => $this->id,
-                    'score' => $similarityScore,
-                    'threshold' => $adjustedThreshold
-                ]);
                 return true;
             }
             
@@ -591,11 +557,6 @@ class Question extends Model
                     $altSimilarity = $this->calculateTextSimilarity($normalizedSubmitted, $normalizedAlt);
 
                     if ($altSimilarity >= $adjustedThreshold) {
-                        Log::info('Answer accepted by alternative similarity check', [
-                            'question_id' => $this->id,
-                            'score' => $altSimilarity,
-                            'threshold' => $adjustedThreshold
-                        ]);
                         return true;
                     }
                 }
@@ -603,16 +564,9 @@ class Question extends Model
             
             // 10. Last resort: key terms check (much more selective now with word boundaries)
             if ($this->containsKeyTerms($submittedAnswer, $correctAnswer)) {
-                Log::info('Answer accepted by key terms check', [
-                    'question_id' => $this->id
-                ]);
                 return true;
             }
             
-            Log::info('Answer rejected - all checks failed', [
-                'question_id' => $this->id,
-                'best_similarity' => $similarityScore
-            ]);
             return false;
         } catch (\Throwable $e) {
             // Log error but don't crash

@@ -217,7 +217,6 @@ use Illuminate\Http\Response;
                 'id',
                 'course_id',
                 'display_order',
-                'cache_version',
                 'is_locked',
                 'locked_by_tutor_id',
                 'lock_reason',

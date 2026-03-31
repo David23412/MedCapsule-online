@@ -37,12 +37,6 @@ class InvalidateCourseCache implements ShouldQueue
             // Clear related topic caches
             $this->cacheService->clearTopicCachesByCourse($course->id);
 
-            Log::info('Course cache invalidated', [
-                'course_id' => $course->id,
-                'user_id' => $userId,
-                'changes' => $event->changes,
-                'timestamp' => now()
-            ]);
         } catch (\Exception $e) {
             Log::error('Error invalidating course cache', [
                 'course_id' => $event->course->id,

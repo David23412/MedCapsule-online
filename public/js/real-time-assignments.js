@@ -36,7 +36,9 @@ class RealTimeAssignmentEnforcer {
      * Performance gain: 99% faster status updates
      */
     initializeWebSocket() {
-        this.websocket = new WebSocket(`ws://${window.location.host}/assignments/stream`);
+        // Use wss:// on HTTPS pages to avoid Mixed Content errors
+        const proto = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+        this.websocket = new WebSocket(`${proto}//${window.location.host}/assignments/stream`);
         
         this.websocket.onopen = () => {
 // console.log('🔥 NUCLEAR SPEED: Assignment WebSocket connected'); // Removed for production

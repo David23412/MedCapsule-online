@@ -86,13 +86,12 @@ class EnhancedCsrfMiddleware
         $userId = auth()->id() ?? 'guest';
         $cacheKey = "csrf_token:{$userId}:{$token}";
 
-        // Check if token exists and is valid
-        if (!Cache::has($cacheKey)) {
+        // Single cache read — eliminated the previous Cache::has() + Cache::get() double-read.
+        $tokenData = Cache::get($cacheKey);
+
+        if ($tokenData === null) {
             return false;
         }
-
-        // Get token data
-        $tokenData = Cache::get($cacheKey);
 
         // Validate token structure
         if (!is_array($tokenData) || !isset($tokenData['created_at'])) {

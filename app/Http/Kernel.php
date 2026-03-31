@@ -30,7 +30,6 @@ class Kernel extends HttpKernel
     protected $middlewareGroups = [
         'web' => [
             \App\Http\Middleware\PerformanceOptimization::class,
-            \App\Http\Middleware\SqlInjectionProtectionMiddleware::class,
             \App\Http\Middleware\RequestTimeoutMiddleware::class,
             \App\Http\Middleware\EncryptCookies::class,
             \Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse::class,
@@ -41,7 +40,6 @@ class Kernel extends HttpKernel
             \App\Http\Middleware\SingleSessionMiddleware::class,
             \App\Http\Middleware\TrackUserActivity::class,
             \App\Http\Middleware\PerformanceMonitoring::class,
-            \App\Http\Middleware\CourseCacheBuster::class,
         ],
 
         'api' => [

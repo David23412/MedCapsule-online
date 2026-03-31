@@ -26,7 +26,6 @@ class StudentAssignmentApiController extends Controller
     public function getCountdownData(Assignment $assignment): JsonResponse
     {
         if (app()->environment('local', 'testing')) {
-            Log::info('Method getCountdownData called', ['user_id' => auth()->id(), 'timestamp' => now()]);
         }
         $this->authorize('view', $assignment);
 
@@ -51,7 +50,6 @@ class StudentAssignmentApiController extends Controller
     public function getStats(): JsonResponse
     {
         if (app()->environment('local', 'testing')) {
-            Log::info('Method getStats called', ['user_id' => auth()->id(), 'timestamp' => now()]);
         }
         $analytics = $this->assignmentService->getStudentPerformanceAnalytics(auth()->id());
         
@@ -64,7 +62,6 @@ class StudentAssignmentApiController extends Controller
     public function getAssignmentsForCourse(Request $request): JsonResponse
     {
         if (app()->environment('local', 'testing')) {
-            Log::info('Method getAssignmentsForCourse called', ['user_id' => auth()->id(), 'timestamp' => now()]);
         }
         $courseId = $request->input('course_id');
         
@@ -118,7 +115,6 @@ class StudentAssignmentApiController extends Controller
     public function getProgressWidget(): JsonResponse
     {
         if (app()->environment('local', 'testing')) {
-            Log::info('Method getProgressWidget called', ['user_id' => auth()->id(), 'timestamp' => now()]);
         }
         $assignments = $this->assignmentService->getStudentAssignments(auth()->id());
         

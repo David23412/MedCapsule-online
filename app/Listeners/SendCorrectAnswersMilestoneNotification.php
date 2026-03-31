@@ -33,12 +33,6 @@ class SendCorrectAnswersMilestoneNotification implements ShouldQueue
                 $event->milestone
             );
             
-            Log::info('Correct answers milestone notification sent', [
-                'user_id' => $event->user->id,
-                'milestone' => $event->milestone,
-                'total_correct_answers' => $event->totalCorrectAnswers,
-                'overall_accuracy' => $event->overallAccuracy
-            ]);
         } catch (\Exception $e) {
             Log::error('Failed to send correct answers milestone notification', [
                 'user_id' => $event->user->id,

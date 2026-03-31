@@ -45,10 +45,6 @@ class TopicLockingService
             $this->invalidateCache($topic);
             
             // Log the action
-            Log::info('Topic locked', [
-                'topic_id' => $topic->id,
-                'tutor_id' => $tutor->id
-            ]);
             
             DB::commit();
             return true;
@@ -93,10 +89,6 @@ class TopicLockingService
             $this->invalidateCache($topic);
             
             // Log the action
-            Log::info('Topic unlocked', [
-                'topic_id' => $topic->id,
-                'tutor_id' => $tutor->id
-            ]);
             
             DB::commit();
             return true;
@@ -330,12 +322,13 @@ class TopicLockingService
      */
     private function invalidateCache(Topic $topic): void
     {
-        // Increment cache version to invalidate all caches
-        $topic->increment('cache_version');
+        // PHASE 2: Use cache tags for targeted invalidation
+        // This clears all user-specific progress and topic data caches at once
+        Cache::tags(['topic', "topic:{$topic->id}", "course:{$topic->course_id}"])->flush();
         
-        // Clear specific caches
+        // Manual cleanup for drivers that don't support tags (like file)
         $cacheKeys = [
-            "topic:{$topic->id}:v{$topic->cache_version}",
+            "topic:{$topic->id}:questions_count",
             "course:{$topic->course_id}:topics",
             "course_categorization_counts_{$topic->course_id}"
         ];

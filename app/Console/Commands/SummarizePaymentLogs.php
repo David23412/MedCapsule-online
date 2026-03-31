@@ -114,12 +114,6 @@ class SummarizePaymentLogs extends Command
             $this->info("Summarized logs for {$totalSummarized} payments");
             
             // Log the operation
-            Log::info("Payment logs summarized", [
-                'days' => $days,
-                'payments_processed' => $totalSummarized,
-                'batch_size' => $batchSize,
-                'cutoff_date' => $cutoffDate->toDateTimeString()
-            ]);
             
             return 0;
         } catch (\Exception $e) {

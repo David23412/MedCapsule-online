@@ -7,7 +7,6 @@ use App\Services\Core\EventDrivenGradingService;
 use App\Services\Core\SmartCacheManager;
 use App\Services\Core\MemoryEfficientQuizService;
 use App\Events\QuizCompleted;
-use App\Events\QuizStarted;
 use App\Events\QuizGraded;
 use App\Listeners\HandleQuizCompletion;
 
@@ -75,19 +74,6 @@ class ArchitecturalRefactorServiceProvider extends ServiceProvider
         $this->app['events']->listen(
             QuizCompleted::class,
             HandleQuizCompletion::class
-        );
-        
-        // Quiz started logging
-        $this->app['events']->listen(
-            QuizStarted::class,
-            function (QuizStarted $event) {
-                \Log::info('Quiz started', [
-                    'user_id' => $event->user->id,
-                    'topic_id' => $event->topic->id,
-                    'mode' => $event->mode,
-                    'question_count' => $event->questionCount
-                ]);
-            }
         );
     }
     

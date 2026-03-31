@@ -49,9 +49,9 @@ class TextProcessingService
 
     public function removeFillerWords(string $text): string
     {
-        $stop = $this->stopWords();
+        $stop = $this->stopWordSet();
         $words = $this->extractWords($text);
-        $filtered = array_filter($words, fn($w) => !in_array($w, $stop, true) && strlen($w) > 1);
+        $filtered = array_filter($words, fn($w) => !isset($stop[$w]) && strlen($w) > 1);
         return implode(' ', $filtered);
     }
 
@@ -220,7 +220,7 @@ class TextProcessingService
      */
     public function containsAntonyms(string $text1, string $text2): bool
     {
-        $antonymPairs = [
+        static $antonymPairs = [
             ['increase', 'decrease'],
             ['increases', 'decreases'],
             ['elevated', 'reduced'],
@@ -252,16 +252,13 @@ class TextProcessingService
             ['anabolism', 'catabolism'],
         ];
 
-        $words1 = $this->extractWords($text1);
-        $words2 = $this->extractWords($text2);
+        // Flip word arrays to O(1) hash-key sets instead of O(n) in_array() scans.
+        $set1 = array_fill_keys($this->extractWords($text1), true);
+        $set2 = array_fill_keys($this->extractWords($text2), true);
 
         foreach ($antonymPairs as [$termA, $termB]) {
-            $has1A = in_array($termA, $words1, true);
-            $has1B = in_array($termB, $words1, true);
-            $has2A = in_array($termA, $words2, true);
-            $has2B = in_array($termB, $words2, true);
-
-            if (($has1A && $has2B) || ($has1B && $has2A)) {
+            if ((isset($set1[$termA]) && isset($set2[$termB])) ||
+                (isset($set1[$termB]) && isset($set2[$termA]))) {
                 return true;
             }
         }
@@ -489,9 +486,21 @@ class TextProcessingService
     // ---------------------------------------------------------------------------
 
     /** @return string[] */
-    private function stopWords(): array
+    /**
+     * Stop-word lookup set (keys = words, values = true) built once per process.
+     * Using a hash map turns per-word O(n) in_array() lookups into O(1) isset().
+     *
+     * @return array<string,true>
+     */
+    private function stopWordSet(): array
     {
-        return [
+        static $set = null;
+
+        if ($set !== null) {
+            return $set;
+        }
+
+        $set = array_fill_keys([
             'a','an','the','and','or','but','in','on','at','to','for','of','with','by',
             'is','are','was','were','be','been','being','have','has','had',
             'do','does','did','will','would','could','should','may','might','must','can',
@@ -501,7 +510,9 @@ class TextProcessingService
             'what','which','who','when','where','why','how',
             'all','any','both','each','few','more','most','other','some','such',
             'no','nor','not','only','own','same','so','than','too','very',
-        ];
+        ], true);
+
+        return $set;
     }
 
     /**

@@ -61,12 +61,6 @@ class TopicActionController extends Controller
                 'created_by' => auth()->id()
             ]);
 
-            Log::info('New topic created', [
-                'topic_id' => $topic->id,
-                'topic_name' => $topic->name,
-                'course_id' => $topic->course_id,
-                'created_by' => auth()->id()
-            ]);
 
             return redirect()->back()->with('success', 'Topic added successfully!');
             

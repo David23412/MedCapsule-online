@@ -19,7 +19,7 @@
             background-color: #f8f9fa;
             margin: 0;
             padding: 0;
-            zoom: 0.80; /* Zoom out 20% */
+            font-size: 87.5%; /* 14px base: replaces non-standard zoom: 0.80 */
             -webkit-text-size-adjust: 100%; /* Prevent Safari text auto-sizing */
         }
 
@@ -477,19 +477,21 @@
         
         @media (max-width: 480px) {
 
-        /* BULLETPROOF: Handle iOS Safari bottom bar */
+        /* Handle iOS Safari bottom bar */
         @supports (padding-bottom: env(safe-area-inset-bottom)) {
             .progress-bar-container {
                 padding-bottom: calc(1.2rem + env(safe-area-inset-bottom)) !important;
             }
         }
 
-        /* BULLETPROOF: Prevent any possible z-index conflicts */
+        /* Prevent any possible z-index conflicts */
         .progress-bar-container {
             isolation: isolate !important;
         }
 
-        /* BULLETPROOF: Ensure smooth animations on all devices */
+        }
+
+        /* Ensure smooth animations on all devices */
         @media (prefers-reduced-motion: reduce) {
             .progress-bar-container {
                 transition: none !important;
@@ -499,7 +501,6 @@
                 transition: none !important;
             }
         }
-    }
 
         .progress-bar {
             width: 100%;
@@ -1060,6 +1061,49 @@
 
             .popup-score {
                 font-size: 3rem;
+            }
+
+            /* Mobile quiz optimizations */
+            .question-box {
+                padding: 1rem;
+            }
+
+            .question-text {
+                font-size: 1rem !important;
+                line-height: 1.6;
+            }
+
+            .form-check label {
+                font-size: 0.95rem;
+                padding: 0.875rem 0.75rem;
+                min-height: 48px; /* Apple HIG touch target */
+            }
+
+            .main-content {
+                margin-top: 70px;
+            }
+
+            /* Prevent horizontal overflow on small screens */
+            .quiz-interface {
+                padding: 0;
+            }
+
+            h1 {
+                font-size: 1.25rem;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .question-text {
+                font-size: 0.95rem !important;
+            }
+
+            .form-check label {
+                font-size: 0.9rem;
+            }
+
+            .options {
+                gap: 0.5rem;
             }
         }
 
@@ -2231,28 +2275,15 @@
                             popupTitle.textContent = 'Perfect Score!';
                             // Trigger confetti for perfect score
 
-                            // Direct confetti call for perfect scores - SAFARI-CORRECTED POSITIONING
+                            // Direct confetti call for perfect scores
                             if (typeof confetti !== 'undefined') {
-                                console.log('✅ Using direct confetti');
-                                // Detect if the browser is Safari
-                                const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
-                                let originX = 0.62; // Default to center for all other browsers
-
-                                // If it is Safari, apply a corrected origin value to counteract zoom effect
-                                if (isSafari) {
-                                    // Fine-tuned for perfect centering - using 0.47 for optimal positioning
-                                    originX = 0.47;
-                                }
-
                                 confetti({
                                     particleCount: 100,
                                     spread: 70,
-                                    origin: { x: originX, y: 0.45 },
+                                    origin: { x: 0.5, y: 0.45 },
                                     colors: ['#FFD700', '#FFA500', '#FF69B4', '#00CED1', '#98FB98'],
                                     zIndex: 10000
                                 });
-                            } else {
-                                console.log('❌ No confetti library available');
                             }
                         } else if (percentage >= 70) {
                             gradeIcon.innerHTML = '<i class="fas fa-star"></i>';
@@ -2638,22 +2669,10 @@
 
         // Function to create confetti
         function createConfetti() {
-            // SAFARI-SPECIFIC CONFETTI POSITIONING FIX
-            // Detect if the browser is Safari
-            const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
-            let originX = 0.62; // Default to center for all other browsers
-
-            // If it is Safari, apply a corrected origin value to counteract zoom effect
-            if (isSafari) {
-                // Fine-tuned for perfect centering - using 0.48 for optimal positioning
-                originX = 0.48;
-            }
-
-            // SAFARI-CORRECTED CONFETTI - Consistent positioning across browsers
             confetti({
                 particleCount: 100,
                 spread: 70,
-                origin: { x: originX, y: 0.45 },
+                origin: { x: 0.5, y: 0.45 },
                 colors: ['#FFD700', '#FFA500', '#FF69B4', '#00CED1', '#98FB98'],
                 zIndex: 10000
             });
@@ -2663,26 +2682,16 @@
     <script>
         // EDGE/SAFARI CONFETTI TEST FUNCTION
         window.testConfetti = function() {
-            console.log('🎯 MANUAL CONFETTI TEST TRIGGERED');
-
             if (typeof confetti !== 'undefined') {
-                console.log('✅ Direct confetti library available - testing...');
-                // Use Safari-corrected positioning for test
-                const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
-                let originX = 0.62; // Default to center for all other browsers
-                if (isSafari) {
-                    originX = 0.47; // Fine-tuned for perfect centering
-                }
                 confetti({
                     particleCount: 100,
                     spread: 70,
-                    origin: { x: originX, y: 0.45 },
+                    origin: { x: 0.5, y: 0.45 },
                     colors: ['#FFD700', '#FFA500', '#FF69B4', '#00CED1', '#98FB98'],
                     zIndex: 10000
                 });
                 alert('Testing direct confetti... check if confetti appears!');
             } else {
-                console.log('❌ No confetti system available');
                 alert('ERROR: No confetti library loaded! Check browser or network issues.');
             }
         };
@@ -2699,8 +2708,7 @@
 
                 // Return safely decoded text
                 return decodedText;
-            } catch (e) {
-                console.error('Error decoding HTML entities:', e);
+            } catch (_e) {
                 return text; // Return the original text if decoding fails
             }
         }

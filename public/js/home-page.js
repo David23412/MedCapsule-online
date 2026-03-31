@@ -34,46 +34,6 @@ document.addEventListener('DOMContentLoaded', function() {
     window.addEventListener('scroll', revealOnScroll, { passive: true });
     revealOnScroll();
 
-    // ANIMATED COUNTER
-    const counters = document.querySelectorAll('.counter');
-    let counterAnimated = false;
-
-    const animateCounters = () => {
-        if (counterAnimated) {
-            return;
-        }
-
-        const statsSection = document.querySelector('.stat-item');
-        if (!statsSection) {
-            return;
-        }
-
-        const statsSectionTop = statsSection.getBoundingClientRect().top;
-        if (statsSectionTop < window.innerHeight - 100) {
-            counterAnimated = true;
-            window.removeEventListener('scroll', animateCounters);
-            counters.forEach(counter => {
-                const target = parseInt(counter.getAttribute('data-target'), 10);
-                const duration = 2000;
-                const increment = target / (duration / 16);
-                let current = 0;
-
-                const updateCounter = () => {
-                    current += increment;
-                    if (current < target) {
-                        counter.textContent = Math.floor(current);
-                        requestAnimationFrame(updateCounter);
-                    } else {
-                        counter.textContent = target;
-                    }
-                };
-                updateCounter();
-            });
-        }
-    };
-    window.addEventListener('scroll', animateCounters, { passive: true });
-    animateCounters();
-
     // NAVBAR SCROLL EFFECT
     const navbar = document.querySelector('.navbar');
     const handleNavbarScroll = () => {
@@ -208,7 +168,7 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 });
 
-// NUCLEAR SPEED NOTIFICATION BELL - POLLING ONLY (WebSocket disabled)
+// Notification bell for home page — polling mode
 function notificationBell() {
     return {
         notifications: [],
@@ -216,13 +176,11 @@ function notificationBell() {
         unreadCount: 0,
         loading: false,
         lastFetched: 0,
-        notificationSound: new Audio('/sounds/Soft-ui-notification-sound-effect.mp3'),
+        notificationSound: null,
         prevUnreadCount: 0,
+        _pollingInterval: null,
 
         init() {
-            console.log('Notification system initialized (polling mode - WebSocket disabled)');
-
-            this.notificationSound.load();
             this.setUserInteractionFlag();
 
             this.fetchNotifications().then(() => {
@@ -233,8 +191,7 @@ function notificationBell() {
         },
 
         initializePolling() {
-            console.log('Starting notification polling (60 second intervals)');
-            setInterval(() => {
+            this._pollingInterval = setInterval(() => {
                 this.fetchNotifications();
             }, 60000);
         },
@@ -248,12 +205,14 @@ function notificationBell() {
         },
 
         playNotificationSound() {
-            if (window.hasUserInteraction && this.notificationSound) {
-                this.notificationSound.currentTime = 0;
-                this.notificationSound.play().catch(error => {
-                    console.warn('Audio playback failed:', error);
-                });
+            if (!window.hasUserInteraction) {
+                return;
             }
+            if (!this.notificationSound) {
+                this.notificationSound = new Audio('/sounds/Soft-ui-notification-sound-effect.mp3');
+            }
+            this.notificationSound.currentTime = 0;
+            this.notificationSound.play().catch(() => {});
         },
 
         async fetchNotifications() {
@@ -328,7 +287,10 @@ function notificationBell() {
         },
 
         cleanup() {
-            console.log('Notification system cleaned up');
+            if (this._pollingInterval) {
+                clearInterval(this._pollingInterval);
+                this._pollingInterval = null;
+            }
         }
     };
 }

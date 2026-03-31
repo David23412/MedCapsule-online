@@ -46,10 +46,6 @@ class QuizAnalyticsController extends Controller
 
             $this->performanceService->track("quiz_analytics", 0.001);
 
-            Log::info("Quiz analytics retrieved", [
-                'admin_id' => auth()->id(),
-                'data_points' => count($analytics)
-            ]);
 
             return response()->json([
                 'success' => true,
@@ -120,11 +116,6 @@ class QuizAnalyticsController extends Controller
 
             $this->performanceService->track("quiz_user_history", 0.001);
 
-            Log::info("User quiz history retrieved", [
-                'target_user_id' => $userId,
-                'requesting_user_id' => auth()->id(),
-                'attempts_count' => count($history['attempts'] ?? [])
-            ]);
 
             return response()->json([
                 'success' => true,
@@ -203,10 +194,6 @@ class QuizAnalyticsController extends Controller
 
             $this->performanceService->track("quiz_comprehensive_reports", 0.001);
 
-            Log::info("Comprehensive quiz reports generated", [
-                'admin_id' => auth()->id(),
-                'report_count' => count($reports)
-            ]);
 
             return response()->json([
                 'success' => true,

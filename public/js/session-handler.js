@@ -33,8 +33,6 @@
 
         // Handle form submissions
         setupFormHandling();
-
-        console.log('Session handler initialized');
     }
 
     /**

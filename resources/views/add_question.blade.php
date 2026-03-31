@@ -15,7 +15,7 @@
         body {
             font-family: 'Poppins', sans-serif;
             background-color: #f8f9fa;
-            zoom: 0.8; /* 80% zoom for better overview */
+            font-size: 87.5%; /* 14px base: replaces non-standard zoom: 0.8 */
         }
         .navbar {
             background-color: white;

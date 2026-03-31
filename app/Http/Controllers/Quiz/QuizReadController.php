@@ -42,27 +42,38 @@ class QuizReadController extends Controller
         ]);
 
         try {
-            // Get user's accessible topics and courses
-            $user = auth()->user();
+            // Get user's accessible topics and courses — eager load course + latest quiz attempt
+            $user   = auth()->user();
+            $userId = $user->id;
+
             $accessibleTopics = $user->courses()
-                ->with('topics')
+                ->with([
+                    'topics.course:id,name',
+                    'topics' => fn ($q) => $q->withCount('questions'),
+                ])
                 ->get()
                 ->pluck('topics')
                 ->flatten()
                 ->reject(fn ($topic) => $user->isTopicPreviewLocked($topic))
                 ->values();
 
-            $quizzes = $accessibleTopics->map(function ($topic) {
+            // Batch-load last quiz attempt per topic to avoid N queries inside map
+            $topicIds = $accessibleTopics->pluck('id')->all();
+            $lastAttempts = \App\Models\QuizAttempt::whereIn('topic_id', $topicIds)
+                ->where('user_id', $userId)
+                ->orderByDesc('created_at')
+                ->get()
+                ->unique('topic_id')
+                ->keyBy('topic_id');
+
+            $quizzes = $accessibleTopics->map(function ($topic) use ($lastAttempts) {
                 return [
-                    'id' => $topic->id,
-                    'title' => $topic->name,
-                    'course_name' => $topic->course->name,
-                    'total_questions' => $topic->questions_count,
-                    'available_sources' => $this->ultraFastQuizService->getAvailableSources($topic),
-                    'last_attempt' => $topic->quizAttempts()
-                        ->where('user_id', auth()->id())
-                        ->latest()
-                        ->first()
+                    'id'               => $topic->id,
+                    'title'            => $topic->name,
+                    'course_name'      => $topic->course->name,
+                    'total_questions'  => $topic->questions_count,
+                    'available_sources'=> $this->ultraFastQuizService->getAvailableSources($topic),
+                    'last_attempt'     => $lastAttempts->get($topic->id),
                 ];
             });
 
@@ -77,11 +88,6 @@ class QuizReadController extends Controller
                 'cache_status' => 'optimized'
             ]);
 
-            Log::info("🚀 ULTRA-FAST QUIZ INDEX", [
-                'user_id' => auth()->id(),
-                'quiz_count' => $quizzes->count(),
-                'execution_ms' => $performanceData['duration_ms'] ?? 0
-            ]);
 
             return response()->json([
                 'success' => true,
@@ -197,12 +203,6 @@ class QuizReadController extends Controller
                     'cache_status' => 'ultra_fast_redis'
                 ]);
 
-                Log::info("🚀 ULTRA-FAST QUIZ DETAILS", [
-                    'quiz_id' => $topicId,
-                    'topic_name' => $topicModel->name,
-                    'user_id' => auth()->id(),
-                    'execution_ms' => $performanceData['duration_ms'] ?? 0
-                ]);
 
                 return response()->json([
                     'success' => true,
@@ -217,12 +217,6 @@ class QuizReadController extends Controller
                 'cache_status' => 'ultra_fast_redis'
             ]);
 
-            Log::info("🚀 ULTRA-FAST QUIZ DETAILS", [
-                'quiz_id' => $topicId,
-                'topic_name' => $topicModel->name,
-                'user_id' => auth()->id(),
-                'execution_ms' => $performanceData['duration_ms'] ?? 0
-            ]);
 
             // Prepare data for Blade view
             $questionsCollection = collect($quizData['questions'])->map(function ($question) {
@@ -344,13 +338,6 @@ class QuizReadController extends Controller
                 'cache_status' => 'ultra_fast_redis'
             ]);
 
-            Log::info("🚀 ULTRA-FAST QUIZ RESULTS", [
-                'quiz_id' => $id,
-                'topic_name' => $topic->name,
-                'user_id' => auth()->id(),
-                'attempts_count' => $recentAttempts->count(),
-                'execution_ms' => $performanceData['duration_ms'] ?? 0
-            ]);
 
             return response()->json([
                 'success' => true,

@@ -36,7 +36,6 @@ class TopicLockingApiController extends Controller
     public function getLockedTopics(Request $request, int $courseId): JsonResponse
     {
         if (app()->environment('local', 'testing')) {
-            Log::info('Method getLockedTopics called', ['user_id' => auth()->id(), 'timestamp' => now()]);
         }
         try {
             $course = \App\Models\Course::query()
@@ -74,7 +73,6 @@ class TopicLockingApiController extends Controller
     public function getMyLockedTopics(Request $request): JsonResponse
     {
         if (app()->environment('local', 'testing')) {
-            Log::info('Method getMyLockedTopics called', ['user_id' => auth()->id(), 'timestamp' => now()]);
         }
         $user = $this->checkPermission();
         
@@ -107,7 +105,6 @@ class TopicLockingApiController extends Controller
     public function getLockInfo(Request $request, int $topicId): JsonResponse
     {
         if (app()->environment('local', 'testing')) {
-            Log::info('Method getLockInfo called', ['user_id' => auth()->id(), 'timestamp' => now()]);
         }
         try {
             $topic = Topic::findOrFail($topicId);

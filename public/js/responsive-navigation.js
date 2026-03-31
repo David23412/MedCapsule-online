@@ -44,9 +44,8 @@
             this.initializeKeyboardNavigation();
 
             if (this.elements.nav) {
-                console.log('🚀 Responsive navigation initialized');
+                // Navigation initialized successfully
             } else {
-                console.warn('⚠️ Responsive navigation elements not found');
                 return;
             }
 
@@ -516,8 +515,6 @@
 
             document.removeEventListener('keydown', this.handleKeyboard.bind(this));
             window.removeEventListener('resize', this.handleResize.bind(this));
-
-            console.log('🗑️ Responsive navigation destroyed');
         }
     };
 
@@ -552,6 +549,5 @@
     window.ResponsiveNavigation = ResponsiveNavigation;
 
     // CSP compliance: No inline event handlers or eval usage
-    console.log('📱 Responsive navigation component loaded');
 
 })();

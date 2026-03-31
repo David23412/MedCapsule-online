@@ -67,18 +67,7 @@ class DatabaseTransactionService
         while ($attempt <= $maxRetries) {
             try {
                 return DB::transaction(function() use ($callback, $transactionName, $attempt) {
-                    Log::info("Database transaction started", [
-                        'transaction' => $transactionName,
-                        'attempt' => $attempt + 1,
-                        'connection' => DB::getName()
-                    ]);
-
                     $result = $callback();
-
-                    Log::info("Database transaction completed successfully", [
-                        'transaction' => $transactionName,
-                        'attempt' => $attempt + 1
-                    ]);
 
                     return $result;
                 });
@@ -321,20 +310,6 @@ class DatabaseTransactionService
 
         try {
             $result = $callback();
-
-            $endTime = microtime(true);
-            $endMemory = memory_get_usage(true);
-
-            $executionTime = ($endTime - $startTime) * 1000;
-            $memoryUsage = $endMemory - $startMemory;
-
-            Log::info("Transaction performance monitored", [
-                'operation' => $operationName,
-                'execution_time_ms' => round($executionTime, 2),
-                'memory_usage_bytes' => $memoryUsage,
-                'memory_usage_mb' => round($memoryUsage / 1024 / 1024, 2),
-                'status' => 'success'
-            ]);
 
             return $result;
 

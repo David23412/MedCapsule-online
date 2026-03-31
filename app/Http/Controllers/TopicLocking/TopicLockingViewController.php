@@ -44,7 +44,6 @@ class TopicLockingViewController extends Controller
     public function index()
     {
         if (app()->environment('local', 'testing')) {
-            Log::info('Method index called', ['user_id' => auth()->id(), 'timestamp' => now()]);
         }
         
         $user = $this->checkPermission();
@@ -62,10 +61,6 @@ class TopicLockingViewController extends Controller
                 ->get();
             
             if (app()->environment('local', 'testing')) {
-                Log::info('TopicLocking - Admin sees all courses', [
-                    'course_count' => $courses->count(),
-                    'course_names' => $courses->pluck('name')->toArray()
-                ]);
             }
         } else {
             // Tutors can only see courses they're enrolled in
@@ -79,12 +74,6 @@ class TopicLockingViewController extends Controller
                 ->get();
                 
             if (app()->environment('local', 'testing')) {
-                Log::info('TopicLocking - Tutor enrolled courses', [
-                    'user_id' => $user->id,
-                    'user_name' => $user->name,
-                    'course_count' => $courses->count(),
-                    'course_names' => $courses->pluck('name')->toArray()
-                ]);
             }
         }
         
@@ -97,7 +86,6 @@ class TopicLockingViewController extends Controller
     public function courseTopics(\App\Models\Course $course)
     {
         if (app()->environment('local', 'testing')) {
-            Log::info('Method courseTopics called', ['user_id' => auth()->id(), 'timestamp' => now()]);
         }
         $user = $this->checkPermission();
         

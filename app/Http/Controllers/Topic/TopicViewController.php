@@ -186,14 +186,6 @@ class TopicViewController extends Controller
             if ($latestAttempt) {
                 $correctAnswers = $latestAttempt->score;
                 
-                Log::info('🔥 SOURCE PROGRESS: Latest attempt found', [
-                    'source' => $source,
-                    'attempt_id' => $latestAttempt->id,
-                    'score' => $latestAttempt->score,
-                    'used_correct_answers' => $correctAnswers,
-                    'percentage_grade' => $latestAttempt->percentage_grade,
-                    'mode' => $mode
-                ]);
                 
                 $progressData[$source] = [
                     'completed' => $correctAnswers,
@@ -202,11 +194,6 @@ class TopicViewController extends Controller
                     'last_attempt' => $latestAttempt->created_at->toISOString()
                 ];
             } else {
-                Log::info('🔥 SOURCE PROGRESS: No attempt found', [
-                    'source' => $source,
-                    'mode' => $mode,
-                    'user_id' => $userId
-                ]);
                 
                 $progressData[$source] = [
                     'completed' => 0,

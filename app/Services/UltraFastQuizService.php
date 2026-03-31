@@ -102,12 +102,6 @@ class UltraFastQuizService
                 // Invalid cache structure, clear it and fall through to fresh query
                 $this->deleteFromRedis([$cacheKey, $cacheKey . ':hot']);
             } else {
-                Log::info('🚀 ULTRA-FAST CACHE HIT', [
-                    'topic_id' => $topic->id,
-                    'cache_key' => $cacheKey,
-                    'execution_ms' => $this->getExecutionTime($startTime),
-                    'queries_used' => $this->queryCount
-                ]);
                 return $cached;
             }
         }
@@ -133,13 +127,6 @@ class UltraFastQuizService
             $this->storeInRedis($cacheKey . ':hot', $result, self::HOT_CACHE_TTL);
         }
 
-        Log::info('⚡ ULTRA-FAST QUIZ LOAD COMPLETE', [
-            'topic_id' => $topic->id,
-            'questions_count' => $validQuestions->count(),
-            'execution_ms' => $result['execution_time_ms'],
-            'queries_used' => $this->queryCount,
-            'cache_status' => 'stored'
-        ]);
 
         return $result;
     }
@@ -290,10 +277,6 @@ class UltraFastQuizService
             }, $keys);
 
             $this->deleteFromRedis($cleanKeys);
-            Log::info('🚀 NUCLEAR CACHE CLEARED', [
-                'topic_id' => $topic->id,
-                'keys_cleared' => count($cleanKeys)
-            ]);
         }
     }
 
@@ -382,12 +365,6 @@ class UltraFastQuizService
                 // Invalid cache structure, clear it and fall through to fresh query
                 $this->deleteFromRedis([$cacheKey, $cacheKey . ':hot']);
             } else {
-                Log::info('🚀 ULTRA-FAST STATS CACHE HIT', [
-                    'topic_id' => $topic->id,
-                    'cache_key' => $cacheKey,
-                    'execution_ms' => $this->getExecutionTime($startTime),
-                    'queries_used' => $this->queryCount
-                ]);
                 // Return only the core data, not the full cached result with metadata
                 return [
                     'total_questions' => $cached['total_questions'] ?? 0,
@@ -421,13 +398,6 @@ class UltraFastQuizService
             $this->storeInRedis($cacheKey . ':hot', $result, self::HOT_CACHE_TTL);
         }
 
-        Log::info('⚡ ULTRA-FAST QUIZ STATS COMPLETE', [
-            'topic_id' => $topic->id,
-            'total_questions' => $statistics['total_questions'],
-            'execution_ms' => $result['execution_time_ms'],
-            'queries_used' => $this->queryCount,
-            'cache_status' => 'stored'
-        ]);
 
         return $result;
     }
@@ -500,13 +470,6 @@ class UltraFastQuizService
                 // Invalid cache structure, clear it and fall through to fresh query
                 $this->deleteFromRedis([$cacheKey, $cacheKey . ':hot']);
             } else {
-                Log::info('🚀 ULTRA-FAST USER STATS CACHE HIT', [
-                    'topic_id' => $topic->id,
-                    'user_id' => $user->id,
-                    'cache_key' => $cacheKey,
-                    'execution_ms' => $this->getExecutionTime($startTime),
-                    'queries_used' => $this->queryCount
-                ]);
                 // Return only the core data, not the full cached result with metadata
                 return [
                     'total_attempts' => $cached['total_attempts'] ?? 0,
@@ -540,14 +503,6 @@ class UltraFastQuizService
             $this->storeInRedis($cacheKey . ':hot', $result, self::HOT_CACHE_TTL);
         }
 
-        Log::info('⚡ ULTRA-FAST USER STATS COMPLETE', [
-            'topic_id' => $topic->id,
-            'user_id' => $user->id,
-            'total_attempts' => $userStats['total_attempts'],
-            'execution_ms' => $result['execution_time_ms'],
-            'queries_used' => $this->queryCount,
-            'cache_status' => 'stored'
-        ]);
 
         return $result;
     }
@@ -631,12 +586,6 @@ class UltraFastQuizService
         $cacheKey = $this->buildCacheKey('available_sources', $topic->id, ['all']);
 
         if ($cached = $this->getFromRedis($cacheKey)) {
-            Log::info('🚀 ULTRA-FAST SOURCES CACHE HIT', [
-                'topic_id' => $topic->id,
-                'cache_key' => $cacheKey,
-                'execution_ms' => $this->getExecutionTime($startTime),
-                'queries_used' => $this->queryCount
-            ]);
             return $cached;
         }
 
@@ -659,12 +608,6 @@ class UltraFastQuizService
         // CACHE: Store in Redis
         $this->storeInRedis($cacheKey, $result, self::CACHE_TTL);
 
-        Log::info('⚡ ULTRA-FAST SOURCES COMPLETE', [
-            'topic_id' => $topic->id,
-            'sources_count' => count($result),
-            'execution_ms' => $this->getExecutionTime($startTime),
-            'queries_used' => $this->queryCount
-        ]);
 
         return $result;
     }
@@ -675,7 +618,7 @@ class UltraFastQuizService
      * @param Topic $topic
      * @return \Illuminate\Database\Eloquent\Builder
      */
-    private function applyTopicFilter($query, Topic $topic)
+    private function applyTopicFilter(\Illuminate\Database\Eloquent\Builder $query, Topic $topic)
     {
         return $query->where(function($q) use ($topic) {
             $q->where('questions.topic_id', $topic->id)

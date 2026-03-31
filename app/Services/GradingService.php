@@ -237,12 +237,6 @@ class GradingService
             $this->updateTopicProgress($user, $topic, $gradingResult['score'], $gradingResult['totalQuestions'], $overallTopicProgress);
         } else {
             // Assignment completion or tutor mode - don't update regular topic progress
-            Log::info('Non-regular quiz completed - skipping regular topic progress update', [
-                'assignment_id' => $assignmentId,
-                'mode' => $mode,
-                'user_id' => $user->id,
-                'topic_id' => $topic->id
-            ]);
         }
     }
 
@@ -567,17 +561,6 @@ class GradingService
 
         $percentageGrade = $totalQuestions > 0 ? min(100, ($score / $totalQuestions) * 100) : 0;
 
-        Log::info('✅ TUTOR MODE: Processed tutor answers', [
-            'user_id' => $user->id,
-            'topic_id' => $topic->id,
-            'total_score' => $score,
-            'total_questions' => $totalQuestions,
-            'percentage' => $percentageGrade,
-            'source_data' => array_map(function($data) {
-                return ['score' => $data['score'], 'total' => $data['total']];
-            }, $sourceData)
-        ]);
-
         // 🔥 INSTANT CACHE CLEAR - Clear cache if any mistakes were recorded
         if (!empty($mistakes) || !empty($existingMistakeQuestionIds)) {
             \App\Http\Controllers\Quiz\QuizMistakeController::clearUserMistakeCaches($user->id);
@@ -724,13 +707,6 @@ class GradingService
         }
 
         // OPTIMIZATION: Reduced logging frequency for better performance
-        Log::info('Quiz attempts created', [
-            'user_id' => $user->id,
-            'topic_id' => $topic->id,
-            'mode' => $mode,
-            'attempt_id' => $attemptId,
-            'sources_count' => $attemptsCreated
-        ]);
     }
 
     /**
@@ -779,14 +755,6 @@ class GradingService
 
         \App\Models\QuizAttempt::createWithProgress($attemptData, false);
 
-        Log::info('🚀 RANDOM QUIZ: Created attempt with attempt_id', [
-            'user_id' => $user->id,
-            'topic_id' => $topic->id,
-            'attempt_id' => $attemptId,
-            'quiz_type' => $quizType,
-            'study_mode' => $mode,
-            'chart_points' => 1 // Random quiz = 1 chart point ✅
-        ]);
     }
 
     private function resolveRequiredStreakForSession(User $user, string $mode): int
@@ -835,12 +803,6 @@ class GradingService
             // Create level up notification
             $this->notificationService->createLevelUpNotification($user, $newLevel, $user->getXPForNextLevel());
 
-            Log::info('User leveled up', [
-                'user_id' => $user->id,
-                'old_level' => $previousLevel,
-                'new_level' => $newLevel,
-                'xp' => $user->xp
-            ]);
 
             return [
                 'levelUp' => true,
@@ -1040,13 +1002,6 @@ class GradingService
     public function gradeTutorAnswer(User $user, Question $question, string $answer): array
     {
         try {
-            Log::info('Tutor answer check', [
-                'user_id' => $user->id,
-                'question_id' => $question->id,
-                'topic_id' => $question->topic_id,
-                'source' => $question->source,
-                'answer' => $answer
-            ]);
             $writtenEvaluation = null;
 
             if ($question->question_type === Question::TYPE_WRITTEN) {
@@ -1171,11 +1126,6 @@ class GradingService
             
         // Fallback: if this is the last question for the source, always create the attempt
         if ($remainingQuestions === 0) {
-            Log::info('Creating tutor attempt (all questions completed for source)', [
-                'user_id' => $user->id,
-                'topic_id' => $topic->id,
-                'source' => $source
-            ]);
             $this->createTutorAttempt($user, $topic, $source, $tutorProgress['sources'][$source]);
         }
     }
@@ -1191,11 +1141,6 @@ class GradingService
 private function createTutorAttempt(User $user, Topic $topic, string $source, array $sourceProgress): void
 {
     try {
-        Log::info('Tutor quiz attempt creation', [
-            'user_id' => $user->id,
-            'topic_id' => $topic->id,
-            'source' => $source
-        ]);
 
         // SURGICAL OPTIMIZATION: Use single time source to eliminate system call
         static $requestStartTime = null;
@@ -1266,13 +1211,6 @@ private function createTutorAttempt(User $user, Topic $topic, string $source, ar
 
         \App\Models\QuizAttempt::createWithProgress($attemptData, false);
 
-        Log::info('Tutor quiz attempt created successfully with attempt_id', [
-            'attempt_id' => $attemptId,
-            'user_id' => $user->id,
-            'topic_id' => $topic->id,
-            'source' => $source,
-            'percentage_grade' => $cachedValues['rounded_percentage']
-        ]);
 
     } catch (\Exception $e) {
         Log::error('Failed to create tutor attempt', [
@@ -1345,12 +1283,6 @@ private function getTutorSourceProgress(User $user, Topic $topic, string $source
             // Update the streak using the User model method
             $newStreak = $user->updateStudyStreak();
 
-            Log::info('Study streak updated after quiz', [
-                'user_id' => $user->id,
-                'original_streak' => $originalStreak,
-                'new_streak' => $newStreak,
-                'streak_increased' => $newStreak > $originalStreak
-            ]);
         } catch (\Exception $e) {
             Log::error('Failed to update study streak', [
                 'user_id' => $user->id,

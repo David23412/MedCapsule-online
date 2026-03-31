@@ -328,14 +328,6 @@ class ResponsiveService
     public function logDeviceDetection(): void
     {
         if ($this->config['debug']['log_device_detection']) {
-            \Log::info('Device Detection', [
-                'user_agent' => $this->getUserAgent(),
-                'device_type' => $this->getDeviceType(),
-                'is_mobile' => $this->isMobile(),
-                'is_tablet' => $this->isTablet(),
-                'has_touch' => $this->hasTouchCapability(),
-                'viewport_size' => $this->getViewportSize(),
-            ]);
         }
     }
 

@@ -207,7 +207,7 @@ class ExecuteSecurityScan extends Command
         
         $report .= "\n## 🧬 Security Evidence Quality Report\n\n";
         $report .= "- **Total Security Findings Processed**: {$evidenceStats['total_findings']}\n";
-        $report .= "- **Valid Security Findings**: {$evidenceStats['validated_findings']}\n";
+        $report .= "- **Valid Security Findings**: {$evidenceStats['valid_findings']}\n";
         $report .= "- **Rejected Security Findings**: {$evidenceStats['rejected_findings']}\n";
         $report .= "- **Security Evidence Quality Score**: {$evidenceStats['evidence_quality_score']}%\n";
         $report .= "- **False Positive Accountability**: ✅ ENFORCED\n\n";

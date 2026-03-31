@@ -565,14 +565,6 @@ class TopicController extends Controller
             // Check if user has access to the topic's course
             if (!$user->isAdmin() && !$user->hasAccessToCourse($topic->course_id)) {
                 // TEMPORARY: Log the access issue for debugging
-                Log::info('Video access denied - redirecting to course', [
-                    'user_id' => $user->id,
-                    'user_role' => $user->role,
-                    'topic_id' => $topic->id,
-                    'course_id' => $topic->course_id,
-                    'is_admin' => $user->isAdmin(),
-                    'has_access' => $user->hasAccessToCourse($topic->course_id)
-                ]);
 
                 if ($user->requiresSurveyUnlockForCourse($topic->course_id)) {
                     return redirect($user->freeCourseSurveyRedirectFor($topic->course_id));

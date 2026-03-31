@@ -279,11 +279,6 @@ class CourseService
 
                     $imageUrl = $uploadResult['storage_path'];
 
-                    Log::info('Secure course image upload completed', [
-                        'course_name' => $validated['name'],
-                        'secure_filename' => $uploadResult['secure_name'],
-                        'original_filename' => $uploadResult['original_name']
-                    ]);
 
                 } catch (\Exception $e) {
                     Log::error('Secure file upload failed for course image', [
@@ -325,11 +320,6 @@ class CourseService
             $currentVersion = Cache::get('courses_cache_version', 1);
             Cache::put('courses_cache_version', $currentVersion + 1, 86400);
 
-            Log::info('Course created successfully', [
-                'course_id' => $course->id,
-                'course_name' => $course->name,
-                'admin_id' => auth()->id()
-            ]);
 
             return [
                 'success' => true,

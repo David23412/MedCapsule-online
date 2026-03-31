@@ -67,12 +67,6 @@ class CourseAccessController extends Controller
             Cache::forget("access_requests_pending");
             Cache::forget("user_courses_{$accessRequest->user_id}");
 
-            Log::info('Course access request approved', [
-                'request_id' => $requestId,
-                'user_id' => $accessRequest->user_id,
-                'course_id' => $accessRequest->course_id,
-                'admin_id' => auth()->id()
-            ]);
 
             return response()->json([
                 'success' => true,
@@ -124,11 +118,6 @@ class CourseAccessController extends Controller
             // Clear cache
             Cache::forget("access_requests_pending");
 
-            Log::info('Course access request rejected', [
-                'request_id' => $requestId,
-                'reason' => $validated['reason'] ?? 'No reason provided',
-                'admin_id' => auth()->id()
-            ]);
 
             return response()->json([
                 'success' => true,

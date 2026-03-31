@@ -32,7 +32,7 @@ jobs:
     - name: Setup PHP
       uses: shivammathur/setup-php@v2
       with:
-        php-version: '8.2'
+        php-version: '8.4'
         extensions: mbstring, xml, ctype, iconv, intl, pdo_mysql, bcmath, gd
         tools: composer:v2
 
@@ -86,7 +86,7 @@ jobs:
         DB_DATABASE: medcapsule_test
         DB_USERNAME: medcapsule
         DB_PASSWORD: secret
-      run: vendor/bin/phpunit --coverage-text --coverage-clover=coverage.xml
+      run: vendor/bin/phpunit --coverage-text --coverage-clover=coverage.xml -d memory_limit=512M
 
     - name: Run Payment Security Tests
       env:

@@ -119,11 +119,6 @@ class QuizGradingRequest extends FormRequest
             return;
         }
 
-        Log::info('Quiz validation passed', [
-            'total_size_bytes' => $totalSize,
-            'question_count' => $questionCount,
-            'user_id' => auth()->id()
-        ]);
     }
 
     /**

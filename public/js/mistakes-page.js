@@ -379,8 +379,6 @@ function removeMistake(questionId) {
 }
 
 document.addEventListener('DOMContentLoaded', () => {
-    console.log('Review mistakes page loaded successfully');
-
     const sidebarToggle = document.getElementById('sidebarToggle');
     const sidebarStorageKey = 'medcapsule-review-sidebar-collapsed';
     const getStoredSidebarState = () => {

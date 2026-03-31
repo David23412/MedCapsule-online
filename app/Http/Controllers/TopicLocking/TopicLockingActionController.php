@@ -37,7 +37,6 @@ class TopicLockingActionController extends Controller
     {
         try {
             if (app()->environment('local', 'testing')) {
-                Log::info('Method lock called', ['user_id' => auth()->id(), 'timestamp' => now()]);
             }
             $user = $this->checkPermission();
             
@@ -103,7 +102,6 @@ class TopicLockingActionController extends Controller
     public function unlock(Request $request, int $topicId): JsonResponse
     {
         if (app()->environment('local', 'testing')) {
-            Log::info('Method unlock called', ['user_id' => auth()->id(), 'timestamp' => now()]);
         }
         $user = $this->checkPermission();
         
@@ -140,7 +138,6 @@ class TopicLockingActionController extends Controller
     public function bulkLock(Request $request): JsonResponse
     {
         if (app()->environment('local', 'testing')) {
-            Log::info('Method bulkLock called', ['user_id' => auth()->id(), 'timestamp' => now()]);
         }
         $user = $this->checkPermission();
         
@@ -225,7 +222,6 @@ class TopicLockingActionController extends Controller
     public function bulkUnlock(Request $request): JsonResponse
     {
         if (app()->environment('local', 'testing')) {
-            Log::info('Method bulkUnlock called', ['user_id' => auth()->id(), 'timestamp' => now()]);
         }
         $user = $this->checkPermission();
         

@@ -42,8 +42,11 @@ class QuizUltraConsolidatedCacheService
 
     public static function getQuizData(string $key, ?callable $fallback = null, ?int $ttl = null): mixed
     {
-        if (Cache::has($key)) {
-            return UltraConsolidatedCacheService::safeGet($key);
+        // Single cache read — eliminates the prior Cache::has() + safeGet() double-read.
+        $cached = UltraConsolidatedCacheService::safeGet($key);
+
+        if ($cached !== null) {
+            return $cached;
         }
 
         if ($fallback === null) {
@@ -84,14 +87,7 @@ class QuizUltraConsolidatedCacheService
     {
         $size = is_array($data) ? count($data, COUNT_RECURSIVE) : 1;
 
-        if ($size <= 10) {
-            return 300;
-        }
-
-        if ($size <= 100) {
-            return 900;
-        }
-
-        return 900;
+        // Small payloads get a shorter TTL to stay fresh; everything else uses 15 min.
+        return $size <= 10 ? 300 : 900;
     }
 }

@@ -42,12 +42,6 @@ class QuizTutorController extends Controller
         try {
             $user = auth()->user();
             
-            Log::info('📌 Tutor Quiz Start Attempt', [
-                'request_id' => $requestId,
-                'user_id' => $user->id,
-                'course_id' => $course->id,
-                'topic_id' => $topic->id
-            ]);
             
             // Check access with caching
             $accessKey = "user_access_{$user->id}_{$course->id}";
@@ -83,11 +77,6 @@ class QuizTutorController extends Controller
             $quizData = $this->quizService->initializeQuiz($user, $course, $topic, $sources, 'tutor');
             
             $executionTime = (microtime(true) - $startTime) * 1000;
-            Log::info('✅ Tutor quiz initialized successfully', [
-                'request_id' => $requestId,
-                'execution_time_ms' => round($executionTime, 2),
-                'questions_count' => count($quizData['questions'])
-            ]);
             
             // ✅ ZERO N+1 BADGE ENRICHMENT
             \App\Models\Question::enrichWithBadges($quizData['questions'], $topic->id);
@@ -153,21 +142,12 @@ class QuizTutorController extends Controller
             $user = auth()->user();
             $sessionData = $request->all();
 
-            \Log::info('🔥 TUTOR COMPLETE SESSION: Received payload', [
-                'raw_data' => $sessionData,
-                'user_id' => $user->id
-            ]);
 
             // Extract data from NEW PAYLOAD STRUCTURE
             $results = $sessionData['results'] ?? [];
             $userAnswers = $sessionData['user_answers'] ?? [];
             $answeredQuestions = $sessionData['answered_questions'] ?? 0;
 
-            \Log::info('📊 TUTOR SESSION DATA EXTRACTED', [
-                'results' => $results,
-                'user_answers_count' => count($userAnswers),
-                'answered_questions' => $answeredQuestions
-            ]);
 
             // GET COURSE AND TOPIC FROM SESSION/URL PARAMS
             $topicId = request()->input('topic_id', session('current_topic_id', request('topic_id')));
@@ -181,10 +161,6 @@ class QuizTutorController extends Controller
                 $courseId = 1; // Default course ID
             }
 
-            \Log::info('🔍 RESOLVED IDs', [
-                'topic_id' => $topicId,
-                'course_id' => $courseId
-            ]);
 
             // GET QUESTIONS TO EXTRACT SOURCES
             $questions = [];
@@ -240,12 +216,6 @@ class QuizTutorController extends Controller
                 }
             }
 
-            \Log::info('📊 SOURCE GROUPS PROCESSING COMPLETE', [
-                'sources_processed' => count($sourceGroups),
-                'total_correct' => $totalCorrect,
-                'total_questions_processed' => $totalQuestions,
-                'source_data' => $sourceGroups
-            ]);
 
             // CREATE QUIZ ATTEMPTS FOR EACH SOURCE
             $createdAttempts = [];
@@ -272,15 +242,6 @@ class QuizTutorController extends Controller
 
                     $createdAttempts[] = $result;
 
-                    \Log::info('✅ TUTOR MODE: Quiz attempt created for source', [
-                        'user_id' => $user->id,
-                        'topic_id' => $topicId,
-                        'source' => $source,
-                        'score' => $groupData['correct'],
-                        'total' => $groupData['total'],
-                        'percentage' => $percentage,
-                        'attempt_id' => $result['attempt']->id ?? null
-                    ]);
                 }
             }
 
@@ -291,15 +252,10 @@ class QuizTutorController extends Controller
             // 🔥 CLEAR MISTAKE CACHE - Ensure mistakes show up instantly!
             if ($totalQuestions > $totalCorrect) {
                 \App\Http\Controllers\Quiz\QuizMistakeController::clearUserMistakeCaches($user->id);
-                \Log::info('🔥 CACHE CLEARED: Mistakes will show instantly', ['user_id' => $user->id]);
             }
 
             // 🔥 CLEAR PROGRESS CACHE - Source modal updates instantly!
             \App\Models\QuizAttempt::clearProgressCache($user->id, $topicId, 'tutor');
-            \Log::info('🔥 PROGRESS CACHE CLEARED: Source modal will update instantly', [
-                'user_id' => $user->id,
-                'topic_id' => $topicId
-            ]);
 
             // Trigger tutor mode completion notifications
             \App\Services\NotificationTriggerService::onQuizCompleted($user, [
@@ -312,16 +268,6 @@ class QuizTutorController extends Controller
                 'mode' => 'tutor'
             ]);
 
-            \Log::info('🎉 TUTOR SESSION COMPLETED SUCCESSFULLY', [
-                'user_id' => $user->id,
-                'correct_answers' => $totalCorrect,
-                'total_questions' => $totalQuestions,
-                'course_id' => $courseId,
-                'topic_id' => $topicId,
-                'sources_processed' => count($createdAttempts),
-                'attempts_created' => count($createdAttempts),
-                'mistakes_recorded' => $totalQuestions - $totalCorrect
-            ]);
 
             return response()->json([
                 'success' => true,

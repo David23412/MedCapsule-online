@@ -92,12 +92,6 @@ class VideoController extends Controller
             ];
 
             if (app()->environment('local', 'testing')) {
-                Log::info('Video access granted successfully', [
-                    'user_id' => $user->id,
-                    'video_id' => $video->id,
-                    'course_id' => $course->id,
-                    'execution_time_ms' => round((microtime(true) - $startTime) * 1000, 2)
-                ]);
             }
 
             return response()->json([
@@ -173,11 +167,6 @@ class VideoController extends Controller
             });
 
             if (app()->environment('local', 'testing')) {
-                Log::info('Admin videos list loaded successfully', [
-                    'user_id' => $user->id,
-                    'videos_count' => $videos->count(),
-                    'execution_time_ms' => round((microtime(true) - $startTime) * 1000, 2)
-                ]);
             }
 
             return response()->json([
@@ -295,13 +284,6 @@ class VideoController extends Controller
             // 🚀 OPTIMIZED CACHE CLEARING: Clear related caches
             $this->clearVideoCaches($safeData['topic_id']);
 
-            Log::info('Video created successfully', [
-                'user_id' => $user->id,
-                'video_id' => $video->id,
-                'topic_id' => $safeData['topic_id'],
-                'youtube_video_id' => $videoId,
-                'execution_time_ms' => round((microtime(true) - $startTime) * 1000, 2)
-            ]);
 
             return response()->json([
                 'success' => true,
@@ -390,13 +372,6 @@ class VideoController extends Controller
             // 🚀 OPTIMIZED CACHE CLEARING: Clear related caches
             $this->clearVideoCaches($videoInfo['topic_id']);
 
-            Log::info('Video deleted successfully', [
-                'user_id' => $user->id,
-                'video_id' => $videoInfo['id'],
-                'topic_id' => $videoInfo['topic_id'],
-                'youtube_video_id' => $videoInfo['youtube_video_id'],
-                'execution_time_ms' => round((microtime(true) - $startTime) * 1000, 2)
-            ]);
 
             return response()->json([
                 'success' => true,
