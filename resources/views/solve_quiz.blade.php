@@ -1319,7 +1319,7 @@
         <div class="container">
             <a class="navbar-brand" href="/">MedCapsule</a>
             <div class="nav-links">
-                <a href="javascript:history.back()" class="nav-link">← Back</a>
+                <a href="{{ route('topics.forCourse', $course->id) }}" class="nav-link">← Back</a>
                 @php
                     $profileImageUrl = $currentUserView['profile_image_url'] ?? Auth::user()->getProfileImageUrl();
                     $profileFallbackUrl = $currentUserView['profile_fallback_url'] ?? ('https://ui-avatars.com/api/?name=' . urlencode(Auth::user()->name) . '&size=200&background=007bff&color=ffffff');

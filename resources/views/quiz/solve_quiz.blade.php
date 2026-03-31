@@ -36,7 +36,7 @@
         <div class="container">
             <a class="navbar-brand" href="/">MedCapsule</a>
             <div class="nav-links">
-                <a href="javascript:history.back()" class="nav-link">
+                <a href="{{ route('topics.forCourse', $selectedCourses->first()->id) }}" class="nav-link">
                     <i class="fas fa-arrow-left"></i>
                     Back
                 </a>
