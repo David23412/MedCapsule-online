@@ -13,7 +13,7 @@
 
     <style>
         body {
-            zoom: 0.80;
+            zoom: 0.75;
             -webkit-text-size-adjust: 100%; /* Prevent Safari text auto-sizing */
         }
         @media (max-width: 850px) {
