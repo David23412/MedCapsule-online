@@ -93,6 +93,15 @@
     <link rel="stylesheet" href="{{ asset('css/responsive.css') }}">
     <link rel="stylesheet" href="{{ asset('css/mobile-utils.css') }}">
     <link rel="stylesheet" href="{{ asset('css/responsive-navigation.css') }}">
+    <style>
+        body {
+            zoom: 0.75;
+            -webkit-text-size-adjust: 100%; /* Prevent Safari text auto-sizing */
+        }
+        @media (max-width: 850px) {
+            body { zoom: 1 !important; }
+        }
+    </style>
 </head>
 
 <body>

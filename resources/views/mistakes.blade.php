@@ -16,6 +16,16 @@
 
     <link rel="stylesheet" href="{{ asset('css/mistakes-page.css') }}?v={{ filemtime(public_path('css/mistakes-page.css')) }}">
     
+    <style>
+        body {
+            zoom: 0.75;
+            -webkit-text-size-adjust: 100%; /* Prevent Safari text auto-sizing */
+        }
+        @media (max-width: 850px) {
+            body { zoom: 1 !important; }
+        }
+    </style>
+    
     {{-- Desktop styles only --}}
 </head>
 <body>
