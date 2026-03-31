@@ -530,16 +530,6 @@ Route::group([], function () use ($serveStorageFile, $serveFirstExistingStorageF
     });
     });
 
-});
-
-// Root route - redirect to courses for authenticated users, login for guests
-Route::get('/', function () {
-    if (auth()->check()) {
-        return redirect()->route('courses.index');
-    }
-    return redirect()->route('login');
-});
-
 // Notification routes - simplified implementation
 Route::middleware(['auth'])->group(function () {
     Route::get('/notifications', [NotificationViewController::class, 'index'])->name('notifications.index');
