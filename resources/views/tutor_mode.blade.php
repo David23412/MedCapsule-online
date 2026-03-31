@@ -42,6 +42,7 @@
             background-color: #f8f9fa;
             margin: 0;
             padding: 0;
+            zoom: 0.75;
             -webkit-text-size-adjust: 100%; /* Prevent Safari text auto-sizing */
         }
 
@@ -793,6 +794,10 @@
         }
 
         @media (max-width: 850px) {
+            /* Reset desktop zoom on tablets and phones */
+            body {
+                zoom: 1 !important;
+            }
 
             .container {
                 padding: 1.5rem;
