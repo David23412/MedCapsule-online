@@ -116,7 +116,11 @@ use Illuminate\Support\Facades\Cache;
             // CRITICAL FIX: Clear all user-related caches to ensure fresh state
             \Illuminate\Support\Facades\Cache::forget("home_nuclear_v5_auth_{$user->id}_" . now()->format('Y-m-d-H'));
             \Illuminate\Support\Facades\Cache::forget("home_nuclear_v5_guest_guest_" . now()->format('Y-m-d-H'));
-            \Illuminate\Support\Facades\Cache::tags(['user_' . $user->id])->flush();
+            try {
+                \Illuminate\Support\Facades\Cache::tags(['user_' . $user->id])->flush();
+            } catch (\BadMethodCallException $e) {
+                // Cache store does not support tagging, ignore
+            }
             
             // CRITICAL FIX: Store authentication flag in session
             $request->session()->put('auth.user_id', $user->id);

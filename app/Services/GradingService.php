@@ -1035,7 +1035,13 @@ class GradingService
             if (!$topic) {
                 throw new \Exception('Question has no associated topic');
             }
-            $this->updateTutorProgress($user, $question, $topic, $isCorrect);
+            $isNewAttempt = $this->updateTutorProgress($user, $question, $topic, $isCorrect);
+            
+            if ($isNewAttempt) {
+                // Update aggregate stats immediately for accurate pie charts in profile
+                app(\App\Services\UserStatsService::class)->updateAfterQuizAttempt($user, 1, $isCorrect ? 1 : 0, 0, 0);
+            }
+            
             $this->checkAndCreateTutorAttempt($user, $question, $topic);
             $message = $writtenEvaluation['feedback']
                 ?? ($isCorrect ? 'Correct!' : 'Incorrect. Try again!');
@@ -1070,8 +1076,9 @@ class GradingService
      * @param Question $question
      * @param Topic $topic
      * @param bool $isCorrect
+     * @return bool True if this is a newly attempted question matching current session
      */
-    private function updateTutorProgress(User $user, Question $question, Topic $topic, bool $isCorrect): void
+    private function updateTutorProgress(User $user, Question $question, Topic $topic, bool $isCorrect): bool
     {
         $now = time();
         $tutorProgress = session()->get('tutor_progress', ['sources' => []]);
@@ -1088,8 +1095,11 @@ class GradingService
             ];
         }
 
+        $isNewAttempt = false;
+
         // Use hash set for O(1) lookup instead of O(n) in_array
         if (!isset($tutorProgress['sources'][$source]['completed_questions_set'][$question->id])) {
+            $isNewAttempt = true;
             $tutorProgress['sources'][$source]['total']++;
             if ($isCorrect) {
                 $tutorProgress['sources'][$source]['correct']++;
@@ -1100,6 +1110,8 @@ class GradingService
         }
 
         session(['tutor_progress' => $tutorProgress]);
+        
+        return $isNewAttempt;
     }
 
     /**
