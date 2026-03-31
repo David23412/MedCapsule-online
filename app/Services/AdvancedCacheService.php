@@ -103,7 +103,6 @@ class AdvancedCacheService
         // Warm system caches (medium priority)
         $results = $this->mergeResults($results, $this->warmSystemCaches());
 
-        Log::info('Cache warming completed', $results);
         return $results;
     }
 
@@ -241,11 +240,6 @@ class AdvancedCacheService
             $invalidated += 15; // Approximate
         }
 
-        Log::info('Cache cascade invalidation completed', [
-            'type' => $type,
-            'identifier' => $identifier,
-            'invalidated' => $invalidated
-        ]);
 
         return $invalidated;
     }

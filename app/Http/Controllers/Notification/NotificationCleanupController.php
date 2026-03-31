@@ -31,10 +31,6 @@ class NotificationCleanupController extends Controller
             
             $removedCount = UniversalNotificationService::cleanupExpiredNotifications($user);
             
-            \Illuminate\Support\Facades\Log::info('Notification cleanup completed', [
-                'user_id' => $user->id,
-                'removed_count' => $removedCount
-            ]);
             
             return response()->json([
                 'success' => true,
@@ -74,10 +70,6 @@ class NotificationCleanupController extends Controller
             
             $deletedCount = UniversalNotificationService::aggressiveDeleteViewed($user);
             
-            \Illuminate\Support\Facades\Log::info('Aggressive notification cleanup completed', [
-                'user_id' => $user->id,
-                'deleted_count' => $deletedCount
-            ]);
             
             return response()->json([
                 'success' => true,

@@ -84,31 +84,19 @@ class SqlInjectionProtectionMiddleware
     public function handle(Request $request, Closure $next): Response
     {
         $requestId = uniqid('sql_protect_');
-        
+
         // Skip protection for safe routes (if configured)
         if ($this->shouldSkipProtection($request)) {
             return $next($request);
         }
-        
-        Log::info('SQL injection protection check started', [
-            'request_id' => $requestId,
-            'url' => $request->fullUrl(),
-            'method' => $request->method(),
-            'user_id' => auth()->id(),
-            'ip' => $request->ip()
-        ]);
-        
+
         // Check all input data
         $threatDetected = $this->scanForThreats($request, $requestId);
-        
+
         if ($threatDetected['detected']) {
             return $this->blockRequest($request, $threatDetected, $requestId);
         }
-        
-        Log::info('SQL injection protection check passed', [
-            'request_id' => $requestId
-        ]);
-        
+
         return $next($request);
     }
     

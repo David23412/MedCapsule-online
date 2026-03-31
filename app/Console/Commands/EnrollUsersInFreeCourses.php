@@ -71,12 +71,6 @@ class EnrollUsersInFreeCourses extends Command
 
                 $this->line("  ✅ Ensured access for {$enrolledCount} course(s)");
 
-                Log::info('Survey-unlocked course access backfill completed for user', [
-                    'user_id' => $user->id,
-                    'user_name' => $user->name,
-                    'enrollment_count' => $enrolledCount,
-                    'forced' => (bool) $this->option('force'),
-                ]);
             } catch (\Exception $e) {
                 $this->error("  ❌ Failed to ensure access for user {$user->id}: {$e->getMessage()}");
                 Log::error('Failed to ensure survey-unlocked course access', [
@@ -107,14 +101,6 @@ class EnrollUsersInFreeCourses extends Command
             $this->line("  - Course {$courseId} ({$course->name}): {$count} enrolled users");
         }
 
-        Log::info('Survey-unlocked course access backfill completed', [
-            'total_users' => $users->count(),
-            'eligible_users' => $eligibleUsers,
-            'survey_unlockable_courses' => $freeCourses->count(),
-            'enrollments_processed' => $totalEnrollments,
-            'users_skipped' => $skippedUsers,
-            'final_stats' => $verificationStats
-        ]);
 
         return 0;
     }

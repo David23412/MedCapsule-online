@@ -393,12 +393,6 @@ class WritingGraderService
         ];
 
         // Debug log to verify algorithm scores are included
-        Log::debug('Ensemble Decision Result', [
-            'final_score' => $finalScore,
-            'algorithm_breakdown_count' => count($algorithmBreakdown),
-            'algorithm_keys' => array_keys($algorithmBreakdown),
-            'cosine_score' => $algorithmBreakdown['cosine'] ?? 'MISSING'
-        ]);
 
         return $result;
     }
@@ -487,12 +481,6 @@ class WritingGraderService
 
         // Log every 50 evaluations for monitoring
         if (count($this->performanceStats) % 50 === 0) {
-            Log::info('Writing Grader Performance', [
-                'total_evaluations' => count($this->performanceStats),
-                'average_similarity' => array_sum(array_column($this->performanceStats, 'similarity')) / count($this->performanceStats),
-                'average_confidence' => array_sum(array_column($this->performanceStats, 'confidence')) / count($this->performanceStats),
-                'average_time' => array_sum(array_column($this->performanceStats, 'processing_time')) / count($this->performanceStats)
-            ]);
         }
     }
 
@@ -567,11 +555,6 @@ class WritingGraderService
             // Store evaluation using the model
             Evaluation::createEvaluation($evaluationData);
 
-            Log::debug('Evaluation stored for learning', [
-                'similarity' => $result['similarity'],
-                'confidence' => $result['confidence'],
-                'subject' => $subject
-            ]);
 
         } catch (\Exception $e) {
             Log::warning('Failed to store evaluation for learning', [
@@ -667,11 +650,6 @@ class WritingGraderService
 
             $evaluation->validateWithHuman($humanScore, $feedback);
 
-            Log::info('Human feedback recorded for learning', [
-                'evaluation_id' => $evaluationId,
-                'human_score' => $humanScore,
-                'system_score' => $evaluation->similarity_score
-            ]);
 
             return true;
 
@@ -692,7 +670,6 @@ class WritingGraderService
         $this->cache->clearAll();
         $this->performanceStats = [];
 
-        Log::info('All Writing Grader caches cleared');
     }
 
     /**

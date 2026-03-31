@@ -1,5 +1,5 @@
 /* Only keep critical overrides that are not in topics.css */
-body{font-family:'Poppins',sans-serif;background-color:#f8f9fa;zoom:.72;margin:0;padding:0;line-height:1.6;-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale}
+body{font-family:'Poppins',sans-serif;background-color:#f8f9fa;font-size:87.5%;margin:0;padding:0;line-height:1.6;-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale}
 
 :root {
     --topics-sidebar-scale-compensation: 1.1111111111;
@@ -1484,7 +1484,7 @@ body.sidebar-collapsed .coming-soon-overlay {
 
 @media (max-width: 991.98px) {
     body {
-        zoom: 1;
+        font-size: 100%;
     }
 
     .sidebar {
@@ -1652,9 +1652,9 @@ body.topics-sidebar-open {
 }
 
 @media (max-width: 767.98px) {
-    /* Reset the 72% zoom that was applied for desktop */
+    /* Restore full font-size on mobile — desktop uses 87.5% for layout density */
     body {
-        zoom: 1 !important;
+        font-size: 100% !important;
     }
 
     /* ── Mobile sticky top bar ─────────────────── */

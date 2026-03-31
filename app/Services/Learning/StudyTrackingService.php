@@ -35,11 +35,6 @@ class StudyTrackingService
                 'updated_at' => now()
             ]);
 
-            Log::info('Study time and quiz attempt recorded for mistake review', [
-                'user_id' => $userId,
-                'study_time' => $studyTime,
-                'quiz_type' => 'mistake_review'
-            ]);
 
             return [
                 'success' => true,

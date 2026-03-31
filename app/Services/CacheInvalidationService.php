@@ -60,11 +60,6 @@ class CacheInvalidationService
                 }
             }
 
-            Log::info('BULLETPROOF: All major caches invalidated', [
-                'keys_attempted' => count($cacheKeys),
-                'keys_cleared' => $cleared,
-                'timestamp' => now()->toISOString()
-            ]);
 
             return true;
         } catch (\Exception $e) {

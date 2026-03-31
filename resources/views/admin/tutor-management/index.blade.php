@@ -181,7 +181,7 @@
                                 </div>
                                 <div class="col-md-4">
                                     <div class="text-center">
-                                        <div class="fw-bold text-primary">{{ $tutor->assignedStudents->count() }}</div>
+                                        <div class="fw-bold text-primary">{{ $tutor->assigned_students_count }}</div>
                                         <small class="text-muted">Assigned Students</small>
                                     </div>
                                 </div>
@@ -192,13 +192,13 @@
                                     </a>
                                 </div>
                             </div>
-                            @if($tutor->assignedStudents->count() > 0)
+                            @if($tutor->assigned_students_count > 0)
                             <div class="mt-2">
                                 @foreach($tutor->assignedStudents->take(5) as $student)
                                     <span class="student-badge">{{ $student->name }}</span>
                                 @endforeach
-                                @if($tutor->assignedStudents->count() > 5)
-                                    <span class="student-badge">+{{ $tutor->assignedStudents->count() - 5 }} more</span>
+                                @if($tutor->assigned_students_count > 5)
+                                    <span class="student-badge">+{{ $tutor->assigned_students_count - 5 }} more</span>
                                 @endif
                             </div>
                             @endif
@@ -261,9 +261,9 @@
                     <p>Assign <strong id="studentName"></strong> to:</p>
                     <select class="form-select" id="tutorSelect">
                         <option value="">Select a tutor...</option>
-{{-- 💀 N+1 FIX NEEDED: Eager load 'assignedStudents' in controller --}}
+{{-- assignedStudents eager-loaded in controller with withCount --}}
                         @foreach($recentTutors as $tutor)
-                            <option value="{{ $tutor->id }}">{{ $tutor->name }} ({{ $tutor->assignedStudents->count() }} students)</option>
+                            <option value="{{ $tutor->id }}">{{ $tutor->name }} ({{ $tutor->assigned_students_count }} students)</option>
                         @endforeach
                     </select>
                 </div>

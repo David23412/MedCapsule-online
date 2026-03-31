@@ -71,13 +71,6 @@ class CheckCourseMastery extends Command
                             $this->line("Course mastery achieved! User #{$user->id} ({$user->name}) mastered {$course->name}");
                             $masteryCount++;
                             
-                            Log::info('Course mastery notification sent', [
-                                'user_id' => $user->id,
-                                'course_id' => $course->id,
-                                'course_name' => $course->name,
-                                'mastered_topics' => $masteredTopics,
-                                'total_topics' => $totalTopics
-                            ]);
                         } catch (\Exception $e) {
                             $this->error("Failed to send course mastery notification for user #{$user->id}, course {$course->name}: " . $e->getMessage());
                             Log::error('Failed to send course mastery notification', [

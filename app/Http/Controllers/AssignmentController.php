@@ -126,36 +126,13 @@ class AssignmentController extends Controller
         
         // 👑 ADMIN SUPERIOR PRIVILEGES - Can delete ANY assignment
         if ($user->role === 'admin') {
-            \Log::info('👑 Admin deleting assignment with superior privileges', [
-                'admin_id' => $user->id,
-                'admin_name' => $user->name,
-                'assignment_id' => $assignment->id,
-                'assignment_title' => $assignment->title,
-                'request_method' => request()->method(),
-                'request_url' => request()->fullUrl(),
-                'ip_address' => request()->ip()
-            ]);
         } else {
             // Regular tutor deletion logging
-            \Log::info('🎓 Tutor deleting assignment', [
-                'tutor_id' => $user->id,
-                'tutor_name' => $user->name,
-                'assignment_id' => $assignment->id,
-                'assignment_title' => $assignment->title,
-                'request_method' => request()->method(),
-                'request_url' => request()->fullUrl()
-            ]);
         }
 
         try {
             $result = $this->assignmentService->deleteAssignment($assignment);
             
-            \Log::info('🗑️ Assignment deletion result', [
-                'assignment_id' => $assignment->id,
-                'deleted_by' => $user->role,
-                'user_id' => $user->id,
-                'result' => $result
-            ]);
             
             if ($result) {
                 return response()->json([

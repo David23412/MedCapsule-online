@@ -59,10 +59,6 @@
                 imageElement.style.backgroundImage = `url('${optimizedUrl}')`;
                 imageElement.style.animation = 'none';
                 loadedCount++;
-
-                if (loadedCount === 1) {
-                    console.log('FIRST IMAGE LOADED - PAGE FEELS FAST');
-                }
             };
             img.onerror = () => {
                 imageElement.style.backgroundImage = 'linear-gradient(135deg, #f5f7fa 0%, #e9ecef 100%)';
@@ -79,11 +75,10 @@
             unreadCount: 0,
             loading: false,
             lastFetched: 0,
-            notificationSound: new Audio('/sounds/Soft-ui-notification-sound-effect.mp3'),
+            notificationSound: null,
             prevUnreadCount: 0,
 
             init() {
-                this.notificationSound.load();
                 this.setUserInteractionFlag();
                 this.fetchNotifications().then(() => {
                     this.prevUnreadCount = this.unreadCount;
@@ -127,14 +122,16 @@
             },
 
             playNotificationSound() {
-                if (window.hasUserInteraction) {
-                    try {
-                        this.notificationSound.volume = 0.5;
-                        this.notificationSound.play().catch(e => console.log('Sound play error:', e));
-                    } catch (e) {
-                        console.log('Error playing notification sound:', e);
-                    }
+                if (!window.hasUserInteraction) {
+                    return;
                 }
+                try {
+                    if (!this.notificationSound) {
+                        this.notificationSound = new Audio('/sounds/Soft-ui-notification-sound-effect.mp3');
+                    }
+                    this.notificationSound.volume = 0.5;
+                    this.notificationSound.play().catch(() => {});
+                } catch (_e) {}
             },
 
             getTypeIcon(type) {
@@ -557,7 +554,6 @@
             window.location.hostname.includes('localhost') ||
             window.location.hostname.includes('127.0.0.1')
         ) {
-            console.log('Skipping progress polling on development environment');
             return;
         }
 
@@ -565,10 +561,8 @@
             .then(data => {
                 applyUserProgressSnapshot(data);
             })
-            .catch(error => {
-                console.log('Progress polling error (will retry):', error.message);
+            .catch(() => {
                 if (!window.progressPollingErrorLogged) {
-                    console.warn('Progress polling disabled due to network issues. This is normal in development.');
                     window.progressPollingErrorLogged = true;
                 }
             });
@@ -892,8 +886,6 @@
 
     document.addEventListener('DOMContentLoaded', function() {
         function updatePaymentButtonsForPendingPayments() {
-            console.log('PENDING CHECK: Starting localStorage scan...');
-
             Object.keys(localStorage).forEach(key => {
                 if (!key.startsWith('payment_pending_')) {
                     return;
@@ -941,20 +933,6 @@
                 }
             });
         }
-
-        console.log('Page loaded - checking for pending payments...');
-        console.log('Current user ID from auth:', coursesPageConfig.authUserId ?? 'NOT_LOGGED_IN');
-
-        document.querySelectorAll('[id^="paymentBtn_"]').forEach(button => {
-            const courseId = button.id.replace('paymentBtn_', '');
-            console.log(`Course ${courseId}:`, {
-                pending: button.getAttribute('data-debug-pending'),
-                enrolled: button.getAttribute('data-debug-enrolled'),
-                price: button.getAttribute('data-debug-price'),
-                disabled: button.disabled,
-                text: button.textContent.trim()
-            });
-        });
 
         updatePaymentButtonsForPendingPayments();
         startPaymentStatusPolling();
@@ -1158,7 +1136,6 @@
 
         function markMilestone(name, time = performance.now()) {
             const duration = time - perfData.startTime;
-            console.log(`PERF: ${name} - ${Math.round(duration)}ms`);
 
             if (duration > 500) {
                 perfData.bottlenecks.push({ name, duration });
@@ -1211,15 +1188,6 @@
 
         function generatePerformanceReport() {
             const totalTime = performance.now() - perfData.startTime;
-            console.log(`
-COURSES PAGE PERFORMANCE REPORT
-===============================
-TOTAL LOAD TIME: ${Math.round(totalTime)}ms
-DOM Ready: ${Math.round((perfData.domEnd || totalTime) - perfData.startTime)}ms
-Images: ${perfData.imagesLoaded}/${perfData.totalImages}
-Scripts: ${perfData.totalScripts}
-CSS Files: ${perfData.totalCSS}
-`);
 
             window.PERF_DATA = perfData;
             window.PERF_DATA.totalTime = totalTime;
@@ -1242,33 +1210,19 @@ CSS Files: ${perfData.totalCSS}
         });
 
         window.runPerformanceTest = function() {
-            console.log('Running performance test...');
             location.reload();
         };
 
         window.analyzeBottlenecks = function() {
             if (window.PERF_DATA) {
-                console.log('BOTTLENECK ANALYSIS:', window.PERF_DATA);
                 return window.PERF_DATA;
             }
-            console.log('No performance data available. Reload the page first.');
             return null;
         };
     })();
 
     if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.register('/sw.js')
-            .then(registration => {
-                console.log('Service Worker registered for caching');
-                registration.addEventListener('updatefound', () => {
-                    console.log('Service Worker update found');
-                });
-            })
-            .catch(error => {
-                console.warn('Service Worker registration failed:', error);
-            });
-    } else {
-        console.log('Service Worker not supported in this browser');
+        navigator.serviceWorker.register('/sw.js').catch(() => {});
     }
 
     document.addEventListener('DOMContentLoaded', function() {

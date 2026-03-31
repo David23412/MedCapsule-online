@@ -127,15 +127,6 @@ class SecureFileUploadService
 
         $publicUrl = $this->publicUrlForDisk($disk, $storedPath);
 
-        Log::info('Secure file upload completed', [
-            'original_name' => $file->getClientOriginalName(),
-            'secure_name' => $secureFilename,
-            'size' => $file->getSize(),
-            'mime_type' => $file->getMimeType(),
-            'category' => $category,
-            'storage_path' => $storedPath,
-            'disk' => $disk,
-        ]);
 
         return [
             'success' => true,
@@ -277,10 +268,6 @@ class SecureFileUploadService
                 }
             } catch (\Exception $e) {
                 // EXIF reading failed, but don't block the file
-                Log::info('EXIF reading failed for image', [
-                    'filename' => $file->getClientOriginalName(),
-                    'error' => $e->getMessage()
-                ]);
             }
         }
 

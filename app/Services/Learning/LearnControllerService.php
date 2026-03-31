@@ -51,13 +51,6 @@ class LearnControllerService
         $timeSpent = $request->input('time_spent', 0);
         $mode = session('learn_mode', 'quiz');
 
-        Log::info('Processing mistake review', [
-            'user_id' => $userId,
-            'question_id' => $questionId,
-            'rating' => $rating,
-            'time_spent' => $timeSpent,
-            'mode' => $mode
-        ]);
 
         $result = $this->mistakeService->reviewMistake($userId, $questionId, $rating, $timeSpent, $mode);
 
@@ -76,11 +69,6 @@ class LearnControllerService
         $mode = $request->input('mode', 'quiz');
         session(['learn_mode' => $mode]);
 
-        Log::info('Starting review session', [
-            'user_id' => $userId,
-            'mode' => $mode,
-            'session_id' => session()->getId()
-        ]);
 
         return [
             'success' => true,
@@ -94,18 +82,10 @@ class LearnControllerService
      */
     public function handleMistakeRemoval(int $userId, int $questionId): array
     {
-        Log::info('Removing mistake', [
-            'user_id' => $userId,
-            'question_id' => $questionId
-        ]);
 
         $result = $this->mistakeService->removeMistake($userId, $questionId);
 
         if ($result['success']) {
-            Log::info('Mistake removed successfully', [
-                'user_id' => $userId,
-                'question_id' => $questionId
-            ]);
         }
 
         return $result;
@@ -122,11 +102,6 @@ class LearnControllerService
         if ($studyTime > 0) {
             $this->studyTrackingService->recordStudySession($userId, $studyTime, $sessionType);
             
-            Log::info('Study time recorded', [
-                'user_id' => $userId,
-                'study_time' => $studyTime,
-                'session_type' => $sessionType
-            ]);
 
             return [
                 'success' => true,

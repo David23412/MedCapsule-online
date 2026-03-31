@@ -182,13 +182,6 @@ class HandleQuizCompletion implements ShouldQueue
                     // Trigger course mastery notification
                     \App\Services\NotificationTriggerService::onCourseMastery($user, $course->name);
                     
-                    Log::info('Course mastery achieved after topic mastery', [
-                        'user_id' => $user->id,
-                        'course_id' => $course->id,
-                        'course_name' => $course->name,
-                        'mastered_topics' => $masteredTopics,
-                        'total_topics' => $totalTopics
-                    ]);
                 }
             }
         } catch (\Exception $e) {

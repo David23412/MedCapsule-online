@@ -62,32 +62,11 @@ class UltraPerformanceServiceProvider extends ServiceProvider
 
         // Register performance events
         $this->registerPerformanceEvents();
-
-        \Log::info('UltraPerformanceServiceProvider: All duplicate services eliminated! Using ULTRA CONSOLIDATED CACHE SERVICE!');
     }
 
     private function registerPerformanceEvents(): void
     {
-        // Listen for application events to optimize performance
-        $this->app['events']->listen('Illuminate\Database\Events\QueryExecuted', function ($event) {
-            // Monitor slow queries
-            if ($event->time > 100) {
-                \Log::warning('Slow query detected', [
-                    'sql' => $event->sql,
-                    'duration_ms' => $event->time,
-                    'connection' => $event->connectionName
-                ]);
-            }
-        });
-
-        // Listen for cache events
-        $this->app['events']->listen('Illuminate\Cache\Events\CacheHit', function ($event) {
-            \Cache::increment('cache_hits_total');
-        });
-
-        $this->app['events']->listen('Illuminate\Cache\Events\CacheMissed', function ($event) {
-            \Cache::increment('cache_misses_total');
-        });
+        // Slow query logging handled by PerformanceMonitoring middleware (opt-in via config)
     }
 
     private function shouldSkipBootForConsole(): bool

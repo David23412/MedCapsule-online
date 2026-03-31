@@ -54,10 +54,6 @@ class IntelligentCacheManager
             ]);
         }
 
-        Log::info('Intelligent Cache Manager initialized', [
-            'available_levels' => array_keys($this->cacheLevels),
-            'total_levels' => count($this->cacheLevels)
-        ]);
     }
 
     /**
@@ -323,10 +319,6 @@ class IntelligentCacheManager
 
         // Log frequent misses for analysis
         if ($this->missPatterns[$pattern] > 5) {
-            Log::info('Frequent cache miss pattern detected', [
-                'pattern' => $pattern,
-                'miss_count' => $this->missPatterns[$pattern]
-            ]);
         }
     }
 
@@ -360,10 +352,6 @@ class IntelligentCacheManager
 
         $this->predictiveCache[$pattern] = true;
 
-        Log::info('Considering predictive preloading', [
-            'pattern' => $pattern,
-            'hit_count' => array_sum($this->hitPatterns[$pattern] ?? [])
-        ]);
 
         // In a full implementation, this would trigger background preloading
         // For now, we just log the pattern for analysis
@@ -374,11 +362,6 @@ class IntelligentCacheManager
      */
     private function logCacheMiss(string $key, float $time): void
     {
-        Log::info('Cache miss for AI training', [
-            'key_pattern' => $this->extractPattern($key),
-            'time' => $time,
-            'timestamp' => now()->toISOString()
-        ]);
     }
 
     /**
@@ -439,7 +422,6 @@ class IntelligentCacheManager
         $this->hitPatterns = [];
         $this->missPatterns = [];
 
-        Log::info('All cache levels cleared');
     }
 
     /**

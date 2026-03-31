@@ -48,13 +48,6 @@ class BayesianEngine
             $medicalBoost = $this->calculateMedicalBoost($studentTokens, $correctTokens);
             $score = min(1.0, $score + $medicalBoost);
 
-            Log::debug('Bayesian Engine Result:', [
-                'student_tokens' => $studentTokens,
-                'correct_tokens' => $correctTokens,
-                'raw_score' => $score - $medicalBoost,
-                'medical_boost' => $medicalBoost,
-                'final_score' => $score
-            ]);
 
             return $score;
         });
@@ -409,12 +402,6 @@ class BayesianEngine
             array_shift($this->trainingData);
         }
 
-        Log::info('Bayesian model updated with new training example', [
-            'student_length' => strlen($studentAnswer),
-            'correct_length' => strlen($correctAnswer),
-            'score' => $actualScore,
-            'total_examples' => count($this->trainingData)
-        ]);
     }
 
     /**

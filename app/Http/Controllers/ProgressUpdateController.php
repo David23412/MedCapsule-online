@@ -15,11 +15,6 @@ class ProgressUpdateController extends Controller
     public function storeProgressUpdate(Request $request): JsonResponse
     {
         // Debug logging to see what data is being received
-        Log::info('Progress update request received', [
-            'request_data' => $request->all(),
-            'content_type' => $request->header('Content-Type'),
-            'user_id' => auth()->id()
-        ]);
 
         try {
             $validated = $request->validate([
@@ -67,12 +62,6 @@ class ProgressUpdateController extends Controller
 
             // 🔥 GENIUS: No sync needed - progress is calculated dynamically!
 
-            Log::info('Progress update stored for real-time sync', [
-                'user_id' => $validated['userId'],
-                'topic_id' => $validated['topicId'],
-                'assignment_id' => $validated['assignmentId'],
-                'timestamp' => $progressData['timestamp']
-            ]);
 
             return response()->json([
                 'success' => true,
@@ -194,12 +183,6 @@ class ProgressUpdateController extends Controller
             
             Cache::put($globalKey, $globalCompletions, 300);
 
-            Log::info('Assignment completion stored for real-time sync', [
-                'user_id' => $validated['userId'],
-                'assignment_id' => $validated['assignmentId'],
-                'percentage' => $validated['percentage'],
-                'timestamp' => $assignmentData['timestamp']
-            ]);
 
             return response()->json([
                 'success' => true,

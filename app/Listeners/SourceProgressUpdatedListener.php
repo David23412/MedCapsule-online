@@ -25,11 +25,6 @@ class SourceProgressUpdatedListener implements ShouldQueue
     public function handle(SourceProgressUpdated $event): void
     {
         try {
-            Log::info('Source progress updated listener triggered', [
-                'topic_id' => $event->topicId,
-                'source_progress' => $event->sourceProgress,
-                'all_sources_mastered' => $event->allSourcesMastered
-            ]);
             
             // The frontend will listen for this event and update the source modal
             // This event is broadcasted and the frontend will handle the update
@@ -50,11 +45,6 @@ class SourceProgressUpdatedListener implements ShouldQueue
         try {
             // This would be called from the frontend to ensure the event is received
             // even if broadcasting fails
-            Log::info('Frontend event dispatch triggered', [
-                'topic_id' => $event->topicId,
-                'source_progress' => $event->sourceProgress,
-                'all_sources_mastered' => $event->allSourcesMastered
-            ]);
             
         } catch (\Exception $e) {
             Log::error('Failed to dispatch frontend event', [

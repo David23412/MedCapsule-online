@@ -22,11 +22,6 @@ class QuestionObserver
     public function deleted(Question $question): void
     {
         try {
-            Log::info('Question deleted, clearing related caches', [
-                'question_id' => $question->id,
-                'topic_id' => $question->topic_id,
-                'source' => $question->source
-            ]);
 
             // Clear question-specific caches
             $this->cacheService->clearQuestionCaches($question->id, $question->topic_id);
@@ -69,10 +64,6 @@ class QuestionObserver
 
             // If the question was marked as deleted, clear caches
             if ($question->wasChanged('deleted') && $question->deleted) {
-                Log::info('Question marked as deleted, clearing related caches', [
-                    'question_id' => $question->id,
-                    'topic_id' => $question->topic_id
-                ]);
 
                 $this->cacheService->clearQuestionCaches($question->id, $question->topic_id);
                 $this->cacheService->clearRandomQuizCaches();

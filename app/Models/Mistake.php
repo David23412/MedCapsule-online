@@ -231,13 +231,6 @@ class Mistake extends Model
         $this->applyReviewOutcome((bool) $isCorrect, (string) $mode);
         $this->save();
         
-        Log::info('Updated mistake tracking', [
-            'question_id' => $this->question_id,
-            'user_id' => $this->user_id,
-            'correct_streak' => $this->correct_streak,
-            'is_mastered' => $this->isMastered($mode),
-            'mode' => $mode
-        ]);
     }
 
     public function applyReviewOutcome(bool $isCorrect, string $mode = 'quiz'): void
@@ -476,11 +469,6 @@ class Mistake extends Model
                 Cache::forget($key);
             }
             
-            Log::info("💀 MISTAKE CACHES CLEARED", [
-                'user_id' => $this->user_id,
-                'question_id' => $this->question_id,
-                'cache_keys_cleared' => count($cacheKeys)
-            ]);
             
         } catch (\Exception $e) {
             Log::error("❌ Error clearing mistake caches", [

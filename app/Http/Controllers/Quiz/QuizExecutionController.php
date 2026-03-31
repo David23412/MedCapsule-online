@@ -47,14 +47,6 @@ class QuizExecutionController extends Controller
         $user = auth()->user();
 
         // 🚀 NUCLEAR OPTIMIZATION: Comprehensive logging for debugging
-        Log::info('Quiz start requested', [
-            'user_id' => $user->id,
-            'course_id' => $course->id,
-            'topic_id' => $topic->id,
-            'assignment_id' => request()->input('assignment_id'),
-            'sources' => request()->input('sources'),
-            'user_agent' => request()->userAgent()
-        ]);
 
         // ✅ ZERO N+1: Single validation check
         if ($topic->course_id !== $course->id) {
@@ -107,11 +99,6 @@ class QuizExecutionController extends Controller
         $assignmentId = $quizAccessData['assignment_id'];
 
         if ($assignment) {
-            Log::info('Assignment loaded from optimized cache', [
-                'assignment_id' => $assignment->id,
-                'status' => $assignment->getStatusForUser($user),
-                'current_user_id' => $user->id
-            ]);
 
             // ✅ ZERO N+1: Assignment lock check using eager loaded data
             if ($assignment->isLockedForUser($user->id)) {
@@ -214,14 +201,6 @@ class QuizExecutionController extends Controller
         $processingStartTime = microtime(true);
         
         if (isset($requestData['computed_locally']) && $requestData['computed_locally']) {
-            Log::info('🚀 ULTRA EFFICIENT: Received pre-computed tutor data', [
-                'user_id' => $userId,
-                'request_id' => $requestId,
-                'pre_computed' => true,
-                'answers_count' => count($requestData['answers'] ?? []),
-                'client_processing_time' => $requestData['client_processing_time'] ?? null,
-                'payload_size' => $requestSize
-            ]);
         }
         
         try {
@@ -309,12 +288,6 @@ class QuizExecutionController extends Controller
             // LETHAL DEBUG: Log assignment completion
             $assignmentCompleted = $assignmentId ? true : false;
             if ($assignmentId) {
-                \Log::info('Assignment completed', [
-                    'assignment_id' => $assignmentId,
-                    'user_id' => $userId,
-                    'topic_id' => $topic->id,
-                    'percentage' => $gradingResult['percentageGrade'] ?? 0
-                ]);
             }
             
             // Get user quiz count for notifications

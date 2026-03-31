@@ -104,11 +104,6 @@ class FeatureToggleService
             return;
         }
 
-        Log::info("Feature usage: {$feature}", array_merge([
-            'user_id' => $userId,
-            'feature' => $feature,
-            'timestamp' => now()->toISOString()
-        ], $context));
     }
 
     /**

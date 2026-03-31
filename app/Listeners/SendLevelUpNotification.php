@@ -36,13 +36,6 @@ class SendLevelUpNotification implements ShouldQueue
                 $xpNeeded
             );
             
-            Log::info('Level up notification sent', [
-                'user_id' => $event->user->id,
-                'new_level' => $event->newLevel,
-                'previous_level' => $event->previousLevel,
-                'total_xp' => $event->totalXP,
-                'xp_gained' => $event->xpGained
-            ]);
         } catch (\Exception $e) {
             Log::error('Failed to send level up notification', [
                 'user_id' => $event->user->id,

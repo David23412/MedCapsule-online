@@ -1,6 +1,4 @@
-// NUCLEAR SPEED NOTIFICATION BELL - ZERO POLLING, INSTANT UPDATES
-// Performance gain: 95% faster updates, 90% less server load
-
+// Notification bell — WebSocket with fallback fetch on error
 function notificationBell() {
     return {
         notifications: [],
@@ -8,79 +6,63 @@ function notificationBell() {
         unreadCount: 0,
         loading: false,
         lastFetched: 0,
-        notificationSound: new Audio('/sounds/Soft-ui-notification-sound-effect.mp3'),
+        notificationSound: null,
         prevUnreadCount: 0,
         websocket: null,
-        
+
         init() {
-            // Preload notification sound for instant playback
-            this.notificationSound.load();
             this.setUserInteractionFlag();
-            
+
             // Fetch initial notifications immediately
             this.fetchNotifications().then(() => {
                 this.prevUnreadCount = this.unreadCount;
             });
-            
-            // ELIMINATE POLLING - Use WebSocket for instant updates
+
             this.initializeWebSocket();
 
             // Watch for unread count changes with instant response
             this.watchUnreadCount();
         },
-        
-        // NUCLEAR SPEED: WebSocket for instant notification delivery
+
         initializeWebSocket() {
-            // Connect to WebSocket for real-time notifications
-            this.websocket = new WebSocket(`ws://${window.location.host}/notifications/stream`);
-            
-            this.websocket.onopen = () => {
-// console.log('🔥 NUCLEAR SPEED: WebSocket connected for instant notifications'); // Removed for production
-            };
-            
+            // Use wss:// on HTTPS pages to avoid Mixed Content errors
+            const proto = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+            this.websocket = new WebSocket(`${proto}//${window.location.host}/notifications/stream`);
+
             this.websocket.onmessage = (event) => {
                 const data = JSON.parse(event.data);
-                
-                // INSTANT UPDATE - No polling delay
+
                 if (data.type === 'notification') {
                     this.unreadCount = data.unread_count;
                     this.notifications = data.notifications || [];
                     this.updateBadge();
-                    
-                    // Play sound instantly if new notification
+
                     if (data.unread_count > this.prevUnreadCount) {
-                            this.playNotificationSound();
-                        }
+                        this.playNotificationSound();
+                    }
                     this.prevUnreadCount = data.unread_count;
                 }
             };
-            
-            this.websocket.onerror = (error) => {
-// console.error('WebSocket error:', error); // Removed for production
-                // Fallback to immediate fetch (still faster than polling)
+
+            this.websocket.onerror = () => {
+                // Fallback to a single fetch when WebSocket is unavailable
                 this.fetchNotifications();
             };
         },
-        
-        // ELIMINATE POLLING - Remove all setTimeout and setInterval
-        // setupPolling() - COMPLETELY REMOVED - No more polling delays
-        
-        // Track user interaction to allow audio playback
+
         setUserInteractionFlag() {
             window.addEventListener('click', () => {
                 if (!window.hasUserInteraction) {
                     window.hasUserInteraction = true;
-                        }
-                    });
+                }
+            });
         },
-        
-        // Watch for unread count changes with instant response
+
         watchUnreadCount() {
             this.$watch('unreadCount', (newCount, oldCount) => {
                 if (newCount > oldCount && oldCount !== 0) {
                     this.playNotificationSound();
-                    
-                    // Add bell animation instantly
+
                     const bellIcon = this.$el.querySelector('i.fa-bell');
                     if (bellIcon) {
                         bellIcon.style.animation = 'none';
@@ -90,18 +72,18 @@ function notificationBell() {
                 }
             });
         },
-        
-        // Play notification sound instantly
+
         playNotificationSound() {
-            if (window.hasUserInteraction && this.notificationSound) {
-                this.notificationSound.currentTime = 0;
-                this.notificationSound.play().catch(error => {
-// console.warn('Audio playback failed:', error); // Removed for production
-                });
+            if (!window.hasUserInteraction) {
+                return;
             }
+            if (!this.notificationSound) {
+                this.notificationSound = new Audio('/sounds/Soft-ui-notification-sound-effect.mp3');
+            }
+            this.notificationSound.currentTime = 0;
+            this.notificationSound.play().catch(() => {});
         },
-        
-        // Fetch notifications from server with aggressive caching
+
         async fetchNotifications() {
             try {
                 this.loading = true;
@@ -115,46 +97,42 @@ function notificationBell() {
                     credentials: 'same-origin'
                 });
                 const data = await response.json();
-                
+
                 if (data.success) {
                     this.notifications = data.notifications || [];
                     this.unreadCount = data.unread_count || 0;
                     this.lastFetched = Date.now();
                 }
-            } catch (error) {
-// console.error('Error fetching notifications:', error); // Removed for production
+            } catch (_error) {
+                // Silently ignore network errors for notification fetches
             } finally {
                 this.loading = false;
             }
         },
-        
-        // Update badge with instant animation
+
         updateBadge() {
             const badge = document.getElementById('notificationBadge');
             const displayCount = Math.min(this.unreadCount, 99);
-            
+
             if (displayCount > 0) {
                 if (badge) {
-                    const oldCount = parseInt(badge.textContent) || 0;
+                    const oldCount = parseInt(badge.textContent, 10) || 0;
                     if (oldCount !== displayCount) {
                         badge.classList.add('badge-count-change');
-                        // INSTANT UPDATE - No setTimeout delay
                         badge.textContent = displayCount;
                         badge.setAttribute('aria-label', `${displayCount} unread notifications`);
-                        
-                        // Remove animation class after brief delay
+
                         requestAnimationFrame(() => {
                             badge.classList.remove('badge-count-change');
                         });
-                }
+                    }
                 } else {
-                    // Create badge instantly
                     const newBadge = document.createElement('span');
                     newBadge.id = 'notificationBadge';
                     newBadge.className = 'clean-notification-badge badge-appear';
                     newBadge.textContent = displayCount;
                     newBadge.setAttribute('aria-label', `${displayCount} unread notifications`);
-                    
+
                     const bell = document.querySelector('.notification-bell');
                     if (bell) {
                         bell.appendChild(newBadge);
@@ -164,11 +142,11 @@ function notificationBell() {
                 badge.remove();
             }
         },
-        
-        // Cleanup WebSocket on page unload
+
         cleanup() {
             if (this.websocket) {
                 this.websocket.close();
+                this.websocket = null;
             }
         }
     };
@@ -179,4 +157,4 @@ window.addEventListener('beforeunload', () => {
     if (window.notificationBellInstance) {
         window.notificationBellInstance.cleanup();
     }
-}); 
+});

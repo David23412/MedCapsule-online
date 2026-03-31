@@ -179,23 +179,17 @@ class Kernel extends ConsoleKernel
         Commands\SendPaymentDigest::class,
         Commands\SummarizePaymentLogs::class,
         Commands\CleanupNotifications::class,
-        Commands\TestNotificationSystem::class,
         Commands\LockOverdueAssignments::class,
         Commands\ExpireTimeLimitedAssignments::class,
-        Commands\BladeStressTestCommand::class,
-        Commands\ModelStressTestEngine::class,
-        Commands\ModelStressMonitor::class,
         Commands\SendAssignmentReminders::class,
         Commands\CheckCourseMastery::class,
         Commands\SendMistakeReviewReminders::class,
-        Commands\TestAllNotifications::class,
         Commands\NuclearNotificationOptimization::class,
-        Commands\EnrollUsersInFreeCourses::class, // 🚀 AUTOMATIC FREE COURSE ENROLLMENT
-        Commands\SendStudyReminders::class, // 🔔 COMPREHENSIVE STUDY REMINDERS
-        Commands\ImportQuestionsFromExcel::class, // 📊 EXCEL QUESTION IMPORT
+        Commands\EnrollUsersInFreeCourses::class,
+        Commands\SendStudyReminders::class,
+        Commands\ImportQuestionsFromExcel::class,
         Commands\PerfSnapshot::class,
         Commands\ToggleDesignProtection::class,
         Commands\CalibrateMistakeSchedulerCommand::class,
-        Commands\BacktestMistakeSchedulerCommand::class,
     ];
 }

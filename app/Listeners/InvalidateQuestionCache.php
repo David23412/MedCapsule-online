@@ -43,12 +43,6 @@ class InvalidateQuestionCache implements ShouldQueue
                 $this->cacheService->clearSourceCaches($topicId, $source);
             }
 
-            Log::info('Question cache invalidated', [
-                'question_id' => $question->id,
-                'topic_id' => $topicId,
-                'source' => $source,
-                'timestamp' => now()
-            ]);
         } catch (\Exception $e) {
             Log::error('Error invalidating question cache', [
                 'question_id' => $event->question->id,

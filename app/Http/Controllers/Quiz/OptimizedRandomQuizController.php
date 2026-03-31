@@ -66,7 +66,6 @@ class OptimizedRandomQuizController extends Controller
         // If we got fewer questions than requested, adjust the count
         $actualQuestionCount = count($result['questions']);
         if ($actualQuestionCount < $questionCount) {
-            Log::info("Requested {$questionCount} questions but only {$actualQuestionCount} available");
         }
 
         // Keep selected course labels limited to fully accessible courses.
@@ -142,7 +141,6 @@ class OptimizedRandomQuizController extends Controller
         // If we got fewer questions than requested, adjust the count
         $actualQuestionCount = count($result['questions']);
         if ($actualQuestionCount < $questionCount) {
-            Log::info("Requested {$questionCount} questions but only {$actualQuestionCount} available");
         }
 
         // Keep selected course labels limited to fully accessible courses.

@@ -316,7 +316,6 @@
                 const delta = currentTime - lastTime;
 
                 if (delta > 100) { // More than 100ms blocked
-                    console.warn(`UI was blocked for ${delta.toFixed(2)}ms`);
                     this.reportUIBlock(delta);
                 }
 
@@ -379,31 +378,18 @@
 
         observePerformance() {
             // Observe Largest Contentful Paint
-            const lcpObserver = new PerformanceObserver((list) => {
-                const entries = list.getEntries();
-                const lastEntry = entries[entries.length - 1];
-                console.log('LCP:', Math.round(lastEntry.startTime), 'ms');
-            });
+            const lcpObserver = new PerformanceObserver(() => {});
 
             try {
                 lcpObserver.observe({ entryTypes: ['largest-contentful-paint'] });
-            } catch (e) {
-                console.warn('LCP observation not supported');
-            }
+            } catch (_e) {}
 
             // Observe First Input Delay
-            const fidObserver = new PerformanceObserver((list) => {
-                const entries = list.getEntries();
-                entries.forEach(entry => {
-                    console.log('FID:', Math.round(entry.processingStart - entry.startTime), 'ms');
-                });
-            });
+            const fidObserver = new PerformanceObserver(() => {});
 
             try {
                 fidObserver.observe({ entryTypes: ['first-input'] });
-            } catch (e) {
-                console.warn('FID observation not supported');
-            }
+            } catch (_e) {}
         }
     };
 
@@ -422,11 +408,7 @@
 
             // Mark as initialized
             document.documentElement.classList.add('responsive-utils-loaded');
-
-            console.log('📱 Mobile responsive utilities loaded successfully');
-        } catch (error) {
-            console.error('Failed to initialize responsive utilities:', error);
-        }
+        } catch (_error) {}
     }
 
     // Expose globally for debugging

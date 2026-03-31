@@ -35,12 +35,17 @@ class HomeController extends Controller
             $isAuthenticated = auth()->check();
             $baseCacheKey = 'home_shared_v6_' . now()->format('Y-m-d-H');
 
-            $baseHomeData = Cache::remember($baseCacheKey, 3600, function () {
-                $data = $this->homePageService->getHomePageData();
-                $data['activeStudentCount'] = $this->homePageService->getActiveStudentCount();
+            // Single cache read — tracks hit/miss naturally without extra Cache::has() calls.
+            // Cache::remember() always made Cache::has() return true afterward, so the old
+            // X-Cache-Status header was always 'HIT' (even on the very first miss).
+            $baseHomeData = Cache::get($baseCacheKey);
+            $wasCached = $baseHomeData !== null;
 
-                return $data;
-            });
+            if (!$wasCached) {
+                $baseHomeData = $this->homePageService->getHomePageData();
+                $baseHomeData['activeStudentCount'] = $this->homePageService->getActiveStudentCount();
+                Cache::put($baseCacheKey, $baseHomeData, 3600);
+            }
 
             $homeData = $baseHomeData;
 
@@ -78,7 +83,7 @@ class HomeController extends Controller
                 'ETag' => '"' . sha1($baseCacheKey . '|' . ($isAuthenticated ? 'auth:' . $userId : 'guest')) . '"',
                 'Last-Modified' => gmdate('D, d M Y H:i:s') . ' GMT',
                 'Vary' => 'Accept-Encoding',
-                'X-Cache-Status' => Cache::has($baseCacheKey) ? 'HIT' : 'MISS'
+                'X-Cache-Status' => $wasCached ? 'HIT' : 'MISS'
             ];
 
             // NUCLEAR: JSON response optimization
@@ -87,7 +92,7 @@ class HomeController extends Controller
                     'success' => true,
                     'data' => $homeData,
                     'performance' => [
-                        'cached' => Cache::has($baseCacheKey),
+                        'cached' => $wasCached,
                         'cache_key' => $baseCacheKey,
                         'load_time' => microtime(true) - LARAVEL_START
                     ]

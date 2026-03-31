@@ -29,15 +29,6 @@ class TutorMiddleware
         
         // 👑 ADMIN SUPERIOR PRIVILEGES - Admins can access EVERYTHING
         if ($user->isAdmin()) {
-            // Log admin access for security tracking
-            \Log::info('👑 Admin superior access granted', [
-                'user_id' => $user->id,
-                'user_name' => $user->name,
-                'route' => $request->route()->getName(),
-                'method' => $request->method(),
-                'ip' => $request->ip()
-            ]);
-            
             return $next($request);
         }
         

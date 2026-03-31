@@ -57,12 +57,6 @@ class SendAssignmentDeadlineNotification implements ShouldQueue
                 ]
             );
             
-            Log::info('Assignment deadline change notification sent', [
-                'student_id' => $event->assignment->user_id,
-                'assignment_id' => $event->assignment->id ?? null,
-                'old_deadline' => $event->oldDeadline->toISOString(),
-                'new_deadline' => $event->newDeadline->toISOString()
-            ]);
         } catch (\Exception $e) {
             Log::error('Failed to send assignment deadline notification', [
                 'assignment_id' => $event->assignment->id ?? null,

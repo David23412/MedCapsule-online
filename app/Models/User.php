@@ -184,12 +184,6 @@ class User extends Authenticatable
                 // Revoke all course enrollments for former admin
                 $user->courses()->detach();
 
-                Log::info('Admin role removed - all course enrollments revoked', [
-                    'user_id' => $user->id,
-                    'user_name' => $user->name,
-                    'old_role' => $user->getOriginal('role'),
-                    'new_role' => $user->role
-                ]);
             }
         });
 
@@ -684,13 +678,6 @@ class User extends Authenticatable
             }
 
             if ($enrolledCount > 0) {
-                \Illuminate\Support\Facades\Log::info('✅ SAFE ENROLLMENT: User enrolled in confirmed free courses', [
-                    'user_id' => $this->id,
-                    'user_name' => $this->name,
-                    'enrolled_course_ids' => array_slice($trulyFreeCourseIds, 0, 5), // First 5 for logging
-                    'enrollment_count' => $enrolledCount,
-                    'total_free_courses_available' => count($trulyFreeCourseIds)
-                ]);
             }
 
             return $enrolledCount;
@@ -957,10 +944,6 @@ class User extends Authenticatable
             if ($wasReset) {
                 try {
                     \App\Services\NotificationTriggerService::onStreakReset($this);
-                    \Illuminate\Support\Facades\Log::info('Created streak reset notification', [
-                        'user_id' => $this->id,
-                        'previous_streak' => $originalStreak
-                    ]);
                 } catch (\Exception $e) {
                     \Illuminate\Support\Facades\Log::error('Failed to create streak reset notification', [
                         'error' => $e->getMessage(),
@@ -1011,11 +994,6 @@ class User extends Authenticatable
         if ($currentStreak > $previousStreak && in_array($currentStreak, $milestones)) {
             try {
                 \App\Services\NotificationTriggerService::onStudyStreak($this, $currentStreak);
-                \Illuminate\Support\Facades\Log::info('Created streak milestone notification', [
-                    'user_id' => $this->id,
-                    'streak' => $currentStreak,
-                    'previous_streak' => $previousStreak
-                ]);
             } catch (\Exception $e) {
                 \Illuminate\Support\Facades\Log::error('Failed to create streak notification', [
                     'error' => $e->getMessage(),
@@ -1029,10 +1007,6 @@ class User extends Authenticatable
         if ($previousStreak == 0 && $currentStreak == 1) {
             try {
                 \App\Services\NotificationTriggerService::onStudyStreak($this, 1);
-                \Illuminate\Support\Facades\Log::info('Created first quiz streak notification', [
-                    'user_id' => $this->id,
-                    'streak' => 1
-                ]);
             } catch (\Exception $e) {
                 \Illuminate\Support\Facades\Log::error('Failed to create first quiz streak notification', [
                     'error' => $e->getMessage(),
@@ -1203,12 +1177,6 @@ class User extends Authenticatable
         if ($cachedCount !== $actualCount) {
             $this->update(['correct_answers_count' => $actualCount]);
 
-            \Log::info('Synced correct answers count', [
-                'user_id' => $this->id,
-                'cached_count' => $cachedCount,
-                'actual_count' => $actualCount,
-                'difference' => $actualCount - $cachedCount
-            ]);
 
             return true;
         }
@@ -1287,13 +1255,6 @@ class User extends Authenticatable
             }
 
             if ($enrolledCount > 0) {
-                \Illuminate\Support\Facades\Log::info('✅ SECURE ENROLLMENT: User safely enrolled in confirmed free courses', [
-                    'user_id' => $this->id,
-                    'user_name' => $this->name,
-                    'courses_checked' => count($trulyFreeCourseIds),
-                    'courses_enrolled' => array_slice($missingCourses, 0, 5), // First 5 for logging
-                    'enrollment_count' => $enrolledCount
-                ]);
             }
 
             return $enrolledCount;

@@ -12,6 +12,19 @@ class EmergencyFallbackService
     private const MAX_FALLBACK_USAGE_MINUTES = 30;
 
     /**
+     * In-memory cache for emergency-mode status so that `isEmergencyModeActive()`
+     * does not issue a file_exists() / file_get_contents() disk syscall on every
+     * single HTTP request.  The value is re-read from disk at most once every
+     * EMERGENCY_MODE_CACHE_TTL seconds per PHP-FPM worker.
+     *
+     * Reset to null whenever emergency mode is activated or deactivated so the
+     * next call picks up the new state immediately.
+     */
+    private static ?bool $emergencyModeCache = null;
+    private static int   $emergencyModeCachedAt = 0;
+    private const        EMERGENCY_MODE_CACHE_TTL = 10; // seconds
+
+    /**
      * Activate emergency mode
      */
     public static function activateEmergencyMode(string $reason = 'System failure'): bool
@@ -29,6 +42,10 @@ class EmergencyFallbackService
             // Store in file system as cache may be down
             self::storeEmergencyData('emergency_mode', $emergencyData);
 
+            // Immediately update the in-memory cache so the caller sees active mode
+            self::$emergencyModeCache    = true;
+            self::$emergencyModeCachedAt = time();
+
             Log::critical('Emergency mode activated', $emergencyData);
 
             return true;
@@ -42,14 +59,28 @@ class EmergencyFallbackService
     }
 
     /**
-     * Check if emergency mode is active
+     * Check if emergency mode is active.
+     *
+     * Uses a static in-memory TTL cache (EMERGENCY_MODE_CACHE_TTL seconds) so
+     * that disk I/O (file_exists + file_get_contents) is incurred at most once
+     * per TTL window per PHP-FPM worker, instead of on every HTTP request.
      */
     public static function isEmergencyModeActive(): bool
     {
+        $now = time();
+
+        // Return cached result if it is still fresh
+        if (self::$emergencyModeCache !== null &&
+            ($now - self::$emergencyModeCachedAt) < self::EMERGENCY_MODE_CACHE_TTL) {
+            return self::$emergencyModeCache;
+        }
+
         try {
             $emergencyData = self::getEmergencyData('emergency_mode');
-            
+
             if (!$emergencyData) {
+                self::$emergencyModeCache    = false;
+                self::$emergencyModeCachedAt = $now;
                 return false;
             }
 
@@ -57,9 +88,13 @@ class EmergencyFallbackService
             $expiresAt = \Carbon\Carbon::parse($emergencyData['expires_at']);
             if (now()->isAfter($expiresAt)) {
                 self::deactivateEmergencyMode();
+                self::$emergencyModeCache    = false;
+                self::$emergencyModeCachedAt = $now;
                 return false;
             }
 
+            self::$emergencyModeCache    = true;
+            self::$emergencyModeCachedAt = $now;
             return true;
         } catch (Exception $e) {
             Log::error('Error checking emergency mode status', ['error' => $e->getMessage()]);
@@ -83,9 +118,11 @@ class EmergencyFallbackService
 
                 self::storeEmergencyData('emergency_mode_history', $deactivationData);
                 self::deleteEmergencyData('emergency_mode');
-
-                Log::info('Emergency mode deactivated', $deactivationData);
             }
+
+            // Immediately clear the in-memory cache
+            self::$emergencyModeCache    = false;
+            self::$emergencyModeCachedAt = time();
 
             return true;
         } catch (Exception $e) {
@@ -319,8 +356,20 @@ class EmergencyFallbackService
             return true;
         }
 
-        // Check if critical systems are failing
-        if (!HealthCheckService::quickHealthCheck()) {
+        // Rate-limit the expensive DB+cache health check to at most once every 30 seconds.
+        // Without this, every single HTTP request triggers DB::select('SELECT 1') + Cache::put().
+        try {
+            $isHealthy = \Illuminate\Support\Facades\Cache::remember(
+                'system_health_ok',
+                30,
+                fn() => HealthCheckService::quickHealthCheck()
+            );
+        } catch (\Exception $e) {
+            // Cache is unavailable — run the check directly
+            $isHealthy = HealthCheckService::quickHealthCheck();
+        }
+
+        if (!$isHealthy) {
             return self::activateEmergencyMode('Critical systems health check failed');
         }
 

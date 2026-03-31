@@ -93,12 +93,6 @@ class QuizValidationService
 
         // ULTRA EFFICIENT: Handle pre-computed data from frontend
         if (isset($validated['computed_locally']) && $validated['computed_locally']) {
-            Log::info('🚀 Processing pre-computed quiz data', [
-                'user_id' => $userId,
-                'mode' => $validated['mode'],
-                'answers_count' => count($validated['answers'] ?? []),
-                'request_id' => $requestId
-            ]);
         }
 
         // Ensure duration_seconds has a minimum value for tutor mode

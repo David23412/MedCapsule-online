@@ -658,11 +658,6 @@ class MistakeManagementService
         $currentVersion = Cache::get($versionKey, 1);
         Cache::put($versionKey, $currentVersion + 1, 3600);
 
-        Log::info('Cleared all mistake caches for user', [
-            'user_id' => $userId,
-            'cache_keys_cleared' => count($cacheKeys),
-            'new_cache_version' => $currentVersion + 1
-        ]);
     }
 
 }

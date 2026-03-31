@@ -33,12 +33,6 @@ class SendTopicMasteryNotification implements ShouldQueue
                 $event->topic->name
             );
             
-            Log::info('Topic mastery notification sent', [
-                'user_id' => $event->user->id,
-                'topic_id' => $event->topic->id,
-                'topic_name' => $event->topic->name,
-                'mastery_score' => $event->masteryScore
-            ]);
         } catch (\Exception $e) {
             Log::error('Failed to send topic mastery notification', [
                 'user_id' => $event->user->id,

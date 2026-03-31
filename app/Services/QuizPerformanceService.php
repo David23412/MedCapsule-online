@@ -44,10 +44,6 @@ class QuizPerformanceService
 
         Cache::put($cacheKey, $metrics, 86400); // Cache for 24 hours
 
-        Log::info("Performance tracked: {$metric}", [
-            'value' => $value,
-            'timestamp' => now()->toISOString()
-        ]);
     }
 
     /**
@@ -87,7 +83,6 @@ class QuizPerformanceService
         $cacheKey = "performance_metrics:" . date('Y-m-d');
         Cache::forget($cacheKey);
 
-        Log::info('Performance cache cleared');
     }
 
     /**
@@ -176,15 +171,6 @@ class QuizPerformanceService
         $this->track('quiz_completion_time', $duration);
         $this->track('quiz_score_percentage', ($score / $totalQuestions) * 100);
 
-        Log::info('Quiz completion tracked', [
-            'user_id' => $user->id,
-            'topic_id' => $topic->id,
-            'course_id' => $course->id,
-            'duration' => $duration,
-            'score' => $score,
-            'total_questions' => $totalQuestions,
-            'percentage' => round(($score / $totalQuestions) * 100, 2)
-        ]);
     }
 
     /**

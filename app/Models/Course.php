@@ -552,27 +552,10 @@ class Course extends Model
                 $originalPrice = $transitionSnapshot['price'] ?? null;
                 $newPrice = $course->price;
 
-                \Illuminate\Support\Facades\Log::info('Course access policy updated', [
-                    'course_id' => $course->id,
-                    'course_name' => $course->name,
-                    'old_price' => $originalPrice,
-                    'new_price' => $newPrice,
-                    'old_access_type' => $originalAccessType,
-                    'new_access_type' => $newAccessType,
-                    'user_id' => auth()->id()
-                ]);
 
                 // Access policy moved into paid mode: remove legacy survey-based student access.
                 if ($accessTypeChanged && $originalAccessType !== self::ACCESS_TYPE_PAID && $newAccessType === self::ACCESS_TYPE_PAID) {
                     try {
-                        \Illuminate\Support\Facades\Log::info('🔒 Course changed into paid access - revoking student enrollments', [
-                            'course_id' => $course->id,
-                            'course_name' => $course->name,
-                            'old_access_type' => $originalAccessType,
-                            'new_access_type' => $newAccessType,
-                            'old_price' => $originalPrice,
-                            'new_price' => $newPrice
-                        ]);
 
                         // Use transaction for atomicity
                         DB::transaction(function () use ($course) {
@@ -593,12 +576,6 @@ class Course extends Model
                                 ->whereNotIn('user_id', $adminUsers) // 🔧 FIX: Preserve admin enrollments
                                 ->update(['is_enrolled' => false, 'updated_at' => now()]);
 
-                            \Illuminate\Support\Facades\Log::info('✅ Enrollments revoked for course that became paid (admins preserved)', [
-                                'course_id' => $course->id,
-                                'course_name' => $course->name,
-                                'enrollments_revoked' => $enrollmentCount,
-                                'admin_users_preserved' => count($adminUsers)
-                            ]);
                         });
 
                     } catch (\Exception $e) {
@@ -614,23 +591,9 @@ class Course extends Model
 
                 // Paid policy removed: existing explicit enrollments remain valid.
                 elseif ($accessTypeChanged && $originalAccessType === self::ACCESS_TYPE_PAID && $newAccessType !== self::ACCESS_TYPE_PAID) {
-                    \Illuminate\Support\Facades\Log::info('🆓 Course changed away from paid access - preserving existing enrollments', [
-                        'course_id' => $course->id,
-                        'course_name' => $course->name,
-                        'old_access_type' => $originalAccessType,
-                        'new_access_type' => $newAccessType,
-                        'old_price' => $originalPrice,
-                        'new_price' => $newPrice
-                    ]);
                 }
 
                 elseif ($priceChanged && $newAccessType === self::ACCESS_TYPE_PAID) {
-                    \Illuminate\Support\Facades\Log::info('💰 Paid course price changed - preserving existing entitlements', [
-                        'course_id' => $course->id,
-                        'course_name' => $course->name,
-                        'old_price' => $originalPrice,
-                        'new_price' => $newPrice
-                    ]);
                 }
             }
 
@@ -732,11 +695,6 @@ class Course extends Model
                     }
                 } catch (\Exception $e) {
                     // Course was deleted or other error, ignore cache clearing
-                    \Log::info('Topic updated but course not accessible', [
-                        'topic_id' => $topic->id,
-                        'course_id' => $topic->course_id,
-                        'error' => $e->getMessage()
-                    ]);
                 }
             });
 
