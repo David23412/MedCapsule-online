@@ -417,7 +417,6 @@
             align-items: center;
             gap: 1rem;
             transition: border-color 0.35s ease, background 0.35s ease, box-shadow 0.35s ease, transform 0.2s ease;
-            transition: all 0.2s ease;
             position: relative;
         }
         
