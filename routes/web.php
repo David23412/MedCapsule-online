@@ -13,7 +13,7 @@ use App\Http\Controllers\{
     UserCourseController,
     ProfileController,
     StudySessionController,
-    App\Http\Controllers\Admin\PaymentController,
+    Admin\PaymentController,
     PaymentSettingsController,
     PaymentLogController,
     AssignmentController,
@@ -529,6 +529,9 @@ Route::group([], function () use ($serveStorageFile, $serveFirstExistingStorageF
             ->name('locked.topics');
     });
     });
+
+});
+
 
 // Notification routes - simplified implementation
 Route::middleware(['auth'])->group(function () {
