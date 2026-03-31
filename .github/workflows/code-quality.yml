@@ -39,7 +39,7 @@ jobs:
         restore-keys: ${{ runner.os }}-composer-
         
     - name: 📥 Install PHP dependencies
-      run: composer install --no-progress --prefer-dist --optimize-autoloader --no-dev
+      run: composer install --no-progress --prefer-dist --optimize-autoloader
       
     - name: 🔧 Setup Node.js
       uses: actions/setup-node@v4

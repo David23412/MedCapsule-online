@@ -618,7 +618,7 @@ class UltraFastQuizService
      * @param Topic $topic
      * @return \Illuminate\Database\Eloquent\Builder
      */
-    private function applyTopicFilter($query, Topic $topic)
+    private function applyTopicFilter(\Illuminate\Database\Eloquent\Builder $query, Topic $topic)
     {
         return $query->where(function($q) use ($topic) {
             $q->where('questions.topic_id', $topic->id)
