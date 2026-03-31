@@ -112,7 +112,7 @@ class PerformanceDashboard extends Command
         $this->line(str_repeat('-', 40));
         
         try {
-            $cacheService = app(\App\Services\Performance\AdvancedCachingService::class);
+            $cacheService = app(\App\Services\Audit\Performance\AdvancedCachingService::class);
             $stats = $cacheService->getCacheStats();
             
             $this->table(['Metric', 'Value'], [

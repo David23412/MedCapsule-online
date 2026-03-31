@@ -40,14 +40,7 @@ class UltraPerformanceServiceProvider extends ServiceProvider
         });
 
         // Bind to aliases for backward compatibility
-        $this->app->alias(UltraConsolidatedCacheService::class, 'cache.service');
-        $this->app->alias(UltraConsolidatedCacheService::class, 'cache.manager.smart');
-        $this->app->alias(UltraConsolidatedCacheService::class, 'performance.cache');
-        $this->app->alias(UltraConsolidatedCacheService::class, 'performance.redis');
-        $this->app->alias(UltraConsolidatedCacheService::class, 'performance.querycache');
-        $this->app->alias(UltraPerformanceOptimizer::class, 'performance.optimizer');
         $this->app->alias(AsyncOperationManager::class, 'performance.async');
-        $this->app->alias(FileIOOptimizer::class, 'performance.fileio');
     }
 
     public function boot(): void
@@ -87,14 +80,7 @@ class UltraPerformanceServiceProvider extends ServiceProvider
     public function provides(): array
     {
         return [
-            'cache.service',
-            'cache.manager.smart',
-            'performance.cache',
-            'performance.redis',
-            'performance.querycache',
-            'performance.optimizer',
             'performance.async',
-            'performance.fileio',
             QuizUltraConsolidatedCacheService::class,
             ResilientUltraConsolidatedCacheService::class,
             UltraConsolidatedCacheService::class,

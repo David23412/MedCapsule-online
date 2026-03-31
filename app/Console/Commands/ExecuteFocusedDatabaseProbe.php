@@ -205,8 +205,7 @@ class ExecuteFocusedDatabaseProbe extends Command
         // Focus on high-traffic controllers that actually exist
         $criticalControllers = [
             'app/Http/Controllers/MistakeController.php',
-            'app/Http/Controllers/Learn/LearnViewController.php',
-            'app/Http/Controllers/Learn/LearnActionController.php'
+            'app/Http/Controllers/LearnController.php',
         ];
         
         $phpFiles = $fileScanner->getPHPFiles();

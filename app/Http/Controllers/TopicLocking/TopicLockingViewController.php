@@ -7,7 +7,6 @@ use App\Models\Topic;
 use App\Services\TopicLockingService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\{Log, Cache, Auth};
-use App\Services\QuizCacheService;
 
 class TopicLockingViewController extends Controller
 {

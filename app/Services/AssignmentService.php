@@ -14,7 +14,6 @@ use App\Services\NotificationService;
 use App\Services\AssignmentCreationService;
 use App\Services\AssignmentCompletionService;
 use App\Services\AssignmentRetrievalService;
-use App\Services\AssignmentAnalyticsService;
 use App\Services\AssignmentLifecycleService;
 
 class AssignmentService
@@ -23,7 +22,6 @@ class AssignmentService
         private AssignmentCreationService $assignmentCreationService;
     private AssignmentCompletionService $assignmentCompletionService;
     private AssignmentRetrievalService $assignmentRetrievalService;
-    private AssignmentAnalyticsService $assignmentAnalyticsService;
     private AssignmentLifecycleService $assignmentLifecycleService;
 
     public function __construct(
@@ -31,14 +29,12 @@ class AssignmentService
         AssignmentCreationService $assignmentCreationService,
         AssignmentCompletionService $assignmentCompletionService,
         AssignmentRetrievalService $assignmentRetrievalService,
-        AssignmentAnalyticsService $assignmentAnalyticsService,
         AssignmentLifecycleService $assignmentLifecycleService
     ) {
         $this->notificationService = $notificationService;
         $this->assignmentCreationService = $assignmentCreationService;
         $this->assignmentCompletionService = $assignmentCompletionService;
         $this->assignmentRetrievalService = $assignmentRetrievalService;
-        $this->assignmentAnalyticsService = $assignmentAnalyticsService;
         $this->assignmentLifecycleService = $assignmentLifecycleService;
     }
 
@@ -80,14 +76,6 @@ class AssignmentService
     public function getStudentAssignments(int $studentId, array $filters = []): Collection
     {
         return $this->assignmentRetrievalService->getStudentAssignments($studentId, $filters);
-    }
-
-    /**
-     * Get student performance analytics
-     */
-    public function getStudentPerformanceAnalytics(int $studentId): array
-    {
-        return $this->assignmentAnalyticsService->getStudentPerformanceAnalytics($studentId);
     }
 
     /**

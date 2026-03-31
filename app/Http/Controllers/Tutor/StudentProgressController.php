@@ -7,7 +7,6 @@ use App\Http\Requests\StudentProgressRequest;
 use App\Models\User;
 use App\Models\Course;
 use App\Models\QuizAttempt;
-use App\Services\QuizCacheService;
 use App\Services\QuizPerformanceService;
 use App\Services\QuizUltraConsolidatedCacheService;
 use App\Services\StudentProgressService;

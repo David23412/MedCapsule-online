@@ -54,15 +54,12 @@ class ServiceMemoryLeakDetector extends Command
     {
         $services = [
             'App\\Services\\AssignmentService',
-            'App\\Services\\CacheService',
-            'App\\Services\\CourseFilterService',
             'App\\Services\\GradingService',
             'App\\Services\\MedicalKnowledgeService',
             'App\\Services\\NotificationService',
             'App\\Services\\PaymentService',
             'App\\Services\\QuizService',
             'App\\Services\\UserStatsService',
-            'App\\Services\\QuizCacheService',
             'App\\Services\\StudentProgressService',
             'App\\Services\\TopicLockingService',
             'App\\Services\\TextProcessingService',

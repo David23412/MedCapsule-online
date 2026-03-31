@@ -46,11 +46,6 @@ class Question extends Model
         'exam_appearances_count' => 'integer'
     ];
 
-    protected $appends = [
-        'exam_frequency_score',
-        'source_badges'
-    ];
-
     // Remove the problematic accessors that were trying to map to a different schema
     // The database already has the correct field names, so we don't need accessors
 
@@ -368,20 +363,10 @@ class Question extends Model
 
     /**
      * Get the success rate for this question.
-     * Now calculates from user attempt data instead of question-level metrics.
-     * Returns 0 if no attempts have been made.
+     * Returns 0 – placeholder for future implementation.
      */
     public function getSuccessRateAttribute(): float
     {
-        // Calculate from user-specific data instead of question-level metrics
-        $totalAttempts = \App\Models\QuizAttempt::whereHas('questions', function($query) {
-            $query->where('question_id', $this->id);
-        })->count();
-        
-        if ($totalAttempts === 0) return 0;
-        
-        // This would need to be calculated based on actual user performance data
-        // For now, return 0 as we don't have the correct data structure
         return 0;
     }
 

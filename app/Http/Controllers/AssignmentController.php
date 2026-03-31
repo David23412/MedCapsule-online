@@ -181,6 +181,29 @@ class AssignmentController extends Controller
         return $this->assignmentService->getStudentsForCourse($courseId);
     }
 
+    public function getTopicSources(int $topicId)
+    {
+        try {
+            $sources = \Illuminate\Support\Facades\DB::table('questions')
+                ->where('topic_id', $topicId)
+                ->select('source')
+                ->distinct()
+                ->whereNotNull('source')
+                ->where('source', '!=', '')
+                ->pluck('source')
+                ->toArray();
+
+            return response()->json($sources);
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error('Error fetching topic sources: ' . $e->getMessage(), [
+                'topic_id' => $topicId,
+                'error' => $e->getMessage()
+            ]);
+
+            return response()->json(['success' => false, 'message' => 'Unable to load topic sources'], 500);
+        }
+    }
+
     public function extendDeadline(Request $request, Assignment $assignment)
     {
         $validated = $request->validate([

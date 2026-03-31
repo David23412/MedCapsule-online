@@ -43,12 +43,12 @@ class Topic extends Model
     ];
 
     // Append dynamic properties to the model
+    // NOTE: total_duration, formatted_duration removed – unused in views/controllers
+    // and caused per-topic cache/DB queries on every serialization.
     protected $appends = [
         'completion_percentage',
         'last_attempt_date',
         'questions_count',
-        'total_duration',
-        'formatted_duration',
         'all_sources_mastered'
     ];
 
