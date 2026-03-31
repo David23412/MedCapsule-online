@@ -2087,3 +2087,67 @@ body.topics-sidebar-open {
     }
 }
 
+/* Topics Progress Navigation - Clean & Minimal */
+.topics-progress-container {
+    margin-top: 0.75rem;
+}
+
+.topics-progress-navigation {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 0.5rem;
+}
+
+.progress-nav-btn {
+    width: 32px;
+    height: 32px;
+    border: 1px solid #e2e8f0;
+    background: #ffffff;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    color: #64748b;
+    font-size: 0.75rem;
+}
+
+.progress-nav-btn:hover:not(:disabled) {
+    background: #f8fafc;
+    border-color: #cbd5e1;
+    color: #475569;
+}
+
+.progress-nav-btn:disabled {
+    cursor: not-allowed;
+    opacity: 0.3;
+}
+
+.topics-progress-track {
+    flex: 1;
+    display: flex;
+    gap: 3px;
+    padding: 0 0.5rem;
+}
+
+.progress-indicator {
+    text-align: center;
+    font-size: 0.75rem;
+    color: #64748b;
+    font-weight: 500;
+}
+
+.topics-progress-segment {
+    flex: 1;
+    height: 6px;
+    background: #e2e8f0;
+    border-radius: 2px;
+    transition: background-color 0.2s ease;
+}
+
+.topics-progress-segment.is-mastered {
+    background: linear-gradient(90deg, #10b981, #059669);
+}
+

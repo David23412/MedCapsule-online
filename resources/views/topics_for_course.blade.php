@@ -499,18 +499,41 @@
                     <span class="progress-percent">{{ $masteredPercentage }}%</span>
                 </div>
             </div>
-            <div class="topics-progress-track" aria-label="Topics mastered progress">
-                @foreach($topics as $topic)
-                    @php
-                        $topicProgress = $topic->userProgress->first();
-                        $isMastered = $topicProgress && ($topicProgress->percentage_grade ?? 0) >= 80;
-                    @endphp
-                    <span
-                        class="topics-progress-segment{{ $isMastered ? ' is-mastered' : '' }}"
-                        data-topic-id="{{ $topic->id }}"
-                        aria-hidden="true"
-                    ></span>
-                @endforeach
+            <div class="topics-progress-container" aria-label="Topics mastered progress">
+                <div class="topics-progress-navigation">
+                    <button class="progress-nav-btn progress-nav-prev" id="progressPrevBtn" aria-label="Previous topics">
+                        <i class="fas fa-chevron-left"></i>
+                    </button>
+                    <div class="topics-progress-track" id="topicsProgressTrack">
+                        @php
+                            $allTopics = $topics->values();
+                            $totalTopics = $allTopics->count();
+                            $segmentsToShow = 10;
+                            $currentIndex = 0;
+                        @endphp
+                        @for($i = 0; $i < min($segmentsToShow, $totalTopics); $i++)
+                            @php
+                                $topicIndex = $i;
+                                $topic = $allTopics->get($topicIndex);
+                                if (!$topic) continue;
+                                $topicProgress = $topic->userProgress->first();
+                                $isMastered = $topicProgress && ($topicProgress->percentage_grade ?? 0) >= 80;
+                            @endphp
+                            <span
+                                class="topics-progress-segment{{ $isMastered ? ' is-mastered' : '' }}"
+                                data-topic-id="{{ $topic->id }}"
+                                data-index="{{ $topicIndex }}"
+                                aria-hidden="true"
+                            ></span>
+                        @endfor
+                    </div>
+                    <button class="progress-nav-btn progress-nav-next" id="progressNextBtn" aria-label="Next topics">
+                        <i class="fas fa-chevron-right"></i>
+                    </button>
+                </div>
+                <div class="progress-indicator">
+                    <span id="progressIndicatorText">1-{{ min($segmentsToShow, $totalTopics) }} of {{ $totalTopics }}</span>
+                </div>
             </div>
         </div>
     </header>
@@ -922,6 +945,74 @@
         document.addEventListener('keydown', function(e) {
             if (e.key === 'Escape') closeSidebar();
         });
+    })();
+    
+    /* Topics Progress Navigation */
+    (function() {
+        const prevBtn = document.getElementById('progressPrevBtn');
+        const nextBtn = document.getElementById('progressNextBtn');
+        const track = document.getElementById('topicsProgressTrack');
+        const indicator = document.getElementById('progressIndicatorText');
+        
+        if (!prevBtn || !nextBtn || !track || !indicator) return;
+        
+        const allTopics = @json($topics->values()->toArray());
+        const totalTopics = allTopics.length;
+        const segmentsToShow = 10;
+        let currentIndex = 0;
+        
+        function updateSegments() {
+            const endIndex = Math.min(currentIndex + segmentsToShow, totalTopics);
+            const startIndex = currentIndex + 1;
+            
+            // Clear current segments
+            track.innerHTML = '';
+            
+            // Add new segments
+            for (let i = currentIndex; i < endIndex; i++) {
+                const topic = allTopics[i];
+                if (!topic) continue;
+                
+                const isMastered = topic.user_progress && topic.user_progress.length > 0 && 
+                                 topic.user_progress[0].percentage_grade >= 80;
+                
+                const segment = document.createElement('span');
+                segment.className = 'topics-progress-segment' + (isMastered ? ' is-mastered' : '');
+                segment.setAttribute('data-topic-id', topic.id);
+                segment.setAttribute('data-index', i);
+                segment.setAttribute('aria-hidden', 'true');
+                
+                track.appendChild(segment);
+            }
+            
+            // Update indicator
+            indicator.textContent = `${startIndex}-${endIndex} of ${totalTopics}`;
+            
+            // Update button states
+            prevBtn.disabled = currentIndex === 0;
+            nextBtn.disabled = endIndex >= totalTopics;
+            
+            // Update button styles
+            prevBtn.style.opacity = currentIndex === 0 ? '0.3' : '1';
+            nextBtn.style.opacity = endIndex >= totalTopics ? '0.3' : '1';
+        }
+        
+        prevBtn.addEventListener('click', function() {
+            if (currentIndex > 0) {
+                currentIndex = Math.max(0, currentIndex - segmentsToShow);
+                updateSegments();
+            }
+        });
+        
+        nextBtn.addEventListener('click', function() {
+            if (currentIndex + segmentsToShow < totalTopics) {
+                currentIndex = Math.min(currentIndex + segmentsToShow, totalTopics - segmentsToShow);
+                updateSegments();
+            }
+        });
+        
+        // Initialize button states
+        updateSegments();
     })();
     </script>
 </body>
