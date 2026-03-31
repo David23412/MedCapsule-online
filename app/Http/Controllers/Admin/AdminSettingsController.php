@@ -77,6 +77,12 @@ class AdminSettingsController extends Controller
      */
     public function getCourseTopics(int $courseId): JsonResponse
     {
+        $course = \App\Models\Course::find($courseId);
+
+        if (!$course) {
+            return response()->json(['success' => false, 'message' => 'Course not found'], 404);
+        }
+
         $topics = \App\Models\Topic::where('course_id', $courseId)
             ->select('id', 'name')
             ->orderBy('display_order')

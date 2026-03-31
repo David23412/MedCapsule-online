@@ -200,7 +200,7 @@ class AssignmentController extends Controller
                 'error' => $e->getMessage()
             ]);
 
-            return response()->json([], 500);
+            return response()->json(['success' => false, 'message' => 'Unable to load topic sources'], 500);
         }
     }
 
