@@ -183,13 +183,15 @@ use Illuminate\Http\Response;
      */
     private function getAllTopicSources(Topic $topic): array
     {
-        return \App\Models\Question::select('source')
-            ->where('topic_id', $topic->id)
-            ->whereNotNull('source')
-            ->where('source', '!=', '')
-            ->distinct()
-            ->pluck('source')
-            ->toArray();
+        return Cache::remember("topic:{$topic->id}:all_sources", 3600, function () use ($topic) {
+            return \App\Models\Question::select('source')
+                ->where('topic_id', $topic->id)
+                ->whereNotNull('source')
+                ->where('source', '!=', '')
+                ->distinct()
+                ->pluck('source')
+                ->toArray();
+        });
     }
     
     /**

@@ -74,8 +74,8 @@ class SingleSessionMiddleware
             }
         }
 
-        // Update security check timestamp periodically
-        if ($user->last_security_check < now()->subMinutes(5)) {
+        // Update security check timestamp periodically (every 15 minutes)
+        if ($user->last_security_check < now()->subMinutes(15)) {
             $user->update([
                 'last_security_check' => now(),
                 'last_login_ip' => $request->ip()
