@@ -51,9 +51,7 @@ class Course extends Model
     ];
 
     protected $appends = [
-        'enrolled_students_count',
         'completion_percentage',
-        'mastered_topics_count',
         'formatted_price',
         'image_url'
     ];
