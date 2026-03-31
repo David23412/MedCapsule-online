@@ -46,8 +46,6 @@ class Question extends Model
         'exam_appearances_count' => 'integer'
     ];
 
-    protected $appends = [];
-
     // Remove the problematic accessors that were trying to map to a different schema
     // The database already has the correct field names, so we don't need accessors
 
