@@ -483,6 +483,11 @@ body {
 
 /* Mobile Navigation */
 @media (max-width: 768px) {
+    /* Reset desktop zoom on phones */
+    body {
+        zoom: 1 !important;
+    }
+
     .navbar {
         padding: 0.5rem 1rem;
         position: fixed;
@@ -937,7 +942,7 @@ body {
 /* Small Mobile Devices */
 @media (max-width: 480px) {
     body {
-        zoom: 0.8;
+        zoom: 1;
     }
     
     .navbar-brand {

@@ -27,6 +27,9 @@
             :root {
                 font-size: 13px;
             }
+            body {
+                zoom: 1 !important;
+            }
         }
 
         body {

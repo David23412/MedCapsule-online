@@ -265,6 +265,11 @@
 
         /* Stack on smaller screens */
         @media (max-width: 992px) {
+            /* Reset desktop zoom on tablets and phones */
+            body {
+                zoom: 1 !important;
+            }
+
             .question-content-wrapper {
                 flex-direction: column;
                 gap: 1.5rem;

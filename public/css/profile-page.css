@@ -428,6 +428,14 @@
         }
 
         @media (max-width: 767.98px) {
+            /* Reset desktop zoom on phones */
+            html {
+                font-size: 16px !important;
+            }
+            body {
+                zoom: 1 !important;
+            }
+
             .sidebar {
                 width: 88px;
             }

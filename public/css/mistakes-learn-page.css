@@ -1578,6 +1578,11 @@
 
         /* Add responsive design */
         @media (max-width: 768px) {
+            /* Reset desktop zoom on phones */
+            body {
+                zoom: 1 !important;
+            }
+
             .container {
                 padding: 1rem;
                 margin-top: 70px;

@@ -794,6 +794,11 @@
         }
 
         @media (max-width: 850px) {
+            /* Reset desktop zoom on tablets and phones */
+            body {
+                zoom: 1 !important;
+            }
+
             .container {
                 padding: 1.5rem;
                 width: 100%;
