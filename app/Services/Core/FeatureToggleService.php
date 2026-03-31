@@ -60,19 +60,6 @@ class FeatureToggleService
     }
 
     /**
-     * Check if memory monitor should be applied to route
-     */
-    public static function shouldUseMemoryMonitor(string $routeName): bool
-    {
-        if (!config('features.memory_monitor', true)) {
-            return false;
-        }
-
-        $monitoredRoutes = config('features.memory_monitor_routes', []);
-        return in_array($routeName, $monitoredRoutes);
-    }
-
-    /**
      * Generic feature toggle logic based on rollout strategy
      */
     private static function shouldUseFeatureForUser(string $feature, int $userId): bool

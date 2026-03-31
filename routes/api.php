@@ -3,10 +3,7 @@
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Models\Question;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\DB;
-use App\Http\Controllers\VideoController;
-use App\Http\Controllers\VideoProxyController;
 use App\Events\LiveUserCountUpdated;
 use Illuminate\Support\Facades\Cache;
 

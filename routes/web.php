@@ -8,13 +8,11 @@ use App\Http\Controllers\{
     QuizController,
     MistakeController,
     LearnController,
-    HomeController,
     UserCourseController,
     ProfileController,
     Admin\PaymentController,
     AssignmentController,
-    StudentAssignmentController,
-    TopicLockingController
+    StudentAssignmentController
 };
 use App\Http\Controllers\Api\StatusController;
 use App\Http\Controllers\FreeCourseSurveyController;
