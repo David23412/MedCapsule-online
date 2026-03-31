@@ -27,7 +27,6 @@ class Topic extends Model
         'description',
         'display_order',
         'case_type',
-        'cache_version',
         'is_locked',
         'is_exam',
         'locked_by_tutor_id',
@@ -340,15 +339,11 @@ class Topic extends Model
     {
         parent::boot();
 
-        // Automatically set display_order if not provided when saving
         static::saving(function ($topic) {
             if (!$topic->display_order) {
                 $topic->display_order = static::where('course_id', $topic->course_id)
                     ->max('display_order') + 1;
             }
-            
-            // Increment cache version on any save
-            $topic->cache_version = (int) ($topic->cache_version ?? 0) + 1;
         });
 
         // Clear the cache whenever a topic is updated or deleted
@@ -363,8 +358,7 @@ class Topic extends Model
 
     public function getCacheKey($userId, $suffix = '')
     {
-        return "topic:{$this->id}:user:{$userId}:{$suffix}:v{$this->cache_version}";
-    // 💀 N+1 WARNING: This accessor accesses 'id' - consider eager loading
+        return "topic:{$this->id}:user:{$userId}:{$suffix}";
     }
 
     /**
