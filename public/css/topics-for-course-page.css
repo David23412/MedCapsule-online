@@ -2090,6 +2090,7 @@ body.topics-sidebar-open {
 /* Topics Progress Navigation - Clean & Minimal */
 .topics-progress-container {
     margin-top: 0.75rem;
+    margin-left: 1rem;
 }
 
 .topics-progress-navigation {
