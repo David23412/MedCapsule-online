@@ -61,10 +61,6 @@
             transform: scale(1.1);
         }
         body {
-            zoom: 0.8; /* 80% zoom for better overview */
-        }
-        @media (max-width: 850px) {
-            body { zoom: 1 !important; }
         }
     </style>
 </head>
