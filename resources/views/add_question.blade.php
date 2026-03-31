@@ -15,7 +15,10 @@
         body {
             font-family: 'Poppins', sans-serif;
             background-color: #f8f9fa;
-            font-size: 87.5%; /* 14px base: replaces non-standard zoom: 0.8 */
+            zoom: 0.8; /* 80% zoom for better overview */
+        }
+        @media (max-width: 850px) {
+            body { zoom: 1 !important; }
         }
         .navbar {
             background-color: white;

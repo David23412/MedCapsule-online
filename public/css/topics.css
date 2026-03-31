@@ -2,7 +2,7 @@
 body {
     font-family: 'Poppins', sans-serif;
     background-color: #f8f9fa;
-    font-size: 87.5%; /* 14px base: replaces non-standard zoom: .72 */
+    zoom: .72;
     margin: 0;
     padding: 0;
     line-height: 1.6;
@@ -483,6 +483,11 @@ body {
 
 /* Mobile Navigation */
 @media (max-width: 768px) {
+    /* Reset desktop zoom on phones */
+    body {
+        zoom: 1 !important;
+    }
+
     .navbar {
         padding: 0.5rem 1rem;
         position: fixed;
@@ -937,7 +942,7 @@ body {
 /* Small Mobile Devices */
 @media (max-width: 480px) {
     body {
-        font-size: 100%;
+        zoom: 1;
     }
     
     .navbar-brand {

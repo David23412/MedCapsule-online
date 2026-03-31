@@ -19,7 +19,7 @@
             background-color: #f8f9fa;
             margin: 0;
             padding: 0;
-            font-size: 87.5%; /* 14px base: replaces non-standard zoom: 0.80 */
+            zoom: 0.80; /* Zoom out 20% */
             -webkit-text-size-adjust: 100%; /* Prevent Safari text auto-sizing */
         }
 
@@ -431,6 +431,11 @@
         }
 
         @media (max-width: 850px) {
+            /* Reset desktop zoom on tablets/phones so the UI is readable */
+            body {
+                zoom: 1 !important;
+            }
+
             .progress-bar-container {
                 max-width: 100%;
                 border-radius: 0;
@@ -795,15 +800,15 @@
             backdrop-filter: blur(5px);
         }
 
-        /* Ensure confetti appears above modal and is properly positioned */
-        canvas {
-            z-index: 10001 !important;
-            pointer-events: none !important;
-            position: fixed !important;
-            top: 0 !important;
-            left: 0 !important;
-            width: 100vw !important;
-            height: 100vh !important;
+        /* Confetti canvas – lives outside body zoom so coordinates are 1:1 with viewport */
+        #confetti-canvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 10001;
+            pointer-events: none;
         }
         
         .popup-overlay.show {
@@ -1057,10 +1062,20 @@
             .popup {
                 width: 95%;
                 padding: 1.5rem;
+                animation: mobileSlideUp 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+            }
+
+            .popup-title {
+                font-size: 1.75rem;
             }
 
             .popup-score {
                 font-size: 3rem;
+            }
+
+            .score-container {
+                padding: 1.25rem;
+                margin: 1rem 0;
             }
 
             /* Mobile quiz optimizations */
@@ -1091,6 +1106,17 @@
             h1 {
                 font-size: 1.25rem;
             }
+
+            .grade-icon {
+                width: 60px;
+                height: 60px;
+                font-size: 1.75rem;
+            }
+        }
+
+        @keyframes mobileSlideUp {
+            from { transform: translateY(40px); opacity: 0; }
+            to   { transform: translateY(0);    opacity: 1; }
         }
 
         @media (max-width: 480px) {
@@ -1500,8 +1526,17 @@
         </div>
     </div>
 
+    <!-- Confetti canvas – sits outside the body zoom context for accurate positioning -->
+    <canvas id="confetti-canvas"></canvas>
+
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+
+    <script>
+        // Create a confetti instance bound to our own canvas so body zoom doesn't shift it
+        var confettiCanvas = document.getElementById('confetti-canvas');
+        var myConfetti = confetti.create(confettiCanvas, { resize: true, useWorker: true });
+    </script>
     <!-- WORKING AUDIO SYSTEM WITH REAL FILES -->
     <audio id="quizPerfectSound" preload="auto" volume="0.7">
         <source src="/sounds/quiz-perfect.mp3" type="audio/mpeg">
@@ -2275,9 +2310,9 @@
                             popupTitle.textContent = 'Perfect Score!';
                             // Trigger confetti for perfect score
 
-                            // Direct confetti call for perfect scores
-                            if (typeof confetti !== 'undefined') {
-                                confetti({
+                            // Direct confetti call for perfect scores – uses dedicated canvas, centered on all browsers
+                            if (typeof myConfetti !== 'undefined') {
+                                myConfetti({
                                     particleCount: 100,
                                     spread: 70,
                                     origin: { x: 0.5, y: 0.45 },
@@ -2667,30 +2702,32 @@
             console.log(`Visual feedback shown for ${soundId}`);
         }
 
-        // Function to create confetti
+        // Function to create confetti – uses dedicated canvas, no browser-specific offsets needed
         function createConfetti() {
-            confetti({
-                particleCount: 100,
-                spread: 70,
-                origin: { x: 0.5, y: 0.45 },
-                colors: ['#FFD700', '#FFA500', '#FF69B4', '#00CED1', '#98FB98'],
-                zIndex: 10000
-            });
-        }
-    </script>
-
-    <script>
-        // EDGE/SAFARI CONFETTI TEST FUNCTION
-        window.testConfetti = function() {
-            if (typeof confetti !== 'undefined') {
-                confetti({
+            if (typeof myConfetti !== 'undefined') {
+                myConfetti({
                     particleCount: 100,
                     spread: 70,
                     origin: { x: 0.5, y: 0.45 },
                     colors: ['#FFD700', '#FFA500', '#FF69B4', '#00CED1', '#98FB98'],
                     zIndex: 10000
                 });
-                alert('Testing direct confetti... check if confetti appears!');
+            }
+        }
+    </script>
+
+    <script>
+        // CONFETTI TEST FUNCTION – works on all browsers via dedicated canvas
+        window.testConfetti = function() {
+            if (typeof myConfetti !== 'undefined') {
+                myConfetti({
+                    particleCount: 100,
+                    spread: 70,
+                    origin: { x: 0.5, y: 0.45 },
+                    colors: ['#FFD700', '#FFA500', '#FF69B4', '#00CED1', '#98FB98'],
+                    zIndex: 10000
+                });
+                alert('Testing confetti... check if confetti appears centered!');
             } else {
                 alert('ERROR: No confetti library loaded! Check browser or network issues.');
             }
