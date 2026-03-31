@@ -416,6 +416,7 @@
             display: flex;
             align-items: center;
             gap: 1rem;
+            transition: border-color 0.35s ease, background 0.35s ease, box-shadow 0.35s ease, transform 0.2s ease;
             transition: all 0.2s ease;
             position: relative;
         }
@@ -433,10 +434,12 @@
         
         .topic-item.locked {
             border-left: 4px solid #ef4444;
+            transition: border-color 0.35s ease, background 0.35s ease, border-left-color 0.35s ease;
         }
         
         .topic-item.unlocked {
             border-left: 4px solid #10b981;
+            transition: border-color 0.35s ease, background 0.35s ease, border-left-color 0.35s ease;
         }
         
         .topic-checkbox {
@@ -473,6 +476,7 @@
             border-radius: 6px;
             font-size: 0.8rem;
             font-weight: 500;
+            transition: background 0.35s ease, color 0.35s ease;
         }
         
         .topic-status.locked {
@@ -1204,6 +1208,72 @@
             }
         }
 
+        // Instantly update a single topic's DOM to reflect locked/unlocked state
+        function updateTopicDOM(topicId, isLocked) {
+            const topicItem = document.querySelector(`.topic-item[data-topic-id="${topicId}"]`);
+            if (!topicItem) return;
+
+            // Toggle item classes with smooth transition
+            topicItem.classList.toggle('locked', isLocked);
+            topicItem.classList.toggle('unlocked', !isLocked);
+
+            // Update status badge
+            const statusEl = topicItem.querySelector('.topic-status');
+            if (statusEl) {
+                statusEl.classList.toggle('locked', isLocked);
+                statusEl.classList.toggle('unlocked', !isLocked);
+                statusEl.innerHTML = isLocked
+                    ? '<i class="fas fa-lock"></i> Locked'
+                    : '<i class="fas fa-unlock"></i> Available';
+            }
+
+            // Swap action button
+            const actionsEl = topicItem.querySelector('.topic-actions');
+            if (actionsEl) {
+                if (isLocked) {
+                    actionsEl.innerHTML = `<button class="action-btn unlock" onclick="unlockTopic(${topicId})" title="Click to unlock this topic" data-topic-id="${topicId}"><i class="fas fa-unlock"></i></button>`;
+                } else {
+                    actionsEl.innerHTML = `<button class="action-btn lock" onclick="lockTopic(${topicId})" title="Click to lock this topic" data-topic-id="${topicId}"><i class="fas fa-lock"></i></button>`;
+                }
+            }
+
+            // Uncheck selection
+            const checkbox = topicItem.querySelector('.topic-checkbox');
+            if (checkbox) checkbox.checked = false;
+
+            // Brief highlight flash
+            topicItem.style.boxShadow = isLocked ? '0 0 0 2px #ef4444' : '0 0 0 2px #10b981';
+            setTimeout(() => { topicItem.style.boxShadow = ''; }, 600);
+        }
+
+        // Update the header stats counters without reload
+        function updateHeaderStats() {
+            const allItems = document.querySelectorAll('.topic-item');
+            const lockedCount = document.querySelectorAll('.topic-item.locked').length;
+            const unlockedCount = document.querySelectorAll('.topic-item.unlocked').length;
+
+            // Update stat cards if they exist
+            const statValues = document.querySelectorAll('.stat-value');
+            if (statValues.length >= 3) {
+                statValues[0].textContent = allItems.length;   // Total
+                statValues[1].textContent = lockedCount;       // Locked
+                statValues[2].textContent = unlockedCount;     // Unlocked
+            }
+
+            // Update per-course counters
+            document.querySelectorAll('.course-section').forEach(section => {
+                const courseItems = section.querySelectorAll('.topic-item');
+                const courseLocked = section.querySelectorAll('.topic-item.locked').length;
+                const courseUnlocked = section.querySelectorAll('.topic-item.unlocked').length;
+
+                const courseStats = section.querySelectorAll('.course-stat-value');
+                if (courseStats.length >= 2) {
+                    courseStats[0].textContent = courseLocked;
+                    courseStats[1].textContent = courseUnlocked;
+                }
+            });
+        }
+
         // Lock single topic - instant
         function lockTopic(topicId) {
             console.log('Locking topic:', topicId);
@@ -1212,8 +1282,10 @@
                 button.classList.add('loading');
             }
             
-            // For testing - show immediate feedback
-            showToast('Locking topic...', 'success');
+            // Optimistic update — reflect change instantly
+            updateTopicDOM(topicId, true);
+            updateHeaderStats();
+            showToast('Topic locked successfully', 'success');
             
             fetch(`/topic-locking/${topicId}/lock`, {
                 method: 'POST',
@@ -1248,17 +1320,20 @@
             .then(data => {
                 console.log('Response data:', data);
                 if (data.success) {
-                    showToast('Topic locked successfully', 'success');
-                    setTimeout(() => location.reload(), 1000);
+                    // Already updated optimistically — no reload needed
                 } else {
+                    // Revert optimistic update on failure
+                    updateTopicDOM(topicId, false);
+                    updateHeaderStats();
                     showToast('Error: ' + (data.message || 'Unknown error'), 'error');
-                    if (button) button.classList.remove('loading');
                 }
             })
             .catch(error => {
                 console.error('Error:', error);
+                // Revert optimistic update on network error
+                updateTopicDOM(topicId, false);
+                updateHeaderStats();
                 showToast('Error: ' + error.message, 'error');
-                if (button) button.classList.remove('loading');
             });
         }
 
@@ -1270,8 +1345,10 @@
                 button.classList.add('loading');
             }
             
-            // For testing - show immediate feedback
-            showToast('Unlocking topic...', 'success');
+            // Optimistic update — reflect change instantly
+            updateTopicDOM(topicId, false);
+            updateHeaderStats();
+            showToast('Topic unlocked successfully', 'success');
             
             fetch(`/topic-locking/${topicId}/unlock`, {
                 method: 'POST',
@@ -1291,17 +1368,20 @@
             .then(data => {
                 console.log('Response data:', data);
                 if (data.success) {
-                    showToast('Topic unlocked successfully', 'success');
-                    setTimeout(() => location.reload(), 1000);
+                    // Already updated optimistically — no reload needed
                 } else {
+                    // Revert optimistic update on failure
+                    updateTopicDOM(topicId, true);
+                    updateHeaderStats();
                     showToast('Error: ' + (data.message || 'Unknown error'), 'error');
-                    if (button) button.classList.remove('loading');
                 }
             })
             .catch(error => {
                 console.error('Error:', error);
+                // Revert optimistic update on network error
+                updateTopicDOM(topicId, true);
+                updateHeaderStats();
                 showToast('Error: ' + error.message, 'error');
-                if (button) button.classList.remove('loading');
             });
         }
 
@@ -1311,6 +1391,17 @@
             
             const button = document.getElementById('bulkLockBtn');
             button.classList.add('loading');
+
+            const topicIds = Array.from(selectedTopics);
+            const count = topicIds.length;
+
+            // Optimistic update — reflect changes instantly
+            topicIds.forEach(id => updateTopicDOM(id, true));
+            updateHeaderStats();
+            selectedTopics.clear();
+            updateSelection();
+            showToast(`${count} topics locked successfully`, 'success');
+            button.classList.remove('loading');
             
             fetch('/topic-locking/bulk-lock', {
                 method: 'POST',
@@ -1319,24 +1410,24 @@
                     'Content-Type': 'application/json'
                 },
                 body: JSON.stringify({
-                    topic_ids: Array.from(selectedTopics),
+                    topic_ids: topicIds,
                     reason: '' // No reason needed for instant lock
                 })
             })
             .then(response => response.json())
             .then(data => {
-                if (data.success) {
-                    showToast(`${selectedTopics.size} topics locked successfully`, 'success');
-                    setTimeout(() => location.reload(), 500);
-                } else {
+                if (!data.success) {
+                    // Revert on failure
+                    topicIds.forEach(id => updateTopicDOM(id, false));
+                    updateHeaderStats();
                     showToast('Error: ' + data.message, 'error');
-                    button.classList.remove('loading');
                 }
             })
             .catch(error => {
                 console.error('Error:', error);
+                topicIds.forEach(id => updateTopicDOM(id, false));
+                updateHeaderStats();
                 showToast('An error occurred while locking topics.', 'error');
-                button.classList.remove('loading');
             });
         }
 
@@ -1346,6 +1437,17 @@
             
             const button = document.getElementById('bulkUnlockBtn');
             button.classList.add('loading');
+
+            const topicIds = Array.from(selectedTopics);
+            const count = topicIds.length;
+
+            // Optimistic update — reflect changes instantly
+            topicIds.forEach(id => updateTopicDOM(id, false));
+            updateHeaderStats();
+            selectedTopics.clear();
+            updateSelection();
+            showToast(`${count} topics unlocked successfully`, 'success');
+            button.classList.remove('loading');
             
             fetch('/topic-locking/bulk-unlock', {
                 method: 'POST',
@@ -1354,23 +1456,23 @@
                     'Content-Type': 'application/json'
                 },
                 body: JSON.stringify({
-                    topic_ids: Array.from(selectedTopics)
+                    topic_ids: topicIds
                 })
             })
             .then(response => response.json())
             .then(data => {
-                if (data.success) {
-                    showToast(`${selectedTopics.size} topics unlocked successfully`, 'success');
-                    setTimeout(() => location.reload(), 500);
-                } else {
+                if (!data.success) {
+                    // Revert on failure
+                    topicIds.forEach(id => updateTopicDOM(id, true));
+                    updateHeaderStats();
                     showToast('Error: ' + data.message, 'error');
-                    button.classList.remove('loading');
                 }
             })
             .catch(error => {
                 console.error('Error:', error);
+                topicIds.forEach(id => updateTopicDOM(id, true));
+                updateHeaderStats();
                 showToast('An error occurred while unlocking topics.', 'error');
-                button.classList.remove('loading');
             });
         }
 

@@ -1002,10 +1002,8 @@
                     if ((data.rejected_courses || []).length > 0) {
                         data.rejected_courses.forEach(courseId => {
                             localStorage.removeItem(`payment_pending_${courseId}`);
+                            updateButtonToRejectedCourse(courseId);
                         });
-
-                        window.location.reload();
-                        return;
                     }
 
                     (data.completed_courses || []).forEach(courseId => {
@@ -1047,6 +1045,30 @@
             button.parentNode.replaceChild(newLink, button);
             newLink.style.animation = 'successPulse 0.8s ease-in-out';
             showPaymentCompletedNotification();
+        }
+
+        function updateButtonToRejectedCourse(courseId) {
+            const button = document.querySelector(`#paymentBtn_${courseId}`);
+            if (!button) {
+                return;
+            }
+
+            button.innerHTML = '<i class="fas fa-exclamation-triangle" style="color: #dc2626;"></i> <span style="color: #dc2626; font-weight: bold;">Payment Rejected</span>';
+            button.disabled = false;
+            button.style.backgroundColor = '#fef2f2';
+            button.style.borderColor = '#fecaca';
+            button.style.color = '#dc2626';
+            button.style.cursor = 'pointer';
+            button.style.pointerEvents = 'auto';
+            button.style.transition = 'all 0.3s ease';
+            // Re-enable payment modal after a brief delay to show rejection
+            setTimeout(() => {
+                button.classList.add('show-payment-modal');
+                button.innerHTML = '<i class="fas fa-credit-card"></i> <span>Retry Payment</span>';
+                button.style.backgroundColor = '';
+                button.style.borderColor = '';
+                button.style.color = '';
+            }, 3000);
         }
 
         function showPaymentCompletedNotification() {

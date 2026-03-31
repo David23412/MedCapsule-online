@@ -839,6 +839,7 @@ body{font-family:'Poppins',sans-serif;background-color:#f8f9fa;zoom:.72;margin:0
         0 2px 4px rgba(255, 255, 255, 0.5);
     overflow: hidden;
     pointer-events: none;
+    transition: background 0.6s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.6s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .topics-progress-segment::after {
@@ -1426,7 +1427,8 @@ body.sidebar-collapsed .coming-soon-overlay {
     position: absolute;
     left: 0;
     top: 0;
-    transition: width 0.3s ease;
+    transition: width 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+    will-change: width;
 }
 
 #sourceSelectionModal .source-progress-value.completed,
