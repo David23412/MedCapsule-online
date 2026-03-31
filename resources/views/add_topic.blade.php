@@ -61,7 +61,7 @@
             transform: scale(1.1);
         }
         body {
-            font-size: 87.5%; /* 14px base: replaces non-standard zoom: 0.8 */
+            zoom: 0.8; /* 80% zoom for better overview */
         }
     </style>
 </head>

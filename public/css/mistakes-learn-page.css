@@ -7,7 +7,7 @@
             min-height: 100vh;
             overflow-x: hidden;
             line-height: 1.6;
-            font-size: 87.5%; /* 14px base: replaces non-standard zoom: 0.80 */
+            zoom: 0.80;
             -webkit-text-size-adjust: 100%; /* Prevent Safari text auto-sizing */
         }
 
@@ -1578,10 +1578,6 @@
 
         /* Add responsive design */
         @media (max-width: 768px) {
-            body {
-                font-size: 100%;
-            }
-
             .container {
                 padding: 1rem;
                 margin-top: 70px;

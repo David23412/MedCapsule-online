@@ -19,7 +19,7 @@
             background-color: #f8f9fa;
             margin: 0;
             padding: 0;
-            font-size: 87.5%; /* 14px base: replaces non-standard zoom: 0.80 */
+            zoom: 0.80; /* Zoom out 20% */
             -webkit-text-size-adjust: 100%; /* Prevent Safari text auto-sizing */
         }
 
@@ -2275,12 +2275,22 @@
                             popupTitle.textContent = 'Perfect Score!';
                             // Trigger confetti for perfect score
 
-                            // Direct confetti call for perfect scores
+                            // Direct confetti call for perfect scores - SAFARI-CORRECTED POSITIONING
                             if (typeof confetti !== 'undefined') {
+                                // Detect if the browser is Safari
+                                const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+                                let originX = 0.62; // Default to center for all other browsers
+
+                                // If it is Safari, apply a corrected origin value to counteract zoom effect
+                                if (isSafari) {
+                                    // Fine-tuned for perfect centering - using 0.47 for optimal positioning
+                                    originX = 0.47;
+                                }
+
                                 confetti({
                                     particleCount: 100,
                                     spread: 70,
-                                    origin: { x: 0.5, y: 0.45 },
+                                    origin: { x: originX, y: 0.45 },
                                     colors: ['#FFD700', '#FFA500', '#FF69B4', '#00CED1', '#98FB98'],
                                     zIndex: 10000
                                 });
@@ -2669,10 +2679,22 @@
 
         // Function to create confetti
         function createConfetti() {
+            // SAFARI-SPECIFIC CONFETTI POSITIONING FIX
+            // Detect if the browser is Safari
+            const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+            let originX = 0.62; // Default to center for all other browsers
+
+            // If it is Safari, apply a corrected origin value to counteract zoom effect
+            if (isSafari) {
+                // Fine-tuned for perfect centering - using 0.48 for optimal positioning
+                originX = 0.48;
+            }
+
+            // SAFARI-CORRECTED CONFETTI - Consistent positioning across browsers
             confetti({
                 particleCount: 100,
                 spread: 70,
-                origin: { x: 0.5, y: 0.45 },
+                origin: { x: originX, y: 0.45 },
                 colors: ['#FFD700', '#FFA500', '#FF69B4', '#00CED1', '#98FB98'],
                 zIndex: 10000
             });
@@ -2683,10 +2705,16 @@
         // EDGE/SAFARI CONFETTI TEST FUNCTION
         window.testConfetti = function() {
             if (typeof confetti !== 'undefined') {
+                // Use Safari-corrected positioning for test
+                const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+                let originX = 0.62; // Default to center for all other browsers
+                if (isSafari) {
+                    originX = 0.47; // Fine-tuned for perfect centering
+                }
                 confetti({
                     particleCount: 100,
                     spread: 70,
-                    origin: { x: 0.5, y: 0.45 },
+                    origin: { x: originX, y: 0.45 },
                     colors: ['#FFD700', '#FFA500', '#FF69B4', '#00CED1', '#98FB98'],
                     zIndex: 10000
                 });
