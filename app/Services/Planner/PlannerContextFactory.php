@@ -23,7 +23,6 @@ class PlannerContextFactory
     private static ?array $availableCoursePlannerColumns = null;
 
     public function __construct(
-        private GlobalStudyBudgetAllocator $globalStudyBudgetAllocator,
         private ConceptAnalyticsService $conceptAnalyticsService,
         private PlannerSignalService $plannerSignalService,
         private PlannerTaskOutcomeService $plannerTaskOutcomeService,
@@ -33,7 +32,15 @@ class PlannerContextFactory
     public function buildForCourse(User $user, Course $course, Collection $topics, StudyPlan $plan): PlannerContext
     {
         $totalDailyStudyMinutes = max(30, (int) ($user->daily_study_minutes ?? 90));
-        $globalAllocation = $this->globalStudyBudgetAllocator->allocate($user, $course->id);
+        $globalAllocation = [
+            'total_daily_minutes' => $totalDailyStudyMinutes,
+            'courses' => [
+                $course->id => [
+                    'allocated_minutes' => $totalDailyStudyMinutes,
+                    'priority_score' => 100.0,
+                ],
+            ],
+        ];
         $courseSettings = $this->resolveCoursePlannerSettings($user, $course, $plan, $globalAllocation, $totalDailyStudyMinutes);
         $examDate = $courseSettings['exam_date'];
         $daysToExam = $examDate

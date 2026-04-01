@@ -9,7 +9,6 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\DB;
-use App\Services\DatabaseTransactionService;
 use App\Services\SecureFileUploadService;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Support\Collection as SupportCollection;
@@ -33,7 +32,6 @@ use App\Services\FreeCourseSurveyService;
 class CourseService
 {
     public function __construct(
-        protected DatabaseTransactionService $transactionService,
         protected SecureFileUploadService $fileUploadService,
         protected PerformanceMonitorService $performanceMonitor,
         protected FreeCourseSurveyService $freeCourseSurveyService
@@ -145,7 +143,7 @@ class CourseService
         $operationId = $this->performanceMonitor->startOperation('course_enroll_service');
 
         try {
-            return $this->transactionService->executeEnrollmentTransaction(function() use ($user, $courseId) {
+            return DB::transaction(function() use ($user, $courseId) {
                 // Use existing enrollment logic with enhanced error handling
                 $course = Course::findOrFail($courseId);
 
