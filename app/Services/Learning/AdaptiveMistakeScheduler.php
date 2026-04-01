@@ -319,7 +319,17 @@ class AdaptiveMistakeScheduler
 
             $totalWeight = collect($signals)->sum('weight');
             $weightedDifficulty = $totalWeight > 0
-                ? collect($signals)->sum(fn (array $signal) => $signal['difficulty'] * $signal['weight']) / $totalWeight
+                ? collect($signals)->sum(function (array $signal) {
+                    $difficulty = is_numeric($signal['difficulty'])
+                        ? (float) $signal['difficulty']
+                        : match($signal['difficulty']) {
+                            'easy' => 0.25,
+                            'medium' => 0.50,
+                            'hard' => 0.75,
+                            default => 0.50,
+                        };
+                    return $difficulty * $signal['weight'];
+                }) / $totalWeight
                 : $heuristicDifficulty;
             $confidence = min(
                 1.0,
