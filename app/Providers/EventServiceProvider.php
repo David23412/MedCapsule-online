@@ -28,8 +28,6 @@ use App\Events\SkippedQuestionsDetected;
 use App\Events\TopicUnlockedByTutor;
 use App\Events\AssignmentDeadlineChanged;
 use App\Events\CorrectAnswersMilestoneReached;
-use App\Events\PaymentSuccessful;
-use App\Events\PaymentFailed;
 
 // Import our custom listeners
 use App\Listeners\InvalidateCourseCache;
@@ -139,14 +137,6 @@ class EventServiceProvider extends ServiceProvider
             SendCorrectAnswersMilestoneNotification::class,
         ],
 
-        // 🔥 LETHAL FIX: Payment events
-        PaymentSuccessful::class => [
-            // We'll need to create this listener
-        ],
-
-        PaymentFailed::class => [
-            // We'll need to create this listener
-        ],
     ];
 
     /**
