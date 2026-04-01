@@ -8,9 +8,8 @@ use Illuminate\Support\Collection;
 
 class PlannerTaskBuilderService
 {
-    public function __construct(
-        private TaskReasonService $taskReasonService,
-    ) {
+    public function __construct()
+    {
     }
 
     public function bucketTopics(Collection $topics, PlannerContext $context): PlannerTopicBuckets
@@ -475,7 +474,7 @@ class PlannerTaskBuilderService
             'score_components' => $score['components'],
             'sizing_basis' => $sizing['sizing_basis'],
             'counts_toward_progression' => true,
-        ] + $this->taskReasonService->repairTopic($topic, $this->topicGrade($topic, $context), $sourceLabel, $conceptLabel);
+        ] + [];
     }
 
     private function buildSingleSpacedReviewTask(
@@ -544,7 +543,7 @@ class PlannerTaskBuilderService
             'priority_score' => $score['priority'],
             'score_components' => $score['components'],
             'sizing_basis' => $sizing['sizing_basis'],
-        ] + $this->taskReasonService->topicMistakeReview($topic, $dueCount, (int) ($topicDueSignal['minutes_overdue'] ?? 0), $conceptLabel);
+        ] + [];
     }
 
     private function buildSingleFinalExamSprintTask(
@@ -859,7 +858,7 @@ class PlannerTaskBuilderService
                 'priority_score' => $score['priority'],
                 'score_components' => $score['components'],
                 'sizing_basis' => $sizing['sizing_basis'],
-            ] + $this->taskReasonService->repairTopic($topic, $this->topicGrade($topic, $context), $sourceLabel, $conceptLabel));
+            ] + []);
         }
 
         return $candidates;
@@ -932,7 +931,7 @@ class PlannerTaskBuilderService
                 'score_components' => $score['components'],
                 'sizing_basis' => $sizing['sizing_basis'],
                 'counts_toward_progression' => true,
-            ] + $this->taskReasonService->rebuildTopic($topic, $this->topicGrade($topic, $context), $sourceLabel, $conceptLabel));
+            ] + []);
         }
 
         return $candidates;
@@ -1009,12 +1008,7 @@ class PlannerTaskBuilderService
                 'priority_score' => $score['priority'],
                 'score_components' => $score['components'],
                 'sizing_basis' => $sizing['sizing_basis'],
-            ] + $this->taskReasonService->conceptRepair(
-                $topic->name,
-                $conceptLabel,
-                (float) ($conceptSignal['risk_score'] ?? 0.0),
-                (float) ($conceptSignal['retrievability'] ?? 0.9),
-            ));
+            ] + []);
         }
 
         return $candidates
@@ -1092,12 +1086,7 @@ class PlannerTaskBuilderService
                     'priority_score' => $score['priority'],
                     'score_components' => $score['components'],
                     'sizing_basis' => $sizing['sizing_basis'],
-                ] + $this->taskReasonService->conceptClusterRepair(
-                    $topic->name,
-                    $clusterLabel,
-                    $cluster['concept_names'] ?? [],
-                    $averageRisk
-                );
+                ] + [];
             })
             ->filter()
             ->sortByDesc('priority')
@@ -1155,7 +1144,7 @@ class PlannerTaskBuilderService
                 'score_components' => $score['components'],
                 'sizing_basis' => $sizing['sizing_basis'],
                 'counts_toward_progression' => true,
-            ] + $this->taskReasonService->secureTopic($topic, $this->topicGrade($topic, $context), $sourceLabel));
+            ] + []);
         }
 
         return $candidates;
@@ -1216,7 +1205,7 @@ class PlannerTaskBuilderService
             'score_components' => $score['components'],
             'sizing_basis' => $sizing['sizing_basis'],
             'counts_toward_progression' => true,
-        ] + $this->taskReasonService->frontierTopicSolve($topic, $this->topicGrade($topic, $context), $sourceLabel);
+        ] + [];
     }
 
     public function buildStartTopicTasks(Collection $untouchedTopics, PlannerContext $context, int $limit = 3, int $priorityOffset = 0): Collection
@@ -1272,9 +1261,7 @@ class PlannerTaskBuilderService
                 'score_components' => $score['components'],
                 'sizing_basis' => $sizing['sizing_basis'],
                 'counts_toward_progression' => true,
-            ] + ($isRapidOverview
-                ? $this->taskReasonService->rapidOverview($topic, $sourceLabel)
-                : $this->taskReasonService->startTopic($topic, $sourceLabel)));
+            ] + []);
         }
 
         return $candidates;
@@ -1357,7 +1344,7 @@ class PlannerTaskBuilderService
                 'score_components' => $score['components'],
                 'sizing_basis' => $sizing['sizing_basis'],
                 'counts_toward_progression' => true,
-            ] + $this->taskReasonService->topicMistakeReview($topic, $dueCount, (int) ($topicDueSignal['minutes_overdue'] ?? 0), $conceptLabel));
+            ] + []);
         }
 
         return $candidates;
@@ -1415,7 +1402,7 @@ class PlannerTaskBuilderService
             'priority_score' => $score['priority'],
             'score_components' => $score['components'],
             'sizing_basis' => $sizing['sizing_basis'],
-        ] + $this->taskReasonService->mistakesCleanup($context->openMistakesCount, $courseConceptLabel);
+        ] + [];
     }
 
     public function buildFinalExamSprintTask(PlannerContext $context, int $priorityOffset = 0): ?array
@@ -1461,7 +1448,7 @@ class PlannerTaskBuilderService
             'priority_score' => $score['priority'],
             'score_components' => $score['components'],
             'sizing_basis' => $sizing['sizing_basis'],
-        ] + $this->taskReasonService->finalExamSprint($context->daysToExam, $context->preferredSource);
+        ] + [];
     }
 
     private function topicGrade(Topic $topic, PlannerContext $context): float
