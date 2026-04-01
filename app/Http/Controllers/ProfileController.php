@@ -141,7 +141,6 @@ class ProfileController extends Controller
         if ($user->xp > 0) {
             $userRank = Cache::remember("user_rank_optimized_{$user->id}", 1800, function() use ($user) {
                 return DB::table('users')
-                    ->where('total_questions_attempted', '>', 0)
                     ->where('role', 3) // 3 = student role (integer)
                     ->where('xp', '>', $user->xp)
                     ->count() + 1;
@@ -225,7 +224,7 @@ class ProfileController extends Controller
                     'users.xp',
                     DB::raw('FLOOR(COALESCE(users.xp, 0) / 1000) + 1 as level')
                 )
-                ->where('users.total_questions_attempted', '>', 0)
+                ->where('users.xp', '>', 0)
                 ->where('users.role', 3)
                 ->orderByDesc('xp')
                 ->limit(10)
