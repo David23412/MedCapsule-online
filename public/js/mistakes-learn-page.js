@@ -293,7 +293,7 @@ function initializeMistakesLearnPage() {
                     
                     // Add error handling for 404s
                     sound.addEventListener('error', function(e) {
-                        console.log('Audio file not found (404):', sound.src);
+
                     });
                     
                     sound.load();
@@ -308,7 +308,7 @@ function initializeMistakesLearnPage() {
             setTimeout(() => {
                 audioElements.forEach((sound, index) => {
                     if (sound && sound.error) {
-                        console.log('Creating silent fallback for audio:', index);
+
                         // Create a silent audio element as fallback
                         const silentAudio = new Audio();
                         silentAudio.src = 'data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwhBSuBzvLZiTYIG2m98OScTgwOUarm7blmGgU7k9n1unEiBC13yO/eizEIHWq+8+OWT';
@@ -1019,8 +1019,7 @@ function initializeMistakesLearnPage() {
                     patch.forEach(q => q.patchIndex = patches.length);
                     patches.push(patch);
                 }
-                console.log(`📦 Created ${patches.length} study sets with ${PATCH_SIZE} questions each`);
-                console.log('📦 Set details:', patches.map((patch, i) => `Set ${i + 1}: ${patch.length} questions`));
+
             }
 
             // PATCH CYCLING: Check if current patch is completed
@@ -1037,7 +1036,7 @@ function initializeMistakesLearnPage() {
             function moveToNextPatch() {
                 if (currentPatchIndex < patches.length - 1) {
                     currentPatchIndex++;
-                    console.log(`🔄 MOVING TO SET ${currentPatchIndex + 1}/${patches.length}`);
+
 
                     // Reset question index to start of new patch
                     currentQuestionIndex = patches[currentPatchIndex][0] ?
@@ -1200,13 +1199,7 @@ function initializeMistakesLearnPage() {
                             const isCorrect = data.is_correct === true;
                             
                             // Debug logging to help track any future issues
-                            console.log('Answer evaluation result:', {
-                                isCorrect: isCorrect,
-                                answer: submittedAnswer.substring(0, 50) + (submittedAnswer.length > 50 ? '...' : ''),
-                                answerLength: submittedAnswer.length,
-                                message: data.message,
-                                questionId: questionId
-                            });
+
                             
                             syncAdaptiveState(currentQuestion, data);
                             
@@ -1484,7 +1477,7 @@ function initializeMistakesLearnPage() {
                     .then(response => response.json())
                     .then(data => {
                         if (data.success) {
-                            console.log('✅ Question skipped successfully');
+
                         } else {
                             console.warn('⚠️ Skip failed:', data.message);
                         }
@@ -1576,7 +1569,7 @@ function initializeMistakesLearnPage() {
 
                 // PATCH CYCLING: Check if current patch is completed
                 if (isCurrentPatchCompleted()) {
-                    console.log(`✅ Set ${currentPatchIndex + 1} completed!`);
+
                     if (!moveToNextPatch()) {
                         // No more patches available
                         showCompletion();
@@ -1654,11 +1647,11 @@ function initializeMistakesLearnPage() {
                 
                 // 💀 LETHAL FINAL GRADING SOUND - ENCOURAGEMENT FOR LEARN MISTAKES 💀
                 if (quizStarted) {
-                    console.log('🎯 FINAL GRADING SOUND TRIGGERED - LEARN MISTAKES COMPLETION!');
+
                     
                     // 💀 LEARN MISTAKES = ENCOURAGEMENT SOUND 💀
                     // This is specifically designed for learn mistakes system
-                    console.log('🎉 LEARN MISTAKES MASTERY - PLAYING ENCOURAGEMENT SOUND');
+
                     
                     // 💀 LETHAL DIRECT ENCOURAGEMENT SOUND SYSTEM 💀
                     let soundPlayed = false;
@@ -1674,25 +1667,25 @@ function initializeMistakesLearnPage() {
                         if (playPromise !== undefined) {
                             playPromise.then(() => {
                                 soundPlayed = true;
-                                console.log('✅ FRESH ENCOURAGEMENT SOUND PLAYED SUCCESSFULLY');
+
                             }).catch(() => {
-                                console.log('❌ FRESH ENCOURAGEMENT SOUND FAILED, TRYING FALLBACK');
+
                                 // Layer 2: Preloaded encouragement element fallback
                                 const encouragementAudio = document.getElementById('encouragementSound');
                                 if (encouragementAudio) {
                                     encouragementAudio.currentTime = 0;
                                     encouragementAudio.volume = 0.7;
                                     encouragementAudio.play().catch(() => {
-                                        console.log('❌ ALL ENCOURAGEMENT SOUND METHODS FAILED');
+
                                     });
                                 }
                             });
                         }
                     } catch (error) {
-                        console.log('❌ FRESH ENCOURAGEMENT AUDIO CREATION FAILED:', error);
+
                     }
                     
-                    console.log(`🎵 ENCOURAGEMENT SOUND TRIGGERED in ${(performance.now() - soundStart).toFixed(2)}ms`);
+
                 }
                 
                 const popupOverlay = document.getElementById('popup-overlay');
@@ -1868,7 +1861,7 @@ function initializeMistakesLearnPage() {
 
             // BULLETPROOF SMOOTH FILTER - WORKS EVERY FUCKING TIME
             if (courseFilter) {
-                console.log('🔥 BULLETPROOF FILTER INITIALIZED');
+
 
                 const handleFilterChange = function() {
                     const selectedValue = this.value;

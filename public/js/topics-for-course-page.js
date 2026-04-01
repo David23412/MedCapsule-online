@@ -697,7 +697,7 @@
             if (e.key === 'quizProgressUpdate' && e.newValue) {
                 try {
                     const data = JSON.parse(e.newValue);
-                    console.log('📦 Real-time progress update detected from another tab:', data);
+
                     applyProgressUpdate({
                         ...data,
                         mode: data.mode || 'quiz'

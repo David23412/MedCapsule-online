@@ -339,7 +339,7 @@ window.initializeSecureVideoPlayer = function(container, youtubeId) {
         });
         
         function onPlayerReady(event) {
-            console.log('🔒 Secure YouTube player ready');
+
             
             // Set up custom controls
             setupCustomControls();
@@ -610,7 +610,7 @@ function generateSecureVideoOverlay(youtubeId, videoTitle, autoplay = true, show
 
 // Global cleanup function for stopping videos
 window.stopAllVideos = function() {
-    console.log('🛑 Stopping all videos globally...');
+
     
     // Clear any running intervals
     if (window.videoProgressInterval) {
@@ -631,11 +631,11 @@ window.stopAllVideos = function() {
                 }
             });
         } catch (error) {
-            console.log('⚠️ Error stopping YouTube players:', error);
+
         }
     }
     
-    console.log('✅ All videos stopped');
+
 };
 
 // Export for use in other files
@@ -647,10 +647,4 @@ if (typeof module !== 'undefined' && module.exports) {
     };
 }
 
-// Log successful loading
-console.log('🔒 Secure video component loaded successfully');
-console.log('🌐 Environment check:', {
-    protocol: window.location.protocol,
-    hostname: window.location.hostname,
-    isCrossOrigin: isCrossOriginEnvironment()
-});
+
