@@ -89,6 +89,9 @@ const AssignmentCountdown = {
         
         // Start countdown updates
         updateCountdowns();
-        setInterval(updateCountdowns, 1000); // Update every second
+        const countdownInterval = setInterval(updateCountdowns, 1000);
+        window.addEventListener('beforeunload', function() {
+            clearInterval(countdownInterval);
+        });
     }
 };

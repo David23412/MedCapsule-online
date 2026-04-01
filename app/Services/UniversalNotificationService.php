@@ -17,6 +17,7 @@ class UniversalNotificationService
 {
     private const MAX_NOTIFICATIONS = 5;
     private const READ_RETENTION_HOURS = 12;
+    private const CACHE_TTL_THIRTY_DAYS = 86400 * 30;
 
     /**
      * BEAUTIFUL NOTIFICATION ICON MAPPING - RESTORED FROM ORIGINAL DESIGN
@@ -411,7 +412,7 @@ class UniversalNotificationService
         Cache::putMany([
             $cacheKey => $kept,
             $unreadKey => count(array_filter($kept, static fn (array $n) => !($n['read'] ?? false))),
-        ], 86400 * 30);
+        ], self::CACHE_TTL_THIRTY_DAYS);
 
         return max(0, $before - count($kept));
     }
@@ -585,7 +586,7 @@ class UniversalNotificationService
         Cache::putMany([
             $cacheKey => array_values($notifications),
             $unreadKey => count(array_filter($notifications, static fn (array $n) => !($n['read'] ?? false))),
-        ], 86400 * 30);
+        ], self::CACHE_TTL_THIRTY_DAYS);
     }
 
     /**
@@ -715,7 +716,7 @@ class UniversalNotificationService
             Cache::putMany([
                 $cacheKey => $optimizedNotifications,
                 $unreadKey => $unreadCount
-            ], 86400 * 30);
+            ], self::CACHE_TTL_THIRTY_DAYS);
         }
 
         return [

@@ -597,6 +597,10 @@
         }
     });
 
+    window.addEventListener('beforeunload', function() {
+        stopProgressPolling();
+    });
+
     window.addEventListener('storage', function(event) {
         if (event.key === 'quizProgressUpdate' || event.key === 'assignmentCompleted') {
             refreshUserProgressInstantly();
@@ -965,6 +969,10 @@
             } else {
                 stopPaymentStatusPolling();
             }
+        });
+
+        window.addEventListener('beforeunload', function() {
+            stopPaymentStatusPolling();
         });
 
         function checkPaymentCompletions() {

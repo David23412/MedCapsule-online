@@ -106,6 +106,11 @@ class User extends Authenticatable
     const COURSE_ACCESS_FULL = 'full';
 
     /**
+     * Per-request memo cache for course access levels to avoid repeated DB queries.
+     */
+    protected array $courseAccessLevelCache = [];
+
+    /**
      * Define the relationship with courses (many-to-many).
      * Only returns enrolled courses (enrolled_at is not null).
      */
@@ -343,10 +348,29 @@ class User extends Authenticatable
             ->unique()
             ->values()
             ->all();
-        
 
+        // Per-request memoization: only query IDs we haven't resolved yet
+        $uncachedIds = array_values(array_diff($normalizedCourseIds, array_keys($this->courseAccessLevelCache)));
 
-        $accessMap = array_fill_keys($normalizedCourseIds, null);
+        if (!empty($uncachedIds)) {
+            $this->resolveAndCacheCourseAccess($uncachedIds);
+        }
+
+        // Build result from cache
+        $accessMap = [];
+        foreach ($normalizedCourseIds as $id) {
+            $accessMap[$id] = $this->courseAccessLevelCache[$id] ?? null;
+        }
+
+        return $accessMap;
+    }
+
+    /**
+     * Resolve course access for uncached IDs and store in the per-request memo cache.
+     */
+    private function resolveAndCacheCourseAccess(array $courseIds): void
+    {
+        $accessMap = array_fill_keys($courseIds, null);
         $hasFreeSurveyUnlock = $this->hasUnlockedFreeCourses();
 
         $rows = DB::table('courses')
@@ -354,7 +378,7 @@ class User extends Authenticatable
                 $join->on('courses.id', '=', 'course_user.course_id')
                     ->where('course_user.user_id', '=', $this->id);
             })
-            ->whereIn('courses.id', $normalizedCourseIds)
+            ->whereIn('courses.id', $courseIds)
             ->select(
                 'courses.id',
                 'courses.access_type',
@@ -365,7 +389,7 @@ class User extends Authenticatable
 
         $completedPaymentCourseIds = DB::table('payments')
             ->where('user_id', $this->id)
-            ->whereIn('course_id', $normalizedCourseIds)
+            ->whereIn('course_id', $courseIds)
             ->where('status', 'completed')
             ->pluck('course_id')
             ->map(static fn ($courseId) => (int) $courseId)
@@ -424,7 +448,10 @@ class User extends Authenticatable
             }
         }
 
-        return $accessMap;
+        // Store all resolved results in memo cache
+        foreach ($accessMap as $id => $level) {
+            $this->courseAccessLevelCache[$id] = $level;
+        }
     }
 
     public function hasFullAccessToCourse(Course|int $course): bool
