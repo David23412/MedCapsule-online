@@ -19,8 +19,7 @@
 ])
 
 @php
-    $responsiveService = app(\App\Services\ResponsiveService::class);
-    $isMobile = $responsiveService->isMobile();
+    $isMobile = request()->header('User-Agent') && preg_match('/Mobile|Android|iPhone/i', request()->header('User-Agent'));
 @endphp
 
 {{-- Include responsive navigation --}}

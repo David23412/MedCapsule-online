@@ -1,8 +1,8 @@
 @php
-    $responsiveService = app(\App\Services\ResponsiveService::class);
-    $deviceClasses = implode(' ', $responsiveService->getDeviceCssClasses());
-    $viewportContent = $responsiveService->getViewportMetaContent();
-    $jsConfig = $responsiveService->getJsConfig();
+    $isMobile = request()->header('User-Agent') && preg_match('/Mobile|Android|iPhone/i', request()->header('User-Agent'));
+    $deviceClasses = $isMobile ? 'is-mobile' : 'is-desktop';
+    $viewportContent = 'width=device-width, initial-scale=1';
+    $jsConfig = [];
 @endphp
 
 {{-- Responsive Meta Tags --}}
@@ -19,12 +19,12 @@
 <link rel="preconnect" href="https://cdnjs.cloudflare.com">
 
 {{-- Critical CSS (inline for performance) --}}
-@if($responsiveService->getPerformanceSettings()['critical_css_inline'])
+@if(false)
 <style>
 /* Critical CSS - Inlined for performance */
 :root {
-  --touch-target-min: {{ $responsiveService->getTouchTargetSize()['minimum'] }}px;
-  --touch-target-comfortable: {{ $responsiveService->getTouchTargetSize()['comfortable'] }}px;
+  --touch-target-min: 44px;
+  --touch-target-comfortable: 48px;
 }
 
 /* Prevent FOUC */
@@ -44,7 +44,7 @@ html.loaded { visibility: visible; opacity: 1; transition: opacity 0.3s; }
 <link rel="stylesheet" href="{{ asset('css/mobile-utils.css') }}" media="all">
 
 {{-- Device-specific CSS loading --}}
-@if($responsiveService->isMobile())
+@if($isMobile)
     <link rel="stylesheet" href="{{ asset('css/mobile-specific.css') }}" media="screen and (max-width: 767px)">
 @endif
 
@@ -71,7 +71,7 @@ window.addEventListener('orientationchange', setVH);
 </script>
 
 {{-- Reduced motion support --}}
-@if($responsiveService->prefersReducedMotion())
+@if(false)
 <style>
 *, *::before, *::after {
     animation-duration: 0.01ms !important;
@@ -86,7 +86,7 @@ window.addEventListener('orientationchange', setVH);
 @if(config('responsive.debug.show_breakpoints') && app()->environment('local'))
 <style>
 body::before {
-    content: 'Device: {{ $responsiveService->getDeviceType() }} | Viewport: ' attr(data-viewport);
+    content: 'Device: {{ ($isMobile ? 'mobile' : 'desktop') }} | Viewport: ' attr(data-viewport);
     position: fixed;
     top: 0;
     left: 0;
