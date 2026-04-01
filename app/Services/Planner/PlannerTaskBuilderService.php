@@ -9,7 +9,6 @@ use Illuminate\Support\Collection;
 class PlannerTaskBuilderService
 {
     public function __construct(
-        private PlannerScoringService $plannerScoringService,
         private TaskReasonService $taskReasonService,
     ) {
     }
@@ -441,10 +440,7 @@ class PlannerTaskBuilderService
         $score = $this->scoreTask([
             'base' => 92,
             'topic_priority' => $this->topicPriorityScore($topic, $context),
-            'focus_bonus' => $this->plannerScoringService->focusBonus($context->plannerFocus, 'revision'),
-            'source_priority_bonus' => $this->plannerScoringService->sourcePriorityBonus($sourceLabel, $context->preferredSource),
             'concept_risk_bonus' => min(10, (int) round(((float) ($conceptSignal['risk_score'] ?? 0.0)) * 4)),
-            'carry_over_bonus' => $this->plannerScoringService->carryOverBonus($context->carryOverTaskIds, $taskId),
             'priority_offset' => $priorityOffset,
         ]);
         $xpValue = $this->resolveXpValue('repair_topic', $score['priority'], $context);
@@ -510,10 +506,8 @@ class PlannerTaskBuilderService
         $score = $this->scoreTask([
             'base' => 97,
             'topic_priority' => $this->topicPriorityScore($topic, $context),
-            'focus_bonus' => $this->plannerScoringService->focusBonus($context->plannerFocus, 'revision'),
             'due_load_bonus' => ($dueCount >= 8 ? 8 : 0),
             'concept_risk_bonus' => min(8, (int) round(((float) ($conceptSignal['risk_score'] ?? 0.0)) * 3)),
-            'carry_over_bonus' => $this->plannerScoringService->carryOverBonus($context->carryOverTaskIds, $taskId),
             'priority_offset' => $priorityOffset,
         ]);
         $xpValue = $this->resolveXpValue('topic_mistake_review', $score['priority'], $context);
@@ -830,10 +824,7 @@ class PlannerTaskBuilderService
             $score = $this->scoreTask([
                 'base' => 92,
                 'topic_priority' => $this->topicPriorityScore($topic, $context),
-                'focus_bonus' => $this->plannerScoringService->focusBonus($context->plannerFocus, 'revision'),
-                'source_priority_bonus' => $this->plannerScoringService->sourcePriorityBonus($sourceLabel, $context->preferredSource),
                 'concept_risk_bonus' => min(10, (int) round(((float) ($conceptSignal['risk_score'] ?? 0.0)) * 4)),
-                'carry_over_bonus' => $this->plannerScoringService->carryOverBonus($context->carryOverTaskIds, $taskId),
                 'priority_offset' => $priorityOffset,
             ]);
             $xpValue = $this->resolveXpValue('repair_topic', $score['priority'], $context);
@@ -912,10 +903,7 @@ class PlannerTaskBuilderService
             $score = $this->scoreTask([
                 'base' => 90,
                 'topic_priority' => $this->topicPriorityScore($topic, $context),
-                'focus_bonus' => $this->plannerScoringService->focusBonus($context->plannerFocus, 'revision'),
-                'source_priority_bonus' => $this->plannerScoringService->sourcePriorityBonus($sourceLabel, $context->preferredSource),
                 'concept_risk_bonus' => min(10, (int) round(((float) ($conceptSignal['risk_score'] ?? 0.0)) * 4)),
-                'carry_over_bonus' => $this->plannerScoringService->carryOverBonus($context->carryOverTaskIds, $taskId),
                 'priority_offset' => $priorityOffset,
             ]);
             $xpValue = $this->resolveXpValue('start_topic', $score['priority'], $context);
@@ -990,9 +978,7 @@ class PlannerTaskBuilderService
             $score = $this->scoreTask([
                 'base' => 96,
                 'topic_priority' => $this->topicPriorityScore($topic, $context),
-                'focus_bonus' => $this->plannerScoringService->focusBonus($context->plannerFocus, 'revision'),
                 'concept_risk_bonus' => min(12, (int) round(((float) ($conceptSignal['risk_score'] ?? 0.0)) * 5)),
-                'carry_over_bonus' => $this->plannerScoringService->carryOverBonus($context->carryOverTaskIds, $taskId),
                 'priority_offset' => $priorityOffset,
             ]);
             $xpValue = $this->resolveXpValue('concept_repair', $score['priority'], $context);
@@ -1073,10 +1059,8 @@ class PlannerTaskBuilderService
                 $score = $this->scoreTask([
                     'base' => 99,
                     'topic_priority' => $this->topicPriorityScore($topic, $context),
-                    'focus_bonus' => $this->plannerScoringService->focusBonus($context->plannerFocus, 'revision'),
                     'average_risk_bonus' => min(14, (int) round($averageRisk * 5)),
                     'cluster_bonus' => min(6, (int) round(((float) ($cluster['cluster_score'] ?? 0.0)) * 2)),
-                    'carry_over_bonus' => $this->plannerScoringService->carryOverBonus($context->carryOverTaskIds, $taskId),
                     'priority_offset' => $priorityOffset,
                 ]);
                 $xpValue = $this->resolveXpValue('concept_repair', $score['priority'], $context);
@@ -1143,8 +1127,6 @@ class PlannerTaskBuilderService
             $score = $this->scoreTask([
                 'base' => 82,
                 'topic_priority' => $this->topicPriorityScore($topic, $context),
-                'source_priority_bonus' => $this->plannerScoringService->sourcePriorityBonus($sourceLabel, $context->preferredSource),
-                'carry_over_bonus' => $this->plannerScoringService->carryOverBonus($context->carryOverTaskIds, $taskId),
                 'priority_offset' => $priorityOffset,
             ]);
             $xpValue = $this->resolveXpValue('quiz', $score['priority'], $context);
@@ -1203,9 +1185,6 @@ class PlannerTaskBuilderService
         $score = $this->scoreTask([
             'base' => 78,
             'topic_priority' => $this->topicPriorityScore($topic, $context),
-            'focus_bonus' => $this->plannerScoringService->focusBonus($context->plannerFocus, 'revision'),
-            'source_priority_bonus' => $this->plannerScoringService->sourcePriorityBonus($sourceLabel, $context->preferredSource),
-            'carry_over_bonus' => $this->plannerScoringService->carryOverBonus($context->carryOverTaskIds, $taskId),
             'priority_offset' => $priorityOffset,
         ]);
         $xpValue = $this->resolveXpValue('frontier_topic_quiz', $score['priority'], $context);
@@ -1264,10 +1243,7 @@ class PlannerTaskBuilderService
             $score = $this->scoreTask([
                 'base' => $isRapidOverview ? 76 : 68,
                 'topic_priority' => $this->topicPriorityScore($topic, $context),
-                'focus_bonus' => $this->plannerScoringService->focusBonus($context->plannerFocus, 'new_topics'),
                 'exam_penalty' => (($context->daysToExam !== null && $context->daysToExam <= 7) ? -12 : 0),
-                'source_priority_bonus' => $this->plannerScoringService->sourcePriorityBonus($sourceLabel, $context->preferredSource),
-                'carry_over_bonus' => $this->plannerScoringService->carryOverBonus($context->carryOverTaskIds, $taskId),
                 'priority_offset' => $priorityOffset,
             ]);
             $xpValue = $this->resolveXpValue($isRapidOverview ? 'rapid_overview' : 'start_topic', $score['priority'], $context);
@@ -1342,10 +1318,8 @@ class PlannerTaskBuilderService
             $score = $this->scoreTask([
                 'base' => 97,
                 'topic_priority' => $this->topicPriorityScore($topic, $context),
-                'focus_bonus' => $this->plannerScoringService->focusBonus($context->plannerFocus, 'revision'),
                 'due_load_bonus' => ($dueCount >= 8 ? 8 : 0),
                 'concept_risk_bonus' => min(8, (int) round(((float) ($conceptSignal['risk_score'] ?? 0.0)) * 3)),
-                'carry_over_bonus' => $this->plannerScoringService->carryOverBonus($context->carryOverTaskIds, $taskId),
                 'priority_offset' => $priorityOffset,
             ]);
             $xpValue = $this->resolveXpValue('topic_mistake_review', $score['priority'], $context);
@@ -1413,9 +1387,7 @@ class PlannerTaskBuilderService
         );
         $score = $this->scoreTask([
             'base' => 94,
-            'focus_bonus' => $this->plannerScoringService->focusBonus($context->plannerFocus, 'revision'),
             'backlog_bonus' => ($context->openMistakesCount >= 8 ? 10 : 0),
-            'carry_over_bonus' => $this->plannerScoringService->carryOverBonus($context->carryOverTaskIds, 'mistakes_cleanup'),
             'priority_offset' => $priorityOffset,
         ]);
 
@@ -1462,9 +1434,7 @@ class PlannerTaskBuilderService
         );
         $score = $this->scoreTask([
             'base' => 96,
-            'focus_bonus' => $this->plannerScoringService->focusBonus($context->plannerFocus, 'exam_prep'),
             'exam_pressure_bonus' => (10 - min($context->daysToExam, 10)),
-            'carry_over_bonus' => $this->plannerScoringService->carryOverBonus($context->carryOverTaskIds, 'final_exam_sprint'),
             'priority_offset' => $priorityOffset,
         ]);
         $xpValue = $this->resolveXpValue('final_exam_sprint', $score['priority'], $context);
