@@ -49,7 +49,6 @@ class GradingAudioController {
         this.playAudio(sound); // Fire-and-forget for final grading sounds too
 
         // Log for debugging
-// console.log(`Playing grading sound: ${sound} for score: ${scorePercentage}%`); // Removed for production
     }
 
     /**

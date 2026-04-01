@@ -41,7 +41,6 @@ class RealTimeAssignmentEnforcer {
         this.websocket = new WebSocket(`${proto}//${window.location.host}/assignments/stream`);
         
         this.websocket.onopen = () => {
-// console.log('🔥 NUCLEAR SPEED: Assignment WebSocket connected'); // Removed for production
         };
         
         this.websocket.onmessage = (event) => {
@@ -112,7 +111,6 @@ class RealTimeAssignmentEnforcer {
         
         // ELIMINATE setTimeout - Check immediately
         if (deadline <= now) {
-// console.log(`⏰ NUCLEAR SPEED: Deadline reached for assignment ${assignment.id} - ENFORCING IMMEDIATELY`); // Removed for production
             this.enforceAssignmentStatus(assignment.id);
                 }
     }
@@ -148,7 +146,6 @@ class RealTimeAssignmentEnforcer {
         
         // ELIMINATE setTimeout - Check immediately
         if (expirationTime <= now) {
-// console.log(`⏱️ NUCLEAR SPEED: Time limit expired for assignment ${assignment.id} - ENFORCING IMMEDIATELY`); // Removed for production
             this.enforceAssignmentStatus(assignment.id);
         }
     }
@@ -175,7 +172,6 @@ class RealTimeAssignmentEnforcer {
         .then(response => response.json())
         .then(data => {
             if (data.success) {
-// console.log(`🔥 NUCLEAR SPEED: Assignment ${assignmentId} status enforced successfully`); // Removed for production
                 this.updateAssignmentUI(assignmentId, data.status);
             }
         })
@@ -203,7 +199,6 @@ class RealTimeAssignmentEnforcer {
         .then(response => response.json())
         .then(data => {
             if (data.success) {
-// console.log('🔥 NUCLEAR SPEED: All assignment statuses enforced successfully'); // Removed for production
                 this.updateAllAssignmentUI(data.assignments);
             }
         })
@@ -217,7 +212,6 @@ class RealTimeAssignmentEnforcer {
      * Performance gain: 99% faster status updates
      */
     handleAssignmentStatusChange(assignment) {
-// console.log(`🔥 NUCLEAR SPEED: Assignment ${assignment.id} status changed to ${assignment.status}`); // Removed for production
         this.updateAssignmentUI(assignment.id, assignment.status);
     }
 

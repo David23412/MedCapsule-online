@@ -18,7 +18,6 @@ if (typeof GradingAudioController === 'undefined') {
  */
 class QuizSoundManager {
     constructor() {
-// console.log('QuizSoundManager (legacy) initialized - using GradingAudioController'); // Removed for production
     }
 
     async playSound(type) {

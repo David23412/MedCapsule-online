@@ -19,7 +19,6 @@ class ConfettiManager {
         }
 
         this.isInitialized = true;
-// console.log('ConfettiManager initialized'); // Removed for production
     }
 
     /**
@@ -102,7 +101,6 @@ class ConfettiManager {
                 this.clearConfetti();
             }, 3000);
 
-// console.log(`Confetti triggered with ${intensity} intensity`); // Removed for production
             
         } catch (error) {
 // console.warn('Error triggering confetti:', error); // Removed for production

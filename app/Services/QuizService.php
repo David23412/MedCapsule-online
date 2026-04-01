@@ -590,15 +590,18 @@ class QuizService
             // SECURITY FIX: Validate user access to specified courses.
             // Random quiz must only run on fully unlocked courses to prevent
             // preview users from bypassing topic-lock progression.
+            // Bulk-fetch access levels in a single query to avoid N+1.
             if (!empty($courseIds)) {
-                $inaccessibleCourses = array_filter($courseIds, function($courseId) use ($user) {
-                    return !$user->hasFullAccessToCourse((int) $courseId);
+                $intCourseIds = array_map('intval', $courseIds);
+                $accessLevels = $user->getCourseAccessLevels($intCourseIds);
+                $inaccessibleCourses = array_filter($intCourseIds, function($courseId) use ($accessLevels) {
+                    return ($accessLevels[$courseId] ?? null) !== User::COURSE_ACCESS_FULL;
                 });
 
                 if (!empty($inaccessibleCourses)) {
                     Log::warning('User attempted to access random quiz with inaccessible courses', [
                         'user_id' => $user->id,
-                        'inaccessible_courses' => $inaccessibleCourses,
+                        'inaccessible_courses' => array_values($inaccessibleCourses),
                         'all_requested_courses' => $courseIds
                     ]);
 
@@ -613,9 +616,10 @@ class QuizService
             // If no specific courses requested, use only accessible courses
             if (empty($courseIds)) {
                 $userCourses = $user->courses()->pluck('courses.id')->toArray();
+                $accessLevels = $user->getCourseAccessLevels(array_map('intval', $userCourses));
                 $userCourses = array_values(array_filter(
                     $userCourses,
-                    fn ($courseId) => $user->hasFullAccessToCourse((int) $courseId)
+                    fn ($courseId) => ($accessLevels[(int) $courseId] ?? null) === User::COURSE_ACCESS_FULL
                 ));
 
                 if (empty($userCourses)) {

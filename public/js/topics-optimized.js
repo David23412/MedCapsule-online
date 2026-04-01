@@ -34,7 +34,6 @@ class OptimizedTopicsPage {
             eventHandlers: 0
         };
         
-// console.log('🚀 Optimized Topics Page initialized'); // Removed for production
     }
 
     /**
@@ -356,7 +355,6 @@ class OptimizedTopicsPage {
             this.caseFilters.removeEventListener('click', this.handleFilterInteraction);
         }
 
-// console.log('🚀 Optimized Topics Page destroyed'); // Removed for production
     }
 
     /**
@@ -401,10 +399,8 @@ document.addEventListener('visibilitychange', function() {
     if (window.optimizedTopicsPage && window.optimizedTopicsPage.assignmentCountdowns.size > 0) {
         if (document.visibilityState === 'visible') {
             // Resume countdowns when page becomes visible
-// console.log('🚀 Resuming assignment countdowns'); // Removed for production
         } else {
             // Pause countdowns when page is hidden
-// console.log('🚀 Pausing assignment countdowns'); // Removed for production
         }
     }
 });
