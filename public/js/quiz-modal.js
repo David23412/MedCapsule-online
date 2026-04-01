@@ -29,10 +29,8 @@ const QuizModal = {
             if (modalElement) {
                 this.sourceSelectionModal = new bootstrap.Modal(modalElement);
             } else {
-// console.error('❌ Modal element not found'); // Removed for production
             }
         } catch (error) {
-// console.error('❌ Modal initialization failed:', error); // Removed for production
         }
         
         // DEBUG: Test modal button
@@ -42,7 +40,6 @@ const QuizModal = {
                 if (this.sourceSelectionModal) {
                     this.sourceSelectionModal.show();
                 } else {
-// console.error('❌ Modal not initialized for manual test'); // Removed for production
                 }
             });
         }
@@ -88,12 +85,10 @@ const QuizModal = {
                 // Regular topic - show source selection modal
                 
                 if (!topicId || !courseId) {
-// console.error('❌ Missing topic or course ID'); // Removed for production
                     return false;
                 }
                 
                 if (!this.sourceSelectionModal) {
-// console.error('❌ Modal not initialized, redirecting directly'); // Removed for production
                     window.location.href = originalHref;
                     return false;
                 }
@@ -143,7 +138,6 @@ const QuizModal = {
                     });
                     
                 } catch (error) {
-// console.error('❌ Handler error:', error); // Removed for production
                     // Fallback to direct navigation
                     window.location.href = originalHref;
                 }

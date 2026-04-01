@@ -107,10 +107,8 @@ class GradingAudioController {
             const audio = new Audio(soundPath);
             audio.volume = 0.6;
             audio.play().catch(e => {
-// console.warn('Fallback audio playback also failed:', e); // Removed for production
             });
         } catch (error) {
-// console.warn('Fallback audio creation failed:', error); // Removed for production
         }
     }
 

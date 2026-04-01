@@ -280,7 +280,6 @@ class OptimizedTopicsPage {
             // Construct assignment URL
             window.location.href = `/quiz/${courseId}/${topicId}?assignment_id=${assignmentId}`;
         } else {
-// console.error('Missing assignment URL or required IDs'); // Removed for production
         }
     }
 

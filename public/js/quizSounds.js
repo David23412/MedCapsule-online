@@ -39,10 +39,8 @@ class QuizSoundManager {
                     GradingAudioController.playWrongSound();
                     break;
                 default:
-// console.warn(`Unknown sound type: ${type}`); // Removed for production
             }
         } catch (error) {
-// console.warn('Legacy sound playback failed:', error); // Removed for production
         }
     }
 

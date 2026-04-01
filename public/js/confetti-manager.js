@@ -14,7 +14,6 @@ class ConfettiManager {
         
         // Check if confetti library is available
         if (typeof confetti === 'undefined') {
-// console.warn('Confetti library not loaded - confetti animations will be disabled'); // Removed for production
             return;
         }
 
@@ -39,7 +38,6 @@ class ConfettiManager {
                 element.remove();
             });
         } catch (error) {
-// console.warn('Error clearing confetti:', error); // Removed for production
         }
     }
 
@@ -55,7 +53,6 @@ class ConfettiManager {
         }
 
         if (typeof confetti === 'undefined') {
-// console.warn('Confetti library not available'); // Removed for production
             return;
         }
 
@@ -103,7 +100,6 @@ class ConfettiManager {
 
             
         } catch (error) {
-// console.warn('Error triggering confetti:', error); // Removed for production
         }
     }
 

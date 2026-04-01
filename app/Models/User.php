@@ -350,7 +350,7 @@ class User extends Authenticatable
             ->all();
 
         // Per-request memoization: only query IDs we haven't resolved yet
-        $uncachedIds = array_values(array_diff($normalizedCourseIds, array_keys($this->courseAccessLevelCache)));
+        $uncachedIds = array_diff($normalizedCourseIds, array_keys($this->courseAccessLevelCache));
 
         if (!empty($uncachedIds)) {
             $this->resolveAndCacheCourseAccess($uncachedIds);

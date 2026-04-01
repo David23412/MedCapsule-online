@@ -221,7 +221,6 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         })
         .catch(error => {
-// console.error('Payment submission error:', error); // Removed for production
             
             // Show error message
             showErrorMessage('An error occurred while submitting your payment. Please try again.');

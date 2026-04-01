@@ -61,7 +61,6 @@ class RealTimeAssignmentEnforcer {
         };
         
         this.websocket.onerror = (error) => {
-// console.error('Assignment WebSocket error:', error); // Removed for production
             // Fallback to immediate enforcement
             this.enforceAllStatuses();
         };
@@ -97,7 +96,6 @@ class RealTimeAssignmentEnforcer {
                 });
             })
             .catch(error => {
-// console.error('Error fetching assignments with deadlines:', error); // Removed for production
             });
     }
 
@@ -130,7 +128,6 @@ class RealTimeAssignmentEnforcer {
                 });
             })
             .catch(error => {
-// console.error('Error fetching assignments with time limits:', error); // Removed for production
         });
     }
 
@@ -176,7 +173,6 @@ class RealTimeAssignmentEnforcer {
             }
         })
         .catch(error => {
-// console.error('Error enforcing assignment status:', error); // Removed for production
         })
         .finally(() => {
             this.isEnforcing = false;
@@ -203,7 +199,6 @@ class RealTimeAssignmentEnforcer {
             }
         })
         .catch(error => {
-// console.error('Error enforcing all assignment statuses:', error); // Removed for production
         });
     }
 
