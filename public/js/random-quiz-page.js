@@ -77,43 +77,76 @@ document.addEventListener('DOMContentLoaded', function() {
             let timeTaken = 0;
             let timerInterval;
             let startTime = Date.now(); // Initialize start time for timer calculations
+            let quizSubmitted = false;
             
+            console.log('🕒 Timer Logic Initializing:', { timeLimit, startTime });
+
             // NUCLEAR SPEED: Eliminate setTimeout delays in timer
-            // Performance gain: 95% faster timer updates, 90% less CPU usage
             function updateTimer() {
+                if (quizSubmitted) {
+                    console.log('🔇 Timer tick ignored - quiz already submitted');
+                    if (timerInterval) clearInterval(timerInterval);
+                    return;
+                }
+
                 const now = Date.now();
-                const timeElapsed = Math.floor((now - startTime) / 1000);
-                const timeRemaining = Math.max(0, timeLimit - timeElapsed);
-                const timeTaken = timeLimit - timeRemaining;
+                const timeElapsed = Math.floor((now - startTime) / 1000); // Standardize units
+                const timeRemainingActual = Math.max(0, timeLimit - timeElapsed);
+                const timeTakenActual = timeLimit - timeRemainingActual;
                 
-                const minutes = Math.floor(timeRemaining / 60);
-                const seconds = timeRemaining % 60;
-                timerDisplay.textContent = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+                // Update outer variables for shared state if needed
+                timeRemaining = timeRemainingActual;
+                timeTaken = timeTakenActual;
+
+                const minutes = Math.floor(timeRemainingActual / 60);
+                const seconds = timeRemainingActual % 60;
                 
-                // Update hidden field with time taken
-                timeTakenField.value = timeTaken;
-                
+                if (timerDisplay) {
+                    timerDisplay.textContent = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+                    
                     // Visual indication when time is running low
-                    if (timeRemaining <= 30) {
+                    if (timeRemainingActual <= 30) {
                         timerDisplay.style.color = '#ff4d4f';
                         timerDisplay.style.fontWeight = '700';
                         
-                        if (timeRemaining <= 10) {
+                        if (timeRemainingActual <= 10) {
                             timerDisplay.classList.add('pulsing');
                         }
                     }
+                } else {
+                    console.warn('⚠️ Timer display element not found!');
+                }
+                
+                // Update hidden field with time taken
+                if (timeTakenField) {
+                    timeTakenField.value = timeTakenActual;
+                }
+                
+                // Timer expiration logic
+                if (timeRemainingActual === 0) {
+                    console.log('⏰ TIMER EXPIRED - TRIGGERING AUTO-SUBMIT');
+                    if (timerInterval) clearInterval(timerInterval);
+                    timerInterval = null;
                     
-                // Timer expiration logic - ELIMINATE setTimeout
-                    if (timeRemaining === 0) {
-                        clearInterval(timerInterval);
-                    // Submit quiz automatically without delay
+                    if (!quizSubmitted) {
+                        quizSubmitted = true;
                         submitQuiz();
                     }
+                }
             }
             
-            // Start the timer immediately - ELIMINATE setTimeout
-            updateTimer(); // Show initial time immediately
-            timerInterval = setInterval(updateTimer, 1000); // Update every second
+            // Start the timer - BUT ONLY IF TIME NOT EXPIRED OR CONFIG OK
+            if (timeLimit > 0) {
+                updateTimer(); // Initial call
+                
+                // Only start interval if we haven't already submitted (e.g. if timeLimit was tiny)
+                if (!quizSubmitted) {
+                    timerInterval = setInterval(updateTimer, 1000);
+                    console.log('✅ Timer interval started successfully');
+                }
+            } else {
+                console.warn('⚠️ Timer not starting - timeLimit is 0 or negative');
+            }
 
             const popupOverlay = document.getElementById("popup-overlay");
             const popup = document.getElementById("popup");
@@ -503,7 +536,7 @@ document.addEventListener('DOMContentLoaded', function() {
                                         // Mark selected wrong answer in red
                                         label.classList.add('incorrect');
                                     }
-
+                                }
                             });
                             const optionsContainer = questionBox.querySelector('.options');
                             const explanationCard = buildExplanationCard(explanation);

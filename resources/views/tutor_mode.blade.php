@@ -2812,7 +2812,11 @@
         let dangerThreshold = Math.floor(initialDuration * 0.1); // Danger at 10% time remaining (only for random)
 
         function updateTimer() {
-            console.log('🕒 Timer tick - updating display');
+            if (!quizStartTime) {
+                console.warn('⚠️ Timer tick skipped - quizStartTime not initialized');
+                return;
+            }
+
             const currentTime = new Date();
             const elapsedSeconds = Math.floor((currentTime - quizStartTime) / 1000); // Ensure integer
 
@@ -2830,18 +2834,9 @@
             const minutes = Math.floor(Math.abs(timeLeft) / 60);
             const seconds = Math.floor(Math.abs(timeLeft) % 60); // Ensure seconds is integer
             const timerElement = document.getElementById('timer');
-            console.log('🕒 Timer element found:', !!timerElement);
 
             if (timerElement) {
-                let timeDisplay = '';
-                if (initialDuration > 0) {
-                    // Countdown format - always show integers
-                    timeDisplay = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
-                } else {
-                    // Elapsed format - always show integers
-                    timeDisplay = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
-                }
-
+                const timeDisplay = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
                 timerElement.textContent = timeDisplay;
 
                 // Apply color grading based on time remaining
@@ -2850,12 +2845,20 @@
 
             // Auto-submit when time runs out (only for countdown mode)
             if (initialDuration > 0 && timeLeft <= 0) {
-                clearInterval(timerInterval);
-                console.log('⏰ TIME RAN OUT - AUTO-GRADING RANDOM QUIZ...');
-                submitQuizRandomTutor();
+                console.log('⏰ TIMER EXPIRED - AUTO-SUBMITTING RANDOM TUTOR QUIZ...');
+                if (timerInterval) clearTimeout(timerInterval);
+                timerInterval = null;
+                
+                if (typeof submitQuizRandomTutor === 'function') {
+                    submitQuizRandomTutor();
+                } else {
+                    console.error('❌ CRITICAL: submitQuizRandomTutor function missing!');
+                }
                 return;
             }
 
+            // Continue the loop if not expired
+            if (timerInterval) clearTimeout(timerInterval);
             timerInterval = setTimeout(updateTimer, 1000);
         }
 
