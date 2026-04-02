@@ -281,11 +281,6 @@ Route::group([], function () {
     Route::post('/api/video/progress', [App\Http\Controllers\VideoProgressController::class, 'updateProgress'])->name('video.progress.update')->middleware('auth');
     Route::get('/api/video/progress/{topic}', [App\Http\Controllers\VideoProgressController::class, 'getProgress'])->name('video.progress.get')->middleware('auth');
 
-    // Video access endpoint
-    Route::get('/video-access/{video}', 'App\Http\Controllers\VideoController@getVideoAccess')
-        ->name('video.access')
-        ->middleware('auth');
-
     // Assignment Management Routes (Admin & Tutor)
     Route::middleware(['auth', 'tutor'])->prefix('assignments')->name('assignments.')->group(function () {
         Route::get('/', [AssignmentController::class, 'index'])->name('index');

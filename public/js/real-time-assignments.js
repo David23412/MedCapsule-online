@@ -41,7 +41,6 @@ class RealTimeAssignmentEnforcer {
         this.websocket = new WebSocket(`${proto}//${window.location.host}/assignments/stream`);
         
         this.websocket.onopen = () => {
-// console.log('🔥 NUCLEAR SPEED: Assignment WebSocket connected'); // Removed for production
         };
         
         this.websocket.onmessage = (event) => {
@@ -62,7 +61,6 @@ class RealTimeAssignmentEnforcer {
         };
         
         this.websocket.onerror = (error) => {
-// console.error('Assignment WebSocket error:', error); // Removed for production
             // Fallback to immediate enforcement
             this.enforceAllStatuses();
         };
@@ -98,7 +96,6 @@ class RealTimeAssignmentEnforcer {
                 });
             })
             .catch(error => {
-// console.error('Error fetching assignments with deadlines:', error); // Removed for production
             });
     }
 
@@ -112,7 +109,6 @@ class RealTimeAssignmentEnforcer {
         
         // ELIMINATE setTimeout - Check immediately
         if (deadline <= now) {
-// console.log(`⏰ NUCLEAR SPEED: Deadline reached for assignment ${assignment.id} - ENFORCING IMMEDIATELY`); // Removed for production
             this.enforceAssignmentStatus(assignment.id);
                 }
     }
@@ -132,7 +128,6 @@ class RealTimeAssignmentEnforcer {
                 });
             })
             .catch(error => {
-// console.error('Error fetching assignments with time limits:', error); // Removed for production
         });
     }
 
@@ -148,7 +143,6 @@ class RealTimeAssignmentEnforcer {
         
         // ELIMINATE setTimeout - Check immediately
         if (expirationTime <= now) {
-// console.log(`⏱️ NUCLEAR SPEED: Time limit expired for assignment ${assignment.id} - ENFORCING IMMEDIATELY`); // Removed for production
             this.enforceAssignmentStatus(assignment.id);
         }
     }
@@ -175,12 +169,10 @@ class RealTimeAssignmentEnforcer {
         .then(response => response.json())
         .then(data => {
             if (data.success) {
-// console.log(`🔥 NUCLEAR SPEED: Assignment ${assignmentId} status enforced successfully`); // Removed for production
                 this.updateAssignmentUI(assignmentId, data.status);
             }
         })
         .catch(error => {
-// console.error('Error enforcing assignment status:', error); // Removed for production
         })
         .finally(() => {
             this.isEnforcing = false;
@@ -203,12 +195,10 @@ class RealTimeAssignmentEnforcer {
         .then(response => response.json())
         .then(data => {
             if (data.success) {
-// console.log('🔥 NUCLEAR SPEED: All assignment statuses enforced successfully'); // Removed for production
                 this.updateAllAssignmentUI(data.assignments);
             }
         })
         .catch(error => {
-// console.error('Error enforcing all assignment statuses:', error); // Removed for production
         });
     }
 
@@ -217,7 +207,6 @@ class RealTimeAssignmentEnforcer {
      * Performance gain: 99% faster status updates
      */
     handleAssignmentStatusChange(assignment) {
-// console.log(`🔥 NUCLEAR SPEED: Assignment ${assignment.id} status changed to ${assignment.status}`); // Removed for production
         this.updateAssignmentUI(assignment.id, assignment.status);
     }
 

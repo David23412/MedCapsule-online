@@ -49,7 +49,6 @@ class GradingAudioController {
         this.playAudio(sound); // Fire-and-forget for final grading sounds too
 
         // Log for debugging
-// console.log(`Playing grading sound: ${sound} for score: ${scorePercentage}%`); // Removed for production
     }
 
     /**
@@ -108,10 +107,8 @@ class GradingAudioController {
             const audio = new Audio(soundPath);
             audio.volume = 0.6;
             audio.play().catch(e => {
-// console.warn('Fallback audio playback also failed:', e); // Removed for production
             });
         } catch (error) {
-// console.warn('Fallback audio creation failed:', error); // Removed for production
         }
     }
 

@@ -18,7 +18,6 @@ if (typeof GradingAudioController === 'undefined') {
  */
 class QuizSoundManager {
     constructor() {
-// console.log('QuizSoundManager (legacy) initialized - using GradingAudioController'); // Removed for production
     }
 
     async playSound(type) {
@@ -40,10 +39,8 @@ class QuizSoundManager {
                     GradingAudioController.playWrongSound();
                     break;
                 default:
-// console.warn(`Unknown sound type: ${type}`); // Removed for production
             }
         } catch (error) {
-// console.warn('Legacy sound playback failed:', error); // Removed for production
         }
     }
 

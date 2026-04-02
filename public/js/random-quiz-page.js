@@ -79,12 +79,9 @@ document.addEventListener('DOMContentLoaded', function() {
             let startTime = Date.now(); // Initialize start time for timer calculations
             let quizSubmitted = false;
             
-            console.log('🕒 Timer Logic Initializing:', { timeLimit, startTime });
-
             // NUCLEAR SPEED: Eliminate setTimeout delays in timer
             function updateTimer() {
                 if (quizSubmitted) {
-                    console.log('🔇 Timer tick ignored - quiz already submitted');
                     if (timerInterval) clearInterval(timerInterval);
                     return;
                 }
@@ -124,7 +121,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 
                 // Timer expiration logic
                 if (timeRemainingActual === 0) {
-                    console.log('⏰ TIMER EXPIRED - TRIGGERING AUTO-SUBMIT');
                     if (timerInterval) clearInterval(timerInterval);
                     timerInterval = null;
                     
@@ -142,7 +138,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 // Only start interval if we haven't already submitted (e.g. if timeLimit was tiny)
                 if (!quizSubmitted) {
                     timerInterval = setInterval(updateTimer, 1000);
-                    console.log('✅ Timer interval started successfully');
                 }
             } else {
                 console.warn('⚠️ Timer not starting - timeLimit is 0 or negative');

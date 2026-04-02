@@ -17,93 +17,25 @@ class Kernel extends ConsoleKernel
      */
     protected function schedule(Schedule $schedule)
     {
-        // $schedule->command('inspire')->hourly();
-        
-        // AGGRESSIVE NOTIFICATION CLEANUP - KEEP SYSTEM FAST
-        $schedule->command('notifications:cleanup --all')
-                ->daily()
-                ->at('02:00')
-                ->withoutOverlapping()
-                ->appendOutputTo(storage_path('logs/notification-cleanup.log'));
-        
-        // HOURLY PERFORMANCE OPTIMIZATION - CLEAN ACTIVE USERS
-        $schedule->command('notifications:cleanup')
-                ->hourly()
-                ->withoutOverlapping()
-                ->runInBackground();
-        
-        // Check leaderboard ranks daily and send notifications
-        $schedule->command('leaderboard:check-ranks')->daily()->at('08:00');
-        
         // Process pending payments every hour
         $schedule->command('payments:process-pending --limit=50')
                 ->hourly()
                 ->withoutOverlapping()
                 ->appendOutputTo(storage_path('logs/payment-processing.log'));
-        
-        // Process expedited payments every 15 minutes
-        $schedule->command('payments:process-pending --limit=20 --expedite-only')
-                ->everyFifteenMinutes()
-                ->withoutOverlapping()
-                ->appendOutputTo(storage_path('logs/payment-expedited.log'));
-        
-        // Clean up payment proof images weekly to manage storage
-        $schedule->command('payments:cleanup-proofs --limit=200')
-                ->weekly()
-                ->sundays()
-                ->at('02:00')
-                ->withoutOverlapping()
-                ->appendOutputTo(storage_path('logs/payment-cleanup.log'));
-        
+
         // Send daily payment digest to admins
         $schedule->command('payments:send-digest')
                 ->dailyAt('09:00')
                 ->withoutOverlapping()
                 ->appendOutputTo(storage_path('logs/payment-digest.log'));
-                
-        // Clean up old quiz attempts weekly
-        $schedule->command('quiz:cleanup-attempts')
-            ->weekly()
-            ->sundays()
-            ->at('01:00')
-            ->runInBackground()
-            ->withoutOverlapping();
-            
-        // REAL-TIME ASSIGNMENT SYSTEM - No scheduled tasks needed!
-        // Status updates happen INSTANTLY via model accessors and API endpoints
-        
-        // Keep only essential background tasks for cleanup
-        // Lock overdue assignments daily (24-hour grace period) - for cleanup only
-        $schedule->command('assignments:lock-overdue --grace-hours=24')
-                ->daily()
-                ->at('02:00')
-                ->withoutOverlapping()
-                ->runInBackground()
-                ->appendOutputTo(storage_path('logs/assignment-locking.log'));
-        
-        // Expire time-limited assignments daily - for cleanup only
-        $schedule->command('assignments:expire-time-limited')
-                ->daily()
-                ->at('02:30')
-                ->withoutOverlapping()
-                ->runInBackground()
-                ->appendOutputTo(storage_path('logs/assignment-expiration.log'));
-                
+
         // Send assignment reminders at different intervals
         $schedule->command('assignments:send-reminders')
                 ->hourly()
                 ->withoutOverlapping()
                 ->runInBackground()
                 ->appendOutputTo(storage_path('logs/assignment-reminders.log'));
-                
-        // Check for course mastery achievements daily
-        $schedule->command('courses:check-mastery')
-                ->daily()
-                ->at('06:00')
-                ->withoutOverlapping()
-                ->runInBackground()
-                ->appendOutputTo(storage_path('logs/course-mastery.log'));
-                
+
         // Send mistake review reminders daily
         $schedule->command('notifications:send-mistake-reminders')
                 ->daily()
@@ -112,22 +44,22 @@ class Kernel extends ConsoleKernel
                 ->runInBackground()
                 ->appendOutputTo(storage_path('logs/mistake-reminders.log'));
 
-        // Recalibrate spaced repetition from accumulated review outcomes.
+        // Recalibrate spaced repetition from accumulated review outcomes
         $schedule->command('mistakes:calibrate-scheduler --mode=all --days=180')
                 ->twiceDaily(3, 15)
                 ->withoutOverlapping()
                 ->runInBackground()
                 ->appendOutputTo(storage_path('logs/mistake-scheduler-calibration.log'));
 
-        // 🔔 Send comprehensive study reminders (weak topics, streaks, inactivity)
+        // Send comprehensive study reminders (weak topics, streaks, inactivity)
         $schedule->command('notifications:send-reminders')
                 ->daily()
-                ->at('18:00') // 6 PM - good time for evening study reminder
+                ->at('18:00')
                 ->withoutOverlapping()
                 ->runInBackground()
                 ->appendOutputTo(storage_path('logs/study-reminders.log'));
 
-        // Keep survey-unlocked enrollments aligned with the current course access policy.
+        // Keep survey-unlocked enrollments aligned with the current course access policy
         $schedule->command('enroll:free-courses')
                 ->weekly()
                 ->sundays()
@@ -136,7 +68,7 @@ class Kernel extends ConsoleKernel
                 ->runInBackground()
                 ->appendOutputTo(storage_path('logs/free-course-enrollment.log'));
 
-        // Prune expired operational rows and internal telemetry to limit database bloat.
+        // Prune expired operational rows and internal telemetry to limit database bloat
         $schedule->command('db:prune-operational-data')
                 ->daily()
                 ->at('03:45')
@@ -162,18 +94,11 @@ class Kernel extends ConsoleKernel
      * @var array
      */
     protected $commands = [
-        Commands\CheckLeaderboardRanks::class,
         Commands\UpdateUserXP::class,
-        Commands\MigrateToAccumulativeXP::class,
         Commands\UpdateStudyStreaks::class,
         Commands\ProcessPendingPayments::class,
-        Commands\CleanupPaymentProofs::class,
         Commands\SendPaymentDigest::class,
-        Commands\CleanupNotifications::class,
-        Commands\LockOverdueAssignments::class,
-        Commands\ExpireTimeLimitedAssignments::class,
         Commands\SendAssignmentReminders::class,
-        Commands\CheckCourseMastery::class,
         Commands\SendMistakeReviewReminders::class,
         Commands\NuclearNotificationOptimization::class,
         Commands\EnrollUsersInFreeCourses::class,

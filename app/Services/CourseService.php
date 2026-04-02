@@ -31,6 +31,9 @@ use App\Services\FreeCourseSurveyService;
  */
 class CourseService
 {
+    private const CACHE_TTL_AVAILABLE_YEARS = 3600;   // 1 hour
+    private const CACHE_TTL_VERSION = 86400;           // 1 day
+
     public function __construct(
         protected SecureFileUploadService $fileUploadService,
         protected PerformanceMonitorService $performanceMonitor,
@@ -65,7 +68,7 @@ class CourseService
             $this->formatCoursesForDisplay($courses, $user);
 
             // PRESERVE existing academic years filter
-            $availableYears = Cache::remember('courses_available_years_v1', 3600, function () {
+            $availableYears = Cache::remember('courses_available_years_v1', self::CACHE_TTL_AVAILABLE_YEARS, function () {
                 return Course::distinct()->pluck('academic_year')->filter()->sort()->values();
             });
 
@@ -316,7 +319,7 @@ class CourseService
 
             // Increment cache version to invalidate all course caches (PRESERVED)
             $currentVersion = Cache::get('courses_cache_version', 1);
-            Cache::put('courses_cache_version', $currentVersion + 1, 86400);
+            Cache::put('courses_cache_version', $currentVersion + 1, self::CACHE_TTL_VERSION);
 
 
             return [

@@ -23,11 +23,6 @@
 </head>
 <body>
     <div class="container">
-        @extends('layouts.app')
-
-        @section('content')
-        // ... existing code ...
-        @endsection
     </div>
 </body>
 </html> 

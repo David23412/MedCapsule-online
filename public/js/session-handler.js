@@ -26,7 +26,12 @@
         }
 
         // Set up periodic session checks
-        setInterval(checkSession, SESSION_CHECK_INTERVAL);
+        const sessionCheckInterval = setInterval(checkSession, SESSION_CHECK_INTERVAL);
+
+        // Clean up interval on page unload to prevent memory leaks
+        window.addEventListener('beforeunload', function() {
+            clearInterval(sessionCheckInterval);
+        });
 
         // Intercept AJAX errors for 419 handling
         setupAjaxErrorHandling();

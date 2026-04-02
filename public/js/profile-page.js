@@ -540,14 +540,14 @@
     // Cross-Tab Sync: Listen for quiz completions in other tabs
     window.addEventListener('storage', function(e) {
         if (e.key === 'quizProgressUpdate') {
-            console.log('Quiz completion detected in another tab. Refreshing profile stats...');
+
             refreshProfileStats();
         }
     });
 
     // Also listen for local events
     document.addEventListener('sourceProgressUpdated', function() {
-        console.log('Local progress update detected. Refreshing profile stats...');
+
         refreshProfileStats();
     });
 
