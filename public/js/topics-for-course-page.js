@@ -55,11 +55,12 @@
             }
         };
 
+        // Only restore the desktop sidebar-collapsed state on actual desktop
+        // On tablet/iPad (768–991px) and mobile (<768px), the sidebar is now an
+        // offcanvas drawer — sidebar-collapsed has no meaningful effect there.
         const savedSidebarState = getStoredSidebarState();
-        if (savedSidebarState !== null) {
+        if (savedSidebarState !== null && window.innerWidth >= 992) {
             applySidebarState(savedSidebarState === 'true');
-        } else if (window.innerWidth < 768) {
-            applySidebarState(true);
         }
 
         if (sidebarToggle) {
@@ -551,6 +552,7 @@
         }
 
         showTaskCelebrationToast();
+        applyFiltersAndSearch();
 
         caseFilters.forEach(filter => {
             filter.addEventListener('click', function() {

@@ -591,20 +591,52 @@
 
         /* Stack on smaller screens */
         @media (max-width: 992px) {
+            /* Eliminate laggy timer card on mobile/iPad per request */
+            .progress-bar-container {
+                display: none !important;
+                visibility: hidden !important;
+            }
+
             .question-content-wrapper {
-                flex-direction: column;
+                flex-direction: column !important;
                 gap: 1.5rem;
             }
 
             .question-image-container {
-                flex: none;
-                width: 100%;
-                max-width: 100%;
+                flex: none !important;
+                width: 100% !important;
+                max-width: 100% !important;
                 margin: 1rem 0;
             }
 
             .question-image {
                 max-height: 400px;
+            }
+
+            /* Inner header row: badges stack ABOVE the question text */
+            .question-main .d-flex.justify-content-between.align-items-start {
+                flex-direction: column-reverse !important;
+                align-items: flex-start !important;
+                gap: 0.6rem;
+            }
+
+            /* Badges row: wrap left-to-right, not squished on the side */
+            .question-main .d-flex.justify-content-between.align-items-start > div:last-child {
+                flex-direction: row !important;
+                flex-wrap: wrap !important;
+                align-items: flex-start !important;
+                gap: 0.35rem !important;
+                margin-left: 0 !important;
+                width: 100%;
+            }
+
+            /* Question text: always takes full width */
+            .question-text.flex-grow-1 {
+                width: 100% !important;
+                flex: 1 1 100% !important;
+                min-width: 0;
+                font-size: 1.15rem;
+                line-height: 1.55;
             }
         }
 

@@ -967,7 +967,7 @@ export default function App({ isAuthenticated = false, appUrl, user }: AppProps)
             {isAuthenticated && user && (
               <a
                 href={`${appUrl}/profile`}
-                className="w-9 h-9 rounded-full overflow-hidden border border-gray-100 bg-gray-50 flex-shrink-0 transition-opacity duration-300 ml-1 hover:opacity-80"
+                className="w-9 h-9 rounded-full overflow-hidden border border-gray-100 bg-gray-50 flex-shrink-0 transition-opacity duration-300 ml-1 mr-5 md:mr-0 hover:opacity-80"
                 aria-label="Profile Settings"
               >
                 <img

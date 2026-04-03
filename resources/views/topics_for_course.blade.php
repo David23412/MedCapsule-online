@@ -429,12 +429,12 @@
             <div class="modal-content">
                 <div class="modal-header">
                     <div class="modal-title-wrapper">
-                        <div class="modal-icon-wrapper">
+                        <div class="modal-icon-wrapper d-none d-md-flex">
                             <i class="fas fa-search"></i>
                         </div>
                         <div class="modal-title-content">
                             <h5 class="modal-title mb-0">Select Question Sources</h5>
-                            <p class="mb-0 text-muted small">Choose which sources to include in your quiz</p>
+                            <p class="mb-0 text-muted small d-none d-md-block">Choose which sources to include in your quiz</p>
                         </div>
                     </div>
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>

@@ -804,9 +804,78 @@
                 width: 100%;
                 border-radius: 8px;
             }
-            
+
+            /* ── iPad / Tablet (768px–850px) layout fixes ── */
+            .question-sidebar {
+                width: 62px;
+                top: 64px; /* below navbar */
+                padding: 0.75rem 0.25rem;
+                gap: 0.5rem;
+            }
+
+            .question-circle {
+                width: 42px;
+                height: 42px;
+                min-width: 42px;
+                min-height: 42px;
+                max-width: 42px;
+                max-height: 42px;
+                font-size: 0.9rem;
+            }
+
+            .main-content {
+                margin-left: 62px;
+                margin-top: 64px;
+                padding: 1rem;
+            }
+
             .progress-bar-container {
-                transform: translate(-50%, 0);
+                /* No broken transform — just sit naturally */
+                max-width: 100%;
+                margin-bottom: 1rem;
+            }
+
+            /* ── Question layout: stack image below text on tablet ── */
+            .question-content {
+                flex-direction: column !important;
+                gap: 1.25rem;
+            }
+
+            /* Image goes full width below the question */
+            .question-image {
+                flex: none !important;
+                width: 100% !important;
+                max-width: 400px;
+                margin: 0 auto;
+            }
+
+            /* Inner header row: badges stack ABOVE the question text */
+            .question-main .d-flex.justify-content-between {
+                flex-direction: column-reverse !important;
+                align-items: flex-start !important;
+                gap: 0.6rem;
+            }
+
+            /* Badges row: wrap left-to-right, not squished on the side */
+            .question-main .d-flex.justify-content-between > div:last-child {
+                flex-direction: row !important;
+                flex-wrap: wrap !important;
+                align-items: flex-start !important;
+                gap: 0.35rem;
+                margin-left: 0 !important;
+                width: 100%;
+            }
+
+            /* Question text: always takes full width */
+            .question-text-container {
+                width: 100% !important;
+                flex: 1 1 100% !important;
+                min-width: 0;
+            }
+
+            .question-text {
+                font-size: 1.15rem;
+                line-height: 1.55;
             }
         }
 
@@ -1064,22 +1133,18 @@
 
         /* Mobile Main Content */
         @media (max-width: 768px) {
-            .main-content {
-                margin-top: 70px;
-                padding: 1rem;
-            }
-            
+            /* main-content margin-left and margin-top are set
+               by the sidebar block below — no overrides needed here */
             .container {
-                padding: 1.5rem;
+                padding: 1.25rem;
                 border-radius: 8px;
                 max-width: 100%;
                 margin: 0;
             }
-            
+
             .topic-header h1 {
-                font-size: 1.5rem;
-                text-align: center;
-                margin-bottom: 1rem;
+                font-size: 1.4rem;
+                margin-bottom: 0.75rem;
             }
         }
 
@@ -1165,43 +1230,10 @@
 
         /* Mobile Actions */
         @media (max-width: 768px) {
-            .actions {
-                margin-top: 1.25rem;
-                flex-direction: column;
-                gap: 0.75rem;
-                padding-bottom: 60px; /* Ensure content isn't hidden behind fixed button */
-            }
-            
             .btn {
                 padding: 0.875rem 1.25rem;
                 font-size: 1rem;
-                width: 100%;
-                min-height: 54px; /* Touch target */
                 touch-action: manipulation;
-            }
-            
-            .actions-left {
-                width: 100%;
-                margin-bottom: 0.5rem;
-            }
-            
-            .actions-left .btn {
-                position: fixed !important;
-                bottom: 0;
-                left: 0;
-                right: 0;
-                margin: 0 !important;
-                border-radius: 0;
-                z-index: 1000;
-                box-shadow: 0 -4px 10px rgba(0,0,0,0.1);
-                padding-bottom: calc(1rem + env(safe-area-inset-bottom)) !important;
-            }
-
-            .btn-dont-know {
-                width: 44px; /* Larger touch target */
-                height: 44px;
-                font-size: 1.1rem;
-                align-self: flex-start;
             }
         }
 
@@ -1736,28 +1768,106 @@
             flex: 1;
         }
 
-        /* Mobile responsive sidebar */
+        /* ══ Mobile/Tablet sidebar: hide side bar, show horizontal strip ══ */
         @media (max-width: 768px) {
+
+            /* ── Sidebar: rotate into a horizontal scrollable strip ─── */
             .question-sidebar {
-                width: 60px;
-                padding: 0.75rem 0.25rem;
-                gap: 0.5rem;
+                /* Switch from left-fixed column to top horizontal strip */
+                position: fixed;
+                left: 0;
+                right: 0;
+                top: auto;
+                bottom: 0;
+                width: 100% !important;
+                height: 58px;
+                flex-direction: row;
+                overflow-x: auto;
+                overflow-y: hidden;
+                padding: 0.4rem 0.5rem;
+                gap: 0.4rem;
+                align-items: center;
+                justify-content: flex-start;
+                border-top: 1px solid #e9ecef;
+                border-right: none;
+                box-shadow: 0 -2px 8px rgba(0,0,0,0.08);
+                z-index: 999;
+                scrollbar-width: none;
+                -ms-overflow-style: none;
+            }
+
+            .question-sidebar::-webkit-scrollbar {
+                display: none;
             }
 
             .question-circle {
                 width: 40px;
                 height: 40px;
-                font-size: 0.9rem;
+                min-width: 40px;
+                min-height: 40px;
+                max-width: 40px;
+                max-height: 40px;
+                font-size: 0.85rem;
                 border-width: 2px;
+                flex-shrink: 0;
             }
 
+            /* ── Main content: full width, add bottom padding for strip ─ */
             .main-content {
-                margin-left: 60px;
+                margin-left: 0 !important;
+                margin-top: 60px;
+                padding: 1rem;
+                padding-bottom: 72px; /* room for bottom strip */
+            }
+
+            /* ── Progress bar: sticky under navbar ────────────────────── */
+            .progress-bar-container {
+                position: sticky;
+                top: 60px;
+                z-index: 998;
+                background: white;
+                box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+                border-radius: 8px;
+                padding: 0.75rem;
+                margin-bottom: 1rem;
+                max-width: 100%;
+            }
+
+            /* ── Actions: stacked, Check Answer pinned ─────────────────── */
+            .actions {
+                margin-top: 1.25rem;
+                flex-direction: column;
+                gap: 0.75rem;
+                /* Extra bottom padding so content not hidden behind strip */
+                padding-bottom: 0;
+            }
+
+            .actions-left {
+                width: 100%;
+                display: flex;
+                flex-direction: column;
+                gap: 0.5rem;
+            }
+
+            /* Override the old fixed bottom button — let it flow naturally */
+            .actions-left .btn {
+                position: static !important;
+                width: 100% !important;
+                border-radius: 8px !important;
+                margin: 0 !important;
+                min-height: 52px;
+                touch-action: manipulation;
+            }
+
+            .btn-dont-know {
+                align-self: flex-end;
+                width: 44px;
+                height: 44px;
+                font-size: 1rem;
             }
 
             .nav-arrow-btn {
-                padding: 0.625rem 1rem;
-                font-size: 0.9rem;
+                font-size: 1rem;
                 min-width: 44px;
                 min-height: 44px;
             }
@@ -1765,19 +1875,24 @@
 
         @media (max-width: 480px) {
             .question-sidebar {
-                width: 50px;
-                padding: 0.5rem 0.15rem;
+                height: 54px;
+                padding: 0.35rem 0.4rem;
             }
 
             .question-circle {
-                width: 35px;
-                height: 35px;
-                font-size: 0.85rem;
+                width: 36px;
+                height: 36px;
+                min-width: 36px;
+                min-height: 36px;
+                max-width: 36px;
+                max-height: 36px;
+                font-size: 0.8rem;
             }
 
             .main-content {
-                margin-left: 50px;
-                padding: 0.75rem 0.5rem;
+                margin-left: 0 !important;
+                padding: 0.75rem;
+                padding-bottom: 68px;
             }
         }
     </style>
