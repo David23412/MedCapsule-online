@@ -224,7 +224,7 @@ class TutorDashboardViewController extends Controller
             return [];
         }
 
-        $studentIdList = implode(',', array_map('intval', $studentIds));
+        $placeholders = implode(',', array_fill(0, count($studentIds), '?'));
 
         $recentAttempts = \DB::select("
             SELECT recent.user_id, recent.percentage_grade
@@ -234,11 +234,11 @@ class TutorDashboardViewController extends Controller
                     qa.percentage_grade,
                     ROW_NUMBER() OVER (PARTITION BY qa.user_id ORDER BY qa.created_at DESC, qa.id DESC) AS row_num
                 FROM quiz_attempts qa
-                WHERE qa.user_id IN ({$studentIdList})
+                WHERE qa.user_id IN ({$placeholders})
             ) AS recent
             WHERE recent.row_num <= 5
             ORDER BY recent.user_id, recent.row_num
-        ");
+        ", $studentIds);
 
         $groupedScores = [];
 

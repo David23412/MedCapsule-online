@@ -20,6 +20,7 @@ class UserMistakeMastery extends Model
         'question_id',
         'course_id',
         'consecutive_correct',
+        'graduation_mode',
         'graduated_at',
         'last_attempt_at',
         'last_attempt_result',

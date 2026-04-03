@@ -170,35 +170,33 @@ class HomePageService
                 return collect([]);
             }
 
-            // BULLETPROOF: Get topic counts by course
-            $topicStats = DB::select("
-                SELECT
-                    course_id,
-                    COUNT(CASE WHEN case_type = 'quiz' THEN 1 END) as quiz_count,
-                    COUNT(CASE WHEN case_type = 'cases' THEN 1 END) as case_count,
-                    COUNT(CASE WHEN case_type = 'practical' THEN 1 END) as practical_count
-                FROM topics
-                WHERE course_id IN (" . implode(',', array_map('intval', $courseIds)) . ")
-                GROUP BY course_id
-            ");
+            // Get topic counts by course using parameterized query
+            $topicStats = DB::table('topics')
+                ->whereIn('course_id', $courseIds)
+                ->groupBy('course_id')
+                ->select(
+                    'course_id',
+                    DB::raw("COUNT(CASE WHEN case_type = 'quiz' THEN 1 END) as quiz_count"),
+                    DB::raw("COUNT(CASE WHEN case_type = 'cases' THEN 1 END) as case_count"),
+                    DB::raw("COUNT(CASE WHEN case_type = 'practical' THEN 1 END) as practical_count")
+                )
+                ->get();
 
-            // BULLETPROOF: Get question counts by course
-            $questionStats = DB::select("
-                SELECT t.course_id, COUNT(q.id) as question_count
-                FROM topics t
-                LEFT JOIN questions q ON t.id = q.topic_id
-                WHERE t.course_id IN (" . implode(',', array_map('intval', $courseIds)) . ")
-                GROUP BY t.course_id
-            ");
+            // Get question counts by course using parameterized query
+            $questionStats = DB::table('topics as t')
+                ->leftJoin('questions as q', 't.id', '=', 'q.topic_id')
+                ->whereIn('t.course_id', $courseIds)
+                ->groupBy('t.course_id')
+                ->select('t.course_id', DB::raw('COUNT(q.id) as question_count'))
+                ->get();
 
-            // BULLETPROOF: Get enrollment counts by course
-            $enrollmentStats = DB::select("
-                SELECT course_id, COUNT(DISTINCT user_id) as enrolled_count
-                FROM course_user
-                WHERE course_id IN (" . implode(',', array_map('intval', $courseIds)) . ")
-                AND enrolled_at IS NOT NULL
-                GROUP BY course_id
-            ");
+            // Get enrollment counts by course using parameterized query
+            $enrollmentStats = DB::table('course_user')
+                ->whereIn('course_id', $courseIds)
+                ->whereNotNull('enrolled_at')
+                ->groupBy('course_id')
+                ->select('course_id', DB::raw('COUNT(DISTINCT user_id) as enrolled_count'))
+                ->get();
 
             // BULLETPROOF: Map stats to courses efficiently
             $topicStatsMap = collect($topicStats)->keyBy('course_id');
