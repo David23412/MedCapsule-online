@@ -535,5 +535,75 @@ class TutorDashboardViewController extends Controller
         }
     }
 
+    /**
+     * Calculate improvement rate from quiz attempts.
+     * Compares average of recent half vs older half of attempts.
+     */
+    private function calculateImprovementRate($quizAttempts): float
+    {
+        if ($quizAttempts->count() < 4) {
+            return 0;
+        }
 
+        $sorted = $quizAttempts->sortBy('created_at')->values();
+        $midpoint = (int) floor($sorted->count() / 2);
+
+        $olderAvg = $sorted->take($midpoint)->avg('percentage_grade') ?: 0;
+        $recentAvg = $sorted->skip($midpoint)->avg('percentage_grade') ?: 0;
+
+        return round($recentAvg - $olderAvg, 1);
+    }
+
+    /**
+     * Get strength areas (topics with highest average scores).
+     */
+    private function getStrengthAreas($quizAttempts): array
+    {
+        if ($quizAttempts->isEmpty()) {
+            return [];
+        }
+
+        return $quizAttempts->groupBy(fn($a) => $a->topic->name ?? 'Unknown')
+            ->map(fn($attempts) => round($attempts->avg('percentage_grade'), 1))
+            ->sortDesc()
+            ->take(3)
+            ->map(fn($avg, $topic) => ['topic' => $topic, 'average_score' => $avg])
+            ->values()
+            ->toArray();
+    }
+
+    /**
+     * Get weakness areas (topics with lowest average scores, min 2 attempts).
+     */
+    private function getWeaknessAreas($quizAttempts): array
+    {
+        if ($quizAttempts->isEmpty()) {
+            return [];
+        }
+
+        return $quizAttempts->groupBy(fn($a) => $a->topic->name ?? 'Unknown')
+            ->filter(fn($attempts) => $attempts->count() >= 2)
+            ->map(fn($attempts) => round($attempts->avg('percentage_grade'), 1))
+            ->sort()
+            ->take(3)
+            ->map(fn($avg, $topic) => ['topic' => $topic, 'average_score' => $avg])
+            ->values()
+            ->toArray();
+    }
+
+    /**
+     * Get the most active day of the week from recent attempts.
+     */
+    private function getMostActiveDay($recentAttempts): string
+    {
+        if ($recentAttempts->isEmpty()) {
+            return 'N/A';
+        }
+
+        $dayCounts = $recentAttempts->groupBy(fn($a) => $a->created_at->format('l'))
+            ->map->count()
+            ->sortDesc();
+
+        return $dayCounts->keys()->first() ?? 'N/A';
+    }
 }
