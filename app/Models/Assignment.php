@@ -718,7 +718,7 @@ class Assignment extends Model
      */
     public function getUserProgress($userId): array
     {
-        $attempts = $this->attemptsForUser($userId)->get();
+        $attempts = $this->getLoadedAttemptsForUser((int) $userId) ?? $this->attemptsForUser($userId)->get();
         
         if ($attempts->isEmpty()) {
             return [
