@@ -248,8 +248,8 @@ class AssignmentController extends Controller
     public function getProgress(Assignment $assignment)
     {
         try {
-            // Load assignment with necessary relationships
-            $assignment->load(['course:id,name', 'topic:id,name']);
+            // Load assignment with necessary relationships + all attempts for N+1 prevention
+            $assignment->load(['course:id,name', 'topic:id,name', 'attempts']);
             
             // Get all users assigned to this assignment with their progress
             $assignmentUsers = $assignment->usersWithProgress()->get();

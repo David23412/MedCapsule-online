@@ -172,7 +172,7 @@ class NotificationService
         $sentCount = 0;
         
         // Get assignments due within 24 hours that haven't been reminded
-        $allAssignments = \App\Models\Assignment::with(['assignedUsers', 'topic', 'course'])
+        $allAssignments = \App\Models\Assignment::with(['assignedUsers', 'topic', 'course', 'attempts'])
             ->where('deadline', '<=', now()->addHours(24))
             ->where('deadline', '>', now())
             ->whereDoesntHave('notifications', function($query) {
@@ -224,7 +224,7 @@ class NotificationService
 
         $assignments = \App\Models\Assignment::where('deadline', '<', now())
             ->where('deadline', '>', now()->subDays(7)) // Only check for recently overdue
-            ->with(['assignedUsers', 'course.tutor'])
+            ->with(['assignedUsers', 'course.tutor', 'attempts'])
             ->get();
 
         foreach ($assignments as $assignment) {

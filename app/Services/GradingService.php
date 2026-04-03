@@ -625,7 +625,10 @@ class GradingService
             return false;
         }
         
-        $assignment = \App\Models\Assignment::where('id', $assignmentId)
+        $assignment = \App\Models\Assignment::with(['attempts' => function ($q) use ($user) {
+                $q->where('user_id', $user->id);
+            }])
+            ->where('id', $assignmentId)
             ->where('topic_id', $topic->id)
             ->where('course_id', $course->id)
             ->first();

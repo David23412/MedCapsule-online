@@ -166,7 +166,6 @@ class TutorReportController extends Controller
     {
         $csv = "Student Name,Email,University,Quiz Average,Total Quizzes,Study Streak,Last Active\n";
 
-        $students = $students->load('quizAttempts');
         foreach ($students as $student) {
             // Use eager loaded quizAttempts to avoid N+1 queries
             $quizAttempts = $student->quizAttempts;

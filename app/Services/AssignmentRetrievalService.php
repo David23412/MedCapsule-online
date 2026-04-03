@@ -21,7 +21,7 @@ class AssignmentRetrievalService
      */
     public function getTutorAssignments(int $tutorId, array $filters = []): Collection
     {
-        $query = Assignment::with(['student', 'topic', 'course'])
+        $query = Assignment::with(['student', 'topic', 'course', 'attempts'])
                           ->forTutor($tutorId);
 
         if (isset($filters['course_id'])) {
@@ -58,7 +58,7 @@ class AssignmentRetrievalService
      */
     public function getStudentAssignments(int $studentId, array $filters = []): Collection
     {
-        $query = Assignment::with(['tutor', 'topic', 'course'])
+        $query = Assignment::with(['tutor', 'topic', 'course', 'attempts'])
                           ->forStudent($studentId);
 
         if (isset($filters['course_id'])) {

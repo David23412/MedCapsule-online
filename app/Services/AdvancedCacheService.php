@@ -154,18 +154,31 @@ class AdvancedCacheService
                 ->pluck('course_id')
                 ->take(50);
 
+            // Determine which courses actually need cache warming
+            $courseIdsNeedingWarm = [];
             foreach ($popularCourseIds as $courseId) {
-                // Warm course enrollment count cache
                 $cacheKey = self::generateCacheKey('course', "enrolled_count_{$courseId}");
                 if ($this->isCacheMiss($this->getCachedValueOrMiss($cacheKey))) {
-                    $count = \Illuminate\Support\Facades\DB::table('course_user')
-                        ->where('course_id', $courseId)
-                        ->where('is_enrolled', true)
-                        ->count();
-                    Cache::put($cacheKey, $count, self::CACHE_TTL['course_data']);
-                    $results['warmed']++;
+                    $courseIdsNeedingWarm[] = $courseId;
                 } else {
                     $results['skipped']++;
+                }
+            }
+
+            // Single batch query instead of N queries in a loop
+            if (!empty($courseIdsNeedingWarm)) {
+                $enrollmentCounts = \Illuminate\Support\Facades\DB::table('course_user')
+                    ->whereIn('course_id', $courseIdsNeedingWarm)
+                    ->where('is_enrolled', true)
+                    ->selectRaw('course_id, COUNT(*) as enrolled_count')
+                    ->groupBy('course_id')
+                    ->pluck('enrolled_count', 'course_id');
+
+                foreach ($courseIdsNeedingWarm as $courseId) {
+                    $cacheKey = self::generateCacheKey('course', "enrolled_count_{$courseId}");
+                    $count = $enrollmentCounts->get($courseId, 0);
+                    Cache::put($cacheKey, $count, self::CACHE_TTL['course_data']);
+                    $results['warmed']++;
                 }
             }
         } catch (\Exception $e) {

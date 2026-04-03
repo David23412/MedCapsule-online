@@ -718,7 +718,7 @@ class Assignment extends Model
      */
     public function getUserProgress($userId): array
     {
-        $attempts = $this->attemptsForUser($userId)->get();
+        $attempts = $this->getLoadedAttemptsForUser((int) $userId) ?? $this->attemptsForUser($userId)->get();
         
         if ($attempts->isEmpty()) {
             return [
@@ -856,11 +856,16 @@ class Assignment extends Model
 
     private function getLoadedAttemptsForUser(int $userId): ?Collection
     {
-        if (!$this->relationLoaded('attempts')) {
-            return null;
+        // Check both relationship aliases — 'attempts' and 'quizAttempts' are the same relation
+        if ($this->relationLoaded('attempts')) {
+            return $this->attempts->where('user_id', $userId)->values();
         }
 
-        return $this->attempts->where('user_id', $userId)->values();
+        if ($this->relationLoaded('quizAttempts')) {
+            return $this->quizAttempts->where('user_id', $userId)->values();
+        }
+
+        return null;
     }
 
     /**
@@ -909,18 +914,50 @@ class Assignment extends Model
 
     /**
      * 🔥 CRITICAL: Get user progress with lock status
+     * Optimized: computes status once and reuses across all derived fields.
      */
     public function getUserProgressWithStatus(User $user): array
     {
         $progress = $this->getUserProgress($user->id);
+
+        // Compute status once — getStatusForUser may query DB if attempts not loaded
         $status = $this->getStatusForUser($user);
+
+        // Derive all status-dependent values from the already-resolved status
+        $statusString = match ($status) {
+            self::STATUS_ACTIVE => 'active',
+            self::STATUS_COMPLETED => 'completed',
+            self::STATUS_LOCKED => 'locked',
+            default => 'locked',
+        };
+
+        $isLocked = $status === self::STATUS_LOCKED;
+
+        // Inline lock reason using already-known status to avoid redundant queries
+        $lockReason = null;
+        if ($isLocked) {
+            // Use progress data (already fetched above) to check if user attempted
+            if ($progress['attempts_count'] > 0) {
+                $lockReason = 'You have already attempted this assignment.';
+            } elseif ($this->submitted_at !== null) {
+                $lockReason = 'This assignment has already been submitted.';
+            } elseif ($this->duration_minutes && $this->created_at) {
+                $timeLimit = (float) $this->duration_minutes * 60;
+                if (now()->diffInSeconds($this->created_at) > $timeLimit) {
+                    $lockReason = 'The time limit for this assignment has expired.';
+                }
+            } elseif ($this->deadline && now()->gt($this->deadline)) {
+                $lockReason = 'This assignment is past the deadline.';
+            }
+            $lockReason ??= 'This assignment is currently locked.';
+        }
 
         return array_merge($progress, [
             'status' => $status,
-            'status_string' => $this->getStatusStringForUser($user),
-            'is_locked' => $status === self::STATUS_LOCKED,
-            'lock_reason' => $this->getLockReasonForUser($user),
-            'can_start' => $this->canUserStart($user)
+            'status_string' => $statusString,
+            'is_locked' => $isLocked,
+            'lock_reason' => $lockReason,
+            'can_start' => $status === self::STATUS_ACTIVE,
         ]);
     }
 

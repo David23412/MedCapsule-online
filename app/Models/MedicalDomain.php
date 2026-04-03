@@ -33,14 +33,6 @@ class MedicalDomain extends Model
     ];
 
     /**
-     * Get the subdomains for this medical domain.
-     */
-    public function subdomains()
-    {
-        return $this->hasMany(MedicalSubdomain::class, 'domain_id');
-    }
-
-    /**
      * Get the terminology associated with this domain.
      */
     public function terminology()
@@ -57,35 +49,11 @@ class MedicalDomain extends Model
     }
 
     /**
-     * Get the synonyms associated with this domain.
-     */
-    public function synonyms()
-    {
-        return $this->hasMany(MedicalSynonym::class, 'domain_id');
-    }
-
-    /**
-     * Get the patterns associated with this domain.
-     */
-    public function patterns()
-    {
-        return $this->hasMany(MedicalPattern::class, 'domain_id');
-    }
-
-    /**
      * Get the contradictions associated with this domain.
      */
     public function contradictions()
     {
         return $this->hasMany(MedicalContradiction::class, 'domain_id');
-    }
-
-    /**
-     * Get the process-location associations for this domain.
-     */
-    public function processLocations()
-    {
-        return $this->hasMany(MedicalProcessLocation::class, 'domain_id');
     }
 
     /**

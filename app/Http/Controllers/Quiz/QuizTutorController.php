@@ -247,7 +247,6 @@ class QuizTutorController extends Controller
 
             // UPDATE FRONTEND WITH CORRECT CONTEXT
             $course = Course::find($courseId);
-            $topic = Topic::find($topicId);
 
             // 🔥 CLEAR MISTAKE CACHE - Ensure mistakes show up instantly!
             if ($totalQuestions > $totalCorrect) {

@@ -82,10 +82,22 @@ class OptimizeDatabaseTables extends Command
     protected function getTablesToOptimize(): array
     {
         if ($customTables = $this->option('tables')) {
-            return array_map('trim', explode(',', $customTables));
+            $requested = array_map('trim', explode(',', $customTables));
+
+            // Validate custom table names against actual database schema to prevent SQL injection
+            $existingTables = [];
+            foreach ($requested as $table) {
+                if ($this->tableExists($table)) {
+                    $existingTables[] = $table;
+                } else {
+                    $this->warn("⚠️  Table '{$table}' does not exist, skipping.");
+                }
+            }
+
+            return $existingTables;
         }
 
-        // Verify that tables exist
+        // Verify that default tables exist
         $existingTables = [];
         foreach ($this->defaultTables as $table) {
             if ($this->tableExists($table)) {
