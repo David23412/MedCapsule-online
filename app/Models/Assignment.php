@@ -936,9 +936,8 @@ class Assignment extends Model
         // Inline lock reason using already-known status to avoid redundant queries
         $lockReason = null;
         if ($isLocked) {
-            // Use loaded attempts if available, otherwise single query
-            $attempted = $this->hasUserAttempted($user->id);
-            if ($attempted) {
+            // Use progress data (already fetched above) to check if user attempted
+            if ($progress['attempts_count'] > 0) {
                 $lockReason = 'You have already attempted this assignment.';
             } elseif ($this->submitted_at !== null) {
                 $lockReason = 'This assignment has already been submitted.';
