@@ -4,7 +4,6 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Models\Question;
 use Illuminate\Support\Facades\DB;
-use App\Events\LiveUserCountUpdated;
 use Illuminate\Support\Facades\Cache;
 
 /*
@@ -45,9 +44,6 @@ Route::get('/active-users', function() {
                 'users' => $loggedInCount
             ];
         });
-
-        // Broadcast outside cache so it fires on every poll
-        LiveUserCountUpdated::dispatch($data['count']);
 
         return response()->json($data);
     } catch (\Exception $e) {

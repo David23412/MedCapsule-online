@@ -12,7 +12,6 @@ use App\Models\Course;
 use App\Models\User;
 use App\Models\UserTopicProgress;
 use App\Models\QuizAttempt;
-use App\Models\SourceProgress;
 use App\Models\Video;
 
 class Topic extends Model
