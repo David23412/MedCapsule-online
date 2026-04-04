@@ -143,6 +143,46 @@ class TaskCompletionService
             }
         }
 
+        // Auto-clear topics stuck in 'mistakes' stage with zero reviewable backlog.
+        // This happens when a student passes the quiz with 100% (no wrong answers)
+        // or when all mistakes have been naturally mastered outside the planner.
+        // Without this, the topic gets stuck: repair builder returns null, no frontier
+        // task is generated, and the student sees an empty planner.
+        foreach ($topics as $topic) {
+            $topicId = (int) $topic->id;
+            $profile = data_get($context->topicSignals, 'profiles.' . $topicId, []);
+            $stage = (string) ($profile['progression_stage'] ?? '');
+
+            if ($stage !== 'mistakes') {
+                continue;
+            }
+
+            if ($this->topicHasReviewableBacklog($topicId, $context)) {
+                continue;
+            }
+
+            $progress = UserTopicProgress::query()->firstOrCreate(
+                ['user_id' => $user->id, 'topic_id' => $topicId],
+                [
+                    'percentage_grade' => $topic->userProgress->first()?->percentage_grade ?? 0.0,
+                    'last_attempt_date' => $topic->userProgress->first()?->last_attempt_date,
+                ]
+            );
+
+            if ($progress->planner_cleared_at === null) {
+                $now = now();
+                if ($progress->planner_tutor_cleared_at === null) {
+                    $progress->planner_tutor_cleared_at = $now;
+                }
+                if ($progress->planner_quiz_cleared_at === null) {
+                    $progress->planner_quiz_cleared_at = $now;
+                }
+                $progress->planner_cleared_at = $now;
+                $progress->save();
+                $changed = true;
+            }
+        }
+
         $changed = $this->applyRegressionTransitions($user, $topics, $context) || $changed;
 
         return $changed;

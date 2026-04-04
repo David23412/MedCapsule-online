@@ -92,7 +92,7 @@ class PlannerTaskBuilderServiceTest extends TestCase
 
         $context = $this->buildContext([
             'profiles' => [
-                1 => ['progression_stage' => 'quiz', 'curriculum_unlocked' => true],
+                1 => ['progression_stage' => 'quiz', 'curriculum_unlocked' => true, 'has_reviewable_backlog' => true, 'has_due_review' => true],
                 2 => ['progression_stage' => 'tutor', 'curriculum_unlocked' => false],
             ],
         ]);
@@ -366,7 +366,7 @@ class PlannerTaskBuilderServiceTest extends TestCase
 
         $context = $this->buildContext([
             'profiles' => [
-                1 => ['progression_stage' => 'quiz', 'curriculum_unlocked' => true],
+                1 => ['progression_stage' => 'quiz', 'curriculum_unlocked' => true, 'has_reviewable_backlog' => true, 'has_due_review' => true],
                 2 => ['progression_stage' => 'tutor', 'curriculum_unlocked' => false],
             ],
             'repairMode' => 'spaced',
@@ -378,6 +378,80 @@ class PlannerTaskBuilderServiceTest extends TestCase
         $slot2 = $previews->first();
         $this->assertSame('topic_mistake_review', $slot2['type'],
             'In spaced mode, repair preview should be topic_mistake_review');
+    }
+
+    // ────────────────────────────────────────────────────────────
+    // Solve with NO backlog → skip repair, show next topic Study
+    // ────────────────────────────────────────────────────────────
+
+    public function test_solve_slot1_with_no_backlog_skips_repair_shows_study_next(): void
+    {
+        $topic1 = $this->createTopic(1, 'Topic 1', 1);
+        $topic2 = $this->createTopic(2, 'Topic 2', 2);
+        $topics = collect([$topic1, $topic2]);
+
+        $actionableTask = [
+            'id' => 'frontier_topic_quiz_1',
+            'type' => 'frontier_topic_quiz',
+            'topic_id' => 1,
+            'is_preview' => false,
+            'completed' => false,
+            'counts_toward_progression' => true,
+            'slot_index' => 1,
+        ];
+
+        // No backlog for topic 1 — student got 100% on quiz
+        $context = $this->buildContext([
+            'profiles' => [
+                1 => ['progression_stage' => 'quiz', 'curriculum_unlocked' => true, 'has_reviewable_backlog' => false, 'has_due_review' => false],
+                2 => ['progression_stage' => 'tutor', 'curriculum_unlocked' => false],
+            ],
+        ]);
+
+        $previews = $this->service->buildProgressionPreviewTasks($topics, $context, $actionableTask);
+
+        // Should show Study T2 (slot 2) + Solve T2 (slot 3) — no repair preview
+        $this->assertCount(2, $previews, 'No backlog: should skip repair and show Study T2 + Solve T2');
+
+        $slot2 = $previews->first();
+        $slot3 = $previews->last();
+
+        // Slot 2 = Study preview for Topic 2 (not repair!)
+        $this->assertContains($slot2['type'], ['start_topic', 'rapid_overview'],
+            'With no backlog, slot 2 should be Study for next topic, not Repair');
+        $this->assertSame(2, (int) $slot2['topic_id']);
+        $this->assertSame(2, $slot2['slot_index']);
+
+        // Slot 3 = Solve preview for Topic 2
+        $this->assertSame('frontier_topic_quiz', $slot3['type']);
+        $this->assertSame(2, (int) $slot3['topic_id']);
+        $this->assertSame(3, $slot3['slot_index']);
+    }
+
+    public function test_solve_slot1_with_no_backlog_and_no_next_topic_returns_empty(): void
+    {
+        $topic1 = $this->createTopic(1, 'Topic 1', 1);
+        $topics = collect([$topic1]); // Only one topic
+
+        $actionableTask = [
+            'id' => 'frontier_topic_quiz_1',
+            'type' => 'frontier_topic_quiz',
+            'topic_id' => 1,
+            'is_preview' => false,
+            'completed' => false,
+            'counts_toward_progression' => true,
+            'slot_index' => 1,
+        ];
+
+        $context = $this->buildContext([
+            'profiles' => [
+                1 => ['progression_stage' => 'quiz', 'curriculum_unlocked' => true, 'has_reviewable_backlog' => false, 'has_due_review' => false],
+            ],
+        ]);
+
+        $previews = $this->service->buildProgressionPreviewTasks($topics, $context, $actionableTask);
+
+        $this->assertCount(0, $previews, 'No backlog + no next topic = no previews');
     }
 
     // ────────────────────────────────────────────────────────────

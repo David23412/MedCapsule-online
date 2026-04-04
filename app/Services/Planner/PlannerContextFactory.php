@@ -237,7 +237,7 @@ class PlannerContextFactory
 
         $randomAttemptsToday = QuizAttempt::query()
             ->where('user_id', $user->id)
-            ->whereDate('created_at', '>=', now()->subDays(90)->toDateString())
+            ->whereDate('created_at', '>=', now()->subDays(30)->toDateString()) // 30-day window for signal trends; 90 was over-wide and inflated random quiz signals
             ->where('quiz_type', 'random')
             ->get($randomAttemptColumns)
             ->map(fn (QuizAttempt $attempt) => [
@@ -256,7 +256,7 @@ class PlannerContextFactory
 
         $mistakeReviewAttemptsToday = QuizAttempt::query()
             ->where('user_id', $user->id)
-            ->whereDate('created_at', '>=', now()->subDays(90)->toDateString())
+            ->whereDate('created_at', '>=', now()->subDays(30)->toDateString()) // 30-day window; aligned with random attempts window
             ->where(function ($query) {
                 $query->where('quiz_type', 'mistake_review')
                     ->orWhere('study_mode', 'mistake_review');
