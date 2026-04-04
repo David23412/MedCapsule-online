@@ -1,7 +1,7 @@
 <!-- Navigation Bar -->
 <nav class="navbar navbar-expand-lg navbar-light" style="opacity: 0; transition: opacity 0.3s ease;">
     <div class="container">
-        <a class="navbar-brand" href="{{ route('home') }}">MedCapsule</a>
+        <a class="navbar-brand" href="{{ route('courses.index') }}">MedCapsule</a>
         
         <button class="navbar-toggler border-0 p-2" type="button" data-bs-toggle="offcanvas" data-bs-target="#navbarNavOffcanvas" aria-controls="navbarNavOffcanvas" aria-expanded="false" aria-label="Toggle navigation" style="min-height: 44px; min-width: 44px;">
             <span class="navbar-toggler-icon"></span>

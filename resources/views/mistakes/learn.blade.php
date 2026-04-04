@@ -144,7 +144,7 @@
             <i class="fas fa-chevron-left"></i>
         </button>
 
-        <a href="{{ route('home') }}" class="sidebar-logo">
+        <a href="{{ route('courses.index') }}" class="sidebar-logo">
             <div class="sidebar-logo-icon">
                 <svg width="52" height="26" viewBox="0 0 52 26" fill="none" xmlns="http://www.w3.org/2000/svg" aria-label="MedCapsule">
                     <defs>
@@ -182,7 +182,7 @@
         <div class="sidebar-nav">
             <span class="sidebar-section-label">Navigation</span>
 
-            <a class="nav-link" href="{{ route('home') }}">
+            <a class="nav-link" href="{{ route('courses.index') }}">
                 <i class="fas fa-home nav-icon"></i>
                 <span class="nav-link-label">Home</span>
             </a>
@@ -322,7 +322,7 @@
                         ? 'Your deck still has mistakes, but none matched the current filter. Change the course filter or mode and keep reviewing.'
                         : 'Your dedication to learning is impressive! Come back later for more practice.' }}
                 </p>
-                <a href="{{ route('home') }}" class="btn btn-primary" style="background: #f0f9ff; color: #0284c7; padding: 0.6rem 1.4rem; border-radius: 6px; text-decoration: none; font-weight: 500; font-size: 0.95rem; border: 1px solid #bae6fd; transition: all 0.2s ease; display: inline-block; animation: buttonPulse 2s infinite;">Back to Home</a>
+                <a href="{{ route('courses.index') }}" class="btn btn-primary" style="background: #f0f9ff; color: #0284c7; padding: 0.6rem 1.4rem; border-radius: 6px; text-decoration: none; font-weight: 500; font-size: 0.95rem; border: 1px solid #bae6fd; transition: all 0.2s ease; display: inline-block; animation: buttonPulse 2s infinite;">Back to Home</a>
             </div>
         @else
             @if($isTopicFocusedSession)
