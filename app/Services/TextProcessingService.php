@@ -397,7 +397,6 @@ class TextProcessingService
             'hemmorhage'      => 'hemorrhage',
             'hemorrhagge'     => 'hemorrhage',
             'ischaemia'       => 'ischemia',
-            'thrombus'        => 'thrombus',
 
             // Nervous
             'parasympatheic'  => 'parasympathetic',

@@ -707,7 +707,6 @@ class WrittenAnswerEvaluationService
         $finalSimilarity = min(1.0, $bestSimilarity + $domainBoost);
 
         // Phrasing boost when conceptual is very high
-        // Phrasing boost when conceptual is very high
         if (($bestMetrics['conceptual'] ?? 0) > 0.8 && ($bestMetrics['keyword'] ?? 0) > 0.6
             && !($bestMetrics['hasContradictions'] ?? false)) {
             $finalSimilarity = min(1.0, $finalSimilarity + 0.10);
@@ -784,7 +783,7 @@ class WrittenAnswerEvaluationService
         $hasContradictions = $this->textProcessor->containsAntonyms($normSub, $normCor);
 
         // Weighted blend: conceptual most important, with meaningful Levenshtein
-        // for typo tolerance. Levenshtein raised from 10% → 20% to catch typos.
+        // for typo tolerance. Levenshtein raised from 10% → 25% to catch typos.
         $weighted = ($conceptual    * 0.35)
                   + ($keyword       * 0.25)
                   + ($jaccard       * 0.15)
