@@ -16,21 +16,13 @@ class PlannerTaskBuilderService
     {
         $orderedOpenTopics = $topics
             ->filter(fn (Topic $topic) => !$topic->is_locked)
-            ->sortBy(fn (Topic $topic) => sprintf(
-                '%010d-%010d',
-                (int) ($topic->display_order ?? PHP_INT_MAX),
-                (int) $topic->id
-            ))
+            ->sortBy(fn (Topic $topic) => $this->topicSortKey($topic, $context))
             ->values();
         [$openTopics, $frontierTopicId, $progressionLocked] = $this->scopeTopicsToProgressionFrontier($orderedOpenTopics, $context);
 
         $untouchedTopics = $openTopics
             ->filter(fn (Topic $topic) => data_get($context->topicSignals, 'profiles.' . $topic->id . '.progression_stage') === 'tutor')
-            ->sortBy(fn (Topic $topic) => sprintf(
-                '%010d-%010d',
-                (int) ($topic->display_order ?? PHP_INT_MAX),
-                (int) $topic->id
-            ))
+            ->sortBy(fn (Topic $topic) => $this->topicSortKey($topic, $context))
             ->values();
         $weakTopics = $openTopics
             ->filter(fn (Topic $topic) => (bool) data_get($context->topicSignals, 'profiles.' . $topic->id . '.is_weak', false))
@@ -124,11 +116,7 @@ class PlannerTaskBuilderService
 
         $orderedTopics = $topics
             ->filter(fn (Topic $topic) => !$topic->is_locked)
-            ->sortBy(fn (Topic $topic) => sprintf(
-                '%010d-%010d',
-                (int) ($topic->display_order ?? PHP_INT_MAX),
-                (int) $topic->id
-            ))
+            ->sortBy(fn (Topic $topic) => $this->topicSortKey($topic, $context))
             ->values();
         $currentTopic = $orderedTopics->firstWhere('id', $topicId);
         if (!($currentTopic instanceof Topic)) {
@@ -392,11 +380,7 @@ class PlannerTaskBuilderService
         int $limit
     ): Collection {
         $candidates = $topics
-            ->sortBy(fn (Topic $topic) => sprintf(
-                '%010d-%010d',
-                (int) ($topic->display_order ?? PHP_INT_MAX),
-                (int) $topic->id
-            ))
+            ->sortBy(fn (Topic $topic) => $this->topicSortKey($topic, $context))
             ->filter(function (Topic $topic) use ($buckets, $context) {
                 if ((int) $topic->id === (int) $buckets->frontierTopicId) {
                     return false;
@@ -439,11 +423,7 @@ class PlannerTaskBuilderService
             ->filter(fn (Topic $topic) => !$topic->is_locked)
             ->reject(fn (Topic $topic) => (int) $topic->id === (int) $buckets->frontierTopicId)
             ->filter(fn (Topic $topic) => data_get($context->topicSignals, 'profiles.' . $topic->id . '.progression_stage') === 'cleared')
-            ->sortBy(fn (Topic $topic) => sprintf(
-                '%010d-%010d',
-                (int) ($topic->display_order ?? PHP_INT_MAX),
-                (int) $topic->id
-            ))
+            ->sortBy(fn (Topic $topic) => $this->topicSortKey($topic, $context))
             ->values();
     }
 
@@ -1520,6 +1500,26 @@ class PlannerTaskBuilderService
     private function isUntouchedTopic(int $topicId, PlannerContext $context): bool
     {
         return (bool) data_get($context->topicSignals, 'profiles.' . $topicId . '.is_untouched', false);
+    }
+
+    /**
+     * Sort key for topic ordering.
+     *
+     * In exam_prep mode, is_exam topics sort before lecture topics.
+     * Otherwise, topics sort by display_order then by id.
+     */
+    private function topicSortKey(Topic $topic, PlannerContext $context): string
+    {
+        // In exam_prep mode, exam topics (is_exam=true) come first (bucket 0),
+        // lecture topics come second (bucket 1). Within each bucket, display_order applies.
+        $examBucket = ($context->plannerFocus === 'exam_prep' && (bool) $topic->is_exam) ? 0 : 1;
+
+        return sprintf(
+            '%01d-%010d-%010d',
+            $examBucket,
+            (int) ($topic->display_order ?? PHP_INT_MAX),
+            (int) $topic->id,
+        );
     }
 
     private function resolveTargetSourceForTopic(Topic $topic, array $topicSignals, ?string $preferredSource): ?string

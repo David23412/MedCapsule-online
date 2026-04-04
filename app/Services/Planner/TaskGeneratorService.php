@@ -4,7 +4,6 @@ namespace App\Services\Planner;
 
 use App\Services\Planner\Strategies\BalancedPlannerStrategy;
 use App\Services\Planner\Strategies\ExamPrepPlannerStrategy;
-use App\Services\Planner\Strategies\NewTopicsPlannerStrategy;
 use App\Services\Planner\Strategies\PlannerModeStrategy;
 use App\Services\Planner\Strategies\RevisionPlannerStrategy;
 use Illuminate\Support\Collection;
@@ -13,7 +12,6 @@ class TaskGeneratorService
 {
     public function __construct(
         private BalancedPlannerStrategy $balancedPlannerStrategy,
-        private NewTopicsPlannerStrategy $newTopicsPlannerStrategy,
         private RevisionPlannerStrategy $revisionPlannerStrategy,
         private ExamPrepPlannerStrategy $examPrepPlannerStrategy,
     ) {
@@ -28,7 +26,6 @@ class TaskGeneratorService
     private function resolveStrategy(string $plannerFocus): PlannerModeStrategy
     {
         foreach ([
-            $this->newTopicsPlannerStrategy,
             $this->revisionPlannerStrategy,
             $this->examPrepPlannerStrategy,
             $this->balancedPlannerStrategy,

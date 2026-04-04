@@ -154,11 +154,6 @@
                 </div>
             @endif
 
-            <div class="sidebar-coming-soon">
-                <div class="coming-soon-overlay">
-                    <span class="coming-soon-badge">Coming Soon</span>
-                </div>
-                <div class="sidebar-blur-container">
                     <div class="sidebar-collapsed-task-indicator" aria-hidden="true">
                         <div class="sidebar-collapsed-task-indicator-shell">
                             @foreach($collapsedTaskDots as $isCompleted)
@@ -273,8 +268,6 @@
                         </div>
                     </details>
                 @endif
-            </div>
-                </div>
             </div>
         </div>
 

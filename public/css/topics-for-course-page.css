@@ -1162,44 +1162,21 @@ body.sidebar-collapsed .main-content {
     color: #e65100 !important;
 }
 
-/* Coming Soon Blur Styles */
+/* Game Plan Sidebar Styles - active (previously blurred "Coming Soon") */
 .sidebar-coming-soon {
     position: relative;
     margin-top: 1.5rem;
     padding-bottom: 2rem;
 }
 
-.sidebar-blur-container {
-    filter: blur(4px);
-    pointer-events: none;
-    user-select: none;
-    opacity: 0.5;
-    transition: filter 0.3s ease;
-}
+/* Blur container is no longer used — planner is fully interactive */
 
 .coming-soon-overlay {
-    position: absolute;
-    inset: 0;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    z-index: 20;
-    pointer-events: none;
+    display: none;
 }
 
 .coming-soon-badge {
-    background: #0f172a;
-    color: #ffffff;
-    padding: 0.65rem 1.4rem;
-    border-radius: 99px;
-    font-size: 0.72rem;
-    font-weight: 800;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    box-shadow: 0 12px 30px rgba(15, 23, 42, 0.28);
-    border: 1px solid rgba(255, 255, 255, 0.15);
-    white-space: nowrap;
-    transform: translateY(-20px);
+    display: none;
 }
 
 body.sidebar-collapsed .coming-soon-overlay {

@@ -460,7 +460,7 @@ class ProfileController extends Controller
                 'weekly_goal' => 'required|integer|min:10|max:500',
                 'exam_date' => 'nullable|date|after_or_equal:today',
                 'daily_study_minutes' => 'required|integer|min:30|max:480',
-                'planner_focus' => 'required|in:balanced,new_topics,revision,exam_prep',
+                'planner_focus' => 'required|in:balanced,revision,exam_prep',
                 'repair_mode' => 'nullable|in:easy,hard,spaced',
                 'mistake_mastery_mode' => 'nullable|in:easy,hard',
             ]);
@@ -510,7 +510,7 @@ class ProfileController extends Controller
                 'planner_exam_date' => 'nullable|date|after_or_equal:today',
                 'planner_target_score' => 'nullable|integer|min:50|max:100',
                 'planner_daily_study_minutes' => 'nullable|integer|min:15|max:480',
-                'planner_focus' => 'nullable|in:balanced,new_topics,revision,exam_prep',
+                'planner_focus' => 'nullable|in:balanced,revision,exam_prep',
                 'planner_preferred_source' => 'nullable|string|max:255',
                 'planner_repair_mode' => 'nullable|in:easy,hard,spaced',
                 'planner_mistake_mastery_mode' => 'nullable|in:easy,hard',
