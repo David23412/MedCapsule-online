@@ -1080,7 +1080,7 @@ class GradingService
             
             if ($isNewAttempt) {
                 // Award XP for correct tutor answers (conservative: 5 XP per correct)
-                $tutorXp = ($isCorrect) ? self::XP_PER_CORRECT_TUTOR : 0;
+                $tutorXp = $isCorrect ? self::XP_PER_CORRECT_TUTOR : 0;
                 // Update aggregate stats immediately for accurate pie charts in profile
                 app(\App\Services\UserStatsService::class)->updateAfterQuizAttempt($user, 1, $isCorrect ? 1 : 0, 0, $tutorXp);
 
