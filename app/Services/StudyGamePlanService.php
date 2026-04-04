@@ -851,10 +851,13 @@ class StudyGamePlanService
             $actionableTopicId = (int) ($currentActionableTask['topic_id'] ?? 0);
             $actionableType = (string) ($currentActionableTask['type'] ?? '');
 
+            // Group tasks for the actionable topic together, with completed tasks FIRST
+            // to preserve chronological progression order: Study(done) → Solve(active) → Repair(locked)
             $topicGroup = $activeTasks->filter(function (array $task) use ($actionableTopicId) {
                 return (int) ($task['topic_id'] ?? 0) === $actionableTopicId
                     && !($task['is_preview'] ?? false);
-            })->values();
+            })->sortBy(fn (array $task) => (bool) ($task['completed'] ?? false) ? 0 : 1)
+            ->values();
 
             $previewTasks = $previewTasks->reject(function (array $preview) use ($actionableTopicId, $actionableType) {
                 return (int) ($preview['topic_id'] ?? 0) === $actionableTopicId
@@ -867,9 +870,15 @@ class StudyGamePlanService
                 ->reject(fn (array $task) => in_array($task['id'] ?? null, $groupAndPreviewIds, true))
                 ->values();
 
-            return $topicGroup
+            // Completed tasks from previous topics stay above the current frontier group
+            // to preserve the chronological Study→Solve→Repair flow the student already completed.
+            $completedExtraTasks = $extraTasks->filter(fn (array $task) => (bool) ($task['completed'] ?? false))->values();
+            $activeExtraTasks = $extraTasks->reject(fn (array $task) => (bool) ($task['completed'] ?? false))->values();
+
+            return $completedExtraTasks
+                ->concat($topicGroup)
                 ->concat($previewTasks)
-                ->concat($extraTasks)
+                ->concat($activeExtraTasks)
                 ->values();
         }
 
