@@ -732,8 +732,6 @@
             if (progressPollInterval) return;
             progressPollInterval = setInterval(function() {
                 fetchRecentProgressUpdates();
-                hydrateProgressFromStorage();
-                hydrateAssignmentCompletionFromStorage();
             }, 15000);
         }
         function stopProgressPolling() {

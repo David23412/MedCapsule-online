@@ -1612,7 +1612,7 @@
 
             .sidebar.mobile-open ~ .sidebar-toggle,
             body:not(.sidebar-collapsed) .sidebar.mobile-open + .sidebar-toggle {
-                left: 250px;
+                left: 240px;
             }
 
             .sidebar-toggle:hover {
