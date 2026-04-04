@@ -108,8 +108,9 @@ class Question extends Model
      */
     public static function enrichWithBadges($questions, int $currentTopicId): void
     {
-        // 1. Collect every extra topic ID referenced across all questions
+        // 1. Collect every extra topic ID AND main topic IDs (for cross-linked questions)
         $allExtraIds = collect();
+        $allMainTopicIds = collect();
         foreach ($questions as $q) {
             $raw = is_array($q) ? ($q['extra_topic'] ?? null) : ($q->extra_topic ?? null);
             if (!empty($raw)) {
@@ -117,12 +118,18 @@ class Question extends Model
                     $allExtraIds->push((int) trim($id));
                 }
             }
+            // Also collect main topic IDs so we can resolve names for cross-linked questions
+            $mainId = (int) (is_array($q) ? ($q['topic_id'] ?? 0) : ($q->topic_id ?? 0));
+            if ($mainId > 0 && $mainId !== $currentTopicId) {
+                $allMainTopicIds->push($mainId);
+            }
         }
 
-        // 2. Single query to resolve all needed topic names
+        // 2. Single query to resolve all needed topic names (extra + main for cross-linked)
+        $allNeededIds = $allExtraIds->merge($allMainTopicIds)->unique()->filter()->values();
         $topicNames = [];
-        if ($allExtraIds->isNotEmpty()) {
-            $topicNames = Topic::whereIn('id', $allExtraIds->unique()->filter()->values())
+        if ($allNeededIds->isNotEmpty()) {
+            $topicNames = Topic::whereIn('id', $allNeededIds)
                 ->pluck('name', 'id')
                 ->all();
         }
@@ -139,9 +146,19 @@ class Question extends Model
                 $badges[] = '📈 REPEATED';
             }
 
+            $mainTopicId = (int) (is_array($qObj) ? ($qObj['topic_id'] ?? 0) : ($qObj->topic_id ?? 0));
+
+            // When viewing a question from a linked topic (not its home topic),
+            // show the main topic name as a badge so users see the exam origin
+            if ($mainTopicId !== $currentTopicId && $mainTopicId > 0 && isset($topicNames[$mainTopicId])) {
+                $name = strtoupper($topicNames[$mainTopicId]);
+                if (!in_array($name, $badges, true)) {
+                    $badges[] = $name;
+                }
+            }
+
             $raw = is_array($qObj) ? ($qObj['extra_topic'] ?? null) : ($qObj->extra_topic ?? null);
             if (!empty($raw)) {
-                $mainTopicId = (int) (is_array($qObj) ? ($qObj['topic_id'] ?? 0) : ($qObj->topic_id ?? 0));
                 foreach (explode(',', $raw) as $idStr) {
                     $id = (int) trim($idStr);
                     // Skip the question's own main topic and the currently-viewed topic

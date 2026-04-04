@@ -900,44 +900,19 @@ class QuizService
         $cacheKey = "topic:{$topic->id}:questions_lethal:" . md5(serialize($sources));
         
         return $this->cacheService->remember($cacheKey, 300, function () use ($topic, $sources) {
-            // LETHAL QUERY: Build with explicit deletion checks
             $query = Question::where(function($q) use ($topic) {
                     $q->where('topic_id', $topic->id)
                       ->orWhereRaw('FIND_IN_SET(?, REPLACE(extra_topic, " ", "")) > 0', [$topic->id]);
                 })
-                ->whereNotNull('question') // Ensure question content exists
-                ->where('question', '!=', '') // Ensure question is not empty
+                ->whereNotNull('question')
+                ->where('question', '!=', '')
                 ->orderBy('id');
 
             if (!in_array('all', $sources)) {
                 $query->whereIn('source', $sources);
             }
 
-            $questions = $query->get();
-            
-            // NUCLEAR VERIFICATION: Filter out deleted questions while maintaining Eloquent Collection
-            $validQuestions = $questions->filter(function ($question) use ($topic) {
-                // Real-time database check for each question
-                    $exists = Question::where('id', $question->id)
-                        ->where(function($q) use ($topic, $question) {
-                            $q->where('topic_id', $question->topic_id)
-                              ->orWhereRaw('FIND_IN_SET(?, REPLACE(extra_topic, " ", "")) > 0', [$topic->id]);
-                        })
-                    ->whereNotNull('question')
-                    ->where('question', '!=', '')
-                    ->exists();
-                    
-                if (!$exists) {
-                    Log::warning('LETHAL FIX: Deleted question detected in getQuestionsForQuiz', [
-                        'question_id' => $question->id,
-                        'topic_id' => $question->topic_id
-                    ]);
-                }
-                
-                return $exists;
-            });
-            
-            return $validQuestions;
+            return $query->get();
         });
     }
 

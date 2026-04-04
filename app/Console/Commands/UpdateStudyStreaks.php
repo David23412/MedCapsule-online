@@ -32,101 +32,91 @@ class UpdateStudyStreaks extends Command
     {
         $this->info('Starting to update user study streaks...');
         
-        $users = User::all();
         $updatedCount = 0;
+        $totalCount = 0;
         
-        foreach ($users as $user) {
-            $this->line("Processing user #{$user->id} ({$user->name})...");
-            
-            // Get the user's latest quiz attempt
-            $lastAttempt = QuizAttempt::where('user_id', $user->id)
-                ->orderBy('created_at', 'desc')
-                ->first();
-                
-            // If they have no attempts, set streak to 1 (default for platform users)
-            if (!$lastAttempt) {
-                if ($user->study_streak_days !== 1) {
-                    $user->study_streak_days = 1;
-                    $user->save();
-                    $this->line("  No quiz attempts found. Set streak to 1 (default).");
-                    $updatedCount++;
-                } else {
-                    $this->line("  No quiz attempts found. Streak already 1.");
-                }
-                continue;
-            }
-            
-            $lastAttemptDate = $lastAttempt->created_at->startOfDay();
-            $today = now()->startOfDay();
-            $yesterday = now()->subDay()->startOfDay();
-            
-            // Handle different cases
-            if ($lastAttemptDate->equalTo($today)) {
-                // They did a quiz today - check for previous days in sequence
-                $streak = $this->calculateConsecutiveDays($user);
-                if ($user->study_streak_days != $streak) {
-                    $oldStreak = $user->study_streak_days;
-                    $user->study_streak_days = $streak;
-                    $user->save();
-                    $this->line("  Updated streak: {$oldStreak} → {$streak} (active today)");
-                    $updatedCount++;
-                } else {
-                    $this->line("  Streak verified as {$streak} (active today)");
-                }
-            } else if ($lastAttemptDate->equalTo($yesterday)) {
-                // Quiz taken yesterday - check for previous days
-                $streak = $this->calculateConsecutiveDays($user);
-                if ($user->study_streak_days != $streak) {
-                    $oldStreak = $user->study_streak_days;
-                    $user->study_streak_days = $streak;
-                    $user->save();
-                    $this->line("  Updated streak: {$oldStreak} → {$streak} (active yesterday)");
-                    $updatedCount++;
-                } else {
-                    $this->line("  Streak verified as {$streak} (active yesterday)");
-                }
-            } else {
-                // Last quiz attempt was more than 1 day ago - streak should reset to 1
-                if ($user->study_streak_days != 1) {
-                    $oldStreak = $user->study_streak_days;
-                    $user->study_streak_days = 1;
-                    $user->save();
-                    $this->line("  Updated streak: {$oldStreak} → 1 (reset due to inactivity)");
-                    $updatedCount++;
-                } else {
-                    $this->line("  Streak verified as 1 (inactive)");
-                }
+        // Bulk-fetch latest attempt dates for all users in a single query
+        $latestAttempts = QuizAttempt::selectRaw('user_id, MAX(created_at) as last_attempt_at')
+            ->groupBy('user_id')
+            ->pluck('last_attempt_at', 'user_id');
+
+        // Bulk-fetch per-day activity for users who need streak calculation
+        $today = now()->startOfDay();
+        $yesterday = now()->subDay()->startOfDay();
+        $activeUserIds = $latestAttempts->filter(function ($lastAt) use ($today, $yesterday) {
+            $d = Carbon::parse($lastAt)->startOfDay();
+            return $d->equalTo($today) || $d->equalTo($yesterday);
+        })->keys()->all();
+
+        // For active users, fetch all distinct activity dates in one query (last 365 days max)
+        $activityDates = [];
+        if (!empty($activeUserIds)) {
+            $rows = QuizAttempt::selectRaw('user_id, DATE(created_at) as activity_date')
+                ->whereIn('user_id', $activeUserIds)
+                ->where('created_at', '>=', now()->subDays(365))
+                ->groupBy('user_id', 'activity_date')
+                ->get();
+            foreach ($rows as $row) {
+                $activityDates[$row->user_id][] = $row->activity_date;
             }
         }
+
+        User::select(['id', 'name', 'study_streak_days'])->chunk(500, function ($users) use (
+            $latestAttempts, $activityDates, $today, $yesterday, &$updatedCount, &$totalCount
+        ) {
+            foreach ($users as $user) {
+                $totalCount++;
+                $lastAttemptAt = $latestAttempts[$user->id] ?? null;
+
+                if (!$lastAttemptAt) {
+                    if ($user->study_streak_days !== 1) {
+                        $user->study_streak_days = 1;
+                        $user->save();
+                        $updatedCount++;
+                    }
+                    continue;
+                }
+
+                $lastAttemptDate = Carbon::parse($lastAttemptAt)->startOfDay();
+
+                if ($lastAttemptDate->equalTo($today) || $lastAttemptDate->equalTo($yesterday)) {
+                    // Calculate streak from pre-fetched activity dates
+                    $dates = collect($activityDates[$user->id] ?? [])
+                        ->map(fn($d) => Carbon::parse($d)->startOfDay())
+                        ->sort()
+                        ->reverse()
+                        ->values();
+
+                    $streak = 0;
+                    $checkDate = $today->copy();
+                    foreach ($dates as $d) {
+                        if ($d->equalTo($checkDate)) {
+                            $streak++;
+                            $checkDate->subDay();
+                        } elseif ($d->lt($checkDate)) {
+                            break;
+                        }
+                    }
+                    $streak = max(1, $streak);
+
+                    if ($user->study_streak_days != $streak) {
+                        $user->study_streak_days = $streak;
+                        $user->save();
+                        $updatedCount++;
+                    }
+                } else {
+                    // Last activity > 1 day ago — reset streak
+                    if ($user->study_streak_days != 1) {
+                        $user->study_streak_days = 1;
+                        $user->save();
+                        $updatedCount++;
+                    }
+                }
+            }
+        });
         
-        $this->info("Completed! Updated study streaks for {$updatedCount} out of {$users->count()} users.");
+        $this->info("Completed! Updated study streaks for {$updatedCount} out of {$totalCount} users.");
         
         return Command::SUCCESS;
-    }
-    
-    /**
-     * Calculate how many consecutive days a user has been active
-     */
-    private function calculateConsecutiveDays(User $user)
-    {
-        // Start with today - go backwards day by day and see if the user was active
-        $streak = 0;
-        $currentDate = now()->startOfDay();
-        
-        while (true) {
-            // Check if the user had quiz activity on this day
-            $hadActivity = QuizAttempt::where('user_id', $user->id)
-                ->whereDate('created_at', $currentDate)
-                ->exists();
-                
-            if (!$hadActivity) {
-                break; // Break the streak if no activity on this day
-            }
-            
-            $streak++;
-            $currentDate->subDay(); // Go back one day
-        }
-        
-        return max(1, $streak); // Minimum streak is 1 if they've ever done a quiz
     }
 } 
