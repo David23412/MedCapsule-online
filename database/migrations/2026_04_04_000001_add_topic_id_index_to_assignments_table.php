@@ -26,7 +26,12 @@ return new class extends Migration
                         break;
                     }
                 }
-            } else {
+            } elseif ($driver === 'pgsql') {
+                $indexes = DB::select(
+                    "SELECT 1 FROM pg_indexes WHERE tablename = 'assignments' AND indexdef LIKE '%topic_id%' LIMIT 1"
+                );
+                $indexExists = count($indexes) > 0;
+            } elseif (in_array($driver, ['mysql', 'mariadb'])) {
                 $indexes = DB::select("SHOW INDEX FROM `assignments` WHERE Column_name = 'topic_id'");
                 $indexExists = count($indexes) > 0;
             }
