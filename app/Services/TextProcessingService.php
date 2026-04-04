@@ -580,6 +580,7 @@ class TextProcessingService
      *
      * "biological/genetic" → "biological and genetic"
      * "DNA/RNA"            → "DNA and RNA"
+     * "A/B/C"              → "A and B and C" (grammatically simple but semantically correct)
      *
      * Only expands slashes that separate words (not numeric fractions like "120/80").
      */

@@ -38,6 +38,9 @@ class WrittenAnswerEvaluationService
     protected PatternMatcherService    $patternMatcher;
     protected MedicalKnowledgeService  $medicalKnowledge;
 
+    // Threshold lowered from 0.85 → 0.72 to accommodate typos, reordered terms,
+    // and paraphrasing. The system uses multiple safety layers (antonym detection,
+    // keyword floor, contradiction checks) to prevent false positives at this level.
     const DEFAULT_SIMILARITY_THRESHOLD = 0.72;
 
     private bool $cacheEnabled = true;
@@ -764,7 +767,9 @@ class WrittenAnswerEvaluationService
             $finalSimilarity = min(1.0, $finalSimilarity + 0.08);
         }
 
-        // Safety floor for missing keywords (lowered from 0.4 → 0.25 for more forgiveness)
+        // Safety floor for missing keywords. Threshold at 0.25 allows answers with
+        // typos and paraphrasing to pass while still catching completely wrong answers.
+        // Contradiction detection and antonym pairs provide additional safety above this.
         $isCriticalMismatch = ($bestMetrics['hasContradictions'] ?? false)
             || (isset($bestMetrics['keyword']) && $bestMetrics['keyword'] < 0.25);
 
@@ -879,7 +884,7 @@ class WrittenAnswerEvaluationService
             'decrease heart rate', 'decreases heart rate', 'decreased heart rate',
             'heart rate decreases', 'heart rate decrease', 'heart rate goes down',
             'lowers heart rate', 'lower heart rate', 'slows heart rate',
-            'slows down heart rate', 'slower heart rate', 'lower heart rate',
+            'slows down heart rate', 'slower heart rate',
             'bradycardia', 'negative chronotropic',
         ]);
         $digUp  = $this->containsAnyPhrase($semanticSubmitted, [
@@ -1052,8 +1057,11 @@ class WrittenAnswerEvaluationService
             if (count($itemWords) > 1) {
                 $subWords = preg_split('/\s+/', $submittedNormalized);
                 $matchedWords = 0;
+                $significantWords = 0;
                 foreach ($itemWords as $iw) {
-                    if (strlen($iw) < 3) { $matchedWords++; continue; } // skip short words
+                    // Skip stop words / connectors (and, or, of, the) — don't count them
+                    if (strlen($iw) < 3) { continue; }
+                    $significantWords++;
                     foreach ($subWords as $sw) {
                         if ($this->wordsAreSimilar(strtolower($sw), strtolower($iw))) {
                             $matchedWords++;
@@ -1061,8 +1069,8 @@ class WrittenAnswerEvaluationService
                         }
                     }
                 }
-                // If ≥80% of the item's words are found (fuzzy), consider it matched
-                if ($matchedWords >= count($itemWords) * 0.8) {
+                // If ≥80% of the item's significant words are found (fuzzy), consider it matched
+                if ($significantWords > 0 && $matchedWords >= $significantWords * 0.8) {
                     return true;
                 }
             }
