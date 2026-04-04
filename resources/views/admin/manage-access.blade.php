@@ -1353,6 +1353,97 @@
             line-height: 1.55;
         }
 
+        /* Written answer items */
+        .survey-written-item {
+            padding: 0.85rem 1rem;
+            border-bottom: 1px solid rgba(226, 232, 240, 0.6);
+            transition: background 0.15s ease;
+        }
+        .survey-written-item:last-child { border-bottom: none; }
+        .survey-written-item:hover { background: rgba(96, 165, 250, 0.04); }
+        .survey-written-item .written-meta {
+            font-size: 0.78rem;
+            color: #94a3b8;
+            margin-bottom: 0.25rem;
+        }
+        .survey-written-item .written-text {
+            color: #334155;
+            font-size: 0.92rem;
+            line-height: 1.5;
+            word-break: break-word;
+        }
+
+        /* Student responses table */
+        .survey-student-table {
+            width: 100%;
+            font-size: 0.88rem;
+        }
+        .survey-student-table th {
+            background: #f8fafc;
+            font-weight: 600;
+            color: #475569;
+            padding: 0.65rem 0.75rem;
+            border-bottom: 2px solid #e2e8f0;
+            font-size: 0.8rem;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            white-space: nowrap;
+        }
+        .survey-student-table td {
+            padding: 0.65rem 0.75rem;
+            border-bottom: 1px solid rgba(226, 232, 240, 0.6);
+            vertical-align: middle;
+        }
+        .survey-student-table tr:hover td {
+            background: rgba(96, 165, 250, 0.04);
+        }
+        .survey-student-table .student-name-cell {
+            font-weight: 600;
+            color: #1e3a8a;
+            cursor: pointer;
+        }
+        .survey-student-table .student-name-cell:hover {
+            text-decoration: underline;
+        }
+
+        /* Student detail modal answers */
+        .student-detail-answer {
+            padding: 0.85rem 1.25rem;
+            border-bottom: 1px solid rgba(226, 232, 240, 0.5);
+        }
+        .student-detail-answer:last-child { border-bottom: none; }
+        .student-detail-answer .detail-question-id {
+            font-size: 0.72rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            color: var(--primary-color);
+            letter-spacing: 0.06em;
+            margin-bottom: 0.15rem;
+        }
+        .student-detail-answer .detail-prompt {
+            font-size: 0.88rem;
+            color: #475569;
+            margin-bottom: 0.35rem;
+        }
+        .student-detail-answer .detail-value {
+            font-weight: 600;
+            color: #1e293b;
+            font-size: 0.92rem;
+        }
+        .student-detail-answer .detail-value.not-answered {
+            color: #94a3b8;
+            font-style: italic;
+            font-weight: 400;
+        }
+        .student-detail-answer .detail-value.is-textarea {
+            background: rgba(96, 165, 250, 0.06);
+            border-radius: 8px;
+            padding: 0.6rem 0.85rem;
+            border-left: 3px solid var(--primary-color);
+            line-height: 1.5;
+            word-break: break-word;
+        }
+
         /* Responsive Design */
         @media (max-width: 768px) {
             .main-header {

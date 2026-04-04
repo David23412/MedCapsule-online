@@ -172,4 +172,40 @@ class UserCourseController extends Controller
         return response()->json($result, $result['success'] ? 200 : 500);
     }
 
+    /**
+     * Paginated written (textarea) survey answers for admin AJAX.
+     */
+    public function surveyWrittenAnswers(Request $request)
+    {
+        $page = max(1, (int) $request->input('page', 1));
+        $perPage = min(50, max(1, (int) $request->input('per_page', 20)));
+
+        return response()->json($this->freeCourseSurveyService->getWrittenAnswers($page, $perPage));
+    }
+
+    /**
+     * Paginated list of all student survey responses for admin AJAX.
+     */
+    public function surveyStudentResponses(Request $request)
+    {
+        $page = max(1, (int) $request->input('page', 1));
+        $perPage = min(50, max(1, (int) $request->input('per_page', 25)));
+        $search = $request->input('search');
+
+        return response()->json($this->freeCourseSurveyService->getStudentResponses($page, $perPage, $search));
+    }
+
+    /**
+     * Single student's full survey response detail for admin AJAX.
+     */
+    public function surveyStudentDetail(int $userId)
+    {
+        $detail = $this->freeCourseSurveyService->getStudentDetail($userId);
+
+        if (!$detail) {
+            return response()->json(['error' => 'No survey response found for this student.'], 404);
+        }
+
+        return response()->json($detail);
+    }
 }

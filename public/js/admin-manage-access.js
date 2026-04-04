@@ -1551,6 +1551,243 @@ const MANAGE_ACCESS_CONFIG = window.MANAGE_ACCESS_CONFIG || {};
             if (surveyTab) {
                 surveyTab.addEventListener('shown.bs.tab', function () {
                     surveyCards.forEach(revealSurveyCard);
+                    // Auto-load student responses when tab first shown
+                    if (!window.surveyAdmin._studentsLoaded) {
+                        window.surveyAdmin.loadStudentResponses(1);
+                        window.surveyAdmin._studentsLoaded = true;
+                    }
                 });
             }
+
+            // If survey tab is already active on page load, load students
+            if (surveyPane.classList.contains('show') && !window.surveyAdmin._studentsLoaded) {
+                window.surveyAdmin.loadStudentResponses(1);
+                window.surveyAdmin._studentsLoaded = true;
+            }
         });
+
+/* ── Survey Admin: Written Answers + Student Responses ── */
+window.surveyAdmin = (function () {
+    'use strict';
+
+    var _searchTimer = null;
+    var _studentsLoaded = false;
+
+    function escapeHtml(str) {
+        if (!str) return '';
+        var div = document.createElement('div');
+        div.appendChild(document.createTextNode(str));
+        return div.innerHTML;
+    }
+
+    function fetchJson(url) {
+        return fetch(url, { credentials: 'same-origin', headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' } })
+            .then(function (res) {
+                if (!res.ok) throw new Error('HTTP ' + res.status);
+                return res.json();
+            });
+    }
+
+    function buildPaginationButtons(currentPage, lastPage, onClickFn) {
+        var html = '';
+        var start = Math.max(1, currentPage - 2);
+        var end = Math.min(lastPage, currentPage + 2);
+
+        if (currentPage > 1) {
+            html += '<button class="btn btn-sm btn-outline-secondary" onclick="' + onClickFn + '(' + (currentPage - 1) + ')">‹</button>';
+        }
+        for (var p = start; p <= end; p++) {
+            html += '<button class="btn btn-sm ' + (p === currentPage ? 'btn-primary' : 'btn-outline-secondary') + '" onclick="' + onClickFn + '(' + p + ')">' + p + '</button>';
+        }
+        if (currentPage < lastPage) {
+            html += '<button class="btn btn-sm btn-outline-secondary" onclick="' + onClickFn + '(' + (currentPage + 1) + ')">›</button>';
+        }
+        return html;
+    }
+
+    /* ── Written Answers ── */
+    function loadWrittenAnswers(page) {
+        var panel = document.getElementById('written-answers-panel');
+        var list = document.getElementById('written-answers-list');
+        var pag = document.getElementById('written-answers-pagination');
+        var loading = document.getElementById('written-answers-loading');
+        if (!panel || !list) return;
+
+        panel.style.display = '';
+        if (loading) loading.style.display = '';
+        list.innerHTML = '';
+        if (pag) pag.innerHTML = '';
+
+        fetchJson('/manage-access/survey/written-answers?page=' + page + '&per_page=15')
+            .then(function (data) {
+                if (loading) loading.style.display = 'none';
+                var items = data.items || [];
+
+                if (items.length === 0) {
+                    list.innerHTML = '<div class="text-center py-3 text-muted small">No written answers found.</div>';
+                    return;
+                }
+
+                var html = '';
+                items.forEach(function (item) {
+                    html += '<div class="survey-written-item">';
+                    html += '<div class="written-meta">' + escapeHtml(item.user_name) + ' · ' + escapeHtml(item.user_email) + ' · ' + escapeHtml(item.submitted_at || '') + '</div>';
+                    html += '<div class="written-text">' + escapeHtml(item.text) + '</div>';
+                    html += '</div>';
+                });
+                list.innerHTML = html;
+
+                if (data.last_page > 1 && pag) {
+                    pag.innerHTML = buildPaginationButtons(data.page, data.last_page, 'surveyAdmin.loadWrittenAnswers');
+                }
+            })
+            .catch(function () {
+                if (loading) loading.style.display = 'none';
+                list.innerHTML = '<div class="text-center py-3 text-danger small">Failed to load written answers.</div>';
+            });
+    }
+
+    function hideWrittenAnswers() {
+        var panel = document.getElementById('written-answers-panel');
+        if (panel) panel.style.display = 'none';
+    }
+
+    /* ── Student Responses ── */
+    function loadStudentResponses(page, search) {
+        var wrap = document.getElementById('student-responses-table-wrap');
+        var loading = document.getElementById('student-responses-loading');
+        var pagWrap = document.getElementById('student-responses-pagination');
+        var info = document.getElementById('student-responses-info');
+        var pages = document.getElementById('student-responses-pages');
+        if (!wrap) return;
+
+        if (loading) loading.style.display = '';
+        wrap.innerHTML = '';
+        if (pagWrap) pagWrap.style.display = 'none';
+
+        var url = '/manage-access/survey/student-responses?page=' + page + '&per_page=20';
+        if (search && search.trim()) {
+            url += '&search=' + encodeURIComponent(search.trim());
+        }
+
+        fetchJson(url)
+            .then(function (data) {
+                if (loading) loading.style.display = 'none';
+                var items = data.items || [];
+
+                if (items.length === 0) {
+                    wrap.innerHTML = '<div class="text-center py-4 text-muted small">No survey responses found.</div>';
+                    return;
+                }
+
+                var html = '<div class="table-responsive"><table class="survey-student-table">';
+                html += '<thead><tr><th>Student</th><th>Email</th><th>Submitted</th><th>Year</th><th>Device</th><th style="width:80px"></th></tr></thead>';
+                html += '<tbody>';
+
+                items.forEach(function (item) {
+                    var year = (item.answers && item.answers.q10) ? item.answers.q10.label : '—';
+                    var device = (item.answers && item.answers.q6) ? item.answers.q6.label : '—';
+
+                    html += '<tr>';
+                    html += '<td class="student-name-cell" onclick="surveyAdmin.showStudentDetail(' + item.user_id + ')">' + escapeHtml(item.user_name) + '</td>';
+                    html += '<td class="small text-muted">' + escapeHtml(item.user_email) + '</td>';
+                    html += '<td class="small text-muted">' + escapeHtml(item.submitted_at || '') + '</td>';
+                    html += '<td>' + escapeHtml(year) + '</td>';
+                    html += '<td>' + escapeHtml(device) + '</td>';
+                    html += '<td><button class="btn btn-sm btn-outline-primary" onclick="surveyAdmin.showStudentDetail(' + item.user_id + ')"><i class="fas fa-eye"></i></button></td>';
+                    html += '</tr>';
+                });
+
+                html += '</tbody></table></div>';
+                wrap.innerHTML = html;
+
+                if (pagWrap && data.last_page > 0) {
+                    pagWrap.style.display = 'flex';
+                    if (info) {
+                        var from = ((data.page - 1) * data.per_page) + 1;
+                        var to = Math.min(data.page * data.per_page, data.total);
+                        info.textContent = 'Showing ' + from + '–' + to + ' of ' + data.total + ' responses';
+                    }
+                    if (pages && data.last_page > 1) {
+                        var searchVal = document.getElementById('survey-student-search') ? document.getElementById('survey-student-search').value : '';
+                        pages.innerHTML = buildPaginationButtons(data.page, data.last_page, 'surveyAdmin.loadStudentResponsesWithSearch');
+                    }
+                }
+            })
+            .catch(function () {
+                if (loading) loading.style.display = 'none';
+                wrap.innerHTML = '<div class="text-center py-4 text-danger small">Failed to load student responses.</div>';
+            });
+    }
+
+    function loadStudentResponsesWithSearch(page) {
+        var searchInput = document.getElementById('survey-student-search');
+        var search = searchInput ? searchInput.value : '';
+        loadStudentResponses(page, search);
+    }
+
+    /* ── Student Detail Modal ── */
+    function showStudentDetail(userId) {
+        var nameEl = document.getElementById('studentDetailName');
+        var metaEl = document.getElementById('studentDetailMeta');
+        var bodyEl = document.getElementById('studentDetailBody');
+        if (!bodyEl) return;
+
+        bodyEl.innerHTML = '<div class="text-center py-5"><div class="spinner-border text-primary" role="status"></div></div>';
+        if (nameEl) nameEl.textContent = 'Loading…';
+        if (metaEl) metaEl.textContent = '';
+
+        var modal = new bootstrap.Modal(document.getElementById('studentDetailModal'));
+        modal.show();
+
+        fetchJson('/manage-access/survey/student/' + userId)
+            .then(function (data) {
+                if (nameEl) nameEl.textContent = data.user_name || 'Student';
+                if (metaEl) metaEl.textContent = (data.user_email || '') + ' · Submitted: ' + (data.submitted_at || '—');
+
+                var html = '';
+                (data.answers || []).forEach(function (a) {
+                    html += '<div class="student-detail-answer">';
+                    html += '<div class="detail-question-id">' + escapeHtml(a.question_id) + '</div>';
+                    html += '<div class="detail-prompt">' + escapeHtml(a.prompt) + '</div>';
+
+                    if (!a.answered) {
+                        html += '<div class="detail-value not-answered">Not answered</div>';
+                    } else if (a.type === 'textarea') {
+                        html += '<div class="detail-value is-textarea">' + escapeHtml(a.label || a.value) + '</div>';
+                    } else {
+                        html += '<div class="detail-value">' + escapeHtml(a.label || a.value) + '</div>';
+                    }
+
+                    html += '</div>';
+                });
+
+                bodyEl.innerHTML = html || '<div class="text-center py-4 text-muted">No answers found.</div>';
+            })
+            .catch(function () {
+                bodyEl.innerHTML = '<div class="text-center py-4 text-danger">Failed to load student details.</div>';
+            });
+    }
+
+    /* ── Search debounce ── */
+    document.addEventListener('DOMContentLoaded', function () {
+        var searchInput = document.getElementById('survey-student-search');
+        if (searchInput) {
+            searchInput.addEventListener('input', function () {
+                clearTimeout(_searchTimer);
+                _searchTimer = setTimeout(function () {
+                    loadStudentResponses(1, searchInput.value);
+                }, 400);
+            });
+        }
+    });
+
+    return {
+        loadWrittenAnswers: loadWrittenAnswers,
+        hideWrittenAnswers: hideWrittenAnswers,
+        loadStudentResponses: loadStudentResponses,
+        loadStudentResponsesWithSearch: loadStudentResponsesWithSearch,
+        showStudentDetail: showStudentDetail,
+        _studentsLoaded: _studentsLoaded
+    };
+})();

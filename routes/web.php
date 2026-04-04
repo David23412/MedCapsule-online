@@ -139,6 +139,11 @@ Route::group([], function () {
         Route::get('/manage-access/user-enrollments', [UserCourseController::class, 'getUserEnrollments'])->name('admin.user-course.user-enrollments');
         Route::post('/manage-access/payment-settings', [UserCourseController::class, 'updatePaymentSettings'])->name('admin.payment-settings.update');
 
+        // Survey detail endpoints
+        Route::get('/manage-access/survey/written-answers', [UserCourseController::class, 'surveyWrittenAnswers'])->name('admin.survey.written-answers');
+        Route::get('/manage-access/survey/student-responses', [UserCourseController::class, 'surveyStudentResponses'])->name('admin.survey.student-responses');
+        Route::get('/manage-access/survey/student/{userId}', [UserCourseController::class, 'surveyStudentDetail'])->name('admin.survey.student-detail')->where('userId', '[0-9]+');
+
         // Course Management Resource Routes
         Route::resource('admin/courses', \App\Http\Controllers\Admin\CourseController::class)->names('admin.courses');
     });
