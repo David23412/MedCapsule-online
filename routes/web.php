@@ -250,7 +250,7 @@ Route::group([], function () {
     Route::redirect('/dashboard', '/courses')->name('dashboard');
 
     // Payment Routes
-    Route::prefix('payments')->name('payments.')->group(function () {
+    Route::prefix('payments')->name('payments.')->middleware('auth')->group(function () {
         Route::get('/{course}/options', [App\Http\Controllers\Admin\PaymentController::class, 'getPaymentOptions'])->name('options');
         Route::post('/{course}/process', [App\Http\Controllers\Admin\PaymentController::class, 'processManualPayment'])->name('process');
     });
