@@ -1039,6 +1039,7 @@ document.addEventListener('DOMContentLoaded', function() {
         
         return fetch('/notifications', {
             method: 'GET',
+            credentials: 'same-origin',
             headers: {
                 'Accept': 'application/json',
                 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || ''
@@ -1082,6 +1083,7 @@ document.addEventListener('DOMContentLoaded', function() {
     function markAllNotificationsAsRead() {
         return fetch('/notifications/mark-all-read', {
             method: 'POST',
+            credentials: 'same-origin',
             headers: {
                 'Accept': 'application/json',
                 'Content-Type': 'application/json',
