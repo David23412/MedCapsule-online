@@ -71,12 +71,10 @@ class RevisionPlannerStrategy implements PlannerModeStrategy
 
             $repairTasks = $this->plannerTaskBuilderService->buildRepairTopicTasks(collect([$topic]), $context, 1, 14);
             foreach ($repairTasks as $task) {
-                if ($tasks->count() >= $limit && $tasks->contains(fn (array $t) => ($t['id'] ?? null) === ($task['id'] ?? null))) {
+                if ($tasks->contains(fn (array $t) => ($t['id'] ?? null) === ($task['id'] ?? null))) {
                     continue;
                 }
-                if (!$tasks->contains(fn (array $t) => ($t['id'] ?? null) === ($task['id'] ?? null))) {
-                    $tasks->push($this->withSlot($task, $tasks->count() + 1));
-                }
+                $tasks->push($this->withSlot($task, $tasks->count() + 1));
                 if ($tasks->count() >= $limit) {
                     break;
                 }
