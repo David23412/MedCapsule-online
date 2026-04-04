@@ -1788,6 +1788,6 @@ window.surveyAdmin = (function () {
         loadStudentResponses: loadStudentResponses,
         loadStudentResponsesWithSearch: loadStudentResponsesWithSearch,
         showStudentDetail: showStudentDetail,
-        _studentsLoaded: _studentsLoaded
+        _studentsLoaded: false
     };
 })();
