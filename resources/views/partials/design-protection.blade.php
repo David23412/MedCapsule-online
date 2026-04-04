@@ -70,7 +70,7 @@
                     return false;
                 }
 
-                return Boolean(target.closest('input, textarea, select, [contenteditable=""], [contenteditable="true"]'));
+                return Boolean(target.closest('input, textarea, select, [contenteditable=""], [contenteditable="true"], .question-text, .explanation-content, [data-allow-select]'));
             };
 
             const ensureOverlay = () => {
