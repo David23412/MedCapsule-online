@@ -291,7 +291,7 @@ class ComprehensiveWebsiteSeeder extends Seeder
                     'user_id' => $student->id,
                     'course_id' => $course->id,
                     'is_enrolled' => true,
-                    'access_level' => $course->isFree() ? \App\Models\User::COURSE_ACCESS_PREVIEW : \App\Models\User::COURSE_ACCESS_FULL,
+                    'access_level' => $course->isFreeAccess() ? \App\Models\User::COURSE_ACCESS_PREVIEW : \App\Models\User::COURSE_ACCESS_FULL,
                     'enrolled_at' => now(),
                     'created_at' => now(),
                     'updated_at' => now(),

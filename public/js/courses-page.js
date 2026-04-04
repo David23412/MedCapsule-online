@@ -683,8 +683,15 @@
 
     const coursesGridElement = document.querySelector('.courses-grid');
     if (coursesGridElement) {
+        let scrollTicking = false;
         coursesGridElement.addEventListener('scroll', () => {
-            updateScrollArrows(coursesGridElement);
+            if (!scrollTicking) {
+                requestAnimationFrame(() => {
+                    updateScrollArrows(coursesGridElement);
+                    scrollTicking = false;
+                });
+                scrollTicking = true;
+            }
         }, { passive: true });
     }
 

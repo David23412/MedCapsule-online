@@ -12,7 +12,6 @@ use App\Models\Course;
 use App\Models\User;
 use App\Models\UserTopicProgress;
 use App\Models\QuizAttempt;
-use App\Models\SourceProgress;
 use App\Models\Video;
 
 class Topic extends Model
@@ -61,12 +60,6 @@ class Topic extends Model
     public function questions(): HasMany
     {
         return $this->hasMany(Question::class)->orderBy('id'); // Ensure questions are ordered
-    }
-
-    // DEPRECATED: Use allQuestions() or the extra_topic column
-    public function linkedQuestions()
-    {
-        return collect();
     }
 
     // Get all questions for this topic (both direct and linked via extra_topic)

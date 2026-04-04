@@ -2375,7 +2375,7 @@
                                         <i class="fas fa-save me-2"></i>Save Student Count
                                     </button>
                                     <span class="ms-3 text-muted small">
-                                        <i class="fas fa-info-circle me-1"></i>Real count: <strong>{{ \App\Models\User::where('role', 0)->count() }}</strong> students
+                                        <i class="fas fa-info-circle me-1"></i>Real count: <strong>{{ $userStats['student_users'] ?? 0 }}</strong> students
                                     </span>
                                 </div>
                             </div>

@@ -125,7 +125,6 @@ Route::group([], function () {
         // Video Management Routes
         Route::get('/admin/videos', [App\Http\Controllers\VideoController::class, 'index'])->name('admin.videos.index');
         Route::post('/admin/videos', [App\Http\Controllers\VideoController::class, 'store'])->name('admin.videos.store');
-        Route::post('/admin/videos/{video}/toggle', [App\Http\Controllers\VideoController::class, 'toggle'])->name('admin.videos.toggle');
         Route::delete('/admin/videos/{video}', [App\Http\Controllers\VideoController::class, 'destroy'])->name('admin.videos.destroy');
 
         // API route for getting course topics

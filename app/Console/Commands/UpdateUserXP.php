@@ -30,25 +30,23 @@ class UpdateUserXP extends Command
     {
         $this->info('Starting to update user XP values...');
         
-        $users = User::all();
         $updatedCount = 0;
+        $totalCount = 0;
         
-        foreach ($users as $user) {
-            // Only update users with null XP values, to avoid overwriting 
-            // accumulated XP values that already work correctly
-            if ($user->xp === null) {
+        User::whereNull('xp')->chunk(500, function ($users) use (&$updatedCount, &$totalCount) {
+            foreach ($users as $user) {
+                $totalCount++;
                 $calculatedXP = $user->calculateXP();
                 
-                $oldXP = $user->xp ?? 0;
                 $user->xp = $calculatedXP;
                 $user->save();
                 
-                $this->line("Updated user #{$user->id} ({$user->name}) XP: {$oldXP} → {$calculatedXP}");
+                $this->line("Updated user #{$user->id} ({$user->name}) XP: 0 → {$calculatedXP}");
                 $updatedCount++;
             }
-        }
+        });
         
-        $this->info("Completed! Updated XP for {$updatedCount} out of {$users->count()} users.");
+        $this->info("Completed! Updated XP for {$updatedCount} users.");
         
         return 0;
     }

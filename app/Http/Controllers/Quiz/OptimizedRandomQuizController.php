@@ -95,6 +95,9 @@ class OptimizedRandomQuizController extends Controller
             }
         }
 
+        // ✅ ZERO N+1 BADGE ENRICHMENT for random quiz
+        \App\Models\Question::enrichWithBadges($result['questions'], 0);
+
         return view('quiz.random_quiz', [
             'questions' => $result['questions'],
             'selectedCourses' => $selectedCourses,
@@ -173,6 +176,9 @@ class OptimizedRandomQuizController extends Controller
                 $selectedCourses = collect([new \App\Models\Course(['id' => 1, 'name' => 'General'])]);
             }
         }
+
+        // ✅ ZERO N+1 BADGE ENRICHMENT for random tutor quiz
+        \App\Models\Question::enrichWithBadges($result['questions'], 0);
 
         return view('tutor_mode', [
             'questions' => $result['questions'],

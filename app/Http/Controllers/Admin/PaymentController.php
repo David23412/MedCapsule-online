@@ -96,30 +96,6 @@ class PaymentController extends Controller
     }
 
     /**
-     * Get payment statistics for dashboard
-     */
-    public function getPaymentStats()
-    {
-        if (!optional(auth()->user())->isAdmin()) {
-            return response()->json(['error' => 'Unauthorized'], 403);
-        }
-
-        $stats = [
-            'pending' => Payment::where('status', 'pending')->count(),
-            'completed' => Payment::where('status', 'completed')->count(),
-            'rejected' => Payment::where('status', 'rejected')->count(),
-            'total_amount' => Payment::where('status', 'completed')->sum('amount'),
-            'recent_payments' => Payment::with(['user', 'course'])
-                ->where('status', 'pending')
-                ->orderBy('created_at', 'desc')
-                ->limit(10)
-                ->get()
-        ];
-
-        return response()->json($stats);
-    }
-
-    /**
      * Get payment options for a specific course
      */
     public function getPaymentOptions(Course $course)

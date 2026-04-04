@@ -17,19 +17,25 @@ class AssignmentRetrievalService
     private const DASHBOARD_STATUS_OVERDUE = 'overdue';
 
     /**
-     * Get assignments for a tutor with filtering
+     * Get assignments for a tutor with filtering.
+     * Uses assignedUsers (many-to-many) since there's no single student relation.
      */
     public function getTutorAssignments(int $tutorId, array $filters = []): Collection
     {
-        $query = Assignment::with(['student', 'topic', 'course', 'attempts'])
-                          ->forTutor($tutorId);
+        $tutor = User::find($tutorId);
+        $tutorCourseIds = $tutor ? $tutor->courses()->pluck('courses.id')->all() : [];
+
+        $query = Assignment::with(['assignedUsers', 'topic', 'course', 'attempts'])
+                          ->whereIn('course_id', $tutorCourseIds);
 
         if (isset($filters['course_id'])) {
             $query->where('course_id', $filters['course_id']);
         }
 
         if (isset($filters['student_id'])) {
-            $query->where('user_id', $filters['student_id']);
+            $query->whereHas('assignedUsers', function ($q) use ($filters) {
+                $q->where('users.id', $filters['student_id']);
+            });
         }
 
         if (isset($filters['due_within_hours'])) {
@@ -42,30 +48,41 @@ class AssignmentRetrievalService
 
         $assignments = $query->get();
 
-        if (isset($filters['status']) && $filters['status'] !== '') {
+        if (isset($filters['status']) && $filters['status'] !== '' && isset($filters['student_id'])) {
             $status = (int) $filters['status'];
-            $assignments = $assignments->filter(function ($assignment) use ($status) {
-                if (empty($assignment->student)) return false;
-                return $assignment->getStatusForUser($assignment->student->id) === $status;
-            });
+            $student = User::find($filters['student_id']);
+            if ($student) {
+                $assignments = $assignments->filter(function ($assignment) use ($student, $status) {
+                    return $assignment->getStatusForUser($student) === $status;
+                });
+            }
         }
 
         return $assignments;
     }
 
     /**
-     * Get assignments for a student
+     * Get assignments for a student.
+     * Uses assignedUsers (many-to-many) to find the student's assignments.
      */
     public function getStudentAssignments(int $studentId, array $filters = []): Collection
     {
-        $query = Assignment::with(['tutor', 'topic', 'course', 'attempts'])
-                          ->forStudent($studentId);
+        $query = Assignment::with(['topic', 'course', 'attempts'])
+                          ->whereHas('assignedUsers', function ($q) use ($studentId) {
+                              $q->where('users.id', $studentId);
+                          });
 
         if (isset($filters['course_id'])) {
             $query->where('course_id', $filters['course_id']);
         }
 
-        $query->orderByRaw("\n            CASE \n                WHEN deadline < NOW() THEN 1\n                WHEN deadline <= NOW() + INTERVAL 24 HOUR THEN 2\n                ELSE 3\n            END\n        ")->orderBy('deadline', 'asc');
+        $query->orderByRaw("
+            CASE 
+                WHEN deadline < NOW() THEN 1
+                WHEN deadline <= NOW() + INTERVAL 24 HOUR THEN 2
+                ELSE 3
+            END
+        ")->orderBy('deadline', 'asc');
 
         $assignments = $query->get();
 

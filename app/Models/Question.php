@@ -79,8 +79,13 @@ class Question extends Model
     }
 
     // Define topics relationship: Consolidates main topic and extra_topic string into a single collection
+    // Cached per-instance to prevent repeated DB queries when accessed multiple times
     public function getTopicsAttribute()
     {
+        if (isset($this->topics_cached)) {
+            return $this->topics_cached;
+        }
+
         $topicIds = collect([$this->topic_id]);
         
         if (!empty($this->extra_topic)) {
@@ -90,13 +95,8 @@ class Question extends Model
             }
         }
         
-        return Topic::whereIn('id', $topicIds->unique()->filter())->get();
-    }
-
-    // DEPRECATED: Pivot table removed. User extra_topic string instead.
-    public function additionalTopics()
-    {
-        return collect();
+        $this->topics_cached = Topic::whereIn('id', $topicIds->unique()->filter())->get();
+        return $this->topics_cached;
     }
 
     /**
@@ -108,8 +108,9 @@ class Question extends Model
      */
     public static function enrichWithBadges($questions, int $currentTopicId): void
     {
-        // 1. Collect every extra topic ID referenced across all questions
+        // 1. Collect every extra topic ID AND main topic IDs (for cross-linked questions)
         $allExtraIds = collect();
+        $allMainTopicIds = collect();
         foreach ($questions as $q) {
             $raw = is_array($q) ? ($q['extra_topic'] ?? null) : ($q->extra_topic ?? null);
             if (!empty($raw)) {
@@ -117,12 +118,18 @@ class Question extends Model
                     $allExtraIds->push((int) trim($id));
                 }
             }
+            // Also collect main topic IDs so we can resolve names for cross-linked questions
+            $mainId = (int) (is_array($q) ? ($q['topic_id'] ?? 0) : ($q->topic_id ?? 0));
+            if ($mainId > 0 && $mainId !== $currentTopicId) {
+                $allMainTopicIds->push($mainId);
+            }
         }
 
-        // 2. Single query to resolve all needed topic names
+        // 2. Single query to resolve all needed topic names (extra + main for cross-linked)
+        $allNeededIds = $allExtraIds->merge($allMainTopicIds)->unique()->filter()->values();
         $topicNames = [];
-        if ($allExtraIds->isNotEmpty()) {
-            $topicNames = Topic::whereIn('id', $allExtraIds->unique()->filter()->values())
+        if ($allNeededIds->isNotEmpty()) {
+            $topicNames = Topic::whereIn('id', $allNeededIds)
                 ->pluck('name', 'id')
                 ->all();
         }
@@ -139,9 +146,19 @@ class Question extends Model
                 $badges[] = '📈 REPEATED';
             }
 
+            $mainTopicId = (int) (is_array($qObj) ? ($qObj['topic_id'] ?? 0) : ($qObj->topic_id ?? 0));
+
+            // When viewing a question from a linked topic (not its home topic),
+            // show the main topic name as a badge so users see the exam origin
+            if ($mainTopicId !== $currentTopicId && $mainTopicId > 0 && isset($topicNames[$mainTopicId])) {
+                $name = strtoupper($topicNames[$mainTopicId]);
+                if (!in_array($name, $badges, true)) {
+                    $badges[] = $name;
+                }
+            }
+
             $raw = is_array($qObj) ? ($qObj['extra_topic'] ?? null) : ($qObj->extra_topic ?? null);
             if (!empty($raw)) {
-                $mainTopicId = (int) (is_array($qObj) ? ($qObj['topic_id'] ?? 0) : ($qObj->topic_id ?? 0));
                 foreach (explode(',', $raw) as $idStr) {
                     $id = (int) trim($idStr);
                     // Skip the question's own main topic and the currently-viewed topic
@@ -159,7 +176,9 @@ class Question extends Model
 
             // Stamp as a plain attribute so Blade reads it without triggering accessors
             if (!is_array($qObj)) {
-                $qObj->setRelation('_badges_resolved', collect()); // mark as processed
+                if ($qObj instanceof \Illuminate\Database\Eloquent\Model) {
+                    $qObj->setRelation('_badges_resolved', collect());
+                }
                 $qObj->enhanced_source_badges_computed = $badges;
             }
         }
@@ -205,8 +224,15 @@ class Question extends Model
         } elseif ($this->exam_appearances_count >= 2) {
             $badges[] = '📈 REPEATED';
         }
+        // Show ALL linked topic names (including main topic for cross-linked context).
+        // The Blade template filters out the currently-viewed topic by name, so the
+        // exam origin badge (e.g. "FINAL EXAM 2022") will appear when viewing from
+        // a linked lecture topic, and will be hidden when viewing from the exam itself.
         foreach ($this->topics as $topic) {
-            if ($topic->id === $this->topic_id) continue;
+            if ($topic->id === $this->topic_id && empty($this->extra_topic)) {
+                // Only skip main topic if the question has no cross-links
+                continue;
+            }
             $name = strtoupper($topic->name);
             if (!in_array($name, $badges, true)) {
                 $badges[] = $name;

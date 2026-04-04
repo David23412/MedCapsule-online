@@ -153,11 +153,6 @@ class Course extends Model
         return $query->whereIn('access_type', self::PURCHASABLE_ACCESS_TYPES);
     }
 
-    public function isFree(): bool
-    {
-        return $this->isFreeAccess();
-    }
-
     // New access type methods
     public function isFreeAccess(): bool
     {

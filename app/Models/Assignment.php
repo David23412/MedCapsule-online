@@ -197,11 +197,6 @@ class Assignment extends Model
         return $this->hasMany(UserTopicProgress::class, 'assignment_id');
     }
 
-    public function allAttempts(): HasMany
-    {
-        return $this->hasMany(QuizAttempt::class, 'assignment_id');
-    }
-
     public function attemptsForUser($userId): HasMany
     {
         return $this->hasMany(QuizAttempt::class, 'assignment_id')
