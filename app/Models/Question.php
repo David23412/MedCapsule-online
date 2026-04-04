@@ -79,8 +79,13 @@ class Question extends Model
     }
 
     // Define topics relationship: Consolidates main topic and extra_topic string into a single collection
+    // Cached per-instance to prevent repeated DB queries when accessed multiple times
     public function getTopicsAttribute()
     {
+        if (isset($this->topics_cached)) {
+            return $this->topics_cached;
+        }
+
         $topicIds = collect([$this->topic_id]);
         
         if (!empty($this->extra_topic)) {
@@ -90,7 +95,8 @@ class Question extends Model
             }
         }
         
-        return Topic::whereIn('id', $topicIds->unique()->filter())->get();
+        $this->topics_cached = Topic::whereIn('id', $topicIds->unique()->filter())->get();
+        return $this->topics_cached;
     }
 
     /**

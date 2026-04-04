@@ -110,7 +110,7 @@ class Mistake extends Model
 
         static::creating(function ($mistake) {
             // Ensure the question exists before creating a mistake entry
-            if (!Question::find($mistake->question_id)) {
+            if (!Question::where('id', $mistake->question_id)->exists()) {
                 Log::warning('⚠️ Attempting to create a mistake with an invalid question_id', [
                     'question_id' => $mistake->question_id,
                     'user_id' => $mistake->user_id
@@ -139,7 +139,7 @@ class Mistake extends Model
         });
 
         static::updating(function ($mistake) {
-            if (!Question::find($mistake->question_id)) {
+            if (!Question::where('id', $mistake->question_id)->exists()) {
                 Log::warning('⚠️ Attempting to update a mistake with an invalid question_id', [
                     'question_id' => $mistake->question_id,
                     'user_id' => $mistake->user_id
@@ -335,17 +335,7 @@ class Mistake extends Model
             return $query;
         }
 
-        $userId = $this->extractUserIdFromQuery($query);
-        $difficulty = 'easy';
-        if ($userId) {
-            $difficulty = \App\Models\User::where('id', $userId)->value('mistake_mastery_mode') ?? 'easy';
-        }
-
-        $requiredStreak = (new \App\Services\Learning\UserMistakeMasteryService())->requiredStreakForDifficulty($difficulty);
-        
-        if ($normalizedMode === 'quick') {
-            $requiredStreak = 2;
-        }
+        $requiredStreak = $this->resolveRequiredStreak($query, $normalizedMode);
 
         return $query
             ->where('mastered', false)
@@ -363,23 +353,37 @@ class Mistake extends Model
             return $query->whereRaw('1 = 0');
         }
 
-        $userId = $this->extractUserIdFromQuery($query);
-        $difficulty = 'easy';
-        if ($userId) {
-            $difficulty = \App\Models\User::where('id', $userId)->value('mistake_mastery_mode') ?? 'easy';
-        }
-
-        $requiredStreak = (new \App\Services\Learning\UserMistakeMasteryService())->requiredStreakForDifficulty($difficulty);
-        
-        if ($normalizedMode === 'quick') {
-            $requiredStreak = 2;
-        }
+        $requiredStreak = $this->resolveRequiredStreak($query, $normalizedMode);
 
         return $query->where(function ($innerQuery) use ($requiredStreak) {
             $innerQuery
                 ->where('mastered', true)
                 ->orWhere('correct_streak', '>=', $requiredStreak);
         });
+    }
+
+    /**
+     * Resolve the required streak for mastery scopes.
+     * Uses in-memory User model when available to avoid extra DB queries.
+     */
+    private function resolveRequiredStreak($query, string $normalizedMode): int
+    {
+        if ($normalizedMode === 'quick') {
+            return 2;
+        }
+
+        $userId = $this->extractUserIdFromQuery($query);
+        $difficulty = 'easy';
+        if ($userId) {
+            // Use the cached User instance if already loaded in memory (e.g. auth()->user()),
+            // otherwise fall back to a lightweight value() query (no model hydration).
+            $user = auth()->check() && auth()->id() === $userId ? auth()->user() : null;
+            $difficulty = $user?->mistake_mastery_mode
+                ?? \App\Models\User::where('id', $userId)->value('mistake_mastery_mode')
+                ?? 'easy';
+        }
+
+        return (new \App\Services\Learning\UserMistakeMasteryService())->requiredStreakForDifficulty($difficulty);
     }
 
     private function extractUserIdFromQuery($query): ?int

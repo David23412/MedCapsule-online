@@ -2233,19 +2233,6 @@
 
                     <!-- Clean Card Body -->
                     <div class="card-body">
-                        @php
-                            $assignmentUsers = $assignment->usersWithProgress()->get();
-                            $completedCount = 0;
-                            $totalStudents = $assignmentUsers->count();
-                            
-                            foreach($assignmentUsers as $user) {
-                                $latestAttempt = $user->quizAttempts->first();
-                                if ($latestAttempt && $latestAttempt->completed_at) {
-                                    $completedCount++;
-                                }
-                            }
-                        @endphp
-                        
                         <div class="deadline-section">
                             <div class="deadline-info">
                                 <span class="deadline-label">Due</span>
