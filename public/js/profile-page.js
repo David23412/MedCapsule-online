@@ -389,7 +389,6 @@
                                     <select class="form-select" id="plannerFocusInput"
                                             style="padding: 0.85rem; border: 2px solid #cbd5e1; border-radius: 10px; font-weight: 600;">
                                         <option value="balanced" ${currentPlannerFocus === 'balanced' ? 'selected' : ''}>Balanced</option>
-                                        <option value="new_topics" ${currentPlannerFocus === 'new_topics' ? 'selected' : ''}>New topics</option>
                                         <option value="revision" ${currentPlannerFocus === 'revision' ? 'selected' : ''}>Revision</option>
                                         <option value="exam_prep" ${currentPlannerFocus === 'exam_prep' ? 'selected' : ''}>Exam prep</option>
                                     </select>

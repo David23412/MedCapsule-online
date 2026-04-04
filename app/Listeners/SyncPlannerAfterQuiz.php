@@ -29,11 +29,10 @@ class SyncPlannerAfterQuiz
                 return; 
             }
 
-            // Quick exit if it's a preview task completion
-            $taskId = $event->quizAttempt->planner_task_id ?? null;
-            if ($taskId && str_starts_with((string)$taskId, 'preview_')) {
-                return;
-            }
+            // Preview frontier_topic_quiz tasks MUST still trigger stage transition
+            // evaluation — do NOT early-return for preview tasks. The downstream
+            // applyPlannerStageTransitions() already handles preview vs. progression
+            // correctly by evaluating frontier_topic_quiz regardless of is_preview flag.
 
             // Fallback to topic->course() if event->course is not explicitly set
             $course = $event->course ?? $event->topic->course()->first();

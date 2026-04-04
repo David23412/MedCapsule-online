@@ -16,21 +16,13 @@ class PlannerTaskBuilderService
     {
         $orderedOpenTopics = $topics
             ->filter(fn (Topic $topic) => !$topic->is_locked)
-            ->sortBy(fn (Topic $topic) => sprintf(
-                '%010d-%010d',
-                (int) ($topic->display_order ?? PHP_INT_MAX),
-                (int) $topic->id
-            ))
+            ->sortBy(fn (Topic $topic) => $this->topicSortKey($topic, $context))
             ->values();
         [$openTopics, $frontierTopicId, $progressionLocked] = $this->scopeTopicsToProgressionFrontier($orderedOpenTopics, $context);
 
         $untouchedTopics = $openTopics
             ->filter(fn (Topic $topic) => data_get($context->topicSignals, 'profiles.' . $topic->id . '.progression_stage') === 'tutor')
-            ->sortBy(fn (Topic $topic) => sprintf(
-                '%010d-%010d',
-                (int) ($topic->display_order ?? PHP_INT_MAX),
-                (int) $topic->id
-            ))
+            ->sortBy(fn (Topic $topic) => $this->topicSortKey($topic, $context))
             ->values();
         $weakTopics = $openTopics
             ->filter(fn (Topic $topic) => (bool) data_get($context->topicSignals, 'profiles.' . $topic->id . '.is_weak', false))
@@ -124,11 +116,7 @@ class PlannerTaskBuilderService
 
         $orderedTopics = $topics
             ->filter(fn (Topic $topic) => !$topic->is_locked)
-            ->sortBy(fn (Topic $topic) => sprintf(
-                '%010d-%010d',
-                (int) ($topic->display_order ?? PHP_INT_MAX),
-                (int) $topic->id
-            ))
+            ->sortBy(fn (Topic $topic) => $this->topicSortKey($topic, $context))
             ->values();
         $currentTopic = $orderedTopics->firstWhere('id', $topicId);
         if (!($currentTopic instanceof Topic)) {
@@ -149,17 +137,35 @@ class PlannerTaskBuilderService
         }
 
         if ($this->isSolveProgressionTask($actionableTask)) {
-            $slotTwo = $this->buildRepairPreviewTask($currentTopic, $context);
-            if ($slotTwo !== null) {
-                $previews->push($this->withPreviewMetadata($slotTwo, 2, (string) $actionableTask['id']));
-            }
+            // Only show "Revise Mistakes" preview if the topic actually has or is
+            // likely to have a reviewable backlog. If the student answered everything
+            // correctly, there's nothing to revise — show the next topic's Study instead.
+            $hasBacklog = (bool) ($profile['has_reviewable_backlog'] ?? false)
+                || (bool) ($profile['has_due_review'] ?? false);
 
-            if ($nextTopic !== null && $previews->isNotEmpty()) {
-                $previews->push($this->withPreviewMetadata(
-                    $this->buildStudyPreviewTask($nextTopic, $context),
-                    3,
-                    (string) $previews->last()['id']
-                ));
+            if ($hasBacklog) {
+                $slotTwo = $this->buildRepairPreviewTask($currentTopic, $context);
+                if ($slotTwo !== null) {
+                    $previews->push($this->withPreviewMetadata($slotTwo, 2, (string) $actionableTask['id']));
+                }
+
+                if ($nextTopic !== null && $previews->isNotEmpty()) {
+                    $previews->push($this->withPreviewMetadata(
+                        $this->buildStudyPreviewTask($nextTopic, $context),
+                        3,
+                        (string) $previews->last()['id']
+                    ));
+                }
+            } else {
+                // No mistakes exist (or will exist) — skip repair, show next topic progression
+                if ($nextTopic !== null) {
+                    $slotTwo = $this->buildStudyPreviewTask($nextTopic, $context);
+                    $previews->push($this->withPreviewMetadata($slotTwo, 2, (string) $actionableTask['id']));
+                    $slotThree = $this->buildSolvePreviewTask($nextTopic, $context);
+                    if ($slotThree !== null) {
+                        $previews->push($this->withPreviewMetadata($slotThree, 3, (string) $previews->last()['id']));
+                    }
+                }
             }
 
             return $previews->filter()->values();
@@ -190,12 +196,29 @@ class PlannerTaskBuilderService
         $profile = data_get($context->topicSignals, 'profiles.' . $topic->id, []);
         $stage = (string) ($profile['progression_stage'] ?? '');
 
-        return match ($stage) {
+        $task = match ($stage) {
             'tutor' => $this->buildStartTopicTasks(collect([$topic]), $context, 1, 16)->first(),
             'quiz' => $this->buildFrontierQuizProtocolTask($buckets, $context, $topic, $profile),
             'mistakes' => $this->buildFrontierRepairProtocolTask($topic, $context, 16),
             default => null,
         };
+
+        // If the frontier is in 'mistakes' stage but there are zero mistakes to review
+        // (e.g. student got 100% on the quiz — no wrong answers), the repair builder
+        // returns null. In this case the topic has effectively cleared — skip to the
+        // next untouched topic's Study task instead of leaving the plan empty.
+        if ($task === null && $stage === 'mistakes') {
+            $nextTopic = $this->nextPreviewTopic($buckets->allOpenTopics, $topic);
+            if ($nextTopic !== null) {
+                $nextProfile = data_get($context->topicSignals, 'profiles.' . $nextTopic->id, []);
+                $nextStage = (string) ($nextProfile['progression_stage'] ?? '');
+                if ($nextStage === 'tutor') {
+                    $task = $this->buildStartTopicTasks(collect([$nextTopic]), $context, 1, 16)->first();
+                }
+            }
+        }
+
+        return $task;
     }
 
     private function buildFrontierQuizProtocolTask(
@@ -357,11 +380,7 @@ class PlannerTaskBuilderService
         int $limit
     ): Collection {
         $candidates = $topics
-            ->sortBy(fn (Topic $topic) => sprintf(
-                '%010d-%010d',
-                (int) ($topic->display_order ?? PHP_INT_MAX),
-                (int) $topic->id
-            ))
+            ->sortBy(fn (Topic $topic) => $this->topicSortKey($topic, $context))
             ->filter(function (Topic $topic) use ($buckets, $context) {
                 if ((int) $topic->id === (int) $buckets->frontierTopicId) {
                     return false;
@@ -404,11 +423,7 @@ class PlannerTaskBuilderService
             ->filter(fn (Topic $topic) => !$topic->is_locked)
             ->reject(fn (Topic $topic) => (int) $topic->id === (int) $buckets->frontierTopicId)
             ->filter(fn (Topic $topic) => data_get($context->topicSignals, 'profiles.' . $topic->id . '.progression_stage') === 'cleared')
-            ->sortBy(fn (Topic $topic) => sprintf(
-                '%010d-%010d',
-                (int) ($topic->display_order ?? PHP_INT_MAX),
-                (int) $topic->id
-            ))
+            ->sortBy(fn (Topic $topic) => $this->topicSortKey($topic, $context))
             ->values();
     }
 
@@ -1485,6 +1500,26 @@ class PlannerTaskBuilderService
     private function isUntouchedTopic(int $topicId, PlannerContext $context): bool
     {
         return (bool) data_get($context->topicSignals, 'profiles.' . $topicId . '.is_untouched', false);
+    }
+
+    /**
+     * Sort key for topic ordering.
+     *
+     * In exam_prep mode, is_exam topics sort before lecture topics.
+     * Otherwise, topics sort by display_order then by id.
+     */
+    private function topicSortKey(Topic $topic, PlannerContext $context): string
+    {
+        // In exam_prep mode, exam topics (is_exam=true) come first (bucket 0),
+        // lecture topics come second (bucket 1). Within each bucket, display_order applies.
+        $examBucket = ($context->plannerFocus === 'exam_prep' && (bool) $topic->is_exam) ? 0 : 1;
+
+        return sprintf(
+            '%01d-%010d-%010d',
+            $examBucket,
+            (int) ($topic->display_order ?? PHP_INT_MAX),
+            (int) $topic->id,
+        );
     }
 
     private function resolveTargetSourceForTopic(Topic $topic, array $topicSignals, ?string $preferredSource): ?string

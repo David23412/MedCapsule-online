@@ -820,9 +820,14 @@ class StudyGamePlanService
                     return true;
                 }
 
+                // Completed tasks must remain visible for 24 hours.
+                // If completed_at is missing (e.g. task was evaluated as complete
+                // after the plan was persisted), treat as recently completed rather
+                // than dropping it — dropping causes the "solved but still shows
+                // unfinished" bug because the task vanishes from the visible queue.
                 $completedAt = $task['completed_at'] ?? null;
                 if (!$completedAt) {
-                    return false;
+                    return true; // keep recently-completed tasks visible even if timestamp missing
                 }
 
                 return Carbon::parse($completedAt)->isAfter(now()->subHours(24));
@@ -851,10 +856,13 @@ class StudyGamePlanService
             $actionableTopicId = (int) ($currentActionableTask['topic_id'] ?? 0);
             $actionableType = (string) ($currentActionableTask['type'] ?? '');
 
+            // Group tasks for the actionable topic together, with completed tasks FIRST
+            // to preserve chronological progression order: Study(done) → Solve(active) → Repair(locked)
             $topicGroup = $activeTasks->filter(function (array $task) use ($actionableTopicId) {
                 return (int) ($task['topic_id'] ?? 0) === $actionableTopicId
                     && !($task['is_preview'] ?? false);
-            })->values();
+            })->sortBy(fn (array $task) => (bool) ($task['completed'] ?? false) ? 0 : 1)
+            ->values();
 
             $previewTasks = $previewTasks->reject(function (array $preview) use ($actionableTopicId, $actionableType) {
                 return (int) ($preview['topic_id'] ?? 0) === $actionableTopicId
@@ -867,9 +875,15 @@ class StudyGamePlanService
                 ->reject(fn (array $task) => in_array($task['id'] ?? null, $groupAndPreviewIds, true))
                 ->values();
 
-            return $topicGroup
+            // Completed tasks from previous topics stay above the current frontier group
+            // to preserve the chronological Study→Solve→Repair flow the student already completed.
+            $completedExtraTasks = $extraTasks->filter(fn (array $task) => (bool) ($task['completed'] ?? false))->values();
+            $activeExtraTasks = $extraTasks->reject(fn (array $task) => (bool) ($task['completed'] ?? false))->values();
+
+            return $completedExtraTasks
+                ->concat($topicGroup)
                 ->concat($previewTasks)
-                ->concat($extraTasks)
+                ->concat($activeExtraTasks)
                 ->values();
         }
 
@@ -1082,6 +1096,8 @@ class StudyGamePlanService
                     'progression_stage' => (string) ($profile['progression_stage'] ?? 'unknown'),
                     'curriculum_unlocked' => (bool) ($profile['curriculum_unlocked'] ?? false),
                     'priority_score' => (float) ($profile['priority_score'] ?? 0.0),
+                    'has_reviewable_backlog' => (bool) ($profile['has_reviewable_backlog'] ?? false),
+                    'has_due_review' => (bool) ($profile['has_due_review'] ?? false),
                     'locked_reason' => $lockedReason,
                 ];
             })->all(),
@@ -1097,7 +1113,23 @@ class StudyGamePlanService
                 'counts_toward_progression' => (bool) ($task['counts_toward_progression'] ?? false),
                 'is_preview' => (bool) ($task['is_preview'] ?? false),
                 'unlocks_after_task_id' => $task['unlocks_after_task_id'] ?? null,
+                'completion_state' => $task['completion_state'] ?? 'unknown',
+                'completion_progress' => (float) ($task['completion_progress'] ?? 0.0),
+                'completed' => (bool) ($task['completed'] ?? false),
+                'completed_at' => $task['completed_at'] ?? null,
             ])->all(),
+            'attempt_signals' => [
+                'topic_attempts_today_count' => count($context->attemptSignals['topic_attempts_today'] ?? []),
+                'random_attempts_count' => count($context->attemptSignals['random_attempts_today'] ?? []),
+                'mistake_reviews_today' => (int) ($context->attemptSignals['mistake_reviews_today'] ?? 0),
+            ],
+            'backlog_signals' => [
+                'due_spaced_reviews' => (int) data_get($context->backlogSignals, 'due_spaced_reviews', 0),
+                'reviewable_backlog' => (int) data_get($context->backlogSignals, 'reviewable_backlog', 0),
+                'active_open_backlog' => (int) data_get($context->backlogSignals, 'active_open_backlog', 0),
+            ],
+            'repair_mode' => $context->repairMode,
+            'classic_repair_difficulty' => $context->classicRepairDifficulty,
         ];
     }
 }

@@ -64,6 +64,7 @@ class ComposerStaticInit75933cc9c4a6eab5450f73c9ace4f875
         'T' =>
         array (
             'TijsVerkoyen\\CssToInlineStyles\\' => 31,
+            'Tests\\' => 6,
             'Termwind\\' => 9,
         ),
         'S' =>
@@ -214,6 +215,10 @@ class ComposerStaticInit75933cc9c4a6eab5450f73c9ace4f875
         'TijsVerkoyen\\CssToInlineStyles\\' =>
         array (
             0 => __DIR__ . '/..' . '/tijsverkoyen/css-to-inline-styles/src',
+        ),
+        'Tests\\' =>
+        array (
+            0 => __DIR__ . '/../..' . '/tests',
         ),
         'Termwind\\' =>
         array (
@@ -604,7 +609,6 @@ class ComposerStaticInit75933cc9c4a6eab5450f73c9ace4f875
         'App\\Events\\CorrectAnswersMilestoneReached' => __DIR__ . '/../..' . '/app/Events/CorrectAnswersMilestoneReached.php',
         'App\\Events\\CourseProgressMilestone' => __DIR__ . '/../..' . '/app/Events/CourseProgressMilestone.php',
         'App\\Events\\CourseUpdated' => __DIR__ . '/../..' . '/app/Events/CourseUpdated.php',
-        'App\\Events\\LiveUserCountUpdated' => __DIR__ . '/../..' . '/app/Events/LiveUserCountUpdated.php',
         'App\\Events\\MistakesNeedReview' => __DIR__ . '/../..' . '/app/Events/MistakesNeedReview.php',
         'App\\Events\\NotificationCreated' => __DIR__ . '/../..' . '/app/Events/NotificationCreated.php',
         'App\\Events\\PaymentCompleted' => __DIR__ . '/../..' . '/app/Events/PaymentCompleted.php',
@@ -613,7 +617,6 @@ class ComposerStaticInit75933cc9c4a6eab5450f73c9ace4f875
         'App\\Events\\QuizCompleted' => __DIR__ . '/../..' . '/app/Events/QuizCompleted.php',
         'App\\Events\\SkippedQuestionsDetected' => __DIR__ . '/../..' . '/app/Events/SkippedQuestionsDetected.php',
         'App\\Events\\SourceProgressUpdated' => __DIR__ . '/../..' . '/app/Events/SourceProgressUpdated.php',
-        'App\\Events\\StudentProgressUpdated' => __DIR__ . '/../..' . '/app/Events/StudentProgressUpdated.php',
         'App\\Events\\StudyStreakUpdated' => __DIR__ . '/../..' . '/app/Events/StudyStreakUpdated.php',
         'App\\Events\\TopicCompleted' => __DIR__ . '/../..' . '/app/Events/TopicCompleted.php',
         'App\\Events\\TopicMastered' => __DIR__ . '/../..' . '/app/Events/TopicMastered.php',
@@ -672,14 +675,11 @@ class ComposerStaticInit75933cc9c4a6eab5450f73c9ace4f875
         'App\\Http\\Controllers\\VideoProgressController' => __DIR__ . '/../..' . '/app/Http/Controllers/VideoProgressController.php',
         'App\\Http\\Controllers\\VideoProxyController' => __DIR__ . '/../..' . '/app/Http/Controllers/VideoProxyController.php',
         'App\\Http\\Middleware\\AdminMiddleware' => __DIR__ . '/../..' . '/app/Http/Middleware/AdminMiddleware.php',
-        'App\\Http\\Middleware\\AssignmentSecurityMiddleware' => __DIR__ . '/../..' . '/app/Http/Middleware/AssignmentSecurityMiddleware.php',
         'App\\Http\\Middleware\\Authenticate' => __DIR__ . '/../..' . '/app/Http/Middleware/Authenticate.php',
         'App\\Http\\Middleware\\EnsureFreeCourseSurveyUnlocked' => __DIR__ . '/../..' . '/app/Http/Middleware/EnsureFreeCourseSurveyUnlocked.php',
         'App\\Http\\Middleware\\HttpsRedirectMiddleware' => __DIR__ . '/../..' . '/app/Http/Middleware/HttpsRedirectMiddleware.php',
         'App\\Http\\Middleware\\InjectDesignProtection' => __DIR__ . '/../..' . '/app/Http/Middleware/InjectDesignProtection.php',
         'App\\Http\\Middleware\\NgrokCsrfFix' => __DIR__ . '/../..' . '/app/Http/Middleware/NgrokCsrfFix.php',
-        'App\\Http\\Middleware\\PerformanceMonitoring' => __DIR__ . '/../..' . '/app/Http/Middleware/PerformanceMonitoring.php',
-        'App\\Http\\Middleware\\PerformanceOptimization' => __DIR__ . '/../..' . '/app/Http/Middleware/PerformanceOptimization.php',
         'App\\Http\\Middleware\\RedirectIfAuthenticated' => __DIR__ . '/../..' . '/app/Http/Middleware/RedirectIfAuthenticated.php',
         'App\\Http\\Middleware\\SecurityHeaders' => __DIR__ . '/../..' . '/app/Http/Middleware/SecurityHeaders.php',
         'App\\Http\\Middleware\\TrustProxies' => __DIR__ . '/../..' . '/app/Http/Middleware/TrustProxies.php',
@@ -762,6 +762,7 @@ class ComposerStaticInit75933cc9c4a6eab5450f73c9ace4f875
         'App\\Http\\Requests\\TutorManagementRequest' => __DIR__ . '/../..' . '/app/Http/Requests/TutorManagementRequest.php',
         'App\\Http\\Requests\\TutorReportRequest' => __DIR__ . '/../..' . '/app/Http/Requests/TutorReportRequest.php',
         'App\\Http\\Requests\\TutorRequest' => __DIR__ . '/../..' . '/app/Http/Requests/TutorRequest.php',
+        'App\\Http\\Requests\\UpdatePaymentSettingsRequest' => __DIR__ . '/../..' . '/app/Http/Requests/UpdatePaymentSettingsRequest.php',
         'App\\Http\\Requests\\UserCourseRequest' => __DIR__ . '/../..' . '/app/Http/Requests/UserCourseRequest.php',
         'App\\Jobs\\AsyncOperationJob' => __DIR__ . '/../..' . '/app/Jobs/AsyncOperationJob.php',
         'App\\Jobs\\BackgroundFileProcessingJob' => __DIR__ . '/../..' . '/app/Jobs/BackgroundFileProcessingJob.php',
@@ -800,7 +801,6 @@ class ComposerStaticInit75933cc9c4a6eab5450f73c9ace4f875
         'App\\Models\\PlannerTaskOutcome' => __DIR__ . '/../..' . '/app/Models/PlannerTaskOutcome.php',
         'App\\Models\\Question' => __DIR__ . '/../..' . '/app/Models/Question.php',
         'App\\Models\\QuestionExplanation' => __DIR__ . '/../..' . '/app/Models/QuestionExplanation.php',
-        'App\\Models\\Quiz' => __DIR__ . '/../..' . '/app/Models/Quiz.php',
         'App\\Models\\QuizAttempt' => __DIR__ . '/../..' . '/app/Models/QuizAttempt.php',
         'App\\Models\\SchedulerCalibrationProfile' => __DIR__ . '/../..' . '/app/Models/SchedulerCalibrationProfile.php',
         'App\\Models\\SessionSecurityLog' => __DIR__ . '/../..' . '/app/Models/SessionSecurityLog.php',
@@ -885,7 +885,6 @@ class ComposerStaticInit75933cc9c4a6eab5450f73c9ace4f875
         'App\\Services\\QuizPerformanceService' => __DIR__ . '/../..' . '/app/Services/QuizPerformanceService.php',
         'App\\Services\\QuizService' => __DIR__ . '/../..' . '/app/Services/QuizService.php',
         'App\\Services\\QuizUltraConsolidatedCacheService' => __DIR__ . '/../..' . '/app/Services/QuizUltraConsolidatedCacheService.php',
-        'App\\Services\\Resilience\\NetworkResilienceManager' => __DIR__ . '/../..' . '/app/Services/Resilience/NetworkResilienceManager.php',
         'App\\Services\\ResilientUltraConsolidatedCacheService' => __DIR__ . '/../..' . '/app/Services/ResilientUltraConsolidatedCacheService.php',
         'App\\Services\\SecureFileUploadService' => __DIR__ . '/../..' . '/app/Services/SecureFileUploadService.php',
         'App\\Services\\SecurePaymentService' => __DIR__ . '/../..' . '/app/Services/SecurePaymentService.php',
@@ -8248,6 +8247,11 @@ class ComposerStaticInit75933cc9c4a6eab5450f73c9ace4f875
         'Termwind\\ValueObjects\\Node' => __DIR__ . '/..' . '/nunomaduro/termwind/src/ValueObjects/Node.php',
         'Termwind\\ValueObjects\\Style' => __DIR__ . '/..' . '/nunomaduro/termwind/src/ValueObjects/Style.php',
         'Termwind\\ValueObjects\\Styles' => __DIR__ . '/..' . '/nunomaduro/termwind/src/ValueObjects/Styles.php',
+        'Tests\\Unit\\Listeners\\SyncPlannerAfterQuizTest' => __DIR__ . '/../..' . '/tests/Unit/Listeners/SyncPlannerAfterQuizTest.php',
+        'Tests\\Unit\\Services\\Planner\\PlannerSignalServiceTest' => __DIR__ . '/../..' . '/tests/Unit/Services/Planner/PlannerSignalServiceTest.php',
+        'Tests\\Unit\\Services\\Planner\\PlannerTaskBuilderServiceTest' => __DIR__ . '/../..' . '/tests/Unit/Services/Planner/PlannerTaskBuilderServiceTest.php',
+        'Tests\\Unit\\Services\\Planner\\StudyGamePlanServiceTest' => __DIR__ . '/../..' . '/tests/Unit/Services/Planner/StudyGamePlanServiceTest.php',
+        'Tests\\Unit\\Services\\Planner\\TaskCompletionServiceTest' => __DIR__ . '/../..' . '/tests/Unit/Services/Planner/TaskCompletionServiceTest.php',
         'TheSeer\\Tokenizer\\Exception' => __DIR__ . '/..' . '/theseer/tokenizer/src/Exception.php',
         'TheSeer\\Tokenizer\\NamespaceUri' => __DIR__ . '/..' . '/theseer/tokenizer/src/NamespaceUri.php',
         'TheSeer\\Tokenizer\\NamespaceUriException' => __DIR__ . '/..' . '/theseer/tokenizer/src/NamespaceUriException.php',

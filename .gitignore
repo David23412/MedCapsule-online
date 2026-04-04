@@ -12,6 +12,7 @@ Thumbs.db
 /.playwright-cli/
 
 /.phpunit.result.cache
+/.phpunit.cache/
 /composer.phar
 
 /artifacts/*.md
