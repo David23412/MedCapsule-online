@@ -1,4 +1,4 @@
-var MANAGE_ACCESS_CONFIG = window.MANAGE_ACCESS_CONFIG || {};
+const MANAGE_ACCESS_CONFIG = window.MANAGE_ACCESS_CONFIG || {};
 
         $(document).ready(function() {
             console.log('🚀 MANAGE ACCESS PAGE LOADED');
