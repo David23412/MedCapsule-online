@@ -81,7 +81,23 @@ class MedicalKnowledgeService
         'RNA' => 'ribonucleic acid',
         'mRNA' => 'messenger RNA',
         'tRNA' => 'transfer RNA',
-        'rRNA' => 'ribosomal RNA'
+        'rRNA' => 'ribosomal RNA',
+        'SNS' => 'sympathetic nervous system',
+        'PNS' => 'parasympathetic nervous system',
+        'ANS' => 'autonomic nervous system',
+        'CNS' => 'central nervous system',
+        'GI' => 'gastrointestinal',
+        'ER' => 'endoplasmic reticulum',
+        'RER' => 'rough endoplasmic reticulum',
+        'SER' => 'smooth endoplasmic reticulum',
+        'WBC' => 'white blood cell',
+        'RBC' => 'red blood cell',
+        'GFR' => 'glomerular filtration rate',
+        'CSF' => 'cerebrospinal fluid',
+        'BMI' => 'body mass index',
+        'IV' => 'intravenous',
+        'IM' => 'intramuscular',
+        'SC' => 'subcutaneous',
     ];
 
     /**

@@ -31,10 +31,10 @@ class PlannerTaskBuilderServiceTest extends TestCase
     }
 
     // ────────────────────────────────────────────────────────────
-    // buildProgressionPreviewTasks — Study (Slot 1) → Solve (Slot 2) → Slot 3 EMPTY
+    // buildProgressionPreviewTasks — Study (Slot 1) → Solve (Slot 2) → Slot 3 preview
     // ────────────────────────────────────────────────────────────
 
-    public function test_study_slot1_shows_solve_preview_in_slot2_and_empty_slot3(): void
+    public function test_study_slot1_shows_solve_preview_in_slot2_and_optimistic_slot3(): void
     {
         $topic1 = $this->createTopic(1, 'Topic 1', 1);
         $topic2 = $this->createTopic(2, 'Topic 2', 2);
@@ -50,24 +50,86 @@ class PlannerTaskBuilderServiceTest extends TestCase
             'slot_index' => 1,
         ];
 
+        // Topic 1 has no existing backlog & high accuracy → slot 3 = Study Topic 2
         $context = $this->buildContext(['profiles' => [
-            1 => ['progression_stage' => 'tutor', 'curriculum_unlocked' => true],
+            1 => ['progression_stage' => 'tutor', 'curriculum_unlocked' => true, 'is_secure' => true, 'progression_accuracy' => 90.0],
             2 => ['progression_stage' => 'tutor', 'curriculum_unlocked' => false],
         ]]);
 
         $previews = $this->service->buildProgressionPreviewTasks($topics, $context, $actionableTask);
 
         // Slot 2 = Solve preview for Topic 1
-        $this->assertCount(1, $previews, 'Study in slot 1 should generate exactly 1 preview (Solve)');
+        $this->assertGreaterThanOrEqual(2, $previews->count(), 'Study in slot 1 should generate at least 2 previews');
         $this->assertSame('frontier_topic_quiz', $previews->first()['type']);
         $this->assertSame(1, (int) $previews->first()['topic_id']);
         $this->assertSame(2, $previews->first()['slot_index']);
         $this->assertTrue($previews->first()['is_preview']);
-        // Slot 3 must NOT be generated — cannot know if mistakes will exist before quiz is taken
-        $this->assertFalse(
-            $previews->contains(fn (array $p) => ($p['slot_index'] ?? 0) === 3),
-            'Slot 3 must be empty when slot 1 is Study — cannot predict mistakes before quiz'
-        );
+
+        // Slot 3 = optimistic preview (Study Topic 2 when student likely clears cleanly)
+        $slot3 = $previews->get(1);
+        $this->assertNotNull($slot3, 'Slot 3 must be present for 3-task sidebar');
+        $this->assertSame(3, $slot3['slot_index']);
+        $this->assertTrue($slot3['is_preview']);
+    }
+
+    public function test_study_slot1_with_weak_profile_shows_revise_in_slot3(): void
+    {
+        $topic1 = $this->createTopic(1, 'Topic 1', 1);
+        $topic2 = $this->createTopic(2, 'Topic 2', 2);
+        $topics = collect([$topic1, $topic2]);
+
+        $actionableTask = [
+            'id' => 'start_topic_1',
+            'type' => 'start_topic',
+            'topic_id' => 1,
+            'is_preview' => false,
+            'completed' => false,
+            'counts_toward_progression' => true,
+            'slot_index' => 1,
+        ];
+
+        // Topic 1 has existing backlog → slot 3 = Revise Mistakes
+        $context = $this->buildContext(['profiles' => [
+            1 => ['progression_stage' => 'tutor', 'curriculum_unlocked' => true, 'has_reviewable_backlog' => true, 'is_secure' => false, 'progression_accuracy' => 60.0],
+            2 => ['progression_stage' => 'tutor', 'curriculum_unlocked' => false],
+        ]]);
+
+        $previews = $this->service->buildProgressionPreviewTasks($topics, $context, $actionableTask);
+
+        $this->assertCount(2, $previews, 'Study in slot 1 with weak profile should generate 2 previews');
+
+        $slot3 = $previews->get(1);
+        $this->assertNotNull($slot3);
+        $this->assertSame(3, $slot3['slot_index']);
+        $this->assertContains($slot3['type'], ['repair_topic', 'topic_mistake_review'],
+            'Slot 3 should be Revise Mistakes when backlog/weak profile exists');
+        $this->assertSame(1, (int) $slot3['topic_id'], 'Slot 3 repair should be for same topic');
+    }
+
+    public function test_study_slot1_last_topic_no_slot3_when_secure(): void
+    {
+        $topic1 = $this->createTopic(1, 'Topic 1', 1);
+        $topics = collect([$topic1]); // Only one topic
+
+        $actionableTask = [
+            'id' => 'start_topic_1',
+            'type' => 'start_topic',
+            'topic_id' => 1,
+            'is_preview' => false,
+            'completed' => false,
+            'counts_toward_progression' => true,
+            'slot_index' => 1,
+        ];
+
+        $context = $this->buildContext(['profiles' => [
+            1 => ['progression_stage' => 'tutor', 'curriculum_unlocked' => true, 'is_secure' => true, 'progression_accuracy' => 95.0],
+        ]]);
+
+        $previews = $this->service->buildProgressionPreviewTasks($topics, $context, $actionableTask);
+
+        // Only 1 preview (Solve) since there's no next topic and profile is secure
+        $this->assertCount(1, $previews, 'Last topic with secure profile: only Solve preview, no slot 3');
+        $this->assertSame('frontier_topic_quiz', $previews->first()['type']);
     }
 
     // ────────────────────────────────────────────────────────────

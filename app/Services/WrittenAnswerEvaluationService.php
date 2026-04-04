@@ -38,7 +38,10 @@ class WrittenAnswerEvaluationService
     protected PatternMatcherService    $patternMatcher;
     protected MedicalKnowledgeService  $medicalKnowledge;
 
-    const DEFAULT_SIMILARITY_THRESHOLD = 0.85;
+    // Threshold lowered from 0.85 → 0.72 to accommodate typos, reordered terms,
+    // and paraphrasing. The system uses multiple safety layers (antonym detection,
+    // keyword floor, contradiction checks) to prevent false positives at this level.
+    const DEFAULT_SIMILARITY_THRESHOLD = 0.72;
 
     private bool $cacheEnabled = true;
     private int  $cacheTtl     = 86400;
@@ -264,14 +267,46 @@ class WrittenAnswerEvaluationService
         if ($normSubmitted === $normCorrect) {
             return $this->earlyResult(true, 1.0, 'Perfect match after normalization', $start);
         }
-        if (!$this->hasMeaningfulTokenOverlap($normSubmitted, $normCorrect, $alternativeAnswers)) {
+
+        // ── Expand abbreviations early for better matching ──────────────────
+        // "SNS" → "sympathetic nervous system" before any comparison
+        $expandedSubmitted = $this->expandKnownAbbreviations($submittedAnswer);
+        $expandedCorrect   = $this->expandKnownAbbreviations($correctAnswer);
+        $expandedAlts      = array_map([$this, 'expandKnownAbbreviations'], $alternativeAnswers);
+
+        $normExpandedSub = $this->normalizeForSemanticComparison($expandedSubmitted);
+        $normExpandedCor = $this->normalizeForSemanticComparison($expandedCorrect);
+
+        // Check expanded forms for exact match
+        if ($normExpandedSub === $normExpandedCor) {
+            return $this->earlyResult(true, 1.0, 'Perfect match after abbreviation expansion', $start);
+        }
+
+        // ── Sorted-token match (order-independent) ──────────────────────────
+        // Catches "Genetic and biological factors" vs "Biological/genetic factors"
+        // and any other reordering of the same words.
+        // Use expanded forms so abbreviations are comparable
+        $sortedSubmitted = $this->textProcessor->sortedTokenForm($expandedSubmitted);
+        $sortedCorrect   = $this->textProcessor->sortedTokenForm($expandedCorrect);
+        if ($sortedSubmitted === $sortedCorrect) {
+            return $this->earlyResult(true, 1.0, 'Perfect match (order-independent)', $start);
+        }
+
+        // Also check sorted token match against alternatives (expanded)
+        foreach ($expandedAlts as $alt) {
+            if ($sortedSubmitted === $this->textProcessor->sortedTokenForm($alt)) {
+                return $this->earlyResult(true, 1.0, 'Perfect match with alternative (order-independent)', $start);
+            }
+        }
+
+        if (!$this->hasMeaningfulTokenOverlap($normExpandedSub, $normExpandedCor, $expandedAlts)) {
             return $this->earlyResult(false, 0.0, 'No matching concepts found', $start);
         }
 
         // ── Symbol / abbreviation preprocessing ─────────────────────────────
-        $submittedAnswer    = $this->preprocessSymbols($submittedAnswer);
-        $correctAnswer      = $this->preprocessSymbols($correctAnswer);
-        $alternativeAnswers = array_map([$this, 'preprocessSymbols'], $alternativeAnswers);
+        $submittedAnswer    = $this->preprocessSymbols($expandedSubmitted);
+        $correctAnswer      = $this->preprocessSymbols($expandedCorrect);
+        $alternativeAnswers = array_map([$this, 'preprocessSymbols'], $expandedAlts);
 
         $semanticSubmitted = $this->normalizeForSemanticComparison($submittedAnswer);
         $semanticCorrect   = $this->normalizeForSemanticComparison($correctAnswer);
@@ -476,10 +511,10 @@ class WrittenAnswerEvaluationService
 
         $matched = 0;
         foreach ($referenceTokens as $token) {
-            // Exact match OR the token appears as a substring of any submitted token
-            // (handles plurals/suffixes not caught by normalizer)
+            // Exact match, substring containment, OR fuzzy Levenshtein match
             foreach ($submittedTokens as $sub) {
-                if ($sub === $token || str_contains($sub, $token) || str_contains($token, $sub)) {
+                if ($sub === $token || str_contains($sub, $token) || str_contains($token, $sub)
+                    || $this->wordsAreSimilar($sub, $token)) {
                     $matched++;
                     break;
                 }
@@ -616,6 +651,31 @@ class WrittenAnswerEvaluationService
             }
         }
 
+        // ── Sorted-token match (order-independent) ──────────────────────────
+        // "Genetic and biological factors" == "Biological/genetic factors"
+        $sortedSub = $this->textProcessor->sortedTokenForm($submittedAnswer);
+        $sortedCor = $this->textProcessor->sortedTokenForm($correctAnswer);
+        if ($sortedSub === $sortedCor) {
+            return $this->buildCorrectResult(0.98, 'Correct (reordered)', $courseTopic,
+                'Your answer contains all the correct concepts.');
+        }
+        foreach ($alternativeAnswers as $alt) {
+            if ($sortedSub === $this->textProcessor->sortedTokenForm($alt)) {
+                return $this->buildCorrectResult(0.98, 'Correct alternative (reordered)', $courseTopic,
+                    'Your answer correctly matches an accepted alternative.');
+            }
+        }
+
+        // ── Fuzzy order-independent match ─────────────────────────────────────
+        // High fuzzy overlap (≥0.85) with no contradictions → correct
+        // Lowered from 0.90 to catch heavy-typo answers that still have the right content
+        $fuzzyOverlap = $this->textProcessor->getFuzzyOrderIndependentOverlap($submittedAnswer, $correctAnswer);
+        if ($fuzzyOverlap >= 0.85 && !$this->textProcessor->containsAntonyms($normalizedSubmitted, $normalizedCorrect)
+            && !$this->hasKeyNounDivergence($submittedAnswer, $correctAnswer)) {
+            return $this->buildCorrectResult(0.95, 'Correct (fuzzy order-independent)', $courseTopic,
+                'Your answer contains the key concepts despite minor spelling or ordering differences.');
+        }
+
         // ── Protein synthesis location error (critical) ──────────────────────
         if (stripos($normalizedSubmitted, 'protein synthesis') !== false) {
             $wrongLoc = $this->findIncorrectLocationMention('protein synthesis', $normalizedSubmitted);
@@ -644,25 +704,8 @@ class WrittenAnswerEvaluationService
                 'Your answer correctly captures the parasympathetic effects.');
         }
 
-        // ── Intelligent concept matches ──────────────────────────────────────
-        if ($this->isIntelligentConceptMatch($normalizedSubmitted, $normalizedCorrect)) {
-            return $this->buildCorrectResult(0.95, 'Intelligent concept match', $courseTopic,
-                'Your answer demonstrates intelligent understanding of the medical concept.');
-        }
-        if ($this->isHeartFunctionMatch($normalizedSubmitted, $normalizedCorrect)) {
-            return $this->buildCorrectResult(0.90, 'Correct heart function', 'cardiovascular',
-                'Your answer correctly captures the function of the heart.');
-        }
-        if ($this->isMedicalAbbreviationMatch($normalizedSubmitted, $normalizedCorrect)) {
-            return $this->buildCorrectResult(0.92, 'Correct abbreviation usage', $courseTopic,
-                'Your answer correctly uses medical abbreviations.');
-        }
-        if ($this->isTypoMatch($normalizedSubmitted, $normalizedCorrect)) {
-            return $this->buildCorrectResult(0.88, 'Correct despite minor typos', $courseTopic,
-                'Your answer is correct despite minor spelling variations.');
-        }
-
-        // ── Location mismatch check (consolidated) ───────────────────────────
+        // ── Location mismatch check — MUST come before concept/typo matchers ─
+        // Otherwise hasProcessMatch() short-circuits and accepts wrong locations.
         if ($this->detectLocationMismatch($normalizedSubmitted)) {
             return [
                 'isCorrect'   => false,
@@ -672,6 +715,43 @@ class WrittenAnswerEvaluationService
                 'courseTopic' => $courseTopic,
                 'feedback'    => 'Your answer places a biological process in the wrong cellular compartment. Review where each major pathway occurs.',
             ];
+        }
+
+        // ── Key-noun divergence check — blocks before concept matchers ────────
+        // "The liver pumps blood" should not match "The heart pumps blood"
+        if ($this->hasKeyNounDivergence($submittedAnswer, $correctAnswer)) {
+            $metrics = $this->calculateSimilarityMetrics($submittedAnswer, $correctAnswer);
+            if ($metrics['hasContradictions'] || $this->textProcessor->containsAntonyms($normalizedSubmitted, $normalizedCorrect)) {
+                return [
+                    'isCorrect'   => false,
+                    'similarity'  => min($metrics['weighted'], 0.5),
+                    'metrics'     => $metrics,
+                    'reason'      => 'Key term divergence with contradictions',
+                    'courseTopic' => $courseTopic,
+                    'feedback'    => 'Your answer uses a different key term than expected. Double-check the specific subject.',
+                ];
+            }
+        }
+
+        // ── Intelligent concept matches ──────────────────────────────────────
+        // Gate: contradiction/antonym check must pass before concept matchers fire
+        $hasAntonyms = $this->textProcessor->containsAntonyms($normalizedSubmitted, $normalizedCorrect);
+
+        if (!$hasAntonyms && $this->isIntelligentConceptMatch($normalizedSubmitted, $normalizedCorrect)) {
+            return $this->buildCorrectResult(0.95, 'Intelligent concept match', $courseTopic,
+                'Your answer demonstrates intelligent understanding of the medical concept.');
+        }
+        if (!$hasAntonyms && $this->isHeartFunctionMatch($normalizedSubmitted, $normalizedCorrect)) {
+            return $this->buildCorrectResult(0.90, 'Correct heart function', 'cardiovascular',
+                'Your answer correctly captures the function of the heart.');
+        }
+        if ($this->isMedicalAbbreviationMatch($normalizedSubmitted, $normalizedCorrect)) {
+            return $this->buildCorrectResult(0.92, 'Correct abbreviation usage', $courseTopic,
+                'Your answer correctly uses medical abbreviations.');
+        }
+        if (!$hasAntonyms && $this->isTypoMatch($normalizedSubmitted, $normalizedCorrect)) {
+            return $this->buildCorrectResult(0.88, 'Correct despite minor typos', $courseTopic,
+                'Your answer is correct despite minor spelling variations.');
         }
 
         // ── Full similarity metrics ───────────────────────────────────────────
@@ -706,24 +786,53 @@ class WrittenAnswerEvaluationService
         $domainBoost     = $this->calculateDomainContextBoost($submittedAnswer, $bestAnswer);
         $finalSimilarity = min(1.0, $bestSimilarity + $domainBoost);
 
+        // Order-independent boost — same content words, different order
+        $orderIndepOverlap = $this->textProcessor->getFuzzyOrderIndependentOverlap($submittedAnswer, $bestAnswer);
+        if ($orderIndepOverlap >= 0.75 && !($bestMetrics['hasContradictions'] ?? false)) {
+            $finalSimilarity = min(1.0, $finalSimilarity + ($orderIndepOverlap - 0.5) * 0.3);
+        }
+
         // Phrasing boost when conceptual is very high
         if (($bestMetrics['conceptual'] ?? 0) > 0.8 && ($bestMetrics['keyword'] ?? 0) > 0.6
             && !($bestMetrics['hasContradictions'] ?? false)) {
             $finalSimilarity = min(1.0, $finalSimilarity + 0.10);
         }
 
-        // Safety floor for missing keywords
+        // High Levenshtein boost — answers that are very close at character level
+        // (typos, small spelling errors) should get a significant boost
+        if (($bestMetrics['levenshtein'] ?? 0) > 0.80 && !($bestMetrics['hasContradictions'] ?? false)) {
+            $finalSimilarity = min(1.0, $finalSimilarity + 0.08);
+        }
+
+        // Safety floor for missing keywords. Threshold at 0.25 allows answers with
+        // typos and paraphrasing to pass while still catching completely wrong answers.
+        // Contradiction detection and antonym pairs provide additional safety above this.
         $isCriticalMismatch = ($bestMetrics['hasContradictions'] ?? false)
-            || (isset($bestMetrics['keyword']) && $bestMetrics['keyword'] < 0.4);
+            || (isset($bestMetrics['keyword']) && $bestMetrics['keyword'] < 0.25);
 
         $isCorrect = $finalSimilarity >= $similarityThreshold && !$isCriticalMismatch;
 
-        // High conceptual override
+        // High conceptual override (relaxed thresholds for more forgiveness)
         if (!$isCorrect && !$isCriticalMismatch
-            && ($bestMetrics['conceptual'] ?? 0) > 0.9
-            && ($bestMetrics['keyword'] ?? 0) > 0.8) {
+            && ($bestMetrics['conceptual'] ?? 0) > 0.7
+            && ($bestMetrics['keyword'] ?? 0) > 0.5) {
             $isCorrect       = true;
-            $finalSimilarity = max($finalSimilarity, 0.90);
+            $finalSimilarity = max($finalSimilarity, 0.85);
+        }
+
+        // High Levenshtein override — nearly identical text with minor typos
+        if (!$isCorrect && !($bestMetrics['hasContradictions'] ?? false)
+            && ($bestMetrics['levenshtein'] ?? 0) > 0.85
+            && ($bestMetrics['keyword'] ?? 0) > 0.3) {
+            $isCorrect       = true;
+            $finalSimilarity = max($finalSimilarity, 0.82);
+        }
+
+        // Order-independent override — high fuzzy overlap means same answer in different order
+        if (!$isCorrect && !($bestMetrics['hasContradictions'] ?? false)
+            && $orderIndepOverlap >= 0.80) {
+            $isCorrect       = true;
+            $finalSimilarity = max($finalSimilarity, 0.88);
         }
 
         $feedback = $this->generateDetailedFeedback(
@@ -768,11 +877,12 @@ class WrittenAnswerEvaluationService
 
         $hasContradictions = $this->textProcessor->containsAntonyms($normSub, $normCor);
 
-        // Weighted blend: conceptual most important, Levenshtein least
-        $weighted = ($conceptual * 0.40)
-                  + ($keyword   * 0.30)
-                  + ($jaccard   * 0.20)
-                  + ($levenshtein * 0.10);
+        // Weighted blend: conceptual most important, with meaningful Levenshtein
+        // for typo tolerance. Levenshtein raised from 10% → 25% to catch typos.
+        $weighted = ($conceptual    * 0.35)
+                  + ($keyword       * 0.25)
+                  + ($jaccard       * 0.15)
+                  + ($levenshtein   * 0.25);
 
         if ($hasContradictions) {
             $weighted = min($weighted, 0.65);
@@ -799,11 +909,54 @@ class WrittenAnswerEvaluationService
 
         if (!$isParaQ && !$isSymQ) { return null; }
 
-        $hrUp   = $this->containsAnyPhrase($semanticSubmitted, ['increase heart rate', 'increases heart rate']);
-        $hrDown = $this->containsAnyPhrase($semanticSubmitted, ['decrease heart rate', 'decreases heart rate']);
-        $digUp  = $this->containsAnyPhrase($semanticSubmitted, ['increase digestion', 'increases digestion']);
+        // ── Check if the student explicitly names the WRONG system ──────────
+        // "Parasympathetic nervous system increases heart rate" should fail
+        // when the question is about the sympathetic nervous system.
+        $subMentionsSym  = (bool) preg_match('/\bsympathetic\b/i',     $semanticSubmitted);
+        $subMentionsPara = (bool) preg_match('/\bparasympathetic\b/i', $semanticSubmitted);
+
+        // Student explicitly names the opposite system → wrong
+        if ($isSymQ && $subMentionsPara && !$subMentionsSym) {
+            return ['isCorrect' => false, 'similarity' => 0.3,
+                'reason' => 'Named wrong ANS division', 'courseTopic' => 'nervous',
+                'feedback' => 'Your answer refers to the parasympathetic system, but the question is about the sympathetic system.'];
+        }
+        if ($isParaQ && $subMentionsSym && !$subMentionsPara) {
+            return ['isCorrect' => false, 'similarity' => 0.3,
+                'reason' => 'Named wrong ANS division', 'courseTopic' => 'nervous',
+                'feedback' => 'Your answer refers to the sympathetic system, but the question is about the parasympathetic system.'];
+        }
+
+        // Flexible phrase matching — supports multiple phrasing orders
+        $hrUp   = $this->containsAnyPhrase($semanticSubmitted, [
+            'increase heart rate', 'increases heart rate', 'increased heart rate',
+            'heart rate increases', 'heart rate increase', 'heart rate goes up',
+            'raises heart rate', 'raise heart rate', 'speeds up heart rate',
+            'accelerates heart rate', 'faster heart rate', 'higher heart rate',
+            'tachycardia', 'positive chronotropic',
+        ]);
+        $hrDown = $this->containsAnyPhrase($semanticSubmitted, [
+            'decrease heart rate', 'decreases heart rate', 'decreased heart rate',
+            'heart rate decreases', 'heart rate decrease', 'heart rate goes down',
+            'lowers heart rate', 'lower heart rate', 'slows heart rate',
+            'slows down heart rate', 'slower heart rate',
+            'bradycardia', 'negative chronotropic',
+        ]);
+        $digUp  = $this->containsAnyPhrase($semanticSubmitted, [
+            'increase digestion', 'increases digestion', 'increased digestion',
+            'digestion increases', 'promotes digestion', 'stimulates digestion',
+            'enhances digestion', 'supports digestion', 'activates digestion',
+            'increases gut motility', 'increase gut motility',
+            'increases peristalsis', 'increase peristalsis',
+            'stimulates peristalsis', 'promotes peristalsis',
+        ]);
         $digDown= $this->containsAnyPhrase($semanticSubmitted, [
-            'decrease digestion','decreases digestion','inhibit digestion','inhibits digestion',
+            'decrease digestion','decreases digestion','decreased digestion',
+            'digestion decreases','inhibit digestion','inhibits digestion',
+            'suppresses digestion','suppress digestion','reduces digestion',
+            'slows digestion','slows down digestion',
+            'inhibits peristalsis','decreases peristalsis',
+            'inhibits gut motility','decreases gut motility',
         ]);
 
         if ($isSymQ) {
@@ -935,7 +1088,50 @@ class WrittenAnswerEvaluationService
             return $this->performRegularEvaluation($submittedAnswer, $correctAnswer, self::DEFAULT_SIMILARITY_THRESHOLD);
         }
 
-        $matched   = array_values(array_filter($correctItems, fn($item) => stripos($submittedNormalized, $item) !== false));
+        // Use fuzzy matching for enumeration items (catch typos AND reordering)
+        $matched = array_values(array_filter($correctItems, function($item) use ($submittedNormalized) {
+            // Exact substring match
+            if (stripos($submittedNormalized, $item) !== false) {
+                return true;
+            }
+
+            $itemWords = preg_split('/\s+/', trim($item));
+
+            // Single word item — check per-word fuzzy match
+            if (count($itemWords) === 1 && strlen($item) >= 3) {
+                $subWords = preg_split('/\s+/', $submittedNormalized);
+                foreach ($subWords as $sw) {
+                    if ($this->wordsAreSimilar(strtolower($sw), strtolower($item))) {
+                        return true;
+                    }
+                }
+            }
+
+            // Multi-word item — check if all significant words appear (in any order)
+            // e.g., "genetic factors" matches if "genetic" and "factors" both appear
+            if (count($itemWords) > 1) {
+                $subWords = preg_split('/\s+/', $submittedNormalized);
+                $matchedWords = 0;
+                $significantWords = 0;
+                foreach ($itemWords as $iw) {
+                    // Skip stop words / connectors (and, or, of, the) — don't count them
+                    if (strlen($iw) < 3) { continue; }
+                    $significantWords++;
+                    foreach ($subWords as $sw) {
+                        if ($this->wordsAreSimilar(strtolower($sw), strtolower($iw))) {
+                            $matchedWords++;
+                            break;
+                        }
+                    }
+                }
+                // If ≥80% of the item's significant words are found (fuzzy), consider it matched
+                if ($significantWords > 0 && $matchedWords >= $significantWords * 0.8) {
+                    return true;
+                }
+            }
+
+            return false;
+        }));
         $coverage  = count($matched) / count($correctItems);
         $isCorrect = $coverage >= 0.75;
 
@@ -953,9 +1149,41 @@ class WrittenAnswerEvaluationService
     private function evaluateDefinitionAnswer(string $submittedAnswer, string $correctAnswer, float $baseThreshold): array
     {
         $metrics = $this->calculateSimilarityMetrics($submittedAnswer, $correctAnswer);
-        $defScore = ($metrics['keyword'] * 0.5) + ($metrics['conceptual'] * 0.5);
-        if ($metrics['keyword'] >= 0.3) { $defScore = min(1.0, $defScore + 0.2); }
-        $isCorrect = $defScore >= 0.4 || ($metrics['keyword'] >= 0.4 && $metrics['conceptual'] >= 0.3);
+
+        // Check for key-noun divergence: when the subject of the definition has
+        // been swapped (e.g., "liver" vs "heart", "digestion" vs "gas exchange"),
+        // the definition is wrong even if other words overlap heavily.
+        if ($this->hasKeyNounDivergence($submittedAnswer, $correctAnswer)) {
+            return [
+                'isCorrect'   => false,
+                'similarity'  => min($metrics['weighted'], 0.5),
+                'metrics'     => ['definition_score' => $metrics['weighted'], 'key_noun_divergence' => true],
+                'reason'      => 'Definition question — key term differs',
+                'courseTopic' => $this->identifyCourseTopic($correctAnswer),
+                'feedback'    => 'Your answer uses a different key term than the expected answer. Double-check the subject of the definition.',
+            ];
+        }
+
+        // Contradiction check for definitions
+        if ($metrics['hasContradictions'] ?? false) {
+            return [
+                'isCorrect'   => false,
+                'similarity'  => min($metrics['weighted'], 0.5),
+                'metrics'     => ['definition_score' => $metrics['weighted'], 'hasContradictions' => true],
+                'reason'      => 'Definition question — contains contradictions',
+                'courseTopic' => $this->identifyCourseTopic($correctAnswer),
+                'feedback'    => 'Your answer contains contradictory information compared to the expected answer.',
+            ];
+        }
+
+        // Include Levenshtein in the definition score for typo tolerance
+        $defScore = ($metrics['keyword'] * 0.40) + ($metrics['conceptual'] * 0.40) + ($metrics['levenshtein'] * 0.20);
+        if ($metrics['keyword'] >= 0.3) { $defScore = min(1.0, $defScore + 0.15); }
+        // High Levenshtein (close to correct) should also boost
+        if ($metrics['levenshtein'] >= 0.75) { $defScore = min(1.0, $defScore + 0.10); }
+        $isCorrect = $defScore >= 0.4
+            || ($metrics['keyword'] >= 0.35 && $metrics['conceptual'] >= 0.25)
+            || ($metrics['levenshtein'] >= 0.80 && $metrics['keyword'] >= 0.25);
         return [
             'isCorrect'   => $isCorrect,
             'similarity'  => $isCorrect ? max($defScore, 0.5) : $defScore,
@@ -1091,10 +1319,30 @@ class WrittenAnswerEvaluationService
     {
         $st = $this->extractMeaningfulTokens($ns);
         $ct = $this->extractMeaningfulTokens($nc);
+
+        // Exact token overlap
         if (!empty(array_intersect($st, $ct))) { return true; }
+
+        // Fuzzy token overlap — catch typos like "determiants" vs "determinants"
+        foreach ($st as $sw) {
+            foreach ($ct as $cw) {
+                if ($this->wordsAreSimilar($sw, $cw)) {
+                    return true;
+                }
+            }
+        }
+
+        // Check alternatives
         foreach ($alts as $alt) {
             $at = $this->extractMeaningfulTokens($this->normalizeForSemanticComparison($alt));
             if (!empty(array_intersect($st, $at))) { return true; }
+            foreach ($st as $sw) {
+                foreach ($at as $aw) {
+                    if ($this->wordsAreSimilar($sw, $aw)) {
+                        return true;
+                    }
+                }
+            }
         }
         return false;
     }
@@ -1256,21 +1504,178 @@ class WrittenAnswerEvaluationService
         return $this->textProcessor->getCombinedSimilarity($expS, $expC) >= 0.6;
     }
 
+    /**
+     * Detect when the key subject noun of a definition has been swapped.
+     *
+     * Extracts the first significant medical/anatomical noun from each answer
+     * and checks whether they are fundamentally different entities.
+     *
+     * Examples:
+     *   "The liver is a muscular organ" vs "The heart is a muscular organ" → true (divergent)
+     *   "The heart is a pump" vs "The heart is a muscular organ" → false (same subject)
+     *   "The respiratory system is responsible for digestion" vs "... gas exchange" → true
+     */
+    private function hasKeyNounDivergence(string $submitted, string $correct): bool
+    {
+        // Lists of key medical nouns that are distinct entities — swapping between these is wrong
+        $keyNouns = [
+            // Organs
+            'heart','liver','lung','kidney','brain','stomach','spleen','pancreas',
+            'intestine','bladder','esophagus','gallbladder','uterus','ovary','testis',
+            // Systems
+            'cardiovascular','respiratory','nervous','digestive','endocrine','urinary',
+            'immune','musculoskeletal','integumentary','lymphatic','reproductive',
+            // Key functions (swapping these in a definition is wrong)
+            'digestion','gas exchange','filtration','absorption','secretion',
+            'excretion','respiration','circulation','immunity','metabolism',
+            // Tissue types
+            'epithelial','connective','muscle','nervous tissue',
+            // Cell types
+            'neuron','osteoblast','osteoclast','erythrocyte','leukocyte',
+            'neutrophil','macrophage','lymphocyte','fibroblast','chondrocyte',
+        ];
+
+        $normSub = strtolower($this->textProcessor->normalizeText($submitted));
+        $normCor = strtolower($this->textProcessor->normalizeText($correct));
+
+        $subNouns = [];
+        $corNouns = [];
+
+        foreach ($keyNouns as $noun) {
+            if (str_contains($normSub, $noun)) { $subNouns[] = $noun; }
+            if (str_contains($normCor, $noun)) { $corNouns[] = $noun; }
+        }
+
+        // No key nouns found in either → can't determine divergence
+        if (empty($subNouns) || empty($corNouns)) { return false; }
+
+        // If any key noun in submitted is NOT in the correct answer's key nouns,
+        // and vice versa, the subject has diverged
+        $subOnly = array_diff($subNouns, $corNouns);
+        $corOnly = array_diff($corNouns, $subNouns);
+
+        // Divergence = submitted introduces a key noun NOT in correct AND
+        //              correct has a key noun NOT in submitted
+        return !empty($subOnly) && !empty($corOnly);
+    }
+
     private function isTypoMatch(string $ns, string $nc): bool
     {
+        // Stage 1: Known typo dictionary (fast path)
         $typos = [
             'hart' => 'heart','caridac' => 'cardiac','ventrical' => 'ventricle',
             'parasympatheic' => 'parasympathetic','sympatheic' => 'sympathetic',
             'nueron' => 'neuron','alveloi' => 'alveoli','diaphram' => 'diaphragm',
             'protien' => 'protein','glyclysis' => 'glycolysis',
             'epithelal' => 'epithelial','conective' => 'connective',
+            'determiants' => 'determinants','determants' => 'determinants',
+            'determnants' => 'determinants','deteminants' => 'determinants',
+            'pnemonia' => 'pneumonia','pnuemonia' => 'pneumonia',
+            'hemoglobin' => 'haemoglobin','anemia' => 'anaemia',
+            'edema' => 'oedema','esophagus' => 'oesophagus',
+            'hemorhage' => 'hemorrhage','hemmorhage' => 'hemorrhage',
+            'pharanyx' => 'pharynx','laranyx' => 'larynx',
+            'tachycarida' => 'tachycardia','bradycarida' => 'bradycardia',
+            'arrythmia' => 'arrhythmia','arythmia' => 'arrhythmia',
+            'hypertention' => 'hypertension','hypotention' => 'hypotension',
+            'atherosclersois' => 'atherosclerosis','atheroschlerosis' => 'atherosclerosis',
+            'imuunity' => 'immunity','imunity' => 'immunity',
+            'antobody' => 'antibody','antibodie' => 'antibody',
+            'lympocyte' => 'lymphocyte','leukocyte' => 'leucocyte',
+            'thrombocye' => 'thrombocyte','erythrocye' => 'erythrocyte',
+            'metabolsim' => 'metabolism','catabolsim' => 'catabolism',
+            'anabolsim' => 'anabolism','homeostais' => 'homeostasis',
+            'pathophisiology' => 'pathophysiology','physiolgy' => 'physiology',
+            'anatomey' => 'anatomy','histolgy' => 'histology',
+            'pharmacolgy' => 'pharmacology','toxicolgy' => 'toxicology',
+            'diagnositc' => 'diagnostic','prognsis' => 'prognosis',
+            'symptomes' => 'symptoms','syndrom' => 'syndrome',
+            'chronical' => 'chronic','accute' => 'acute',
+            'congential' => 'congenital','hereditory' => 'hereditary',
+            'perscription' => 'prescription','adminsitration' => 'administration',
         ];
         foreach ($typos as $typo => $fix) {
             if (stripos($ns, $typo) !== false && (stripos($nc, $fix) !== false || stripos($nc, $typo) !== false)) {
                 return true;
             }
         }
-        return false;
+
+        // Stage 2: Algorithmic per-word Levenshtein matching
+        // Split both into words and check if most words fuzzy-match
+        return $this->hasAlgorithmicTypoMatch($ns, $nc);
+    }
+
+    /**
+     * Algorithmic typo detection using per-word Levenshtein distance.
+     *
+     * For each word in the submitted answer, finds the best matching word
+     * in the correct answer. If sufficiently many words fuzzy-match, the
+     * answers are considered equivalent despite typos.
+     *
+     * A word "fuzzy matches" when:
+     *   - length ≤ 4: edit distance ≤ 1
+     *   - length 5-8: edit distance ≤ 2
+     *   - length ≥ 9: edit distance ≤ 3
+     *
+     * Overall match requires ≥ 70% of meaningful words to fuzzy-match.
+     */
+    private function hasAlgorithmicTypoMatch(string $ns, string $nc): bool
+    {
+        $subWords = $this->extractMeaningfulTokens($ns);
+        $corWords = $this->extractMeaningfulTokens($nc);
+
+        if (empty($subWords) || empty($corWords)) {
+            return false;
+        }
+
+        $fuzzyMatched = 0;
+        foreach ($subWords as $sw) {
+            foreach ($corWords as $cw) {
+                if ($this->wordsAreSimilar($sw, $cw)) {
+                    $fuzzyMatched++;
+                    break;
+                }
+            }
+        }
+
+        // Require ≥ 70% of submitted meaningful words to fuzzy-match a correct word
+        $subMatchRatio = $fuzzyMatched / count($subWords);
+
+        // Also check reverse: what fraction of correct words are covered
+        $reverseMatched = 0;
+        foreach ($corWords as $cw) {
+            foreach ($subWords as $sw) {
+                if ($this->wordsAreSimilar($sw, $cw)) {
+                    $reverseMatched++;
+                    break;
+                }
+            }
+        }
+        $corMatchRatio = $reverseMatched / count($corWords);
+
+        return $subMatchRatio >= 0.70 && $corMatchRatio >= 0.60;
+    }
+
+    /**
+     * Check if two words are similar enough to be considered the same word with typos.
+     */
+    private function wordsAreSimilar(string $word1, string $word2): bool
+    {
+        if ($word1 === $word2) {
+            return true;
+        }
+
+        $len = max(strlen($word1), strlen($word2));
+        $dist = levenshtein($word1, $word2);
+
+        // Adaptive threshold based on word length
+        if ($len <= 4) {
+            return $dist <= 1;
+        }
+        if ($len <= 8) {
+            return $dist <= 2;
+        }
+        return $dist <= 3;
     }
 
     // =========================================================================
