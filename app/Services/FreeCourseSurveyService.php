@@ -400,4 +400,147 @@ class FreeCourseSurveyService
             UniversalNotificationService::PRIORITY_HIGH
         );
     }
+
+    /**
+     * Paginated written (textarea) answers for admin view.
+     */
+    public function getWrittenAnswers(int $page = 1, int $perPage = 20): array
+    {
+        $surveyKey = $this->surveyKey();
+
+        $query = SurveyResponse::query()
+            ->with('user:id,name,email')
+            ->where('survey_key', $surveyKey)
+            ->select('id', 'user_id', 'answers', 'submitted_at')
+            ->latest('submitted_at');
+
+        $total = $query->count();
+        $responses = $query->skip(($page - 1) * $perPage)->take($perPage)->get();
+
+        $items = $responses->map(function (SurveyResponse $response) {
+            $indexed = $this->answersByQuestionId($response->answers ?? []);
+            $feedback = $this->normalizedAnswerValue($indexed['q11'] ?? null);
+
+            if ($feedback === null) {
+                return null;
+            }
+
+            return [
+                'user_name' => $response->user?->name ?? 'Deleted user',
+                'user_email' => $response->user?->email ?? '',
+                'submitted_at' => $response->submitted_at?->toDateTimeString(),
+                'text' => $feedback,
+            ];
+        })->filter()->values();
+
+        return [
+            'items' => $items->all(),
+            'total' => $total,
+            'page' => $page,
+            'per_page' => $perPage,
+            'last_page' => (int) ceil($total / $perPage),
+        ];
+    }
+
+    /**
+     * Paginated list of all student survey responses for admin view.
+     */
+    public function getStudentResponses(int $page = 1, int $perPage = 25, ?string $search = null): array
+    {
+        $surveyKey = $this->surveyKey();
+        $questionMap = $this->questionMap();
+
+        $query = SurveyResponse::query()
+            ->with('user:id,name,email')
+            ->where('survey_key', $surveyKey)
+            ->select('id', 'user_id', 'answers', 'submitted_at')
+            ->latest('submitted_at');
+
+        if ($search !== null && trim($search) !== '') {
+            $term = trim($search);
+            $query->whereHas('user', function ($q) use ($term) {
+                $q->where('name', 'like', "%{$term}%")
+                  ->orWhere('email', 'like', "%{$term}%");
+            });
+        }
+
+        $total = $query->count();
+        $responses = $query->skip(($page - 1) * $perPage)->take($perPage)->get();
+
+        $items = $responses->map(function (SurveyResponse $response) use ($questionMap) {
+            $indexed = $this->answersByQuestionId($response->answers ?? []);
+
+            $highlights = [];
+            foreach ($questionMap as $qId => $qDef) {
+                $answer = $indexed[$qId] ?? null;
+                if (!$answer) {
+                    continue;
+                }
+                $highlights[$qId] = [
+                    'prompt' => $qDef['prompt'] ?? $qId,
+                    'type' => $qDef['type'] ?? 'unknown',
+                    'label' => $answer['label'] ?? $answer['value'] ?? '',
+                ];
+            }
+
+            return [
+                'user_id' => $response->user_id,
+                'user_name' => $response->user?->name ?? 'Deleted user',
+                'user_email' => $response->user?->email ?? '',
+                'submitted_at' => $response->submitted_at?->toDateTimeString(),
+                'answers' => $highlights,
+            ];
+        })->values();
+
+        return [
+            'items' => $items->all(),
+            'total' => $total,
+            'page' => $page,
+            'per_page' => $perPage,
+            'last_page' => max(1, (int) ceil($total / $perPage)),
+        ];
+    }
+
+    /**
+     * Full detail of a single student's survey response.
+     */
+    public function getStudentDetail(int $userId): ?array
+    {
+        $surveyKey = $this->surveyKey();
+        $questionMap = $this->questionMap();
+
+        $response = SurveyResponse::query()
+            ->with('user:id,name,email')
+            ->where('survey_key', $surveyKey)
+            ->where('user_id', $userId)
+            ->select('id', 'user_id', 'answers', 'submitted_at')
+            ->first();
+
+        if (!$response) {
+            return null;
+        }
+
+        $indexed = $this->answersByQuestionId($response->answers ?? []);
+
+        $answers = collect($questionMap)->map(function (array $qDef, string $qId) use ($indexed) {
+            $answer = $indexed[$qId] ?? null;
+
+            return [
+                'question_id' => $qId,
+                'prompt' => $qDef['prompt'] ?? $qId,
+                'type' => $qDef['type'] ?? 'unknown',
+                'value' => $answer['value'] ?? null,
+                'label' => $answer['label'] ?? $answer['value'] ?? null,
+                'answered' => $answer !== null && ($answer['value'] ?? null) !== null,
+            ];
+        })->values()->all();
+
+        return [
+            'user_id' => $response->user_id,
+            'user_name' => $response->user?->name ?? 'Deleted user',
+            'user_email' => $response->user?->email ?? '',
+            'submitted_at' => $response->submitted_at?->toDateTimeString(),
+            'answers' => $answers,
+        ];
+    }
 }

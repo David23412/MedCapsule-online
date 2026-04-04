@@ -238,9 +238,30 @@
                                     </div>
                                 @else
                                     <div class="survey-feedback-card rounded p-3">
-                                        <div class="small survey-premium-muted mb-1">Written feedback collected</div>
-                                        <div class="fw-semibold">{{ number_format((int) ($question['answered_count'] ?? 0)) }} responses</div>
-                                        <div class="small survey-premium-muted mt-2">Use the sample quotes on the right for a quick presentation snapshot.</div>
+                                        <div class="d-flex justify-content-between align-items-center">
+                                            <div>
+                                                <div class="small survey-premium-muted mb-1">Written feedback collected</div>
+                                                <div class="fw-semibold">{{ number_format((int) ($question['answered_count'] ?? 0)) }} responses</div>
+                                            </div>
+                                            <button class="btn btn-sm btn-outline-primary" onclick="surveyAdmin.loadWrittenAnswers(1)" id="btn-show-written">
+                                                <i class="fas fa-eye me-1"></i>View All
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    {{-- Written answers expandable panel --}}
+                                    <div id="written-answers-panel" class="mt-3" style="display:none;">
+                                        <div class="d-flex justify-content-between align-items-center mb-2">
+                                            <h6 class="mb-0"><i class="fas fa-comment-dots me-1"></i>Written Answers</h6>
+                                            <button class="btn btn-sm btn-link text-muted" onclick="surveyAdmin.hideWrittenAnswers()">
+                                                <i class="fas fa-times"></i>
+                                            </button>
+                                        </div>
+                                        <div id="written-answers-list"></div>
+                                        <div id="written-answers-pagination" class="d-flex justify-content-center mt-2"></div>
+                                        <div id="written-answers-loading" class="text-center py-3" style="display:none;">
+                                            <div class="spinner-border spinner-border-sm text-primary" role="status"></div>
+                                        </div>
                                     </div>
                                 @endif
                             </div>
@@ -248,7 +269,59 @@
                     @endforeach
                 </div>
             </div>
+
+            {{-- Student Responses Section --}}
+            <div class="col-12 mt-4">
+                <div class="card survey-question-card">
+                    <div class="card-body">
+                        <div class="survey-question-topline mb-3">
+                            <div class="d-flex justify-content-between align-items-start flex-wrap gap-2">
+                                <div>
+                                    <div class="survey-question-kicker">INDIVIDUAL RESPONSES</div>
+                                    <h5 class="mb-1">Student-by-Student Survey Answers</h5>
+                                    <div class="small survey-premium-muted">See what each student answered across all questions.</div>
+                                </div>
+                                <div class="d-flex gap-2 align-items-center">
+                                    <div class="position-relative">
+                                        <input type="text" id="survey-student-search" class="form-control form-control-sm" placeholder="Search by name or email…" style="min-width:220px;">
+                                        <i class="fas fa-search position-absolute" style="right:10px;top:50%;transform:translateY(-50%);color:#94a3b8;pointer-events:none;font-size:0.8rem;"></i>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div id="student-responses-loading" class="text-center py-4" style="display:none;">
+                            <div class="spinner-border spinner-border-sm text-primary" role="status"></div>
+                            <div class="small text-muted mt-1">Loading responses…</div>
+                        </div>
+                        <div id="student-responses-table-wrap"></div>
+                        <div id="student-responses-pagination" class="d-flex justify-content-between align-items-center mt-3" style="display:none;">
+                            <div class="small text-muted" id="student-responses-info"></div>
+                            <div class="btn-group btn-group-sm" id="student-responses-pages"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
         @endif
     </div>
+    </div>
+
+    {{-- Student Detail Modal --}}
+    <div class="modal fade" id="studentDetailModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-scrollable">
+            <div class="modal-content" style="border-radius:16px;border:1px solid rgba(96,165,250,0.14);">
+                <div class="modal-header" style="background:linear-gradient(135deg,#f0f7ff 0%,#e8f0fe 100%);border-bottom:1px solid rgba(96,165,250,0.1);">
+                    <div>
+                        <h5 class="modal-title" id="studentDetailName">Student Survey Response</h5>
+                        <div class="small text-muted" id="studentDetailMeta"></div>
+                    </div>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body p-0" id="studentDetailBody">
+                    <div class="text-center py-5">
+                        <div class="spinner-border text-primary" role="status"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
 </div>
