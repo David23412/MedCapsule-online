@@ -141,6 +141,34 @@ function initializeMistakesLearnPage() {
                     sidebarToggle.setAttribute('aria-expanded', collapsed ? 'false' : 'true');
                 }
             };
+
+            // Mobile sidebar overlay behavior
+            const isMobile = () => window.innerWidth <= 768;
+            const sidebar = document.querySelector('.sidebar');
+            let sidebarBackdrop = null;
+
+            function createSidebarBackdrop() {
+                if (sidebarBackdrop) return;
+                sidebarBackdrop = document.createElement('div');
+                sidebarBackdrop.className = 'sidebar-backdrop';
+                document.body.appendChild(sidebarBackdrop);
+                sidebarBackdrop.addEventListener('click', closeMobileSidebar);
+            }
+
+            function openMobileSidebar() {
+                if (!sidebar) return;
+                createSidebarBackdrop();
+                sidebar.classList.add('mobile-open');
+                if (sidebarBackdrop) sidebarBackdrop.classList.add('active');
+                document.body.style.overflow = 'hidden';
+            }
+
+            function closeMobileSidebar() {
+                if (!sidebar) return;
+                sidebar.classList.remove('mobile-open');
+                if (sidebarBackdrop) sidebarBackdrop.classList.remove('active');
+                document.body.style.overflow = '';
+            }
             
             // 💀 LETHAL AUDIO POOL SYSTEM - MULTIPLE READY AUDIO ELEMENTS 💀
             const audioPool = {
@@ -990,9 +1018,10 @@ function initializeMistakesLearnPage() {
             });
 
             const savedSidebarState = getStoredSidebarState();
-            if (savedSidebarState !== null) {
+            if (savedSidebarState !== null && !isMobile()) {
                 applySidebarState(savedSidebarState === 'true');
-            } else if (window.innerWidth < 768) {
+            } else if (isMobile()) {
+                // On mobile, always start with sidebar hidden (collapsed)
                 applySidebarState(true);
             }
 
@@ -1000,11 +1029,28 @@ function initializeMistakesLearnPage() {
                 sidebarToggle.addEventListener('click', function (event) {
                     event.preventDefault();
                     event.stopPropagation();
-                    const collapsed = !document.body.classList.contains('sidebar-collapsed');
-                    applySidebarState(collapsed);
-                    setStoredSidebarState(collapsed);
+                    if (isMobile()) {
+                        // Mobile: toggle overlay sidebar
+                        if (sidebar && sidebar.classList.contains('mobile-open')) {
+                            closeMobileSidebar();
+                        } else {
+                            openMobileSidebar();
+                        }
+                    } else {
+                        // Desktop: toggle collapse
+                        const collapsed = !document.body.classList.contains('sidebar-collapsed');
+                        applySidebarState(collapsed);
+                        setStoredSidebarState(collapsed);
+                    }
                 });
             }
+
+            // Close mobile sidebar on resize to desktop
+            window.addEventListener('resize', function() {
+                if (!isMobile()) {
+                    closeMobileSidebar();
+                }
+            });
 
             updateSidebarProgress();
             updateSidebarMode();
