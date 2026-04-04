@@ -61,7 +61,7 @@ return Application::configure(basePath: dirname(__DIR__))
             \App\Http\Middleware\HttpsRedirectMiddleware::class,
             \App\Http\Middleware\SecurityHeaders::class,
             \App\Http\Middleware\NgrokCsrfFix::class,
-            \App\Http\Middleware\InjectDesignProtection::class,
+            // \App\Http\Middleware\InjectDesignProtection::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {
