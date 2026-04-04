@@ -93,12 +93,6 @@ class Question extends Model
         return Topic::whereIn('id', $topicIds->unique()->filter())->get();
     }
 
-    // DEPRECATED: Pivot table removed. User extra_topic string instead.
-    public function additionalTopics()
-    {
-        return collect();
-    }
-
     /**
      * ✅ ZERO N+1: Enrich an entire question collection with badge data in ONE query.
      * Call this in the controller before passing questions to a Blade view.

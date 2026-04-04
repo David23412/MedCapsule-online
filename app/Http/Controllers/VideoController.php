@@ -166,9 +166,6 @@ class VideoController extends Controller
                     });
             });
 
-            if (app()->environment('local', 'testing')) {
-            }
-
             return response()->json([
                 'success' => true,
                 'videos' => $videos

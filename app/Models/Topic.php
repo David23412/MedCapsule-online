@@ -63,12 +63,6 @@ class Topic extends Model
         return $this->hasMany(Question::class)->orderBy('id'); // Ensure questions are ordered
     }
 
-    // DEPRECATED: Use allQuestions() or the extra_topic column
-    public function linkedQuestions()
-    {
-        return collect();
-    }
-
     // Get all questions for this topic (both direct and linked via extra_topic)
     public function allQuestions()
     {
