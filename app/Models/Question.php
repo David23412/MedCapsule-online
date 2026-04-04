@@ -176,7 +176,9 @@ class Question extends Model
 
             // Stamp as a plain attribute so Blade reads it without triggering accessors
             if (!is_array($qObj)) {
-                $qObj->setRelation('_badges_resolved', collect()); // mark as processed
+                if ($qObj instanceof \Illuminate\Database\Eloquent\Model) {
+                    $qObj->setRelation('_badges_resolved', collect());
+                }
                 $qObj->enhanced_source_badges_computed = $badges;
             }
         }
@@ -222,8 +224,15 @@ class Question extends Model
         } elseif ($this->exam_appearances_count >= 2) {
             $badges[] = '📈 REPEATED';
         }
+        // Show ALL linked topic names (including main topic for cross-linked context).
+        // The Blade template filters out the currently-viewed topic by name, so the
+        // exam origin badge (e.g. "FINAL EXAM 2022") will appear when viewing from
+        // a linked lecture topic, and will be hidden when viewing from the exam itself.
         foreach ($this->topics as $topic) {
-            if ($topic->id === $this->topic_id) continue;
+            if ($topic->id === $this->topic_id && empty($this->extra_topic)) {
+                // Only skip main topic if the question has no cross-links
+                continue;
+            }
             $name = strtoupper($topic->name);
             if (!in_array($name, $badges, true)) {
                 $badges[] = $name;
