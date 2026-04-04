@@ -12,6 +12,7 @@ use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 use Carbon\Carbon;
 use App\Models\QuizAttempt;
+use App\Models\User;
 use App\Services\PerformanceTrackingService;
 use App\Services\SecureFileUploadService;
 
@@ -136,15 +137,36 @@ class ProfileController extends Controller
             ($progressPercent >= 70 ? '#3b82f6' :
             ($progressPercent >= 40 ? '#f59e0b' : '#ef4444'));
 
-        // RUTHLESS OPTIMIZATION: Cached user rank with longer duration
+        // Safe check: show_on_leaderboard column may not have been migrated yet
+        $hasLeaderboardColumn = Schema::hasColumn('users', 'show_on_leaderboard');
+
+        // Cached user rank — includes users ranked by XP then correct_answers_count
         $userRank = null;
-        if ($user->xp > 0 && $user->show_on_leaderboard) {
-            $userRank = Cache::remember("user_rank_optimized_{$user->id}", 1800, function() use ($user) {
-                return DB::table('users')
-                    ->where('role', 3) // 3 = student role (integer)
-                    ->where('show_on_leaderboard', true)
-                    ->where('xp', '>', $user->xp)
-                    ->count() + 1;
+        $userXp = (int) ($user->xp ?? 0);
+        $userCorrect = (int) ($user->correct_answers_count ?? 0);
+        $isVisibleOnLeaderboard = !$hasLeaderboardColumn || ($user->show_on_leaderboard ?? true);
+
+        if (($userXp > 0 || $userCorrect > 0) && $isVisibleOnLeaderboard) {
+            $userRank = Cache::remember("user_rank_v2_{$user->id}", 1800, function() use ($user, $userXp, $userCorrect, $hasLeaderboardColumn) {
+                $query = DB::table('users')
+                    ->where('role', User::ROLE_STUDENT)
+                    ->where(function ($q) {
+                        $q->where('xp', '>', 0)
+                          ->orWhere('correct_answers_count', '>', 0);
+                    })
+                    ->where(function ($q) use ($userXp, $userCorrect) {
+                        $q->where('xp', '>', $userXp)
+                          ->orWhere(function ($q2) use ($userXp, $userCorrect) {
+                              $q2->where('xp', '=', $userXp)
+                                 ->where('correct_answers_count', '>', $userCorrect);
+                          });
+                    });
+
+                if ($hasLeaderboardColumn) {
+                    $query->where('show_on_leaderboard', true);
+                }
+
+                return $query->count() + 1;
             });
         }
 
@@ -215,9 +237,9 @@ class ProfileController extends Controller
 
         $weakTopicCoach = $this->performanceTrackingService->getWeakTopicCoach($user, 5);
         
-        // RUTHLESS OPTIMIZATION: Extended leaderboard caching - TEMPORARILY DISABLED FOR DEBUGGING
-        $leaderboard = Cache::remember('profile_leaderboard_top10_v1', 300, function () {
-            return DB::table('users')
+        // Leaderboard top 10 — includes users with XP or correct answers
+        $leaderboard = Cache::remember('profile_leaderboard_top10_v2', 300, function () use ($hasLeaderboardColumn) {
+            $query = DB::table('users')
                 ->select(
                     'users.id',
                     'users.name',
@@ -225,10 +247,19 @@ class ProfileController extends Controller
                     'users.xp',
                     DB::raw('FLOOR(COALESCE(users.xp, 0) / 1000) + 1 as level')
                 )
-                ->where('users.xp', '>', 0)
-                ->where('users.role', 3)
-                ->where('users.show_on_leaderboard', true)
-                ->orderByDesc('xp')
+                ->where(function ($q) {
+                    $q->where('users.xp', '>', 0)
+                      ->orWhere('users.correct_answers_count', '>', 0);
+                })
+                ->where('users.role', User::ROLE_STUDENT);
+
+            if ($hasLeaderboardColumn) {
+                $query->where('users.show_on_leaderboard', true);
+            }
+
+            return $query
+                ->orderByDesc('users.xp')
+                ->orderByDesc('users.correct_answers_count')
                 ->limit(10)
                 ->get()
                 ->map(function($user) {
@@ -265,7 +296,7 @@ class ProfileController extends Controller
             'planner_focus' => $user->planner_focus ?? 'balanced',
             'repair_mode' => $user->repair_mode,
             'mistake_mastery_mode' => $user->mistake_mastery_mode,
-            'show_on_leaderboard' => (bool) $user->show_on_leaderboard,
+            'show_on_leaderboard' => $hasLeaderboardColumn ? (bool) $user->show_on_leaderboard : true,
         ];
 
         return view('profile', compact(
@@ -648,8 +679,10 @@ class ProfileController extends Controller
 
             // Bust caches
             Cache::forget("user_profile_optimized_{$user->id}_" . now()->format('Y-m-d-H'));
-            Cache::forget("user_rank_optimized_{$user->id}");
-            Cache::forget('profile_leaderboard_top10_v1'); // Global leaderboard cache
+            Cache::forget("user_rank_v2_{$user->id}");
+            Cache::forget("user_rank_optimized_{$user->id}"); // Legacy key
+            Cache::forget('profile_leaderboard_top10_v2'); // Global leaderboard cache
+            Cache::forget('profile_leaderboard_top10_v1'); // Legacy key
 
             return response()->json([
                 'success' => true,
