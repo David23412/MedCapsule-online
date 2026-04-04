@@ -264,6 +264,23 @@ class WrittenAnswerEvaluationService
         if ($normSubmitted === $normCorrect) {
             return $this->earlyResult(true, 1.0, 'Perfect match after normalization', $start);
         }
+
+        // ── Sorted-token match (order-independent) ──────────────────────────
+        // Catches "Genetic and biological factors" vs "Biological/genetic factors"
+        // and any other reordering of the same words.
+        $sortedSubmitted = $this->textProcessor->sortedTokenForm($submittedAnswer);
+        $sortedCorrect   = $this->textProcessor->sortedTokenForm($correctAnswer);
+        if ($sortedSubmitted === $sortedCorrect) {
+            return $this->earlyResult(true, 1.0, 'Perfect match (order-independent)', $start);
+        }
+
+        // Also check sorted token match against alternatives
+        foreach ($alternativeAnswers as $alt) {
+            if ($sortedSubmitted === $this->textProcessor->sortedTokenForm($alt)) {
+                return $this->earlyResult(true, 1.0, 'Perfect match with alternative (order-independent)', $start);
+            }
+        }
+
         if (!$this->hasMeaningfulTokenOverlap($normSubmitted, $normCorrect, $alternativeAnswers)) {
             return $this->earlyResult(false, 0.0, 'No matching concepts found', $start);
         }
@@ -616,6 +633,29 @@ class WrittenAnswerEvaluationService
             }
         }
 
+        // ── Sorted-token match (order-independent) ──────────────────────────
+        // "Genetic and biological factors" == "Biological/genetic factors"
+        $sortedSub = $this->textProcessor->sortedTokenForm($submittedAnswer);
+        $sortedCor = $this->textProcessor->sortedTokenForm($correctAnswer);
+        if ($sortedSub === $sortedCor) {
+            return $this->buildCorrectResult(0.98, 'Correct (reordered)', $courseTopic,
+                'Your answer contains all the correct concepts.');
+        }
+        foreach ($alternativeAnswers as $alt) {
+            if ($sortedSub === $this->textProcessor->sortedTokenForm($alt)) {
+                return $this->buildCorrectResult(0.98, 'Correct alternative (reordered)', $courseTopic,
+                    'Your answer correctly matches an accepted alternative.');
+            }
+        }
+
+        // ── Fuzzy order-independent match ─────────────────────────────────────
+        // High fuzzy overlap (≥0.90) with no contradictions → correct
+        $fuzzyOverlap = $this->textProcessor->getFuzzyOrderIndependentOverlap($submittedAnswer, $correctAnswer);
+        if ($fuzzyOverlap >= 0.90 && !$this->textProcessor->containsAntonyms($normalizedSubmitted, $normalizedCorrect)) {
+            return $this->buildCorrectResult(0.95, 'Correct (fuzzy order-independent)', $courseTopic,
+                'Your answer contains the key concepts despite minor spelling or ordering differences.');
+        }
+
         // ── Protein synthesis location error (critical) ──────────────────────
         if (stripos($normalizedSubmitted, 'protein synthesis') !== false) {
             $wrongLoc = $this->findIncorrectLocationMention('protein synthesis', $normalizedSubmitted);
@@ -706,6 +746,12 @@ class WrittenAnswerEvaluationService
         $domainBoost     = $this->calculateDomainContextBoost($submittedAnswer, $bestAnswer);
         $finalSimilarity = min(1.0, $bestSimilarity + $domainBoost);
 
+        // Order-independent boost — same content words, different order
+        $orderIndepOverlap = $this->textProcessor->getFuzzyOrderIndependentOverlap($submittedAnswer, $bestAnswer);
+        if ($orderIndepOverlap >= 0.75 && !($bestMetrics['hasContradictions'] ?? false)) {
+            $finalSimilarity = min(1.0, $finalSimilarity + ($orderIndepOverlap - 0.5) * 0.3);
+        }
+
         // Phrasing boost when conceptual is very high
         if (($bestMetrics['conceptual'] ?? 0) > 0.8 && ($bestMetrics['keyword'] ?? 0) > 0.6
             && !($bestMetrics['hasContradictions'] ?? false)) {
@@ -738,6 +784,13 @@ class WrittenAnswerEvaluationService
             && ($bestMetrics['keyword'] ?? 0) > 0.3) {
             $isCorrect       = true;
             $finalSimilarity = max($finalSimilarity, 0.82);
+        }
+
+        // Order-independent override — high fuzzy overlap means same answer in different order
+        if (!$isCorrect && !($bestMetrics['hasContradictions'] ?? false)
+            && $orderIndepOverlap >= 0.80) {
+            $isCorrect       = true;
+            $finalSimilarity = max($finalSimilarity, 0.88);
         }
 
         $feedback = $this->generateDetailedFeedback(
@@ -814,11 +867,36 @@ class WrittenAnswerEvaluationService
 
         if (!$isParaQ && !$isSymQ) { return null; }
 
-        $hrUp   = $this->containsAnyPhrase($semanticSubmitted, ['increase heart rate', 'increases heart rate']);
-        $hrDown = $this->containsAnyPhrase($semanticSubmitted, ['decrease heart rate', 'decreases heart rate']);
-        $digUp  = $this->containsAnyPhrase($semanticSubmitted, ['increase digestion', 'increases digestion']);
+        // Flexible phrase matching — supports multiple phrasing orders
+        $hrUp   = $this->containsAnyPhrase($semanticSubmitted, [
+            'increase heart rate', 'increases heart rate', 'increased heart rate',
+            'heart rate increases', 'heart rate increase', 'heart rate goes up',
+            'raises heart rate', 'raise heart rate', 'speeds up heart rate',
+            'accelerates heart rate', 'faster heart rate', 'higher heart rate',
+            'tachycardia', 'positive chronotropic',
+        ]);
+        $hrDown = $this->containsAnyPhrase($semanticSubmitted, [
+            'decrease heart rate', 'decreases heart rate', 'decreased heart rate',
+            'heart rate decreases', 'heart rate decrease', 'heart rate goes down',
+            'lowers heart rate', 'lower heart rate', 'slows heart rate',
+            'slows down heart rate', 'slower heart rate', 'lower heart rate',
+            'bradycardia', 'negative chronotropic',
+        ]);
+        $digUp  = $this->containsAnyPhrase($semanticSubmitted, [
+            'increase digestion', 'increases digestion', 'increased digestion',
+            'digestion increases', 'promotes digestion', 'stimulates digestion',
+            'enhances digestion', 'supports digestion', 'activates digestion',
+            'increases gut motility', 'increase gut motility',
+            'increases peristalsis', 'increase peristalsis',
+            'stimulates peristalsis', 'promotes peristalsis',
+        ]);
         $digDown= $this->containsAnyPhrase($semanticSubmitted, [
-            'decrease digestion','decreases digestion','inhibit digestion','inhibits digestion',
+            'decrease digestion','decreases digestion','decreased digestion',
+            'digestion decreases','inhibit digestion','inhibits digestion',
+            'suppresses digestion','suppress digestion','reduces digestion',
+            'slows digestion','slows down digestion',
+            'inhibits peristalsis','decreases peristalsis',
+            'inhibits gut motility','decreases gut motility',
         ]);
 
         if ($isSymQ) {
@@ -950,16 +1028,17 @@ class WrittenAnswerEvaluationService
             return $this->performRegularEvaluation($submittedAnswer, $correctAnswer, self::DEFAULT_SIMILARITY_THRESHOLD);
         }
 
-        // Use fuzzy matching for enumeration items (catch typos in list items)
+        // Use fuzzy matching for enumeration items (catch typos AND reordering)
         $matched = array_values(array_filter($correctItems, function($item) use ($submittedNormalized) {
             // Exact substring match
             if (stripos($submittedNormalized, $item) !== false) {
                 return true;
             }
-            // Fuzzy match: check if any word sequence in submitted answer is close to the item
+
             $itemWords = preg_split('/\s+/', trim($item));
+
+            // Single word item — check per-word fuzzy match
             if (count($itemWords) === 1 && strlen($item) >= 3) {
-                // Single word item — check per-word fuzzy match
                 $subWords = preg_split('/\s+/', $submittedNormalized);
                 foreach ($subWords as $sw) {
                     if ($this->wordsAreSimilar(strtolower($sw), strtolower($item))) {
@@ -967,6 +1046,27 @@ class WrittenAnswerEvaluationService
                     }
                 }
             }
+
+            // Multi-word item — check if all significant words appear (in any order)
+            // e.g., "genetic factors" matches if "genetic" and "factors" both appear
+            if (count($itemWords) > 1) {
+                $subWords = preg_split('/\s+/', $submittedNormalized);
+                $matchedWords = 0;
+                foreach ($itemWords as $iw) {
+                    if (strlen($iw) < 3) { $matchedWords++; continue; } // skip short words
+                    foreach ($subWords as $sw) {
+                        if ($this->wordsAreSimilar(strtolower($sw), strtolower($iw))) {
+                            $matchedWords++;
+                            break;
+                        }
+                    }
+                }
+                // If ≥80% of the item's words are found (fuzzy), consider it matched
+                if ($matchedWords >= count($itemWords) * 0.8) {
+                    return true;
+                }
+            }
+
             return false;
         }));
         $coverage  = count($matched) / count($correctItems);

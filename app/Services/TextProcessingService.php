@@ -24,6 +24,11 @@ class TextProcessingService
     public function normalizeText(string $text): string
     {
         $text = strtolower($text);
+
+        // Expand slashes to " and " BEFORE stripping special characters
+        // so "biological/genetic" → "biological and genetic"
+        $text = $this->expandSlashSeparators($text);
+
         $text = preg_replace('/[^\w\s\-\'\.]/', '', $text);
         $text = preg_replace('/\s+/', ' ', trim($text));
 
@@ -564,6 +569,146 @@ class TextProcessingService
         }
 
         return $text;
+    }
+
+    // ---------------------------------------------------------------------------
+    // Slash and conjunction normalization
+    // ---------------------------------------------------------------------------
+
+    /**
+     * Expand slash-separated terms to "X and Y" format.
+     *
+     * "biological/genetic" → "biological and genetic"
+     * "DNA/RNA"            → "DNA and RNA"
+     *
+     * Only expands slashes that separate words (not numeric fractions like "120/80").
+     */
+    private function expandSlashSeparators(string $text): string
+    {
+        // Don't expand numeric fractions (e.g., "120/80", "3/4")
+        return preg_replace('/(?<![0-9])\/(?![0-9])/', ' and ', $text) ?? $text;
+    }
+
+    /**
+     * Build a canonical (sorted) token representation of a text.
+     *
+     * This enables order-independent comparison so that:
+     *   "Biological and genetic factors" → "and biological factors genetic"
+     *   "Genetic and biological factors" → "and biological factors genetic"
+     *
+     * Used to detect reordered answers that are semantically identical.
+     */
+    public function sortedTokenForm(string $text): string
+    {
+        $words = $this->extractWords($text);
+        sort($words);
+        return implode(' ', $words);
+    }
+
+    /**
+     * Order-independent keyword overlap.
+     *
+     * Extracts content words (no stop words), sorts them, and compares as sets.
+     * This means "Genetic and biological factors" matches "Biological/genetic factors"
+     * regardless of word order.
+     */
+    public function getOrderIndependentOverlap(string $text1, string $text2): float
+    {
+        $stop = $this->stopWordSet();
+
+        $w1 = array_values(array_filter(
+            $this->extractWords($text1),
+            fn($w) => !isset($stop[$w]) && strlen($w) >= 2
+        ));
+        $w2 = array_values(array_filter(
+            $this->extractWords($text2),
+            fn($w) => !isset($stop[$w]) && strlen($w) >= 2
+        ));
+
+        if (empty($w1) && empty($w2)) { return 1.0; }
+        if (empty($w1) || empty($w2)) { return 0.0; }
+
+        sort($w1);
+        sort($w2);
+
+        $common = count(array_intersect($w1, $w2));
+        $total  = count(array_unique(array_merge($w1, $w2)));
+
+        return $total > 0 ? $common / $total : 0.0;
+    }
+
+    /**
+     * Fuzzy order-independent overlap using per-word Levenshtein matching.
+     *
+     * Like getOrderIndependentOverlap but also catches typos:
+     *   "Determiants of health" matches "Determinants of health"
+     *   "Genetic and biologcal factors" matches "Biological/genetic factors"
+     */
+    public function getFuzzyOrderIndependentOverlap(string $text1, string $text2): float
+    {
+        $stop = $this->stopWordSet();
+
+        $w1 = array_values(array_filter(
+            $this->extractWords($text1),
+            fn($w) => !isset($stop[$w]) && strlen($w) >= 2
+        ));
+        $w2 = array_values(array_filter(
+            $this->extractWords($text2),
+            fn($w) => !isset($stop[$w]) && strlen($w) >= 2
+        ));
+
+        if (empty($w1) && empty($w2)) { return 1.0; }
+        if (empty($w1) || empty($w2)) { return 0.0; }
+
+        // Count how many words in w1 have a fuzzy match in w2
+        $matchedInW1 = 0;
+        $usedW2 = [];
+        foreach ($w1 as $word1) {
+            foreach ($w2 as $j => $word2) {
+                if (isset($usedW2[$j])) { continue; }
+                if ($this->wordsFuzzyMatch($word1, $word2)) {
+                    $matchedInW1++;
+                    $usedW2[$j] = true;
+                    break;
+                }
+            }
+        }
+
+        // Symmetric: also count how many words in w2 have a fuzzy match in w1
+        $matchedInW2 = 0;
+        $usedW1 = [];
+        foreach ($w2 as $word2) {
+            foreach ($w1 as $j => $word1) {
+                if (isset($usedW1[$j])) { continue; }
+                if ($this->wordsFuzzyMatch($word1, $word2)) {
+                    $matchedInW2++;
+                    $usedW1[$j] = true;
+                    break;
+                }
+            }
+        }
+
+        // Average of both directions for balanced coverage
+        $fwd = $matchedInW1 / count($w1);
+        $rev = $matchedInW2 / count($w2);
+
+        return ($fwd + $rev) / 2.0;
+    }
+
+    /**
+     * Check if two words are similar enough to be considered a fuzzy match.
+     * Uses the same adaptive thresholds as WrittenAnswerEvaluationService::wordsAreSimilar.
+     */
+    private function wordsFuzzyMatch(string $word1, string $word2): bool
+    {
+        if ($word1 === $word2) { return true; }
+
+        $len  = max(strlen($word1), strlen($word2));
+        $dist = levenshtein($word1, $word2);
+
+        if ($len <= 4) { return $dist <= 1; }
+        if ($len <= 8) { return $dist <= 2; }
+        return $dist <= 3;
     }
 
     // ---------------------------------------------------------------------------
