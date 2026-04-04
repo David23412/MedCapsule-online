@@ -1,4 +1,4 @@
-var TUTOR_CONFIG = window.TUTOR_CONFIG || {};
+const TUTOR_CONFIG = window.TUTOR_CONFIG || {};
 
 
 // ============================================================
