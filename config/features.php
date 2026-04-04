@@ -48,6 +48,6 @@ return [
     'performance_comparison' => env('FEATURE_PERFORMANCE_COMPARISON', false), // Compare old vs new performance
 
     // Frontend design protection
-    'design_protection_enabled' => env('DESIGN_PROTECTION_ENABLED', true),
+    'design_protection_enabled' => env('DESIGN_PROTECTION_ENABLED', false),
     'design_protection_devtools_threshold' => (int) env('DESIGN_PROTECTION_DEVTOOLS_THRESHOLD', 160),
 ];
