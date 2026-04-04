@@ -17,7 +17,7 @@ class CourseController extends Controller
 
     public function __construct(CourseService $courseService)
     {
-        $this->middleware(['auth']);
+        $this->middleware(['auth', 'admin']);
         $this->courseService = $courseService;
     }
 

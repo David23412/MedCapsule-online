@@ -278,7 +278,7 @@ class CacheManager
 
         // Check if it looks like serialized data
         if (preg_match('/^a:\d+:\{/', $value) || preg_match('/^O:\d+:"/', $value)) {
-            return unserialize($value);
+            return unserialize($value, ['allowed_classes' => false]);
         }
 
         return $value;

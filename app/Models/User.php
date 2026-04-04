@@ -63,6 +63,13 @@ class User extends Authenticatable
     protected $hidden = [
         'password',
         'remember_token',
+        'active_session_token',
+        'device_fingerprint',
+        'last_login_ip',
+        'last_user_agent',
+        'last_security_check',
+        'concurrent_login_attempts',
+        'last_suspicious_activity',
     ];
 
     /**

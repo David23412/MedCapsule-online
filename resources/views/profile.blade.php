@@ -30,6 +30,86 @@
         @media (max-width: 850px) {
             body { zoom: 1 !important; }
         }
+
+        /* Leaderboard privacy toggle — inline fallback */
+        .privacy-control {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 6px 12px;
+            background: #f1f5f9;
+            border-radius: 12px;
+            border: 1px solid #e2e8f0;
+            transition: all 0.2s ease;
+        }
+        .privacy-control:hover {
+            background: #e2e8f0;
+        }
+        .privacy-control-label {
+            font-size: 0.72rem;
+            font-weight: 700;
+            color: #64748b;
+            text-transform: uppercase;
+            letter-spacing: 0.03em;
+            user-select: none;
+            white-space: nowrap;
+        }
+        .privacy-switch {
+            position: relative;
+            display: inline-block;
+            width: 36px;
+            height: 20px;
+            overflow: hidden;
+            vertical-align: middle;
+            cursor: pointer;
+            flex-shrink: 0;
+        }
+        .privacy-switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+            position: absolute;
+            margin: 0;
+            padding: 0;
+            border: 0;
+            -webkit-appearance: none;
+            -moz-appearance: none;
+            appearance: none;
+            pointer-events: none;
+        }
+        .privacy-slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #cbd5e1;
+            transition: .3s cubic-bezier(0.4, 0, 0.2, 1);
+            border-radius: 20px;
+        }
+        .privacy-slider:before {
+            position: absolute;
+            content: "";
+            height: 14px;
+            width: 14px;
+            left: 3px;
+            bottom: 3px;
+            background-color: white;
+            transition: .3s cubic-bezier(0.4, 0, 0.2, 1);
+            border-radius: 50%;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+        .privacy-switch input:checked + .privacy-slider {
+            background-color: #10b981;
+        }
+        .privacy-switch input:checked + .privacy-slider:before {
+            transform: translateX(16px);
+        }
+        .privacy-control.updating {
+            opacity: 0.6;
+            pointer-events: none;
+        }
     </style>
 </head>
 <body>

@@ -717,10 +717,10 @@ class CourseService
                         ) deduped
                         WHERE deduped.user_row_num = 1
                     ) preview
-                    WHERE preview.row_num <= {$limit}
+                    WHERE preview.row_num <= ?
                     ORDER BY preview.course_id, preview.row_num
                 ",
-                $courseIds->all()
+                array_merge($courseIds->all(), [$limit])
             ));
 
             return $rows->groupBy('course_id')->map(function (SupportCollection $group) {

@@ -334,7 +334,7 @@ class ProfileController extends Controller
         try {
             // 🔒 MEGA LETHAL SECURITY: Use secure file upload service
             $request->validate([
-                'profile_picture' => 'required|file|max:5120' // Basic validation, security handled by service
+                'profile_picture' => 'required|file|image|mimes:jpeg,jpg,png,gif,webp|max:5120'
             ]);
 
             $user = auth()->user();

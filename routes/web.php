@@ -250,7 +250,7 @@ Route::group([], function () {
     Route::redirect('/dashboard', '/courses')->name('dashboard');
 
     // Payment Routes
-    Route::prefix('payments')->name('payments.')->group(function () {
+    Route::prefix('payments')->name('payments.')->middleware('auth')->group(function () {
         Route::get('/{course}/options', [App\Http\Controllers\Admin\PaymentController::class, 'getPaymentOptions'])->name('options');
         Route::post('/{course}/process', [App\Http\Controllers\Admin\PaymentController::class, 'processManualPayment'])->name('process');
     });
@@ -400,7 +400,7 @@ Route::middleware(['auth'])->group(function () {
 
 
 // Healthcheck route for monitoring
-Route::get('/health', [App\Http\Controllers\Api\StatusController::class, 'health']);
+Route::get('/health', [App\Http\Controllers\Api\StatusController::class, 'health'])->name('health');
 
 // Admin Tutor Management Routes (Admin & Tutor Access)
 Route::middleware(['auth', 'tutor'])->prefix('admin/tutors')->name('admin.tutors.')->group(function () {

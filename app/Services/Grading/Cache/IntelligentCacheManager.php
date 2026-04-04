@@ -232,7 +232,7 @@ class IntelligentCacheManager
             }
 
             $content = file_get_contents($file);
-            return unserialize($content);
+            return unserialize($content, ['allowed_classes' => false]);
         }
 
         return null;
