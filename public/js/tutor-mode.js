@@ -224,7 +224,8 @@ const TUTOR_CONFIG = window.TUTOR_CONFIG || {};
             console.log(`📝 Answer selected: "${answer}"`);
 
             // 💀 INSTANT CLIENT-SIDE CHECKING - NO NETWORK DELAY 💀
-            if (questionData[questionId]) {
+            // Written questions MUST go to the server for intelligent fuzzy grading
+            if (questionData[questionId] && questionData[questionId].question_type !== 'written') {
                 console.log(`⚡ INSTANT CLIENT-SIDE CHECK for Q${questionId}`);
 
                 const qData = questionData[questionId];
@@ -255,8 +256,10 @@ const TUTOR_CONFIG = window.TUTOR_CONFIG || {};
                 return;
             }
 
-            // FALLBACK TO NETWORK REQUEST
-            console.warn(`⚠️ FALLBACK TO NETWORK for Q${questionId}`);
+            // NETWORK REQUEST (always used for written questions, fallback for others)
+            console.log(questionData[questionId]?.question_type === 'written'
+                ? `📝 WRITTEN QUESTION: Sending to server for intelligent grading Q${questionId}`
+                : `⚠️ FALLBACK TO NETWORK for Q${questionId}`);
 
             if (checkBtn) {
                 checkBtn.disabled = true;
@@ -2417,7 +2420,8 @@ const TUTOR_CONFIG = window.TUTOR_CONFIG || {};
             console.log(`📝 Answer selected: "${answer}"`);
             
             // 💀 INSTANT CLIENT-SIDE CHECKING - NO NETWORK DELAY 💀
-            if (questionData[questionId]) {
+            // Written questions MUST go to the server for intelligent fuzzy grading
+            if (questionData[questionId] && questionData[questionId].question_type !== 'written') {
                 console.log(`⚡ INSTANT CLIENT-SIDE CHECK for Q${questionId}`);
                 
                 const qData = questionData[questionId];
