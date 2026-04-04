@@ -721,7 +721,44 @@
         hydrateProgressFromStorage();
         hydrateAssignmentCompletionFromStorage();
         fetchRecentProgressUpdates();
-        window.addEventListener('pageshow', fetchRecentProgressUpdates);
+        window.addEventListener('pageshow', function(e) {
+            // Small delay to let server-side POST from quiz completion settle
+            setTimeout(fetchRecentProgressUpdates, e.persisted ? 300 : 0);
+        });
+
+        // Instant AJAX polling: fetch updates every 15 seconds while page is visible
+        let progressPollInterval = null;
+        function startProgressPolling() {
+            if (progressPollInterval) return;
+            progressPollInterval = setInterval(function() {
+                fetchRecentProgressUpdates();
+                hydrateProgressFromStorage();
+                hydrateAssignmentCompletionFromStorage();
+            }, 15000);
+        }
+        function stopProgressPolling() {
+            if (progressPollInterval) {
+                clearInterval(progressPollInterval);
+                progressPollInterval = null;
+            }
+        }
+        startProgressPolling();
+
+        // Also re-fetch immediately when tab becomes visible again
+        document.addEventListener('visibilitychange', function() {
+            if (document.visibilityState === 'visible') {
+                // Slight delay to ensure server has processed any quiz completion POST
+                setTimeout(function() {
+                    fetchRecentProgressUpdates();
+                    hydrateProgressFromStorage();
+                    hydrateAssignmentCompletionFromStorage();
+                }, 300);
+                startProgressPolling();
+            } else {
+                stopProgressPolling();
+            }
+        });
+
         document.addEventListener('assignmentCompleted', function(e) {
             applyAssignmentCompletion(e.detail);
         });
