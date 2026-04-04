@@ -247,6 +247,9 @@ body{font-family:'Poppins',sans-serif;background-color:#f8f9fa;zoom:.72;margin:0
     border-radius: calc(18px * var(--topics-sidebar-scale-compensation));
     padding: calc(20px * var(--topics-sidebar-scale-compensation)) calc(18px * var(--topics-sidebar-scale-compensation)) calc(16px * var(--topics-sidebar-scale-compensation));
     box-shadow: 0 8px 20px rgba(15, 23, 42, 0.035);
+    overflow: visible;
+    max-height: none;
+    opacity: 1;
 }
 
 .sidebar-game-plan-head {
@@ -302,6 +305,7 @@ body{font-family:'Poppins',sans-serif;background-color:#f8f9fa;zoom:.72;margin:0
     display: flex;
     flex-direction: column;
     gap: 0.18rem;
+    overflow: visible;
 }
 
 .sidebar-task-item {
@@ -311,6 +315,7 @@ body{font-family:'Poppins',sans-serif;background-color:#f8f9fa;zoom:.72;margin:0
     gap: 0.95rem;
     padding: 1.15rem 0.15rem;
     border-bottom: 1px solid #edf2f7;
+    overflow: visible;
 }
 
 .sidebar-task-check {

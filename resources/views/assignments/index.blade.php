@@ -83,8 +83,8 @@
 <!-- Minimal Navigation -->
 <nav class="navbar" style="opacity: 1; transition: opacity 0.3s ease;">
     <div class="nav-container">
-        <a href="{{ route('home') }}" class="brand">MedCapsule</a>
-        <a href="{{ route('home') }}" class="nav-link">
+        <a href="{{ route('courses.index') }}" class="brand">MedCapsule</a>
+        <a href="{{ route('courses.index') }}" class="nav-link">
             <i class="fas fa-home"></i>
             <span>Home</span>
         </a>

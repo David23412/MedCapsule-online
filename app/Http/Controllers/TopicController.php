@@ -67,7 +67,7 @@ class TopicController extends Controller
             }
 
             // Deny access for other roles
-            return redirect()->route('home')->with('error', 'Unauthorized access.');
+            return redirect()->route('courses.index')->with('error', 'Unauthorized access.');
         })->only(['showAddTopicForm', 'addTopic', 'updateTopicAfterQuiz']);
 
         $this->viewController = new TopicViewController();

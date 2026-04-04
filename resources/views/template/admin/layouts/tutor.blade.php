@@ -187,7 +187,7 @@
 <body>
     <!-- Sidebar -->
     <div class="tutor-sidebar">
-        <a class="sidebar-brand d-flex align-items-center justify-content-center" href="{{ route('home') }}">
+        <a class="sidebar-brand d-flex align-items-center justify-content-center" href="{{ route('courses.index') }}">
             <div class="sidebar-brand-icon">
                 <i class="fas fa-chalkboard-teacher"></i>
             </div>
@@ -238,7 +238,7 @@
 
         <ul class="nav flex-column mt-auto">
             <li class="nav-item">
-                <a class="nav-link" href="{{ route('home') }}">
+                <a class="nav-link" href="{{ route('courses.index') }}">
                     <i class="fas fa-fw fa-arrow-left"></i>
                     <span>Back to Site</span>
                 </a>

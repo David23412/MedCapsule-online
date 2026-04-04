@@ -123,7 +123,7 @@
         </button>
 
         <!-- Logo -->
-        <a href="{{ route('home') }}" class="sidebar-logo">
+        <a href="{{ route('courses.index') }}" class="sidebar-logo">
             <!-- MedCapsule Capsule Pill Logo — glossy 3D effect -->
             <div class="sidebar-logo-icon">
                 <svg width="52" height="26" viewBox="0 0 52 26" fill="none" xmlns="http://www.w3.org/2000/svg" aria-label="MedCapsule">
@@ -168,7 +168,7 @@
         <div class="sidebar-nav">
             <span class="sidebar-section-label">Navigation</span>
 
-            <a class="nav-link" href="{{ route('home') }}">
+            <a class="nav-link" href="{{ route('courses.index') }}">
                 <i class="fas fa-home nav-icon"></i>
                 <span class="nav-link-label">Home</span>
             </a>
