@@ -1449,123 +1449,6 @@ const MANAGE_ACCESS_CONFIG = window.MANAGE_ACCESS_CONFIG || {};
             }
         }
 
-        document.addEventListener('DOMContentLoaded', function () {
-            const surveyPane = document.getElementById('survey-results');
-
-            if (!surveyPane) {
-                return;
-            }
-
-            const animateNumber = (element) => {
-                if (!element || element.dataset.animated === 'true') {
-                    return;
-                }
-
-                const target = Number(element.dataset.target || 0);
-                if (Number.isNaN(target)) {
-                    return;
-                }
-
-                element.dataset.animated = 'true';
-
-                const hasPercentSuffix = element.textContent.trim().includes('%');
-                const duration = 900;
-                const start = performance.now();
-
-                const update = (timestamp) => {
-                    const progress = Math.min((timestamp - start) / duration, 1);
-                    const eased = 1 - Math.pow(1 - progress, 3);
-                    const value = target * eased;
-                    const numeric = Math.round(value).toString();
-                    const formatted = `${numeric}${hasPercentSuffix ? '%' : ''}`;
-
-                    element.textContent = formatted;
-
-                    if (progress < 1) {
-                        requestAnimationFrame(update);
-                    }
-                };
-
-                requestAnimationFrame(update);
-            };
-
-            const revealSurveyCard = (element) => {
-                if (!element || element.classList.contains('is-visible')) {
-                    return;
-                }
-
-                element.classList.add('is-visible');
-                element.querySelectorAll('.survey-animated-number').forEach(animateNumber);
-            };
-
-            surveyPane.querySelectorAll('.survey-donut').forEach((donut) => {
-                const tooltip = donut.querySelector('.survey-donut-tooltip');
-                const segments = donut.querySelectorAll('.survey-donut-segment');
-
-                if (!tooltip || !segments.length) {
-                    return;
-                }
-
-                segments.forEach((segment) => {
-                    segment.addEventListener('mouseenter', () => {
-                        segments.forEach((item) => item.classList.remove('is-active'));
-                        segment.classList.add('is-active');
-                        tooltip.innerHTML = `<strong>${segment.dataset.percent || ''}</strong><span>${segment.dataset.label || ''}</span>`;
-                        tooltip.classList.add('is-visible');
-                    });
-
-                    segment.addEventListener('mouseleave', () => {
-                        segment.classList.remove('is-active');
-                        tooltip.classList.remove('is-visible');
-                    });
-                });
-            });
-
-            const surveyCards = surveyPane.querySelectorAll('.survey-question-card, .survey-insight-card, .survey-metric-card');
-
-            if ('IntersectionObserver' in window) {
-                const observer = new IntersectionObserver((entries) => {
-                    entries.forEach((entry) => {
-                        if (!entry.isIntersecting) {
-                            return;
-                        }
-
-                        revealSurveyCard(entry.target);
-                        observer.unobserve(entry.target);
-                    });
-                }, {
-                    threshold: 0.22,
-                    rootMargin: '0px 0px -40px 0px'
-                });
-
-                surveyCards.forEach((card) => observer.observe(card));
-            } else {
-                surveyCards.forEach(revealSurveyCard);
-            }
-
-            if (surveyPane.classList.contains('show')) {
-                surveyCards.forEach(revealSurveyCard);
-            }
-
-            const surveyTab = document.getElementById('survey-results-tab');
-            if (surveyTab) {
-                surveyTab.addEventListener('shown.bs.tab', function () {
-                    surveyCards.forEach(revealSurveyCard);
-                    // Auto-load student responses when tab first shown
-                    if (!window.surveyAdmin._studentsLoaded) {
-                        window.surveyAdmin.loadStudentResponses(1);
-                        window.surveyAdmin._studentsLoaded = true;
-                    }
-                });
-            }
-
-            // If survey tab is already active on page load, load students
-            if (surveyPane.classList.contains('show') && !window.surveyAdmin._studentsLoaded) {
-                window.surveyAdmin.loadStudentResponses(1);
-                window.surveyAdmin._studentsLoaded = true;
-            }
-        });
-
 /* ── Survey Admin: Written Answers + Student Responses ── */
 window.surveyAdmin = (function () {
     'use strict';
@@ -1791,3 +1674,120 @@ window.surveyAdmin = (function () {
         _studentsLoaded: false
     };
 })();
+
+        document.addEventListener('DOMContentLoaded', function () {
+            const surveyPane = document.getElementById('survey-results');
+
+            if (!surveyPane) {
+                return;
+            }
+
+            const animateNumber = (element) => {
+                if (!element || element.dataset.animated === 'true') {
+                    return;
+                }
+
+                const target = Number(element.dataset.target || 0);
+                if (Number.isNaN(target)) {
+                    return;
+                }
+
+                element.dataset.animated = 'true';
+
+                const hasPercentSuffix = element.textContent.trim().includes('%');
+                const duration = 900;
+                const start = performance.now();
+
+                const update = (timestamp) => {
+                    const progress = Math.min((timestamp - start) / duration, 1);
+                    const eased = 1 - Math.pow(1 - progress, 3);
+                    const value = target * eased;
+                    const numeric = Math.round(value).toString();
+                    const formatted = `${numeric}${hasPercentSuffix ? '%' : ''}`;
+
+                    element.textContent = formatted;
+
+                    if (progress < 1) {
+                        requestAnimationFrame(update);
+                    }
+                };
+
+                requestAnimationFrame(update);
+            };
+
+            const revealSurveyCard = (element) => {
+                if (!element || element.classList.contains('is-visible')) {
+                    return;
+                }
+
+                element.classList.add('is-visible');
+                element.querySelectorAll('.survey-animated-number').forEach(animateNumber);
+            };
+
+            surveyPane.querySelectorAll('.survey-donut').forEach((donut) => {
+                const tooltip = donut.querySelector('.survey-donut-tooltip');
+                const segments = donut.querySelectorAll('.survey-donut-segment');
+
+                if (!tooltip || !segments.length) {
+                    return;
+                }
+
+                segments.forEach((segment) => {
+                    segment.addEventListener('mouseenter', () => {
+                        segments.forEach((item) => item.classList.remove('is-active'));
+                        segment.classList.add('is-active');
+                        tooltip.innerHTML = `<strong>${segment.dataset.percent || ''}</strong><span>${segment.dataset.label || ''}</span>`;
+                        tooltip.classList.add('is-visible');
+                    });
+
+                    segment.addEventListener('mouseleave', () => {
+                        segment.classList.remove('is-active');
+                        tooltip.classList.remove('is-visible');
+                    });
+                });
+            });
+
+            const surveyCards = surveyPane.querySelectorAll('.survey-question-card, .survey-insight-card, .survey-metric-card');
+
+            if ('IntersectionObserver' in window) {
+                const observer = new IntersectionObserver((entries) => {
+                    entries.forEach((entry) => {
+                        if (!entry.isIntersecting) {
+                            return;
+                        }
+
+                        revealSurveyCard(entry.target);
+                        observer.unobserve(entry.target);
+                    });
+                }, {
+                    threshold: 0.22,
+                    rootMargin: '0px 0px -40px 0px'
+                });
+
+                surveyCards.forEach((card) => observer.observe(card));
+            } else {
+                surveyCards.forEach(revealSurveyCard);
+            }
+
+            if (surveyPane.classList.contains('show')) {
+                surveyCards.forEach(revealSurveyCard);
+            }
+
+            const surveyTab = document.getElementById('survey-results-tab');
+            if (surveyTab) {
+                surveyTab.addEventListener('shown.bs.tab', function () {
+                    surveyCards.forEach(revealSurveyCard);
+                    // Auto-load student responses when tab first shown
+                    if (window.surveyAdmin && !window.surveyAdmin._studentsLoaded) {
+                        window.surveyAdmin.loadStudentResponses(1);
+                        window.surveyAdmin._studentsLoaded = true;
+                    }
+                });
+            }
+
+            // If survey tab is already active on page load, load students
+            if (window.surveyAdmin && surveyPane.classList.contains('show') && !window.surveyAdmin._studentsLoaded) {
+                window.surveyAdmin.loadStudentResponses(1);
+                window.surveyAdmin._studentsLoaded = true;
+            }
+        });
