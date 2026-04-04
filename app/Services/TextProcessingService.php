@@ -413,6 +413,16 @@ class TextProcessingService
             'nuerotransmitter'=> 'neurotransmitter',
             'cerebrm'         => 'cerebrum',
             'cerebelum'       => 'cerebellum',
+            'nervus'          => 'nervous',
+            'nervious'        => 'nervous',
+            'nerous'          => 'nervous',
+            'nevrous'         => 'nervous',
+            'synaps'          => 'synapse',
+            'dendrit'         => 'dendrite',
+            'decreses'        => 'decreases',
+            'increaes'        => 'increases',
+            'increses'        => 'increases',
+            'decreaes'        => 'decreases',
 
             // Respiratory
             'alveloi'         => 'alveoli',
@@ -534,6 +544,17 @@ class TextProcessingService
             '/\btreats\b/i'                       => 'treat',
             '/\bmultiple layers\b/i'              => 'multiple layer',
             '/\bsingle layers?\b/i'               => 'single layer',
+            // Phrase-level normalization for location/process descriptions
+            '/\btakes\s+place\s+in\b/i'           => 'occurs in',
+            '/\bhappens?\s+in\b/i'                => 'occurs in',
+            '/\bis\s+found\s+in\b/i'              => 'occurs in',
+            '/\bis\s+located\s+in\b/i'            => 'occurs in',
+            '/\bis\s+carried\s+out\s+in\b/i'      => 'occurs in',
+            '/\bis\s+performed\s+in\b/i'          => 'occurs in',
+            '/\bresponsible\s+for\b/i'            => 'function',
+            '/\bpropels?\b/i'                     => 'pumps',
+            '/\bcirculates?\b/i'                  => 'pumps',
+            '/\bpumping\b/i'                      => 'pumps',
             // Plural → singular normalisation for key terms
             '/\barteries\b/i'                     => 'artery',
             '/\bveins\b/i'                        => 'vein',
@@ -560,7 +581,7 @@ class TextProcessingService
                 => '$1 flows through $2',
             '/\b(heart|lung|liver|kidney)\s+(?:is\s+)?(?:in|at|on)\s+(chest|thorax|abdomen|pelvis)\b/i'
                 => '$1 is located in $2',
-            '/\b(protein synthesis|dna replication|glycolysis|krebs cycle)\s+(?:happens?|occurs?)\s+(?:in|at|on)\s+(.+)/i'
+            '/\b(protein synthesis|dna replication|glycolysis|krebs cycle|tca cycle|citric acid cycle|electron transport chain|oxidative phosphorylation|translation)\s+(?:takes\s+place|happens?|occurs?|is\s+(?:carried\s+out|performed|found|done))\s+(?:in|at|on)\s+(.+)/i'
                 => '$1 occurs in $2',
         ];
 
