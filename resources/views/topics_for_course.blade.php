@@ -30,14 +30,14 @@
     <noscript><link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600;700&display=swap" rel="stylesheet"></noscript>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" crossorigin="anonymous">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" crossorigin="anonymous">
-    <link rel="stylesheet" href="/css/topics.css?v=1.8">
+    <link rel="stylesheet" href="{{ asset('css/topics.css') }}?v=1.8">
 
     <link rel="stylesheet" href="{{ asset('css/topics-for-course-page.css') }}">
     
     {{-- Responsive Navigation CSS --}}
-    <link rel="stylesheet" href="/css/responsive.css">
-    <link rel="stylesheet" href="/css/mobile-utils.css">
-    <link rel="stylesheet" href="/css/responsive-navigation.css">
+    <link rel="stylesheet" href="{{ asset('css/responsive.css') }}">
+    <link rel="stylesheet" href="{{ asset('css/mobile-utils.css') }}">
+    <link rel="stylesheet" href="{{ asset('css/responsive-navigation.css') }}">
 </head>
 <body>
     {{-- Mobile-only sticky top bar --}}
@@ -892,7 +892,7 @@
     </main>
 
 
-    <script src="/js/topics-optimized.js?v=2.1"></script>
+    <script src="{{ asset('js/topics-optimized.js') }}?v=2.1"></script>
 
     {{-- REMOVED: quiz-modal.js to prevent conflicts - unified in main script --}}
 
