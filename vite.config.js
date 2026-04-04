@@ -1,16 +1,21 @@
 import { defineConfig } from 'vite';
 import laravel from 'laravel-vite-plugin';
-import { resolve } from 'path';
+import { fileURLToPath } from 'url';
+import { dirname, resolve } from 'path';
 import autoprefixer from 'autoprefixer';
 import cssnano from 'cssnano';
-
 import react from '@vitejs/plugin-react';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+
 
 export default defineConfig({
     plugins: [
         laravel({
             input: [
                 'resources/css/app.css',
+                'resources/css/landing-page.css',
                 'resources/js/app.js',
                 'resources/js/landing-entry.tsx',
             ],

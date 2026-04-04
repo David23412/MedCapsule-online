@@ -1,6 +1,6 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
-import '../css/landing-page.css'
+import '~/landing-page.css'
 import App from './landing-page/App.tsx'
 
 type LandingConfig = {
