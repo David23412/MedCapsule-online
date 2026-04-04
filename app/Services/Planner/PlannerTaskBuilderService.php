@@ -132,8 +132,27 @@ class PlannerTaskBuilderService
             if ($slotTwo !== null) {
                 $previews->push($this->withPreviewMetadata($slotTwo, 2, (string) $actionableTask['id']));
             }
-            // No slot 3 — cannot know if mistakes will exist before quiz is taken
-            return $previews->values();
+
+            // Slot 3: Optimistic preview of the likely next step after solving.
+            // If the topic's profile suggests mistakes are likely, show "Revise Mistakes".
+            // Otherwise show "Study Next Topic" as the optimistic path forward.
+            if ($previews->isNotEmpty()) {
+                $hasExistingBacklog = (bool) ($profile['has_reviewable_backlog'] ?? false)
+                    || (bool) ($profile['has_due_review'] ?? false);
+                $likelyToHaveMistakes = $hasExistingBacklog
+                    || !(bool) ($profile['is_secure'] ?? false)
+                    && (float) ($profile['progression_accuracy'] ?? 100.0) < 85.0;
+
+                if ($likelyToHaveMistakes) {
+                    $slotThree = $this->buildRepairPreviewTask($currentTopic, $context);
+                    $previews->push($this->withPreviewMetadata($slotThree, 3, (string) $previews->last()['id']));
+                } elseif ($nextTopic !== null) {
+                    $slotThree = $this->buildStudyPreviewTask($nextTopic, $context);
+                    $previews->push($this->withPreviewMetadata($slotThree, 3, (string) $previews->last()['id']));
+                }
+            }
+
+            return $previews->filter()->values();
         }
 
         if ($this->isSolveProgressionTask($actionableTask)) {

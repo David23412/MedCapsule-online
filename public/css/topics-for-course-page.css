@@ -388,6 +388,26 @@ body{font-family:'Poppins',sans-serif;background-color:#f8f9fa;zoom:.72;margin:0
     padding-bottom: 0.45rem;
 }
 
+/* Preview (locked) task styling — dimmed but visible */
+.sidebar-task-item.is-preview {
+    opacity: 0.65;
+}
+
+.sidebar-task-item.is-preview .sidebar-task-check {
+    color: #94a3b8;
+    border-color: #e2e8f0;
+    background: #f8fafc;
+}
+
+.sidebar-task-item.is-preview .sidebar-task-copy strong {
+    color: #475569;
+    font-weight: 600;
+}
+
+.sidebar-task-item.is-preview .sidebar-task-copy span {
+    color: #94a3b8;
+}
+
 .sidebar-task-empty {
     padding: 1rem 0.1rem 0.35rem;
     color: #64748b;
