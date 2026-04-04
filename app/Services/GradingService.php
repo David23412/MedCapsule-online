@@ -24,12 +24,11 @@ class GradingService
     private const MAX_ANSWER_LENGTH = 2000;
     private const MAX_TOTAL_LENGTH = 20000;
     
-    // XP calculation constants  
-    private const XP_PER_CORRECT_ANSWER = 10;
-    private const MAX_TIME_BONUS_XP = 50;
-    private const MAX_ACCURACY_BONUS_XP = 50;
-    private const ACCURACY_BONUS_DIVISOR = 10;
-    private const ACCURACY_BONUS_MULTIPLIER = 5;
+    // XP calculation constants
+    private const XP_PER_CORRECT_QUIZ = 10;        // Quiz/random mode: 10 XP per correct answer
+    private const XP_PER_CORRECT_TUTOR = 5;         // Tutor mode: 5 XP per correct (conservative)
+    private const ACCURACY_BONUS_THRESHOLD = 80;     // Accuracy % required to earn bonus
+    private const MAX_ACCURACY_BONUS_XP = 50;        // Max bonus XP for high accuracy
     
     // Level calculation constants
     private const XP_PER_LEVEL = 1000;
@@ -92,7 +91,7 @@ class GradingService
             $this->createQuizAttemptsByMode($user, $gradingResult, $duration, $mode, $topic, $isAssignment, $assignmentId);
 
             // Update user statistics and rewards
-            $xpResult = $this->updateUserStatsAndRewards($user, $gradingResult, $duration);
+            $xpResult = $this->updateUserStatsAndRewards($user, $gradingResult, $duration, $mode);
 
             // Recompute topic progress from the attempts created above, not a warm cached snapshot.
             $this->progressCacheInvalidator->invalidateUserTopicProgress($user->id, $topic->id, $mode, false);
@@ -175,15 +174,19 @@ class GradingService
      * @param User $user
      * @param array $gradingResult
      * @param int $duration
+     * @param string $mode
      * @return array
      */
-    private function updateUserStatsAndRewards(User $user, array $gradingResult, int $duration): array
+    private function updateUserStatsAndRewards(User $user, array $gradingResult, int $duration, string $mode = 'quiz'): array
     {
-        // XP is now strictly managed by the Planner via StudyGamePlanService::applyXpTransitions.
-        // GradingService no longer double-awards XP.
-        $earnedXP = 0;
+        // Calculate XP based on quiz performance and mode
+        $earnedXP = $this->calculateQuizXp(
+            (int) ($gradingResult['totalCorrect'] ?? 0),
+            (int) ($gradingResult['totalQuestions'] ?? 0),
+            $mode
+        );
 
-        // Update user statistics (XP increment will cleanly be 0)
+        // Update user statistics
         $this->userStatsService->updateAfterQuizAttempt(
             $user,
             $gradingResult['totalQuestions'],
@@ -198,6 +201,41 @@ class GradingService
         // Study streak is already updated atomically inside UserStatsService::updateAfterQuizAttempt().
         
         return $xpResult;
+    }
+
+    /**
+     * Calculate XP earned from a quiz based on correct answers, total questions, and mode.
+     *
+     * Quiz/Random mode: 10 XP per correct answer + accuracy bonus (up to 50 XP at ≥80%).
+     * Tutor mode: 5 XP per correct answer (more conservative — rewards learning over speed).
+     *
+     * @param int $correctAnswers
+     * @param int $totalQuestions
+     * @param string $mode
+     * @return int
+     */
+    private function calculateQuizXp(int $correctAnswers, int $totalQuestions, string $mode): int
+    {
+        if ($correctAnswers <= 0) {
+            return 0;
+        }
+
+        // Base XP: per-correct-answer rate depends on mode
+        $perCorrect = ($mode === 'tutor') ? self::XP_PER_CORRECT_TUTOR : self::XP_PER_CORRECT_QUIZ;
+        $baseXp = $correctAnswers * $perCorrect;
+
+        // Accuracy bonus only for quiz/random (not tutor — tutor is per-question, not batch-scored)
+        $accuracyBonus = 0;
+        if ($mode !== 'tutor' && $totalQuestions > 0) {
+            $accuracy = ($correctAnswers / $totalQuestions) * 100;
+            if ($accuracy >= self::ACCURACY_BONUS_THRESHOLD) {
+                // Scale bonus linearly: 80% → 0, 100% → MAX_ACCURACY_BONUS_XP
+                $bonusFraction = ($accuracy - self::ACCURACY_BONUS_THRESHOLD) / (100 - self::ACCURACY_BONUS_THRESHOLD);
+                $accuracyBonus = (int) round($bonusFraction * self::MAX_ACCURACY_BONUS_XP);
+            }
+        }
+
+        return $baseXp + $accuracyBonus;
     }
 
     /**
@@ -1041,8 +1079,15 @@ class GradingService
             $isNewAttempt = $this->updateTutorProgress($user, $question, $topic, $isCorrect);
             
             if ($isNewAttempt) {
+                // Award XP for correct tutor answers (conservative: 5 XP per correct)
+                $tutorXp = ($isCorrect) ? self::XP_PER_CORRECT_TUTOR : 0;
                 // Update aggregate stats immediately for accurate pie charts in profile
-                app(\App\Services\UserStatsService::class)->updateAfterQuizAttempt($user, 1, $isCorrect ? 1 : 0, 0, 0);
+                app(\App\Services\UserStatsService::class)->updateAfterQuizAttempt($user, 1, $isCorrect ? 1 : 0, 0, $tutorXp);
+
+                // Check for level-up when XP is awarded
+                if ($tutorXp > 0) {
+                    $this->finalizeXpAndLevel($user, $tutorXp);
+                }
             }
             
             $this->checkAndCreateTutorAttempt($user, $question, $topic);
@@ -1060,7 +1105,8 @@ class GradingService
                 'message' => $message,
                 'correct_answer' => $question->correct_answer,
                 'explanation' => $explanation,
-                'source_progress' => $this->getTutorSourceProgress($user, $topic, $question->source)
+                'source_progress' => $this->getTutorSourceProgress($user, $topic, $question->source),
+                'xp_earned' => ($isNewAttempt && $isCorrect) ? self::XP_PER_CORRECT_TUTOR : 0,
             ];
         } catch (\Exception $e) {
             Log::error('Error in GradingService::gradeTutorAnswer:', [
