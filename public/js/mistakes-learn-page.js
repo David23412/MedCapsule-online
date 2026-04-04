@@ -1285,6 +1285,7 @@ function initializeMistakesLearnPage() {
                             applySessionOutcome(currentQuestion, isCorrect);
                             
                             // Move to next question after a longer delay for written answers to allow reading
+                            // the feedback, explanation, and correct answer before cycling
                             setTimeout(() => {
                                 // Reset the form
                                 textarea.value = '';
@@ -1304,7 +1305,7 @@ function initializeMistakesLearnPage() {
                                 // Move to next question using patch cycling
                                 showNextQuestion();
                                 updateStageIndicator();
-                            }, 2000);
+                            }, 5000);
                         } else {
                             console.error('Error checking answer:', data.message);
                             feedbackElement.textContent = 'Error checking answer. Please try again.';
