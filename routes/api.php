@@ -57,7 +57,9 @@ Route::get('/active-users', function() {
 })->name('api.active-users');
 
 // Course preview data for course type switching UI
-Route::get('/courses/{id}/preview-data', 'App\Http\Controllers\Api\CoursePreviewController@getPreviewData');
+Route::get('/courses/{id}/preview-data', 'App\Http\Controllers\Api\CoursePreviewController@getPreviewData')
+    ->middleware('throttle:30,1')
+    ->name('api.course-preview');
 
 // Topic Access Control Routes
 Route::middleware(['auth'])->group(function () {
@@ -113,7 +115,7 @@ Route::get('/topic/{topic}/question-counts', function($topicId) {
     } catch (\Exception $e) {
         return response()->json(['error' => 'Failed to get question counts'], 500);
     }
-});
+})->middleware('throttle:30,1')->name('api.topic.question-counts');
 
 // Get available sources for a topic (for assignment creation)
 Route::get('/topics/{topicId}/sources', function($topicId) {
@@ -133,7 +135,7 @@ Route::get('/topics/{topicId}/sources', function($topicId) {
     } catch (\Exception $e) {
         return response()->json(['error' => 'Failed to get sources'], 500);
     }
-});
+})->middleware('throttle:30,1')->name('api.topic.sources');
 
 Route::middleware('auth')->group(function () {
     // User progress endpoint for milestone bar updates

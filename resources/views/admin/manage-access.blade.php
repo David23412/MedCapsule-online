@@ -1712,7 +1712,7 @@
                             <div class="col-md-3 col-6">
                                 <div class="d-flex align-items-center justify-content-center">
                                     <i class="fas fa-database text-success me-2"></i>
-                                    <span class="small">Database: <strong>{{ DB::connection()->getPdo() ? 'Online' : 'Offline' }}</strong></span>
+                                    <span class="small">Database: <strong>{{ $dbStatus ?? 'Online' }}</strong></span>
                                 </div>
                             </div>
                             <div class="col-md-3 col-6">

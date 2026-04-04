@@ -400,7 +400,7 @@ Route::middleware(['auth'])->group(function () {
 
 
 // Healthcheck route for monitoring
-Route::get('/health', [App\Http\Controllers\Api\StatusController::class, 'health']);
+Route::get('/health', [App\Http\Controllers\Api\StatusController::class, 'health'])->name('health');
 
 // Admin Tutor Management Routes (Admin & Tutor Access)
 Route::middleware(['auth', 'tutor'])->prefix('admin/tutors')->name('admin.tutors.')->group(function () {

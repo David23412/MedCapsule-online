@@ -40,10 +40,18 @@ class UserCourseController extends Controller
         $surveyInsights = $this->freeCourseSurveyService->adminInsights();
         $schedulerCalibration = app(SchedulerCalibrationCoverageService::class)->buildDashboard();
 
+        $dbStatus = 'Online';
+        try {
+            \DB::connection()->getPdo();
+        } catch (\Throwable $e) {
+            $dbStatus = 'Offline';
+        }
+
         if (!$data['success']) {
             return view('admin.manage-access', [
                 'surveyInsights' => $surveyInsights,
                 'schedulerCalibration' => $schedulerCalibration,
+                'dbStatus' => $dbStatus,
             ])->with('error', $data['message']);
         }
 
@@ -54,6 +62,7 @@ class UserCourseController extends Controller
             'userStats' => $data['userStats'],
             'surveyInsights' => $surveyInsights,
             'schedulerCalibration' => $schedulerCalibration,
+            'dbStatus' => $dbStatus,
         ]);
     }
 
