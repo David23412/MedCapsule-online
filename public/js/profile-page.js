@@ -596,4 +596,55 @@
         })
         .catch(err => console.error('Error refreshing profile stats:', err));
     }
+
+    // Privacy Toggle logic
+    document.addEventListener('DOMContentLoaded', function() {
+        const privacyToggle = document.getElementById('leaderboardToggle');
+        if (privacyToggle) {
+            privacyToggle.addEventListener('change', function() {
+                const isChecked = this.checked;
+                const originalValue = !isChecked;
+                
+                // Visual feedback: briefly fade out
+                const control = this.closest('.privacy-control');
+                if (control) {
+                    control.classList.add('updating');
+                }
+
+                fetch('/profile/update-privacy', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                        'X-Requested-With': 'XMLHttpRequest'
+                    },
+                    body: JSON.stringify({
+                        show_on_leaderboard: isChecked
+                    })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (control) {
+                        control.classList.remove('updating');
+                    }
+                    if (data.success) {
+                        // Success - maybe show a quick toast or just let the switch stay
+                    } else {
+                        // Revert on failure
+                        this.checked = originalValue;
+                        alert(data.message || 'Failed to update privacy settings.');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error updating privacy:', error);
+                    if (control) {
+                        control.classList.remove('updating');
+                    }
+                    this.checked = originalValue;
+                    alert('An error occurred. Please try again.');
+                });
+            });
+        }
+    });
+
 })();

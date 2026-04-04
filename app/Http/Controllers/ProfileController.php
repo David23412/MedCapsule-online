@@ -138,10 +138,11 @@ class ProfileController extends Controller
 
         // RUTHLESS OPTIMIZATION: Cached user rank with longer duration
         $userRank = null;
-        if ($user->xp > 0) {
+        if ($user->xp > 0 && $user->show_on_leaderboard) {
             $userRank = Cache::remember("user_rank_optimized_{$user->id}", 1800, function() use ($user) {
                 return DB::table('users')
                     ->where('role', 3) // 3 = student role (integer)
+                    ->where('show_on_leaderboard', true)
                     ->where('xp', '>', $user->xp)
                     ->count() + 1;
             });
@@ -226,6 +227,7 @@ class ProfileController extends Controller
                 )
                 ->where('users.xp', '>', 0)
                 ->where('users.role', 3)
+                ->where('users.show_on_leaderboard', true)
                 ->orderByDesc('xp')
                 ->limit(10)
                 ->get()
@@ -263,6 +265,7 @@ class ProfileController extends Controller
             'planner_focus' => $user->planner_focus ?? 'balanced',
             'repair_mode' => $user->repair_mode,
             'mistake_mastery_mode' => $user->mistake_mastery_mode,
+            'show_on_leaderboard' => (bool) $user->show_on_leaderboard,
         ];
 
         return view('profile', compact(
@@ -627,5 +630,43 @@ class ProfileController extends Controller
         ));
 
         return self::$availableCoursePlannerColumns;
+    }
+
+    /**
+     * Update user's privacy settings (e.g. show on leaderboard)
+     */
+    public function updatePrivacy(Request $request)
+    {
+        try {
+            $validated = $request->validate([
+                'show_on_leaderboard' => 'required|boolean',
+            ]);
+
+            $user = auth()->user();
+            $user->show_on_leaderboard = $validated['show_on_leaderboard'];
+            $user->save();
+
+            // Bust caches
+            Cache::forget("user_profile_optimized_{$user->id}_" . now()->format('Y-m-d-H'));
+            Cache::forget("user_rank_optimized_{$user->id}");
+            Cache::forget('profile_leaderboard_top10_v1'); // Global leaderboard cache
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Privacy settings updated!',
+                'show_on_leaderboard' => (bool) $user->show_on_leaderboard
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Failed to update privacy settings', [
+                'user_id' => auth()->id(),
+                'error' => $e->getMessage()
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to update privacy settings.'
+            ], 500);
+        }
     }
 }

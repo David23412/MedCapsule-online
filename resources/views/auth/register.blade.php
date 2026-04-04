@@ -82,6 +82,22 @@
         .invalid-feedback {
             font-size: 0.875rem;
         }
+        .password-wrapper {
+            position: relative;
+        }
+        .toggle-password {
+            position: absolute;
+            right: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            cursor: pointer;
+            color: #6c757d;
+            z-index: 10;
+            transition: color 0.2s;
+        }
+        .toggle-password:hover {
+            color: #007bff;
+        }
     </style>
 </head>
 <body>
@@ -153,11 +169,14 @@
                             </div>
 
                             <div class="mb-3">
-                                <label for="number" class="form-label">Number</label>
-                                <input id="number" type="tel" class="form-control @error('number') is-invalid @enderror" name="number" value="{{ old('number') }}" required minlength="4" maxlength="20" pattern="[0-9+\-\s()]+" autocomplete="tel">
+                                <label for="number" class="form-label">Phone Number</label>
+                                <input id="number" type="tel" class="form-control @error('number') is-invalid @enderror" name="number" value="{{ old('number') }}" required minlength="11" maxlength="11" pattern="01[0125][0-9]{8}" placeholder="01XXXXXXXXX" autocomplete="tel">
                                 @error('number')
                                     <div class="invalid-feedback">{{ $message }}</div>
                                 @enderror
+                                <div class="form-text small">
+                                    Must be 11 digits starting with 010, 011, 012, or 015
+                                </div>
                             </div>
 
                             <div class="mb-3">
@@ -177,10 +196,13 @@
 
                             <div class="mb-3">
                                 <label for="password" class="form-label">Password</label>
-                                <input id="password" type="password" class="form-control @error('password') is-invalid @enderror" name="password" required autocomplete="new-password">
-                                @error('password')
-                                    <div class="invalid-feedback">{{ $message }}</div>
-                                @enderror
+                                <div class="password-wrapper">
+                                    <input id="password" type="password" class="form-control @error('password') is-invalid @enderror" name="password" required autocomplete="new-password">
+                                    <i class="far fa-eye toggle-password" data-target="password"></i>
+                                    @error('password')
+                                        <div class="invalid-feedback">{{ $message }}</div>
+                                    @enderror
+                                </div>
                                 <div class="form-text small">
                                     Must be at least 8 characters long
                                 </div>
@@ -188,13 +210,16 @@
 
                             <div class="mb-3">
                                 <label for="password-confirm" class="form-label">Confirm Password</label>
-                                <input id="password-confirm" type="password" class="form-control" name="password_confirmation" required autocomplete="new-password">
+                                <div class="password-wrapper">
+                                    <input id="password-confirm" type="password" class="form-control" name="password_confirmation" required autocomplete="new-password">
+                                    <i class="far fa-eye toggle-password" data-target="password-confirm"></i>
+                                </div>
                             </div>
 
                             <div class="mb-3 form-check">
                                 <input class="form-check-input" type="checkbox" name="terms" id="terms" required>
                                 <label class="form-check-label small" for="terms">
-                                    I agree to the <a href="#" class="text-decoration-none">Terms of Service</a> and <a href="#" class="text-decoration-none">Privacy Policy</a>
+                                    I agree to the <a href="{{ route('terms') }}" target="_blank" class="text-decoration-none">Terms of Service</a> and <a href="{{ route('privacy') }}" target="_blank" class="text-decoration-none">Privacy Policy</a>
                                 </label>
                             </div>
 
@@ -216,5 +241,36 @@
 
     <!-- Optimized JS Loading -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js" defer></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Password toggle logic
+            const togglePasswords = document.querySelectorAll('.toggle-password');
+            togglePasswords.forEach(icon => {
+                icon.addEventListener('click', function() {
+                    const targetId = this.getAttribute('data-target');
+                    const input = document.getElementById(targetId);
+                    
+                    if (input.type === 'password') {
+                        input.type = 'text';
+                        this.classList.remove('fa-eye');
+                        this.classList.add('fa-eye-slash');
+                    } else {
+                        input.type = 'password';
+                        this.classList.remove('fa-eye-slash');
+                        this.classList.add('fa-eye');
+                    }
+                });
+            });
+
+            // Number field restriction logic
+            const numberInput = document.getElementById('number');
+            if (numberInput) {
+                numberInput.addEventListener('input', function(e) {
+                    // Remove any non-digit characters
+                    this.value = this.value.replace(/\D/g, '').substring(0, 11);
+                });
+            }
+        });
+    </script>
 </body>
 </html>

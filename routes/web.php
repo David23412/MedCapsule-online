@@ -21,6 +21,8 @@ use App\Http\Controllers\Notification\NotificationActionController;
 // Public routes
 Route::view('/', 'landing')->name('landing');
 Route::get('/home', [CourseController::class, 'index'])->name('home');
+Route::view('/terms', 'terms')->name('terms');
+Route::view('/privacy', 'privacy')->name('privacy');
 
 
 
@@ -228,6 +230,7 @@ Route::group([], function () {
         Route::get('/profile', [ProfileController::class, 'show'])->name('profile');
         Route::post('/profile/update-picture', [ProfileController::class, 'updateProfilePicture'])->name('profile.update-picture');
         Route::post('/profile/update-goal', [ProfileController::class, 'updateWeeklyGoal'])->name('profile.update-goal');
+        Route::post('/profile/update-privacy', [ProfileController::class, 'updatePrivacy'])->name('profile.update-privacy');
         Route::post('/profile/update-course-planner-settings', [ProfileController::class, 'updateCoursePlannerSettings'])->name('profile.update-course-planner-settings');
         
         // Study Planner routes

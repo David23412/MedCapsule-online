@@ -440,7 +440,16 @@
             <!-- Leaderboard -->
             <div class="col-md-6">
                 <div class="stats-card review-section animate-fadeInUp" style="animation-delay: 0.7s">
-                    <h5><i class="fas fa-medal me-2" style="color: #FFD700;"></i>Leaderboard (Top 10)</h5>
+                    <div class="leaderboard-header">
+                        <h5 class="mb-0"><i class="fas fa-medal me-2" style="color: #FFD700;"></i>Leaderboard (Top 10)</h5>
+                        <div class="privacy-control" title="Toggle your visibility on the leaderboard">
+                            <span class="privacy-control-label">Appear on leaderboard</span>
+                            <label class="privacy-switch">
+                                <input type="checkbox" id="leaderboardToggle" {{ ($currentUserView['show_on_leaderboard'] ?? true) ? 'checked' : '' }}>
+                                <span class="privacy-slider"></span>
+                            </label>
+                        </div>
+                    </div>
                     @if($leaderboard->isEmpty())
                         <p class="text-muted">Start practicing to join the leaderboard!</p>
                     @else

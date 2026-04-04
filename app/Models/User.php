@@ -50,11 +50,11 @@ class User extends Authenticatable
         'last_security_check',
         'concurrent_login_attempts',
         'last_suspicious_activity',
-        'survey_completed',
         'free_courses_unlocked',
         'survey_completed_at',
         'free_courses_unlocked_at',
         'has_sr_access',
+        'show_on_leaderboard',
     ];
 
     /**
@@ -92,6 +92,7 @@ class User extends Authenticatable
         'survey_completed_at' => 'datetime',
         'free_courses_unlocked_at' => 'datetime',
         'has_sr_access' => 'boolean',
+        'show_on_leaderboard' => 'boolean',
     ];
 
     /**

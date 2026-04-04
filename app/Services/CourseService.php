@@ -712,6 +712,7 @@ class CourseService
                             FROM course_user cu
                             INNER JOIN users u ON u.id = cu.user_id
                             WHERE cu.is_enrolled = 1
+                            AND u.show_on_leaderboard = 1
                             AND cu.course_id IN ({$placeholders})
                         ) deduped
                         WHERE deduped.user_row_num = 1

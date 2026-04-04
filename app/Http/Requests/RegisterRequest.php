@@ -17,7 +17,7 @@ class RegisterRequest extends FormRequest
         return [
             'name' => 'required|string|max:255',
             'email' => 'required|email|max:255|unique:users,email',
-            'number' => ['required', 'string', 'min:4', 'max:20', 'regex:/^[0-9+\-\s()]+$/'],
+            'number' => ['required', 'string', 'size:11', 'regex:/^01[0125][0-9]{8}$/'],
             'university' => ['required', 'string', 'max:255', Rule::in([
                 'Assiut University',
                 'Cairo University',
@@ -38,8 +38,8 @@ class RegisterRequest extends FormRequest
             'email.required' => 'Email is required',
             'email.unique' => 'This email is already registered',
             'number.required' => 'Number is required',
-            'number.min' => 'Number must be at least 4 characters',
-            'number.regex' => 'Number may only contain digits, spaces, parentheses, plus signs, or hyphens',
+            'number.size' => 'The mobile number must be exactly 11 digits',
+            'number.regex' => 'Please enter a valid 11-digit Egyptian mobile number (starting with 010, 011, 012, or 015)',
             'university.required' => 'University is required',
             'university.in' => 'Please select a valid university from the list',
             'password.required' => 'Password is required',
