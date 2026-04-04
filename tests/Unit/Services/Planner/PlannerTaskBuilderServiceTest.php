@@ -63,7 +63,11 @@ class PlannerTaskBuilderServiceTest extends TestCase
         $this->assertSame(1, (int) $previews->first()['topic_id']);
         $this->assertSame(2, $previews->first()['slot_index']);
         $this->assertTrue($previews->first()['is_preview']);
-        // Slot 3 is NOT generated — cannot know if mistakes will exist before quiz
+        // Slot 3 must NOT be generated — cannot know if mistakes will exist before quiz is taken
+        $this->assertFalse(
+            $previews->contains(fn (array $p) => ($p['slot_index'] ?? 0) === 3),
+            'Slot 3 must be empty when slot 1 is Study — cannot predict mistakes before quiz'
+        );
     }
 
     // ────────────────────────────────────────────────────────────
