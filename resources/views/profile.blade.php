@@ -185,7 +185,7 @@
                 <span class="nav-link-label">Review Mistakes</span>
             </a>
 
-            @if(($currentUserView['role'] ?? auth()->user()->role) === 'admin')
+            @if(auth()->user()->isAdmin())
             <span class="sidebar-section-label">Admin</span>
 
             <a class="nav-link" href="{{ route('admin.user-course') }}">
