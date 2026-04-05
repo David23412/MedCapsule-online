@@ -5,10 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Course;
 use Illuminate\Http\Request;
-use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Cache;
-use App\Services\QuizUltraConsolidatedCacheService;
 use App\Services\CourseService;
 
 class CourseController extends Controller
@@ -26,19 +23,11 @@ class CourseController extends Controller
      */
     public function index()
     {
-        // Ultra-aggressive caching for courses index
-        $cacheKey = QuizUltraConsolidatedCacheService::generateCacheKey('admin_courses_index', [
-            'user_id' => auth()->id() ?? 'guest',
-            'timestamp' => now()->format('Y-m-d-H')
-        ]);
-        
-        return Cache::remember($cacheKey, 3600, function () {
-            $courses = Course::with(['topics:id,course_id,name', 'users:id,name'])
-                ->withCount(['topics', 'users', 'questions'])
-                ->orderBy('name')
-                ->get();
-            return view('admin.courses.index', compact('courses'));
-        });
+        $courses = Course::with(['topics:id,course_id,name', 'users:id,name'])
+            ->withCount(['topics', 'users', 'questions'])
+            ->orderBy('name')
+            ->get();
+        return view('admin.courses.index', compact('courses'));
     }
 
     /**

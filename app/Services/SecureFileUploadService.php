@@ -77,7 +77,7 @@ class SecureFileUploadService
      * Maximum file sizes (in bytes)
      */
     private const MAX_FILE_SIZES = [
-        'images' => 5 * 1024 * 1024,      // 5MB
+        'images' => 50 * 1024 * 1024,     // 50MB
         'documents' => 10 * 1024 * 1024,  // 10MB
         'videos' => 100 * 1024 * 1024,    // 100MB
     ];
