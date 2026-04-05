@@ -277,7 +277,7 @@ class ProfileController extends Controller
         $currentUserView = [
             'name' => $user->name,
             'role' => $user->role,
-            'is_admin' => $user->role === 'admin',
+            'is_admin' => $user->isAdmin(),
             'profile_image_url' => $user->getProfileImageUrl(),
             'profile_fallback_url' => 'https://ui-avatars.com/api/?name=' . urlencode($user->name) . '&size=200&background=007bff&color=ffffff',
             'member_since' => $user->created_at->format('F Y'),
