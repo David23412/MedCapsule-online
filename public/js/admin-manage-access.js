@@ -705,7 +705,7 @@ const MANAGE_ACCESS_CONFIG = window.MANAGE_ACCESS_CONFIG || {};
                 var lastActiveText = u.last_active_human || 'Never';
 
                 tbody.append(
-                    '<tr>' +
+                    '<tr data-loaded="1">' +
                     '<td>' +
                         '<div class="d-flex align-items-center">' +
                             '<div class="me-2">' +
