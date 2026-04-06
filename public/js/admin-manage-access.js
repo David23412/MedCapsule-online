@@ -1423,7 +1423,7 @@ const MANAGE_ACCESS_CONFIG = window.MANAGE_ACCESS_CONFIG || {};
                             topicSelect.prop('disabled', false);
                         },
                         error: function() {
-                            showNotification('Failed to load topics', 'error');
+                            showNotification('error', 'Load Failed', 'Failed to load topics.');
                         }
                     });
                 } else {
@@ -1448,17 +1448,17 @@ const MANAGE_ACCESS_CONFIG = window.MANAGE_ACCESS_CONFIG || {};
                     data: formData,
                     success: function(response) {
                         if (response.success) {
-                            showNotification('Video added successfully!', 'success');
+                            showNotification('success', 'Video Added', 'Video added successfully!');
                             $('#addVideoForm')[0].reset();
                             $('#video_topic_id').prop('disabled', true).empty().append('<option value="">First select a course...</option>');
                             loadVideos();
                         } else {
-                            showNotification(response.message || 'Failed to add video', 'error');
+                            showNotification('error', 'Add Failed', response.message || 'Failed to add video.');
                         }
                     },
                     error: function(xhr) {
-                        const response = xhr.responseJSON;
-                        showNotification(response?.message || 'Failed to add video', 'error');
+                        var msg = xhr.responseJSON?.message || 'Failed to add video.';
+                        showNotification('error', 'Add Failed', msg);
                     }
                 });
             });
@@ -1537,7 +1537,7 @@ const MANAGE_ACCESS_CONFIG = window.MANAGE_ACCESS_CONFIG || {};
                             </td>
                         </tr>
                     `);
-                    showNotification('Failed to load videos: ' + (xhr.responseJSON?.message || error), 'error');
+                    showNotification('error', 'Load Failed', 'Failed to load videos: ' + (xhr.responseJSON?.message || error));
                 }
             });
         }
@@ -1550,14 +1550,14 @@ const MANAGE_ACCESS_CONFIG = window.MANAGE_ACCESS_CONFIG || {};
                     data: { _token: MANAGE_ACCESS_CONFIG.csrfToken },
                     success: function(response) {
                         if (response.success) {
-                            showNotification('Video deleted successfully!', 'success');
+                            showNotification('success', 'Video Deleted', 'Video deleted successfully!');
                             loadVideos();
                         } else {
-                            showNotification('Failed to delete video', 'error');
+                            showNotification('error', 'Delete Failed', 'Failed to delete video.');
                         }
                     },
                     error: function() {
-                        showNotification('Failed to delete video', 'error');
+                        showNotification('error', 'Delete Failed', 'Failed to delete video.');
                     }
                 });
             }
