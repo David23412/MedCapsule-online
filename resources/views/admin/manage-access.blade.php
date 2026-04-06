@@ -59,22 +59,22 @@
             display: flex;
             flex-direction: column;
             gap: 10px;
-            max-width: 400px;
+            max-width: 420px;
         }
         
         .notification {
             background: white;
-            border-radius: 10px;
-            box-shadow: 0 8px 32px rgba(0,0,0,0.12), 0 2px 8px rgba(0,0,0,0.08);
+            border-radius: 12px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.14), 0 2px 10px rgba(0,0,0,0.08);
             padding: 16px 18px 10px;
             display: flex;
             align-items: flex-start;
             gap: 12px;
-            min-width: 320px;
-            max-width: 400px;
+            min-width: 340px;
+            max-width: 420px;
             transform: translateX(110%);
             opacity: 0;
-            transition: transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.25s ease;
+            transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.25s ease;
             pointer-events: auto;
             position: relative;
             overflow: hidden;
@@ -107,15 +107,41 @@
         }
         
         .notification-icon {
-            font-size: 22px;
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
             flex-shrink: 0;
-            margin-top: 1px;
+            font-size: 18px;
+            animation: notif-icon-pop 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) 0.15s both;
+        }
+        @keyframes notif-icon-pop {
+            0%   { transform: scale(0); opacity: 0; }
+            100% { transform: scale(1); opacity: 1; }
         }
         
-        .notification.success .notification-icon { color: #198754; }
-        .notification.error   .notification-icon { color: #dc3545; }
-        .notification.warning .notification-icon { color: #f59e0b; }
-        .notification.info    .notification-icon { color: #0ea5e9; }
+        .notification.success .notification-icon {
+            color: #fff;
+            background: linear-gradient(135deg, #198754, #20c997);
+            box-shadow: 0 2px 8px rgba(25,135,84,0.3);
+        }
+        .notification.error .notification-icon {
+            color: #fff;
+            background: linear-gradient(135deg, #dc3545, #e8616d);
+            box-shadow: 0 2px 8px rgba(220,53,69,0.3);
+        }
+        .notification.warning .notification-icon {
+            color: #fff;
+            background: linear-gradient(135deg, #f59e0b, #fbbf24);
+            box-shadow: 0 2px 8px rgba(245,158,11,0.3);
+        }
+        .notification.info .notification-icon {
+            color: #fff;
+            background: linear-gradient(135deg, #0ea5e9, #38bdf8);
+            box-shadow: 0 2px 8px rgba(14,165,233,0.3);
+        }
         
         .notification-content {
             flex: 1;
@@ -1841,25 +1867,27 @@
 
         <!-- Enhanced Stats Dashboard -->
         <div class="row stats-row g-3">
-            <div class="col-lg-3 col-md-6">
+            <div class="col-xl col-md-6 col-sm-6">
                 <div class="stat-card">
                     <div class="stat-number text-primary">{{ isset($userStats) ? ($userStats['total_users'] ?? 0) : 0 }}</div>
                     <div class="stat-label">Total Users</div>
                     <div class="stat-change">
-                        <i class="fas fa-users"></i> Total registered users
+                        <i class="fas fa-user-graduate"></i> {{ isset($userStats) ? ($userStats['student_users'] ?? 0) : 0 }} students
+                        &nbsp;·&nbsp;
+                        <i class="fas fa-chalkboard-teacher"></i> {{ isset($userStats) ? ($userStats['tutor_users'] ?? 0) : 0 }} tutors
                     </div>
                 </div>
             </div>
-            <div class="col-lg-3 col-md-6">
+            <div class="col-xl col-md-6 col-sm-6">
                 <div class="stat-card">
-                    <div class="stat-number text-success">{{ isset($userStats) ? ($userStats['active_users'] ?? 0) : 0 }}</div>
-                    <div class="stat-label">Active Users</div>
+                    <div class="stat-number text-success" id="stat-active-users">{{ isset($userStats) ? ($userStats['active_users'] ?? 0) : 0 }}</div>
+                    <div class="stat-label">Active Now</div>
                     <div class="stat-change positive">
-                        <i class="fas fa-arrow-up"></i> {{ isset($userStats) && isset($userStats['total_users']) && $userStats['total_users'] > 0 ? round(($userStats['active_users'] / $userStats['total_users']) * 100) : 0 }}% active
+                        <i class="fas fa-circle" style="font-size:0.5rem;vertical-align:middle;color:#198754;animation:pulse-dot 1.5s infinite;"></i> Live sessions
                     </div>
                 </div>
             </div>
-            <div class="col-lg-3 col-md-6">
+            <div class="col-xl col-md-6 col-sm-6">
                 <div class="stat-card">
                     <div class="stat-number text-warning">{{ isset($userStats) ? ($userStats['admin_users'] ?? 0) : 0 }}</div>
                     <div class="stat-label">Administrators</div>
@@ -1868,52 +1896,84 @@
                     </div>
                 </div>
             </div>
-            <div class="col-lg-3 col-md-6">
+            <div class="col-xl col-md-6 col-sm-6">
                 <div class="stat-card">
                     <div class="stat-number text-info">{{ isset($userStats) ? ($userStats['total_enrollments'] ?? 0) : 0 }}</div>
-                    <div class="stat-label">Total Enrollments</div>
+                    <div class="stat-label">Enrollments</div>
                     <div class="stat-change positive">
                         <i class="fas fa-graduation-cap"></i> {{ isset($userStats) && isset($userStats['total_users']) && $userStats['total_users'] > 0 ? round($userStats['total_enrollments'] / $userStats['total_users'], 1) : 0 }} avg per user
                     </div>
                 </div>
             </div>
+            <div class="col-xl col-md-6 col-sm-6">
+                <div class="stat-card">
+                    <div class="stat-number" style="color:#8b5cf6;" id="stat-new-today">{{ isset($userStats) ? ($userStats['new_users_today'] ?? 0) : 0 }}</div>
+                    <div class="stat-label">New Today</div>
+                    <div class="stat-change positive">
+                        <i class="fas fa-user-plus"></i> Registered today
+                    </div>
+                </div>
+            </div>
         </div>
 
-        <!-- System Health Indicators -->
+        <!-- System Health Indicators — live-refreshed via /manage-access/system-stats -->
         <div class="row mb-4">
             <div class="col-12">
                 <div class="card">
-                    <div class="card-header">
-                        <i class="fas fa-heartbeat me-2" style="color: #28a745; font-size: 1.3rem;"></i>
-                        <span style="color: #2c3e50; font-weight: 700; font-size: 1.1rem;">System Health</span>
-                        <span class="system-health-badge">
-                            <i class="fas fa-check-circle"></i>All Systems Operational
-                        </span>
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <div>
+                            <i class="fas fa-heartbeat me-2" style="color: #28a745; font-size: 1.3rem;"></i>
+                            <span style="color: #2c3e50; font-weight: 700; font-size: 1.1rem;">System Health</span>
+                            <span class="system-health-badge" id="sysHealthBadge">
+                                <i class="fas fa-check-circle"></i>All Systems Operational
+                            </span>
+                        </div>
+                        <button class="btn btn-outline-secondary btn-sm" id="refreshSystemStats" title="Refresh system stats">
+                            <i class="fas fa-sync-alt"></i>
+                        </button>
                     </div>
                     <div class="card-body py-2">
-                        <div class="row text-center">
-                            <div class="col-md-3 col-6">
-                                <div class="d-flex align-items-center justify-content-center">
-                                    <i class="fas fa-database text-success me-2"></i>
-                                    <span class="small">Database: <strong>{{ $dbStatus ?? 'Online' }}</strong></span>
+                        <div class="row text-center g-2">
+                            <div class="col-lg-2 col-md-4 col-6">
+                                <div class="d-flex flex-column align-items-center">
+                                    <i class="fas fa-database mb-1" id="sysDbIcon" style="font-size:1.1rem;color:#198754;"></i>
+                                    <span class="small fw-semibold" id="sysDbStatus">Online</span>
+                                    <span class="text-muted" style="font-size:0.7rem;">Database</span>
                                 </div>
                             </div>
-                            <div class="col-md-3 col-6">
-                                <div class="d-flex align-items-center justify-content-center">
-                                    <i class="fas fa-server text-success me-2"></i>
-                                    <span class="small">Server: <strong>{{ function_exists('sys_getloadavg') ? 'Healthy' : 'Unknown' }}</strong></span>
+                            <div class="col-lg-2 col-md-4 col-6">
+                                <div class="d-flex flex-column align-items-center">
+                                    <i class="fas fa-server mb-1" style="font-size:1.1rem;color:#198754;"></i>
+                                    <span class="small fw-semibold" id="sysLoad">—</span>
+                                    <span class="text-muted" style="font-size:0.7rem;">Server Load</span>
                                 </div>
                             </div>
-                            <div class="col-md-3 col-6">
-                                <div class="d-flex align-items-center justify-content-center">
-                                    <i class="fas fa-users text-info me-2"></i>
-                                    <span class="small">Active Users: <strong>{{ isset($userStats) ? ($userStats['active_users'] ?? 0) : 0 }}</strong></span>
+                            <div class="col-lg-2 col-md-4 col-6">
+                                <div class="d-flex flex-column align-items-center">
+                                    <i class="fas fa-clock mb-1" style="font-size:1.1rem;color:#0dcaf0;"></i>
+                                    <span class="small fw-semibold" id="sysUptime">—</span>
+                                    <span class="text-muted" style="font-size:0.7rem;">Uptime</span>
                                 </div>
                             </div>
-                            <div class="col-md-3 col-6">
-                                <div class="d-flex align-items-center justify-content-center">
-                                    <i class="fas fa-memory text-info me-2"></i>
-                                    <span class="small">Memory: <strong>{{ round(memory_get_usage(true) / 1024 / 1024, 1) }}MB</strong></span>
+                            <div class="col-lg-2 col-md-4 col-6">
+                                <div class="d-flex flex-column align-items-center">
+                                    <i class="fas fa-memory mb-1" style="font-size:1.1rem;color:#0dcaf0;"></i>
+                                    <span class="small fw-semibold" id="sysMemory">{{ round(memory_get_usage(true) / 1024 / 1024, 1) }}MB</span>
+                                    <span class="text-muted" style="font-size:0.7rem;">Memory</span>
+                                </div>
+                            </div>
+                            <div class="col-lg-2 col-md-4 col-6">
+                                <div class="d-flex flex-column align-items-center">
+                                    <i class="fas fa-tachometer-alt mb-1" style="font-size:1.1rem;color:#198754;"></i>
+                                    <span class="small fw-semibold" id="sysResponse">—</span>
+                                    <span class="text-muted" style="font-size:0.7rem;">Response</span>
+                                </div>
+                            </div>
+                            <div class="col-lg-2 col-md-4 col-6">
+                                <div class="d-flex flex-column align-items-center">
+                                    <i class="fab fa-php mb-1" style="font-size:1.1rem;color:#777BB3;"></i>
+                                    <span class="small fw-semibold" id="sysPhp">{{ PHP_VERSION }}</span>
+                                    <span class="text-muted" style="font-size:0.7rem;">PHP</span>
                                 </div>
                             </div>
                         </div>

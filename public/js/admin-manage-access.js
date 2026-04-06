@@ -779,13 +779,68 @@ const MANAGE_ACCESS_CONFIG = window.MANAGE_ACCESS_CONFIG || {};
         }
     })();
 
+    // ── Real-time System Stats ────────────────────────────────────────
+    (function initSystemStats() {
+        var refreshTimer = null;
+
+        function loadSystemStats() {
+            $.ajax({
+                url: '/manage-access/system-stats',
+                method: 'GET',
+                headers: { 'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content') },
+                success: function(d) {
+                    if (!d.success) return;
+                    // DB
+                    var dbIcon = $('#sysDbIcon');
+                    var dbText = $('#sysDbStatus');
+                    if (d.db_online) {
+                        dbIcon.css('color', '#198754');
+                        dbText.text('Online');
+                    } else {
+                        dbIcon.css('color', '#dc3545');
+                        dbText.text('Offline').css('color', '#dc3545');
+                        $('#sysHealthBadge').html('<i class="fas fa-exclamation-triangle"></i> Issue Detected')
+                            .css({ color: '#dc3545', borderColor: '#dc3545' });
+                    }
+                    // Load
+                    $('#sysLoad').text(d.server_load !== null ? d.server_load : '—');
+                    // Uptime
+                    $('#sysUptime').text(d.uptime || '—');
+                    // Memory
+                    $('#sysMemory').text(d.memory_mb + 'MB');
+                    // Response
+                    $('#sysResponse').text(d.response_ms + 'ms');
+                    // PHP
+                    $('#sysPhp').text(d.php_version || '—');
+                    // Live stat cards
+                    $('#stat-active-users').text(d.active_now);
+                    $('#stat-new-today').text(d.new_users_today);
+                },
+                error: function() { /* silent */ }
+            });
+        }
+
+        // Initial load
+        loadSystemStats();
+
+        // Auto-refresh every 30 seconds
+        refreshTimer = setInterval(loadSystemStats, 30000);
+
+        // Manual refresh
+        $('#refreshSystemStats').on('click', function() {
+            var btn = $(this);
+            btn.find('i').addClass('fa-spin');
+            loadSystemStats();
+            setTimeout(function() { btn.find('i').removeClass('fa-spin'); }, 1000);
+        });
+    })();
+
     // Payment History Tab Handler
     $('#payment-tab').on('click', function() {
-        console.log('Payment tab clicked, loading payments...');
         loadPayments();
     });
             
-            if (MANAGE_ACCESS_CONFIG.activeTab === 'payment-history') { console.log('Payment tab active on load, fetching payments...'); loadPayments(); }
+            if (MANAGE_ACCESS_CONFIG.activeTab === 'payment-history') { loadPayments(); }
             
             // Payment search handler
             $('#payment-search-btn').on('click', function() {
@@ -860,8 +915,6 @@ const MANAGE_ACCESS_CONFIG = window.MANAGE_ACCESS_CONFIG || {};
         
         // Load payments function
         function loadPayments(page = 1, search = '') {
-            console.log('Loading payments...', {page, search});
-
             // Show loading state
             const tbody = $('#payments-table-body');
             tbody.html(`
@@ -886,14 +939,7 @@ const MANAGE_ACCESS_CONFIG = window.MANAGE_ACCESS_CONFIG || {};
                     search: search
                 },
                 success: function(response) {
-                                            console.log('Payments loaded:', response);
-                        console.log('Response type:', typeof response);
-                        console.log('Success:', response.success);
-                        console.log('Stats:', response.stats);
-                        console.log('Payments count:', response.payments ? response.payments.length : 'undefined');
-                        
                         if (response.success) {
-                        console.log('Response stats:', response.stats);
                         
                         // Update statistics with proper type checking
                         const totalRevenue = parseFloat(response.stats.total_revenue || 0);

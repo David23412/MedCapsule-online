@@ -222,4 +222,14 @@ class UserCourseController extends Controller
 
         return response()->json($result, $result['success'] ? 200 : 500);
     }
+
+    /**
+     * Return real-time system health metrics for the admin dashboard.
+     */
+    public function getSystemStats()
+    {
+        $result = $this->userService->getSystemStats();
+
+        return response()->json($result, $result['success'] ? 200 : 500);
+    }
 }
