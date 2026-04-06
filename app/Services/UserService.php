@@ -277,7 +277,8 @@ class UserService
                 ->orderByRaw('last_active_at IS NULL ASC')
                 ->orderBy('last_active_at', 'desc');
 
-            if ($search = trim((string) ($search ?? ''))) {
+            $search = trim((string) ($search ?? ''));
+            if ($search !== '') {
                 $like = '%' . $search . '%';
                 $query->where(function ($q) use ($like) {
                     $q->where('name', 'like', $like)
