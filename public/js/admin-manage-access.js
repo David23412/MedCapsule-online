@@ -1,41 +1,79 @@
 const MANAGE_ACCESS_CONFIG = window.MANAGE_ACCESS_CONFIG || {};
 
+// ── Unified Notification System (global scope) ─────────────────────────
+(function () {
+    'use strict';
+
+    var ICONS = {
+        success: 'fa-check-circle',
+        error:   'fa-times-circle',
+        warning: 'fa-exclamation-triangle',
+        info:    'fa-info-circle'
+    };
+
+    /**
+     * showNotification(type, title [, message] [, duration])
+     *   type     – 'success' | 'error' | 'warning' | 'info'
+     *   title    – heading text
+     *   message  – optional body text
+     *   duration – ms before auto-dismiss (default 4000)
+     */
+    window.showNotification = function (type, title, message, duration) {
+        // Normalise arguments: some callers pass (message, type) – detect and swap
+        if (type && !ICONS[type] && ICONS[title]) {
+            var tmp = type; type = title; title = tmp;
+        }
+        if (!ICONS[type]) type = 'info';
+        if (typeof message === 'number') { duration = message; message = ''; }
+        duration = typeof duration === 'number' ? duration : 4000;
+
+        var container = document.getElementById('notificationContainer');
+        if (!container) return;
+
+        var el = document.createElement('div');
+        el.className = 'notification ' + type;
+        el.innerHTML =
+            '<div class="notification-icon"><i class="fas ' + ICONS[type] + '"></i></div>' +
+            '<div class="notification-content">' +
+                '<div class="notification-title">' + title + '</div>' +
+                (message ? '<div class="notification-message">' + message + '</div>' : '') +
+            '</div>' +
+            '<div class="notification-progress"><div class="notification-progress-bar"></div></div>' +
+            '<button class="notification-close" aria-label="Close"><i class="fas fa-times"></i></button>';
+
+        container.appendChild(el);
+
+        // Slide in
+        requestAnimationFrame(function () {
+            requestAnimationFrame(function () { el.classList.add('show'); });
+        });
+
+        // Progress bar countdown
+        var bar = el.querySelector('.notification-progress-bar');
+        if (bar) {
+            bar.style.transition = 'width ' + duration + 'ms linear';
+            requestAnimationFrame(function () { bar.style.width = '0%'; });
+        }
+
+        // Close handler
+        el.querySelector('.notification-close').addEventListener('click', function () { dismiss(); });
+
+        var timer = setTimeout(dismiss, duration);
+
+        function dismiss() {
+            clearTimeout(timer);
+            el.classList.remove('show');
+            el.addEventListener('transitionend', function handler() {
+                el.removeEventListener('transitionend', handler);
+                if (el.parentNode) el.parentNode.removeChild(el);
+            });
+            // Fallback removal if transitionend doesn't fire
+            setTimeout(function () { if (el.parentNode) el.parentNode.removeChild(el); }, 400);
+        }
+    };
+})();
+
         $(document).ready(function() {
-            console.log('🚀 MANAGE ACCESS PAGE LOADED');
-            
-            // Notification system
-            function showNotification(type, title, message, duration = 3000) {
-                const container = $('#notificationContainer');
-                const notification = $(`
-                    <div class="notification ${type}">
-                        <div class="notification-icon">
-                            ${type === 'success' ? '<i class="fas fa-check-circle"></i>' : '<i class="fas fa-times-circle"></i>'}
-                        </div>
-                        <div class="notification-content">
-                            <div class="notification-title">${title}</div>
-                            <div class="notification-message">${message}</div>
-                        </div>
-                        <button class="notification-close" onclick="$(this).parent().remove()">
-                            <i class="fas fa-times"></i>
-                        </button>
-                    </div>
-                `);
-                
-                container.append(notification);
-                
-                // Trigger animation
-                setTimeout(() => {
-                    notification.addClass('show');
-                }, 100);
-                
-                // Auto remove
-                setTimeout(() => {
-                    notification.removeClass('show');
-                    setTimeout(() => {
-                        notification.remove();
-                    }, 300);
-                }, duration);
-            }
             
             // Initialize Select2 for user search - FIXED: Show all users without typing
             $('.user-select').select2({
@@ -154,21 +192,18 @@ const MANAGE_ACCESS_CONFIG = window.MANAGE_ACCESS_CONFIG || {};
             
             // GRANT ACCESS BUTTON HANDLER
             $('#grantAccessBtn').on('click', function(e) {
-                console.log('🚀 GRANT ACCESS BUTTON CLICKED!');
                 e.preventDefault();
                 
                 const userId = $('#user_id').val();
                 const courseId = $('#course_id').val();
                 
-                console.log('Values:', {userId, courseId});
-                
                 if (!userId || !courseId) {
-                    console.error('Please select both a user and a course first!');
+                    showNotification('warning', 'Missing Selection', 'Please select both a user and a course first.');
                     return;
                 }
                 
-                // Disable button during request
-                $(this).prop('disabled', true).html('<i class="fas fa-spinner fa-spin me-2"></i>Processing...');
+                var btn = $(this);
+                btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin me-2"></i>Processing...');
                 
                 $.ajax({
                     url: '/manage-access/enroll',
@@ -179,26 +214,14 @@ const MANAGE_ACCESS_CONFIG = window.MANAGE_ACCESS_CONFIG || {};
                         _token: MANAGE_ACCESS_CONFIG.csrfToken
                     },
                     success: function(response) {
-                        console.log('✅ SUCCESS:', response);
-                        
-                        // Show success notification
-                        showNotification('success', 'Access Granted!', 'User has been successfully enrolled in the course.');
-                        
-                        // Reset button
-                        const btn = $('#grantAccessBtn');
-                        btn.prop('disabled', false).html('<i class="fas fa-user-plus me-2"></i>Grant Access');
-                        
-                        // Refresh enrollment data smoothly
+                        showNotification('success', 'Access Granted!', response.message || 'User has been successfully enrolled in the course.');
                         refreshEnrollmentData();
                     },
                     error: function(xhr) {
-                        console.error('❌ ERROR:', xhr.responseText);
-                        
-                        // Show error notification
-                        showNotification('error', 'Access Failed!', 'Failed to grant access. Please try again.');
-                        
-                        // Reset button
-                        const btn = $('#grantAccessBtn');
+                        var msg = xhr.responseJSON?.message || 'Failed to grant access. Please try again.';
+                        showNotification('error', 'Enrollment Failed', msg);
+                    },
+                    complete: function() {
                         btn.prop('disabled', false).html('<i class="fas fa-user-plus me-2"></i>Grant Access');
                     }
                 });
@@ -206,23 +229,18 @@ const MANAGE_ACCESS_CONFIG = window.MANAGE_ACCESS_CONFIG || {};
             
             // REVOKE ACCESS BUTTON HANDLER
             $('#revokeAccessBtn').on('click', function(e) {
-                console.log('🚀 REVOKE ACCESS BUTTON CLICKED!');
                 e.preventDefault();
                 
                 const userId = $('#user_id').val();
                 const courseId = $('#course_id').val();
                 
-                console.log('Values:', {userId, courseId});
-                
                 if (!userId || !courseId) {
-                    console.error('Please select both a user and a course first!');
+                    showNotification('warning', 'Missing Selection', 'Please select both a user and a course first.');
                     return;
                 }
                 
-                // Instant revocation - no confirmation needed
-                
-                // Disable button during request
-                $(this).prop('disabled', true).html('<i class="fas fa-spinner fa-spin me-2"></i>Processing...');
+                var btn = $(this);
+                btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin me-2"></i>Processing...');
                 
                 $.ajax({
                     url: '/manage-access/revoke',
@@ -233,26 +251,14 @@ const MANAGE_ACCESS_CONFIG = window.MANAGE_ACCESS_CONFIG || {};
                         _token: MANAGE_ACCESS_CONFIG.csrfToken
                     },
                     success: function(response) {
-                        console.log('✅ SUCCESS:', response);
-                        
-                        // Show success notification
-                        showNotification('error', 'Access Revoked!', 'User access has been successfully revoked.');
-                        
-                        // Reset button
-                        const btn = $('#revokeAccessBtn');
-                        btn.prop('disabled', false).html('<i class="fas fa-user-times me-2"></i>Revoke Access');
-                        
-                        // Refresh enrollment data smoothly
+                        showNotification('warning', 'Access Revoked', response.message || 'User access has been successfully revoked.');
                         refreshEnrollmentData();
                     },
                     error: function(xhr) {
-                        console.error('❌ ERROR:', xhr.responseText);
-                        
-                        // Show error notification
-                        showNotification('error', 'Revoke Failed!', 'Failed to revoke access. Please try again.');
-                        
-                        // Reset button
-                        const btn = $('#revokeAccessBtn');
+                        var msg = xhr.responseJSON?.message || 'Failed to revoke access. Please try again.';
+                        showNotification('error', 'Revoke Failed', msg);
+                    },
+                    complete: function() {
                         btn.prop('disabled', false).html('<i class="fas fa-user-times me-2"></i>Revoke Access');
                     }
                 });
@@ -263,19 +269,14 @@ const MANAGE_ACCESS_CONFIG = window.MANAGE_ACCESS_CONFIG || {};
             // User selection handler
             $('#user_id').on('change', function() {
                 try {
-                    console.log('=== USER SELECTION DEBUG ===');
                     const userId = $(this).val();
                     const userOption = $(this).find('option:selected');
-
-                    console.log('User selection:', {userId, userOption});
 
                     if (userId) {
                         const userName = userOption.text();
                         const userEmail = userOption.data('email');
                         const userNumber = userOption.data('number');
                         const userRole = userOption.data('role');
-
-                        console.log('User data:', {userName, userEmail, userNumber, userRole, userRoleType: typeof userRole});
 
                         // Safe integer handling for role
                         const safeUserRole = (userRole && typeof userRole === 'number') ? userRole : 0;
@@ -356,8 +357,6 @@ const MANAGE_ACCESS_CONFIG = window.MANAGE_ACCESS_CONFIG || {};
                 }
             }
             
-            console.log('✅ All event handlers attached successfully');
-            
             // Initialize Admin User Select2
             $('.admin-user-select').select2({
                 placeholder: 'Type to search for user...',
@@ -430,9 +429,8 @@ const MANAGE_ACCESS_CONFIG = window.MANAGE_ACCESS_CONFIG || {};
             $('#promoteToAdminBtn').on('click', function(e) {
                 e.preventDefault();
                 
-                // FIXED: Proper boolean check
                 if (!selectedAdminUserId || selectedAdminIsAdmin === true) {
-                    alert('Please select a non-admin user to promote');
+                    showNotification('warning', 'Invalid Action', 'Please select a non-admin user to promote.');
                     return;
                 }
                 
@@ -440,8 +438,8 @@ const MANAGE_ACCESS_CONFIG = window.MANAGE_ACCESS_CONFIG || {};
                     return;
                 }
                 
-                const originalText = $(this).html();
-                $(this).html('<i class="fas fa-spinner fa-spin me-2"></i>Promoting...').prop('disabled', true);
+                var btn = $(this);
+                btn.html('<i class="fas fa-spinner fa-spin me-2"></i>Promoting...').prop('disabled', true);
                 
                 $.ajax({
                     url: '/manage-access/toggle-admin',
@@ -453,18 +451,24 @@ const MANAGE_ACCESS_CONFIG = window.MANAGE_ACCESS_CONFIG || {};
                     },
                     success: function(response) {
                         if (response.success) {
-                            alert('User promoted to administrator successfully!');
-                            location.reload();
+                            showNotification('success', 'Admin Promoted!', response.message || 'User promoted to administrator successfully.');
+                            // Update UI in place
+                            selectedAdminIsAdmin = true;
+                            $('#selectedAdminUserStatus').removeClass('bg-secondary').addClass('bg-danger').text('ADMIN');
+                            btn.prop('disabled', true).html('<i class="fas fa-check me-2"></i>Already Admin');
+                            $('#removeAdminBtn').prop('disabled', false).html('<i class="fas fa-user-times me-2"></i>Revoke Admin');
+                            $('#adminActionHint').text('This user is currently an administrator');
                         } else {
-                            alert('Error: ' + (response.message || 'Failed to promote user'));
+                            showNotification('error', 'Promotion Failed', response.message || 'Failed to promote user.');
                         }
                     },
                     error: function(xhr) {
-                        console.error('Error promoting user:', xhr.responseText);
-                        alert('Error: ' + (xhr.responseJSON?.message || 'Failed to promote user'));
+                        showNotification('error', 'Promotion Failed', xhr.responseJSON?.message || 'Failed to promote user.');
                     },
                     complete: function() {
-                        $('#promoteToAdminBtn').html(originalText).prop('disabled', false);
+                        if (!selectedAdminIsAdmin) {
+                            btn.html('<i class="fas fa-user-shield me-2"></i>Promote to Admin').prop('disabled', false);
+                        }
                     }
                 });
             });
@@ -473,9 +477,8 @@ const MANAGE_ACCESS_CONFIG = window.MANAGE_ACCESS_CONFIG || {};
             $('#removeAdminBtn').on('click', function(e) {
                 e.preventDefault();
                 
-                // FIXED: Proper boolean check
                 if (!selectedAdminUserId || selectedAdminIsAdmin !== true) {
-                    alert('Please select an admin user to revoke privileges');
+                    showNotification('warning', 'Invalid Action', 'Please select an admin user to revoke privileges.');
                     return;
                 }
                 
@@ -483,8 +486,8 @@ const MANAGE_ACCESS_CONFIG = window.MANAGE_ACCESS_CONFIG || {};
                     return;
                 }
                 
-                const originalText = $(this).html();
-                $(this).html('<i class="fas fa-spinner fa-spin me-2"></i>Revoking...').prop('disabled', true);
+                var btn = $(this);
+                btn.html('<i class="fas fa-spinner fa-spin me-2"></i>Revoking...').prop('disabled', true);
                 
                 $.ajax({
                     url: '/manage-access/toggle-admin',
@@ -496,18 +499,24 @@ const MANAGE_ACCESS_CONFIG = window.MANAGE_ACCESS_CONFIG || {};
                     },
                     success: function(response) {
                         if (response.success) {
-                            alert('Administrator privileges revoked successfully!');
-                            location.reload();
+                            showNotification('success', 'Admin Revoked', response.message || 'Administrator privileges revoked successfully.');
+                            // Update UI in place
+                            selectedAdminIsAdmin = false;
+                            $('#selectedAdminUserStatus').removeClass('bg-danger').addClass('bg-secondary').text('STUDENT');
+                            btn.prop('disabled', true).html('<i class="fas fa-user-times me-2"></i>Not Admin');
+                            $('#promoteToAdminBtn').prop('disabled', false).html('<i class="fas fa-user-shield me-2"></i>Promote to Admin');
+                            $('#adminActionHint').text('This user is not an administrator');
                         } else {
-                            alert('Error: ' + (response.message || 'Failed to revoke admin privileges'));
+                            showNotification('error', 'Revoke Failed', response.message || 'Failed to revoke admin privileges.');
                         }
                     },
                     error: function(xhr) {
-                        console.error('Error revoking admin:', xhr.responseText);
-                        alert('Error: ' + (xhr.responseJSON?.message || 'Failed to revoke admin privileges'));
+                        showNotification('error', 'Revoke Failed', xhr.responseJSON?.message || 'Failed to revoke admin privileges.');
                     },
                     complete: function() {
-                        $('#removeAdminBtn').html(originalText).prop('disabled', false);
+                        if (selectedAdminIsAdmin) {
+                            btn.html('<i class="fas fa-user-times me-2"></i>Revoke Admin').prop('disabled', false);
+                        }
                     }
                 });
             });
@@ -541,6 +550,17 @@ const MANAGE_ACCESS_CONFIG = window.MANAGE_ACCESS_CONFIG || {};
                 }, 1000);
             });
             
+            // Relative time helper
+            function timeAgoLabel(dateStr) {
+                if (!dateStr) return 'Unknown';
+                var diff = (Date.now() - new Date(dateStr).getTime()) / 1000;
+                if (diff < 60)    return 'just now';
+                if (diff < 3600)  return Math.floor(diff / 60) + ' min ago';
+                if (diff < 86400) return Math.floor(diff / 3600) + ' hours ago';
+                if (diff < 604800) return Math.floor(diff / 86400) + ' days ago';
+                return Math.floor(diff / 604800) + ' weeks ago';
+            }
+
             // Function to refresh enrollment data smoothly
             function refreshEnrollmentData() {
                 $.ajax({
@@ -578,8 +598,8 @@ const MANAGE_ACCESS_CONFIG = window.MANAGE_ACCESS_CONFIG || {};
                             '<span class="badge bg-success"><i class="fas fa-check me-1"></i>Enrolled</span>' :
                             '<span class="badge bg-danger"><i class="fas fa-times me-1"></i>Revoked</span>';
                         
-                        const date = new Date(enrollment.created_at).toLocaleDateString();
-                        const timeAgo = new Date(enrollment.created_at).toLocaleDateString();
+                        const date = new Date(enrollment.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+                        const timeAgo = timeAgoLabel(enrollment.created_at);
                         
                         tbody.append(`
                             <tr data-status="${enrollment.is_enrolled ? 'enrolled' : 'revoked'}">
@@ -1030,11 +1050,6 @@ const MANAGE_ACCESS_CONFIG = window.MANAGE_ACCESS_CONFIG || {};
 
         // Payment Management Functions
         function acceptPayment(paymentId) {
-            console.log('Accept payment called for ID:', paymentId);
-            
-            // Instant acceptance - no confirmation needed
-            
-            // Send verification request
             fetch(`/admin/payments/verify/${paymentId}`, {
                 method: 'POST',
                 headers: {
@@ -1048,14 +1063,12 @@ const MANAGE_ACCESS_CONFIG = window.MANAGE_ACCESS_CONFIG || {};
             })
             .then(response => {
                 if (!response.ok) {
-                    if (response.status === 404) {
-                        throw new Error('Route not found. Please check if you are logged in as admin.');
-                    } else if (response.status === 419) {
-                        throw new Error('CSRF token expired. Please refresh the page and try again.');
+                    if (response.status === 419) {
+                        throw new Error('CSRF token expired. Please refresh the page.');
                     } else if (response.status === 403) {
-                        throw new Error('Access denied. You must be an admin to verify payments.');
+                        throw new Error('Access denied. Admin privileges required.');
                     } else if (response.status === 401) {
-                        throw new Error('Not authenticated. Please log in and try again.');
+                        throw new Error('Not authenticated. Please log in.');
                     } else {
                         throw new Error(`Server error: ${response.status} ${response.statusText}`);
                     }
@@ -1064,13 +1077,11 @@ const MANAGE_ACCESS_CONFIG = window.MANAGE_ACCESS_CONFIG || {};
             })
             .then(data => {
                 if (data.success) {
-                    // Show success notification
-                    showNotification('Payment accepted successfully!', 'success');
+                    showNotification('success', 'Payment Accepted', 'Payment has been verified and approved.');
                     
                     // Update the UI with yellow highlight
                     const row = document.querySelector(`[data-payment-id="${paymentId}"]`);
                     if (row) {
-                        // FIXED: Add yellow highlight for completed payment with !important and data attribute
                         row.style.setProperty('background-color', '#fffbeb', 'important');
                         row.setAttribute('data-payment-status', 'completed');
                         
@@ -1080,30 +1091,23 @@ const MANAGE_ACCESS_CONFIG = window.MANAGE_ACCESS_CONFIG || {};
                             statusCell.className = 'badge payment-status bg-success';
                         }
                         
-                        // Update actions cell
                         const actionsCell = row.querySelector('td:last-child');
                         if (actionsCell) {
                             actionsCell.innerHTML = '<span class="text-muted small">Completed</span>';
                         }
                     }
                     
-                    // Refresh payment data
                     loadPayments();
                 } else {
                     throw new Error(data.message || 'Payment verification failed');
                 }
             })
             .catch(error => {
-                console.error('Error accepting payment:', error);
-                showNotification('Failed to accept payment: ' + error.message, 'error');
+                showNotification('error', 'Payment Failed', error.message);
             });
         }
 
         function rejectPayment(paymentId) {
-            console.log('Reject payment called for ID:', paymentId);
-            
-            // Instant rejection - no reason needed
-            
             fetch(`/admin/payments/${paymentId}/reject`, {
                 method: 'POST',
                 headers: {
@@ -1111,17 +1115,19 @@ const MANAGE_ACCESS_CONFIG = window.MANAGE_ACCESS_CONFIG || {};
                     'X-CSRF-TOKEN': MANAGE_ACCESS_CONFIG.csrfToken,
                     'Accept': 'application/json'
                 },
-                body: JSON.stringify({
-                    reason: 'Payment rejected'
-                })
+                body: JSON.stringify({ reason: 'Payment rejected' }),
+                credentials: 'same-origin'
             })
-            .then(response => response.json())
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`Server error: ${response.status} ${response.statusText}`);
+                }
+                return response.json();
+            })
             .then(data => {
                 if (data.success) {
-                    // Show success notification
-                    showNotification('Payment rejected successfully!', 'success');
+                    showNotification('warning', 'Payment Rejected', 'Payment has been rejected.');
                     
-                    // Update the UI
                     const row = document.querySelector(`[data-payment-id="${paymentId}"]`);
                     if (row) {
                         const statusCell = row.querySelector('.payment-status');
@@ -1130,61 +1136,20 @@ const MANAGE_ACCESS_CONFIG = window.MANAGE_ACCESS_CONFIG || {};
                             statusCell.className = 'badge payment-status bg-danger';
                         }
                         
-                        // Update actions cell
                         const actionsCell = row.querySelector('td:last-child');
                         if (actionsCell) {
                             actionsCell.innerHTML = '<span class="text-muted small">Rejected</span>';
                         }
                     }
                     
-                    // Refresh payment data
                     loadPayments();
                 } else {
-                    showNotification('Failed to reject payment: ' + (data.message || 'Unknown error'), 'error');
+                    showNotification('error', 'Reject Failed', data.message || 'Unknown error');
                 }
             })
             .catch(error => {
-                console.error('Error rejecting payment:', error);
-                showNotification('Failed to reject payment: ' + error.message, 'error');
+                showNotification('error', 'Reject Failed', error.message);
             });
-        }
-
-        // Notification system - matches the signature used in calls: showNotification(type, title, message)
-        function showNotification(type, title, message, duration = 4000) {
-            const container = document.getElementById('notificationContainer');
-            const notification = document.createElement('div');
-            
-            const bgColor = type === 'success' ? 'bg-success' : 'bg-danger';
-            const icon = type === 'success' ? 'fa-check-circle' : 'fa-exclamation-triangle';
-            
-            notification.className = `alert ${bgColor} text-white alert-dismissible fade show position-fixed`;
-            notification.style.cssText = `
-                top: 20px;
-                right: 20px;
-                z-index: 9999;
-                min-width: 300px;
-                box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-            `;
-            
-            notification.innerHTML = `
-                <div class="d-flex align-items-center">
-                    <i class="fas ${icon} me-2"></i>
-                    <div>
-                        <strong>${title}</strong>
-                        ${message ? '<div class="small">' + message + '</div>' : ''}
-                    </div>
-                    <button type="button" class="btn-close btn-close-white ms-auto" data-bs-dismiss="alert"></button>
-                </div>
-            `;
-            
-            container.appendChild(notification);
-            
-            // Auto-remove after duration
-            setTimeout(() => {
-                if (notification.parentNode) {
-                    notification.remove();
-                }
-            }, duration);
         }
 
         $(document).ready(function() {

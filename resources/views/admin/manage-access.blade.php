@@ -49,29 +49,36 @@
             --border-radius-sm: 6px;
         }
         
-        /* Notification System */
+        /* ── Notification System ────────────────────────────────── */
         .notification-container {
             position: fixed;
             top: 20px;
             right: 20px;
             z-index: 9999;
             pointer-events: none;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            max-width: 400px;
         }
         
         .notification {
             background: white;
-            border-radius: 8px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-            padding: 16px 20px;
-            margin-bottom: 10px;
+            border-radius: 10px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.12), 0 2px 8px rgba(0,0,0,0.08);
+            padding: 16px 18px 10px;
             display: flex;
-            align-items: center;
+            align-items: flex-start;
             gap: 12px;
-            min-width: 300px;
-            transform: translateX(100%);
+            min-width: 320px;
+            max-width: 400px;
+            transform: translateX(110%);
             opacity: 0;
-            transition: all 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+            transition: transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.25s ease;
             pointer-events: auto;
+            position: relative;
+            overflow: hidden;
+            flex-wrap: wrap;
         }
         
         .notification.show {
@@ -80,56 +87,91 @@
         }
         
         .notification.success {
-            border-left: 4px solid #28a745;
-            background: linear-gradient(135deg, #f8fff9 0%, #e8f5e8 100%);
+            border-left: 4px solid #198754;
+            background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);
         }
         
         .notification.error {
             border-left: 4px solid #dc3545;
-            background: linear-gradient(135deg, #fff8f8 0%, #ffe8e8 100%);
+            background: linear-gradient(135deg, #fef2f2 0%, #fecaca 100%);
+        }
+
+        .notification.warning {
+            border-left: 4px solid #f59e0b;
+            background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%);
+        }
+
+        .notification.info {
+            border-left: 4px solid #0ea5e9;
+            background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
         }
         
         .notification-icon {
-            font-size: 24px;
+            font-size: 22px;
             flex-shrink: 0;
+            margin-top: 1px;
         }
         
-        .notification.success .notification-icon {
-            color: #28a745;
-        }
-        
-        .notification.error .notification-icon {
-            color: #dc3545;
-        }
+        .notification.success .notification-icon { color: #198754; }
+        .notification.error   .notification-icon { color: #dc3545; }
+        .notification.warning .notification-icon { color: #f59e0b; }
+        .notification.info    .notification-icon { color: #0ea5e9; }
         
         .notification-content {
-            flex-grow: 1;
+            flex: 1;
+            min-width: 0;
         }
         
         .notification-title {
-            font-weight: 600;
+            font-weight: 700;
             font-size: 14px;
             margin-bottom: 2px;
+            color: #1e293b;
         }
         
         .notification-message {
             font-size: 13px;
-            color: #666;
+            color: #64748b;
+            line-height: 1.4;
         }
         
         .notification-close {
             background: none;
             border: none;
-            color: #999;
+            color: #94a3b8;
             cursor: pointer;
-            padding: 4px;
+            padding: 2px 4px;
             border-radius: 4px;
-            transition: color 0.2s;
+            transition: color 0.15s, background 0.15s;
+            font-size: 12px;
+            line-height: 1;
+            flex-shrink: 0;
         }
         
         .notification-close:hover {
-            color: #666;
+            color: #475569;
+            background: rgba(0,0,0,0.06);
         }
+
+        /* Progress bar countdown */
+        .notification-progress {
+            width: 100%;
+            height: 3px;
+            background: rgba(0,0,0,0.06);
+            border-radius: 2px;
+            margin-top: 8px;
+            overflow: hidden;
+            flex-basis: 100%;
+        }
+        .notification-progress-bar {
+            height: 100%;
+            width: 100%;
+            border-radius: 2px;
+        }
+        .notification.success .notification-progress-bar { background: #198754; }
+        .notification.error   .notification-progress-bar { background: #dc3545; }
+        .notification.warning .notification-progress-bar { background: #f59e0b; }
+        .notification.info    .notification-progress-bar { background: #0ea5e9; }
 
         * {
             box-sizing: border-box;
