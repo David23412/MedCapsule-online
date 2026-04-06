@@ -263,6 +263,85 @@ class UserService
     }
 
     /**
+     * Get paginated list of users ordered by last activity for admin dashboard.
+     *
+     * @param int $page
+     * @param int $perPage
+     * @param string|null $search
+     * @return array
+     */
+    public function getLastActiveUsers(int $page = 1, int $perPage = 20, ?string $search = null): array
+    {
+        try {
+            $query = User::select('id', 'name', 'email', 'role', 'last_active_at', 'created_at', 'xp', 'level')
+                ->orderByRaw('last_active_at IS NULL ASC')
+                ->orderBy('last_active_at', 'desc');
+
+            if ($search = trim((string) ($search ?? ''))) {
+                $like = '%' . $search . '%';
+                $query->where(function ($q) use ($like) {
+                    $q->where('name', 'like', $like)
+                      ->orWhere('email', 'like', $like);
+                });
+            }
+
+            $paginator = $query->paginate($perPage, ['*'], 'page', $page);
+
+            $users = $paginator->getCollection()->map(function (User $user) {
+                $lastActive = $user->last_active_at;
+                $now = now();
+
+                if ($lastActive) {
+                    $diffMinutes = $lastActive->diffInMinutes($now);
+                    if ($diffMinutes < 5) {
+                        $status = 'online';
+                    } elseif ($diffMinutes < 60) {
+                        $status = 'recent';
+                    } elseif ($lastActive->isToday()) {
+                        $status = 'today';
+                    } elseif ($lastActive->gte($now->copy()->subDays(7))) {
+                        $status = 'this_week';
+                    } else {
+                        $status = 'inactive';
+                    }
+                } else {
+                    $status = 'never';
+                }
+
+                return [
+                    'id'               => $user->id,
+                    'name'             => $user->name,
+                    'email'            => $user->email,
+                    'role'             => $user->role,
+                    'role_label'       => match ((int) $user->role) {
+                        User::ROLE_ADMIN  => 'Admin',
+                        User::ROLE_TUTOR  => 'Tutor',
+                        default           => 'Student',
+                    },
+                    'xp'               => $user->xp ?? 0,
+                    'level'            => $user->level ?? 1,
+                    'last_active_at'   => $lastActive?->toIso8601String(),
+                    'last_active_human'=> $lastActive ? $lastActive->diffForHumans() : 'Never',
+                    'created_at'       => $user->created_at?->toIso8601String(),
+                    'status'           => $status,
+                ];
+            });
+
+            return [
+                'success'      => true,
+                'users'        => $users->values(),
+                'current_page' => $paginator->currentPage(),
+                'last_page'    => $paginator->lastPage(),
+                'total'        => $paginator->total(),
+                'per_page'     => $paginator->perPage(),
+            ];
+        } catch (\Exception $e) {
+            Log::error('Failed to get last active users: ' . $e->getMessage());
+            return ['success' => false, 'message' => 'Failed to load user activity data.'];
+        }
+    }
+
+    /**
      * Get course enrollment status for a specific user
      * FIXED: Removed duplicate select and fixed ambiguous column
      *

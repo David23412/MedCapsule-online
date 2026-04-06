@@ -610,6 +610,155 @@ const MANAGE_ACCESS_CONFIG = window.MANAGE_ACCESS_CONFIG || {};
                 }
             }
             
+    // ── Last Active Users ──────────────────────────────────────────────
+    (function initLastActiveUsers() {
+        var laState = { page: 1, search: '', debounce: null };
+        var STATUS_LABELS = {
+            online:    'Online',
+            recent:    'Recently',
+            today:     'Today',
+            this_week: 'This Week',
+            inactive:  'Inactive',
+            never:     'Never'
+        };
+
+        function loadLastActive(page, search) {
+            laState.page = page || 1;
+            laState.search = search || '';
+
+            var tbody = $('#lastActiveBody');
+            tbody.html(
+                '<tr><td colspan="5" class="text-center py-4 text-muted">' +
+                '<i class="fas fa-spinner fa-spin fa-2x mb-2"></i>' +
+                '<div>Loading user activity...</div></td></tr>'
+            );
+
+            $.ajax({
+                url: '/manage-access/last-active-users',
+                method: 'GET',
+                data: { page: laState.page, per_page: 20, search: laState.search },
+                headers: { 'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content') },
+                success: function(resp) {
+                    if (!resp.success) {
+                        tbody.html(
+                            '<tr><td colspan="5" class="text-center py-4 text-muted">' +
+                            '<i class="fas fa-exclamation-triangle fa-2x mb-2"></i>' +
+                            '<div>Failed to load data</div></td></tr>'
+                        );
+                        return;
+                    }
+                    renderLastActive(resp);
+                },
+                error: function() {
+                    tbody.html(
+                        '<tr><td colspan="5" class="text-center py-4 text-muted">' +
+                        '<i class="fas fa-exclamation-triangle fa-2x mb-2"></i>' +
+                        '<div>Failed to load data</div></td></tr>'
+                    );
+                }
+            });
+        }
+
+        function renderLastActive(data) {
+            var tbody = $('#lastActiveBody');
+            tbody.empty();
+
+            if (!data.users || data.users.length === 0) {
+                tbody.html(
+                    '<tr><td colspan="5" class="text-center py-4 text-muted">' +
+                    '<i class="fas fa-users fa-2x mb-2"></i>' +
+                    '<div>No users found</div></td></tr>'
+                );
+                $('#lastActivePagination').hide();
+                return;
+            }
+
+            data.users.forEach(function(u) {
+                var initial = (u.name || u.email || 'U').charAt(0).toUpperCase();
+                var roleBadge = u.role === 1
+                    ? '<span class="badge bg-danger">Admin</span>'
+                    : u.role === 2
+                        ? '<span class="badge bg-info">Tutor</span>'
+                        : '<span class="badge bg-secondary">Student</span>';
+
+                var statusLabel = STATUS_LABELS[u.status] || 'Unknown';
+                var lastActiveText = u.last_active_human || 'Never';
+
+                tbody.append(
+                    '<tr>' +
+                    '<td>' +
+                        '<div class="d-flex align-items-center">' +
+                            '<div class="me-2">' +
+                                '<div class="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center" style="width:32px;height:32px;font-size:0.8rem;">' +
+                                    initial +
+                                '</div>' +
+                            '</div>' +
+                            '<div>' +
+                                '<div class="fw-medium">' + (u.name || 'Unknown') + '</div>' +
+                                '<small class="text-muted">' + u.email + '</small>' +
+                            '</div>' +
+                        '</div>' +
+                    '</td>' +
+                    '<td>' + roleBadge + '</td>' +
+                    '<td><span class="level-badge"><i class="fas fa-star" style="font-size:0.65rem;"></i> ' + u.level + '</span></td>' +
+                    '<td>' +
+                        '<div>' + lastActiveText + '</div>' +
+                    '</td>' +
+                    '<td><span class="activity-status ' + u.status + '"><span class="status-dot"></span>' + statusLabel + '</span></td>' +
+                    '</tr>'
+                );
+            });
+
+            // Pagination controls
+            var pag = $('#lastActivePagination');
+            pag.css('display', 'flex');
+            $('#lastActiveInfo').text('Showing ' + data.users.length + ' of ' + data.total + ' users');
+            $('#lastActivePageDisplay').text('Page ' + data.current_page + ' / ' + data.last_page);
+            $('#lastActivePrev').prop('disabled', data.current_page <= 1);
+            $('#lastActiveNext').prop('disabled', data.current_page >= data.last_page);
+        }
+
+        // Event handlers
+        $('#refreshLastActive').on('click', function() {
+            var btn = $(this);
+            btn.find('i').addClass('fa-spin');
+            loadLastActive(laState.page, laState.search);
+            setTimeout(function() { btn.find('i').removeClass('fa-spin'); }, 1000);
+        });
+
+        $('#lastActiveSearch').on('input', function() {
+            var val = $(this).val();
+            clearTimeout(laState.debounce);
+            laState.debounce = setTimeout(function() {
+                loadLastActive(1, val);
+            }, 350);
+        });
+
+        $('#lastActivePrev').on('click', function() {
+            if (laState.page > 1) loadLastActive(laState.page - 1, laState.search);
+        });
+
+        $('#lastActiveNext').on('click', function() {
+            loadLastActive(laState.page + 1, laState.search);
+        });
+
+        // Auto-load on page ready (only if User Access tab is visible)
+        var accessPane = document.getElementById('access');
+        if (accessPane && accessPane.classList.contains('show')) {
+            loadLastActive(1);
+        }
+
+        // Load when tab is shown
+        var accessTab = document.getElementById('access-tab');
+        if (accessTab) {
+            accessTab.addEventListener('shown.bs.tab', function() {
+                if (!$('#lastActiveBody tr[data-loaded]').length) {
+                    loadLastActive(1);
+                }
+            });
+        }
+    })();
+
     // Payment History Tab Handler
     $('#payment-tab').on('click', function() {
         console.log('Payment tab clicked, loading payments...');

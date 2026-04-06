@@ -1714,6 +1714,53 @@
         #notificationContainer .alert {
             pointer-events: all;
         }
+
+        /* Last Active Users - activity status dots */
+        .activity-status {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            padding: 3px 10px;
+            border-radius: 20px;
+        }
+        .activity-status .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            display: inline-block;
+            flex-shrink: 0;
+        }
+        .activity-status.online  { color: #0f5132; background: #d1e7dd; }
+        .activity-status.online  .status-dot { background: #198754; animation: pulse-dot 1.5s infinite; }
+        .activity-status.recent  { color: #055160; background: #cff4fc; }
+        .activity-status.recent  .status-dot { background: #0dcaf0; }
+        .activity-status.today   { color: #664d03; background: #fff3cd; }
+        .activity-status.today   .status-dot { background: #ffc107; }
+        .activity-status.this_week { color: #41464b; background: #e2e3e5; }
+        .activity-status.this_week .status-dot { background: #6c757d; }
+        .activity-status.inactive { color: #842029; background: #f8d7da; }
+        .activity-status.inactive .status-dot { background: #dc3545; }
+        .activity-status.never   { color: #41464b; background: #e9ecef; }
+        .activity-status.never   .status-dot { background: #adb5bd; }
+
+        @keyframes pulse-dot {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.5; transform: scale(1.4); }
+        }
+
+        .level-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #fff;
+            font-size: 0.75rem;
+            font-weight: 700;
+            padding: 2px 8px;
+            border-radius: 12px;
+        }
     </style>
 </head>
 <body>
@@ -2156,6 +2203,63 @@
                                 <div class="d-flex justify-content-between align-items-center">
                                     <span class="small">Total Courses</span>
                                     <span class="badge bg-secondary">{{ count($courses ?? []) }}</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Last Active Users -->
+                <div class="row mt-4">
+                    <div class="col-12">
+                        <div class="card">
+                            <div class="card-header">
+                                <div>
+                                    <i class="fas fa-user-clock me-2"></i>Last Active Users
+                                </div>
+                                <div class="d-flex gap-2 align-items-center">
+                                    <div class="input-group input-group-sm" style="width: 240px;">
+                                        <span class="input-group-text"><i class="fas fa-search"></i></span>
+                                        <input type="text" class="form-control" id="lastActiveSearch" placeholder="Search by name or email...">
+                                    </div>
+                                    <button class="btn btn-outline-secondary btn-sm" id="refreshLastActive" title="Refresh">
+                                        <i class="fas fa-sync-alt"></i>
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="card-body p-0">
+                                <div class="table-responsive">
+                                    <table class="table table-hover mb-0" id="lastActiveTable">
+                                        <thead>
+                                            <tr>
+                                                <th>User</th>
+                                                <th>Role</th>
+                                                <th>Level</th>
+                                                <th>Last Active</th>
+                                                <th>Status</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="lastActiveBody">
+                                            <tr>
+                                                <td colspan="5" class="text-center py-4 text-muted">
+                                                    <i class="fas fa-spinner fa-spin fa-2x mb-2"></i>
+                                                    <div>Loading user activity...</div>
+                                                </td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                                <div class="d-flex justify-content-between align-items-center px-3 py-2 border-top" id="lastActivePagination" style="display: none !important;">
+                                    <small class="text-muted" id="lastActiveInfo">Showing 0 users</small>
+                                    <div class="btn-group btn-group-sm">
+                                        <button class="btn btn-outline-secondary" id="lastActivePrev" disabled>
+                                            <i class="fas fa-chevron-left"></i> Prev
+                                        </button>
+                                        <button class="btn btn-outline-secondary" id="lastActivePageDisplay" disabled style="min-width: 80px;"></button>
+                                        <button class="btn btn-outline-secondary" id="lastActiveNext" disabled>
+                                            Next <i class="fas fa-chevron-right"></i>
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
                         </div>
