@@ -144,6 +144,12 @@ Route::group([], function () {
         Route::get('/manage-access/survey/student-responses', [UserCourseController::class, 'surveyStudentResponses'])->name('admin.survey.student-responses');
         Route::get('/manage-access/survey/student/{userId}', [UserCourseController::class, 'surveyStudentDetail'])->name('admin.survey.student-detail')->where('userId', '[0-9]+');
 
+        // Last active users endpoint
+        Route::get('/manage-access/last-active-users', [UserCourseController::class, 'getLastActiveUsers'])->name('admin.last-active-users');
+
+        // Real-time system stats endpoint
+        Route::get('/manage-access/system-stats', [UserCourseController::class, 'getSystemStats'])->name('admin.system-stats');
+
         // Course Management Resource Routes
         Route::resource('admin/courses', \App\Http\Controllers\Admin\CourseController::class)->names('admin.courses');
     });

@@ -208,4 +208,28 @@ class UserCourseController extends Controller
 
         return response()->json($detail);
     }
+
+    /**
+     * Get paginated last-active users for admin AJAX.
+     */
+    public function getLastActiveUsers(Request $request)
+    {
+        $page    = max(1, (int) $request->input('page', 1));
+        $perPage = min(50, max(1, (int) $request->input('per_page', 20)));
+        $search  = $request->input('search');
+
+        $result = $this->userService->getLastActiveUsers($page, $perPage, $search);
+
+        return response()->json($result, $result['success'] ? 200 : 500);
+    }
+
+    /**
+     * Return real-time system health metrics for the admin dashboard.
+     */
+    public function getSystemStats()
+    {
+        $result = $this->userService->getSystemStats();
+
+        return response()->json($result, $result['success'] ? 200 : 500);
+    }
 }

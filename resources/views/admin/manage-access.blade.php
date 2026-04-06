@@ -15,9 +15,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>Manage Access - MedCapsule</title>
-    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 50'%3E%3Crect fill='%233579F6' x='10' y='15' width='80' height='20' rx='10' ry='10' /%3E%3Crect x='50' y='15' width='40' height='20' fill='%23ff0000' rx='0 10 10 0' ry='10'/%3E%3Cline x1='50' y1='15' x2='50' y2='35' stroke='white' stroke-width='1.5' stroke-dasharray='2,1'/%3E%3C/svg%3E">
-    <link rel="shortcut icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 50'%3E%3Crect fill='%233579F6' x='10' y='15' width='80' height='20' rx='10' ry='10' /%3E%3Crect x='50' y='15' width='40' height='20' fill='%23ff0000' rx='0 10 10 0' ry='10'/%3E%3Cline x1='50' y1='15' x2='50' y2='35' stroke='white' stroke-width='1.5' stroke-dasharray='2,1'/%3E%3C/svg%3E">
-    <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 50'%3E%3Crect fill='%233579F6' x='10' y='15' width='80' height='20' rx='10' ry='10' /%3E%3Crect x='50' y='15' width='40' height='20' fill='%23ff0000' rx='0 10 10 0' ry='10'/%3E%3Cline x1='50' y1='15' x2='50' y2='35' stroke='white' stroke-width='1.5' stroke-dasharray='2,1'/%3E%3C/svg%3E">
+    <!-- Favicon -->
+    <link rel="icon" type="image/svg+xml" href="{{ asset('favicon.svg') }}">
+    <link rel="icon" type="image/png" sizes="32x32" href="{{ asset('favicon-32x32.png') }}">
+    <link rel="icon" type="image/png" sizes="16x16" href="{{ asset('favicon-16x16.png') }}">
+    <link rel="shortcut icon" href="{{ asset('favicon.ico') }}">
+    <link rel="apple-touch-icon" sizes="180x180" href="{{ asset('apple-touch-icon.png') }}">
     
     <!-- Bootstrap CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
@@ -46,29 +49,36 @@
             --border-radius-sm: 6px;
         }
         
-        /* Notification System */
+        /* ── Notification System ────────────────────────────────── */
         .notification-container {
             position: fixed;
             top: 20px;
             right: 20px;
             z-index: 9999;
             pointer-events: none;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            max-width: 420px;
         }
         
         .notification {
             background: white;
-            border-radius: 8px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-            padding: 16px 20px;
-            margin-bottom: 10px;
+            border-radius: 12px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.14), 0 2px 10px rgba(0,0,0,0.08);
+            padding: 16px 18px 10px;
             display: flex;
-            align-items: center;
+            align-items: flex-start;
             gap: 12px;
-            min-width: 300px;
-            transform: translateX(100%);
+            min-width: 340px;
+            max-width: 420px;
+            transform: translateX(110%);
             opacity: 0;
-            transition: all 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+            transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.25s ease;
             pointer-events: auto;
+            position: relative;
+            overflow: hidden;
+            flex-wrap: wrap;
         }
         
         .notification.show {
@@ -77,56 +87,117 @@
         }
         
         .notification.success {
-            border-left: 4px solid #28a745;
-            background: linear-gradient(135deg, #f8fff9 0%, #e8f5e8 100%);
+            border-left: 4px solid #198754;
+            background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);
         }
         
         .notification.error {
             border-left: 4px solid #dc3545;
-            background: linear-gradient(135deg, #fff8f8 0%, #ffe8e8 100%);
+            background: linear-gradient(135deg, #fef2f2 0%, #fecaca 100%);
+        }
+
+        .notification.warning {
+            border-left: 4px solid #f59e0b;
+            background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%);
+        }
+
+        .notification.info {
+            border-left: 4px solid #0ea5e9;
+            background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
         }
         
         .notification-icon {
-            font-size: 24px;
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
             flex-shrink: 0;
+            font-size: 18px;
+            animation: notif-icon-pop 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) 0.15s both;
+        }
+        @keyframes notif-icon-pop {
+            0%   { transform: scale(0); opacity: 0; }
+            100% { transform: scale(1); opacity: 1; }
         }
         
         .notification.success .notification-icon {
-            color: #28a745;
+            color: #fff;
+            background: linear-gradient(135deg, #198754, #20c997);
+            box-shadow: 0 2px 8px rgba(25,135,84,0.3);
         }
-        
         .notification.error .notification-icon {
-            color: #dc3545;
+            color: #fff;
+            background: linear-gradient(135deg, #dc3545, #e8616d);
+            box-shadow: 0 2px 8px rgba(220,53,69,0.3);
+        }
+        .notification.warning .notification-icon {
+            color: #fff;
+            background: linear-gradient(135deg, #f59e0b, #fbbf24);
+            box-shadow: 0 2px 8px rgba(245,158,11,0.3);
+        }
+        .notification.info .notification-icon {
+            color: #fff;
+            background: linear-gradient(135deg, #0ea5e9, #38bdf8);
+            box-shadow: 0 2px 8px rgba(14,165,233,0.3);
         }
         
         .notification-content {
-            flex-grow: 1;
+            flex: 1;
+            min-width: 0;
         }
         
         .notification-title {
-            font-weight: 600;
+            font-weight: 700;
             font-size: 14px;
             margin-bottom: 2px;
+            color: #1e293b;
         }
         
         .notification-message {
             font-size: 13px;
-            color: #666;
+            color: #64748b;
+            line-height: 1.4;
         }
         
         .notification-close {
             background: none;
             border: none;
-            color: #999;
+            color: #94a3b8;
             cursor: pointer;
-            padding: 4px;
+            padding: 2px 4px;
             border-radius: 4px;
-            transition: color 0.2s;
+            transition: color 0.15s, background 0.15s;
+            font-size: 12px;
+            line-height: 1;
+            flex-shrink: 0;
         }
         
         .notification-close:hover {
-            color: #666;
+            color: #475569;
+            background: rgba(0,0,0,0.06);
         }
+
+        /* Progress bar countdown */
+        .notification-progress {
+            width: 100%;
+            height: 3px;
+            background: rgba(0,0,0,0.06);
+            border-radius: 2px;
+            margin-top: 8px;
+            overflow: hidden;
+            flex-basis: 100%;
+        }
+        .notification-progress-bar {
+            height: 100%;
+            width: 100%;
+            border-radius: 2px;
+        }
+        .notification.success .notification-progress-bar { background: #198754; }
+        .notification.error   .notification-progress-bar { background: #dc3545; }
+        .notification.warning .notification-progress-bar { background: #f59e0b; }
+        .notification.info    .notification-progress-bar { background: #0ea5e9; }
 
         * {
             box-sizing: border-box;
@@ -1711,6 +1782,53 @@
         #notificationContainer .alert {
             pointer-events: all;
         }
+
+        /* Last Active Users - activity status dots */
+        .activity-status {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            padding: 3px 10px;
+            border-radius: 20px;
+        }
+        .activity-status .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            display: inline-block;
+            flex-shrink: 0;
+        }
+        .activity-status.online  { color: #0f5132; background: #d1e7dd; }
+        .activity-status.online  .status-dot { background: #198754; animation: pulse-dot 1.5s infinite; }
+        .activity-status.recent  { color: #055160; background: #cff4fc; }
+        .activity-status.recent  .status-dot { background: #0dcaf0; }
+        .activity-status.today   { color: #664d03; background: #fff3cd; }
+        .activity-status.today   .status-dot { background: #ffc107; }
+        .activity-status.this_week { color: #41464b; background: #e2e3e5; }
+        .activity-status.this_week .status-dot { background: #6c757d; }
+        .activity-status.inactive { color: #842029; background: #f8d7da; }
+        .activity-status.inactive .status-dot { background: #dc3545; }
+        .activity-status.never   { color: #41464b; background: #e9ecef; }
+        .activity-status.never   .status-dot { background: #adb5bd; }
+
+        @keyframes pulse-dot {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.5; transform: scale(1.4); }
+        }
+
+        .level-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #fff;
+            font-size: 0.75rem;
+            font-weight: 700;
+            padding: 2px 8px;
+            border-radius: 12px;
+        }
     </style>
 </head>
 <body>
@@ -1749,25 +1867,27 @@
 
         <!-- Enhanced Stats Dashboard -->
         <div class="row stats-row g-3">
-            <div class="col-lg-3 col-md-6">
+            <div class="col-xl col-md-6 col-sm-6">
                 <div class="stat-card">
                     <div class="stat-number text-primary">{{ isset($userStats) ? ($userStats['total_users'] ?? 0) : 0 }}</div>
                     <div class="stat-label">Total Users</div>
                     <div class="stat-change">
-                        <i class="fas fa-users"></i> Total registered users
+                        <i class="fas fa-user-graduate"></i> {{ isset($userStats) ? ($userStats['student_users'] ?? 0) : 0 }} students
+                        &nbsp;·&nbsp;
+                        <i class="fas fa-chalkboard-teacher"></i> {{ isset($userStats) ? ($userStats['tutor_users'] ?? 0) : 0 }} tutors
                     </div>
                 </div>
             </div>
-            <div class="col-lg-3 col-md-6">
+            <div class="col-xl col-md-6 col-sm-6">
                 <div class="stat-card">
-                    <div class="stat-number text-success">{{ isset($userStats) ? ($userStats['active_users'] ?? 0) : 0 }}</div>
-                    <div class="stat-label">Active Users</div>
+                    <div class="stat-number text-success" id="stat-active-users">{{ isset($userStats) ? ($userStats['active_users'] ?? 0) : 0 }}</div>
+                    <div class="stat-label">Active Now</div>
                     <div class="stat-change positive">
-                        <i class="fas fa-arrow-up"></i> {{ isset($userStats) && isset($userStats['total_users']) && $userStats['total_users'] > 0 ? round(($userStats['active_users'] / $userStats['total_users']) * 100) : 0 }}% active
+                        <i class="fas fa-circle" style="font-size:0.5rem;vertical-align:middle;color:#198754;animation:pulse-dot 1.5s infinite;"></i> Live sessions
                     </div>
                 </div>
             </div>
-            <div class="col-lg-3 col-md-6">
+            <div class="col-xl col-md-6 col-sm-6">
                 <div class="stat-card">
                     <div class="stat-number text-warning">{{ isset($userStats) ? ($userStats['admin_users'] ?? 0) : 0 }}</div>
                     <div class="stat-label">Administrators</div>
@@ -1776,52 +1896,84 @@
                     </div>
                 </div>
             </div>
-            <div class="col-lg-3 col-md-6">
+            <div class="col-xl col-md-6 col-sm-6">
                 <div class="stat-card">
                     <div class="stat-number text-info">{{ isset($userStats) ? ($userStats['total_enrollments'] ?? 0) : 0 }}</div>
-                    <div class="stat-label">Total Enrollments</div>
+                    <div class="stat-label">Enrollments</div>
                     <div class="stat-change positive">
                         <i class="fas fa-graduation-cap"></i> {{ isset($userStats) && isset($userStats['total_users']) && $userStats['total_users'] > 0 ? round($userStats['total_enrollments'] / $userStats['total_users'], 1) : 0 }} avg per user
                     </div>
                 </div>
             </div>
+            <div class="col-xl col-md-6 col-sm-6">
+                <div class="stat-card">
+                    <div class="stat-number" style="color:#8b5cf6;" id="stat-new-today">{{ isset($userStats) ? ($userStats['new_users_today'] ?? 0) : 0 }}</div>
+                    <div class="stat-label">New Today</div>
+                    <div class="stat-change positive">
+                        <i class="fas fa-user-plus"></i> Registered today
+                    </div>
+                </div>
+            </div>
         </div>
 
-        <!-- System Health Indicators -->
+        <!-- System Health Indicators — live-refreshed via /manage-access/system-stats -->
         <div class="row mb-4">
             <div class="col-12">
                 <div class="card">
-                    <div class="card-header">
-                        <i class="fas fa-heartbeat me-2" style="color: #28a745; font-size: 1.3rem;"></i>
-                        <span style="color: #2c3e50; font-weight: 700; font-size: 1.1rem;">System Health</span>
-                        <span class="system-health-badge">
-                            <i class="fas fa-check-circle"></i>All Systems Operational
-                        </span>
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <div>
+                            <i class="fas fa-heartbeat me-2" style="color: #28a745; font-size: 1.3rem;"></i>
+                            <span style="color: #2c3e50; font-weight: 700; font-size: 1.1rem;">System Health</span>
+                            <span class="system-health-badge" id="sysHealthBadge">
+                                <i class="fas fa-check-circle"></i>All Systems Operational
+                            </span>
+                        </div>
+                        <button class="btn btn-outline-secondary btn-sm" id="refreshSystemStats" title="Refresh system stats">
+                            <i class="fas fa-sync-alt"></i>
+                        </button>
                     </div>
                     <div class="card-body py-2">
-                        <div class="row text-center">
-                            <div class="col-md-3 col-6">
-                                <div class="d-flex align-items-center justify-content-center">
-                                    <i class="fas fa-database text-success me-2"></i>
-                                    <span class="small">Database: <strong>{{ $dbStatus ?? 'Online' }}</strong></span>
+                        <div class="row text-center g-2">
+                            <div class="col-lg-2 col-md-4 col-6">
+                                <div class="d-flex flex-column align-items-center">
+                                    <i class="fas fa-database mb-1" id="sysDbIcon" style="font-size:1.1rem;color:#198754;"></i>
+                                    <span class="small fw-semibold" id="sysDbStatus">Online</span>
+                                    <span class="text-muted" style="font-size:0.7rem;">Database</span>
                                 </div>
                             </div>
-                            <div class="col-md-3 col-6">
-                                <div class="d-flex align-items-center justify-content-center">
-                                    <i class="fas fa-server text-success me-2"></i>
-                                    <span class="small">Server: <strong>{{ function_exists('sys_getloadavg') ? 'Healthy' : 'Unknown' }}</strong></span>
+                            <div class="col-lg-2 col-md-4 col-6">
+                                <div class="d-flex flex-column align-items-center">
+                                    <i class="fas fa-server mb-1" style="font-size:1.1rem;color:#198754;"></i>
+                                    <span class="small fw-semibold" id="sysLoad">—</span>
+                                    <span class="text-muted" style="font-size:0.7rem;">Server Load</span>
                                 </div>
                             </div>
-                            <div class="col-md-3 col-6">
-                                <div class="d-flex align-items-center justify-content-center">
-                                    <i class="fas fa-users text-info me-2"></i>
-                                    <span class="small">Active Users: <strong>{{ isset($userStats) ? ($userStats['active_users'] ?? 0) : 0 }}</strong></span>
+                            <div class="col-lg-2 col-md-4 col-6">
+                                <div class="d-flex flex-column align-items-center">
+                                    <i class="fas fa-clock mb-1" style="font-size:1.1rem;color:#0dcaf0;"></i>
+                                    <span class="small fw-semibold" id="sysUptime">—</span>
+                                    <span class="text-muted" style="font-size:0.7rem;">Uptime</span>
                                 </div>
                             </div>
-                            <div class="col-md-3 col-6">
-                                <div class="d-flex align-items-center justify-content-center">
-                                    <i class="fas fa-memory text-info me-2"></i>
-                                    <span class="small">Memory: <strong>{{ round(memory_get_usage(true) / 1024 / 1024, 1) }}MB</strong></span>
+                            <div class="col-lg-2 col-md-4 col-6">
+                                <div class="d-flex flex-column align-items-center">
+                                    <i class="fas fa-memory mb-1" style="font-size:1.1rem;color:#0dcaf0;"></i>
+                                    <span class="small fw-semibold" id="sysMemory">{{ round(memory_get_usage(true) / 1024 / 1024, 1) }}MB</span>
+                                    <span class="text-muted" style="font-size:0.7rem;">Memory</span>
+                                </div>
+                            </div>
+                            <div class="col-lg-2 col-md-4 col-6">
+                                <div class="d-flex flex-column align-items-center">
+                                    <i class="fas fa-tachometer-alt mb-1" style="font-size:1.1rem;color:#198754;"></i>
+                                    <span class="small fw-semibold" id="sysResponse">—</span>
+                                    <span class="text-muted" style="font-size:0.7rem;">Response</span>
+                                </div>
+                            </div>
+                            <div class="col-lg-2 col-md-4 col-6">
+                                <div class="d-flex flex-column align-items-center">
+                                    <i class="fab fa-php mb-1" style="font-size:1.1rem;color:#777BB3;"></i>
+                                    <span class="small fw-semibold" id="sysPhp">{{ PHP_VERSION }}</span>
+                                    <span class="text-muted" style="font-size:0.7rem;">PHP</span>
                                 </div>
                             </div>
                         </div>
@@ -2153,6 +2305,63 @@
                                 <div class="d-flex justify-content-between align-items-center">
                                     <span class="small">Total Courses</span>
                                     <span class="badge bg-secondary">{{ count($courses ?? []) }}</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Last Active Users -->
+                <div class="row mt-4">
+                    <div class="col-12">
+                        <div class="card">
+                            <div class="card-header">
+                                <div>
+                                    <i class="fas fa-user-clock me-2"></i>Last Active Users
+                                </div>
+                                <div class="d-flex gap-2 align-items-center">
+                                    <div class="input-group input-group-sm" style="width: 240px;">
+                                        <span class="input-group-text"><i class="fas fa-search"></i></span>
+                                        <input type="text" class="form-control" id="lastActiveSearch" placeholder="Search by name or email...">
+                                    </div>
+                                    <button class="btn btn-outline-secondary btn-sm" id="refreshLastActive" title="Refresh">
+                                        <i class="fas fa-sync-alt"></i>
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="card-body p-0">
+                                <div class="table-responsive">
+                                    <table class="table table-hover mb-0" id="lastActiveTable">
+                                        <thead>
+                                            <tr>
+                                                <th>User</th>
+                                                <th>Role</th>
+                                                <th>Level</th>
+                                                <th>Last Active</th>
+                                                <th>Status</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="lastActiveBody">
+                                            <tr>
+                                                <td colspan="5" class="text-center py-4 text-muted">
+                                                    <i class="fas fa-spinner fa-spin fa-2x mb-2"></i>
+                                                    <div>Loading user activity...</div>
+                                                </td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                                <div class="d-flex justify-content-between align-items-center px-3 py-2 border-top" id="lastActivePagination" style="display: none !important;">
+                                    <small class="text-muted" id="lastActiveInfo">Showing 0 users</small>
+                                    <div class="btn-group btn-group-sm">
+                                        <button class="btn btn-outline-secondary" id="lastActivePrev" disabled>
+                                            <i class="fas fa-chevron-left"></i> Prev
+                                        </button>
+                                        <button class="btn btn-outline-secondary" id="lastActivePageDisplay" disabled style="min-width: 80px;"></button>
+                                        <button class="btn btn-outline-secondary" id="lastActiveNext" disabled>
+                                            Next <i class="fas fa-chevron-right"></i>
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
                         </div>

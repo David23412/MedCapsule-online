@@ -75,6 +75,11 @@ class UserService
                 ->where('is_enrolled', true)
                 ->count();
 
+            // New users registered today
+            $newUsersToday = DB::table('users')
+                ->whereDate('created_at', today())
+                ->count();
+
             // PERFORMANCE OPTIMIZATION: Get users with pagination
             $users = User::select('id', 'name', 'email', 'number', 'role')
                 ->orderBy('name', 'asc')
@@ -123,6 +128,7 @@ class UserService
                 'tutor_users' => (int) $userStatsQuery->tutor_users,
                 'active_users' => $activeUsersCount,
                 'total_enrollments' => $totalEnrollments,
+                'new_users_today' => $newUsersToday,
             ];
 
             return [
@@ -263,6 +269,86 @@ class UserService
     }
 
     /**
+     * Get paginated list of users ordered by last activity for admin dashboard.
+     *
+     * @param int $page
+     * @param int $perPage
+     * @param string|null $search
+     * @return array
+     */
+    public function getLastActiveUsers(int $page = 1, int $perPage = 20, ?string $search = null): array
+    {
+        try {
+            $query = User::select('id', 'name', 'email', 'role', 'last_active_at', 'created_at', 'xp', 'level')
+                ->orderByRaw('last_active_at IS NULL ASC')
+                ->orderBy('last_active_at', 'desc');
+
+            $search = trim((string) ($search ?? ''));
+            if ($search !== '') {
+                $like = '%' . $search . '%';
+                $query->where(function ($q) use ($like) {
+                    $q->where('name', 'like', $like)
+                      ->orWhere('email', 'like', $like);
+                });
+            }
+
+            $paginator = $query->paginate($perPage, ['*'], 'page', $page);
+
+            $users = $paginator->getCollection()->map(function (User $user) {
+                $lastActive = $user->last_active_at;
+                $now = now();
+
+                if ($lastActive) {
+                    $diffMinutes = $lastActive->diffInMinutes($now);
+                    if ($diffMinutes < 5) {
+                        $status = 'online';
+                    } elseif ($diffMinutes < 60) {
+                        $status = 'recent';
+                    } elseif ($lastActive->isToday()) {
+                        $status = 'today';
+                    } elseif ($lastActive->gte($now->copy()->subDays(7))) {
+                        $status = 'this_week';
+                    } else {
+                        $status = 'inactive';
+                    }
+                } else {
+                    $status = 'never';
+                }
+
+                return [
+                    'id'               => $user->id,
+                    'name'             => $user->name,
+                    'email'            => $user->email,
+                    'role'             => $user->role,
+                    'role_label'       => match ((int) $user->role) {
+                        User::ROLE_ADMIN  => 'Admin',
+                        User::ROLE_TUTOR  => 'Tutor',
+                        default           => 'Student',
+                    },
+                    'xp'               => $user->xp ?? 0,
+                    'level'            => $user->level ?? 1,
+                    'last_active_at'   => $lastActive?->toIso8601String(),
+                    'last_active_human'=> $lastActive ? $lastActive->diffForHumans() : 'Never',
+                    'created_at'       => $user->created_at?->toIso8601String(),
+                    'status'           => $status,
+                ];
+            });
+
+            return [
+                'success'      => true,
+                'users'        => $users->values(),
+                'current_page' => $paginator->currentPage(),
+                'last_page'    => $paginator->lastPage(),
+                'total'        => $paginator->total(),
+                'per_page'     => $paginator->perPage(),
+            ];
+        } catch (\Exception $e) {
+            Log::error('Failed to get last active users: ' . $e->getMessage());
+            return ['success' => false, 'message' => 'Failed to load user activity data.'];
+        }
+    }
+
+    /**
      * Get course enrollment status for a specific user
      * FIXED: Removed duplicate select and fixed ambiguous column
      *
@@ -293,6 +379,82 @@ class UserService
         } catch (\Exception $e) {
             Log::error('Failed to get course enrollment status: ' . $e->getMessage());
             return ['success' => false, 'message' => 'Failed to get course enrollment status.'];
+        }
+    }
+
+    /**
+     * Collect real-time system health metrics for the admin dashboard.
+     * Every value comes from the actual server — no hardcoded/fake data.
+     */
+    public function getSystemStats(): array
+    {
+        try {
+            $startTime = microtime(true);
+
+            // Active sessions (users online right now — last 5 min)
+            $fiveMinAgo = now()->subMinutes(5)->timestamp;
+            $activeNow = DB::table('sessions')
+                ->where('last_activity', '>=', $fiveMinAgo)
+                ->whereNotNull('user_id')
+                ->distinct('user_id')
+                ->count('user_id');
+
+            // Users registered today
+            $newUsersToday = DB::table('users')
+                ->whereDate('created_at', today())
+                ->count();
+
+            // Enrollments today
+            $enrollmentsToday = DB::table('course_user')
+                ->where('is_enrolled', true)
+                ->whereDate('enrolled_at', today())
+                ->count();
+
+            // DB check
+            $dbOnline = true;
+            try { DB::connection()->getPdo(); } catch (\Throwable $e) { $dbOnline = false; }
+
+            // Memory
+            $memUsage   = memory_get_usage(true);
+            $memPeak    = memory_get_peak_usage(true);
+
+            // Server load (Linux / macOS)
+            $load = function_exists('sys_getloadavg') ? sys_getloadavg() : null;
+
+            // PHP & Laravel versions
+            $phpVersion     = PHP_VERSION;
+            $laravelVersion = app()->version();
+
+            // Server uptime (Linux)
+            $uptime = null;
+            if (is_readable('/proc/uptime')) {
+                $raw = trim((string) file_get_contents('/proc/uptime'));
+                $secs = (int) explode(' ', $raw)[0];
+                $days = intdiv($secs, 86400);
+                $hours = intdiv($secs % 86400, 3600);
+                $mins = intdiv($secs % 3600, 60);
+                $uptime = ($days > 0 ? "{$days}d " : '') . "{$hours}h {$mins}m";
+            }
+
+            $responseMs = round((microtime(true) - $startTime) * 1000, 1);
+
+            return [
+                'success'           => true,
+                'active_now'        => $activeNow,
+                'new_users_today'   => $newUsersToday,
+                'enrollments_today' => $enrollmentsToday,
+                'db_online'         => $dbOnline,
+                'memory_mb'         => round($memUsage / 1024 / 1024, 1),
+                'memory_peak_mb'    => round($memPeak / 1024 / 1024, 1),
+                'server_load'       => $load ? round($load[0], 2) : null,
+                'php_version'       => $phpVersion,
+                'laravel_version'   => $laravelVersion,
+                'uptime'            => $uptime,
+                'response_ms'       => $responseMs,
+            ];
+        } catch (\Exception $e) {
+            Log::error('System stats failed: ' . $e->getMessage());
+            return ['success' => false, 'message' => 'Failed to load system stats.'];
         }
     }
 }
