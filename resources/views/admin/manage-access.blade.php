@@ -2351,7 +2351,7 @@
                                         </tbody>
                                     </table>
                                 </div>
-                                <div class="d-flex justify-content-between align-items-center px-3 py-2 border-top" id="lastActivePagination" style="display: none !important;">
+                                <div class="d-flex justify-content-between align-items-center px-3 py-2 border-top" id="lastActivePagination" style="display: none;">
                                     <small class="text-muted" id="lastActiveInfo">Showing 0 users</small>
                                     <div class="btn-group btn-group-sm">
                                         <button class="btn btn-outline-secondary" id="lastActivePrev" disabled>
