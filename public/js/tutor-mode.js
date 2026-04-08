@@ -1162,8 +1162,9 @@ const TUTOR_CONFIG = window.TUTOR_CONFIG || {};
             // Skip when the event target is a button or other interactive element —
             // clicking a button is NOT a text-selection gesture and should not be
             // intercepted by the highlight system.
+            const INTERACTIVE_SELECTORS = ['button', 'a', 'input', 'select', 'textarea'];
             const target = e.target;
-            if (target && (target.closest('button') || target.closest('a') || target.closest('input') || target.closest('select') || target.closest('textarea'))) {
+            if (target && INTERACTIVE_SELECTORS.some(sel => target.closest(sel))) {
                 return;
             }
 
