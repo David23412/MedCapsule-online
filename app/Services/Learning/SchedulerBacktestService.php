@@ -21,6 +21,7 @@ class SchedulerBacktestService
             ->where('reviewed_at', '>=', now()->subDays($lookbackDays))
             ->orderBy('mistake_id')
             ->orderBy('reviewed_at')
+            ->limit(5000)
             ->get();
 
         if ($events->count() < 2) {
@@ -213,9 +214,15 @@ class SchedulerBacktestService
         };
     }
 
+    private static ?bool $backtestingSupported = null;
+
     private function supportsBacktesting(): bool
     {
-        return Schema::hasTable('mistake_review_events');
+        if (self::$backtestingSupported === null) {
+            self::$backtestingSupported = Schema::hasTable('mistake_review_events');
+        }
+
+        return self::$backtestingSupported;
     }
 
     private function emptyReport(string $mode, int $lookbackDays, ?int $userId): array

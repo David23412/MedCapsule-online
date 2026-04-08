@@ -16,6 +16,27 @@ class ParameterOptimizer
         'spaced' => 12,
     ];
 
+    private static ?bool $hasOptimizationsTable = null;
+    private static ?bool $hasReviewEventsTable = null;
+
+    private function hasOptimizationsTable(): bool
+    {
+        if (self::$hasOptimizationsTable === null) {
+            self::$hasOptimizationsTable = DB::getSchemaBuilder()->hasTable('scheduler_parameter_optimizations');
+        }
+
+        return self::$hasOptimizationsTable;
+    }
+
+    private function hasReviewEventsTable(): bool
+    {
+        if (self::$hasReviewEventsTable === null) {
+            self::$hasReviewEventsTable = DB::getSchemaBuilder()->hasTable('mistake_review_events');
+        }
+
+        return self::$hasReviewEventsTable;
+    }
+
     public function getOptimizedParameters(int $userId, string $mode = 'spaced'): array
     {
         $mode = $this->normalizeMode($mode);
@@ -49,7 +70,7 @@ class ParameterOptimizer
         $mode = $this->normalizeMode($mode);
         Cache::forget("optimized_params:{$userId}:{$mode}");
 
-        if (!DB::getSchemaBuilder()->hasTable('scheduler_parameter_optimizations')) {
+        if (!$this->hasOptimizationsTable()) {
             return;
         }
 
@@ -109,7 +130,7 @@ class ParameterOptimizer
 
     protected function getCachedOptimization(int $userId, string $mode): ?array
     {
-        if (!DB::getSchemaBuilder()->hasTable('scheduler_parameter_optimizations')) {
+        if (!$this->hasOptimizationsTable()) {
             return null;
         }
 
@@ -131,7 +152,7 @@ class ParameterOptimizer
 
     protected function fetchReviewCount(int $userId, string $mode, int $lookbackDays): int
     {
-        if (!DB::getSchemaBuilder()->hasTable('mistake_review_events')) {
+        if (!$this->hasReviewEventsTable()) {
             return 0;
         }
 
@@ -145,7 +166,7 @@ class ParameterOptimizer
 
     protected function fetchConfidenceReviewCount(int $userId, int $lookbackDays): int
     {
-        if (!DB::getSchemaBuilder()->hasTable('mistake_review_events')) {
+        if (!$this->hasReviewEventsTable()) {
             return 0;
         }
 
@@ -171,7 +192,7 @@ class ParameterOptimizer
 
     protected function storeOptimization(int $userId, string $mode, array $parameters, int $sampleSize, float $lossMetric): void
     {
-        if (!DB::getSchemaBuilder()->hasTable('scheduler_parameter_optimizations')) {
+        if (!$this->hasOptimizationsTable()) {
             return;
         }
 

@@ -274,6 +274,7 @@ class SchedulerCalibrationService
             ->where('reviewed_at', '>=', now()->subDays($lookbackDays))
             ->orderBy('mistake_id')
             ->orderBy('reviewed_at')
+            ->limit(5000)
             ->get();
 
         if ($events->count() < 12) {
@@ -666,10 +667,16 @@ class SchedulerCalibrationService
         };
     }
 
+    private static ?bool $calibrationStorageSupported = null;
+
     private function supportsCalibrationStorage(): bool
     {
-        return Schema::hasTable('scheduler_calibration_profiles')
-            && Schema::hasTable('mistake_review_events');
+        if (self::$calibrationStorageSupported === null) {
+            self::$calibrationStorageSupported = Schema::hasTable('scheduler_calibration_profiles')
+                && Schema::hasTable('mistake_review_events');
+        }
+
+        return self::$calibrationStorageSupported;
     }
 
     private function maybeRecalibrateUserConfidence(string $mode, int $userId): void
@@ -785,9 +792,15 @@ class SchedulerCalibrationService
         return $resolved;
     }
 
+    private static ?bool $userCalibrationStorageSupported = null;
+
     private function supportsUserCalibrationStorage(): bool
     {
-        return Schema::hasTable('user_scheduler_calibration_profiles');
+        if (self::$userCalibrationStorageSupported === null) {
+            self::$userCalibrationStorageSupported = Schema::hasTable('user_scheduler_calibration_profiles');
+        }
+
+        return self::$userCalibrationStorageSupported;
     }
 
     private function createEvent(array $attributes): void
