@@ -310,6 +310,8 @@ class QuizTutorController extends Controller
         ]);
 
         try {
+            $before = $question->only(['question', 'option_a', 'option_b', 'option_c', 'option_d', 'correct_answer', 'explanation']);
+
             $question->update([
                 'question'       => $request->input('question'),
                 'option_a'       => $request->input('option_a'),
@@ -326,6 +328,15 @@ class QuizTutorController extends Controller
                 Cache::forget("topic_{$question->topic_id}_questions");
             }
 
+            // Audit log for admin question edits
+            Log::info('Admin edited question from tutor mode', [
+                'admin_id'    => auth()->id(),
+                'question_id' => $question->id,
+                'topic_id'    => $question->topic_id,
+                'before'      => $before,
+                'after'       => $question->only(['question', 'option_a', 'option_b', 'option_c', 'option_d', 'correct_answer', 'explanation']),
+            ]);
+
             return response()->json([
                 'success' => true,
                 'message' => 'Question updated successfully',
@@ -341,7 +352,7 @@ class QuizTutorController extends Controller
                 ],
             ]);
         } catch (\Exception $e) {
-            Log::error('Error updating question from tutor mode:', [
+            Log::error('Error updating question from tutor mode', [
                 'error'       => $e->getMessage(),
                 'question_id' => $question->id,
                 'user_id'     => auth()->id(),
@@ -349,7 +360,7 @@ class QuizTutorController extends Controller
 
             return response()->json([
                 'success' => false,
-                'message' => 'Error updating question: ' . $e->getMessage(),
+                'message' => 'Failed to update question. Please try again.',
             ], 500);
         }
     }

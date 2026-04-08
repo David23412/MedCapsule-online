@@ -2647,14 +2647,16 @@
                 @foreach($questions as $index => $question)
                     @php $qObj = is_array($question) ? $question['question'] : $question; @endphp
                     {{ $qObj->id ?? 0 }}: {
-                        correct_answer: '{{ $qObj->correct_answer ?? '' }}',
-                        explanation: `{{ addslashes($qObj->explanation ?? '') }}`,
-                        question_type: '{{ $qObj->question_type ?? "multiple_choice" }}',
-                        question_text: `{{ addslashes($qObj->question ?? '') }}`,
-                        option_a: `{{ addslashes($qObj->option_a ?? '') }}`,
-                        option_b: `{{ addslashes($qObj->option_b ?? '') }}`,
-                        option_c: `{{ addslashes($qObj->option_c ?? '') }}`,
-                        option_d: `{{ addslashes($qObj->option_d ?? '') }}`
+                        correct_answer: @json($qObj->correct_answer ?? ''),
+                        explanation: @json($qObj->explanation ?? ''),
+                        question_type: @json($qObj->question_type ?? 'multiple_choice'),
+                        @if(auth()->user()->isAdmin())
+                        question_text: @json($qObj->question ?? ''),
+                        option_a: @json($qObj->option_a ?? ''),
+                        option_b: @json($qObj->option_b ?? ''),
+                        option_c: @json($qObj->option_c ?? ''),
+                        option_d: @json($qObj->option_d ?? '')
+                        @endif
                     },
                 @endforeach
             },
