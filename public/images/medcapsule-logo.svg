@@ -9,10 +9,10 @@
       <stop offset="100%" stop-color="#dc2626"/>
     </linearGradient>
   </defs>
-  <!-- Blue half (left) -->
-  <path d="M10,10 Q6,10 6,16 Q6,22 10,22 L16,22 L16,10 Z" fill="url(#pillBlue)"/>
-  <!-- Red half (right) -->
-  <path d="M16,10 L22,10 Q26,10 26,16 Q26,22 22,22 L16,22 Z" fill="url(#pillRed)"/>
+  <!-- Blue half (left) — lean capsule -->
+  <path d="M16,12 L9,12 A4,4 0 0,0 9,20 L16,20 Z" fill="url(#pillBlue)"/>
+  <!-- Red half (right) — lean capsule -->
+  <path d="M16,12 L23,12 A4,4 0 0,1 23,20 L16,20 Z" fill="url(#pillRed)"/>
   <!-- White divider line -->
-  <line x1="16" y1="10" x2="16" y2="22" stroke="white" stroke-width="1"/>
+  <line x1="16" y1="12" x2="16" y2="20" stroke="white" stroke-width="0.8"/>
 </svg>
