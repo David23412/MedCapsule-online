@@ -193,6 +193,12 @@
             var prev = points[points.length - 2];
             var midX = (prev.x + last.x) / 2;
             var midY = (prev.y + last.y) / 2;
+            var pressure = Math.max(last.pressure, MIN_PRESSURE);
+            ctx.lineWidth   = isErasing ? ERASER_WIDTH : lineWidth * (0.5 + pressure * 1.5);
+            ctx.lineCap     = 'round';
+            ctx.lineJoin    = 'round';
+            ctx.strokeStyle = isErasing ? 'rgba(0,0,0,1)' : currentColor;
+            ctx.globalCompositeOperation = isErasing ? 'destination-out' : 'source-over';
             ctx.beginPath();
             ctx.moveTo(midX, midY);
             ctx.lineTo(last.x, last.y);
