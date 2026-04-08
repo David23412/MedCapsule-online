@@ -3017,11 +3017,12 @@ const TUTOR_CONFIG = window.TUTOR_CONFIG || {};
 // ============================================================
 // KEYBOARD ARROW NAVIGATION (Left / Right to switch questions)
 // ============================================================
+let editModalOpen = false;
 document.addEventListener('keydown', function(e) {
     // Don't intercept when typing in inputs/textareas or when edit modal is open
     const tag = (e.target.tagName || '').toLowerCase();
     if (tag === 'input' || tag === 'textarea' || tag === 'select') return;
-    if (document.querySelector('.edit-question-overlay.active')) return;
+    if (editModalOpen) return;
 
     if (e.key === 'ArrowLeft') {
         e.preventDefault();
@@ -3064,13 +3065,15 @@ window.openEditModal = function(questionId) {
 
     document.getElementById('edit-save-btn').disabled = false;
     document.getElementById('edit-question-overlay').classList.add('active');
+    editModalOpen = true;
 
-    // Focus the question text field
+    // Small delay to let the modal animation finish before focusing
     setTimeout(() => document.getElementById('edit-question-text').focus(), 100);
 };
 
 window.closeEditModal = function() {
     document.getElementById('edit-question-overlay').classList.remove('active');
+    editModalOpen = false;
 };
 
 window.saveQuestionEdit = function() {
@@ -3115,7 +3118,10 @@ window.saveQuestionEdit = function() {
         },
         body: JSON.stringify(payload)
     })
-    .then(r => r.json())
+    .then(r => {
+        if (!r.ok) return r.json().catch(() => ({ success: false, message: 'Server error (' + r.status + ')' }));
+        return r.json();
+    })
     .then(data => {
         if (data.success) {
             // Update local question data cache
@@ -3172,7 +3178,7 @@ window.saveQuestionEdit = function() {
 
 // Close edit modal with Escape key
 document.addEventListener('keydown', function(e) {
-    if (e.key === 'Escape' && document.querySelector('.edit-question-overlay.active')) {
+    if (e.key === 'Escape' && editModalOpen) {
         closeEditModal();
     }
 });
