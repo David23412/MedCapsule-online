@@ -1911,6 +1911,233 @@
                 padding-bottom: 68px;
             }
         }
+
+        /* ═══════════════════════════════════════════════════
+           Annotation Canvas – Overlay + Toolbar + Toggle
+           ═══════════════════════════════════════════════════ */
+
+        /* ── Toggle button (always visible) ─────────────── */
+        .annot-toggle-btn {
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+            z-index: 1050;
+            width: 52px;
+            height: 52px;
+            border-radius: 50%;
+            border: none;
+            background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
+            color: #fff;
+            font-size: 1.25rem;
+            cursor: pointer;
+            box-shadow: 0 4px 16px rgba(0, 123, 255, 0.35);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+            -webkit-tap-highlight-color: transparent;
+            touch-action: manipulation;
+        }
+        .annot-toggle-btn:hover {
+            transform: scale(1.08);
+            box-shadow: 0 6px 24px rgba(0, 123, 255, 0.45);
+        }
+        .annot-toggle-btn:active {
+            transform: scale(0.95);
+        }
+        .annot-toggle-active {
+            background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%) !important;
+            box-shadow: 0 4px 16px rgba(231, 76, 60, 0.4) !important;
+        }
+
+        /* ── Overlay (hidden by default) ────────────────── */
+        .annot-overlay {
+            position: fixed;
+            inset: 0;
+            z-index: 1040;
+            display: none;
+            pointer-events: none;
+        }
+        .annot-overlay.annot-visible {
+            display: block;
+            pointer-events: auto;
+        }
+
+        /* ── Canvas ─────────────────────────────────────── */
+        .annot-canvas {
+            position: absolute;
+            inset: 0;
+            touch-action: none;
+            cursor: crosshair;
+        }
+
+        /* ── Toolbar (bottom-center, pill shape) ────────── */
+        .annot-toolbar {
+            position: fixed;
+            bottom: 90px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 1051;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 8px 14px;
+            border-radius: 22px;
+            background: rgba(255, 255, 255, 0.96);
+            border: 1px solid rgba(203, 213, 225, 0.9);
+            box-shadow: 0 12px 40px rgba(15, 23, 42, 0.18);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            user-select: none;
+            -webkit-user-select: none;
+            touch-action: manipulation;
+        }
+
+        .annot-section {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .annot-divider {
+            width: 1px;
+            height: 28px;
+            background: rgba(203, 213, 225, 0.85);
+            margin: 0 4px;
+            flex-shrink: 0;
+        }
+
+        /* ── Colour buttons ─────────────────────────────── */
+        .annot-color-btn {
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            border: 2px solid transparent;
+            cursor: pointer;
+            transition: transform 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+            flex-shrink: 0;
+            padding: 0;
+            outline: none;
+        }
+        .annot-color-btn:hover {
+            transform: scale(1.15);
+        }
+        .annot-color-btn.annot-active {
+            border-color: #007bff;
+            box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.25);
+            transform: scale(1.1);
+        }
+
+        /* ── Tool buttons ───────────────────────────────── */
+        .annot-tool-btn {
+            width: 34px;
+            height: 34px;
+            border-radius: 10px;
+            border: 1px solid rgba(203, 213, 225, 0.9);
+            background: linear-gradient(180deg, #fff 0%, #f8fafc 100%);
+            color: #475569;
+            font-size: 14px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: transform 0.12s ease, background 0.12s ease, color 0.12s ease, border-color 0.12s ease;
+            padding: 0;
+            outline: none;
+            flex-shrink: 0;
+        }
+        .annot-tool-btn:hover {
+            transform: translateY(-1px);
+            border-color: rgba(59, 130, 246, 0.5);
+            color: #007bff;
+        }
+        .annot-tool-btn:active {
+            transform: scale(0.93);
+        }
+        .annot-tool-btn.annot-active {
+            background: #007bff;
+            color: #fff;
+            border-color: #007bff;
+        }
+        .annot-tool-btn.annot-disabled {
+            opacity: 0.35;
+            pointer-events: none;
+        }
+
+        /* Eraser active = red tint */
+        .annot-eraser-btn.annot-active {
+            background: #dc3545 !important;
+            border-color: #dc3545 !important;
+            color: #fff !important;
+        }
+
+        /* Clear = red on hover */
+        .annot-clear-btn:hover {
+            color: #dc3545;
+            border-color: #dc3545;
+        }
+
+        /* Close = red on hover */
+        .annot-close-btn:hover {
+            color: #dc3545;
+            border-color: #dc3545;
+        }
+
+        /* ── Size indicator ─────────────────────────────── */
+        .annot-size-indicator {
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: #475569;
+            min-width: 18px;
+            text-align: center;
+            user-select: none;
+        }
+
+        .annot-size-section {
+            gap: 3px !important;
+        }
+
+        /* ── Body class: block scrolling while annotating ─ */
+        body.annot-mode-active {
+            overflow: hidden !important;
+            touch-action: none !important;
+        }
+
+        /* ── Mobile / small-tablet responsive ───────────── */
+        @media (max-width: 768px) {
+            .annot-toggle-btn {
+                bottom: 80px;
+                right: 16px;
+                width: 46px;
+                height: 46px;
+                font-size: 1.1rem;
+            }
+            .annot-toolbar {
+                bottom: 140px;
+                padding: 6px 10px;
+                gap: 4px;
+                border-radius: 18px;
+                max-width: calc(100vw - 24px);
+                flex-wrap: wrap;
+                justify-content: center;
+            }
+            .annot-color-btn {
+                width: 24px;
+                height: 24px;
+            }
+            .annot-tool-btn {
+                width: 30px;
+                height: 30px;
+                font-size: 12px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .annot-toolbar {
+                bottom: 130px;
+                padding: 5px 8px;
+            }
+        }
     </style>
 </head>
 <body>
@@ -2176,6 +2403,8 @@
     </script>
     <script src="{{ asset('js/tutor-mode.js') }}"></script>
 
+    <!-- Annotation Canvas (iPad Pencil / Pen drawing overlay) -->
+    <script src="{{ asset('js/annotation-canvas.js') }}"></script>
 
     <!-- FORCE BIG BEAUTIFUL BUTTON STYLING -->
     <style>
@@ -2240,7 +2469,7 @@
             display: none !important;
         }
         /* ENSURE CONFETTI APPEARS ABOVE MODAL */
-        canvas {
+        canvas:not(#annot-canvas) {
             z-index: 10001 !important;
             pointer-events: none !important;
             position: fixed !important;
@@ -2248,6 +2477,11 @@
             left: 0 !important;
             width: 100vw !important;
             height: 100vh !important;
+        }
+        /* Hide annotation toggle + toolbar during review mode */
+        .tutor-review-mode .annot-toggle-btn,
+        .tutor-review-mode .annot-overlay {
+            display: none !important;
         }
     </style>
 </body>
