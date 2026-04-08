@@ -808,7 +808,7 @@
             }
         });
 
-        // Scroll wheel: normal = scroll page, Ctrl/Meta+wheel = adjust brush size
+        // Scroll wheel: normal = scroll page (native), Ctrl/Meta+wheel = adjust brush size
         canvas.addEventListener('wheel', function (e) {
             if (!isOpen) return;
             if (e.ctrlKey || e.metaKey) {
@@ -816,11 +816,8 @@
                 e.preventDefault();
                 var delta = e.deltaY > 0 ? -1 : 1;
                 setLineWidth(getCurrentBrushSize() + delta);
-            } else {
-                // Normal wheel = scroll the page through the fixed overlay
-                e.preventDefault();
-                window.scrollBy(0, e.deltaY);
             }
+            // Normal wheel: do NOT preventDefault — let the browser scroll naturally
         }, { passive: false });
 
         // Hide cursor circle when pointer leaves the canvas area
