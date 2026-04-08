@@ -274,6 +274,7 @@ class SchedulerCalibrationService
             ->where('reviewed_at', '>=', now()->subDays($lookbackDays))
             ->orderBy('mistake_id')
             ->orderBy('reviewed_at')
+            ->orderBy('id')
             ->limit(5000)
             ->get();
 
