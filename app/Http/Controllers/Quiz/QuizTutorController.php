@@ -293,4 +293,64 @@ class QuizTutorController extends Controller
             ], 500);
         }
     }
+
+    /**
+     * Admin-only: Update a question inline from tutor mode.
+     */
+    public function updateQuestion(Request $request, Question $question)
+    {
+        $request->validate([
+            'question'       => 'required|string|max:5000',
+            'option_a'       => 'nullable|string|max:1000',
+            'option_b'       => 'nullable|string|max:1000',
+            'option_c'       => 'nullable|string|max:1000',
+            'option_d'       => 'nullable|string|max:1000',
+            'correct_answer' => 'required|string|in:A,B,C,D',
+            'explanation'    => 'nullable|string|max:10000',
+        ]);
+
+        try {
+            $question->update([
+                'question'       => $request->input('question'),
+                'option_a'       => $request->input('option_a'),
+                'option_b'       => $request->input('option_b'),
+                'option_c'       => $request->input('option_c'),
+                'option_d'       => $request->input('option_d'),
+                'correct_answer' => $request->input('correct_answer'),
+                'explanation'    => $request->input('explanation'),
+            ]);
+
+            // Clear any related caches so the qbank reflects changes immediately
+            Cache::forget("question_{$question->id}");
+            if ($question->topic_id) {
+                Cache::forget("topic_{$question->topic_id}_questions");
+            }
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Question updated successfully',
+                'data'    => [
+                    'id'             => $question->id,
+                    'question'       => $question->question,
+                    'option_a'       => $question->option_a,
+                    'option_b'       => $question->option_b,
+                    'option_c'       => $question->option_c,
+                    'option_d'       => $question->option_d,
+                    'correct_answer' => $question->correct_answer,
+                    'explanation'    => $question->explanation,
+                ],
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Error updating question from tutor mode:', [
+                'error'       => $e->getMessage(),
+                'question_id' => $question->id,
+                'user_id'     => auth()->id(),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Error updating question: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
 }
