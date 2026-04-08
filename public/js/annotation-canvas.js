@@ -56,6 +56,7 @@
     let toggleBtn     = null;
     let points        = [];            // collected points for current stroke
     let activePointerId = null;        // track which pointer is drawing
+    let activePointerType = null;      // 'pen', 'mouse', or 'touch'
     let hlCanvas      = null;          // off-screen canvas for highlighter strokes
     let hlCtx         = null;
     let preHighlightSnapshot = null;   // canvas state before current highlighter stroke
@@ -288,6 +289,7 @@
         if (activePointerId !== null) return;
 
         activePointerId = e.pointerId;
+        activePointerType = e.pointerType;   // 'pen', 'mouse', or 'touch'
         isDrawing = true;
         strokeStarted = false;   // defer actual drawing until first move
 
@@ -399,6 +401,7 @@
                     // Clean up drawing state without drawing anything
                     isDrawing = false;
                     activePointerId = null;
+                    activePointerType = null;
                     tapDownPoint = null;
                     points = [];
                     lastPoint = null;
@@ -427,6 +430,7 @@
         /* ── Normal stroke end ────────────────────────────── */
         isDrawing = false;
         activePointerId = null;
+        activePointerType = null;
         tapDownPoint = null;
 
         if (activeTool === TOOL_HIGHLIGHTER && preHighlightSnapshot) {
@@ -474,7 +478,17 @@
     }
 
     function onPointerCancel(e) {
-        onPointerUp(e);
+        if (e.pointerId !== activePointerId) return;
+        // Clean up without drawing — gesture was cancelled (e.g. browser initiated scroll)
+        isDrawing = false;
+        activePointerId = null;
+        activePointerType = null;
+        strokeStarted = false;
+        tapDownPoint = null;
+        points = [];
+        lastPoint = null;
+        preHighlightSnapshot = null;
+        resetComposite();
     }
 
     /* ── resize handler ────────────────────────────────── */
@@ -513,6 +527,7 @@
         isOpen = false;
         isDrawing = false;
         activePointerId = null;
+        activePointerType = null;
         strokeStarted = false;
         tapDownPoint = null;
         overlay.classList.remove('annot-visible');
@@ -609,7 +624,7 @@
         canvas = document.createElement('canvas');
         canvas.id = 'annot-canvas';
         canvas.className = 'annot-canvas';
-        canvas.setAttribute('touch-action', 'none');
+        canvas.setAttribute('touch-action', 'manipulation');
         overlay.appendChild(canvas);
 
         // Toolbar
@@ -706,9 +721,14 @@
         canvas.addEventListener('pointercancel', onPointerCancel);
         canvas.addEventListener('pointerleave',  onPointerUp);
 
-        // Prevent default touch to avoid scrolling while drawing
-        canvas.addEventListener('touchstart', function (e) { if (isOpen) e.preventDefault(); }, { passive: false });
-        canvas.addEventListener('touchmove',  function (e) { if (isOpen) e.preventDefault(); }, { passive: false });
+        // Touch handlers: only block native scroll when actively drawing with pen/mouse
+        // Finger (touch) gestures pass through so the browser can scroll the page
+        canvas.addEventListener('touchstart', function (e) {
+            if (isOpen && isDrawing && activePointerType !== 'touch') e.preventDefault();
+        }, { passive: false });
+        canvas.addEventListener('touchmove',  function (e) {
+            if (isOpen && isDrawing && activePointerType !== 'touch') e.preventDefault();
+        }, { passive: false });
 
         // Toggle button
         toggleBtn.addEventListener('click', toggle);
@@ -788,12 +808,19 @@
             }
         });
 
-        // Scroll wheel to adjust brush size while hovering canvas
+        // Scroll wheel: normal = scroll page, Ctrl/Meta+wheel = adjust brush size
         canvas.addEventListener('wheel', function (e) {
             if (!isOpen) return;
-            e.preventDefault();
-            var delta = e.deltaY > 0 ? -1 : 1;
-            setLineWidth(getCurrentBrushSize() + delta);
+            if (e.ctrlKey || e.metaKey) {
+                // Modifier + wheel = adjust brush size (standard design-tool shortcut)
+                e.preventDefault();
+                var delta = e.deltaY > 0 ? -1 : 1;
+                setLineWidth(getCurrentBrushSize() + delta);
+            } else {
+                // Normal wheel = scroll the page through the fixed overlay
+                e.preventDefault();
+                window.scrollBy(0, e.deltaY);
+            }
         }, { passive: false });
 
         // Hide cursor circle when pointer leaves the canvas area

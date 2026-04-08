@@ -1967,7 +1967,7 @@
         .annot-canvas {
             position: absolute;
             inset: 0;
-            touch-action: none;
+            touch-action: manipulation;
             cursor: crosshair;
         }
 
@@ -2124,10 +2124,9 @@
             transition: width 0.10s ease, height 0.10s ease, background 0.10s ease;
         }
 
-        /* ── Body class: block scrolling while annotating ─ */
+        /* ── Body class: annotation mode active (scrolling allowed) ─ */
         body.annot-mode-active {
-            overflow: hidden !important;
-            touch-action: none !important;
+            /* Scrolling is intentionally NOT blocked — users scroll normally */
         }
 
         /* ── Mobile / small-tablet responsive ───────────── */
