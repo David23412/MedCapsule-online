@@ -3013,3 +3013,240 @@ const TUTOR_CONFIG = window.TUTOR_CONFIG || {};
                 window.enterTutorReviewMode();
             });
         });
+
+// ============================================================
+// KEYBOARD ARROW NAVIGATION (Left / Right to switch questions)
+// ============================================================
+let editModalOpen = false;
+document.addEventListener('keydown', function(e) {
+    // Don't intercept when typing in inputs/textareas or when edit modal is open
+    const tag = (e.target.tagName || '').toLowerCase();
+    if (tag === 'input' || tag === 'textarea' || tag === 'select') return;
+    if (editModalOpen) return;
+
+    if (e.key === 'ArrowLeft') {
+        e.preventDefault();
+        if (typeof window.navigatePrevious === 'function' && currentQuestionIndex > 1) {
+            window.navigatePrevious(currentQuestionIndex);
+        }
+    } else if (e.key === 'ArrowRight') {
+        e.preventDefault();
+        if (typeof window.navigateNext === 'function' && currentQuestionIndex < totalQuestions) {
+            window.navigateNext(currentQuestionIndex);
+        }
+    }
+});
+
+// ============================================================
+// ADMIN EDIT QUESTION MODAL (only initialized for admins)
+// ============================================================
+if (TUTOR_CONFIG.isAdmin) {
+(function() {
+    // Track original values to detect unsaved changes
+    let originalValues = {};
+
+    function hasUnsavedChanges() {
+        const fields = ['edit-question-text', 'edit-option-a', 'edit-option-b', 'edit-option-c', 'edit-option-d', 'edit-explanation'];
+        for (const id of fields) {
+            const el = document.getElementById(id);
+            if (el && el.value !== (originalValues[id] || '')) return true;
+        }
+        const checkedRadio = document.querySelector('input[name="edit-correct"]:checked');
+        if ((checkedRadio ? checkedRadio.value : '') !== (originalValues['correct_answer'] || '')) return true;
+        return false;
+    }
+
+    function confirmClose() {
+        if (hasUnsavedChanges()) {
+            return confirm('You have unsaved changes. Discard them?');
+        }
+        return true;
+    }
+
+    window.openEditModal = function(questionId) {
+        // Sanitize questionId to integer
+        questionId = parseInt(questionId, 10);
+        if (!questionId || questionId <= 0) return;
+
+        const qData = TUTOR_CONFIG.questionData[questionId];
+        if (!qData) return;
+
+        document.getElementById('edit-question-id').value = questionId;
+        document.getElementById('edit-question-text').value = qData.question_text || '';
+        document.getElementById('edit-option-a').value = qData.option_a || '';
+        document.getElementById('edit-option-b').value = qData.option_b || '';
+        document.getElementById('edit-option-c').value = qData.option_c || '';
+        document.getElementById('edit-option-d').value = qData.option_d || '';
+        document.getElementById('edit-explanation').value = qData.explanation || '';
+
+        // Set correct answer radio
+        const correctRadio = document.getElementById('edit-correct-' + (qData.correct_answer || 'A'));
+        if (correctRadio) correctRadio.checked = true;
+
+        // Snapshot original values for unsaved-changes detection
+        originalValues = {
+            'edit-question-text': qData.question_text || '',
+            'edit-option-a': qData.option_a || '',
+            'edit-option-b': qData.option_b || '',
+            'edit-option-c': qData.option_c || '',
+            'edit-option-d': qData.option_d || '',
+            'edit-explanation': qData.explanation || '',
+            'correct_answer': qData.correct_answer || 'A'
+        };
+
+        // Clear status
+        const status = document.getElementById('edit-status');
+        status.textContent = '';
+        status.className = 'edit-status';
+
+        document.getElementById('edit-save-btn').disabled = false;
+        document.getElementById('edit-question-overlay').classList.add('active');
+        editModalOpen = true;
+
+        // Small delay to let the modal animation finish before focusing
+        setTimeout(() => document.getElementById('edit-question-text').focus(), 100);
+    };
+
+    window.closeEditModal = function() {
+        if (!confirmClose()) return;
+        document.getElementById('edit-question-overlay').classList.remove('active');
+        editModalOpen = false;
+        originalValues = {};
+    };
+
+    // Internal close that skips confirmation (used after successful save)
+    function forceCloseModal() {
+        document.getElementById('edit-question-overlay').classList.remove('active');
+        editModalOpen = false;
+        originalValues = {};
+    }
+
+    window.saveQuestionEdit = function() {
+        const questionId = parseInt(document.getElementById('edit-question-id').value, 10);
+        if (!questionId || questionId <= 0) return;
+
+        const saveBtn = document.getElementById('edit-save-btn');
+        const status = document.getElementById('edit-status');
+
+        const correctRadio = document.querySelector('input[name="edit-correct"]:checked');
+        if (!correctRadio) {
+            status.textContent = 'Please select the correct answer.';
+            status.className = 'edit-status error';
+            return;
+        }
+
+        const payload = {
+            question: document.getElementById('edit-question-text').value.trim(),
+            option_a: document.getElementById('edit-option-a').value.trim(),
+            option_b: document.getElementById('edit-option-b').value.trim(),
+            option_c: document.getElementById('edit-option-c').value.trim(),
+            option_d: document.getElementById('edit-option-d').value.trim(),
+            correct_answer: correctRadio.value,
+            explanation: document.getElementById('edit-explanation').value.trim()
+        };
+
+        if (!payload.question) {
+            status.textContent = 'Question text cannot be empty.';
+            status.className = 'edit-status error';
+            return;
+        }
+
+        saveBtn.disabled = true;
+        saveBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...';
+        status.textContent = '';
+        status.className = 'edit-status';
+
+        fetch('/quiz/tutor/question/' + questionId, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
+                'Accept': 'application/json'
+            },
+            body: JSON.stringify(payload)
+        })
+        .then(r => {
+            if (!r.ok) return r.json().catch(() => ({ success: false, message: 'Server error (' + r.status + ')' }));
+            return r.json();
+        })
+        .then(data => {
+            if (data.success) {
+                // Update local question data cache
+                const qData = TUTOR_CONFIG.questionData[questionId];
+                if (qData) {
+                    qData.question_text = payload.question;
+                    qData.option_a = payload.option_a;
+                    qData.option_b = payload.option_b;
+                    qData.option_c = payload.option_c;
+                    qData.option_d = payload.option_d;
+                    qData.correct_answer = payload.correct_answer;
+                    qData.explanation = payload.explanation;
+                }
+
+                // Update the visible question card in-place
+                const optionsContainer = document.querySelector('.options-container[data-question-id="' + questionId + '"]');
+                if (optionsContainer) {
+                    const questionCard = optionsContainer.closest('.question-card');
+
+                    // Update question text
+                    const qText = questionCard.querySelector('.question-text');
+                    if (qText) qText.textContent = payload.question;
+
+                    // Update option texts
+                    const optionCards = optionsContainer.querySelectorAll('.option-card');
+                    optionCards.forEach(card => {
+                        const letter = card.getAttribute('data-option');
+                        const key = 'option_' + letter.toLowerCase();
+                        const contentEl = card.querySelector('.option-content');
+                        if (contentEl && payload[key] !== undefined) {
+                            contentEl.textContent = payload[key];
+                        }
+                    });
+                }
+
+                // Snapshot saved values so the modal counts as "clean"
+                originalValues = {
+                    'edit-question-text': payload.question,
+                    'edit-option-a': payload.option_a,
+                    'edit-option-b': payload.option_b,
+                    'edit-option-c': payload.option_c,
+                    'edit-option-d': payload.option_d,
+                    'edit-explanation': payload.explanation,
+                    'correct_answer': payload.correct_answer
+                };
+
+                status.textContent = '✓ Saved successfully!';
+                status.className = 'edit-status success';
+
+                setTimeout(() => forceCloseModal(), 900);
+            } else {
+                status.textContent = data.message || 'Save failed.';
+                status.className = 'edit-status error';
+            }
+        })
+        .catch(err => {
+            status.textContent = 'Network error: ' + err.message;
+            status.className = 'edit-status error';
+        })
+        .finally(() => {
+            saveBtn.disabled = false;
+            saveBtn.innerHTML = '<i class="fas fa-save"></i> Save Changes';
+        });
+    };
+
+    // Close edit modal with Escape key
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape' && editModalOpen) {
+            closeEditModal();
+        }
+    });
+
+    // Close edit modal by clicking overlay background
+    const overlay = document.getElementById('edit-question-overlay');
+    if (overlay) {
+        overlay.addEventListener('click', function(e) {
+            if (e.target === overlay) closeEditModal();
+        });
+    }
+})();
+} // end if (TUTOR_CONFIG.isAdmin)

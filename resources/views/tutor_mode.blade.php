@@ -1739,6 +1739,174 @@
             margin: 0;
         }
 
+        /* Admin Edit Button */
+        .btn-admin-edit {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.3rem;
+            padding: 0.25rem 0.6rem;
+            font-size: 0.72rem;
+            font-weight: 500;
+            color: #6c757d;
+            background: transparent;
+            border: 1px solid #dee2e6;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            white-space: nowrap;
+        }
+        .btn-admin-edit:hover {
+            color: #007bff;
+            border-color: #007bff;
+            background: rgba(0, 123, 255, 0.05);
+        }
+        .btn-admin-edit i { font-size: 0.65rem; }
+
+        /* Edit Question Modal */
+        .edit-question-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.5);
+            z-index: 10050;
+            justify-content: center;
+            align-items: center;
+            backdrop-filter: blur(4px);
+        }
+        .edit-question-overlay.active { display: flex; }
+        .edit-question-modal {
+            background: #fff;
+            border-radius: 16px;
+            width: 94%;
+            max-width: 600px;
+            max-height: 90vh;
+            overflow-y: auto;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.25);
+            animation: editSlideIn 0.25s ease;
+        }
+        @keyframes editSlideIn {
+            from { opacity: 0; transform: translateY(20px) scale(0.97); }
+            to { opacity: 1; transform: translateY(0) scale(1); }
+        }
+        .edit-modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1rem 1.5rem;
+            border-bottom: 1px solid #e9ecef;
+        }
+        .edit-modal-header h5 {
+            margin: 0;
+            font-size: 1rem;
+            font-weight: 600;
+            color: #212529;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        .edit-modal-close {
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            color: #6c757d;
+            cursor: pointer;
+            line-height: 1;
+            padding: 0 0.25rem;
+        }
+        .edit-modal-close:hover { color: #212529; }
+        .edit-modal-body { padding: 1.25rem 1.5rem; }
+        .edit-field { margin-bottom: 1rem; }
+        .edit-field label {
+            display: block;
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: #495057;
+            margin-bottom: 0.35rem;
+        }
+        .edit-input {
+            width: 100%;
+            padding: 0.5rem 0.75rem;
+            font-size: 0.88rem;
+            border: 1.5px solid #dee2e6;
+            border-radius: 8px;
+            font-family: 'Poppins', sans-serif;
+            transition: border-color 0.2s;
+            box-sizing: border-box;
+        }
+        .edit-input:focus {
+            outline: none;
+            border-color: #007bff;
+            box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.12);
+        }
+        .edit-options-grid { margin-bottom: 1rem; }
+        .edit-option-row {
+            display: flex;
+            align-items: center;
+            gap: 0.6rem;
+            margin-bottom: 0.5rem;
+        }
+        .edit-option-radio {
+            display: flex;
+            align-items: center;
+            gap: 0.3rem;
+            flex-shrink: 0;
+        }
+        .edit-option-radio input[type="radio"] {
+            width: 16px;
+            height: 16px;
+            accent-color: #28a745;
+            cursor: pointer;
+        }
+        .edit-radio-label {
+            font-size: 0.82rem;
+            font-weight: 600;
+            color: #495057;
+            min-width: 14px;
+            cursor: pointer;
+        }
+        .edit-option-row .edit-input { flex: 1; }
+        .edit-modal-footer {
+            display: flex;
+            justify-content: flex-end;
+            gap: 0.75rem;
+            padding: 1rem 1.5rem;
+            border-top: 1px solid #e9ecef;
+        }
+        .edit-btn {
+            padding: 0.5rem 1.25rem;
+            font-size: 0.85rem;
+            font-weight: 600;
+            border-radius: 8px;
+            cursor: pointer;
+            border: none;
+            transition: all 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
+        }
+        .edit-btn-cancel {
+            background: #f1f3f5;
+            color: #495057;
+        }
+        .edit-btn-cancel:hover { background: #e9ecef; }
+        .edit-btn-save {
+            background: #007bff;
+            color: #fff;
+        }
+        .edit-btn-save:hover { background: #0056b3; }
+        .edit-btn-save:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+        .edit-status {
+            text-align: center;
+            padding: 0 1.5rem 0.75rem;
+            font-size: 0.8rem;
+            min-height: 1.2rem;
+        }
+        .edit-status.success { color: #28a745; }
+        .edit-status.error { color: #dc3545; }
+
         /* I Don't Know button - minimal icon style, lower right */
 .btn-dont-know {
     width: 32px;
@@ -2262,6 +2430,11 @@
                                     </div>
                                 </div>
                                 <div class="ms-2 d-flex flex-column align-items-end gap-1">
+                                    @if(auth()->user()->isAdmin())
+                                        <button class="btn-admin-edit" onclick="openEditModal({{ $qObj->id ?? 0 }})" title="Edit Question">
+                                            <i class="fas fa-pen"></i> Edit
+                                        </button>
+                                    @endif
                                     @if(!empty($qObj->enhanced_source_badges))
                                         @foreach($qObj->enhanced_source_badges as $badge)
                                             @if(isset($topic) && strtoupper($topic->name) === strtoupper($badge))
@@ -2369,6 +2542,66 @@
 
     <!-- Quiz Results Popup - EXACT COPY FROM SOLVE_QUIZ -->
     <div class="popup-overlay" id="popup-overlay">
+
+    @if(auth()->user()->isAdmin())
+    <!-- Admin Edit Question Modal -->
+    <div class="edit-question-overlay" id="edit-question-overlay">
+        <div class="edit-question-modal" id="edit-question-modal">
+            <div class="edit-modal-header">
+                <h5><i class="fas fa-pen"></i> Edit Question</h5>
+                <button class="edit-modal-close" onclick="closeEditModal()" title="Close">&times;</button>
+            </div>
+            <div class="edit-modal-body">
+                <input type="hidden" id="edit-question-id">
+                <div class="edit-field">
+                    <label for="edit-question-text">Question Text</label>
+                    <textarea id="edit-question-text" class="edit-input" rows="4"></textarea>
+                </div>
+                <div class="edit-options-grid">
+                    <div class="edit-option-row">
+                        <div class="edit-option-radio">
+                            <input type="radio" name="edit-correct" id="edit-correct-A" value="A">
+                            <label for="edit-correct-A" class="edit-radio-label">A</label>
+                        </div>
+                        <input type="text" id="edit-option-a" class="edit-input" placeholder="Option A">
+                    </div>
+                    <div class="edit-option-row">
+                        <div class="edit-option-radio">
+                            <input type="radio" name="edit-correct" id="edit-correct-B" value="B">
+                            <label for="edit-correct-B" class="edit-radio-label">B</label>
+                        </div>
+                        <input type="text" id="edit-option-b" class="edit-input" placeholder="Option B">
+                    </div>
+                    <div class="edit-option-row">
+                        <div class="edit-option-radio">
+                            <input type="radio" name="edit-correct" id="edit-correct-C" value="C">
+                            <label for="edit-correct-C" class="edit-radio-label">C</label>
+                        </div>
+                        <input type="text" id="edit-option-c" class="edit-input" placeholder="Option C">
+                    </div>
+                    <div class="edit-option-row">
+                        <div class="edit-option-radio">
+                            <input type="radio" name="edit-correct" id="edit-correct-D" value="D">
+                            <label for="edit-correct-D" class="edit-radio-label">D</label>
+                        </div>
+                        <input type="text" id="edit-option-d" class="edit-input" placeholder="Option D">
+                    </div>
+                </div>
+                <div class="edit-field">
+                    <label for="edit-explanation">Explanation</label>
+                    <textarea id="edit-explanation" class="edit-input" rows="3"></textarea>
+                </div>
+            </div>
+            <div class="edit-modal-footer">
+                <button class="edit-btn edit-btn-cancel" onclick="closeEditModal()">Cancel</button>
+                <button class="edit-btn edit-btn-save" id="edit-save-btn" onclick="saveQuestionEdit()">
+                    <i class="fas fa-save"></i> Save Changes
+                </button>
+            </div>
+            <div class="edit-status" id="edit-status"></div>
+        </div>
+    </div>
+    @endif
         <div class="popup" id="popup">
             <div class="grade-icon" id="grade-icon"></div>
             <h2 class="popup-title" id="popup-title">Quiz Complete!</h2>
@@ -2404,6 +2637,7 @@
         window.TUTOR_CONFIG = {
             totalQuestions: {{ $questions->count() }},
             isRandomQuiz: {{ isset($is_random_quiz) && $is_random_quiz ? 'true' : 'false' }},
+            isAdmin: {{ auth()->user()->isAdmin() ? 'true' : 'false' }},
             topicId: {{ $topic->id ?? 1 }},
             courseId: {{ $course->id ?? 1 }},
             initialDuration: {{ isset($duration_minutes) ? $duration_minutes * 60 : 0 }},
@@ -2413,9 +2647,16 @@
                 @foreach($questions as $index => $question)
                     @php $qObj = is_array($question) ? $question['question'] : $question; @endphp
                     {{ $qObj->id ?? 0 }}: {
-                        correct_answer: '{{ $qObj->correct_answer ?? '' }}',
-                        explanation: `{{ addslashes($qObj->explanation ?? '') }}`,
-                        question_type: '{{ $qObj->question_type ?? "multiple_choice" }}'
+                        correct_answer: @json($qObj->correct_answer ?? ''),
+                        explanation: @json($qObj->explanation ?? ''),
+                        question_type: @json($qObj->question_type ?? 'multiple_choice'),
+                        @if(auth()->user()->isAdmin())
+                        question_text: @json($qObj->question ?? ''),
+                        option_a: @json($qObj->option_a ?? ''),
+                        option_b: @json($qObj->option_b ?? ''),
+                        option_c: @json($qObj->option_c ?? ''),
+                        option_d: @json($qObj->option_d ?? '')
+                        @endif
                     },
                 @endforeach
             },

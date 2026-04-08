@@ -207,6 +207,12 @@ Route::group([], function () {
             ->where(['question' => '[0-9]+']);
         Route::post('/tutor/complete-session', [App\Http\Controllers\Quiz\QuizTutorController::class, 'completeTutorSession'])
             ->name('tutor.complete-session');
+
+        // Admin inline question editing from tutor mode
+        Route::put('/tutor/question/{question}', [App\Http\Controllers\Quiz\QuizTutorController::class, 'updateQuestion'])
+            ->name('tutor.update-question')
+            ->where(['question' => '[0-9]+'])
+            ->middleware('admin');
     });
 
     // Random Quiz Routes with CSRF and rate limiting - OPTIMIZED VERSION
