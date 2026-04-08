@@ -579,6 +579,13 @@
         updateCursorCircleVisibility();
     }
 
+    /** Return the current brush size for the active tool. */
+    function getCurrentBrushSize() {
+        if (activeTool === TOOL_ERASER) return eraserSize;
+        if (activeTool === TOOL_HIGHLIGHTER) return highlighterSize;
+        return lineWidth;
+    }
+
     function updateSizeIndicator() {
         var indicator = document.getElementById('annot-size-indicator');
         if (!indicator) return;
@@ -732,11 +739,9 @@
             } else if (btn.classList.contains('annot-close-btn')) {
                 close();
             } else if (btn.classList.contains('annot-size-down')) {
-                var cur = activeTool === TOOL_ERASER ? eraserSize : activeTool === TOOL_HIGHLIGHTER ? highlighterSize : lineWidth;
-                setLineWidth(cur - 1);
+                setLineWidth(getCurrentBrushSize() - 1);
             } else if (btn.classList.contains('annot-size-up')) {
-                var cur2 = activeTool === TOOL_ERASER ? eraserSize : activeTool === TOOL_HIGHLIGHTER ? highlighterSize : lineWidth;
-                setLineWidth(cur2 + 1);
+                setLineWidth(getCurrentBrushSize() + 1);
             }
         });
 
@@ -773,13 +778,11 @@
 
                 // Bracket keys for size
                 if (e.key === '[') {
-                    var s = activeTool === TOOL_ERASER ? eraserSize : activeTool === TOOL_HIGHLIGHTER ? highlighterSize : lineWidth;
-                    setLineWidth(s - 2);
+                    setLineWidth(getCurrentBrushSize() - 2);
                     return;
                 }
                 if (e.key === ']') {
-                    var s2 = activeTool === TOOL_ERASER ? eraserSize : activeTool === TOOL_HIGHLIGHTER ? highlighterSize : lineWidth;
-                    setLineWidth(s2 + 2);
+                    setLineWidth(getCurrentBrushSize() + 2);
                     return;
                 }
             }
@@ -790,8 +793,7 @@
             if (!isOpen) return;
             e.preventDefault();
             var delta = e.deltaY > 0 ? -1 : 1;
-            var cur3 = activeTool === TOOL_ERASER ? eraserSize : activeTool === TOOL_HIGHLIGHTER ? highlighterSize : lineWidth;
-            setLineWidth(cur3 + delta);
+            setLineWidth(getCurrentBrushSize() + delta);
         }, { passive: false });
 
         // Hide cursor circle when pointer leaves the canvas area
