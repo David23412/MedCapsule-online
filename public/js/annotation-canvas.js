@@ -14,11 +14,17 @@
     const DEFAULT_LINE_WIDTH      = 3;
     const MIN_LINE_WIDTH          = 1;
     const MAX_LINE_WIDTH          = 20;
-    const ERASER_WIDTH            = 28;
-    const HIGHLIGHTER_WIDTH       = 22;
+    const DEFAULT_ERASER_SIZE     = 28;
+    const MIN_ERASER_SIZE         = 8;
+    const MAX_ERASER_SIZE         = 80;
+    const DEFAULT_HIGHLIGHTER_SIZE = 22;
+    const MIN_HIGHLIGHTER_SIZE    = 8;
+    const MAX_HIGHLIGHTER_SIZE    = 60;
     const HIGHLIGHTER_ALPHA       = 0.35;
     const RESIZE_DEBOUNCE_MS      = 100;
     const ORIENTATION_CHANGE_MS   = 300;  // iPad needs time to settle after rotation
+    const TAP_DISTANCE_THRESHOLD  = 8;    // max px movement to count as a tap
+    const TAP_TIME_THRESHOLD      = 300;  // max ms for a tap
     const COLORS = [
         '#1a1a2e',   // dark navy (default)
         '#e74c3c',   // red
@@ -42,6 +48,8 @@
     let activeTool    = TOOL_PEN;
     let currentColor  = COLORS[0];
     let lineWidth     = DEFAULT_LINE_WIDTH;
+    let eraserSize    = DEFAULT_ERASER_SIZE;
+    let highlighterSize = DEFAULT_HIGHLIGHTER_SIZE;
     let undoStack     = [];
     let redoStack     = [];
     let lastPoint     = null;
@@ -51,6 +59,9 @@
     let hlCanvas      = null;          // off-screen canvas for highlighter strokes
     let hlCtx         = null;
     let preHighlightSnapshot = null;   // canvas state before current highlighter stroke
+    let cursorCircle  = null;          // visual cursor circle for eraser/highlighter
+    let strokeStarted = false;         // whether actual drawing has begun for current gesture
+    let tapDownPoint  = null;          // record pointer-down position for tap detection
 
     /* ── helpers ───────────────────────────────────────── */
 
@@ -114,8 +125,8 @@
 
     /** Get the current drawing width based on tool + pressure. */
     function getStrokeWidth(pressure) {
-        if (activeTool === TOOL_ERASER)      return ERASER_WIDTH;
-        if (activeTool === TOOL_HIGHLIGHTER)  return HIGHLIGHTER_WIDTH;
+        if (activeTool === TOOL_ERASER)      return eraserSize;
+        if (activeTool === TOOL_HIGHLIGHTER)  return highlighterSize;
         return lineWidth * (0.5 + (pressure || 0.5) * 1.5);
     }
 
@@ -153,6 +164,118 @@
         ctx.globalAlpha = 1;
     }
 
+    /* ── cursor circle helpers ────────────────────────── */
+
+    /** Get the visual CSS-pixel radius of the current tool's brush. */
+    function getCursorRadius() {
+        var dpr = window.devicePixelRatio || 1;
+        if (activeTool === TOOL_ERASER)      return eraserSize / dpr / 2;
+        if (activeTool === TOOL_HIGHLIGHTER)  return highlighterSize / dpr / 2;
+        return 0;
+    }
+
+    /** Show/hide and resize the cursor circle based on current tool. */
+    function updateCursorCircleVisibility() {
+        if (!cursorCircle) return;
+        var showCircle = isOpen && (activeTool === TOOL_ERASER || activeTool === TOOL_HIGHLIGHTER);
+        cursorCircle.style.display = showCircle ? 'block' : 'none';
+        if (showCircle) {
+            var r = getCursorRadius();
+            var d = r * 2;
+            cursorCircle.style.width  = d + 'px';
+            cursorCircle.style.height = d + 'px';
+            // Style based on tool
+            if (activeTool === TOOL_ERASER) {
+                cursorCircle.style.borderColor = 'rgba(255,255,255,0.9)';
+                cursorCircle.style.boxShadow = '0 0 0 1px rgba(0,0,0,0.35), inset 0 0 0 1px rgba(220,53,69,0.10)';
+                cursorCircle.style.background = 'rgba(220,53,69,0.06)';
+            } else {
+                cursorCircle.style.borderColor = 'rgba(255,255,255,0.85)';
+                cursorCircle.style.boxShadow = '0 0 0 1px rgba(0,0,0,0.25), inset 0 0 0 1px rgba(245,158,11,0.10)';
+                cursorCircle.style.background = 'rgba(245,158,11,0.06)';
+            }
+        }
+    }
+
+    /** Move the cursor circle to follow the pointer. */
+    function positionCursorCircle(clientX, clientY) {
+        if (!cursorCircle || cursorCircle.style.display === 'none') return;
+        cursorCircle.style.left = clientX + 'px';
+        cursorCircle.style.top  = clientY + 'px';
+    }
+
+    /* ── tap-through helpers ──────────────────────────── */
+
+    /**
+     * Check whether an element (or its ancestor) is an interactive page element
+     * that should receive forwarded taps through the annotation overlay.
+     */
+    function isInteractiveElement(el) {
+        if (!el) return false;
+        var match = el.closest(
+            '.option-card, .check-answer, .next-question, .view-results, .btn-dont-know, ' +
+            'button.btn, a.btn, textarea, input, select, a[href], label'
+        );
+        if (!match) return false;
+        // Never forward to our own annotation controls
+        if (match.closest('#annot-overlay, #annot-toggle-btn')) return false;
+        return true;
+    }
+
+    /** Find the real page element beneath the annotation overlay at given coords. */
+    function getElementBeneath(clientX, clientY) {
+        overlay.style.pointerEvents = 'none';
+        canvas.style.pointerEvents  = 'none';
+        if (cursorCircle) cursorCircle.style.display = 'none';
+        var el = document.elementFromPoint(clientX, clientY);
+        overlay.style.pointerEvents = '';
+        canvas.style.pointerEvents  = '';
+        updateCursorCircleVisibility();
+        return el;
+    }
+
+    /* ── deferred stroke begin ────────────────────────── */
+
+    /** Actually start drawing (pushUndo + initial dot). Called on first move or tap-on-empty. */
+    function beginStroke(pt) {
+        if (strokeStarted) return;
+        strokeStarted = true;
+        pushUndo();
+
+        if (activeTool === TOOL_HIGHLIGHTER) {
+            if (!hlCanvas) {
+                hlCanvas = document.createElement('canvas');
+                hlCtx = hlCanvas.getContext('2d');
+            }
+            hlCanvas.width  = canvas.width;
+            hlCanvas.height = canvas.height;
+            hlCtx.clearRect(0, 0, hlCanvas.width, hlCanvas.height);
+
+            preHighlightSnapshot = ctx.getImageData(0, 0, canvas.width, canvas.height);
+
+            hlCtx.lineCap  = 'square';
+            hlCtx.lineJoin = 'bevel';
+            hlCtx.fillStyle = currentColor;
+            hlCtx.globalAlpha = 1;
+            hlCtx.lineWidth = highlighterSize;
+            hlCtx.beginPath();
+            hlCtx.arc(pt.x, pt.y, highlighterSize / 2, 0, Math.PI * 2);
+            hlCtx.fill();
+
+            ctx.putImageData(preHighlightSnapshot, 0, 0);
+            ctx.save();
+            ctx.globalAlpha = HIGHLIGHTER_ALPHA;
+            ctx.drawImage(hlCanvas, 0, 0);
+            ctx.restore();
+        } else {
+            preHighlightSnapshot = null;
+            applyStrokeStyle(pt.pressure);
+            ctx.beginPath();
+            ctx.arc(pt.x, pt.y, ctx.lineWidth / 2, 0, Math.PI * 2);
+            ctx.fill();
+        }
+    }
+
     /* ── pointer handlers ──────────────────────────────── */
     function onPointerDown(e) {
         // Palm rejection: ignore finger-touch when a pen is being used
@@ -166,58 +289,30 @@
 
         activePointerId = e.pointerId;
         isDrawing = true;
-        pushUndo();
+        strokeStarted = false;   // defer actual drawing until first move
 
         var pt = getCanvasPoint(e);
         points = [pt];
         lastPoint = pt;
 
-        // Highlighter: use offscreen canvas to avoid overlap darkening
-        if (activeTool === TOOL_HIGHLIGHTER) {
-            if (!hlCanvas) {
-                hlCanvas = document.createElement('canvas');
-                hlCtx = hlCanvas.getContext('2d');
-            }
-            hlCanvas.width  = canvas.width;
-            hlCanvas.height = canvas.height;
-            hlCtx.clearRect(0, 0, hlCanvas.width, hlCanvas.height);
-
-            // Save snapshot of main canvas before highlighter stroke
-            preHighlightSnapshot = ctx.getImageData(0, 0, canvas.width, canvas.height);
-
-            // Draw initial dot on offscreen
-            hlCtx.lineCap  = 'square';
-            hlCtx.lineJoin = 'bevel';
-            hlCtx.fillStyle = currentColor;
-            hlCtx.globalAlpha = 1;
-            hlCtx.lineWidth = HIGHLIGHTER_WIDTH;
-            hlCtx.beginPath();
-            hlCtx.arc(pt.x, pt.y, HIGHLIGHTER_WIDTH / 2, 0, Math.PI * 2);
-            hlCtx.fill();
-
-            // Composite offscreen to main at reduced alpha
-            ctx.putImageData(preHighlightSnapshot, 0, 0);
-            ctx.save();
-            ctx.globalAlpha = HIGHLIGHTER_ALPHA;
-            ctx.drawImage(hlCanvas, 0, 0);
-            ctx.restore();
-        } else {
-            preHighlightSnapshot = null;
-            applyStrokeStyle(pt.pressure);
-
-            // Place a dot at the start point
-            ctx.beginPath();
-            ctx.arc(pt.x, pt.y, ctx.lineWidth / 2, 0, Math.PI * 2);
-            ctx.fill();
-        }
+        // Record tap start position for click-through detection
+        tapDownPoint = { x: e.clientX, y: e.clientY, time: Date.now() };
 
         canvas.setPointerCapture(e.pointerId);
         e.preventDefault();
     }
 
     function onPointerMove(e) {
+        // Always update the cursor circle position (even when not drawing)
+        positionCursorCircle(e.clientX, e.clientY);
+
         if (!isDrawing || e.pointerId !== activePointerId) return;
         e.preventDefault();
+
+        // Begin the stroke on first movement (deferred from pointerDown for tap detection)
+        if (!strokeStarted) {
+            beginStroke(points[0]);
+        }
 
         // Use coalesced events for smoother lines (esp. on trackpads / mice)
         var events = (e.getCoalescedEvents && e.getCoalescedEvents().length)
@@ -230,7 +325,7 @@
                 points.push(pt);
                 if (points.length < 2) continue;
 
-                hlCtx.lineWidth  = HIGHLIGHTER_WIDTH;
+                hlCtx.lineWidth  = highlighterSize;
                 hlCtx.lineCap    = 'square';
                 hlCtx.lineJoin   = 'bevel';
                 hlCtx.strokeStyle = currentColor;
@@ -289,15 +384,57 @@
 
     function onPointerUp(e) {
         if (!isDrawing || e.pointerId !== activePointerId) return;
+
+        /* ── Tap-through detection ────────────────────────── */
+        if (!strokeStarted && tapDownPoint) {
+            var dx = e.clientX - tapDownPoint.x;
+            var dy = e.clientY - tapDownPoint.y;
+            var dist = Math.sqrt(dx * dx + dy * dy);
+            var elapsed = Date.now() - tapDownPoint.time;
+
+            if (dist < TAP_DISTANCE_THRESHOLD && elapsed < TAP_TIME_THRESHOLD) {
+                // It was a tap — check for interactive elements beneath the overlay
+                var beneath = getElementBeneath(e.clientX, e.clientY);
+                if (beneath && isInteractiveElement(beneath)) {
+                    // Clean up drawing state without drawing anything
+                    isDrawing = false;
+                    activePointerId = null;
+                    tapDownPoint = null;
+                    points = [];
+                    lastPoint = null;
+
+                    // Forward interaction to the underlying element
+                    var target = beneath.closest(
+                        '.option-card, button, a, input, select, label'
+                    ) || beneath;
+
+                    // For textareas / inputs: focus so the user can type immediately
+                    if (beneath.tagName === 'TEXTAREA' || beneath.tagName === 'INPUT') {
+                        beneath.focus();
+                        // Temporarily close annotation mode so user can type
+                        close();
+                    } else {
+                        target.click();
+                    }
+                    return;
+                }
+            }
+
+            // Not an interactive tap — draw a dot at this position
+            beginStroke(points[0]);
+        }
+
+        /* ── Normal stroke end ────────────────────────────── */
         isDrawing = false;
         activePointerId = null;
+        tapDownPoint = null;
 
         if (activeTool === TOOL_HIGHLIGHTER && preHighlightSnapshot) {
             // Draw final segment on offscreen
             if (points.length >= 2) {
                 var last = points[points.length - 1];
                 var prev = points[points.length - 2];
-                hlCtx.lineWidth  = HIGHLIGHTER_WIDTH;
+                hlCtx.lineWidth  = highlighterSize;
                 hlCtx.lineCap    = 'square';
                 hlCtx.lineJoin   = 'bevel';
                 hlCtx.strokeStyle = currentColor;
@@ -376,9 +513,12 @@
         isOpen = false;
         isDrawing = false;
         activePointerId = null;
+        strokeStarted = false;
+        tapDownPoint = null;
         overlay.classList.remove('annot-visible');
         toggleBtn.classList.remove('annot-toggle-active');
         document.body.classList.remove('annot-mode-active');
+        if (cursorCircle) cursorCircle.style.display = 'none';
     }
 
     function toggle() {
@@ -411,26 +551,51 @@
         var highlighterBtn = toolbar.querySelector('.annot-highlighter-btn');
         if (highlighterBtn) highlighterBtn.classList.toggle('annot-active', activeTool === TOOL_HIGHLIGHTER);
 
-        // Update cursor based on tool
+        // Update canvas cursor — hide system cursor when cursor circle is shown
         if (canvas) {
-            if (activeTool === TOOL_HIGHLIGHTER) {
-                canvas.style.cursor = 'text';
-            } else if (activeTool === TOOL_ERASER) {
-                canvas.style.cursor = 'cell';
+            if (activeTool === TOOL_ERASER || activeTool === TOOL_HIGHLIGHTER) {
+                canvas.style.cursor = 'none';
             } else {
                 canvas.style.cursor = 'crosshair';
             }
         }
+
+        // Sync cursor circle visibility + size
+        updateCursorCircleVisibility();
+
+        // Sync size indicator to current tool's size
+        updateSizeIndicator();
     }
 
     function setLineWidth(w) {
-        lineWidth = Math.max(MIN_LINE_WIDTH, Math.min(MAX_LINE_WIDTH, w));
+        if (activeTool === TOOL_ERASER) {
+            eraserSize = Math.max(MIN_ERASER_SIZE, Math.min(MAX_ERASER_SIZE, w));
+        } else if (activeTool === TOOL_HIGHLIGHTER) {
+            highlighterSize = Math.max(MIN_HIGHLIGHTER_SIZE, Math.min(MAX_HIGHLIGHTER_SIZE, w));
+        } else {
+            lineWidth = Math.max(MIN_LINE_WIDTH, Math.min(MAX_LINE_WIDTH, w));
+        }
         updateSizeIndicator();
+        updateCursorCircleVisibility();
+    }
+
+    /** Return the current brush size for the active tool. */
+    function getCurrentBrushSize() {
+        if (activeTool === TOOL_ERASER) return eraserSize;
+        if (activeTool === TOOL_HIGHLIGHTER) return highlighterSize;
+        return lineWidth;
     }
 
     function updateSizeIndicator() {
         var indicator = document.getElementById('annot-size-indicator');
-        if (indicator) indicator.textContent = lineWidth;
+        if (!indicator) return;
+        if (activeTool === TOOL_ERASER) {
+            indicator.textContent = eraserSize;
+        } else if (activeTool === TOOL_HIGHLIGHTER) {
+            indicator.textContent = highlighterSize;
+        } else {
+            indicator.textContent = lineWidth;
+        }
     }
 
     /* ── build DOM ─────────────────────────────────────── */
@@ -475,9 +640,9 @@
 
         // Size controls
         html += '<div class="annot-section annot-size-section">';
-        html += '<button class="annot-tool-btn annot-size-down" title="Thinner" aria-label="Decrease brush size"><i class="fas fa-minus"></i></button>';
+        html += '<button class="annot-tool-btn annot-size-down" title="Thinner ([)" aria-label="Decrease brush size"><i class="fas fa-minus"></i></button>';
         html += '<span id="annot-size-indicator" class="annot-size-indicator">' + lineWidth + '</span>';
-        html += '<button class="annot-tool-btn annot-size-up" title="Thicker" aria-label="Increase brush size"><i class="fas fa-plus"></i></button>';
+        html += '<button class="annot-tool-btn annot-size-up" title="Thicker (])" aria-label="Increase brush size"><i class="fas fa-plus"></i></button>';
         html += '</div>';
 
         // Divider
@@ -485,9 +650,9 @@
 
         // Tools
         html += '<div class="annot-section annot-tools">';
-        html += '<button class="annot-tool-btn annot-pen-btn annot-active" title="Pen" aria-label="Pen tool"><i class="fas fa-pen"></i></button>';
-        html += '<button class="annot-tool-btn annot-highlighter-btn" title="Highlighter" aria-label="Highlighter tool"><i class="fas fa-highlighter"></i></button>';
-        html += '<button class="annot-tool-btn annot-eraser-btn" title="Eraser" aria-label="Eraser"><i class="fas fa-eraser"></i></button>';
+        html += '<button class="annot-tool-btn annot-pen-btn annot-active" title="Pen (P)" aria-label="Pen tool"><i class="fas fa-pen"></i></button>';
+        html += '<button class="annot-tool-btn annot-highlighter-btn" title="Highlighter (H)" aria-label="Highlighter tool"><i class="fas fa-highlighter"></i></button>';
+        html += '<button class="annot-tool-btn annot-eraser-btn" title="Eraser (E)" aria-label="Eraser"><i class="fas fa-eraser"></i></button>';
         html += '</div>';
 
         // Divider
@@ -522,6 +687,12 @@
         // Append to body
         document.body.appendChild(overlay);
         document.body.appendChild(toggleBtn);
+
+        // Cursor circle (follows pointer for eraser / highlighter)
+        cursorCircle = document.createElement('div');
+        cursorCircle.className = 'annot-cursor-circle';
+        cursorCircle.style.display = 'none';
+        document.body.appendChild(cursorCircle);
     }
 
     /* ── bind events ───────────────────────────────────── */
@@ -568,15 +739,18 @@
             } else if (btn.classList.contains('annot-close-btn')) {
                 close();
             } else if (btn.classList.contains('annot-size-down')) {
-                setLineWidth(lineWidth - 1);
+                setLineWidth(getCurrentBrushSize() - 1);
             } else if (btn.classList.contains('annot-size-up')) {
-                setLineWidth(lineWidth + 1);
+                setLineWidth(getCurrentBrushSize() + 1);
             }
         });
 
         // Keyboard shortcuts
         document.addEventListener('keydown', function (e) {
             if (!isOpen) return;
+            // Don't capture keys when focused on an input/textarea
+            var tag = (document.activeElement || {}).tagName;
+            if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
 
             // Escape to close
             if (e.key === 'Escape') {
@@ -584,7 +758,7 @@
                 return;
             }
 
-            // Ctrl+Z undo, Ctrl+Y redo
+            // Ctrl+Z undo, Ctrl+Shift+Z / Ctrl+Y redo
             if ((e.ctrlKey || e.metaKey) && e.key === 'z') {
                 e.preventDefault();
                 if (e.shiftKey) redo(); else undo();
@@ -595,6 +769,39 @@
                 redo();
                 return;
             }
+
+            // Tool shortcuts (only when no modifier key)
+            if (!e.ctrlKey && !e.metaKey && !e.altKey) {
+                if (e.key === 'p' || e.key === 'P') { selectTool(TOOL_PEN); return; }
+                if (e.key === 'h' || e.key === 'H') { selectTool(TOOL_HIGHLIGHTER); return; }
+                if (e.key === 'e' || e.key === 'E') { selectTool(TOOL_ERASER); return; }
+
+                // Bracket keys for size
+                if (e.key === '[') {
+                    setLineWidth(getCurrentBrushSize() - 2);
+                    return;
+                }
+                if (e.key === ']') {
+                    setLineWidth(getCurrentBrushSize() + 2);
+                    return;
+                }
+            }
+        });
+
+        // Scroll wheel to adjust brush size while hovering canvas
+        canvas.addEventListener('wheel', function (e) {
+            if (!isOpen) return;
+            e.preventDefault();
+            var delta = e.deltaY > 0 ? -1 : 1;
+            setLineWidth(getCurrentBrushSize() + delta);
+        }, { passive: false });
+
+        // Hide cursor circle when pointer leaves the canvas area
+        canvas.addEventListener('pointerleave', function (e) {
+            if (cursorCircle) cursorCircle.style.display = 'none';
+        });
+        canvas.addEventListener('pointerenter', function () {
+            updateCursorCircleVisibility();
         });
 
         // Window resize
