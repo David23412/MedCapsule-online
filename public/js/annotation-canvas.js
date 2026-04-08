@@ -43,13 +43,14 @@
 
     /* ── helpers ───────────────────────────────────────── */
 
-    /** Convert pointer coords to canvas-local coords (handles DPR). */
+    /** Convert pointer coords to canvas-local coords (handles DPR + CSS sizing). */
     function getCanvasPoint(e) {
-        const rect = canvas.getBoundingClientRect();
-        const dpr  = window.devicePixelRatio || 1;
+        const rect   = canvas.getBoundingClientRect();
+        const scaleX = canvas.width  / rect.width;
+        const scaleY = canvas.height / rect.height;
         return {
-            x: (e.clientX - rect.left) * dpr,
-            y: (e.clientY - rect.top)  * dpr,
+            x: (e.clientX - rect.left) * scaleX,
+            y: (e.clientY - rect.top)  * scaleY,
             pressure: e.pressure ?? 0.5
         };
     }
@@ -138,41 +139,66 @@
         if (!isDrawing) return;
         e.preventDefault();
 
-        var pt = getCanvasPoint(e);
-        addPoint(pt);
+        // Use coalesced events for smoother lines (esp. on trackpads / mice)
+        var events = (e.getCoalescedEvents && e.getCoalescedEvents().length)
+                   ? e.getCoalescedEvents() : [e];
 
-        // Re-render from scratch each frame for smooth Bézier curves
-        // But only the current stroke segment (optimized incremental)
-        if (points.length >= 2) {
-            var prev = points[points.length - 2];
-            var curr = points[points.length - 1];
+        for (var i = 0; i < events.length; i++) {
+            var pt = getCanvasPoint(events[i]);
+            addPoint(pt);
 
-            var pressure = Math.max(curr.pressure, MIN_PRESSURE);
-            ctx.lineWidth = isErasing ? ERASER_WIDTH : lineWidth * (0.5 + pressure * 1.5);
-            ctx.lineCap    = 'round';
-            ctx.lineJoin   = 'round';
+            if (points.length < 2) continue;
+
+            var pressure = Math.max(pt.pressure, MIN_PRESSURE);
+            ctx.lineWidth   = isErasing ? ERASER_WIDTH : lineWidth * (0.5 + pressure * 1.5);
+            ctx.lineCap     = 'round';
+            ctx.lineJoin    = 'round';
             ctx.strokeStyle = isErasing ? 'rgba(0,0,0,1)' : currentColor;
             ctx.globalCompositeOperation = isErasing ? 'destination-out' : 'source-over';
 
             ctx.beginPath();
-            ctx.moveTo(prev.x, prev.y);
 
-            if (points.length >= 3) {
-                var midX = (prev.x + curr.x) / 2;
-                var midY = (prev.y + curr.y) / 2;
-                ctx.quadraticCurveTo(prev.x, prev.y, midX, midY);
+            if (points.length < 3) {
+                // First segment: simple line
+                var p0 = points[points.length - 2];
+                var p1 = points[points.length - 1];
+                ctx.moveTo(p0.x, p0.y);
+                ctx.lineTo(p1.x, p1.y);
             } else {
-                ctx.lineTo(curr.x, curr.y);
+                // Smooth quadratic Bézier: draw from prev midpoint to curr midpoint
+                var a  = points[points.length - 3];
+                var b  = points[points.length - 2];
+                var c  = points[points.length - 1];
+                var prevMidX = (a.x + b.x) / 2;
+                var prevMidY = (a.y + b.y) / 2;
+                var currMidX = (b.x + c.x) / 2;
+                var currMidY = (b.y + c.y) / 2;
+                ctx.moveTo(prevMidX, prevMidY);
+                ctx.quadraticCurveTo(b.x, b.y, currMidX, currMidY);
             }
+
             ctx.stroke();
         }
 
-        lastPoint = pt;
+        lastPoint = points.length ? points[points.length - 1] : null;
     }
 
     function onPointerUp(e) {
         if (!isDrawing) return;
         isDrawing = false;
+
+        // Draw final segment from last midpoint to actual endpoint
+        if (points.length >= 2) {
+            var last = points[points.length - 1];
+            var prev = points[points.length - 2];
+            var midX = (prev.x + last.x) / 2;
+            var midY = (prev.y + last.y) / 2;
+            ctx.beginPath();
+            ctx.moveTo(midX, midY);
+            ctx.lineTo(last.x, last.y);
+            ctx.stroke();
+        }
+
         points    = [];
         lastPoint = null;
         ctx.globalCompositeOperation = 'source-over';
