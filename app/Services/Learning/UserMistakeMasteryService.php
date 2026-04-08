@@ -11,6 +11,17 @@ use Illuminate\Support\Facades\Schema;
 
 class UserMistakeMasteryService
 {
+    private static ?bool $hasMistakesTable = null;
+
+    private function hasMistakesTable(): bool
+    {
+        if (self::$hasMistakesTable === null) {
+            self::$hasMistakesTable = Schema::hasTable('mistakes');
+        }
+
+        return self::$hasMistakesTable;
+    }
+
     public function recordAttempt(
         User|int $user,
         Question $question,
@@ -149,7 +160,7 @@ class UserMistakeMasteryService
 
     private function legacyMistakeState(int $userId, int $questionId, CarbonInterface $attemptedAt): array
     {
-        if (!Schema::hasTable('mistakes')) {
+        if (!$this->hasMistakesTable()) {
             return [
                 'consecutive_correct' => 0,
                 'mastered' => false,
@@ -181,7 +192,7 @@ class UserMistakeMasteryService
         mixed $graduatedAt,
         CarbonInterface $attemptedAt
     ): void {
-        if (!Schema::hasTable('mistakes')) {
+        if (!$this->hasMistakesTable()) {
             return;
         }
 

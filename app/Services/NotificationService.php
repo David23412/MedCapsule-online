@@ -16,6 +16,8 @@ use App\Services\UniversalNotificationService;
 
 class NotificationService
 {
+    private static ?bool $hasNotificationsTable = null;
+
     // Notification Types
     const ASSIGNMENT_COMPLETED = 'assignment_completed';
     const STUDENT_COMPLETED_ASSIGNMENT = 'student_completed_assignment';
@@ -949,7 +951,11 @@ class NotificationService
     public function markPaymentNotificationsAsRead(Payment $payment, User $admin)
     {
         try {
-            if (!Schema::hasTable('notifications')) {
+            if (self::$hasNotificationsTable === null) {
+                self::$hasNotificationsTable = Schema::hasTable('notifications');
+            }
+
+            if (!self::$hasNotificationsTable) {
                 return 0;
             }
 

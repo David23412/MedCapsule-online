@@ -11,6 +11,9 @@ use Illuminate\Support\Facades\Schema;
 
 class PlannerSignalService
 {
+    private static ?bool $hasAssignmentTables = null;
+    private static ?bool $hasMasteryTable = null;
+
     public function buildTopicBacklogSignals(int $userId, array $topicIds, ?int $classicMasteryThreshold = null): array
     {
         $topicIds = array_values(array_unique(array_map('intval', $topicIds)));
@@ -91,7 +94,12 @@ class PlannerSignalService
     public function buildCourseAssignmentSignals(int $userId, array $courseIds): array
     {
         $courseIds = array_values(array_unique(array_map('intval', $courseIds)));
-        if (empty($courseIds) || !Schema::hasTable('assignments') || !Schema::hasTable('assignment_user')) {
+
+        if (self::$hasAssignmentTables === null) {
+            self::$hasAssignmentTables = Schema::hasTable('assignments') && Schema::hasTable('assignment_user');
+        }
+
+        if (empty($courseIds) || !self::$hasAssignmentTables) {
             return [];
         }
 
@@ -392,7 +400,12 @@ class PlannerSignalService
     private function masteryByQuestionId(int $userId, array $questionIds): array
     {
         $questionIds = array_values(array_unique(array_map('intval', $questionIds)));
-        if (empty($questionIds) || !Schema::hasTable('user_mistake_mastery')) {
+
+        if (self::$hasMasteryTable === null) {
+            self::$hasMasteryTable = Schema::hasTable('user_mistake_mastery');
+        }
+
+        if (empty($questionIds) || !self::$hasMasteryTable) {
             return [];
         }
 

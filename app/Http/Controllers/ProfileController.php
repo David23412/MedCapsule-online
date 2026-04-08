@@ -19,6 +19,7 @@ use App\Services\SecureFileUploadService;
 class ProfileController extends Controller
 {
     private static ?array $availableCoursePlannerColumns = null;
+    private static ?bool $hasLeaderboardColumn = null;
 
     public function __construct(
         private PerformanceTrackingService $performanceTrackingService
@@ -138,7 +139,10 @@ class ProfileController extends Controller
             ($progressPercent >= 40 ? '#f59e0b' : '#ef4444'));
 
         // Safe check: show_on_leaderboard column may not have been migrated yet
-        $hasLeaderboardColumn = Schema::hasColumn('users', 'show_on_leaderboard');
+        if (self::$hasLeaderboardColumn === null) {
+            self::$hasLeaderboardColumn = Schema::hasColumn('users', 'show_on_leaderboard');
+        }
+        $hasLeaderboardColumn = self::$hasLeaderboardColumn;
 
         // Cached user rank — includes users ranked by XP then correct_answers_count
         $userRank = null;
