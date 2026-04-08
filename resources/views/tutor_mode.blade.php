@@ -2111,6 +2111,19 @@
             gap: 3px !important;
         }
 
+        /* ── Cursor circle (eraser / highlighter size preview) ─ */
+        .annot-cursor-circle {
+            position: fixed;
+            pointer-events: none;
+            z-index: 1052;
+            border-radius: 50%;
+            border: 2px solid rgba(255, 255, 255, 0.9);
+            box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.35);
+            transform: translate(-50%, -50%);
+            will-change: left, top;
+            transition: width 0.10s ease, height 0.10s ease, background 0.10s ease;
+        }
+
         /* ── Body class: block scrolling while annotating ─ */
         body.annot-mode-active {
             overflow: hidden !important;
