@@ -65,29 +65,26 @@
             <div class="sidebar-logo-icon">
                 <svg width="52" height="26" viewBox="0 0 52 26" fill="none" xmlns="http://www.w3.org/2000/svg" aria-label="MedCapsule">
                     <defs>
-                        <linearGradient id="reviewSidebarPillBody" x1="0" y1="0" x2="0" y2="1">
+                        <linearGradient id="reviewSidebarPillBlue" x1="0" y1="0" x2="0" y2="1">
                             <stop offset="0%" stop-color="#2563eb"></stop>
-                            <stop offset="45%" stop-color="#3b82f6"></stop>
                             <stop offset="100%" stop-color="#1d4ed8"></stop>
                         </linearGradient>
-                        <linearGradient id="reviewSidebarPillGloss" x1="0.1" y1="0" x2="0.9" y2="0">
-                            <stop offset="0%" stop-color="rgba(255,255,255,0)"></stop>
-                            <stop offset="30%" stop-color="rgba(255,255,255,0.6)"></stop>
-                            <stop offset="70%" stop-color="rgba(255,255,255,0.5)"></stop>
-                            <stop offset="100%" stop-color="rgba(255,255,255,0)"></stop>
+                        <linearGradient id="reviewSidebarPillRed" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="0%" stop-color="#ef4444"></stop>
+                            <stop offset="100%" stop-color="#dc2626"></stop>
                         </linearGradient>
-                        <linearGradient id="reviewSidebarPillShadow" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="0%" stop-color="rgba(0,0,0,0)"></stop>
-                            <stop offset="100%" stop-color="rgba(10,20,80,0.28)"></stop>
-                        </linearGradient>
+                        <clipPath id="reviewSidebarPillClip">
+                            <rect x="1" y="4" width="50" height="18" rx="9"></rect>
+                        </clipPath>
                         <filter id="reviewSidebarPillDrop" x="-8%" y="-15%" width="116%" height="150%">
-                            <feDropShadow dx="0" dy="2.5" stdDeviation="2" flood-color="#1d4ed8" flood-opacity="0.38"></feDropShadow>
+                            <feDropShadow dx="0" dy="2" stdDeviation="1.5" flood-color="#1d4ed8" flood-opacity="0.3"></feDropShadow>
                         </filter>
                     </defs>
-                    <rect x="1" y="3" width="50" height="18" rx="9" fill="url(#reviewSidebarPillBody)" filter="url(#reviewSidebarPillDrop)"></rect>
-                    <rect x="1" y="3" width="50" height="18" rx="9" fill="url(#reviewSidebarPillShadow)"></rect>
-                    <rect x="4" y="4" width="44" height="7" rx="5" fill="url(#reviewSidebarPillGloss)" opacity="0.88"></rect>
-                    <ellipse cx="10" cy="8" rx="3.5" ry="2" fill="rgba(255,255,255,0.6)"></ellipse>
+                    <g clip-path="url(#reviewSidebarPillClip)" filter="url(#reviewSidebarPillDrop)">
+                        <rect x="1" y="4" width="25" height="18" fill="url(#reviewSidebarPillBlue)"></rect>
+                        <rect x="26" y="4" width="25" height="18" fill="url(#reviewSidebarPillRed)"></rect>
+                    </g>
+                    <line x1="26" y1="4" x2="26" y2="22" stroke="white" stroke-width="1"></line>
                 </svg>
             </div>
             <div class="sidebar-logo-copy">

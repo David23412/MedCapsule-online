@@ -920,25 +920,23 @@ export default function App({ isAuthenticated = false, appUrl, user }: AppProps)
   const renderPill = () => (
     <svg width="100%" height="100%" viewBox="0 0 64 26" fill="none" xmlns="http://www.w3.org/2000/svg" aria-label="MedCapsule">
       <defs>
-        <linearGradient id="pillBody" x1="0" y1="0" x2="0" y2="1">
+        <linearGradient id="pillBlue" x1="0" y1="0" x2="0" y2="1">
           <stop offset="0%" stopColor="#2563eb" />
-          <stop offset="45%" stopColor="#3b82f6" />
           <stop offset="100%" stopColor="#1d4ed8" />
         </linearGradient>
-        <linearGradient id="pillGloss" x1="0.1" y1="0" x2="0.9" y2="0">
-          <stop offset="0%" stopColor="rgba(255,255,255,0)" />
-          <stop offset="30%" stopColor="rgba(255,255,255,0.6)" />
-          <stop offset="70%" stopColor="rgba(255,255,255,0.5)" />
-          <stop offset="100%" stopColor="rgba(255,255,255,0)" />
+        <linearGradient id="pillRed" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="#ef4444" />
+          <stop offset="100%" stopColor="#dc2626" />
         </linearGradient>
-        <linearGradient id="pillShadow" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor="rgba(0,0,0,0)" />
-          <stop offset="100%" stopColor="rgba(10,20,80,0.28)" />
-        </linearGradient>
+        <clipPath id="pillClip">
+          <rect x="1" y="4" width="62" height="18" rx="9" />
+        </clipPath>
       </defs>
-      <rect x="1" y="3" width="62" height="18" rx="9" fill="url(#pillBody)" />
-      <rect x="4" y="4" width="56" height="7" rx="3.5" fill="url(#pillGloss)" opacity="0.88" />
-      <ellipse cx="12" cy="8" rx="3.5" ry="2" fill="rgba(255,255,255,0.6)" />
+      <g clipPath="url(#pillClip)">
+        <rect x="1" y="4" width="31" height="18" fill="url(#pillBlue)" />
+        <rect x="32" y="4" width="31" height="18" fill="url(#pillRed)" />
+      </g>
+      <line x1="32" y1="4" x2="32" y2="22" stroke="white" strokeWidth="1" />
     </svg>
   );
 
