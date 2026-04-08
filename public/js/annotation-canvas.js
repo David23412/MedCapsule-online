@@ -15,6 +15,8 @@
     const MIN_LINE_WIDTH          = 1;
     const MAX_LINE_WIDTH          = 20;
     const ERASER_WIDTH            = 28;
+    const HIGHLIGHTER_WIDTH       = 22;
+    const HIGHLIGHTER_ALPHA       = 0.35;
     const RESIZE_DEBOUNCE_MS      = 100;
     const ORIENTATION_CHANGE_MS   = 300;  // iPad needs time to settle after rotation
     const COLORS = [
@@ -27,12 +29,17 @@
         '#ffffff'    // white
     ];
 
+    /* ── tool modes ───────────────────────────────────── */
+    const TOOL_PEN         = 'pen';
+    const TOOL_HIGHLIGHTER = 'highlighter';
+    const TOOL_ERASER      = 'eraser';
+
     /* ── state ─────────────────────────────────────────── */
     let canvas, ctx;
     let overlay, toolbar;
     let isOpen        = false;
     let isDrawing     = false;
-    let isErasing     = false;
+    let activeTool    = TOOL_PEN;
     let currentColor  = COLORS[0];
     let lineWidth     = DEFAULT_LINE_WIDTH;
     let undoStack     = [];
@@ -40,6 +47,10 @@
     let lastPoint     = null;
     let toggleBtn     = null;
     let points        = [];            // collected points for current stroke
+    let activePointerId = null;        // track which pointer is drawing
+    let hlCanvas      = null;          // off-screen canvas for highlighter strokes
+    let hlCtx         = null;
+    let preHighlightSnapshot = null;   // canvas state before current highlighter stroke
 
     /* ── helpers ───────────────────────────────────────── */
 
@@ -99,20 +110,61 @@
         if (redoBtn) redoBtn.classList.toggle('annot-disabled', !redoStack.length);
     }
 
-    /* ── smooth quadratic curve rendering ──────────────── */
-    function addPoint(pt) {
-        points.push(pt);
+    /* ── stroke style helpers ─────────────────────────────── */
+
+    /** Get the current drawing width based on tool + pressure. */
+    function getStrokeWidth(pressure) {
+        if (activeTool === TOOL_ERASER)      return ERASER_WIDTH;
+        if (activeTool === TOOL_HIGHLIGHTER)  return HIGHLIGHTER_WIDTH;
+        return lineWidth * (0.5 + (pressure || 0.5) * 1.5);
+    }
+
+    /** Apply the current tool's rendering style to ctx. */
+    function applyStrokeStyle(pressure) {
+        var isEraser = activeTool === TOOL_ERASER;
+        var isHighlighter = activeTool === TOOL_HIGHLIGHTER;
+
+        ctx.lineCap  = isHighlighter ? 'square' : 'round';
+        ctx.lineJoin = isHighlighter ? 'bevel'  : 'round';
+
+        if (isEraser) {
+            ctx.strokeStyle = 'rgba(0,0,0,1)';
+            ctx.fillStyle   = 'rgba(0,0,0,1)';
+            ctx.globalAlpha = 1;
+            ctx.globalCompositeOperation = 'destination-out';
+        } else if (isHighlighter) {
+            ctx.strokeStyle = currentColor;
+            ctx.fillStyle   = currentColor;
+            ctx.globalAlpha = HIGHLIGHTER_ALPHA;
+            ctx.globalCompositeOperation = 'source-over';
+        } else {
+            ctx.strokeStyle = currentColor;
+            ctx.fillStyle   = currentColor;
+            ctx.globalAlpha = 1;
+            ctx.globalCompositeOperation = 'source-over';
+        }
+
+        ctx.lineWidth = getStrokeWidth(pressure);
+    }
+
+    /** Reset composite/alpha back to defaults after a stroke ends. */
+    function resetComposite() {
+        ctx.globalCompositeOperation = 'source-over';
+        ctx.globalAlpha = 1;
     }
 
     /* ── pointer handlers ──────────────────────────────── */
     function onPointerDown(e) {
-        // Palm rejection: ignore touch while using pencil/pen
-        if (e.pointerType === 'touch' && isOpen) {
+        // Palm rejection: ignore finger-touch when a pen is being used
+        if (e.pointerType === 'touch' && activePointerId !== null) {
             e.preventDefault();
             return;
         }
         if (e.pointerType === 'mouse' && e.button !== 0) return;
+        // Only allow one pointer at a time
+        if (activePointerId !== null) return;
 
+        activePointerId = e.pointerId;
         isDrawing = true;
         pushUndo();
 
@@ -120,94 +172,168 @@
         points = [pt];
         lastPoint = pt;
 
-        ctx.lineCap    = 'round';
-        ctx.lineJoin   = 'round';
-        ctx.strokeStyle = isErasing ? 'rgba(0,0,0,1)' : currentColor;
-        ctx.globalCompositeOperation = isErasing ? 'destination-out' : 'source-over';
-        ctx.lineWidth  = isErasing ? ERASER_WIDTH : lineWidth * (0.5 + (pt.pressure || 0.5) * 1.5);
+        // Highlighter: use offscreen canvas to avoid overlap darkening
+        if (activeTool === TOOL_HIGHLIGHTER) {
+            if (!hlCanvas) {
+                hlCanvas = document.createElement('canvas');
+                hlCtx = hlCanvas.getContext('2d');
+            }
+            hlCanvas.width  = canvas.width;
+            hlCanvas.height = canvas.height;
+            hlCtx.clearRect(0, 0, hlCanvas.width, hlCanvas.height);
 
-        ctx.beginPath();
-        ctx.arc(pt.x, pt.y, ctx.lineWidth / 2, 0, Math.PI * 2);
-        ctx.fillStyle = isErasing ? 'rgba(0,0,0,1)' : currentColor;
-        ctx.fill();
+            // Save snapshot of main canvas before highlighter stroke
+            preHighlightSnapshot = ctx.getImageData(0, 0, canvas.width, canvas.height);
+
+            // Draw initial dot on offscreen
+            hlCtx.lineCap  = 'square';
+            hlCtx.lineJoin = 'bevel';
+            hlCtx.fillStyle = currentColor;
+            hlCtx.globalAlpha = 1;
+            hlCtx.lineWidth = HIGHLIGHTER_WIDTH;
+            hlCtx.beginPath();
+            hlCtx.arc(pt.x, pt.y, HIGHLIGHTER_WIDTH / 2, 0, Math.PI * 2);
+            hlCtx.fill();
+
+            // Composite offscreen to main at reduced alpha
+            ctx.putImageData(preHighlightSnapshot, 0, 0);
+            ctx.save();
+            ctx.globalAlpha = HIGHLIGHTER_ALPHA;
+            ctx.drawImage(hlCanvas, 0, 0);
+            ctx.restore();
+        } else {
+            preHighlightSnapshot = null;
+            applyStrokeStyle(pt.pressure);
+
+            // Place a dot at the start point
+            ctx.beginPath();
+            ctx.arc(pt.x, pt.y, ctx.lineWidth / 2, 0, Math.PI * 2);
+            ctx.fill();
+        }
 
         canvas.setPointerCapture(e.pointerId);
         e.preventDefault();
     }
 
     function onPointerMove(e) {
-        if (!isDrawing) return;
+        if (!isDrawing || e.pointerId !== activePointerId) return;
         e.preventDefault();
 
         // Use coalesced events for smoother lines (esp. on trackpads / mice)
         var events = (e.getCoalescedEvents && e.getCoalescedEvents().length)
                    ? e.getCoalescedEvents() : [e];
 
-        for (var i = 0; i < events.length; i++) {
-            var pt = getCanvasPoint(events[i]);
-            addPoint(pt);
+        if (activeTool === TOOL_HIGHLIGHTER) {
+            // Draw all coalesced segments to offscreen canvas
+            for (var i = 0; i < events.length; i++) {
+                var pt = getCanvasPoint(events[i]);
+                points.push(pt);
+                if (points.length < 2) continue;
 
-            if (points.length < 2) continue;
+                hlCtx.lineWidth  = HIGHLIGHTER_WIDTH;
+                hlCtx.lineCap    = 'square';
+                hlCtx.lineJoin   = 'bevel';
+                hlCtx.strokeStyle = currentColor;
+                hlCtx.globalAlpha = 1;
 
-            var pressure = Math.max(pt.pressure, MIN_PRESSURE);
-            ctx.lineWidth   = isErasing ? ERASER_WIDTH : lineWidth * (0.5 + pressure * 1.5);
-            ctx.lineCap     = 'round';
-            ctx.lineJoin    = 'round';
-            ctx.strokeStyle = isErasing ? 'rgba(0,0,0,1)' : currentColor;
-            ctx.globalCompositeOperation = isErasing ? 'destination-out' : 'source-over';
-
-            ctx.beginPath();
-
-            if (points.length < 3) {
-                // First segment: simple line
-                var p0 = points[points.length - 2];
-                var p1 = points[points.length - 1];
-                ctx.moveTo(p0.x, p0.y);
-                ctx.lineTo(p1.x, p1.y);
-            } else {
-                // Smooth quadratic Bézier: draw from prev midpoint to curr midpoint
-                var a  = points[points.length - 3];
-                var b  = points[points.length - 2];
-                var c  = points[points.length - 1];
-                var prevMidX = (a.x + b.x) / 2;
-                var prevMidY = (a.y + b.y) / 2;
-                var currMidX = (b.x + c.x) / 2;
-                var currMidY = (b.y + c.y) / 2;
-                ctx.moveTo(prevMidX, prevMidY);
-                ctx.quadraticCurveTo(b.x, b.y, currMidX, currMidY);
+                hlCtx.beginPath();
+                if (points.length < 3) {
+                    var p0 = points[points.length - 2];
+                    var p1 = points[points.length - 1];
+                    hlCtx.moveTo(p0.x, p0.y);
+                    hlCtx.lineTo(p1.x, p1.y);
+                } else {
+                    var a  = points[points.length - 3];
+                    var b  = points[points.length - 2];
+                    var c  = points[points.length - 1];
+                    hlCtx.moveTo((a.x + b.x) / 2, (a.y + b.y) / 2);
+                    hlCtx.quadraticCurveTo(b.x, b.y, (b.x + c.x) / 2, (b.y + c.y) / 2);
+                }
+                hlCtx.stroke();
             }
 
-            ctx.stroke();
+            // Recomposite: restore snapshot, then overlay the full offscreen at reduced alpha
+            ctx.putImageData(preHighlightSnapshot, 0, 0);
+            ctx.save();
+            ctx.globalAlpha = HIGHLIGHTER_ALPHA;
+            ctx.drawImage(hlCanvas, 0, 0);
+            ctx.restore();
+        } else {
+            // Pen / Eraser: draw directly
+            for (var j = 0; j < events.length; j++) {
+                var pt2 = getCanvasPoint(events[j]);
+                points.push(pt2);
+                if (points.length < 2) continue;
+
+                applyStrokeStyle(pt2.pressure);
+                ctx.beginPath();
+
+                if (points.length < 3) {
+                    var s0 = points[points.length - 2];
+                    var s1 = points[points.length - 1];
+                    ctx.moveTo(s0.x, s0.y);
+                    ctx.lineTo(s1.x, s1.y);
+                } else {
+                    var sa = points[points.length - 3];
+                    var sb = points[points.length - 2];
+                    var sc = points[points.length - 1];
+                    ctx.moveTo((sa.x + sb.x) / 2, (sa.y + sb.y) / 2);
+                    ctx.quadraticCurveTo(sb.x, sb.y, (sb.x + sc.x) / 2, (sb.y + sc.y) / 2);
+                }
+                ctx.stroke();
+            }
         }
 
         lastPoint = points.length ? points[points.length - 1] : null;
     }
 
     function onPointerUp(e) {
-        if (!isDrawing) return;
+        if (!isDrawing || e.pointerId !== activePointerId) return;
         isDrawing = false;
+        activePointerId = null;
 
-        // Draw final segment from last midpoint to actual endpoint
-        if (points.length >= 2) {
-            var last = points[points.length - 1];
-            var prev = points[points.length - 2];
-            var midX = (prev.x + last.x) / 2;
-            var midY = (prev.y + last.y) / 2;
-            var pressure = Math.max(last.pressure, MIN_PRESSURE);
-            ctx.lineWidth   = isErasing ? ERASER_WIDTH : lineWidth * (0.5 + pressure * 1.5);
-            ctx.lineCap     = 'round';
-            ctx.lineJoin    = 'round';
-            ctx.strokeStyle = isErasing ? 'rgba(0,0,0,1)' : currentColor;
-            ctx.globalCompositeOperation = isErasing ? 'destination-out' : 'source-over';
-            ctx.beginPath();
-            ctx.moveTo(midX, midY);
-            ctx.lineTo(last.x, last.y);
-            ctx.stroke();
+        if (activeTool === TOOL_HIGHLIGHTER && preHighlightSnapshot) {
+            // Draw final segment on offscreen
+            if (points.length >= 2) {
+                var last = points[points.length - 1];
+                var prev = points[points.length - 2];
+                hlCtx.lineWidth  = HIGHLIGHTER_WIDTH;
+                hlCtx.lineCap    = 'square';
+                hlCtx.lineJoin   = 'bevel';
+                hlCtx.strokeStyle = currentColor;
+                hlCtx.globalAlpha = 1;
+                hlCtx.beginPath();
+                hlCtx.moveTo((prev.x + last.x) / 2, (prev.y + last.y) / 2);
+                hlCtx.lineTo(last.x, last.y);
+                hlCtx.stroke();
+            }
+
+            // Final composite
+            ctx.putImageData(preHighlightSnapshot, 0, 0);
+            ctx.save();
+            ctx.globalAlpha = HIGHLIGHTER_ALPHA;
+            ctx.drawImage(hlCanvas, 0, 0);
+            ctx.restore();
+
+            preHighlightSnapshot = null;
+        } else {
+            // Pen / Eraser: draw final segment
+            if (points.length >= 2) {
+                var last2 = points[points.length - 1];
+                var prev2 = points[points.length - 2];
+                var midX = (prev2.x + last2.x) / 2;
+                var midY = (prev2.y + last2.y) / 2;
+                applyStrokeStyle(last2.pressure);
+                ctx.beginPath();
+                ctx.moveTo(midX, midY);
+                ctx.lineTo(last2.x, last2.y);
+                ctx.stroke();
+            }
         }
 
         points    = [];
         lastPoint = null;
-        ctx.globalCompositeOperation = 'source-over';
+        resetComposite();
     }
 
     function onPointerCancel(e) {
@@ -249,6 +375,7 @@
         if (!isOpen) return;
         isOpen = false;
         isDrawing = false;
+        activePointerId = null;
         overlay.classList.remove('annot-visible');
         toggleBtn.classList.remove('annot-toggle-active');
         document.body.classList.remove('annot-mode-active');
@@ -261,22 +388,39 @@
     /* ── toolbar colour / tool switching ───────────────── */
     function selectColor(color) {
         currentColor = color;
-        isErasing = false;
+        if (activeTool === TOOL_ERASER) activeTool = TOOL_PEN;
         updateToolbarState();
     }
 
-    function selectEraser() {
-        isErasing = true;
+    function selectTool(tool) {
+        activeTool = tool;
         updateToolbarState();
     }
 
     function updateToolbarState() {
         if (!toolbar) return;
         toolbar.querySelectorAll('.annot-color-btn').forEach(function (btn) {
-            btn.classList.toggle('annot-active', !isErasing && btn.dataset.color === currentColor);
+            btn.classList.toggle('annot-active', activeTool !== TOOL_ERASER && btn.dataset.color === currentColor);
         });
         var eraserBtn = toolbar.querySelector('.annot-eraser-btn');
-        if (eraserBtn) eraserBtn.classList.toggle('annot-active', isErasing);
+        if (eraserBtn) eraserBtn.classList.toggle('annot-active', activeTool === TOOL_ERASER);
+
+        var penBtn = toolbar.querySelector('.annot-pen-btn');
+        if (penBtn) penBtn.classList.toggle('annot-active', activeTool === TOOL_PEN);
+
+        var highlighterBtn = toolbar.querySelector('.annot-highlighter-btn');
+        if (highlighterBtn) highlighterBtn.classList.toggle('annot-active', activeTool === TOOL_HIGHLIGHTER);
+
+        // Update cursor based on tool
+        if (canvas) {
+            if (activeTool === TOOL_HIGHLIGHTER) {
+                canvas.style.cursor = 'text';
+            } else if (activeTool === TOOL_ERASER) {
+                canvas.style.cursor = 'cell';
+            } else {
+                canvas.style.cursor = 'crosshair';
+            }
+        }
     }
 
     function setLineWidth(w) {
@@ -341,7 +485,16 @@
 
         // Tools
         html += '<div class="annot-section annot-tools">';
+        html += '<button class="annot-tool-btn annot-pen-btn annot-active" title="Pen" aria-label="Pen tool"><i class="fas fa-pen"></i></button>';
+        html += '<button class="annot-tool-btn annot-highlighter-btn" title="Highlighter" aria-label="Highlighter tool"><i class="fas fa-highlighter"></i></button>';
         html += '<button class="annot-tool-btn annot-eraser-btn" title="Eraser" aria-label="Eraser"><i class="fas fa-eraser"></i></button>';
+        html += '</div>';
+
+        // Divider
+        html += '<div class="annot-divider"></div>';
+
+        // Actions
+        html += '<div class="annot-section annot-actions">';
         html += '<button class="annot-tool-btn" id="annot-undo" title="Undo (Ctrl+Z)" aria-label="Undo"><i class="fas fa-undo"></i></button>';
         html += '<button class="annot-tool-btn" id="annot-redo" title="Redo (Ctrl+Y)" aria-label="Redo"><i class="fas fa-redo"></i></button>';
         html += '<button class="annot-tool-btn annot-clear-btn" title="Clear All" aria-label="Clear canvas"><i class="fas fa-trash-alt"></i></button>';
@@ -400,8 +553,12 @@
 
             if (btn.classList.contains('annot-color-btn')) {
                 selectColor(btn.dataset.color);
+            } else if (btn.classList.contains('annot-pen-btn')) {
+                selectTool(TOOL_PEN);
+            } else if (btn.classList.contains('annot-highlighter-btn')) {
+                selectTool(TOOL_HIGHLIGHTER);
             } else if (btn.classList.contains('annot-eraser-btn')) {
-                selectEraser();
+                selectTool(TOOL_ERASER);
             } else if (btn.id === 'annot-undo') {
                 undo();
             } else if (btn.id === 'annot-redo') {

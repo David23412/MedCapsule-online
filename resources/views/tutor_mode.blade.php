@@ -2071,6 +2071,20 @@
             color: #fff !important;
         }
 
+        /* Highlighter active = amber/orange tint */
+        .annot-highlighter-btn.annot-active {
+            background: linear-gradient(135deg, #f59e0b, #d97706) !important;
+            border-color: #d97706 !important;
+            color: #fff !important;
+        }
+
+        /* Pen active = blue (already via annot-active) */
+        .annot-pen-btn.annot-active {
+            background: #007bff !important;
+            border-color: #007bff !important;
+            color: #fff !important;
+        }
+
         /* Clear = red on hover */
         .annot-clear-btn:hover {
             color: #dc3545;
