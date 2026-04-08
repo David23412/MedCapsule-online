@@ -121,8 +121,8 @@
 
     /** Apply the current tool's rendering style to ctx. */
     function applyStrokeStyle(pressure) {
-        var isEraser = activeTool === TOOL_ERASER;
-        var isHighlighter = activeTool === TOOL_HIGHLIGHTER;
+        const isEraser = activeTool === TOOL_ERASER;
+        const isHighlighter = activeTool === TOOL_HIGHLIGHTER;
 
         ctx.lineCap  = isHighlighter ? 'square' : 'round';
         ctx.lineJoin = isHighlighter ? 'bevel'  : 'round';
