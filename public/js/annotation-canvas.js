@@ -9,10 +9,14 @@
     'use strict';
 
     /* ── constants ─────────────────────────────────────── */
-    const UNDO_LIMIT        = 50;
-    const MIN_PRESSURE      = 0.01;
-    const DEFAULT_LINE_WIDTH = 3;
-    const ERASER_WIDTH       = 28;
+    const UNDO_LIMIT              = 50;
+    const MIN_PRESSURE            = 0.01;
+    const DEFAULT_LINE_WIDTH      = 3;
+    const MIN_LINE_WIDTH          = 1;
+    const MAX_LINE_WIDTH          = 20;
+    const ERASER_WIDTH            = 28;
+    const RESIZE_DEBOUNCE_MS      = 100;
+    const ORIENTATION_CHANGE_MS   = 300;  // iPad needs time to settle after rotation
     const COLORS = [
         '#1a1a2e',   // dark navy (default)
         '#e74c3c',   // red
@@ -244,7 +248,7 @@
     }
 
     function setLineWidth(w) {
-        lineWidth = Math.max(1, Math.min(20, w));
+        lineWidth = Math.max(MIN_LINE_WIDTH, Math.min(MAX_LINE_WIDTH, w));
         updateSizeIndicator();
     }
 
@@ -408,12 +412,12 @@
         var resizeTimer;
         window.addEventListener('resize', function () {
             clearTimeout(resizeTimer);
-            resizeTimer = setTimeout(resizeCanvas, 100);
+            resizeTimer = setTimeout(resizeCanvas, RESIZE_DEBOUNCE_MS);
         });
 
         // Orientation change (iPad)
         window.addEventListener('orientationchange', function () {
-            setTimeout(resizeCanvas, 300);
+            setTimeout(resizeCanvas, ORIENTATION_CHANGE_MS);
         });
 
         updateUndoRedoBtns();
