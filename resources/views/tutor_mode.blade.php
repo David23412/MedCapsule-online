@@ -2540,11 +2540,8 @@
         </div>
     </div>
 
-    <!-- Quiz Results Popup - EXACT COPY FROM SOLVE_QUIZ -->
-    <div class="popup-overlay" id="popup-overlay">
-
     @if(auth()->user()->isAdmin())
-    <!-- Admin Edit Question Modal -->
+    <!-- Admin Edit Question Modal (must be outside popup-overlay so it's visible independently) -->
     <div class="edit-question-overlay" id="edit-question-overlay">
         <div class="edit-question-modal" id="edit-question-modal">
             <div class="edit-modal-header">
@@ -2602,6 +2599,9 @@
         </div>
     </div>
     @endif
+
+    <!-- Quiz Results Popup - EXACT COPY FROM SOLVE_QUIZ -->
+    <div class="popup-overlay" id="popup-overlay">
         <div class="popup" id="popup">
             <div class="grade-icon" id="grade-icon"></div>
             <h2 class="popup-title" id="popup-title">Quiz Complete!</h2>
