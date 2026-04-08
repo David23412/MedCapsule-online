@@ -4,7 +4,6 @@ namespace App\Services\Learning;
 
 use App\Models\Mistake;
 use App\Services\Core\UltraConsolidatedCacheService;
-use App\Services\Learning\ConceptMemoryService;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -12,7 +11,6 @@ use Illuminate\Support\Facades\Log;
 class MistakeManagementService
 {
     public function __construct(
-        private ConceptMemoryService $conceptMemoryService,
         private UserMistakeMasteryService $userMistakeMasteryService,
     ) {
     }
@@ -97,6 +95,7 @@ class MistakeManagementService
                     $query->orderBy('correct_streak')
                           ->orderBy('last_attempt_date');
                 })
+                ->limit(500)
                 ->get();
 
             $mistakes = $this->attachConceptSignals($mistakes, $userId, $mode);
@@ -465,7 +464,6 @@ class MistakeManagementService
                 $normalizedSignals
             );
             $mistake->save();
-            $this->conceptMemoryService->syncReview($mistake, $usedRating, $resolvedMode, $effectiveResponseSeconds > 0 ? $effectiveResponseSeconds : null, $resolvedConfidence);
 
             $normalizedMode = $mistake->normalizeReviewMode($resolvedMode);
             $requiredStreak = ($normalizedMode === 'easy') ? 2 : 3;

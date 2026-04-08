@@ -247,7 +247,7 @@ class Mistake extends Model
         array $interactionSignals = []
     ): void
     {
-        (new AdaptiveMistakeScheduler())->applyReview(
+        app(AdaptiveMistakeScheduler::class)->applyReview(
             $this,
             $rating,
             $this->normalizeReviewMode($mode),
@@ -259,12 +259,12 @@ class Mistake extends Model
 
     public function markFailedAttempt(?string $submittedAnswer = null): void
     {
-        (new AdaptiveMistakeScheduler())->initializeFromFailure($this, $submittedAnswer);
+        app(AdaptiveMistakeScheduler::class)->initializeFromFailure($this, $submittedAnswer);
     }
 
     public function applySkip(string $mode = 'quiz'): void
     {
-        (new AdaptiveMistakeScheduler())->applySkip($this, $this->normalizeReviewMode($mode));
+        app(AdaptiveMistakeScheduler::class)->applySkip($this, $this->normalizeReviewMode($mode));
     }
 
     public function getFocusConceptNameAttribute(): ?string
@@ -311,14 +311,15 @@ class Mistake extends Model
                 ? $submittedAnswer
                 : 'unanswered';
 
-            if (!$mistake->exists) {
+            $isNew = !$mistake->exists;
+            if ($isNew) {
+                // Must persist first so $mistake->id is available for event recording
                 $mistake->save();
             }
 
             $mistake->setRelation('question', $question);
             $mistake->markFailedAttempt($mistake->submitted_answer);
             $mistake->save();
-            app(\App\Services\Learning\ConceptMemoryService::class)->syncFailure($mistake);
 
             return $mistake;
         });

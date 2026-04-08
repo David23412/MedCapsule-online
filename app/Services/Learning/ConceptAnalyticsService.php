@@ -12,6 +12,9 @@ use Illuminate\Support\Str;
 
 class ConceptAnalyticsService
 {
+    private static ?bool $hasReviewEvents = null;
+    private static ?bool $conceptAnalyticsSupported = null;
+
     public function buildSignals(User $user, array $courseTopicIds): array
     {
         if (empty($courseTopicIds) || !$this->supportsConceptAnalytics()) {
@@ -247,7 +250,11 @@ class ConceptAnalyticsService
 
     private function eventMetricsByConcept(int $userId, array $courseTopicIds): Collection
     {
-        if (!Schema::hasTable('mistake_review_events')) {
+        if (self::$hasReviewEvents === null) {
+            self::$hasReviewEvents = Schema::hasTable('mistake_review_events');
+        }
+
+        if (!self::$hasReviewEvents) {
             return collect();
         }
 
@@ -327,7 +334,11 @@ class ConceptAnalyticsService
 
     private function supportsConceptAnalytics(): bool
     {
-        return Schema::hasTable('questions')
-            && Schema::hasTable('topics');
+        if (self::$conceptAnalyticsSupported === null) {
+            self::$conceptAnalyticsSupported = Schema::hasTable('questions')
+                && Schema::hasTable('topics');
+        }
+
+        return self::$conceptAnalyticsSupported;
     }
 }

@@ -12,9 +12,40 @@ use Illuminate\Support\Facades\Schema;
 
 class SchedulerCalibrationCoverageService
 {
+    private static ?bool $hasCalibrationProfiles = null;
+    private static ?bool $hasReviewEvents = null;
+    private static ?bool $hasUserCalibrationProfiles = null;
+
     public function __construct(
         private SchedulerBacktestService $schedulerBacktestService,
     ) {
+    }
+
+    private function hasCalibrationProfiles(): bool
+    {
+        if (self::$hasCalibrationProfiles === null) {
+            self::$hasCalibrationProfiles = Schema::hasTable('scheduler_calibration_profiles');
+        }
+
+        return self::$hasCalibrationProfiles;
+    }
+
+    private function hasReviewEvents(): bool
+    {
+        if (self::$hasReviewEvents === null) {
+            self::$hasReviewEvents = Schema::hasTable('mistake_review_events');
+        }
+
+        return self::$hasReviewEvents;
+    }
+
+    private function hasUserCalibrationProfiles(): bool
+    {
+        if (self::$hasUserCalibrationProfiles === null) {
+            self::$hasUserCalibrationProfiles = Schema::hasTable('user_scheduler_calibration_profiles');
+        }
+
+        return self::$hasUserCalibrationProfiles;
     }
 
     public function buildDashboard(): array
@@ -31,7 +62,7 @@ class SchedulerCalibrationCoverageService
         $reports = [];
 
         foreach (['quiz', 'quick', 'spaced'] as $mode) {
-            $profile = Schema::hasTable('scheduler_calibration_profiles')
+            $profile = $this->hasCalibrationProfiles()
                 ? SchedulerCalibrationProfile::query()->firstWhere('mode', $mode)
                 : null;
             $backtest = $this->schedulerBacktestService->backtest($mode, 365);
@@ -53,7 +84,7 @@ class SchedulerCalibrationCoverageService
 
     private function buildSpacedSummary(): array
     {
-        if (!Schema::hasTable('mistake_review_events')) {
+        if (!$this->hasReviewEvents()) {
             return [
                 'total_reviews' => 0,
                 'users_with_reviews' => 0,
@@ -75,7 +106,7 @@ class SchedulerCalibrationCoverageService
         return [
             'total_reviews' => MistakeReviewEvent::query()->where('review_mode', 'spaced')->where('event_type', MistakeReviewEvent::EVENT_TYPE_REVIEW)->count(),
             'users_with_reviews' => MistakeReviewEvent::query()->where('review_mode', 'spaced')->where('event_type', MistakeReviewEvent::EVENT_TYPE_REVIEW)->distinct('user_id')->count('user_id'),
-            'users_with_calibrated_profiles' => Schema::hasTable('user_scheduler_calibration_profiles')
+            'users_with_calibrated_profiles' => $this->hasUserCalibrationProfiles()
                 ? UserSchedulerCalibrationProfile::query()->where('mode', 'spaced')->where('calibration_reviews', '>', 0)->count()
                 : 0,
             'confidence_counts' => [
@@ -88,7 +119,7 @@ class SchedulerCalibrationCoverageService
 
     private function buildUserCoverage(): Collection
     {
-        if (!Schema::hasTable('mistake_review_events')) {
+        if (!$this->hasReviewEvents()) {
             return collect();
         }
 
@@ -107,7 +138,7 @@ class SchedulerCalibrationCoverageService
             ->get()
             ->keyBy('user_id');
 
-        $profiles = Schema::hasTable('user_scheduler_calibration_profiles')
+        $profiles = $this->hasUserCalibrationProfiles()
             ? UserSchedulerCalibrationProfile::query()
                 ->where('mode', 'spaced')
                 ->get()

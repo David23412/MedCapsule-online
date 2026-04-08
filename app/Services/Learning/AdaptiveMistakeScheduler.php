@@ -26,6 +26,14 @@ class AdaptiveMistakeScheduler
     private const LAPSE_STABILITY_ANCHOR    = 0.07;
     /** Fraction of stored hesitation retained when a new review shows no hesitation. */
     private const HESITATION_DECAY_FACTOR   = 0.55;
+
+    private SchedulerCalibrationService $calibrationService;
+
+    public function __construct(?SchedulerCalibrationService $calibrationService = null)
+    {
+        $this->calibrationService = $calibrationService ?? app(SchedulerCalibrationService::class);
+    }
+
     public function applyReview(
         Mistake $mistake,
         int $rating,
@@ -45,7 +53,7 @@ class AdaptiveMistakeScheduler
         }
 
         $normalizedConfidence = $this->normalizeConfidence($confidence);
-        $calibrationService = new SchedulerCalibrationService();
+        $calibrationService = $this->calibrationService;
         $profile = $calibrationService->getProfile($normalizedMode, (int) $mistake->user_id);
         $hesitationScore = $this->resolveHesitationScore(
             $mistake,
@@ -206,7 +214,7 @@ class AdaptiveMistakeScheduler
         $mistake->setAdaptiveColumnValue('ease_factor', $this->resolveEaseFactorFromDifficulty($difficulty));
         $mistake->setAdaptiveColumnValue('next_review_at', $now);
 
-        (new SchedulerCalibrationService())->recordStateTransitionEvent(
+        $this->calibrationService->recordStateTransitionEvent(
             $mistake,
             before: $before,
             mode: 'quiz',
@@ -266,7 +274,7 @@ class AdaptiveMistakeScheduler
                 
             if ($userAttemptCount >= 8) {
                 $signals[] = [
-                    'difficulty' => 'medium', // Default difficulty since we can't calculate accuracy
+                    'difficulty' => 0.50,
                     'weight' => min(0.38, 0.14 + ($userAttemptCount / 120)),
                     'confidence' => min(1.0, 0.30 + ($userAttemptCount / 40)),
                 ];
@@ -310,7 +318,7 @@ class AdaptiveMistakeScheduler
 
                 if ($topicMasteryStats && (int) ($topicMasteryStats->total_attempts ?? 0) >= 20) {
                     $signals[] = [
-                        'difficulty' => 'medium', // Default since we can't calculate accuracy easily
+                        'difficulty' => 0.50,
                         'weight' => min(0.20, 0.08 + (((int) $topicMasteryStats->user_count) * 0.01)),
                         'confidence' => min(0.70, 0.22 + (((int) $topicMasteryStats->total_attempts) / 160)),
                     ];
@@ -319,17 +327,7 @@ class AdaptiveMistakeScheduler
 
             $totalWeight = collect($signals)->sum('weight');
             $weightedDifficulty = $totalWeight > 0
-                ? collect($signals)->sum(function (array $signal) {
-                    $difficulty = is_numeric($signal['difficulty'])
-                        ? (float) $signal['difficulty']
-                        : match($signal['difficulty']) {
-                            'easy' => 0.25,
-                            'medium' => 0.50,
-                            'hard' => 0.75,
-                            default => 0.50,
-                        };
-                    return $difficulty * $signal['weight'];
-                }) / $totalWeight
+                ? collect($signals)->sum(fn (array $signal) => (float) $signal['difficulty'] * $signal['weight']) / $totalWeight
                 : $heuristicDifficulty;
             $confidence = min(
                 1.0,
@@ -421,7 +419,7 @@ class AdaptiveMistakeScheduler
         $mistake->setAdaptiveColumnValue('next_review_at', $skipUntil);
         $mistake->setAdaptiveColumnValue('interval_days', 0);
 
-        (new SchedulerCalibrationService())->recordStateTransitionEvent(
+        $this->calibrationService->recordStateTransitionEvent(
             $mistake,
             before: $before,
             mode: $normalizedMode,
@@ -1062,10 +1060,10 @@ class AdaptiveMistakeScheduler
     {
         $cleaned = strtolower(trim($mode));
         return match ($cleaned) {
-            'easy', 'practice' => 'easy',
-            'hard', 'quiz', 'classic' => 'hard',
-            'spaced', 'adaptive' => 'spaced',
-            'quick' => 'quick',
+            'easy', 'practice', 'simple' => 'easy',
+            'hard', 'quiz', 'classic', 'tough' => 'hard',
+            'spaced', 'adaptive', 'intelligent' => 'spaced',
+            'quick', 'lightning' => 'quick',
             default => 'hard',
         };
     }
