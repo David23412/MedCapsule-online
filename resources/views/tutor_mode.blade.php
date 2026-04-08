@@ -1754,6 +1754,11 @@
             cursor: pointer;
             transition: all 0.2s ease;
             white-space: nowrap;
+            position: relative;
+            z-index: 2;
+            user-select: none;
+            -webkit-user-select: none;
+            touch-action: manipulation;
         }
         .btn-admin-edit:hover {
             color: #007bff;

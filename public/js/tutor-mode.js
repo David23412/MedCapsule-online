@@ -1159,6 +1159,15 @@ const TUTOR_CONFIG = window.TUTOR_CONFIG || {};
         }
 
         function handleTextSelection(e) {
+            // Skip when the event target is a button or other interactive element —
+            // clicking a button is NOT a text-selection gesture and should not be
+            // intercepted by the highlight system.
+            const INTERACTIVE_SELECTORS = ['button', 'a', 'input', 'select', 'textarea'];
+            const target = e.target;
+            if (target && INTERACTIVE_SELECTORS.some(sel => target.closest(sel))) {
+                return;
+            }
+
             console.log('📝 HANDLING TEXT SELECTION EVENT');
 
             // Allow selection anywhere in document for now - we'll filter later
@@ -1620,31 +1629,6 @@ const TUTOR_CONFIG = window.TUTOR_CONFIG || {};
                 jumpToQuestion(currentNumber + 1);
             }
         };
-
-        // Update sidebar active state
-        function updateSidebarActiveState(questionNumber) {
-            document.querySelectorAll('.question-circle').forEach(circle => {
-                circle.classList.remove('active');
-                if (parseInt(circle.dataset.question) === questionNumber) {
-                    circle.classList.add('active');
-                }
-            });
-        }
-
-        // Update sidebar circle state (correct/incorrect)
-        function updateSidebarCircleState(questionNumber, isCorrect) {
-            const circle = document.querySelector(`.question-circle[data-question="${questionNumber}"]`);
-            if (circle) {
-                circle.classList.remove('answered');
-                if (isCorrect) {
-                    circle.classList.add('correct');
-                    circle.classList.remove('incorrect');
-                } else {
-                    circle.classList.add('incorrect');
-                    circle.classList.remove('correct');
-                }
-            }
-        }
 
         // Handle "I Don't Know" button
         window.handleDontKnow = function(questionNumber, questionId) {
@@ -2221,31 +2205,6 @@ const TUTOR_CONFIG = window.TUTOR_CONFIG || {};
                 jumpToQuestion(currentNumber + 1);
             }
         };
-
-        // Update sidebar active state
-        function updateSidebarActiveState(questionNumber) {
-            document.querySelectorAll('.question-circle').forEach(circle => {
-                circle.classList.remove('active');
-                if (parseInt(circle.dataset.question) === questionNumber) {
-                    circle.classList.add('active');
-                }
-            });
-        }
-
-        // Update sidebar circle state (correct/incorrect)
-        function updateSidebarCircleState(questionNumber, isCorrect) {
-            const circle = document.querySelector(`.question-circle[data-question="${questionNumber}"]`);
-            if (circle) {
-                circle.classList.remove('answered');
-                if (isCorrect) {
-                    circle.classList.add('correct');
-                    circle.classList.remove('incorrect');
-                } else {
-                    circle.classList.add('incorrect');
-                    circle.classList.remove('correct');
-                }
-            }
-        }
 
 
 
