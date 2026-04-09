@@ -558,6 +558,14 @@ const MANAGE_ACCESS_CONFIG = window.MANAGE_ACCESS_CONFIG || {};
             // Relative time helper
             function timeAgoLabel(dateStr) {
                 if (!dateStr) return 'Unknown';
+
+            // HTML escape helper to prevent XSS
+            function escHtml(str) {
+                if (!str) return '';
+                var div = document.createElement('div');
+                div.appendChild(document.createTextNode(str));
+                return div.innerHTML;
+            }
                 var diff = (Date.now() - new Date(dateStr).getTime()) / 1000;
                 if (diff < 60)    return 'just now';
                 if (diff < 3600)  return Math.floor(diff / 60) + ' min ago';
@@ -604,7 +612,7 @@ const MANAGE_ACCESS_CONFIG = window.MANAGE_ACCESS_CONFIG || {};
                             userRow.courses.forEach(function(c) {
                                 var cls = c.is_enrolled ? 'bg-success' : 'bg-secondary text-decoration-line-through';
                                 var title = c.is_enrolled ? 'Active' : 'Revoked';
-                                courseBadges += '<span class="badge ' + cls + '" style="font-size:0.72rem;" title="' + title + '">' + c.course_name + '</span> ';
+                                courseBadges += '<span class="badge ' + cls + '" style="font-size:0.72rem;" title="' + title + '">' + escHtml(c.course_name) + '</span> ';
                             });
                         }
 
@@ -622,8 +630,12 @@ const MANAGE_ACCESS_CONFIG = window.MANAGE_ACCESS_CONFIG || {};
                             var d = new Date(userRow.last_activity);
                             var dateStr = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
                             var ago = timeAgoLabel(userRow.last_activity);
-                            dateHtml = '<div>' + dateStr + '</div><small class="text-muted">' + ago + '</small>';
+                            dateHtml = '<div>' + escHtml(dateStr) + '</div><small class="text-muted">' + escHtml(ago) + '</small>';
                         }
+
+                        var safeName = escHtml(userRow.name || 'Unknown');
+                        var safeEmail = escHtml(userRow.email || '');
+                        var initial = safeName.charAt(0).toUpperCase() || 'U';
 
                         tbody.append(
                             '<tr data-active-count="' + userRow.active_count + '" data-revoked-count="' + userRow.revoked_count + '">' +
@@ -631,12 +643,12 @@ const MANAGE_ACCESS_CONFIG = window.MANAGE_ACCESS_CONFIG || {};
                                 '<div class="d-flex align-items-center">' +
                                     '<div class="me-2">' +
                                         '<div class="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center" style="width:32px;height:32px;font-size:0.8rem;">' +
-                                            (userRow.name ? userRow.name.charAt(0).toUpperCase() : 'U') +
+                                            initial +
                                         '</div>' +
                                     '</div>' +
                                     '<div>' +
-                                        '<div class="fw-medium">' + (userRow.name || 'Unknown') + '</div>' +
-                                        '<small class="text-muted">' + userRow.email + '</small>' +
+                                        '<div class="fw-medium">' + safeName + '</div>' +
+                                        '<small class="text-muted">' + safeEmail + '</small>' +
                                     '</div>' +
                                 '</div>' +
                             '</td>' +

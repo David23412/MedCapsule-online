@@ -145,7 +145,7 @@ class UserService
 
             // ACCURATE per-course enrollment counts from the FULL database (not just recent 50)
             $courseStats = DB::table('course_user')
-                ->select('course_id', DB::raw('COUNT(*) as total_count'), DB::raw('SUM(CASE WHEN is_enrolled = 1 THEN 1 ELSE 0 END) as enrolled_count'))
+                ->select('course_id', DB::raw('SUM(CASE WHEN is_enrolled = 1 THEN 1 ELSE 0 END) as enrolled_count'))
                 ->groupBy('course_id')
                 ->pluck('enrolled_count', 'course_id')
                 ->map(fn ($v) => (int) $v)

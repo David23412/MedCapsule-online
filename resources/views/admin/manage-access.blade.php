@@ -2223,7 +2223,7 @@
                                                     <td>
                                                         <div class="d-flex flex-wrap gap-1" style="max-width: 280px;">
                                                             @foreach($userRow->courses as $course)
-                                                                @php $c = is_array($course) ? (object)$course : $course; @endphp
+                                                                @php $c = (object) $course; @endphp
                                                                 <span class="badge {{ $c->is_enrolled ? 'bg-success' : 'bg-secondary text-decoration-line-through' }}" style="font-size: 0.72rem;" title="{{ $c->is_enrolled ? 'Active' : 'Revoked' }}">
                                                                     {{ $c->course_name }}
                                                                 </span>
@@ -2313,7 +2313,12 @@
                                 </div>
                                 <div class="d-flex justify-content-between align-items-center mb-2">
                                     <span class="small"><i class="fas fa-chart-line me-1 text-warning"></i> Avg Courses/User</span>
-                                    <span class="badge bg-warning text-dark">{{ isset($userStats) && isset($userStats['total_users']) && $userStats['total_users'] > 0 ? round($userStats['total_enrollments'] / $userStats['total_users'], 1) : 0 }}</span>
+                                    @php
+                                        $avgCoursesPerUser = (isset($userStats) && isset($userStats['total_users']) && $userStats['total_users'] > 0)
+                                            ? round($userStats['total_enrollments'] / $userStats['total_users'], 1)
+                                            : 0;
+                                    @endphp
+                                    <span class="badge bg-warning text-dark">{{ $avgCoursesPerUser }}</span>
                                 </div>
                                 @php
                                     $enrolledUsersCount = isset($userStats) ? ($userStats['enrolled_users_count'] ?? 0) : 0;
