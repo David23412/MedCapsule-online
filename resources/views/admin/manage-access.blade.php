@@ -2917,16 +2917,17 @@
         window.MANAGE_ACCESS_CONFIG = {
             csrfToken: '{{ csrf_token() }}',
             activeTab: '{{ $activeTab ?? "" }}',
-            courseOptions: @json(
+            courseOptions: {!! json_encode(
                 isset($courses) && $courses->count() > 0
                     ? $courses->map(fn ($c) => [
                         'id' => $c->id,
                         'price' => $c->price,
                         'name' => $c->name,
                         'formattedPrice' => $c->formatted_price ?? 'N/A',
-                    ])->values()
-                    : []
-            )
+                    ])->values()->toArray()
+                    : [],
+                JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT
+            ) !!}
         };
     </script>
     <script src="{{ asset('js/admin-manage-access.js') }}"></script>
