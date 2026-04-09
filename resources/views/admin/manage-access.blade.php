@@ -2180,13 +2180,13 @@
                         <div class="card">
                             <div class="card-header">
                                 <div>
-                                    <i class="fas fa-history me-2"></i>Recent Enrollments
+                                    <i class="fas fa-history me-2"></i>Recent User Enrollments
                                 </div>
                                 <div class="d-flex gap-2">
                                     <select class="form-select form-select-sm" id="enrollmentFilter" style="width: auto;">
-                                        <option value="all">All Status</option>
-                                        <option value="enrolled">Active Only</option>
-                                        <option value="revoked">Revoked Only</option>
+                                        <option value="all">All Users</option>
+                                        <option value="has_active">With Active Courses</option>
+                                        <option value="has_revoked">With Revoked Courses</option>
                                     </select>
                                     <button class="btn btn-outline-secondary btn-sm" id="refreshEnrollments" data-tooltip="Refresh enrollment data">
                                         <i class="fas fa-sync-alt"></i>
@@ -2199,46 +2199,55 @@
                                         <thead>
                                             <tr>
                                                 <th>User</th>
-                                                <th>Course</th>
-                                                <th>Date</th>
+                                                <th>Courses</th>
                                                 <th>Status</th>
+                                                <th>Last Activity</th>
                                             </tr>
                                         </thead>
                                         <tbody>
-                                            @forelse($enrolledUsers ?? [] as $enrollment)
-                                                <tr data-status="{{ $enrollment->is_enrolled ? 'enrolled' : 'revoked' }}">
+                                            @forelse($enrolledUsers ?? [] as $userRow)
+                                                <tr data-active-count="{{ $userRow->active_count }}" data-revoked-count="{{ $userRow->revoked_count }}">
                                                     <td>
                                                         <div class="d-flex align-items-center">
                                                             <div class="me-2">
                                                                 <div class="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center" style="width: 32px; height: 32px; font-size: 0.8rem;">
-                                                                    {{ strtoupper(substr($enrollment->email, 0, 1)) }}
+                                                                    {{ strtoupper(substr($userRow->email, 0, 1)) }}
                                                                 </div>
                                                             </div>
                                                             <div>
-                                                                <div class="fw-medium">{{ $enrollment->name ?? 'Unknown' }}</div>
-                                                                <small class="text-muted">{{ $enrollment->email }}</small>
+                                                                <div class="fw-medium">{{ $userRow->name ?? 'Unknown' }}</div>
+                                                                <small class="text-muted">{{ $userRow->email }}</small>
                                                             </div>
                                                         </div>
                                                     </td>
                                                     <td>
-                                                        <span class="badge bg-primary">{{ $enrollment->course_name }}</span>
+                                                        <div class="d-flex flex-wrap gap-1" style="max-width: 280px;">
+                                                            @foreach($userRow->courses as $course)
+                                                                @php $c = is_array($course) ? (object)$course : $course; @endphp
+                                                                <span class="badge {{ $c->is_enrolled ? 'bg-success' : 'bg-secondary text-decoration-line-through' }}" style="font-size: 0.72rem;" title="{{ $c->is_enrolled ? 'Active' : 'Revoked' }}">
+                                                                    {{ $c->course_name }}
+                                                                </span>
+                                                            @endforeach
+                                                        </div>
                                                     </td>
                                                     <td>
-                                                        <div>{{ \Carbon\Carbon::parse($enrollment->created_at)->format('M d, Y') }}</div>
-                                                        <small class="text-muted">{{ \Carbon\Carbon::parse($enrollment->created_at)->diffForHumans() }}</small>
-                                                    </td>
-                                                    <td>
-                                                        @if(!$enrollment->is_enrolled)
-                                                            <span class="badge bg-danger">
-                                                                <i class="fas fa-times me-1"></i>Revoked
-                                                            </span>
+                                                        @if($userRow->active_count > 0 && $userRow->revoked_count > 0)
+                                                            <span class="badge bg-success">{{ $userRow->active_count }} active</span>
+                                                            <span class="badge bg-secondary">{{ $userRow->revoked_count }} revoked</span>
+                                                        @elseif($userRow->active_count > 0)
+                                                            <span class="badge bg-success"><i class="fas fa-check me-1"></i>{{ $userRow->active_count }} active</span>
                                                         @else
-                                                            <span class="badge bg-success">
-                                                                <i class="fas fa-check me-1"></i>Enrolled
-                                                            </span>
+                                                            <span class="badge bg-danger"><i class="fas fa-times me-1"></i>All revoked</span>
                                                         @endif
                                                     </td>
-
+                                                    <td>
+                                                        @if($userRow->last_activity)
+                                                            <div>{{ \Carbon\Carbon::parse($userRow->last_activity)->format('M d, Y') }}</div>
+                                                            <small class="text-muted">{{ \Carbon\Carbon::parse($userRow->last_activity)->diffForHumans() }}</small>
+                                                        @else
+                                                            <span class="text-muted">—</span>
+                                                        @endif
+                                                    </td>
                                                 </tr>
                                             @empty
                                                 <tr>
@@ -2265,7 +2274,7 @@
                             <div class="card-body">
                                 @foreach($courses ?? [] as $course)
                                     @php
-                                        $enrolledCount = isset($enrolledUsers) ? $enrolledUsers->where('course_id', $course->id)->where('is_enrolled', true)->count() : 0;
+                                        $enrolledCount = isset($courseStats) ? ($courseStats[$course->id] ?? 0) : 0;
                                         $percentage = (isset($userStats) && isset($userStats['total_users']) && $userStats['total_users'] > 0) ? round(($enrolledCount / $userStats['total_users']) * 100) : 0;
                                     @endphp
                                     <div class="d-flex justify-content-between align-items-center mb-2" style="overflow: hidden;">
@@ -2274,7 +2283,7 @@
                                         </div>
                                         <div class="text-end flex-shrink-0" style="margin-left: 8px;">
                                             <div class="fw-bold">{{ $enrolledCount }}</div>
-                                            <small class="text-muted">enrolled</small>
+                                            <small class="text-muted">{{ $percentage }}% of users</small>
                                         </div>
                                     </div>
                                     <div class="progress mb-3" style="height: 4px;">
@@ -2284,27 +2293,35 @@
                             </div>
                         </div>
                         
-                        <!-- Recent Activity Summary -->
+                        <!-- Quick Overview -->
                         <div class="card">
                             <div class="card-header">
-                                <i class="fas fa-activity me-2"></i>Activity Summary
+                                <i class="fas fa-tachometer-alt me-2"></i>Quick Overview
                             </div>
                             <div class="card-body">
                                 <div class="d-flex justify-content-between align-items-center mb-2">
-                                    <span class="small">Total Enrollments</span>
+                                    <span class="small"><i class="fas fa-users me-1 text-primary"></i> Total Users</span>
+                                    <span class="badge bg-primary">{{ isset($userStats) ? ($userStats['total_users'] ?? 0) : 0 }}</span>
+                                </div>
+                                <div class="d-flex justify-content-between align-items-center mb-2">
+                                    <span class="small"><i class="fas fa-book-open me-1 text-success"></i> Active Enrollments</span>
                                     <span class="badge bg-success">{{ isset($userStats) ? ($userStats['total_enrollments'] ?? 0) : 0 }}</span>
                                 </div>
                                 <div class="d-flex justify-content-between align-items-center mb-2">
-                                    <span class="small">Active Users</span>
-                                    <span class="badge bg-info">{{ isset($userStats) ? ($userStats['active_users'] ?? 0) : 0 }}</span>
+                                    <span class="small"><i class="fas fa-graduation-cap me-1 text-info"></i> Courses Available</span>
+                                    <span class="badge bg-info">{{ count($courses ?? []) }}</span>
                                 </div>
                                 <div class="d-flex justify-content-between align-items-center mb-2">
-                                    <span class="small">Admin Users</span>
-                                    <span class="badge bg-warning">{{ isset($userStats) ? ($userStats['admin_users'] ?? 0) : 0 }}</span>
+                                    <span class="small"><i class="fas fa-chart-line me-1 text-warning"></i> Avg Courses/User</span>
+                                    <span class="badge bg-warning text-dark">{{ isset($userStats) && isset($userStats['total_users']) && $userStats['total_users'] > 0 ? round($userStats['total_enrollments'] / $userStats['total_users'], 1) : 0 }}</span>
                                 </div>
+                                @php
+                                    $enrolledUsersCount = isset($userStats) ? ($userStats['enrolled_users_count'] ?? 0) : 0;
+                                    $unenrolledUsers = max(0, (isset($userStats) ? $userStats['total_users'] : 0) - $enrolledUsersCount);
+                                @endphp
                                 <div class="d-flex justify-content-between align-items-center">
-                                    <span class="small">Total Courses</span>
-                                    <span class="badge bg-secondary">{{ count($courses ?? []) }}</span>
+                                    <span class="small"><i class="fas fa-user-slash me-1 text-secondary"></i> No Enrollments</span>
+                                    <span class="badge bg-secondary">{{ $unenrolledUsers }}</span>
                                 </div>
                             </div>
                         </div>

@@ -59,6 +59,7 @@ class UserCourseController extends Controller
             'users' => $data['users'],
             'courses' => $data['courses'],
             'enrolledUsers' => $data['enrolledUsers'],
+            'courseStats' => $data['courseStats'],
             'userStats' => $data['userStats'],
             'surveyInsights' => $surveyInsights,
             'schedulerCalibration' => $schedulerCalibration,

@@ -528,9 +528,14 @@ const MANAGE_ACCESS_CONFIG = window.MANAGE_ACCESS_CONFIG || {};
                 
                 rows.each(function() {
                     const row = $(this);
-                    const status = row.data('status');
+                    const activeCount = parseInt(row.data('active-count') || 0);
+                    const revokedCount = parseInt(row.data('revoked-count') || 0);
                     
-                    if (filter === 'all' || status === filter) {
+                    if (filter === 'all') {
+                        row.show();
+                    } else if (filter === 'has_active' && activeCount > 0) {
+                        row.show();
+                    } else if (filter === 'has_revoked' && revokedCount > 0) {
                         row.show();
                     } else {
                         row.hide();
@@ -577,7 +582,7 @@ const MANAGE_ACCESS_CONFIG = window.MANAGE_ACCESS_CONFIG || {};
                 });
             }
             
-            // Function to update enrollment table
+            // Function to update enrollment table (grouped by user)
             function updateEnrollmentTable(enrollments) {
                 const tbody = $('#enrollmentsTable tbody');
                 tbody.empty();
@@ -593,39 +598,53 @@ const MANAGE_ACCESS_CONFIG = window.MANAGE_ACCESS_CONFIG || {};
                         </tr>
                     `);
                 } else {
-                    enrollments.forEach(function(enrollment) {
-                        const statusBadge = enrollment.is_enrolled ? 
-                            '<span class="badge bg-success"><i class="fas fa-check me-1"></i>Enrolled</span>' :
-                            '<span class="badge bg-danger"><i class="fas fa-times me-1"></i>Revoked</span>';
-                        
-                        const date = new Date(enrollment.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-                        const timeAgo = timeAgoLabel(enrollment.created_at);
-                        
-                        tbody.append(`
-                            <tr data-status="${enrollment.is_enrolled ? 'enrolled' : 'revoked'}">
-                                <td>
-                                    <div class="d-flex align-items-center">
-                                        <div class="me-2">
-                                            <div class="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center" style="width: 32px; height: 32px; font-size: 0.8rem;">
-                                                ${enrollment.name ? enrollment.name.charAt(0).toUpperCase() : 'U'}
-                                            </div>
-                                        </div>
-                                        <div>
-                                            <div class="fw-medium">${enrollment.name || 'Unknown'}</div>
-                                            <small class="text-muted">${enrollment.email}</small>
-                                        </div>
-                                    </div>
-                                </td>
-                                <td>
-                                    <span class="badge bg-primary">${enrollment.course_name}</span>
-                                </td>
-                                <td>
-                                    <div>${date}</div>
-                                    <small class="text-muted">${timeAgo}</small>
-                                </td>
-                                <td>${statusBadge}</td>
-                            </tr>
-                        `);
+                    enrollments.forEach(function(userRow) {
+                        var courseBadges = '';
+                        if (userRow.courses && userRow.courses.length) {
+                            userRow.courses.forEach(function(c) {
+                                var cls = c.is_enrolled ? 'bg-success' : 'bg-secondary text-decoration-line-through';
+                                var title = c.is_enrolled ? 'Active' : 'Revoked';
+                                courseBadges += '<span class="badge ' + cls + '" style="font-size:0.72rem;" title="' + title + '">' + c.course_name + '</span> ';
+                            });
+                        }
+
+                        var statusHtml = '';
+                        if (userRow.active_count > 0 && userRow.revoked_count > 0) {
+                            statusHtml = '<span class="badge bg-success">' + userRow.active_count + ' active</span> <span class="badge bg-secondary">' + userRow.revoked_count + ' revoked</span>';
+                        } else if (userRow.active_count > 0) {
+                            statusHtml = '<span class="badge bg-success"><i class="fas fa-check me-1"></i>' + userRow.active_count + ' active</span>';
+                        } else {
+                            statusHtml = '<span class="badge bg-danger"><i class="fas fa-times me-1"></i>All revoked</span>';
+                        }
+
+                        var dateHtml = '<span class="text-muted">—</span>';
+                        if (userRow.last_activity) {
+                            var d = new Date(userRow.last_activity);
+                            var dateStr = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+                            var ago = timeAgoLabel(userRow.last_activity);
+                            dateHtml = '<div>' + dateStr + '</div><small class="text-muted">' + ago + '</small>';
+                        }
+
+                        tbody.append(
+                            '<tr data-active-count="' + userRow.active_count + '" data-revoked-count="' + userRow.revoked_count + '">' +
+                            '<td>' +
+                                '<div class="d-flex align-items-center">' +
+                                    '<div class="me-2">' +
+                                        '<div class="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center" style="width:32px;height:32px;font-size:0.8rem;">' +
+                                            (userRow.name ? userRow.name.charAt(0).toUpperCase() : 'U') +
+                                        '</div>' +
+                                    '</div>' +
+                                    '<div>' +
+                                        '<div class="fw-medium">' + (userRow.name || 'Unknown') + '</div>' +
+                                        '<small class="text-muted">' + userRow.email + '</small>' +
+                                    '</div>' +
+                                '</div>' +
+                            '</td>' +
+                            '<td><div class="d-flex flex-wrap gap-1" style="max-width:280px;">' + courseBadges + '</div></td>' +
+                            '<td>' + statusHtml + '</td>' +
+                            '<td>' + dateHtml + '</td>' +
+                            '</tr>'
+                        );
                     });
                 }
             }

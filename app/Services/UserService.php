@@ -75,6 +75,12 @@ class UserService
                 ->where('is_enrolled', true)
                 ->count();
 
+            // Count of distinct users who have at least one active enrollment
+            $enrolledUsersCount = DB::table('course_user')
+                ->where('is_enrolled', true)
+                ->distinct('user_id')
+                ->count('user_id');
+
             // New users registered today
             $newUsersToday = DB::table('users')
                 ->whereDate('created_at', today())
@@ -101,24 +107,49 @@ class UserService
                     'courses.name as course_name',
                     'course_user.enrolled_at as created_at',
                     'course_user.course_id',
-                    'course_user.is_enrolled'
+                    'course_user.is_enrolled',
+                    'course_user.updated_at'
                 )
                 ->orderBy('course_user.updated_at', 'desc')
-                ->limit(50) // Show last 50 enrollment activities
+                ->limit(100) // Fetch more rows to group into ~50 unique users
                 ->get();
 
-            // Transform to the exact structure expected by the blade template
-            $enrolledUsers = $enrolledUsersData->map(function ($enrollment) {
+            // Group enrollments by user: one row per user with all their courses
+            $enrolledUsers = $enrolledUsersData->groupBy('user_id')->map(function ($userEnrollments) {
+                $first = $userEnrollments->first();
+                $courses = $userEnrollments->map(function ($e) {
+                    return (object) [
+                        'course_id' => $e->course_id,
+                        'course_name' => $e->course_name,
+                        'is_enrolled' => (bool) $e->is_enrolled,
+                        'enrolled_at' => $e->created_at,
+                    ];
+                })->values()->all();
+
+                $activeCount = collect($courses)->where('is_enrolled', true)->count();
+                $revokedCount = collect($courses)->where('is_enrolled', false)->count();
+                // Use most recent activity timestamp across all courses
+                $lastActivity = $userEnrollments->max('updated_at');
+
                 return (object) [
-                    'user_id' => $enrollment->user_id,
-                    'name' => $enrollment->name,
-                    'email' => $enrollment->email,
-                    'course_name' => $enrollment->course_name,
-                    'course_id' => $enrollment->course_id,
-                    'created_at' => $enrollment->created_at,
-                    'is_enrolled' => (bool) $enrollment->is_enrolled
+                    'user_id' => $first->user_id,
+                    'name' => $first->name,
+                    'email' => $first->email,
+                    'courses' => $courses,
+                    'active_count' => $activeCount,
+                    'revoked_count' => $revokedCount,
+                    'total_courses' => count($courses),
+                    'last_activity' => $lastActivity,
                 ];
-            });
+            })->sortByDesc('last_activity')->values()->take(50);
+
+            // ACCURATE per-course enrollment counts from the FULL database (not just recent 50)
+            $courseStats = DB::table('course_user')
+                ->select('course_id', DB::raw('COUNT(*) as total_count'), DB::raw('SUM(CASE WHEN is_enrolled = 1 THEN 1 ELSE 0 END) as enrolled_count'))
+                ->groupBy('course_id')
+                ->pluck('enrolled_count', 'course_id')
+                ->map(fn ($v) => (int) $v)
+                ->all();
 
             // PERFORMANCE OPTIMIZATION: Build user stats array from single query result
             $userStats = [
@@ -128,6 +159,7 @@ class UserService
                 'tutor_users' => (int) $userStatsQuery->tutor_users,
                 'active_users' => $activeUsersCount,
                 'total_enrollments' => $totalEnrollments,
+                'enrolled_users_count' => $enrolledUsersCount,
                 'new_users_today' => $newUsersToday,
             ];
 
@@ -136,6 +168,7 @@ class UserService
                 'users' => $users,
                 'courses' => $courses,
                 'enrolledUsers' => $enrolledUsers,
+                'courseStats' => $courseStats,
                 'userStats' => $userStats,
             ];
         } catch (\Exception $e) {

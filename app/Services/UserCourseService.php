@@ -86,8 +86,7 @@ class UserCourseService
     public function getEnrollmentDataForAjax(): array
     {
         try {
-            // FIXED: Show ALL enrollments (both active and revoked) for complete activity history
-            $enrollments = DB::table('course_user')
+            $enrollmentsRaw = DB::table('course_user')
                 ->join('users', 'course_user.user_id', '=', 'users.id')
                 ->join('courses', 'course_user.course_id', '=', 'courses.id')
                 ->select(
@@ -98,11 +97,40 @@ class UserCourseService
                     'courses.name as course_name',
                     'course_user.enrolled_at',
                     'course_user.created_at',
-                    'course_user.is_enrolled'
+                    'course_user.is_enrolled',
+                    'course_user.updated_at'
                 )
                 ->orderBy('course_user.updated_at', 'desc')
-                ->limit(50)
+                ->limit(100)
                 ->get();
+
+            // Group by user for consolidated view
+            $enrollments = $enrollmentsRaw->groupBy('user_id')->map(function ($userEnrollments) {
+                $first = $userEnrollments->first();
+                $courses = $userEnrollments->map(function ($e) {
+                    return [
+                        'course_id' => $e->course_id,
+                        'course_name' => $e->course_name,
+                        'is_enrolled' => (bool) $e->is_enrolled,
+                        'enrolled_at' => $e->enrolled_at,
+                    ];
+                })->values()->all();
+
+                $activeCount = collect($courses)->where('is_enrolled', true)->count();
+                $revokedCount = collect($courses)->where('is_enrolled', false)->count();
+                $lastActivity = $userEnrollments->max('updated_at');
+
+                return [
+                    'user_id' => $first->user_id,
+                    'name' => $first->name,
+                    'email' => $first->email,
+                    'courses' => $courses,
+                    'active_count' => $activeCount,
+                    'revoked_count' => $revokedCount,
+                    'total_courses' => count($courses),
+                    'last_activity' => $lastActivity,
+                ];
+            })->sortByDesc('last_activity')->values()->take(50)->all();
 
             return ['success' => true, 'enrollments' => $enrollments];
         } catch (\Exception $e) {
