@@ -2917,18 +2917,16 @@
         window.MANAGE_ACCESS_CONFIG = {
             csrfToken: '{{ csrf_token() }}',
             activeTab: '{{ $activeTab ?? "" }}',
-            courseOptions: [
-                @if(isset($courses) && $courses->count() > 0)
-                    @foreach($courses as $course)
-                    {
-                        id: {{ $course->id }},
-                        price: '{{ $course->price }}',
-                        name: '{{ addslashes($course->name) }}',
-                        formattedPrice: '{{ $course->formatted_price ?? "N/A" }}'
-                    },
-                    @endforeach
-                @endif
-            ]
+            courseOptions: @json(
+                isset($courses) && $courses->count() > 0
+                    ? $courses->map(fn ($c) => [
+                        'id' => $c->id,
+                        'price' => $c->price,
+                        'name' => $c->name,
+                        'formattedPrice' => $c->formatted_price ?? 'N/A',
+                    ])->values()
+                    : []
+            )
         };
     </script>
     <script src="{{ asset('js/admin-manage-access.js') }}"></script>

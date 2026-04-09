@@ -88,13 +88,11 @@ const MANAGE_ACCESS_CONFIG = window.MANAGE_ACCESS_CONFIG || {};
                     dataType: 'json',
                     delay: 250,
                     data: function (params) {
-                        console.log('🔍 Select2 AJAX Data:', params);
                         return {
                             query: params.term || '' // FIXED: Send empty string if no search term
                         };
                     },
                     processResults: function (data, params) {
-                        console.log('📊 Select2 Process Results:', data);
                         if (data.success && data.users) {
                             return {
                                 results: data.users.map(function (user) {
@@ -129,7 +127,6 @@ const MANAGE_ACCESS_CONFIG = window.MANAGE_ACCESS_CONFIG || {};
                     return markup;
                 },
                 templateResult: function (user) {
-                    console.log('🎨 Template Result:', user);
                     if (user.loading) {
                         return user.text;
                     }
@@ -142,13 +139,18 @@ const MANAGE_ACCESS_CONFIG = window.MANAGE_ACCESS_CONFIG || {};
                     if (user.role === 1) roleName = 'Admin';
                     else if (user.role === 2) roleName = 'Tutor';
 
+                    // Escape user data to prevent XSS
+                    var safeName = $('<span>').text(user.name || 'Unknown').html();
+                    var safeEmail = $('<span>').text(user.email || '').html();
+                    var safeNumber = user.number ? $('<span>').text(user.number).html() : '';
+
                     // Create display with role badge
                     let display = '<div class="d-flex align-items-center justify-content-between w-100">';
                     display += '<div class="flex-grow-1">';
-                    display += '<div class="fw-medium">' + user.name + '</div>';
-                    display += '<small class="text-muted">' + user.email + '</small>';
-                    if (user.number) {
-                        display += '<br><small class="text-muted">Number: ' + user.number + '</small>';
+                    display += '<div class="fw-medium">' + safeName + '</div>';
+                    display += '<small class="text-muted">' + safeEmail + '</small>';
+                    if (safeNumber) {
+                        display += '<br><small class="text-muted">Number: ' + safeNumber + '</small>';
                     }
                     display += '</div>';
                     display += '<span class="badge bg-secondary ms-2" style="font-size: 0.7rem;">' + roleName + '</span>';
@@ -157,7 +159,6 @@ const MANAGE_ACCESS_CONFIG = window.MANAGE_ACCESS_CONFIG || {};
                     return display;
                 },
                 templateSelection: function (user) {
-                    console.log('✅ Template Selection:', user);
                     if (!user.id) {
                         return user.text;
                     }
@@ -171,23 +172,6 @@ const MANAGE_ACCESS_CONFIG = window.MANAGE_ACCESS_CONFIG || {};
                     }
                     return userName;
                 }
-            });
-
-            // Add event listeners for debugging
-            $('.user-select').on('select2:open', function() {
-                console.log('🔓 Select2 opened');
-            });
-
-            $('.user-select').on('select2:close', function() {
-                console.log('🔒 Select2 closed');
-            });
-
-            $('.user-select').on('select2:select', function(e) {
-                console.log('✅ User selected:', e.params.data);
-            });
-
-            $('.user-select').on('select2:unselect', function(e) {
-                console.log('❌ User unselected:', e.params.data);
             });
             
             // GRANT ACCESS BUTTON HANDLER
@@ -374,7 +358,6 @@ const MANAGE_ACCESS_CONFIG = window.MANAGE_ACCESS_CONFIG || {};
                     const userId = $(this).val();
                     const userOption = $(this).find('option:selected');
 
-                    console.log('Admin user selection:', {userId, userOption});
 
                     if (userId) {
                         const userName = userOption.data('name');
@@ -382,7 +365,6 @@ const MANAGE_ACCESS_CONFIG = window.MANAGE_ACCESS_CONFIG || {};
                         const userNumber = userOption.data('number');
                         const userRole = userOption.data('role');
 
-                        console.log('User data:', {userName, userEmail, userNumber, userRole});
 
                         selectedAdminUserId = userId;
                         selectedAdminIsAdmin = userRole === 1; // FIXED: Store boolean correctly
@@ -555,10 +537,6 @@ const MANAGE_ACCESS_CONFIG = window.MANAGE_ACCESS_CONFIG || {};
                 }, 1000);
             });
             
-            // Relative time helper
-            function timeAgoLabel(dateStr) {
-                if (!dateStr) return 'Unknown';
-
             // HTML escape helper to prevent XSS
             function escHtml(str) {
                 if (!str) return '';
@@ -566,6 +544,10 @@ const MANAGE_ACCESS_CONFIG = window.MANAGE_ACCESS_CONFIG || {};
                 div.appendChild(document.createTextNode(str));
                 return div.innerHTML;
             }
+
+            // Relative time helper
+            function timeAgoLabel(dateStr) {
+                if (!dateStr) return 'Unknown';
                 var diff = (Date.now() - new Date(dateStr).getTime()) / 1000;
                 if (diff < 60)    return 'just now';
                 if (diff < 3600)  return Math.floor(diff / 60) + ' min ago';
@@ -725,6 +707,8 @@ const MANAGE_ACCESS_CONFIG = window.MANAGE_ACCESS_CONFIG || {};
             }
 
             data.users.forEach(function(u) {
+                var safeName = escHtml(u.name || 'Unknown');
+                var safeEmail = escHtml(u.email || '');
                 var initial = (u.name || u.email || 'U').charAt(0).toUpperCase();
                 var roleBadge = u.role === 1
                     ? '<span class="badge bg-danger">Admin</span>'
@@ -733,7 +717,7 @@ const MANAGE_ACCESS_CONFIG = window.MANAGE_ACCESS_CONFIG || {};
                         : '<span class="badge bg-secondary">Student</span>';
 
                 var statusLabel = STATUS_LABELS[u.status] || 'Unknown';
-                var lastActiveText = u.last_active_human || 'Never';
+                var lastActiveText = escHtml(u.last_active_human || 'Never');
 
                 tbody.append(
                     '<tr data-loaded="1">' +
@@ -741,21 +725,21 @@ const MANAGE_ACCESS_CONFIG = window.MANAGE_ACCESS_CONFIG || {};
                         '<div class="d-flex align-items-center">' +
                             '<div class="me-2">' +
                                 '<div class="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center" style="width:32px;height:32px;font-size:0.8rem;">' +
-                                    initial +
+                                    escHtml(initial) +
                                 '</div>' +
                             '</div>' +
                             '<div>' +
-                                '<div class="fw-medium">' + (u.name || 'Unknown') + '</div>' +
-                                '<small class="text-muted">' + u.email + '</small>' +
+                                '<div class="fw-medium">' + safeName + '</div>' +
+                                '<small class="text-muted">' + safeEmail + '</small>' +
                             '</div>' +
                         '</div>' +
                     '</td>' +
                     '<td>' + roleBadge + '</td>' +
-                    '<td><span class="level-badge"><i class="fas fa-star" style="font-size:0.65rem;"></i> ' + u.level + '</span></td>' +
+                    '<td><span class="level-badge"><i class="fas fa-star" style="font-size:0.65rem;"></i> ' + parseInt(u.level) + '</span></td>' +
                     '<td>' +
                         '<div>' + lastActiveText + '</div>' +
                     '</td>' +
-                    '<td><span class="activity-status ' + u.status + '"><span class="status-dot"></span>' + statusLabel + '</span></td>' +
+                    '<td><span class="activity-status ' + escHtml(u.status) + '"><span class="status-dot"></span>' + escHtml(statusLabel) + '</span></td>' +
                     '</tr>'
                 );
             });
@@ -897,10 +881,8 @@ const MANAGE_ACCESS_CONFIG = window.MANAGE_ACCESS_CONFIG || {};
 
                     if (hasHorizontalScroll) {
                         scrollIndicator.show();
-                        console.log('Table needs horizontal scrolling - indicator shown');
                     } else {
                         scrollIndicator.hide();
-                        console.log('Table fits in container - indicator hidden');
                     }
                 }
             }
