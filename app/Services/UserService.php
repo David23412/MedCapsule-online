@@ -314,7 +314,7 @@ class UserService
         try {
             $query = User::select('id', 'name', 'email', 'role', 'last_active_at', 'created_at', 'xp', 'level')
                 ->with(['latestQuizAttempt' => function ($q) {
-                    $q->select('id', 'user_id', 'topic_id', 'study_mode', 'score', 'total_questions', 'percentage_grade', 'created_at')
+                    $q->select('quiz_attempts.id', 'quiz_attempts.user_id', 'quiz_attempts.topic_id', 'quiz_attempts.study_mode', 'quiz_attempts.score', 'quiz_attempts.total_questions', 'quiz_attempts.percentage_grade', 'quiz_attempts.created_at')
                       ->with('topic:id,name');
                 }])
                 ->orderByRaw('last_active_at IS NULL ASC')
