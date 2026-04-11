@@ -66,5 +66,23 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {
-        //
+        // Absolute safety net: ensure TokenMismatchException (419) NEVER renders an error page.
+        $exceptions->renderable(function (\Illuminate\Session\TokenMismatchException $e, \Illuminate\Http\Request $request) {
+            if ($request->expectsJson() || $request->ajax()) {
+                return response()->json([
+                    'success'  => false,
+                    'error'    => 'Session Expired',
+                    'message'  => 'Your session has expired. Redirecting…',
+                    'code'     => 'SESSION_EXPIRED',
+                    'redirect' => '/',
+                ], 419);
+            }
+
+            if ($request->hasSession()) {
+                $request->session()->invalidate();
+                $request->session()->regenerateToken();
+            }
+
+            return redirect('/');
+        });
     })->create();
