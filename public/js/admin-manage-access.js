@@ -654,6 +654,13 @@ const MANAGE_ACCESS_CONFIG = window.MANAGE_ACCESS_CONFIG || {};
             inactive:  'Inactive',
             never:     'Never'
         };
+        var MODE_LABELS = {
+            quiz: 'Quiz',
+            tutor: 'Tutor',
+            assignment: 'Assignment',
+            timed: 'Timed',
+            practice: 'Practice'
+        };
 
         function loadLastActive(page, search) {
             laState.page = page || 1;
@@ -705,14 +712,6 @@ const MANAGE_ACCESS_CONFIG = window.MANAGE_ACCESS_CONFIG || {};
                 $('#lastActivePagination').hide();
                 return;
             }
-
-            var MODE_LABELS = {
-                quiz: 'Quiz',
-                tutor: 'Tutor',
-                assignment: 'Assignment',
-                timed: 'Timed',
-                practice: 'Practice'
-            };
 
             data.users.forEach(function(u) {
                 var safeName = escHtml(u.name || 'Unknown');
