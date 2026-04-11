@@ -313,6 +313,10 @@ class UserService
     {
         try {
             $query = User::select('id', 'name', 'email', 'role', 'last_active_at', 'created_at', 'xp', 'level')
+                ->with(['latestQuizAttempt' => function ($q) {
+                    $q->select('id', 'user_id', 'topic_id', 'study_mode', 'score', 'total_questions', 'percentage_grade', 'created_at')
+                      ->with('topic:id,name');
+                }])
                 ->orderByRaw('last_active_at IS NULL ASC')
                 ->orderBy('last_active_at', 'desc');
 
@@ -348,6 +352,37 @@ class UserService
                     $status = 'never';
                 }
 
+                // Build specific last-active label
+                $lastActiveHuman = 'Never';
+                if ($lastActive) {
+                    $diffMinutes = $lastActive->diffInMinutes($now);
+                    if ($diffMinutes < 1) {
+                        $lastActiveHuman = 'Just now';
+                    } elseif ($diffMinutes < 60) {
+                        $lastActiveHuman = (int) $diffMinutes . 'm ago';
+                    } elseif ($lastActive->isToday()) {
+                        $lastActiveHuman = 'Today at ' . $lastActive->format('g:i A');
+                    } elseif ($lastActive->isYesterday()) {
+                        $lastActiveHuman = 'Yesterday at ' . $lastActive->format('g:i A');
+                    } else {
+                        $lastActiveHuman = $lastActive->format('M j, Y \a\t g:i A');
+                    }
+                }
+
+                // Build last quiz summary (lightweight)
+                $lastQuiz = null;
+                $attempt = $user->latestQuizAttempt;
+                if ($attempt) {
+                    $lastQuiz = [
+                        'topic'      => $attempt->topic->name ?? 'Unknown',
+                        'mode'       => $attempt->study_mode ?? 'quiz',
+                        'score'      => $attempt->score,
+                        'total'      => $attempt->total_questions,
+                        'pct'        => round($attempt->percentage_grade, 1),
+                        'taken_at'   => $attempt->created_at?->toIso8601String(),
+                    ];
+                }
+
                 return [
                     'id'               => $user->id,
                     'name'             => $user->name,
@@ -361,9 +396,10 @@ class UserService
                     'xp'               => $user->xp ?? 0,
                     'level'            => $user->level ?? 1,
                     'last_active_at'   => $lastActive?->toIso8601String(),
-                    'last_active_human'=> $lastActive ? $lastActive->diffForHumans() : 'Never',
+                    'last_active_human'=> $lastActiveHuman,
                     'created_at'       => $user->created_at?->toIso8601String(),
                     'status'           => $status,
+                    'last_quiz'        => $lastQuiz,
                 ];
             });
 

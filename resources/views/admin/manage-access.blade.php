@@ -2360,12 +2360,13 @@
                                                 <th>Role</th>
                                                 <th>Level</th>
                                                 <th>Last Active</th>
+                                                <th>Last Quiz</th>
                                                 <th>Status</th>
                                             </tr>
                                         </thead>
                                         <tbody id="lastActiveBody">
                                             <tr>
-                                                <td colspan="5" class="text-center py-4 text-muted">
+                                                <td colspan="6" class="text-center py-4 text-muted">
                                                     <i class="fas fa-spinner fa-spin fa-2x mb-2"></i>
                                                     <div>Loading user activity...</div>
                                                 </td>
