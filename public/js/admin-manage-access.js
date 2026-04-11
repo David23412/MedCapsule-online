@@ -654,6 +654,13 @@ const MANAGE_ACCESS_CONFIG = window.MANAGE_ACCESS_CONFIG || {};
             inactive:  'Inactive',
             never:     'Never'
         };
+        var MODE_LABELS = {
+            quiz: 'Quiz',
+            tutor: 'Tutor',
+            assignment: 'Assignment',
+            timed: 'Timed',
+            practice: 'Practice'
+        };
 
         function loadLastActive(page, search) {
             laState.page = page || 1;
@@ -661,7 +668,7 @@ const MANAGE_ACCESS_CONFIG = window.MANAGE_ACCESS_CONFIG || {};
 
             var tbody = $('#lastActiveBody');
             tbody.html(
-                '<tr><td colspan="5" class="text-center py-4 text-muted">' +
+                '<tr><td colspan="6" class="text-center py-4 text-muted">' +
                 '<i class="fas fa-spinner fa-spin fa-2x mb-2"></i>' +
                 '<div>Loading user activity...</div></td></tr>'
             );
@@ -674,7 +681,7 @@ const MANAGE_ACCESS_CONFIG = window.MANAGE_ACCESS_CONFIG || {};
                 success: function(resp) {
                     if (!resp.success) {
                         tbody.html(
-                            '<tr><td colspan="5" class="text-center py-4 text-muted">' +
+                            '<tr><td colspan="6" class="text-center py-4 text-muted">' +
                             '<i class="fas fa-exclamation-triangle fa-2x mb-2"></i>' +
                             '<div>Failed to load data</div></td></tr>'
                         );
@@ -684,7 +691,7 @@ const MANAGE_ACCESS_CONFIG = window.MANAGE_ACCESS_CONFIG || {};
                 },
                 error: function() {
                     tbody.html(
-                        '<tr><td colspan="5" class="text-center py-4 text-muted">' +
+                        '<tr><td colspan="6" class="text-center py-4 text-muted">' +
                         '<i class="fas fa-exclamation-triangle fa-2x mb-2"></i>' +
                         '<div>Failed to load data</div></td></tr>'
                     );
@@ -698,7 +705,7 @@ const MANAGE_ACCESS_CONFIG = window.MANAGE_ACCESS_CONFIG || {};
 
             if (!data.users || data.users.length === 0) {
                 tbody.html(
-                    '<tr><td colspan="5" class="text-center py-4 text-muted">' +
+                    '<tr><td colspan="6" class="text-center py-4 text-muted">' +
                     '<i class="fas fa-users fa-2x mb-2"></i>' +
                     '<div>No users found</div></td></tr>'
                 );
@@ -718,6 +725,22 @@ const MANAGE_ACCESS_CONFIG = window.MANAGE_ACCESS_CONFIG || {};
 
                 var statusLabel = STATUS_LABELS[u.status] || 'Unknown';
                 var lastActiveText = escHtml(u.last_active_human || 'Never');
+
+                // Build last quiz cell
+                var quizCell = '<span class="text-muted" style="font-size:0.8rem;">No quizzes yet</span>';
+                var lq = u.last_quiz;
+                if (lq) {
+                    var modeLabel = MODE_LABELS[lq.mode] || escHtml(lq.mode || 'Quiz');
+                    var pctClass = lq.pct >= 70 ? 'text-success' : lq.pct >= 50 ? 'text-warning' : 'text-danger';
+                    quizCell =
+                        '<div style="font-size:0.82rem;line-height:1.35;">' +
+                            '<div class="fw-medium text-truncate" style="max-width:160px;" title="' + escHtml(lq.topic) + '">' + escHtml(lq.topic) + '</div>' +
+                            '<div class="text-muted" style="font-size:0.75rem;">' +
+                                '<span class="badge bg-light text-dark border" style="font-size:0.7rem;">' + escHtml(modeLabel) + '</span> ' +
+                                '<span class="' + pctClass + ' fw-semibold">' + lq.score + '/' + lq.total + ' (' + lq.pct + '%)</span>' +
+                            '</div>' +
+                        '</div>';
+                }
 
                 tbody.append(
                     '<tr data-loaded="1">' +
@@ -739,6 +762,7 @@ const MANAGE_ACCESS_CONFIG = window.MANAGE_ACCESS_CONFIG || {};
                     '<td>' +
                         '<div>' + lastActiveText + '</div>' +
                     '</td>' +
+                    '<td>' + quizCell + '</td>' +
                     '<td><span class="activity-status ' + escHtml(u.status) + '"><span class="status-dot"></span>' + escHtml(statusLabel) + '</span></td>' +
                     '</tr>'
                 );

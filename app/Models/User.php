@@ -227,6 +227,14 @@ class User extends Authenticatable
     }
 
     /**
+     * Get the user's most recent quiz attempt.
+     */
+    public function latestQuizAttempt()
+    {
+        return $this->hasOne(QuizAttempt::class)->latestOfMany();
+    }
+
+    /**
      * Get the user's mistakes.
      */
     public function mistakes()
