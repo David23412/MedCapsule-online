@@ -10,14 +10,19 @@ class UserSeeder extends Seeder
 {
     public function run(): void
     {
-        // Create admin user
+        // Create demo user
         User::firstOrCreate(
             ['email' => 'geodavid627@gmail.com'],
             [
-                'name' => 'Admin',
+                'name' => 'MedCapsule',
                 'password' => Hash::make('Einstein234'),
-                'role' => 'admin',
-                'email_verified_at' => now()
+                'role' => User::ROLE_STUDENT,
+                'email_verified_at' => now(),
+                'xp' => 2500, // Give some XP for demo
+                'study_streak_days' => 15,
+                'correct_answers_count' => 85,
+                'total_questions_attempted' => 120,
+                'show_on_leaderboard' => true
             ]
         );
 

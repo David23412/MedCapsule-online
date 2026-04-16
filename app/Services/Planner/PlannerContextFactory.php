@@ -31,7 +31,7 @@ class PlannerContextFactory
 
     public function buildForCourse(User $user, Course $course, Collection $topics, StudyPlan $plan): PlannerContext
     {
-        $totalDailyStudyMinutes = max(30, (int) ($user->daily_study_minutes ?? 90));
+        $totalDailyStudyMinutes = max(30, (int) ($user->daily_study_minutes ?? 0));
         $globalAllocation = [
             'total_daily_minutes' => $totalDailyStudyMinutes,
             'courses' => [
@@ -989,7 +989,7 @@ class PlannerContextFactory
             15,
             (int) data_get($globalAllocation, 'courses.' . $course->id . '.allocated_minutes', $totalDailyStudyMinutes)
         );
-        $configuredDailyMinutes = (int) ($pivot->planner_daily_study_minutes ?? $user->daily_study_minutes ?? 90);
+        $configuredDailyMinutes = (int) ($pivot->planner_daily_study_minutes ?? $user->daily_study_minutes ?? 0);
         $effectiveDailyMinutes = (int) ($pivot->planner_daily_study_minutes ?? $allocatedMinutes);
         $plannerFocus = (string) ($pivot->planner_focus ?? $user->planner_focus ?? 'balanced');
         $preferredSource = $pivot->planner_preferred_source ?? $this->resolvePreferredSource($user);

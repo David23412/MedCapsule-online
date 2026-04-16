@@ -19,7 +19,7 @@ return new class extends Migration
                 $table->unsignedTinyInteger('role')->default(3); // 1=admin,2=tutor,3=student (SSOT)
                 $table->integer('weekly_goal')->default(50);
                 $table->date('exam_date')->nullable();
-                $table->unsignedSmallInteger('daily_study_minutes')->default(90);
+                $table->unsignedSmallInteger('daily_study_minutes')->nullable();
                 $table->string('planner_focus')->default('balanced');
                 $table->string('repair_mode', 20)->nullable();
                 $table->string('mistake_mastery_mode', 20)->nullable();

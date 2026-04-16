@@ -296,7 +296,7 @@ class ProfileController extends Controller
             'week_end_label' => $weekEnd->format('M d'),
             'exam_date' => optional($user->exam_date)->format('Y-m-d'),
             'target_score' => 80,
-            'daily_study_minutes' => (int) ($user->daily_study_minutes ?? 90),
+            'daily_study_minutes' => (int) ($user->daily_study_minutes ?? 0),
             'planner_focus' => $user->planner_focus ?? 'balanced',
             'repair_mode' => $user->repair_mode,
             'mistake_mastery_mode' => $user->mistake_mastery_mode,
@@ -618,7 +618,7 @@ class ProfileController extends Controller
                 'defaults' => [
                     'exam_date' => optional($user->exam_date)->format('Y-m-d'),
                     'target_score' => 80,
-                    'daily_study_minutes' => (int) ($user->daily_study_minutes ?? 90),
+                    'daily_study_minutes' => (int) ($user->daily_study_minutes ?? 0),
                     'planner_focus' => (string) ($user->planner_focus ?? 'balanced'),
                     'repair_mode' => $user->repair_mode,
                     'mistake_mastery_mode' => $user->mistake_mastery_mode,

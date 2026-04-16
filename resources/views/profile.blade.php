@@ -386,7 +386,7 @@
                             </div>
                             <div class="d-flex flex-wrap gap-2 mt-3">
                                 <span class="badge rounded-pill text-bg-light" style="padding: 0.55rem 0.85rem; font-weight: 600;">
-                                    {{ $currentUserView['daily_study_minutes'] ?? 90 }}m / day
+                                    {{ $currentUserView['daily_study_minutes'] ?? 0 }}m / day
                                 </span>
 
                                 <span class="badge rounded-pill text-bg-light text-capitalize" style="padding: 0.55rem 0.85rem; font-weight: 600;">
@@ -608,7 +608,7 @@
             weeklyGoal: {{ $currentUserView['weekly_goal'] ?? (auth()->user()->weekly_goal ?? 50) }},
             examDate: @json($currentUserView['exam_date'] ?? null),
 
-            dailyStudyMinutes: {{ $currentUserView['daily_study_minutes'] ?? 90 }},
+            dailyStudyMinutes: {{ $currentUserView['daily_study_minutes'] ?? 0 }},
             plannerFocus: @json($currentUserView['planner_focus'] ?? 'balanced'),
             updateGoalRoute: @json(route('profile.update-goal'))
         };

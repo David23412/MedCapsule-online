@@ -18,6 +18,9 @@ class DatabaseSeeder extends Seeder
     {
         $this->call([
             ComprehensiveWebsiteSeeder::class,
+            UserSeeder::class,
+            DemoUserWeakTopicsSeeder::class,
+            CleanLeaderboardSeeder::class,
         ]);
 
         // Note: Other seeders like QuestionSeeder and ComprehensiveTestSeeder
