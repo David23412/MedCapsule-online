@@ -16,6 +16,8 @@ use Illuminate\Support\Facades\Schema;
 
 class TaskCompletionService
 {
+    private static ?bool $hasMasteryTable = null;
+
     public function isTaskCompleted(array $task, ?Topic $topic, PlannerContext $context): bool
     {
         return $this->evaluateTask($task, $topic, $context)['state'] === 'complete';
@@ -495,7 +497,11 @@ class TaskCompletionService
             return 0;
         }
 
-        if (!Schema::hasTable('user_mistake_mastery')) {
+        if (self::$hasMasteryTable === null) {
+            self::$hasMasteryTable = Schema::hasTable('user_mistake_mastery');
+        }
+
+        if (!self::$hasMasteryTable) {
             return Mistake::query()
                 ->whereIn('id', $assignedMistakeIds)
                 ->get(['id', 'correct_streak', 'mastered'])

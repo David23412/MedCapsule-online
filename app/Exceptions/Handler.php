@@ -125,20 +125,18 @@ class Handler extends ExceptionHandler
             return response()->json([
                 'success' => false,
                 'error' => 'Session Expired',
-                'message' => 'Your session has expired. Please refresh the page.',
+                'message' => 'Your session has expired. Redirecting…',
                 'code' => 'SESSION_EXPIRED',
-                'redirect' => route('login'),
+                'redirect' => '/',
             ], 419);
         }
 
-        // For regular requests, redirect to homepage with a friendly message
+        // For regular requests, redirect to home page instantly
         // Clear the session and regenerate token for fresh start
         $request->session()->invalidate();
         $request->session()->regenerateToken();
 
-        return redirect()->route('login')
-            ->with('warning', 'Your session expired. Please log in again.')
-            ->with('session_expired', true);
+        return redirect('/');
     }
 
     /**

@@ -150,7 +150,7 @@
                                         <div id="uploadContent">
                                             <i class="fas fa-cloud-upload-alt fa-2x text-primary mb-2"></i>
                                             <p class="mb-1">Click to upload or drag and drop</p>
-                                            <small class="text-muted">PNG, JPG, JPEG up to 5MB</small>
+                                            <small class="text-muted">PNG, JPG, JPEG</small>
                                         </div>
                                         <div id="uploadPreview" class="d-none">
                                             <img id="previewImg" src="" alt="Preview" class="img-fluid rounded" style="max-height: 100px;">
@@ -900,11 +900,7 @@ function handleFileUpload(file) {
         return;
     }
 
-    // Validate file size (5MB)
-    if (file.size > 5 * 1024 * 1024) {
-        alert('File size must be less than 5MB.');
-        return;
-    }
+    // File type already validated above
 
     // Clear URL input when file is uploaded
     imageUrlInput.value = '';

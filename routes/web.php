@@ -139,6 +139,17 @@ Route::group([], function () {
         Route::get('/manage-access/user-enrollments', [UserCourseController::class, 'getUserEnrollments'])->name('admin.user-course.user-enrollments');
         Route::post('/manage-access/payment-settings', [UserCourseController::class, 'updatePaymentSettings'])->name('admin.payment-settings.update');
 
+        // Survey detail endpoints
+        Route::get('/manage-access/survey/written-answers', [UserCourseController::class, 'surveyWrittenAnswers'])->name('admin.survey.written-answers');
+        Route::get('/manage-access/survey/student-responses', [UserCourseController::class, 'surveyStudentResponses'])->name('admin.survey.student-responses');
+        Route::get('/manage-access/survey/student/{userId}', [UserCourseController::class, 'surveyStudentDetail'])->name('admin.survey.student-detail')->where('userId', '[0-9]+');
+
+        // Last active users endpoint
+        Route::get('/manage-access/last-active-users', [UserCourseController::class, 'getLastActiveUsers'])->name('admin.last-active-users');
+
+        // Real-time system stats endpoint
+        Route::get('/manage-access/system-stats', [UserCourseController::class, 'getSystemStats'])->name('admin.system-stats');
+
         // Course Management Resource Routes
         Route::resource('admin/courses', \App\Http\Controllers\Admin\CourseController::class)->names('admin.courses');
     });
@@ -196,6 +207,12 @@ Route::group([], function () {
             ->where(['question' => '[0-9]+']);
         Route::post('/tutor/complete-session', [App\Http\Controllers\Quiz\QuizTutorController::class, 'completeTutorSession'])
             ->name('tutor.complete-session');
+
+        // Admin inline question editing from tutor mode
+        Route::put('/tutor/question/{question}', [App\Http\Controllers\Quiz\QuizTutorController::class, 'updateQuestion'])
+            ->name('tutor.update-question')
+            ->where(['question' => '[0-9]+'])
+            ->middleware('admin');
     });
 
     // Random Quiz Routes with CSRF and rate limiting - OPTIMIZED VERSION

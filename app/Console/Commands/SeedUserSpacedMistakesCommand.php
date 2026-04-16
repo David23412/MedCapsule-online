@@ -289,7 +289,6 @@ class SeedUserSpacedMistakesCommand extends Command
         $mistake->setRelation('question', $question);
         $mistake->markFailedAttempt($mistake->submitted_answer);
         $mistake->save();
-        app(\App\Services\Learning\ConceptMemoryService::class)->syncFailure($mistake);
         Carbon::setTestNow();
 
         return $mistake;

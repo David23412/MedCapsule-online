@@ -96,18 +96,18 @@
      * Handle session expiration
      */
     function handleSessionExpired() {
-        console.warn('Session expired - redirecting to login');
-        showNotification('Your session expired. Redirecting to login...', 'warning');
-        redirectToLogin('/login');
+        console.warn('Session expired - redirecting to home');
+        showNotification('Your session expired. Redirecting…', 'warning');
+        redirectToHome('/');
     }
 
-    function redirectToLogin(url) {
+    function redirectToHome(url) {
         if (authRedirectInProgress) {
             return;
         }
 
         authRedirectInProgress = true;
-        window.location.assign(url || '/login');
+        window.location.replace(url || '/');
     }
 
     /**
@@ -152,25 +152,17 @@
      * Handle CSRF token mismatch (419 error)
      */
     function handleAuthError(response) {
-        console.warn('Authentication/session error detected - redirecting to login');
+        console.warn('Authentication/session error detected - redirecting to home');
         
         // Try to get redirect URL from response
-        let redirectUrl = '/login';
+        let redirectUrl = '/';
         
         if (response.data && response.data.redirect) {
             redirectUrl = response.data.redirect;
         }
         
-        // Show user-friendly message
-        const message = 'You were logged out. Redirecting to login...';
-        
-        // Create notification
-        showNotification(message, 'warning');
-        
-        // Redirect after short delay
-        setTimeout(() => {
-            redirectToLogin(redirectUrl);
-        }, 1500);
+        // Redirect instantly — no delay
+        redirectToHome(redirectUrl);
     }
 
     /**
@@ -191,8 +183,7 @@
             
             if (sessionAge >= SESSION_LIFETIME) {
                 e.preventDefault();
-                alert('Your session has expired. Please refresh the page and try again.');
-                location.reload();
+                redirectToHome('/');
                 return false;
             }
 
@@ -215,8 +206,7 @@
                     // Resubmit form
                     form.submit();
                 } else {
-                    alert('Security token missing. Please refresh the page and try again.');
-                    location.reload();
+                    redirectToHome('/');
                 }
                 return false;
             }

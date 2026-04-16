@@ -515,10 +515,17 @@
                 const passesSearch = !searchTerm || (passesFilter && originalTitleLower.includes(searchTerm));
                 updateTitleHighlight(cardMeta, (passesFilter && passesSearch) ? searchTerm : '');
 
-                card.style.display = passesFilter && passesSearch ? 'block' : 'none';
-                if (passesFilter && passesSearch) {
+                const isVisible = passesFilter && passesSearch;
+                card.style.display = isVisible ? 'block' : 'none';
+                if (isVisible) {
                     card.style.opacity = '1';
                     card.style.transform = 'translateY(0)';
+                }
+
+                // Also hide/show the parent wrapper to prevent empty white space
+                const wrapper = card.closest('.topic-with-video-container');
+                if (wrapper) {
+                    wrapper.style.display = isVisible ? '' : 'none';
                 }
             });
         }
@@ -570,6 +577,14 @@
                 }
 
                 applyFiltersAndSearch();
+
+                // On mobile, scroll so filtered topics are visible
+                if (window.innerWidth <= 767.98 && topicsContainer) {
+                    const filtersEl = document.querySelector('.case-filters');
+                    if (filtersEl) {
+                        filtersEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    }
+                }
             });
         });
 

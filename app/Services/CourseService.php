@@ -231,7 +231,7 @@ class CourseService
             $validated = validator($data, [
                 'name' => 'required|string|max:255|unique:courses,name',
                 'description' => 'required|string|max:2000',
-                'image_file' => 'nullable|file|max:5120',
+                'image_file' => 'nullable|file',
                 'image_url' => 'nullable|url|max:2048',
                 'access_type' => 'required|string|in:free,preview,paid',
                 'color' => 'required|string|regex:/^#[a-fA-F0-9]{6}$/',
@@ -240,7 +240,6 @@ class CourseService
                 'price' => 'nullable|numeric|min:0|max:999999.99'
             ], [
                 'name.unique' => 'A course with this name already exists.',
-                'image_file.max' => 'The image may not be greater than 5MB.',
                 'access_type.required' => 'Choose how students should access this course.',
                 'access_type.in' => 'Choose a valid access policy for this course.',
                 'color.regex' => 'Color must be a valid hex color code (e.g., #FF5733).',
@@ -357,7 +356,7 @@ class CourseService
             $validated = validator($data, [
                 'name' => 'required|string|max:255|unique:courses,name,' . $courseId,
                 'description' => 'required|string|max:2000',
-                'image_file' => 'nullable|file|max:5120',
+                'image_file' => 'nullable|file',
                 'image_url' => 'nullable|url|max:2048',
                 'access_type' => 'required|string|in:free,preview,paid',
                 'color' => 'required|string|regex:/^#[a-fA-F0-9]{6}$/',
@@ -368,7 +367,6 @@ class CourseService
                 'is_published' => 'required|boolean'
             ], [
                 'name.unique' => 'A course with this name already exists.',
-                'image_file.max' => 'The image may not be greater than 5MB.',
                 'color.regex' => 'Color must be a valid hex color code.',
                 'title_color.regex' => 'Title color must be a valid hex color code.'
             ])->validated();

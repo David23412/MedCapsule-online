@@ -1,41 +1,79 @@
 const MANAGE_ACCESS_CONFIG = window.MANAGE_ACCESS_CONFIG || {};
 
+// ── Unified Notification System (global scope) ─────────────────────────
+(function () {
+    'use strict';
+
+    var ICONS = {
+        success: 'fa-check-circle',
+        error:   'fa-times-circle',
+        warning: 'fa-exclamation-triangle',
+        info:    'fa-info-circle'
+    };
+
+    /**
+     * showNotification(type, title [, message] [, duration])
+     *   type     – 'success' | 'error' | 'warning' | 'info'
+     *   title    – heading text
+     *   message  – optional body text
+     *   duration – ms before auto-dismiss (default 4000)
+     */
+    window.showNotification = function (type, title, message, duration) {
+        // Normalise arguments: some callers pass (message, type) – detect and swap
+        if (type && !ICONS[type] && ICONS[title]) {
+            var tmp = type; type = title; title = tmp;
+        }
+        if (!ICONS[type]) type = 'info';
+        if (typeof message === 'number') { duration = message; message = ''; }
+        duration = typeof duration === 'number' ? duration : 4000;
+
+        var container = document.getElementById('notificationContainer');
+        if (!container) return;
+
+        var el = document.createElement('div');
+        el.className = 'notification ' + type;
+        el.innerHTML =
+            '<div class="notification-icon"><i class="fas ' + ICONS[type] + '"></i></div>' +
+            '<div class="notification-content">' +
+                '<div class="notification-title">' + title + '</div>' +
+                (message ? '<div class="notification-message">' + message + '</div>' : '') +
+            '</div>' +
+            '<div class="notification-progress"><div class="notification-progress-bar"></div></div>' +
+            '<button class="notification-close" aria-label="Close"><i class="fas fa-times"></i></button>';
+
+        container.appendChild(el);
+
+        // Slide in
+        requestAnimationFrame(function () {
+            requestAnimationFrame(function () { el.classList.add('show'); });
+        });
+
+        // Progress bar countdown
+        var bar = el.querySelector('.notification-progress-bar');
+        if (bar) {
+            bar.style.transition = 'width ' + duration + 'ms linear';
+            requestAnimationFrame(function () { bar.style.width = '0%'; });
+        }
+
+        // Close handler
+        el.querySelector('.notification-close').addEventListener('click', function () { dismiss(); });
+
+        var timer = setTimeout(dismiss, duration);
+
+        function dismiss() {
+            clearTimeout(timer);
+            el.classList.remove('show');
+            el.addEventListener('transitionend', function handler() {
+                el.removeEventListener('transitionend', handler);
+                if (el.parentNode) el.parentNode.removeChild(el);
+            });
+            // Fallback removal if transitionend doesn't fire
+            setTimeout(function () { if (el.parentNode) el.parentNode.removeChild(el); }, 400);
+        }
+    };
+})();
+
         $(document).ready(function() {
-            console.log('🚀 MANAGE ACCESS PAGE LOADED');
-            
-            // Notification system
-            function showNotification(type, title, message, duration = 3000) {
-                const container = $('#notificationContainer');
-                const notification = $(`
-                    <div class="notification ${type}">
-                        <div class="notification-icon">
-                            ${type === 'success' ? '<i class="fas fa-check-circle"></i>' : '<i class="fas fa-times-circle"></i>'}
-                        </div>
-                        <div class="notification-content">
-                            <div class="notification-title">${title}</div>
-                            <div class="notification-message">${message}</div>
-                        </div>
-                        <button class="notification-close" onclick="$(this).parent().remove()">
-                            <i class="fas fa-times"></i>
-                        </button>
-                    </div>
-                `);
-                
-                container.append(notification);
-                
-                // Trigger animation
-                setTimeout(() => {
-                    notification.addClass('show');
-                }, 100);
-                
-                // Auto remove
-                setTimeout(() => {
-                    notification.removeClass('show');
-                    setTimeout(() => {
-                        notification.remove();
-                    }, 300);
-                }, duration);
-            }
             
             // Initialize Select2 for user search - FIXED: Show all users without typing
             $('.user-select').select2({
@@ -50,13 +88,11 @@ const MANAGE_ACCESS_CONFIG = window.MANAGE_ACCESS_CONFIG || {};
                     dataType: 'json',
                     delay: 250,
                     data: function (params) {
-                        console.log('🔍 Select2 AJAX Data:', params);
                         return {
                             query: params.term || '' // FIXED: Send empty string if no search term
                         };
                     },
                     processResults: function (data, params) {
-                        console.log('📊 Select2 Process Results:', data);
                         if (data.success && data.users) {
                             return {
                                 results: data.users.map(function (user) {
@@ -91,7 +127,6 @@ const MANAGE_ACCESS_CONFIG = window.MANAGE_ACCESS_CONFIG || {};
                     return markup;
                 },
                 templateResult: function (user) {
-                    console.log('🎨 Template Result:', user);
                     if (user.loading) {
                         return user.text;
                     }
@@ -104,13 +139,18 @@ const MANAGE_ACCESS_CONFIG = window.MANAGE_ACCESS_CONFIG || {};
                     if (user.role === 1) roleName = 'Admin';
                     else if (user.role === 2) roleName = 'Tutor';
 
+                    // Escape user data to prevent XSS
+                    var safeName = $('<span>').text(user.name || 'Unknown').html();
+                    var safeEmail = $('<span>').text(user.email || '').html();
+                    var safeNumber = user.number ? $('<span>').text(user.number).html() : '';
+
                     // Create display with role badge
                     let display = '<div class="d-flex align-items-center justify-content-between w-100">';
                     display += '<div class="flex-grow-1">';
-                    display += '<div class="fw-medium">' + user.name + '</div>';
-                    display += '<small class="text-muted">' + user.email + '</small>';
-                    if (user.number) {
-                        display += '<br><small class="text-muted">Number: ' + user.number + '</small>';
+                    display += '<div class="fw-medium">' + safeName + '</div>';
+                    display += '<small class="text-muted">' + safeEmail + '</small>';
+                    if (safeNumber) {
+                        display += '<br><small class="text-muted">Number: ' + safeNumber + '</small>';
                     }
                     display += '</div>';
                     display += '<span class="badge bg-secondary ms-2" style="font-size: 0.7rem;">' + roleName + '</span>';
@@ -119,7 +159,6 @@ const MANAGE_ACCESS_CONFIG = window.MANAGE_ACCESS_CONFIG || {};
                     return display;
                 },
                 templateSelection: function (user) {
-                    console.log('✅ Template Selection:', user);
                     if (!user.id) {
                         return user.text;
                     }
@@ -134,41 +173,21 @@ const MANAGE_ACCESS_CONFIG = window.MANAGE_ACCESS_CONFIG || {};
                     return userName;
                 }
             });
-
-            // Add event listeners for debugging
-            $('.user-select').on('select2:open', function() {
-                console.log('🔓 Select2 opened');
-            });
-
-            $('.user-select').on('select2:close', function() {
-                console.log('🔒 Select2 closed');
-            });
-
-            $('.user-select').on('select2:select', function(e) {
-                console.log('✅ User selected:', e.params.data);
-            });
-
-            $('.user-select').on('select2:unselect', function(e) {
-                console.log('❌ User unselected:', e.params.data);
-            });
             
             // GRANT ACCESS BUTTON HANDLER
             $('#grantAccessBtn').on('click', function(e) {
-                console.log('🚀 GRANT ACCESS BUTTON CLICKED!');
                 e.preventDefault();
                 
                 const userId = $('#user_id').val();
                 const courseId = $('#course_id').val();
                 
-                console.log('Values:', {userId, courseId});
-                
                 if (!userId || !courseId) {
-                    console.error('Please select both a user and a course first!');
+                    showNotification('warning', 'Missing Selection', 'Please select both a user and a course first.');
                     return;
                 }
                 
-                // Disable button during request
-                $(this).prop('disabled', true).html('<i class="fas fa-spinner fa-spin me-2"></i>Processing...');
+                var btn = $(this);
+                btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin me-2"></i>Processing...');
                 
                 $.ajax({
                     url: '/manage-access/enroll',
@@ -179,26 +198,14 @@ const MANAGE_ACCESS_CONFIG = window.MANAGE_ACCESS_CONFIG || {};
                         _token: MANAGE_ACCESS_CONFIG.csrfToken
                     },
                     success: function(response) {
-                        console.log('✅ SUCCESS:', response);
-                        
-                        // Show success notification
-                        showNotification('success', 'Access Granted!', 'User has been successfully enrolled in the course.');
-                        
-                        // Reset button
-                        const btn = $('#grantAccessBtn');
-                        btn.prop('disabled', false).html('<i class="fas fa-user-plus me-2"></i>Grant Access');
-                        
-                        // Refresh enrollment data smoothly
+                        showNotification('success', 'Access Granted!', response.message || 'User has been successfully enrolled in the course.');
                         refreshEnrollmentData();
                     },
                     error: function(xhr) {
-                        console.error('❌ ERROR:', xhr.responseText);
-                        
-                        // Show error notification
-                        showNotification('error', 'Access Failed!', 'Failed to grant access. Please try again.');
-                        
-                        // Reset button
-                        const btn = $('#grantAccessBtn');
+                        var msg = xhr.responseJSON?.message || 'Failed to grant access. Please try again.';
+                        showNotification('error', 'Enrollment Failed', msg);
+                    },
+                    complete: function() {
                         btn.prop('disabled', false).html('<i class="fas fa-user-plus me-2"></i>Grant Access');
                     }
                 });
@@ -206,23 +213,18 @@ const MANAGE_ACCESS_CONFIG = window.MANAGE_ACCESS_CONFIG || {};
             
             // REVOKE ACCESS BUTTON HANDLER
             $('#revokeAccessBtn').on('click', function(e) {
-                console.log('🚀 REVOKE ACCESS BUTTON CLICKED!');
                 e.preventDefault();
                 
                 const userId = $('#user_id').val();
                 const courseId = $('#course_id').val();
                 
-                console.log('Values:', {userId, courseId});
-                
                 if (!userId || !courseId) {
-                    console.error('Please select both a user and a course first!');
+                    showNotification('warning', 'Missing Selection', 'Please select both a user and a course first.');
                     return;
                 }
                 
-                // Instant revocation - no confirmation needed
-                
-                // Disable button during request
-                $(this).prop('disabled', true).html('<i class="fas fa-spinner fa-spin me-2"></i>Processing...');
+                var btn = $(this);
+                btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin me-2"></i>Processing...');
                 
                 $.ajax({
                     url: '/manage-access/revoke',
@@ -233,26 +235,14 @@ const MANAGE_ACCESS_CONFIG = window.MANAGE_ACCESS_CONFIG || {};
                         _token: MANAGE_ACCESS_CONFIG.csrfToken
                     },
                     success: function(response) {
-                        console.log('✅ SUCCESS:', response);
-                        
-                        // Show success notification
-                        showNotification('error', 'Access Revoked!', 'User access has been successfully revoked.');
-                        
-                        // Reset button
-                        const btn = $('#revokeAccessBtn');
-                        btn.prop('disabled', false).html('<i class="fas fa-user-times me-2"></i>Revoke Access');
-                        
-                        // Refresh enrollment data smoothly
+                        showNotification('warning', 'Access Revoked', response.message || 'User access has been successfully revoked.');
                         refreshEnrollmentData();
                     },
                     error: function(xhr) {
-                        console.error('❌ ERROR:', xhr.responseText);
-                        
-                        // Show error notification
-                        showNotification('error', 'Revoke Failed!', 'Failed to revoke access. Please try again.');
-                        
-                        // Reset button
-                        const btn = $('#revokeAccessBtn');
+                        var msg = xhr.responseJSON?.message || 'Failed to revoke access. Please try again.';
+                        showNotification('error', 'Revoke Failed', msg);
+                    },
+                    complete: function() {
                         btn.prop('disabled', false).html('<i class="fas fa-user-times me-2"></i>Revoke Access');
                     }
                 });
@@ -263,19 +253,14 @@ const MANAGE_ACCESS_CONFIG = window.MANAGE_ACCESS_CONFIG || {};
             // User selection handler
             $('#user_id').on('change', function() {
                 try {
-                    console.log('=== USER SELECTION DEBUG ===');
                     const userId = $(this).val();
                     const userOption = $(this).find('option:selected');
-
-                    console.log('User selection:', {userId, userOption});
 
                     if (userId) {
                         const userName = userOption.text();
                         const userEmail = userOption.data('email');
                         const userNumber = userOption.data('number');
                         const userRole = userOption.data('role');
-
-                        console.log('User data:', {userName, userEmail, userNumber, userRole, userRoleType: typeof userRole});
 
                         // Safe integer handling for role
                         const safeUserRole = (userRole && typeof userRole === 'number') ? userRole : 0;
@@ -356,8 +341,6 @@ const MANAGE_ACCESS_CONFIG = window.MANAGE_ACCESS_CONFIG || {};
                 }
             }
             
-            console.log('✅ All event handlers attached successfully');
-            
             // Initialize Admin User Select2
             $('.admin-user-select').select2({
                 placeholder: 'Type to search for user...',
@@ -375,7 +358,6 @@ const MANAGE_ACCESS_CONFIG = window.MANAGE_ACCESS_CONFIG || {};
                     const userId = $(this).val();
                     const userOption = $(this).find('option:selected');
 
-                    console.log('Admin user selection:', {userId, userOption});
 
                     if (userId) {
                         const userName = userOption.data('name');
@@ -383,7 +365,6 @@ const MANAGE_ACCESS_CONFIG = window.MANAGE_ACCESS_CONFIG || {};
                         const userNumber = userOption.data('number');
                         const userRole = userOption.data('role');
 
-                        console.log('User data:', {userName, userEmail, userNumber, userRole});
 
                         selectedAdminUserId = userId;
                         selectedAdminIsAdmin = userRole === 1; // FIXED: Store boolean correctly
@@ -430,9 +411,8 @@ const MANAGE_ACCESS_CONFIG = window.MANAGE_ACCESS_CONFIG || {};
             $('#promoteToAdminBtn').on('click', function(e) {
                 e.preventDefault();
                 
-                // FIXED: Proper boolean check
                 if (!selectedAdminUserId || selectedAdminIsAdmin === true) {
-                    alert('Please select a non-admin user to promote');
+                    showNotification('warning', 'Invalid Action', 'Please select a non-admin user to promote.');
                     return;
                 }
                 
@@ -440,8 +420,8 @@ const MANAGE_ACCESS_CONFIG = window.MANAGE_ACCESS_CONFIG || {};
                     return;
                 }
                 
-                const originalText = $(this).html();
-                $(this).html('<i class="fas fa-spinner fa-spin me-2"></i>Promoting...').prop('disabled', true);
+                var btn = $(this);
+                btn.html('<i class="fas fa-spinner fa-spin me-2"></i>Promoting...').prop('disabled', true);
                 
                 $.ajax({
                     url: '/manage-access/toggle-admin',
@@ -453,18 +433,24 @@ const MANAGE_ACCESS_CONFIG = window.MANAGE_ACCESS_CONFIG || {};
                     },
                     success: function(response) {
                         if (response.success) {
-                            alert('User promoted to administrator successfully!');
-                            location.reload();
+                            showNotification('success', 'Admin Promoted!', response.message || 'User promoted to administrator successfully.');
+                            // Update UI in place
+                            selectedAdminIsAdmin = true;
+                            $('#selectedAdminUserStatus').removeClass('bg-secondary').addClass('bg-danger').text('ADMIN');
+                            btn.prop('disabled', true).html('<i class="fas fa-check me-2"></i>Already Admin');
+                            $('#removeAdminBtn').prop('disabled', false).html('<i class="fas fa-user-times me-2"></i>Revoke Admin');
+                            $('#adminActionHint').text('This user is currently an administrator');
                         } else {
-                            alert('Error: ' + (response.message || 'Failed to promote user'));
+                            showNotification('error', 'Promotion Failed', response.message || 'Failed to promote user.');
                         }
                     },
                     error: function(xhr) {
-                        console.error('Error promoting user:', xhr.responseText);
-                        alert('Error: ' + (xhr.responseJSON?.message || 'Failed to promote user'));
+                        showNotification('error', 'Promotion Failed', xhr.responseJSON?.message || 'Failed to promote user.');
                     },
                     complete: function() {
-                        $('#promoteToAdminBtn').html(originalText).prop('disabled', false);
+                        if (!selectedAdminIsAdmin) {
+                            btn.html('<i class="fas fa-user-shield me-2"></i>Promote to Admin').prop('disabled', false);
+                        }
                     }
                 });
             });
@@ -473,9 +459,8 @@ const MANAGE_ACCESS_CONFIG = window.MANAGE_ACCESS_CONFIG || {};
             $('#removeAdminBtn').on('click', function(e) {
                 e.preventDefault();
                 
-                // FIXED: Proper boolean check
                 if (!selectedAdminUserId || selectedAdminIsAdmin !== true) {
-                    alert('Please select an admin user to revoke privileges');
+                    showNotification('warning', 'Invalid Action', 'Please select an admin user to revoke privileges.');
                     return;
                 }
                 
@@ -483,8 +468,8 @@ const MANAGE_ACCESS_CONFIG = window.MANAGE_ACCESS_CONFIG || {};
                     return;
                 }
                 
-                const originalText = $(this).html();
-                $(this).html('<i class="fas fa-spinner fa-spin me-2"></i>Revoking...').prop('disabled', true);
+                var btn = $(this);
+                btn.html('<i class="fas fa-spinner fa-spin me-2"></i>Revoking...').prop('disabled', true);
                 
                 $.ajax({
                     url: '/manage-access/toggle-admin',
@@ -496,18 +481,24 @@ const MANAGE_ACCESS_CONFIG = window.MANAGE_ACCESS_CONFIG || {};
                     },
                     success: function(response) {
                         if (response.success) {
-                            alert('Administrator privileges revoked successfully!');
-                            location.reload();
+                            showNotification('success', 'Admin Revoked', response.message || 'Administrator privileges revoked successfully.');
+                            // Update UI in place
+                            selectedAdminIsAdmin = false;
+                            $('#selectedAdminUserStatus').removeClass('bg-danger').addClass('bg-secondary').text('STUDENT');
+                            btn.prop('disabled', true).html('<i class="fas fa-user-times me-2"></i>Not Admin');
+                            $('#promoteToAdminBtn').prop('disabled', false).html('<i class="fas fa-user-shield me-2"></i>Promote to Admin');
+                            $('#adminActionHint').text('This user is not an administrator');
                         } else {
-                            alert('Error: ' + (response.message || 'Failed to revoke admin privileges'));
+                            showNotification('error', 'Revoke Failed', response.message || 'Failed to revoke admin privileges.');
                         }
                     },
                     error: function(xhr) {
-                        console.error('Error revoking admin:', xhr.responseText);
-                        alert('Error: ' + (xhr.responseJSON?.message || 'Failed to revoke admin privileges'));
+                        showNotification('error', 'Revoke Failed', xhr.responseJSON?.message || 'Failed to revoke admin privileges.');
                     },
                     complete: function() {
-                        $('#removeAdminBtn').html(originalText).prop('disabled', false);
+                        if (selectedAdminIsAdmin) {
+                            btn.html('<i class="fas fa-user-times me-2"></i>Revoke Admin').prop('disabled', false);
+                        }
                     }
                 });
             });
@@ -519,9 +510,14 @@ const MANAGE_ACCESS_CONFIG = window.MANAGE_ACCESS_CONFIG || {};
                 
                 rows.each(function() {
                     const row = $(this);
-                    const status = row.data('status');
+                    const activeCount = parseInt(row.data('active-count') || 0);
+                    const revokedCount = parseInt(row.data('revoked-count') || 0);
                     
-                    if (filter === 'all' || status === filter) {
+                    if (filter === 'all') {
+                        row.show();
+                    } else if (filter === 'has_active' && activeCount > 0) {
+                        row.show();
+                    } else if (filter === 'has_revoked' && revokedCount > 0) {
                         row.show();
                     } else {
                         row.hide();
@@ -541,6 +537,25 @@ const MANAGE_ACCESS_CONFIG = window.MANAGE_ACCESS_CONFIG || {};
                 }, 1000);
             });
             
+            // HTML escape helper to prevent XSS
+            function escHtml(str) {
+                if (!str) return '';
+                var div = document.createElement('div');
+                div.appendChild(document.createTextNode(str));
+                return div.innerHTML;
+            }
+
+            // Relative time helper
+            function timeAgoLabel(dateStr) {
+                if (!dateStr) return 'Unknown';
+                var diff = (Date.now() - new Date(dateStr).getTime()) / 1000;
+                if (diff < 60)    return 'just now';
+                if (diff < 3600)  return Math.floor(diff / 60) + ' min ago';
+                if (diff < 86400) return Math.floor(diff / 3600) + ' hours ago';
+                if (diff < 604800) return Math.floor(diff / 86400) + ' days ago';
+                return Math.floor(diff / 604800) + ' weeks ago';
+            }
+
             // Function to refresh enrollment data smoothly
             function refreshEnrollmentData() {
                 $.ajax({
@@ -557,7 +572,7 @@ const MANAGE_ACCESS_CONFIG = window.MANAGE_ACCESS_CONFIG || {};
                 });
             }
             
-            // Function to update enrollment table
+            // Function to update enrollment table (grouped by user)
             function updateEnrollmentTable(enrollments) {
                 const tbody = $('#enrollmentsTable tbody');
                 tbody.empty();
@@ -573,50 +588,298 @@ const MANAGE_ACCESS_CONFIG = window.MANAGE_ACCESS_CONFIG || {};
                         </tr>
                     `);
                 } else {
-                    enrollments.forEach(function(enrollment) {
-                        const statusBadge = enrollment.is_enrolled ? 
-                            '<span class="badge bg-success"><i class="fas fa-check me-1"></i>Enrolled</span>' :
-                            '<span class="badge bg-danger"><i class="fas fa-times me-1"></i>Revoked</span>';
-                        
-                        const date = new Date(enrollment.created_at).toLocaleDateString();
-                        const timeAgo = new Date(enrollment.created_at).toLocaleDateString();
-                        
-                        tbody.append(`
-                            <tr data-status="${enrollment.is_enrolled ? 'enrolled' : 'revoked'}">
-                                <td>
-                                    <div class="d-flex align-items-center">
-                                        <div class="me-2">
-                                            <div class="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center" style="width: 32px; height: 32px; font-size: 0.8rem;">
-                                                ${enrollment.name ? enrollment.name.charAt(0).toUpperCase() : 'U'}
-                                            </div>
-                                        </div>
-                                        <div>
-                                            <div class="fw-medium">${enrollment.name || 'Unknown'}</div>
-                                            <small class="text-muted">${enrollment.email}</small>
-                                        </div>
-                                    </div>
-                                </td>
-                                <td>
-                                    <span class="badge bg-primary">${enrollment.course_name}</span>
-                                </td>
-                                <td>
-                                    <div>${date}</div>
-                                    <small class="text-muted">${timeAgo}</small>
-                                </td>
-                                <td>${statusBadge}</td>
-                            </tr>
-                        `);
+                    enrollments.forEach(function(userRow) {
+                        var courseBadges = '';
+                        if (userRow.courses && userRow.courses.length) {
+                            userRow.courses.forEach(function(c) {
+                                var cls = c.is_enrolled ? 'bg-success' : 'bg-secondary text-decoration-line-through';
+                                var title = c.is_enrolled ? 'Active' : 'Revoked';
+                                courseBadges += '<span class="badge ' + cls + '" style="font-size:0.72rem;" title="' + title + '">' + escHtml(c.course_name) + '</span> ';
+                            });
+                        }
+
+                        var statusHtml = '';
+                        if (userRow.active_count > 0 && userRow.revoked_count > 0) {
+                            statusHtml = '<span class="badge bg-success">' + userRow.active_count + ' active</span> <span class="badge bg-secondary">' + userRow.revoked_count + ' revoked</span>';
+                        } else if (userRow.active_count > 0) {
+                            statusHtml = '<span class="badge bg-success"><i class="fas fa-check me-1"></i>' + userRow.active_count + ' active</span>';
+                        } else {
+                            statusHtml = '<span class="badge bg-danger"><i class="fas fa-times me-1"></i>All revoked</span>';
+                        }
+
+                        var dateHtml = '<span class="text-muted">—</span>';
+                        if (userRow.last_activity) {
+                            var d = new Date(userRow.last_activity);
+                            var dateStr = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+                            var ago = timeAgoLabel(userRow.last_activity);
+                            dateHtml = '<div>' + escHtml(dateStr) + '</div><small class="text-muted">' + escHtml(ago) + '</small>';
+                        }
+
+                        var safeName = escHtml(userRow.name || 'Unknown');
+                        var safeEmail = escHtml(userRow.email || '');
+                        var initial = safeName.charAt(0).toUpperCase() || 'U';
+
+                        tbody.append(
+                            '<tr data-active-count="' + userRow.active_count + '" data-revoked-count="' + userRow.revoked_count + '">' +
+                            '<td>' +
+                                '<div class="d-flex align-items-center">' +
+                                    '<div class="me-2">' +
+                                        '<div class="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center" style="width:32px;height:32px;font-size:0.8rem;">' +
+                                            initial +
+                                        '</div>' +
+                                    '</div>' +
+                                    '<div>' +
+                                        '<div class="fw-medium">' + safeName + '</div>' +
+                                        '<small class="text-muted">' + safeEmail + '</small>' +
+                                    '</div>' +
+                                '</div>' +
+                            '</td>' +
+                            '<td><div class="d-flex flex-wrap gap-1" style="max-width:280px;">' + courseBadges + '</div></td>' +
+                            '<td>' + statusHtml + '</td>' +
+                            '<td>' + dateHtml + '</td>' +
+                            '</tr>'
+                        );
                     });
                 }
             }
             
+    // ── Last Active Users ──────────────────────────────────────────────
+    (function initLastActiveUsers() {
+        var laState = { page: 1, search: '', debounce: null };
+        var STATUS_LABELS = {
+            online:    'Online',
+            recent:    'Recently',
+            today:     'Today',
+            this_week: 'This Week',
+            inactive:  'Inactive',
+            never:     'Never'
+        };
+        var MODE_LABELS = {
+            quiz: 'Quiz',
+            tutor: 'Tutor',
+            assignment: 'Assignment',
+            timed: 'Timed',
+            practice: 'Practice'
+        };
+
+        function loadLastActive(page, search) {
+            laState.page = page || 1;
+            laState.search = search || '';
+
+            var tbody = $('#lastActiveBody');
+            tbody.html(
+                '<tr><td colspan="6" class="text-center py-4 text-muted">' +
+                '<i class="fas fa-spinner fa-spin fa-2x mb-2"></i>' +
+                '<div>Loading user activity...</div></td></tr>'
+            );
+
+            $.ajax({
+                url: '/manage-access/last-active-users',
+                method: 'GET',
+                data: { page: laState.page, per_page: 20, search: laState.search },
+                headers: { 'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content') },
+                success: function(resp) {
+                    if (!resp.success) {
+                        tbody.html(
+                            '<tr><td colspan="6" class="text-center py-4 text-muted">' +
+                            '<i class="fas fa-exclamation-triangle fa-2x mb-2"></i>' +
+                            '<div>Failed to load data</div></td></tr>'
+                        );
+                        return;
+                    }
+                    renderLastActive(resp);
+                },
+                error: function() {
+                    tbody.html(
+                        '<tr><td colspan="6" class="text-center py-4 text-muted">' +
+                        '<i class="fas fa-exclamation-triangle fa-2x mb-2"></i>' +
+                        '<div>Failed to load data</div></td></tr>'
+                    );
+                }
+            });
+        }
+
+        function renderLastActive(data) {
+            var tbody = $('#lastActiveBody');
+            tbody.empty();
+
+            if (!data.users || data.users.length === 0) {
+                tbody.html(
+                    '<tr><td colspan="6" class="text-center py-4 text-muted">' +
+                    '<i class="fas fa-users fa-2x mb-2"></i>' +
+                    '<div>No users found</div></td></tr>'
+                );
+                $('#lastActivePagination').hide();
+                return;
+            }
+
+            data.users.forEach(function(u) {
+                var safeName = escHtml(u.name || 'Unknown');
+                var safeEmail = escHtml(u.email || '');
+                var initial = (u.name || u.email || 'U').charAt(0).toUpperCase();
+                var roleBadge = u.role === 1
+                    ? '<span class="badge bg-danger">Admin</span>'
+                    : u.role === 2
+                        ? '<span class="badge bg-info">Tutor</span>'
+                        : '<span class="badge bg-secondary">Student</span>';
+
+                var statusLabel = STATUS_LABELS[u.status] || 'Unknown';
+                var lastActiveText = escHtml(u.last_active_human || 'Never');
+
+                // Build last quiz cell
+                var quizCell = '<span class="text-muted" style="font-size:0.8rem;">No quizzes yet</span>';
+                var lq = u.last_quiz;
+                if (lq) {
+                    var modeLabel = MODE_LABELS[lq.mode] || escHtml(lq.mode || 'Quiz');
+                    var pctClass = lq.pct >= 70 ? 'text-success' : lq.pct >= 50 ? 'text-warning' : 'text-danger';
+                    quizCell =
+                        '<div style="font-size:0.82rem;line-height:1.35;">' +
+                            '<div class="fw-medium text-truncate" style="max-width:160px;" title="' + escHtml(lq.topic) + '">' + escHtml(lq.topic) + '</div>' +
+                            '<div class="text-muted" style="font-size:0.75rem;">' +
+                                '<span class="badge bg-light text-dark border" style="font-size:0.7rem;">' + escHtml(modeLabel) + '</span> ' +
+                                '<span class="' + pctClass + ' fw-semibold">' + lq.score + '/' + lq.total + ' (' + lq.pct + '%)</span>' +
+                            '</div>' +
+                        '</div>';
+                }
+
+                tbody.append(
+                    '<tr data-loaded="1">' +
+                    '<td>' +
+                        '<div class="d-flex align-items-center">' +
+                            '<div class="me-2">' +
+                                '<div class="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center" style="width:32px;height:32px;font-size:0.8rem;">' +
+                                    escHtml(initial) +
+                                '</div>' +
+                            '</div>' +
+                            '<div>' +
+                                '<div class="fw-medium">' + safeName + '</div>' +
+                                '<small class="text-muted">' + safeEmail + '</small>' +
+                            '</div>' +
+                        '</div>' +
+                    '</td>' +
+                    '<td>' + roleBadge + '</td>' +
+                    '<td><span class="level-badge"><i class="fas fa-star" style="font-size:0.65rem;"></i> ' + parseInt(u.level) + '</span></td>' +
+                    '<td>' +
+                        '<div>' + lastActiveText + '</div>' +
+                    '</td>' +
+                    '<td>' + quizCell + '</td>' +
+                    '<td><span class="activity-status ' + escHtml(u.status) + '"><span class="status-dot"></span>' + escHtml(statusLabel) + '</span></td>' +
+                    '</tr>'
+                );
+            });
+
+            // Pagination controls
+            var pag = $('#lastActivePagination');
+            pag.css('display', 'flex');
+            $('#lastActiveInfo').text('Showing ' + data.users.length + ' of ' + data.total + ' users');
+            $('#lastActivePageDisplay').text('Page ' + data.current_page + ' / ' + data.last_page);
+            $('#lastActivePrev').prop('disabled', data.current_page <= 1);
+            $('#lastActiveNext').prop('disabled', data.current_page >= data.last_page);
+        }
+
+        // Event handlers
+        $('#refreshLastActive').on('click', function() {
+            var btn = $(this);
+            btn.find('i').addClass('fa-spin');
+            loadLastActive(laState.page, laState.search);
+            setTimeout(function() { btn.find('i').removeClass('fa-spin'); }, 1000);
+        });
+
+        $('#lastActiveSearch').on('input', function() {
+            var val = $(this).val();
+            clearTimeout(laState.debounce);
+            laState.debounce = setTimeout(function() {
+                loadLastActive(1, val);
+            }, 350);
+        });
+
+        $('#lastActivePrev').on('click', function() {
+            if (laState.page > 1) loadLastActive(laState.page - 1, laState.search);
+        });
+
+        $('#lastActiveNext').on('click', function() {
+            loadLastActive(laState.page + 1, laState.search);
+        });
+
+        // Auto-load on page ready (only if User Access tab is visible)
+        var accessPane = document.getElementById('access');
+        if (accessPane && accessPane.classList.contains('show')) {
+            loadLastActive(1);
+        }
+
+        // Load when tab is shown
+        var accessTab = document.getElementById('access-tab');
+        if (accessTab) {
+            accessTab.addEventListener('shown.bs.tab', function() {
+                if (!$('#lastActiveBody tr[data-loaded]').length) {
+                    loadLastActive(1);
+                }
+            });
+        }
+    })();
+
+    // ── Real-time System Stats ────────────────────────────────────────
+    (function initSystemStats() {
+        var refreshTimer = null;
+
+        function loadSystemStats() {
+            $.ajax({
+                url: '/manage-access/system-stats',
+                method: 'GET',
+                headers: { 'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content') },
+                success: function(d) {
+                    if (!d.success) return;
+                    // DB
+                    var dbIcon = $('#sysDbIcon');
+                    var dbText = $('#sysDbStatus');
+                    if (d.db_online) {
+                        dbIcon.css('color', '#198754');
+                        dbText.text('Online');
+                    } else {
+                        dbIcon.css('color', '#dc3545');
+                        dbText.text('Offline').css('color', '#dc3545');
+                        $('#sysHealthBadge').html('<i class="fas fa-exclamation-triangle"></i> Issue Detected')
+                            .css({ color: '#dc3545', borderColor: '#dc3545' });
+                    }
+                    // Load
+                    $('#sysLoad').text(d.server_load !== null ? d.server_load : '—');
+                    // Uptime
+                    $('#sysUptime').text(d.uptime || '—');
+                    // Memory
+                    $('#sysMemory').text(d.memory_mb + 'MB');
+                    // Response
+                    $('#sysResponse').text(d.response_ms + 'ms');
+                    // PHP
+                    $('#sysPhp').text(d.php_version || '—');
+                    // Live stat cards
+                    $('#stat-active-users').text(d.active_now);
+                    $('#stat-new-today').text(d.new_users_today);
+                },
+                error: function() { /* silent */ }
+            });
+        }
+
+        // Initial load
+        loadSystemStats();
+
+        // Auto-refresh every 30 seconds
+        refreshTimer = setInterval(loadSystemStats, 30000);
+
+        // Manual refresh
+        $('#refreshSystemStats').on('click', function() {
+            var btn = $(this);
+            btn.find('i').addClass('fa-spin');
+            loadSystemStats();
+            setTimeout(function() { btn.find('i').removeClass('fa-spin'); }, 1000);
+        });
+    })();
+
     // Payment History Tab Handler
     $('#payment-tab').on('click', function() {
-        console.log('Payment tab clicked, loading payments...');
         loadPayments();
     });
             
-            if (MANAGE_ACCESS_CONFIG.activeTab === 'payment-history') { console.log('Payment tab active on load, fetching payments...'); loadPayments(); }
+            if (MANAGE_ACCESS_CONFIG.activeTab === 'payment-history') { loadPayments(); }
             
             // Payment search handler
             $('#payment-search-btn').on('click', function() {
@@ -642,10 +905,8 @@ const MANAGE_ACCESS_CONFIG = window.MANAGE_ACCESS_CONFIG || {};
 
                     if (hasHorizontalScroll) {
                         scrollIndicator.show();
-                        console.log('Table needs horizontal scrolling - indicator shown');
                     } else {
                         scrollIndicator.hide();
-                        console.log('Table fits in container - indicator hidden');
                     }
                 }
             }
@@ -691,8 +952,6 @@ const MANAGE_ACCESS_CONFIG = window.MANAGE_ACCESS_CONFIG || {};
         
         // Load payments function
         function loadPayments(page = 1, search = '') {
-            console.log('Loading payments...', {page, search});
-
             // Show loading state
             const tbody = $('#payments-table-body');
             tbody.html(`
@@ -717,14 +976,7 @@ const MANAGE_ACCESS_CONFIG = window.MANAGE_ACCESS_CONFIG || {};
                     search: search
                 },
                 success: function(response) {
-                                            console.log('Payments loaded:', response);
-                        console.log('Response type:', typeof response);
-                        console.log('Success:', response.success);
-                        console.log('Stats:', response.stats);
-                        console.log('Payments count:', response.payments ? response.payments.length : 'undefined');
-                        
                         if (response.success) {
-                        console.log('Response stats:', response.stats);
                         
                         // Update statistics with proper type checking
                         const totalRevenue = parseFloat(response.stats.total_revenue || 0);
@@ -881,11 +1133,6 @@ const MANAGE_ACCESS_CONFIG = window.MANAGE_ACCESS_CONFIG || {};
 
         // Payment Management Functions
         function acceptPayment(paymentId) {
-            console.log('Accept payment called for ID:', paymentId);
-            
-            // Instant acceptance - no confirmation needed
-            
-            // Send verification request
             fetch(`/admin/payments/verify/${paymentId}`, {
                 method: 'POST',
                 headers: {
@@ -899,14 +1146,12 @@ const MANAGE_ACCESS_CONFIG = window.MANAGE_ACCESS_CONFIG || {};
             })
             .then(response => {
                 if (!response.ok) {
-                    if (response.status === 404) {
-                        throw new Error('Route not found. Please check if you are logged in as admin.');
-                    } else if (response.status === 419) {
-                        throw new Error('CSRF token expired. Please refresh the page and try again.');
+                    if (response.status === 419) {
+                        throw new Error('CSRF token expired. Please refresh the page.');
                     } else if (response.status === 403) {
-                        throw new Error('Access denied. You must be an admin to verify payments.');
+                        throw new Error('Access denied. Admin privileges required.');
                     } else if (response.status === 401) {
-                        throw new Error('Not authenticated. Please log in and try again.');
+                        throw new Error('Not authenticated. Please log in.');
                     } else {
                         throw new Error(`Server error: ${response.status} ${response.statusText}`);
                     }
@@ -915,13 +1160,11 @@ const MANAGE_ACCESS_CONFIG = window.MANAGE_ACCESS_CONFIG || {};
             })
             .then(data => {
                 if (data.success) {
-                    // Show success notification
-                    showNotification('Payment accepted successfully!', 'success');
+                    showNotification('success', 'Payment Accepted', 'Payment has been verified and approved.');
                     
                     // Update the UI with yellow highlight
                     const row = document.querySelector(`[data-payment-id="${paymentId}"]`);
                     if (row) {
-                        // FIXED: Add yellow highlight for completed payment with !important and data attribute
                         row.style.setProperty('background-color', '#fffbeb', 'important');
                         row.setAttribute('data-payment-status', 'completed');
                         
@@ -931,30 +1174,23 @@ const MANAGE_ACCESS_CONFIG = window.MANAGE_ACCESS_CONFIG || {};
                             statusCell.className = 'badge payment-status bg-success';
                         }
                         
-                        // Update actions cell
                         const actionsCell = row.querySelector('td:last-child');
                         if (actionsCell) {
                             actionsCell.innerHTML = '<span class="text-muted small">Completed</span>';
                         }
                     }
                     
-                    // Refresh payment data
                     loadPayments();
                 } else {
                     throw new Error(data.message || 'Payment verification failed');
                 }
             })
             .catch(error => {
-                console.error('Error accepting payment:', error);
-                showNotification('Failed to accept payment: ' + error.message, 'error');
+                showNotification('error', 'Payment Failed', error.message);
             });
         }
 
         function rejectPayment(paymentId) {
-            console.log('Reject payment called for ID:', paymentId);
-            
-            // Instant rejection - no reason needed
-            
             fetch(`/admin/payments/${paymentId}/reject`, {
                 method: 'POST',
                 headers: {
@@ -962,17 +1198,19 @@ const MANAGE_ACCESS_CONFIG = window.MANAGE_ACCESS_CONFIG || {};
                     'X-CSRF-TOKEN': MANAGE_ACCESS_CONFIG.csrfToken,
                     'Accept': 'application/json'
                 },
-                body: JSON.stringify({
-                    reason: 'Payment rejected'
-                })
+                body: JSON.stringify({ reason: 'Payment rejected' }),
+                credentials: 'same-origin'
             })
-            .then(response => response.json())
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`Server error: ${response.status} ${response.statusText}`);
+                }
+                return response.json();
+            })
             .then(data => {
                 if (data.success) {
-                    // Show success notification
-                    showNotification('Payment rejected successfully!', 'success');
+                    showNotification('warning', 'Payment Rejected', 'Payment has been rejected.');
                     
-                    // Update the UI
                     const row = document.querySelector(`[data-payment-id="${paymentId}"]`);
                     if (row) {
                         const statusCell = row.querySelector('.payment-status');
@@ -981,61 +1219,20 @@ const MANAGE_ACCESS_CONFIG = window.MANAGE_ACCESS_CONFIG || {};
                             statusCell.className = 'badge payment-status bg-danger';
                         }
                         
-                        // Update actions cell
                         const actionsCell = row.querySelector('td:last-child');
                         if (actionsCell) {
                             actionsCell.innerHTML = '<span class="text-muted small">Rejected</span>';
                         }
                     }
                     
-                    // Refresh payment data
                     loadPayments();
                 } else {
-                    showNotification('Failed to reject payment: ' + (data.message || 'Unknown error'), 'error');
+                    showNotification('error', 'Reject Failed', data.message || 'Unknown error');
                 }
             })
             .catch(error => {
-                console.error('Error rejecting payment:', error);
-                showNotification('Failed to reject payment: ' + error.message, 'error');
+                showNotification('error', 'Reject Failed', error.message);
             });
-        }
-
-        // Notification system - matches the signature used in calls: showNotification(type, title, message)
-        function showNotification(type, title, message, duration = 4000) {
-            const container = document.getElementById('notificationContainer');
-            const notification = document.createElement('div');
-            
-            const bgColor = type === 'success' ? 'bg-success' : 'bg-danger';
-            const icon = type === 'success' ? 'fa-check-circle' : 'fa-exclamation-triangle';
-            
-            notification.className = `alert ${bgColor} text-white alert-dismissible fade show position-fixed`;
-            notification.style.cssText = `
-                top: 20px;
-                right: 20px;
-                z-index: 9999;
-                min-width: 300px;
-                box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-            `;
-            
-            notification.innerHTML = `
-                <div class="d-flex align-items-center">
-                    <i class="fas ${icon} me-2"></i>
-                    <div>
-                        <strong>${title}</strong>
-                        ${message ? '<div class="small">' + message + '</div>' : ''}
-                    </div>
-                    <button type="button" class="btn-close btn-close-white ms-auto" data-bs-dismiss="alert"></button>
-                </div>
-            `;
-            
-            container.appendChild(notification);
-            
-            // Auto-remove after duration
-            setTimeout(() => {
-                if (notification.parentNode) {
-                    notification.remove();
-                }
-            }, duration);
         }
 
         $(document).ready(function() {
@@ -1309,7 +1506,7 @@ const MANAGE_ACCESS_CONFIG = window.MANAGE_ACCESS_CONFIG || {};
                             topicSelect.prop('disabled', false);
                         },
                         error: function() {
-                            showNotification('Failed to load topics', 'error');
+                            showNotification('error', 'Load Failed', 'Failed to load topics.');
                         }
                     });
                 } else {
@@ -1334,17 +1531,17 @@ const MANAGE_ACCESS_CONFIG = window.MANAGE_ACCESS_CONFIG || {};
                     data: formData,
                     success: function(response) {
                         if (response.success) {
-                            showNotification('Video added successfully!', 'success');
+                            showNotification('success', 'Video Added', 'Video added successfully!');
                             $('#addVideoForm')[0].reset();
                             $('#video_topic_id').prop('disabled', true).empty().append('<option value="">First select a course...</option>');
                             loadVideos();
                         } else {
-                            showNotification(response.message || 'Failed to add video', 'error');
+                            showNotification('error', 'Add Failed', response.message || 'Failed to add video.');
                         }
                     },
                     error: function(xhr) {
-                        const response = xhr.responseJSON;
-                        showNotification(response?.message || 'Failed to add video', 'error');
+                        var msg = xhr.responseJSON?.message || 'Failed to add video.';
+                        showNotification('error', 'Add Failed', msg);
                     }
                 });
             });
@@ -1423,7 +1620,7 @@ const MANAGE_ACCESS_CONFIG = window.MANAGE_ACCESS_CONFIG || {};
                             </td>
                         </tr>
                     `);
-                    showNotification('Failed to load videos: ' + (xhr.responseJSON?.message || error), 'error');
+                    showNotification('error', 'Load Failed', 'Failed to load videos: ' + (xhr.responseJSON?.message || error));
                 }
             });
         }
@@ -1436,18 +1633,244 @@ const MANAGE_ACCESS_CONFIG = window.MANAGE_ACCESS_CONFIG || {};
                     data: { _token: MANAGE_ACCESS_CONFIG.csrfToken },
                     success: function(response) {
                         if (response.success) {
-                            showNotification('Video deleted successfully!', 'success');
+                            showNotification('success', 'Video Deleted', 'Video deleted successfully!');
                             loadVideos();
                         } else {
-                            showNotification('Failed to delete video', 'error');
+                            showNotification('error', 'Delete Failed', 'Failed to delete video.');
                         }
                     },
                     error: function() {
-                        showNotification('Failed to delete video', 'error');
+                        showNotification('error', 'Delete Failed', 'Failed to delete video.');
                     }
                 });
             }
         }
+
+/* ── Survey Admin: Written Answers + Student Responses ── */
+window.surveyAdmin = (function () {
+    'use strict';
+
+    var _searchTimer = null;
+    var _studentsLoaded = false;
+
+    function escapeHtml(str) {
+        if (!str) return '';
+        var div = document.createElement('div');
+        div.appendChild(document.createTextNode(str));
+        return div.innerHTML;
+    }
+
+    function fetchJson(url) {
+        return fetch(url, { credentials: 'same-origin', headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' } })
+            .then(function (res) {
+                if (!res.ok) throw new Error('HTTP ' + res.status);
+                return res.json();
+            });
+    }
+
+    function buildPaginationButtons(currentPage, lastPage, onClickFn) {
+        var html = '';
+        var start = Math.max(1, currentPage - 2);
+        var end = Math.min(lastPage, currentPage + 2);
+
+        if (currentPage > 1) {
+            html += '<button class="btn btn-sm btn-outline-secondary" onclick="' + onClickFn + '(' + (currentPage - 1) + ')">‹</button>';
+        }
+        for (var p = start; p <= end; p++) {
+            html += '<button class="btn btn-sm ' + (p === currentPage ? 'btn-primary' : 'btn-outline-secondary') + '" onclick="' + onClickFn + '(' + p + ')">' + p + '</button>';
+        }
+        if (currentPage < lastPage) {
+            html += '<button class="btn btn-sm btn-outline-secondary" onclick="' + onClickFn + '(' + (currentPage + 1) + ')">›</button>';
+        }
+        return html;
+    }
+
+    /* ── Written Answers ── */
+    function loadWrittenAnswers(page) {
+        var panel = document.getElementById('written-answers-panel');
+        var list = document.getElementById('written-answers-list');
+        var pag = document.getElementById('written-answers-pagination');
+        var loading = document.getElementById('written-answers-loading');
+        if (!panel || !list) return;
+
+        panel.style.display = '';
+        if (loading) loading.style.display = '';
+        list.innerHTML = '';
+        if (pag) pag.innerHTML = '';
+
+        fetchJson('/manage-access/survey/written-answers?page=' + page + '&per_page=15')
+            .then(function (data) {
+                if (loading) loading.style.display = 'none';
+                var items = data.items || [];
+
+                if (items.length === 0) {
+                    list.innerHTML = '<div class="text-center py-3 text-muted small">No written answers found.</div>';
+                    return;
+                }
+
+                var html = '';
+                items.forEach(function (item) {
+                    html += '<div class="survey-written-item">';
+                    html += '<div class="written-meta">' + escapeHtml(item.user_name) + ' · ' + escapeHtml(item.user_email) + ' · ' + escapeHtml(item.submitted_at || '') + '</div>';
+                    html += '<div class="written-text">' + escapeHtml(item.text) + '</div>';
+                    html += '</div>';
+                });
+                list.innerHTML = html;
+
+                if (data.last_page > 1 && pag) {
+                    pag.innerHTML = buildPaginationButtons(data.page, data.last_page, 'surveyAdmin.loadWrittenAnswers');
+                }
+            })
+            .catch(function () {
+                if (loading) loading.style.display = 'none';
+                list.innerHTML = '<div class="text-center py-3 text-danger small">Failed to load written answers.</div>';
+            });
+    }
+
+    function hideWrittenAnswers() {
+        var panel = document.getElementById('written-answers-panel');
+        if (panel) panel.style.display = 'none';
+    }
+
+    /* ── Student Responses ── */
+    function loadStudentResponses(page, search) {
+        var wrap = document.getElementById('student-responses-table-wrap');
+        var loading = document.getElementById('student-responses-loading');
+        var pagWrap = document.getElementById('student-responses-pagination');
+        var info = document.getElementById('student-responses-info');
+        var pages = document.getElementById('student-responses-pages');
+        if (!wrap) return;
+
+        if (loading) loading.style.display = '';
+        wrap.innerHTML = '';
+        if (pagWrap) pagWrap.style.display = 'none';
+
+        var url = '/manage-access/survey/student-responses?page=' + page + '&per_page=20';
+        if (search && search.trim()) {
+            url += '&search=' + encodeURIComponent(search.trim());
+        }
+
+        fetchJson(url)
+            .then(function (data) {
+                if (loading) loading.style.display = 'none';
+                var items = data.items || [];
+
+                if (items.length === 0) {
+                    wrap.innerHTML = '<div class="text-center py-4 text-muted small">No survey responses found.</div>';
+                    return;
+                }
+
+                var html = '<div class="table-responsive"><table class="survey-student-table">';
+                html += '<thead><tr><th>Student</th><th>Email</th><th>Submitted</th><th>Year</th><th>Device</th><th style="width:80px"></th></tr></thead>';
+                html += '<tbody>';
+
+                items.forEach(function (item) {
+                    var year = (item.answers && item.answers.q10) ? item.answers.q10.label : '—';
+                    var device = (item.answers && item.answers.q6) ? item.answers.q6.label : '—';
+
+                    html += '<tr>';
+                    html += '<td class="student-name-cell" onclick="surveyAdmin.showStudentDetail(' + item.user_id + ')">' + escapeHtml(item.user_name) + '</td>';
+                    html += '<td class="small text-muted">' + escapeHtml(item.user_email) + '</td>';
+                    html += '<td class="small text-muted">' + escapeHtml(item.submitted_at || '') + '</td>';
+                    html += '<td>' + escapeHtml(year) + '</td>';
+                    html += '<td>' + escapeHtml(device) + '</td>';
+                    html += '<td><button class="btn btn-sm btn-outline-primary" onclick="surveyAdmin.showStudentDetail(' + item.user_id + ')"><i class="fas fa-eye"></i></button></td>';
+                    html += '</tr>';
+                });
+
+                html += '</tbody></table></div>';
+                wrap.innerHTML = html;
+
+                if (pagWrap && data.last_page > 0) {
+                    pagWrap.style.display = 'flex';
+                    if (info) {
+                        var from = ((data.page - 1) * data.per_page) + 1;
+                        var to = Math.min(data.page * data.per_page, data.total);
+                        info.textContent = 'Showing ' + from + '–' + to + ' of ' + data.total + ' responses';
+                    }
+                    if (pages && data.last_page > 1) {
+                        var searchVal = document.getElementById('survey-student-search') ? document.getElementById('survey-student-search').value : '';
+                        pages.innerHTML = buildPaginationButtons(data.page, data.last_page, 'surveyAdmin.loadStudentResponsesWithSearch');
+                    }
+                }
+            })
+            .catch(function () {
+                if (loading) loading.style.display = 'none';
+                wrap.innerHTML = '<div class="text-center py-4 text-danger small">Failed to load student responses.</div>';
+            });
+    }
+
+    function loadStudentResponsesWithSearch(page) {
+        var searchInput = document.getElementById('survey-student-search');
+        var search = searchInput ? searchInput.value : '';
+        loadStudentResponses(page, search);
+    }
+
+    /* ── Student Detail Modal ── */
+    function showStudentDetail(userId) {
+        var nameEl = document.getElementById('studentDetailName');
+        var metaEl = document.getElementById('studentDetailMeta');
+        var bodyEl = document.getElementById('studentDetailBody');
+        if (!bodyEl) return;
+
+        bodyEl.innerHTML = '<div class="text-center py-5"><div class="spinner-border text-primary" role="status"></div></div>';
+        if (nameEl) nameEl.textContent = 'Loading…';
+        if (metaEl) metaEl.textContent = '';
+
+        var modal = new bootstrap.Modal(document.getElementById('studentDetailModal'));
+        modal.show();
+
+        fetchJson('/manage-access/survey/student/' + userId)
+            .then(function (data) {
+                if (nameEl) nameEl.textContent = data.user_name || 'Student';
+                if (metaEl) metaEl.textContent = (data.user_email || '') + ' · Submitted: ' + (data.submitted_at || '—');
+
+                var html = '';
+                (data.answers || []).forEach(function (a) {
+                    html += '<div class="student-detail-answer">';
+                    html += '<div class="detail-question-id">' + escapeHtml(a.question_id) + '</div>';
+                    html += '<div class="detail-prompt">' + escapeHtml(a.prompt) + '</div>';
+
+                    if (!a.answered) {
+                        html += '<div class="detail-value not-answered">Not answered</div>';
+                    } else if (a.type === 'textarea') {
+                        html += '<div class="detail-value is-textarea">' + escapeHtml(a.label || a.value) + '</div>';
+                    } else {
+                        html += '<div class="detail-value">' + escapeHtml(a.label || a.value) + '</div>';
+                    }
+
+                    html += '</div>';
+                });
+
+                bodyEl.innerHTML = html || '<div class="text-center py-4 text-muted">No answers found.</div>';
+            })
+            .catch(function () {
+                bodyEl.innerHTML = '<div class="text-center py-4 text-danger">Failed to load student details.</div>';
+            });
+    }
+
+    /* ── Search debounce ── */
+    document.addEventListener('DOMContentLoaded', function () {
+        var searchInput = document.getElementById('survey-student-search');
+        if (searchInput) {
+            searchInput.addEventListener('input', function () {
+                clearTimeout(_searchTimer);
+                _searchTimer = setTimeout(function () {
+                    loadStudentResponses(1, searchInput.value);
+                }, 400);
+            });
+        }
+    });
+
+    return {
+        loadWrittenAnswers: loadWrittenAnswers,
+        hideWrittenAnswers: hideWrittenAnswers,
+        loadStudentResponses: loadStudentResponses,
+        loadStudentResponsesWithSearch: loadStudentResponsesWithSearch,
+        showStudentDetail: showStudentDetail,
+        _studentsLoaded: false
+    };
+})();
 
         document.addEventListener('DOMContentLoaded', function () {
             const surveyPane = document.getElementById('survey-results');
@@ -1551,6 +1974,17 @@ const MANAGE_ACCESS_CONFIG = window.MANAGE_ACCESS_CONFIG || {};
             if (surveyTab) {
                 surveyTab.addEventListener('shown.bs.tab', function () {
                     surveyCards.forEach(revealSurveyCard);
+                    // Auto-load student responses when tab first shown
+                    if (window.surveyAdmin && !window.surveyAdmin._studentsLoaded) {
+                        window.surveyAdmin.loadStudentResponses(1);
+                        window.surveyAdmin._studentsLoaded = true;
+                    }
                 });
+            }
+
+            // If survey tab is already active on page load, load students
+            if (window.surveyAdmin && surveyPane.classList.contains('show') && !window.surveyAdmin._studentsLoaded) {
+                window.surveyAdmin.loadStudentResponses(1);
+                window.surveyAdmin._studentsLoaded = true;
             }
         });

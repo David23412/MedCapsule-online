@@ -4,7 +4,6 @@ namespace App\Services;
 
 use App\Models\Mistake;
 use App\Models\Question;
-use App\Services\Learning\ConceptMemoryService;
 use App\Models\Course;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
@@ -13,11 +12,6 @@ use Illuminate\Support\Facades\Log;
 
 class MistakeService
 {
-    public function __construct(
-        private ConceptMemoryService $conceptMemoryService,
-    ) {
-    }
-
     const CACHE_TTL = 900; // 15 minutes
 
     /**
@@ -172,7 +166,6 @@ class MistakeService
 
         $mistake->applyRatedReview($rating, $mode);
         $mistake->save();
-        $this->conceptMemoryService->syncReview($mistake, $rating, 'quiz');
 
         $this->clearUserMistakeCaches($userId);
 

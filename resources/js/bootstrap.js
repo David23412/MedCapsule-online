@@ -3,7 +3,7 @@ window.axios = axios;
 
 window.axios.defaults.headers.common['X-Requested-With'] = 'XMLHttpRequest';
 
-const loginFallbackUrl = '/login';
+const loginFallbackUrl = '/';
 let authRedirectInProgress = false;
 
 function resolveRedirectUrl(payload) {
@@ -20,7 +20,7 @@ function redirectToLogin(redirectUrl) {
     }
 
     authRedirectInProgress = true;
-    window.location.assign(redirectUrl || loginFallbackUrl);
+    window.location.replace(redirectUrl || loginFallbackUrl);
 }
 
 async function handleFetchAuthFailure(response) {
