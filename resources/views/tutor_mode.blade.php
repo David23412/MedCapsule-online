@@ -168,6 +168,8 @@
             padding: 2.5rem;
             box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
             margin-bottom: 1rem;
+            user-select: text;
+            -webkit-user-select: text;
         }
 
         .question-content {
@@ -176,16 +178,22 @@
             align-items: flex-start;
             margin-bottom: 2rem;
             width: 100%;
+            user-select: text;
+            -webkit-user-select: text;
         }
 
         .question-main {
             flex: 1;
             min-width: 0;
+            user-select: text;
+            -webkit-user-select: text;
         }
 
         .question-text-container {
             flex: 1;
             min-width: 0;
+            user-select: text;
+            -webkit-user-select: text;
         }
 
         /* When there's no image, text takes full width */
@@ -695,6 +703,10 @@
             line-height: 1.7;
             color: #2c3e50;
             font-size: 1.1rem;
+            user-select: text;
+            -webkit-user-select: text;
+            -moz-user-select: text;
+            -ms-user-select: text;
         }
 
         .explanation-text strong {
@@ -722,7 +734,7 @@
         }
 
         .question-content {
-            overflow: hidden; /* Clear float */
+            display: flow-root; /* Clear float without overflow hidden */
         }
 
         .options-container {
@@ -732,6 +744,8 @@
         .option-content {
             font-size: 1rem;
             line-height: 1.5;
+            user-select: text;
+            -webkit-user-select: text;
         }
 
         .actions {
@@ -1406,7 +1420,7 @@
             /* Optimize rendering performance */
             .question-card {
                 will-change: auto;
-                contain: layout style paint;
+                contain: layout style;
             }
             
             /* Simplify progress bar animations */

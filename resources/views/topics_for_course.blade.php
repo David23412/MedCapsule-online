@@ -46,7 +46,7 @@
             <span></span><span></span><span></span>
         </button>
         <span class="topics-mobile-course-name">{{ $course->name }}</span>
-        <a href="{{ route('home') }}" class="topics-mobile-home-link" aria-label="Home">
+        <a href="{{ route('courses.index') }}" class="topics-mobile-home-link" aria-label="Home">
             <i class="fas fa-home"></i>
         </a>
     </header>
@@ -86,7 +86,7 @@
             <i class="fas fa-times"></i>
         </button>
 
-        <a href="{{ route('home') }}" class="sidebar-logo">
+        <a href="{{ route('courses.index') }}" class="sidebar-logo">
             <div class="sidebar-logo-icon">
                 <svg width="52" height="26" viewBox="0 0 52 26" fill="none" xmlns="http://www.w3.org/2000/svg" aria-label="MedCapsule">
                     <defs>
@@ -124,7 +124,7 @@
         <div class="sidebar-nav">
             <span class="sidebar-section-label">Navigation</span>
 
-            <a class="nav-link" href="{{ route('home') }}">
+            <a class="nav-link" href="{{ route('courses.index') }}">
                 <i class="fas fa-home nav-icon"></i>
                 <span class="nav-link-label">Home</span>
             </a>

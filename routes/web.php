@@ -20,7 +20,8 @@ use App\Http\Controllers\Notification\NotificationActionController;
 
 // Public routes
 Route::view('/', 'landing')->name('landing');
-Route::get('/home', [CourseController::class, 'index'])->name('home');
+Route::get('/courses', [CourseController::class, 'index'])->name('courses.index');
+Route::redirect('/home', '/courses', 301);
 Route::view('/terms', 'terms')->name('terms');
 Route::view('/privacy', 'privacy')->name('privacy');
 
@@ -87,7 +88,6 @@ Route::group([], function () {
     Route::post('/free-courses/unlock/submit', [FreeCourseSurveyController::class, 'submit'])->name('free-course-survey.submit');
     
     // Course routes
-    Route::get('/courses', [CourseController::class, 'index'])->name('courses.index');
     Route::get('/courses/create', [CourseController::class, 'create'])->name('courses.create');
     Route::get('/courses/{course}', [CourseController::class, 'show'])->name('courses.show');
 

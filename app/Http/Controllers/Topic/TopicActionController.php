@@ -26,7 +26,7 @@ class TopicActionController extends Controller
                 return redirect()->route('login')->with('error', 'Please login to continue.');
             }
             if (auth()->user()->role !== 'admin') {
-                return redirect()->route('home')->with('error', 'Access denied. Only admins can manage topics.');
+                return redirect()->route('courses.index')->with('error', 'Access denied. Only admins can manage topics.');
             }
             return $next($request);
         });
@@ -41,7 +41,7 @@ class TopicActionController extends Controller
             return redirect()->route('login')->with('error', 'Please login to continue.');
         }
         if (auth()->user()->role !== 'admin') {
-            return redirect()->route('home')->with('error', 'Access denied. Only admins can manage topics.');
+            return redirect()->route('courses.index')->with('error', 'Access denied. Only admins can manage topics.');
         }
 
         $validated = $request->validated();

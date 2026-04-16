@@ -956,7 +956,7 @@
         <div class="container">
             <a class="navbar-brand" href="/">MedCapsule</a>
             <div class="nav-links">
-                <a href="{{ route('home') }}" class="nav-link back-btn">
+                <a href="{{ route('courses.index') }}" class="nav-link back-btn">
                     <i class="fas fa-arrow-left me-1"></i>Back to Home
                 </a>
             </div>
