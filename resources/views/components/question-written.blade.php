@@ -1,8 +1,17 @@
 <div class="question-box written-question {{ $question->image_url ? 'has-image' : '' }}" data-question-id="{{ $question->id }}">
     <div class="question-content-wrapper">
         <div class="question-main">
-            <div class="question-text">
-                {{ $question->question }}
+            <div class="d-flex justify-content-between align-items-start mb-3">
+                <div class="question-text flex-grow-1">
+                    {{ $question->question }}
+                </div>
+                <div class="ms-2 d-flex flex-column align-items-end gap-1">
+                    @if(auth()->check() && auth()->user()->isAdmin())
+                        <button class="btn-admin-edit" onclick="openQuizEditModal({{ $question->id }})" title="Edit Question">
+                            <i class="fas fa-pen"></i> Edit
+                        </button>
+                    @endif
+                </div>
             </div>
 
             <div class="written-answer-container">

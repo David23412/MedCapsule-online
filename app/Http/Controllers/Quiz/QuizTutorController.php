@@ -295,32 +295,61 @@ class QuizTutorController extends Controller
     }
 
     /**
-     * Admin-only: Update a question inline from tutor mode.
+     * Admin-only: Update a question inline from tutor/quiz mode.
+     * Supports both MCQ and written question types.
      */
     public function updateQuestion(Request $request, Question $question)
     {
-        $request->validate([
-            'question'       => 'required|string|max:5000',
-            'option_a'       => 'nullable|string|max:1000',
-            'option_b'       => 'nullable|string|max:1000',
-            'option_c'       => 'nullable|string|max:1000',
-            'option_d'       => 'nullable|string|max:1000',
-            'correct_answer' => 'required|string|in:A,B,C,D',
-            'explanation'    => 'nullable|string|max:10000',
-        ]);
+        $questionType = $request->input('question_type', $question->question_type ?? 'multiple_choice');
+
+        $rules = [
+            'question'      => 'required|string|max:5000',
+            'question_type' => 'nullable|string|in:multiple_choice,written',
+            'explanation'   => 'nullable|string|max:10000',
+        ];
+
+        if ($questionType === 'written') {
+            $rules['correct_answer']      = 'required|string|max:5000';
+            $rules['alternative_answers'] = 'nullable|string|max:10000';
+        } else {
+            $rules['option_a']       = 'nullable|string|max:1000';
+            $rules['option_b']       = 'nullable|string|max:1000';
+            $rules['option_c']       = 'nullable|string|max:1000';
+            $rules['option_d']       = 'nullable|string|max:1000';
+            $rules['correct_answer'] = 'required|string|in:A,B,C,D';
+        }
+
+        $request->validate($rules);
 
         try {
-            $before = $question->only(['question', 'option_a', 'option_b', 'option_c', 'option_d', 'correct_answer', 'explanation']);
-
-            $question->update([
-                'question'       => $request->input('question'),
-                'option_a'       => $request->input('option_a'),
-                'option_b'       => $request->input('option_b'),
-                'option_c'       => $request->input('option_c'),
-                'option_d'       => $request->input('option_d'),
-                'correct_answer' => $request->input('correct_answer'),
-                'explanation'    => $request->input('explanation'),
+            $before = $question->only([
+                'question', 'question_type', 'option_a', 'option_b', 'option_c',
+                'option_d', 'correct_answer', 'alternative_answers', 'explanation',
             ]);
+
+            $updateData = [
+                'question'      => $request->input('question'),
+                'question_type' => $questionType,
+                'explanation'   => $request->input('explanation'),
+                'correct_answer' => $request->input('correct_answer'),
+            ];
+
+            if ($questionType === 'written') {
+                $updateData['alternative_answers'] = $request->input('alternative_answers');
+                // Clear MCQ fields for written questions
+                $updateData['option_a'] = null;
+                $updateData['option_b'] = null;
+                $updateData['option_c'] = null;
+                $updateData['option_d'] = null;
+            } else {
+                $updateData['option_a'] = $request->input('option_a');
+                $updateData['option_b'] = $request->input('option_b');
+                $updateData['option_c'] = $request->input('option_c');
+                $updateData['option_d'] = $request->input('option_d');
+                $updateData['alternative_answers'] = null;
+            }
+
+            $question->update($updateData);
 
             // Clear any related caches so the qbank reflects changes immediately
             Cache::forget("question_{$question->id}");
@@ -329,30 +358,35 @@ class QuizTutorController extends Controller
             }
 
             // Audit log for admin question edits
-            Log::info('Admin edited question from tutor mode', [
+            Log::info('Admin edited question inline', [
                 'admin_id'    => auth()->id(),
                 'question_id' => $question->id,
                 'topic_id'    => $question->topic_id,
                 'before'      => $before,
-                'after'       => $question->only(['question', 'option_a', 'option_b', 'option_c', 'option_d', 'correct_answer', 'explanation']),
+                'after'       => $question->only([
+                    'question', 'question_type', 'option_a', 'option_b', 'option_c',
+                    'option_d', 'correct_answer', 'alternative_answers', 'explanation',
+                ]),
             ]);
 
             return response()->json([
                 'success' => true,
                 'message' => 'Question updated successfully',
                 'data'    => [
-                    'id'             => $question->id,
-                    'question'       => $question->question,
-                    'option_a'       => $question->option_a,
-                    'option_b'       => $question->option_b,
-                    'option_c'       => $question->option_c,
-                    'option_d'       => $question->option_d,
-                    'correct_answer' => $question->correct_answer,
-                    'explanation'    => $question->explanation,
+                    'id'                  => $question->id,
+                    'question'            => $question->question,
+                    'question_type'       => $question->question_type,
+                    'option_a'            => $question->option_a,
+                    'option_b'            => $question->option_b,
+                    'option_c'            => $question->option_c,
+                    'option_d'            => $question->option_d,
+                    'correct_answer'      => $question->correct_answer,
+                    'alternative_answers' => $question->alternative_answers,
+                    'explanation'         => $question->explanation,
                 ],
             ]);
         } catch (\Exception $e) {
-            Log::error('Error updating question from tutor mode', [
+            Log::error('Error updating question inline', [
                 'error'       => $e->getMessage(),
                 'question_id' => $question->id,
                 'user_id'     => auth()->id(),
@@ -361,6 +395,48 @@ class QuizTutorController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to update question. Please try again.',
+            ], 500);
+        }
+    }
+
+    /**
+     * Admin-only: Delete a question inline from quiz/tutor mode.
+     */
+    public function deleteQuestion(Request $request, Question $question)
+    {
+        try {
+            $questionId = $question->id;
+            $topicId    = $question->topic_id;
+
+            $question->delete();
+
+            // Clear caches
+            Cache::forget("question_{$questionId}");
+            if ($topicId) {
+                Cache::forget("topic_{$topicId}_questions");
+                Cache::forget("topic:{$topicId}:questions_count");
+            }
+
+            Log::info('Admin deleted question inline', [
+                'admin_id'    => auth()->id(),
+                'question_id' => $questionId,
+                'topic_id'    => $topicId,
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Question deleted successfully',
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Error deleting question inline', [
+                'error'       => $e->getMessage(),
+                'question_id' => $question->id,
+                'user_id'     => auth()->id(),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to delete question. Please try again.',
             ], 500);
         }
     }

@@ -2546,63 +2546,586 @@
     </div>
 
     @if(auth()->user()->isAdmin())
-    <!-- Admin Edit Question Modal (must be outside popup-overlay so it's visible independently) -->
+    <!-- ============================================================
+         ADMIN INLINE EDIT MODAL — Full support for MCQ + Written
+         ============================================================ -->
+    <style>
+        /* ── Admin Edit Button ── */
+        .btn-admin-edit {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.35rem;
+            padding: 0.3rem 0.75rem;
+            background: linear-gradient(135deg, #f59e0b, #d97706);
+            color: #fff;
+            border: none;
+            border-radius: 6px;
+            font-size: 0.78rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            box-shadow: 0 2px 6px rgba(217,119,6,0.35);
+            white-space: nowrap;
+        }
+        .btn-admin-edit:hover {
+            background: linear-gradient(135deg, #d97706, #b45309);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 10px rgba(217,119,6,0.45);
+        }
+
+        /* ── Modal Overlay ── */
+        .edit-question-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(15,23,42,0.55);
+            backdrop-filter: blur(4px);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 10500;
+            padding: 1rem;
+        }
+        .edit-question-overlay.show { display: flex; }
+
+        /* ── Modal Box ── */
+        .edit-question-modal {
+            background: #fff;
+            border-radius: 16px;
+            width: 100%;
+            max-width: 660px;
+            max-height: 90vh;
+            overflow-y: auto;
+            box-shadow: 0 25px 60px rgba(0,0,0,0.25);
+            animation: editModalIn 0.25s cubic-bezier(0.22,1,0.36,1);
+        }
+        @keyframes editModalIn {
+            from { opacity: 0; transform: translateY(24px) scale(0.97); }
+            to   { opacity: 1; transform: translateY(0)   scale(1); }
+        }
+
+        /* ── Header ── */
+        .edit-modal-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 1.25rem 1.5rem;
+            border-bottom: 1px solid #e2e8f0;
+            background: linear-gradient(135deg, #0f172a, #1e40af);
+            border-radius: 16px 16px 0 0;
+        }
+        .edit-modal-header h5 {
+            color: #fff;
+            margin: 0;
+            font-size: 1.05rem;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        .edit-modal-close {
+            background: rgba(255,255,255,0.15);
+            border: 1px solid rgba(255,255,255,0.25);
+            border-radius: 8px;
+            color: #fff;
+            width: 32px;
+            height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        .edit-modal-close:hover { background: rgba(255,255,255,0.3); }
+
+        /* ── Body ── */
+        .edit-modal-body { padding: 1.5rem; }
+
+        /* Question type badge row */
+        .edit-type-row {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            margin-bottom: 1.25rem;
+            padding: 0.75rem 1rem;
+            background: #f8fafc;
+            border-radius: 10px;
+            border: 1px solid #e2e8f0;
+        }
+        .edit-type-label { font-size: 0.82rem; font-weight: 600; color: #64748b; }
+        .edit-type-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.3rem;
+            padding: 0.3rem 0.75rem;
+            border-radius: 99px;
+            font-size: 0.8rem;
+            font-weight: 700;
+            cursor: pointer;
+            border: 2px solid transparent;
+            transition: all 0.2s;
+        }
+        .edit-type-badge.mcq  { background: #dbeafe; color: #1d4ed8; border-color: #93c5fd; }
+        .edit-type-badge.written { background: #d1fae5; color: #065f46; border-color: #6ee7b7; }
+        .edit-type-badge.mcq.active  { background: #1d4ed8; color: #fff; }
+        .edit-type-badge.written.active { background: #065f46; color: #fff; }
+
+        /* Fields */
+        .edit-field { margin-bottom: 1.1rem; }
+        .edit-field label {
+            display: block;
+            font-size: 0.82rem;
+            font-weight: 600;
+            color: #374151;
+            margin-bottom: 0.4rem;
+        }
+        .edit-input {
+            width: 100%;
+            padding: 0.65rem 0.9rem;
+            border: 1.5px solid #d1d5db;
+            border-radius: 8px;
+            font-size: 0.95rem;
+            font-family: inherit;
+            transition: border-color 0.2s, box-shadow 0.2s;
+            box-sizing: border-box;
+            resize: vertical;
+        }
+        .edit-input:focus {
+            outline: none;
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 3px rgba(59,130,246,0.15);
+        }
+
+        /* Options grid */
+        .edit-options-section { margin-bottom: 1.1rem; }
+        .edit-options-section label {
+            display: block;
+            font-size: 0.82rem;
+            font-weight: 600;
+            color: #374151;
+            margin-bottom: 0.6rem;
+        }
+        .edit-option-row {
+            display: flex;
+            align-items: center;
+            gap: 0.6rem;
+            margin-bottom: 0.55rem;
+        }
+        .edit-option-radio { display: flex; align-items: center; gap: 0.3rem; flex-shrink: 0; }
+        .edit-option-radio input[type="radio"] { width: 16px; height: 16px; accent-color: #16a34a; cursor: pointer; }
+        .edit-radio-label {
+            font-weight: 700; font-size: 0.9rem; color: #374151;
+            background: #f1f5f9; border-radius: 6px; width: 28px; height: 28px;
+            display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+        }
+        .edit-option-row .edit-input { margin-bottom: 0; flex: 1; }
+
+        /* ── Footer ── */
+        .edit-modal-footer {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 1rem 1.5rem;
+            border-top: 1px solid #e2e8f0;
+            background: #f8fafc;
+            border-radius: 0 0 16px 16px;
+            gap: 0.75rem;
+            flex-wrap: wrap;
+        }
+        .edit-footer-left { display: flex; gap: 0.5rem; }
+        .edit-footer-right { display: flex; gap: 0.5rem; }
+
+        .edit-btn {
+            padding: 0.6rem 1.25rem;
+            border: none;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
+            transition: all 0.2s ease;
+        }
+        .edit-btn-cancel { background: #e2e8f0; color: #475569; }
+        .edit-btn-cancel:hover { background: #cbd5e1; }
+        .edit-btn-save { background: linear-gradient(135deg, #2563eb, #1d4ed8); color: #fff; }
+        .edit-btn-save:hover { background: linear-gradient(135deg, #1d4ed8, #1e3a8a); transform: translateY(-1px); }
+        .edit-btn-save:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+        .edit-btn-delete { background: linear-gradient(135deg, #dc2626, #b91c1c); color: #fff; }
+        .edit-btn-delete:hover { background: linear-gradient(135deg, #b91c1c, #991b1b); transform: translateY(-1px); }
+
+        /* Status */
+        .edit-status {
+            padding: 0 1.5rem 1rem;
+            font-size: 0.88rem;
+            font-weight: 500;
+            min-height: 1.5rem;
+        }
+        .edit-status.success { color: #16a34a; }
+        .edit-status.error   { color: #dc2626; }
+
+        /* Delete confirmation */
+        .delete-confirm-box {
+            display: none;
+            background: #fef2f2;
+            border: 1.5px solid #fca5a5;
+            border-radius: 10px;
+            padding: 1rem 1.25rem;
+            margin: 0 1.5rem 1rem;
+        }
+        .delete-confirm-box.show { display: block; }
+        .delete-confirm-box p { margin: 0 0 0.75rem; color: #7f1d1d; font-size: 0.9rem; font-weight: 500; }
+        .delete-confirm-actions { display: flex; gap: 0.5rem; }
+    </style>
+
     <div class="edit-question-overlay" id="edit-question-overlay">
         <div class="edit-question-modal" id="edit-question-modal">
+
             <div class="edit-modal-header">
                 <h5><i class="fas fa-pen"></i> Edit Question</h5>
                 <button class="edit-modal-close" onclick="closeEditModal()" title="Close">&times;</button>
             </div>
+
             <div class="edit-modal-body">
                 <input type="hidden" id="edit-question-id">
-                <div class="edit-field">
-                    <label for="edit-question-text">Question Text</label>
-                    <textarea id="edit-question-text" class="edit-input" rows="4"></textarea>
+                <input type="hidden" id="edit-question-type">
+
+                <!-- Question type indicator + toggle -->
+                <div class="edit-type-row">
+                    <span class="edit-type-label">Type:</span>
+                    <span class="edit-type-badge mcq" id="edit-type-mcq" onclick="switchEditType('multiple_choice')">
+                        <i class="fas fa-list-ul"></i> Multiple Choice
+                    </span>
+                    <span class="edit-type-badge written" id="edit-type-written" onclick="switchEditType('written')">
+                        <i class="fas fa-pencil-alt"></i> Written
+                    </span>
                 </div>
-                <div class="edit-options-grid">
-                    <div class="edit-option-row">
-                        <div class="edit-option-radio">
-                            <input type="radio" name="edit-correct" id="edit-correct-A" value="A">
-                            <label for="edit-correct-A" class="edit-radio-label">A</label>
+
+                <!-- Question text field -->
+                <div class="edit-field">
+                    <label for="edit-question-text"><i class="fas fa-question-circle"></i> Question Text</label>
+                    <textarea id="edit-question-text" class="edit-input" rows="4" placeholder="Enter question text..."></textarea>
+                </div>
+
+                <!-- MCQ fields -->
+                <div id="edit-mcq-section">
+                    <div class="edit-options-section">
+                        <label><i class="fas fa-check-circle" style="color:#16a34a"></i> Options — select the radio button next to the correct answer</label>
+                        <div class="edit-option-row">
+                            <div class="edit-option-radio">
+                                <input type="radio" name="edit-correct" id="edit-correct-A" value="A">
+                                <label for="edit-correct-A" class="edit-radio-label">A</label>
+                            </div>
+                            <input type="text" id="edit-option-a" class="edit-input" placeholder="Option A">
                         </div>
-                        <input type="text" id="edit-option-a" class="edit-input" placeholder="Option A">
-                    </div>
-                    <div class="edit-option-row">
-                        <div class="edit-option-radio">
-                            <input type="radio" name="edit-correct" id="edit-correct-B" value="B">
-                            <label for="edit-correct-B" class="edit-radio-label">B</label>
+                        <div class="edit-option-row">
+                            <div class="edit-option-radio">
+                                <input type="radio" name="edit-correct" id="edit-correct-B" value="B">
+                                <label for="edit-correct-B" class="edit-radio-label">B</label>
+                            </div>
+                            <input type="text" id="edit-option-b" class="edit-input" placeholder="Option B">
                         </div>
-                        <input type="text" id="edit-option-b" class="edit-input" placeholder="Option B">
-                    </div>
-                    <div class="edit-option-row">
-                        <div class="edit-option-radio">
-                            <input type="radio" name="edit-correct" id="edit-correct-C" value="C">
-                            <label for="edit-correct-C" class="edit-radio-label">C</label>
+                        <div class="edit-option-row">
+                            <div class="edit-option-radio">
+                                <input type="radio" name="edit-correct" id="edit-correct-C" value="C">
+                                <label for="edit-correct-C" class="edit-radio-label">C</label>
+                            </div>
+                            <input type="text" id="edit-option-c" class="edit-input" placeholder="Option C">
                         </div>
-                        <input type="text" id="edit-option-c" class="edit-input" placeholder="Option C">
-                    </div>
-                    <div class="edit-option-row">
-                        <div class="edit-option-radio">
-                            <input type="radio" name="edit-correct" id="edit-correct-D" value="D">
-                            <label for="edit-correct-D" class="edit-radio-label">D</label>
+                        <div class="edit-option-row">
+                            <div class="edit-option-radio">
+                                <input type="radio" name="edit-correct" id="edit-correct-D" value="D">
+                                <label for="edit-correct-D" class="edit-radio-label">D</label>
+                            </div>
+                            <input type="text" id="edit-option-d" class="edit-input" placeholder="Option D">
                         </div>
-                        <input type="text" id="edit-option-d" class="edit-input" placeholder="Option D">
                     </div>
                 </div>
+
+                <!-- Written fields -->
+                <div id="edit-written-section" style="display:none;">
+                    <div class="edit-field">
+                        <label for="edit-correct-answer-text"><i class="fas fa-check" style="color:#16a34a"></i> Correct Answer</label>
+                        <textarea id="edit-correct-answer-text" class="edit-input" rows="3" placeholder="Enter the expected correct answer..."></textarea>
+                    </div>
+                    <div class="edit-field">
+                        <label for="edit-alternative-answers"><i class="fas fa-random" style="color:#7c3aed"></i> Alternative Acceptable Answers <span style="font-weight:400;color:#94a3b8">(one per line, optional)</span></label>
+                        <textarea id="edit-alternative-answers" class="edit-input" rows="3" placeholder="Enter alternative answers, one per line..."></textarea>
+                    </div>
+                </div>
+
+                <!-- Explanation (both types) -->
                 <div class="edit-field">
-                    <label for="edit-explanation">Explanation</label>
-                    <textarea id="edit-explanation" class="edit-input" rows="3"></textarea>
+                    <label for="edit-explanation"><i class="fas fa-lightbulb" style="color:#d97706"></i> Explanation <span style="font-weight:400;color:#94a3b8">(optional)</span></label>
+                    <textarea id="edit-explanation" class="edit-input" rows="3" placeholder="Add an explanation for this question..."></textarea>
                 </div>
             </div>
-            <div class="edit-modal-footer">
-                <button class="edit-btn edit-btn-cancel" onclick="closeEditModal()">Cancel</button>
-                <button class="edit-btn edit-btn-save" id="edit-save-btn" onclick="saveQuestionEdit()">
-                    <i class="fas fa-save"></i> Save Changes
-                </button>
+
+            <!-- Delete confirmation box -->
+            <div class="delete-confirm-box" id="delete-confirm-box">
+                <p><i class="fas fa-exclamation-triangle"></i> Are you sure you want to permanently delete this question? This action cannot be undone.</p>
+                <div class="delete-confirm-actions">
+                    <button class="edit-btn edit-btn-delete" id="confirm-delete-btn" onclick="confirmDeleteQuestion()">
+                        <i class="fas fa-trash"></i> Yes, Delete
+                    </button>
+                    <button class="edit-btn edit-btn-cancel" onclick="cancelDeleteQuestion()">Cancel</button>
+                </div>
             </div>
+
             <div class="edit-status" id="edit-status"></div>
+
+            <div class="edit-modal-footer">
+                <div class="edit-footer-left">
+                    <button class="edit-btn edit-btn-delete" id="edit-delete-btn" onclick="promptDeleteQuestion()">
+                        <i class="fas fa-trash-alt"></i> Delete Question
+                    </button>
+                </div>
+                <div class="edit-footer-right">
+                    <button class="edit-btn edit-btn-cancel" onclick="closeEditModal()">Cancel</button>
+                    <button class="edit-btn edit-btn-save" id="edit-save-btn" onclick="saveQuestionEdit()">
+                        <i class="fas fa-save"></i> Save Changes
+                    </button>
+                </div>
+            </div>
         </div>
     </div>
+
+    <script>
+    // ─────────────────────────────────────────────────────────────
+    //  ADMIN INLINE EDIT MODAL — tutor_mode.blade.php
+    // ─────────────────────────────────────────────────────────────
+    const EDIT_UPDATE_URL = '/quiz/tutor/question/';
+    const EDIT_DELETE_URL = '/quiz/tutor/question/';
+    const EDIT_CSRF       = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+
+    function openEditModal(questionId) {
+        const data = window.TUTOR_CONFIG?.questionData?.[questionId];
+        if (!data) { alert('Question data not found.'); return; }
+
+        // Populate hidden fields
+        document.getElementById('edit-question-id').value   = questionId;
+        document.getElementById('edit-question-type').value = data.question_type || 'multiple_choice';
+
+        // Question text
+        document.getElementById('edit-question-text').value = data.question_text || '';
+
+        // Explanation
+        document.getElementById('edit-explanation').value   = data.explanation || '';
+
+        // Switch UI to the right type
+        const qType = data.question_type === 'written' ? 'written' : 'multiple_choice';
+        switchEditType(qType, /* populate= */ true, data);
+
+        // Reset status & delete confirm
+        document.getElementById('edit-status').textContent = '';
+        document.getElementById('edit-status').className   = 'edit-status';
+        document.getElementById('delete-confirm-box').classList.remove('show');
+        document.getElementById('edit-save-btn').disabled  = false;
+
+        // Show overlay
+        document.getElementById('edit-question-overlay').classList.add('show');
+        document.body.style.overflow = 'hidden';
+    }
+
+    function switchEditType(type, populate, data) {
+        document.getElementById('edit-question-type').value = type;
+
+        const mcqBadge   = document.getElementById('edit-type-mcq');
+        const writBadge  = document.getElementById('edit-type-written');
+        const mcqSection = document.getElementById('edit-mcq-section');
+        const writSection = document.getElementById('edit-written-section');
+
+        if (type === 'written') {
+            mcqBadge.classList.remove('active');
+            writBadge.classList.add('active');
+            mcqSection.style.display  = 'none';
+            writSection.style.display = 'block';
+            if (populate && data) {
+                document.getElementById('edit-correct-answer-text').value  = data.correct_answer       || '';
+                document.getElementById('edit-alternative-answers').value  = data.alternative_answers  || '';
+            }
+        } else {
+            writBadge.classList.remove('active');
+            mcqBadge.classList.add('active');
+            writSection.style.display = 'none';
+            mcqSection.style.display  = 'block';
+            if (populate && data) {
+                document.getElementById('edit-option-a').value = data.option_a || '';
+                document.getElementById('edit-option-b').value = data.option_b || '';
+                document.getElementById('edit-option-c').value = data.option_c || '';
+                document.getElementById('edit-option-d').value = data.option_d || '';
+                const correct = (data.correct_answer || '').toUpperCase();
+                const radio = document.getElementById('edit-correct-' + correct);
+                if (radio) radio.checked = true;
+            }
+        }
+    }
+
+    function closeEditModal() {
+        document.getElementById('edit-question-overlay').classList.remove('show');
+        document.body.style.overflow = '';
+    }
+
+    async function saveQuestionEdit() {
+        const questionId = document.getElementById('edit-question-id').value;
+        const qType      = document.getElementById('edit-question-type').value;
+        const saveBtn    = document.getElementById('edit-save-btn');
+        const statusEl   = document.getElementById('edit-status');
+
+        const questionText = document.getElementById('edit-question-text').value.trim();
+        if (!questionText) { setEditStatus('Question text is required.', 'error'); return; }
+
+        let payload = {
+            _method:        'PUT',
+            question:       questionText,
+            question_type:  qType,
+            explanation:    document.getElementById('edit-explanation').value.trim(),
+        };
+
+        if (qType === 'written') {
+            const correctText = document.getElementById('edit-correct-answer-text').value.trim();
+            if (!correctText) { setEditStatus('Correct answer is required for written questions.', 'error'); return; }
+            payload.correct_answer      = correctText;
+            payload.alternative_answers = document.getElementById('edit-alternative-answers').value.trim();
+        } else {
+            const checked = document.querySelector('input[name="edit-correct"]:checked');
+            if (!checked) { setEditStatus('Please select the correct answer.', 'error'); return; }
+            payload.correct_answer = checked.value;
+            payload.option_a = document.getElementById('edit-option-a').value.trim();
+            payload.option_b = document.getElementById('edit-option-b').value.trim();
+            payload.option_c = document.getElementById('edit-option-c').value.trim();
+            payload.option_d = document.getElementById('edit-option-d').value.trim();
+        }
+
+        saveBtn.disabled = true;
+        setEditStatus('Saving…', '');
+
+        try {
+            const res = await fetch(EDIT_UPDATE_URL + questionId, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': EDIT_CSRF,
+                    'Accept': 'application/json',
+                },
+                body: JSON.stringify(payload),
+            });
+            const json = await res.json();
+
+            if (json.success) {
+                setEditStatus('✓ Saved successfully!', 'success');
+                // Update live question text on the page
+                updateLiveQuestionCard(questionId, payload, json.data);
+                // Update TUTOR_CONFIG cache
+                if (window.TUTOR_CONFIG?.questionData?.[questionId]) {
+                    Object.assign(window.TUTOR_CONFIG.questionData[questionId], {
+                        question_text:        payload.question,
+                        question_type:        payload.question_type,
+                        correct_answer:       payload.correct_answer,
+                        explanation:          payload.explanation,
+                        alternative_answers:  payload.alternative_answers || '',
+                        option_a:             payload.option_a || '',
+                        option_b:             payload.option_b || '',
+                        option_c:             payload.option_c || '',
+                        option_d:             payload.option_d || '',
+                    });
+                }
+                setTimeout(closeEditModal, 900);
+            } else {
+                setEditStatus(json.message || 'Error saving.', 'error');
+                saveBtn.disabled = false;
+            }
+        } catch (err) {
+            setEditStatus('Network error: ' + err.message, 'error');
+            saveBtn.disabled = false;
+        }
+    }
+
+    function updateLiveQuestionCard(questionId, payload, serverData) {
+        // Update the visible question text in all cards on the page
+        document.querySelectorAll('.question-card, .question-box, .written-question').forEach(card => {
+            const cid = card.dataset.questionId || card.id?.replace('question-', '');
+            if (String(cid) !== String(questionId) && card.id !== 'question-' + questionId) return;
+            const textEl = card.querySelector('.question-text');
+            if (textEl) textEl.textContent = payload.question;
+        });
+        // Also match by id="question-X" pattern used in tutor mode
+        document.querySelectorAll('[id^="question-"]').forEach(card => {
+            const idx = card.id.replace('question-', '');
+            const optionsContainer = card.querySelector('.options-container');
+            if (!optionsContainer) return;
+            if (String(optionsContainer.dataset.questionId) !== String(questionId)) return;
+            const textEl = card.querySelector('.question-text');
+            if (textEl) textEl.textContent = payload.question;
+        });
+    }
+
+    function promptDeleteQuestion() {
+        document.getElementById('delete-confirm-box').classList.add('show');
+        document.getElementById('edit-save-btn').disabled = true;
+        document.getElementById('edit-delete-btn').style.display = 'none';
+    }
+
+    function cancelDeleteQuestion() {
+        document.getElementById('delete-confirm-box').classList.remove('show');
+        document.getElementById('edit-save-btn').disabled = false;
+        document.getElementById('edit-delete-btn').style.display = '';
+    }
+
+    async function confirmDeleteQuestion() {
+        const questionId = document.getElementById('edit-question-id').value;
+        const confirmBtn = document.getElementById('confirm-delete-btn');
+        confirmBtn.disabled = true;
+        confirmBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Deleting…';
+        setEditStatus('Deleting question…', '');
+
+        try {
+            const res = await fetch(EDIT_DELETE_URL + questionId, {
+                method: 'DELETE',
+                headers: {
+                    'X-CSRF-TOKEN': EDIT_CSRF,
+                    'Accept': 'application/json',
+                },
+            });
+            const json = await res.json();
+
+            if (json.success) {
+                setEditStatus('✓ Question deleted.', 'success');
+                // Remove the card from the page
+                document.querySelectorAll('.question-card, .question-box, .written-question').forEach(card => {
+                    const cid = card.dataset.questionId;
+                    if (String(cid) === String(questionId)) card.remove();
+                });
+                // Also remove by id pattern
+                document.querySelectorAll('[id^="question-"]').forEach(card => {
+                    const optCont = card.querySelector(`.options-container[data-question-id="${questionId}"]`);
+                    if (optCont) card.remove();
+                });
+                setTimeout(closeEditModal, 800);
+            } else {
+                setEditStatus(json.message || 'Error deleting.', 'error');
+                confirmBtn.disabled = false;
+                confirmBtn.innerHTML = '<i class="fas fa-trash"></i> Yes, Delete';
+            }
+        } catch (err) {
+            setEditStatus('Network error: ' + err.message, 'error');
+            confirmBtn.disabled = false;
+            confirmBtn.innerHTML = '<i class="fas fa-trash"></i> Yes, Delete';
+        }
+    }
+
+    function setEditStatus(msg, cls) {
+        const el = document.getElementById('edit-status');
+        el.textContent = msg;
+        el.className   = 'edit-status' + (cls ? ' ' + cls : '');
+    }
+
+    // Close overlay on backdrop click
+    document.getElementById('edit-question-overlay')?.addEventListener('click', function(e) {
+        if (e.target === this) closeEditModal();
+    });
+    </script>
     @endif
 
     <!-- Quiz Results Popup - EXACT COPY FROM SOLVE_QUIZ -->
@@ -2660,7 +3183,8 @@
                         option_a: @json($qObj->option_a ?? ''),
                         option_b: @json($qObj->option_b ?? ''),
                         option_c: @json($qObj->option_c ?? ''),
-                        option_d: @json($qObj->option_d ?? '')
+                        option_d: @json($qObj->option_d ?? ''),
+                        alternative_answers: @json($qObj->alternative_answers ?? ''),
                         @endif
                     },
                 @endforeach

@@ -1284,8 +1284,9 @@ function initializeMistakesLearnPage() {
 
                             applySessionOutcome(currentQuestion, isCorrect);
                             
-                            // Move to next question after a longer delay for written answers to allow reading
-                            // the feedback, explanation, and correct answer before cycling
+                            // Correct: cycle at the same speed as normal MC questions (600ms)
+                            // Incorrect: 2500ms so the user can read the correct answer
+                            const cycleDelay = isCorrect ? 600 : 2500;
                             setTimeout(() => {
                                 // Reset the form
                                 textarea.value = '';
@@ -1305,7 +1306,7 @@ function initializeMistakesLearnPage() {
                                 // Move to next question using patch cycling
                                 showNextQuestion();
                                 updateStageIndicator();
-                            }, 5000);
+                            }, cycleDelay);
                         } else {
                             console.error('Error checking answer:', data.message);
                             feedbackElement.textContent = 'Error checking answer. Please try again.';

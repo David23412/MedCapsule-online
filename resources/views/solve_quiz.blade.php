@@ -1446,6 +1446,11 @@
                                             </div>
                                             
                                             <div class="ms-2 d-flex flex-column align-items-end gap-1">
+                                                @if(auth()->check() && auth()->user()->isAdmin())
+                                                    <button class="btn-admin-edit" onclick="openQuizEditModal({{ $question->id }})" title="Edit Question">
+                                                        <i class="fas fa-pen"></i> Edit
+                                                    </button>
+                                                @endif
                                                 @if(!empty($question->enhanced_source_badges))
                                                     @foreach($question->enhanced_source_badges as $badge)
                                                         {{-- Filter out the badge for the current topic being viewed (redundant) --}}
@@ -2784,5 +2789,402 @@
             }
         }
     </script>
+
+    @if(auth()->check() && auth()->user()->isAdmin())
+    {{-- ======================================================
+         ADMIN QUESTION EDIT MODAL — solve_quiz.blade.php
+         Supports MCQ + Written + Delete
+    ====================================================== --}}
+    <script>
+    window.QUIZ_QUESTION_DATA = {
+        @foreach($questions as $question)
+        {{ $question->id }}: {
+            question_text:        @json($question->question ?? ''),
+            question_type:        @json($question->question_type ?? 'multiple_choice'),
+            correct_answer:       @json($question->correct_answer ?? ''),
+            explanation:          @json($question->explanation ?? ''),
+            option_a:             @json($question->option_a ?? ''),
+            option_b:             @json($question->option_b ?? ''),
+            option_c:             @json($question->option_c ?? ''),
+            option_d:             @json($question->option_d ?? ''),
+            alternative_answers:  @json($question->alternative_answers ?? ''),
+        },
+        @endforeach
+    };
+    </script>
+
+    <style>
+        /* ── Admin Edit Button (solve_quiz) ── */
+        .btn-admin-edit {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.35rem;
+            padding: 0.3rem 0.75rem;
+            background: linear-gradient(135deg, #f59e0b, #d97706);
+            color: #fff;
+            border: none;
+            border-radius: 6px;
+            font-size: 0.78rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            box-shadow: 0 2px 6px rgba(217,119,6,0.35);
+            white-space: nowrap;
+            z-index: 10;
+            position: relative;
+        }
+        .btn-admin-edit:hover {
+            background: linear-gradient(135deg, #d97706, #b45309);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 10px rgba(217,119,6,0.45);
+        }
+        /* Reuse edit-question-overlay/modal styles from tutor_mode */
+        #sq-edit-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(15,23,42,0.55);
+            backdrop-filter: blur(4px);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 10500;
+            padding: 1rem;
+        }
+        #sq-edit-overlay.show { display: flex; }
+        #sq-edit-modal {
+            background: #fff;
+            border-radius: 16px;
+            width: 100%;
+            max-width: 660px;
+            max-height: 90vh;
+            overflow-y: auto;
+            box-shadow: 0 25px 60px rgba(0,0,0,0.25);
+            animation: sqEditIn 0.25s cubic-bezier(0.22,1,0.36,1);
+        }
+        @keyframes sqEditIn {
+            from { opacity:0; transform:translateY(24px) scale(0.97); }
+            to   { opacity:1; transform:translateY(0) scale(1); }
+        }
+        #sq-edit-modal .eq-header {
+            display:flex; align-items:center; justify-content:space-between;
+            padding:1.25rem 1.5rem;
+            background:linear-gradient(135deg,#0f172a,#1e40af);
+            border-radius:16px 16px 0 0;
+        }
+        #sq-edit-modal .eq-header h5 { color:#fff; margin:0; font-size:1.05rem; font-weight:700; display:flex; align-items:center; gap:.5rem; }
+        #sq-edit-modal .eq-close {
+            background:rgba(255,255,255,.15); border:1px solid rgba(255,255,255,.25); border-radius:8px;
+            color:#fff; width:32px; height:32px; display:flex; align-items:center; justify-content:center;
+            font-size:1.2rem; cursor:pointer; transition:background .2s;
+        }
+        #sq-edit-modal .eq-close:hover { background:rgba(255,255,255,.3); }
+        #sq-edit-modal .eq-body { padding:1.5rem; }
+        .sq-type-row {
+            display:flex; align-items:center; gap:.75rem; margin-bottom:1.25rem;
+            padding:.75rem 1rem; background:#f8fafc; border-radius:10px; border:1px solid #e2e8f0;
+        }
+        .sq-type-label { font-size:.82rem; font-weight:600; color:#64748b; }
+        .sq-type-badge {
+            display:inline-flex; align-items:center; gap:.3rem; padding:.3rem .75rem;
+            border-radius:99px; font-size:.8rem; font-weight:700; cursor:pointer;
+            border:2px solid transparent; transition:all .2s;
+        }
+        .sq-type-badge.mcq  { background:#dbeafe; color:#1d4ed8; border-color:#93c5fd; }
+        .sq-type-badge.written { background:#d1fae5; color:#065f46; border-color:#6ee7b7; }
+        .sq-type-badge.mcq.active  { background:#1d4ed8; color:#fff; }
+        .sq-type-badge.written.active { background:#065f46; color:#fff; }
+        .sq-field { margin-bottom:1.1rem; }
+        .sq-field label { display:block; font-size:.82rem; font-weight:600; color:#374151; margin-bottom:.4rem; }
+        .sq-input {
+            width:100%; padding:.65rem .9rem; border:1.5px solid #d1d5db; border-radius:8px;
+            font-size:.95rem; font-family:inherit; transition:border-color .2s,box-shadow .2s;
+            box-sizing:border-box; resize:vertical;
+        }
+        .sq-input:focus { outline:none; border-color:#3b82f6; box-shadow:0 0 0 3px rgba(59,130,246,.15); }
+        .sq-opts-section { margin-bottom:1.1rem; }
+        .sq-opts-section > label { display:block; font-size:.82rem; font-weight:600; color:#374151; margin-bottom:.6rem; }
+        .sq-opt-row { display:flex; align-items:center; gap:.6rem; margin-bottom:.55rem; }
+        .sq-opt-radio { display:flex; align-items:center; gap:.3rem; flex-shrink:0; }
+        .sq-opt-radio input[type="radio"] { width:16px; height:16px; accent-color:#16a34a; cursor:pointer; }
+        .sq-radio-lbl {
+            font-weight:700; font-size:.9rem; color:#374151;
+            background:#f1f5f9; border-radius:6px; width:28px; height:28px;
+            display:flex; align-items:center; justify-content:center; flex-shrink:0;
+        }
+        .sq-opt-row .sq-input { margin-bottom:0; flex:1; }
+        .sq-footer {
+            display:flex; align-items:center; justify-content:space-between;
+            padding:1rem 1.5rem; border-top:1px solid #e2e8f0;
+            background:#f8fafc; border-radius:0 0 16px 16px; gap:.75rem; flex-wrap:wrap;
+        }
+        .sq-footer-left { display:flex; gap:.5rem; }
+        .sq-footer-right { display:flex; gap:.5rem; }
+        .sq-btn {
+            padding:.6rem 1.25rem; border:none; border-radius:8px; font-size:.9rem; font-weight:600;
+            cursor:pointer; display:inline-flex; align-items:center; gap:.4rem; transition:all .2s ease;
+        }
+        .sq-btn-cancel { background:#e2e8f0; color:#475569; }
+        .sq-btn-cancel:hover { background:#cbd5e1; }
+        .sq-btn-save { background:linear-gradient(135deg,#2563eb,#1d4ed8); color:#fff; }
+        .sq-btn-save:hover { background:linear-gradient(135deg,#1d4ed8,#1e3a8a); transform:translateY(-1px); }
+        .sq-btn-save:disabled { opacity:.6; cursor:not-allowed; transform:none; }
+        .sq-btn-delete { background:linear-gradient(135deg,#dc2626,#b91c1c); color:#fff; }
+        .sq-btn-delete:hover { background:linear-gradient(135deg,#b91c1c,#991b1b); transform:translateY(-1px); }
+        .sq-status { padding:0 1.5rem 1rem; font-size:.88rem; font-weight:500; min-height:1.5rem; }
+        .sq-status.success { color:#16a34a; }
+        .sq-status.error   { color:#dc2626; }
+        .sq-del-confirm {
+            display:none; background:#fef2f2; border:1.5px solid #fca5a5;
+            border-radius:10px; padding:1rem 1.25rem; margin:0 1.5rem 1rem;
+        }
+        .sq-del-confirm.show { display:block; }
+        .sq-del-confirm p { margin:0 0 .75rem; color:#7f1d1d; font-size:.9rem; font-weight:500; }
+        .sq-del-actions { display:flex; gap:.5rem; }
+    </style>
+
+    <!-- Admin Edit Modal DOM -->
+    <div id="sq-edit-overlay">
+        <div id="sq-edit-modal">
+            <div class="eq-header">
+                <h5><i class="fas fa-pen"></i> Edit Question</h5>
+                <button class="eq-close" onclick="sqCloseModal()">&times;</button>
+            </div>
+            <div class="eq-body">
+                <input type="hidden" id="sq-q-id">
+                <input type="hidden" id="sq-q-type">
+
+                <div class="sq-type-row">
+                    <span class="sq-type-label">Type:</span>
+                    <span class="sq-type-badge mcq" id="sq-type-mcq" onclick="sqSwitchType('multiple_choice')">
+                        <i class="fas fa-list-ul"></i> Multiple Choice
+                    </span>
+                    <span class="sq-type-badge written" id="sq-type-written" onclick="sqSwitchType('written')">
+                        <i class="fas fa-pencil-alt"></i> Written
+                    </span>
+                </div>
+
+                <div class="sq-field">
+                    <label><i class="fas fa-question-circle"></i> Question Text</label>
+                    <textarea id="sq-q-text" class="sq-input" rows="4" placeholder="Enter question text..."></textarea>
+                </div>
+
+                <div id="sq-mcq-section">
+                    <div class="sq-opts-section">
+                        <label><i class="fas fa-check-circle" style="color:#16a34a"></i> Options — select radio next to the correct answer</label>
+                        <div class="sq-opt-row">
+                            <div class="sq-opt-radio"><input type="radio" name="sq-correct" id="sq-ca" value="A"><label for="sq-ca" class="sq-radio-lbl">A</label></div>
+                            <input type="text" id="sq-oa" class="sq-input" placeholder="Option A">
+                        </div>
+                        <div class="sq-opt-row">
+                            <div class="sq-opt-radio"><input type="radio" name="sq-correct" id="sq-cb" value="B"><label for="sq-cb" class="sq-radio-lbl">B</label></div>
+                            <input type="text" id="sq-ob" class="sq-input" placeholder="Option B">
+                        </div>
+                        <div class="sq-opt-row">
+                            <div class="sq-opt-radio"><input type="radio" name="sq-correct" id="sq-cc" value="C"><label for="sq-cc" class="sq-radio-lbl">C</label></div>
+                            <input type="text" id="sq-oc" class="sq-input" placeholder="Option C">
+                        </div>
+                        <div class="sq-opt-row">
+                            <div class="sq-opt-radio"><input type="radio" name="sq-correct" id="sq-cd" value="D"><label for="sq-cd" class="sq-radio-lbl">D</label></div>
+                            <input type="text" id="sq-od" class="sq-input" placeholder="Option D">
+                        </div>
+                    </div>
+                </div>
+
+                <div id="sq-written-section" style="display:none;">
+                    <div class="sq-field">
+                        <label><i class="fas fa-check" style="color:#16a34a"></i> Correct Answer</label>
+                        <textarea id="sq-correct-text" class="sq-input" rows="3" placeholder="Enter the expected correct answer..."></textarea>
+                    </div>
+                    <div class="sq-field">
+                        <label><i class="fas fa-random" style="color:#7c3aed"></i> Alternative Answers <span style="font-weight:400;color:#94a3b8">(one per line, optional)</span></label>
+                        <textarea id="sq-alt-answers" class="sq-input" rows="3" placeholder="Enter alternative answers, one per line..."></textarea>
+                    </div>
+                </div>
+
+                <div class="sq-field">
+                    <label><i class="fas fa-lightbulb" style="color:#d97706"></i> Explanation <span style="font-weight:400;color:#94a3b8">(optional)</span></label>
+                    <textarea id="sq-explanation" class="sq-input" rows="3" placeholder="Add an explanation..."></textarea>
+                </div>
+            </div>
+
+            <div class="sq-del-confirm" id="sq-del-confirm">
+                <p><i class="fas fa-exclamation-triangle"></i> Are you sure you want to permanently delete this question? This cannot be undone.</p>
+                <div class="sq-del-actions">
+                    <button class="sq-btn sq-btn-delete" id="sq-confirm-del" onclick="sqConfirmDelete()"><i class="fas fa-trash"></i> Yes, Delete</button>
+                    <button class="sq-btn sq-btn-cancel" onclick="sqCancelDelete()">Cancel</button>
+                </div>
+            </div>
+
+            <div class="sq-status" id="sq-status"></div>
+
+            <div class="sq-footer">
+                <div class="sq-footer-left">
+                    <button class="sq-btn sq-btn-delete" id="sq-del-btn" onclick="sqPromptDelete()">
+                        <i class="fas fa-trash-alt"></i> Delete Question
+                    </button>
+                </div>
+                <div class="sq-footer-right">
+                    <button class="sq-btn sq-btn-cancel" onclick="sqCloseModal()">Cancel</button>
+                    <button class="sq-btn sq-btn-save" id="sq-save-btn" onclick="sqSaveEdit()">
+                        <i class="fas fa-save"></i> Save Changes
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+    (function() {
+        const _BASE    = '/quiz/tutor/question/';
+        const _CSRF    = document.querySelector('meta[name="csrf-token"]')?.content || '';
+
+        window.openQuizEditModal = function(qId) {
+            const d = window.QUIZ_QUESTION_DATA?.[qId];
+            if (!d) { alert('Question data not available.'); return; }
+
+            document.getElementById('sq-q-id').value   = qId;
+            document.getElementById('sq-q-type').value = d.question_type || 'multiple_choice';
+            document.getElementById('sq-q-text').value = d.question_text || '';
+            document.getElementById('sq-explanation').value = d.explanation || '';
+
+            const qType = d.question_type === 'written' ? 'written' : 'multiple_choice';
+            sqSwitchType(qType, true, d);
+
+            document.getElementById('sq-status').textContent = '';
+            document.getElementById('sq-status').className   = 'sq-status';
+            document.getElementById('sq-del-confirm').classList.remove('show');
+            document.getElementById('sq-save-btn').disabled  = false;
+            document.getElementById('sq-del-btn').style.display = '';
+
+            document.getElementById('sq-edit-overlay').classList.add('show');
+            document.body.style.overflow = 'hidden';
+        };
+
+        window.sqSwitchType = function(type, populate, d) {
+            document.getElementById('sq-q-type').value = type;
+            const mcqB = document.getElementById('sq-type-mcq');
+            const wrtB = document.getElementById('sq-type-written');
+            const mcqS = document.getElementById('sq-mcq-section');
+            const wrtS = document.getElementById('sq-written-section');
+
+            if (type === 'written') {
+                mcqB.classList.remove('active'); wrtB.classList.add('active');
+                mcqS.style.display = 'none'; wrtS.style.display = 'block';
+                if (populate && d) {
+                    document.getElementById('sq-correct-text').value = d.correct_answer      || '';
+                    document.getElementById('sq-alt-answers').value  = d.alternative_answers || '';
+                }
+            } else {
+                wrtB.classList.remove('active'); mcqB.classList.add('active');
+                wrtS.style.display = 'none'; mcqS.style.display = 'block';
+                if (populate && d) {
+                    document.getElementById('sq-oa').value = d.option_a || '';
+                    document.getElementById('sq-ob').value = d.option_b || '';
+                    document.getElementById('sq-oc').value = d.option_c || '';
+                    document.getElementById('sq-od').value = d.option_d || '';
+                    const r = document.getElementById('sq-c' + (d.correct_answer || '').toLowerCase());
+                    if (r) r.checked = true;
+                }
+            }
+        };
+
+        window.sqCloseModal = function() {
+            document.getElementById('sq-edit-overlay').classList.remove('show');
+            document.body.style.overflow = '';
+        };
+
+        window.sqSaveEdit = async function() {
+            const qId    = document.getElementById('sq-q-id').value;
+            const qType  = document.getElementById('sq-q-type').value;
+            const saveBtn = document.getElementById('sq-save-btn');
+            const qText  = document.getElementById('sq-q-text').value.trim();
+            if (!qText) { sqSetStatus('Question text is required.', 'error'); return; }
+
+            let payload = { _method:'PUT', question:qText, question_type:qType,
+                explanation: document.getElementById('sq-explanation').value.trim() };
+
+            if (qType === 'written') {
+                const ca = document.getElementById('sq-correct-text').value.trim();
+                if (!ca) { sqSetStatus('Correct answer is required.', 'error'); return; }
+                payload.correct_answer      = ca;
+                payload.alternative_answers = document.getElementById('sq-alt-answers').value.trim();
+            } else {
+                const chk = document.querySelector('input[name="sq-correct"]:checked');
+                if (!chk) { sqSetStatus('Please select the correct answer.', 'error'); return; }
+                payload.correct_answer = chk.value;
+                payload.option_a = document.getElementById('sq-oa').value.trim();
+                payload.option_b = document.getElementById('sq-ob').value.trim();
+                payload.option_c = document.getElementById('sq-oc').value.trim();
+                payload.option_d = document.getElementById('sq-od').value.trim();
+            }
+
+            saveBtn.disabled = true;
+            sqSetStatus('Saving…', '');
+
+            try {
+                const res  = await fetch(_BASE + qId, {
+                    method: 'POST',
+                    headers: { 'Content-Type':'application/json', 'X-CSRF-TOKEN':_CSRF, 'Accept':'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                const json = await res.json();
+                if (json.success) {
+                    sqSetStatus('✓ Saved!', 'success');
+                    // Update live question text on the page
+                    document.querySelectorAll(`.question-box[data-question-id="${qId}"], .written-question[data-question-id="${qId}"]`).forEach(card => {
+                        const t = card.querySelector('.question-text'); if (t) t.textContent = payload.question;
+                    });
+                    // Update local cache
+                    if (window.QUIZ_QUESTION_DATA?.[qId]) Object.assign(window.QUIZ_QUESTION_DATA[qId], payload);
+                    setTimeout(sqCloseModal, 900);
+                } else {
+                    sqSetStatus(json.message || 'Error saving.', 'error');
+                    saveBtn.disabled = false;
+                }
+            } catch(e) { sqSetStatus('Network error: '+e.message,'error'); saveBtn.disabled=false; }
+        };
+
+        window.sqPromptDelete = function() {
+            document.getElementById('sq-del-confirm').classList.add('show');
+            document.getElementById('sq-save-btn').disabled = true;
+            document.getElementById('sq-del-btn').style.display = 'none';
+        };
+
+        window.sqCancelDelete = function() {
+            document.getElementById('sq-del-confirm').classList.remove('show');
+            document.getElementById('sq-save-btn').disabled = false;
+            document.getElementById('sq-del-btn').style.display = '';
+        };
+
+        window.sqConfirmDelete = async function() {
+            const qId = document.getElementById('sq-q-id').value;
+            const btn = document.getElementById('sq-confirm-del');
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Deleting…';
+            sqSetStatus('Deleting…', '');
+            try {
+                const res  = await fetch(_BASE + qId, { method:'DELETE', headers:{'X-CSRF-TOKEN':_CSRF,'Accept':'application/json'} });
+                const json = await res.json();
+                if (json.success) {
+                    sqSetStatus('✓ Deleted.', 'success');
+                    document.querySelectorAll(`[data-question-id="${qId}"]`).forEach(c => c.remove());
+                    setTimeout(sqCloseModal, 800);
+                } else {
+                    sqSetStatus(json.message || 'Error.', 'error');
+                    btn.disabled = false; btn.innerHTML = '<i class="fas fa-trash"></i> Yes, Delete';
+                }
+            } catch(e) { sqSetStatus('Network error: '+e.message,'error'); btn.disabled=false; btn.innerHTML='<i class="fas fa-trash"></i> Yes, Delete'; }
+        };
+
+        function sqSetStatus(msg, cls) {
+            const el = document.getElementById('sq-status');
+            el.textContent = msg;
+            el.className   = 'sq-status' + (cls ? ' '+cls : '');
+        }
+
+        document.getElementById('sq-edit-overlay')?.addEventListener('click', e => { if (e.target.id === 'sq-edit-overlay') sqCloseModal(); });
+    })();
+    </script>
+    @endif
 </body>
 </html>
