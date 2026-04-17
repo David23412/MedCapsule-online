@@ -2125,8 +2125,9 @@
 
         /* ── Overlay (hidden by default) ────────────────── */
         .annot-overlay {
-            position: fixed;
-            inset: 0;
+            position: absolute;
+            top: 0;
+            left: 0;
             z-index: 1040;
             display: none;
             pointer-events: none;
@@ -2550,29 +2551,6 @@
          ADMIN INLINE EDIT MODAL — Full support for MCQ + Written
          ============================================================ -->
     <style>
-        /* ── Admin Edit Button ── */
-        .btn-admin-edit {
-            display: inline-flex;
-            align-items: center;
-            gap: 0.35rem;
-            padding: 0.3rem 0.75rem;
-            background: linear-gradient(135deg, #f59e0b, #d97706);
-            color: #fff;
-            border: none;
-            border-radius: 6px;
-            font-size: 0.78rem;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.2s ease;
-            box-shadow: 0 2px 6px rgba(217,119,6,0.35);
-            white-space: nowrap;
-        }
-        .btn-admin-edit:hover {
-            background: linear-gradient(135deg, #d97706, #b45309);
-            transform: translateY(-1px);
-            box-shadow: 0 4px 10px rgba(217,119,6,0.45);
-        }
-
         /* ── Modal Overlay ── */
         .edit-question-overlay {
             position: fixed;
@@ -2590,12 +2568,13 @@
         /* ── Modal Box ── */
         .edit-question-modal {
             background: #fff;
-            border-radius: 16px;
+            border-radius: 12px;
+            border: 1px solid #dbe1e8;
             width: 100%;
             max-width: 660px;
             max-height: 90vh;
             overflow-y: auto;
-            box-shadow: 0 25px 60px rgba(0,0,0,0.25);
+            box-shadow: 0 12px 30px rgba(15, 23, 42, 0.12);
             animation: editModalIn 0.25s cubic-bezier(0.22,1,0.36,1);
         }
         @keyframes editModalIn {
@@ -2610,23 +2589,23 @@
             justify-content: space-between;
             padding: 1.25rem 1.5rem;
             border-bottom: 1px solid #e2e8f0;
-            background: linear-gradient(135deg, #0f172a, #1e40af);
-            border-radius: 16px 16px 0 0;
+            background: #ffffff;
+            border-radius: 12px 12px 0 0;
         }
         .edit-modal-header h5 {
-            color: #fff;
+            color: #0f172a;
             margin: 0;
             font-size: 1.05rem;
-            font-weight: 700;
+            font-weight: 600;
             display: flex;
             align-items: center;
             gap: 0.5rem;
         }
         .edit-modal-close {
-            background: rgba(255,255,255,0.15);
-            border: 1px solid rgba(255,255,255,0.25);
+            background: #ffffff;
+            border: 1px solid #d1d5db;
             border-radius: 8px;
-            color: #fff;
+            color: #475569;
             width: 32px;
             height: 32px;
             display: flex;
@@ -2634,9 +2613,9 @@
             justify-content: center;
             font-size: 1.2rem;
             cursor: pointer;
-            transition: background 0.2s;
+            transition: background 0.2s, border-color 0.2s, color 0.2s;
         }
-        .edit-modal-close:hover { background: rgba(255,255,255,0.3); }
+        .edit-modal-close:hover { background: #f8fafc; border-color: #cbd5e1; color: #0f172a; }
 
         /* ── Body ── */
         .edit-modal-body { padding: 1.5rem; }
@@ -2648,7 +2627,7 @@
             gap: 0.75rem;
             margin-bottom: 1.25rem;
             padding: 0.75rem 1rem;
-            background: #f8fafc;
+            background: #ffffff;
             border-radius: 10px;
             border: 1px solid #e2e8f0;
         }
@@ -2656,19 +2635,30 @@
         .edit-type-badge {
             display: inline-flex;
             align-items: center;
-            gap: 0.3rem;
-            padding: 0.3rem 0.75rem;
-            border-radius: 99px;
+            gap: 0.45rem;
+            padding: 0.1rem 0;
             font-size: 0.8rem;
-            font-weight: 700;
+            font-weight: 600;
             cursor: pointer;
-            border: 2px solid transparent;
-            transition: all 0.2s;
+            border: none;
+            transition: color 0.2s ease;
+            position: relative;
         }
-        .edit-type-badge.mcq  { background: #dbeafe; color: #1d4ed8; border-color: #93c5fd; }
-        .edit-type-badge.written { background: #d1fae5; color: #065f46; border-color: #6ee7b7; }
-        .edit-type-badge.mcq.active  { background: #1d4ed8; color: #fff; }
-        .edit-type-badge.written.active { background: #065f46; color: #fff; }
+        .edit-type-badge::before {
+            content: "";
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            border: 1.5px solid #94a3b8;
+            background: #ffffff;
+            flex-shrink: 0;
+            transition: background-color 0.2s ease, border-color 0.2s ease;
+        }
+        .edit-type-badge.mcq,
+        .edit-type-badge.written { background: transparent; color: #475569; }
+        .edit-type-badge.mcq.active,
+        .edit-type-badge.written.active { background: transparent; color: #166534; }
+        .edit-type-badge.active::before { background: #16a34a; border-color: #16a34a; }
 
         /* Fields */
         .edit-field { margin-bottom: 1.1rem; }
@@ -2682,7 +2672,7 @@
         .edit-input {
             width: 100%;
             padding: 0.65rem 0.9rem;
-            border: 1.5px solid #d1d5db;
+            border: 1px solid #d1d5db;
             border-radius: 8px;
             font-size: 0.95rem;
             font-family: inherit;
@@ -2693,7 +2683,7 @@
         .edit-input:focus {
             outline: none;
             border-color: #3b82f6;
-            box-shadow: 0 0 0 3px rgba(59,130,246,0.15);
+            box-shadow: 0 0 0 2px rgba(59,130,246,0.12);
         }
 
         /* Options grid */
@@ -2711,12 +2701,20 @@
             gap: 0.6rem;
             margin-bottom: 0.55rem;
         }
-        .edit-option-radio { display: flex; align-items: center; gap: 0.3rem; flex-shrink: 0; }
-        .edit-option-radio input[type="radio"] { width: 16px; height: 16px; accent-color: #16a34a; cursor: pointer; }
+        .edit-option-radio { display: flex; align-items: center; gap: 0.4rem; flex-shrink: 0; }
+        .edit-option-radio input[type="radio"] { width: 16px; height: 16px; accent-color: #16a34a; cursor: pointer; margin: 0; }
         .edit-radio-label {
-            font-weight: 700; font-size: 0.9rem; color: #374151;
-            background: #f1f5f9; border-radius: 6px; width: 28px; height: 28px;
-            display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+            font-weight: 600;
+            font-size: 0.85rem;
+            color: #475569;
+            background: transparent;
+            border: none;
+            width: auto;
+            height: auto;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
         }
         .edit-option-row .edit-input { margin-bottom: 0; flex: 1; }
 
@@ -2727,8 +2725,8 @@
             justify-content: space-between;
             padding: 1rem 1.5rem;
             border-top: 1px solid #e2e8f0;
-            background: #f8fafc;
-            border-radius: 0 0 16px 16px;
+            background: #ffffff;
+            border-radius: 0 0 12px 12px;
             gap: 0.75rem;
             flex-wrap: wrap;
         }
@@ -2737,7 +2735,7 @@
 
         .edit-btn {
             padding: 0.6rem 1.25rem;
-            border: none;
+            border: 1px solid transparent;
             border-radius: 8px;
             font-size: 0.9rem;
             font-weight: 600;
@@ -2745,15 +2743,15 @@
             display: inline-flex;
             align-items: center;
             gap: 0.4rem;
-            transition: all 0.2s ease;
+            transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease;
         }
-        .edit-btn-cancel { background: #e2e8f0; color: #475569; }
-        .edit-btn-cancel:hover { background: #cbd5e1; }
-        .edit-btn-save { background: linear-gradient(135deg, #2563eb, #1d4ed8); color: #fff; }
-        .edit-btn-save:hover { background: linear-gradient(135deg, #1d4ed8, #1e3a8a); transform: translateY(-1px); }
-        .edit-btn-save:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
-        .edit-btn-delete { background: linear-gradient(135deg, #dc2626, #b91c1c); color: #fff; }
-        .edit-btn-delete:hover { background: linear-gradient(135deg, #b91c1c, #991b1b); transform: translateY(-1px); }
+        .edit-btn-cancel { background: #ffffff; border-color: #d1d5db; color: #475569; }
+        .edit-btn-cancel:hover { background: #f8fafc; border-color: #cbd5e1; }
+        .edit-btn-save { background: #2563eb; border-color: #2563eb; color: #fff; }
+        .edit-btn-save:hover { background: #1d4ed8; border-color: #1d4ed8; }
+        .edit-btn-save:disabled { opacity: 0.6; cursor: not-allowed; }
+        .edit-btn-delete { background: #dc2626; border-color: #dc2626; color: #fff; }
+        .edit-btn-delete:hover { background: #b91c1c; border-color: #b91c1c; }
 
         /* Status */
         .edit-status {
@@ -3160,6 +3158,7 @@
 
     <!-- UNIFIED GRADING AUDIO CONTROLLER -->
     <script src="{{ asset('js/grading-audio-controller.js') }}"></script>
+    <script src="{{ asset('js/quiz-session-draft.js') }}"></script>
 
     <script>
         window.TUTOR_CONFIG = {
@@ -3172,6 +3171,12 @@
             quizMode: '{{ isset($is_random_quiz) && $is_random_quiz ? "random" : "tutor" }}',
             tutorScope: @json($tutor_scope ?? 'full'),
             selectedSources: @json($selected_sources ?? []),
+            randomSessionKey: @json($random_session_key ?? null),
+            draftKey: @json(
+                (isset($is_random_quiz) && $is_random_quiz)
+                    ? 'tutor-random:' . ($random_session_key ?? 'default')
+                    : 'tutor:' . request()->fullUrl()
+            ),
             questionData: {
                 @foreach($questions as $index => $question)
                     @php $qObj = is_array($question) ? $question['question'] : $question; @endphp

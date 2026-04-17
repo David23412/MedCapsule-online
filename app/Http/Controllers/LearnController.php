@@ -37,6 +37,7 @@ class LearnController extends Controller
                 'course' => 'nullable|string',
                 'mode' => 'nullable|string|in:practice,quiz,spaced',
                 'autostart' => 'nullable|boolean',
+                'question_type' => 'nullable|string|in:all,multiple_choice,written',
                 'topic_ids' => 'nullable|array',
                 'topic_ids.*' => 'integer|exists:topics,id',
             ]);
@@ -46,6 +47,7 @@ class LearnController extends Controller
                 $courseFilter = null;
             }
             $autoStart = (bool) ($validated['autostart'] ?? false);
+            $questionType = $validated['question_type'] ?? 'all';
             $topicIds = collect($validated['topic_ids'] ?? [])
                 ->map(fn ($topicId) => (int) $topicId)
                 ->filter()
@@ -54,7 +56,7 @@ class LearnController extends Controller
 
             session(['learn_mode' => $mode]);
 
-            $cachedData = $this->mistakeService->getMistakesForLearning($userId, $mode, $courseFilter, $topicIds);
+            $cachedData = $this->mistakeService->getMistakesForLearning($userId, $mode, $courseFilter, $topicIds, $questionType);
 
             if ($cachedData === null) {
                 return redirect()->route('review.index')
@@ -78,6 +80,7 @@ class LearnController extends Controller
                 'courseFilter' => $courseFilter,
                 'currentLearnMode' => $mode,
                 'autoStartLearnMode' => $autoStart ? $mode : null,
+                'selectedQuestionType' => $questionType,
                 'selectedTopicIds' => $topicIds,
                 'selectedTopicNames' => !empty($topicIds)
                     ? Topic::whereIn('id', $topicIds)->orderBy('name')->pluck('name')->values()
@@ -86,6 +89,8 @@ class LearnController extends Controller
                 'totalMistakesCount' => $cachedData['total_mistakes_count'] ?? 0,
                 'skippedCount' => $cachedData['skipped_count'] ?? 0,
                 'courseCounts' => $cachedData['course_counts'] ?? [],
+                'topicCounts' => $cachedData['topic_counts'] ?? [],
+                'topics' => $cachedData['topics'] ?? collect(),
                 'currentUserView' => [
                     'profile_image_url' => auth()->user()->getProfileImageUrl(),
                     'profile_fallback_url' => 'https://ui-avatars.com/api/?name=' . urlencode(auth()->user()->name) . '&size=200&background=007bff&color=ffffff',

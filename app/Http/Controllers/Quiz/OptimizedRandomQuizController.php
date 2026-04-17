@@ -11,6 +11,8 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 use App\Models\Course;
+use App\Models\Question;
+use Illuminate\Support\Collection;
 
 /**
  * Optimized Random Quiz Controller
@@ -46,17 +48,16 @@ class OptimizedRandomQuizController extends Controller
             $selectedSources = ['all'];
         }
 
-        // Generate a random quiz for display
         $user = auth()->user();
+        $sessionKey = $this->buildRandomSessionKey($user->id, 'quiz', $questionCount, $durationMinutes, $selectedCourseIds, $selectedSources);
 
-        // Build options for quiz generation
         $options = [
             'sources' => $selectedSources,
             'course_ids' => $selectedCourseIds,
             'difficulty' => 'mixed'
         ];
 
-        $result = $this->quizService->generateRandomQuiz($user, $questionCount, $options);
+        $result = $this->resolveRandomQuizSession($request, $sessionKey, $user, $questionCount, $options);
 
         if (!$result['success']) {
             return redirect()->back()->with('error', 'Unable to generate random quiz. Please try again.');
@@ -104,7 +105,8 @@ class OptimizedRandomQuizController extends Controller
             'duration_minutes' => $durationMinutes,
             'requested_questions' => $questionCount,
             'actual_questions' => $actualQuestionCount,
-            'quiz_mode' => 'quiz'
+            'quiz_mode' => 'quiz',
+            'random_session_key' => $sessionKey,
         ]);
     }
 
@@ -128,17 +130,16 @@ class OptimizedRandomQuizController extends Controller
             $selectedSources = ['all'];
         }
 
-        // Generate a random quiz for display
         $user = auth()->user();
+        $sessionKey = $this->buildRandomSessionKey($user->id, 'tutor', $questionCount, $durationMinutes, $selectedCourseIds, $selectedSources);
 
-        // Build options for quiz generation
         $options = [
             'sources' => $selectedSources,
             'course_ids' => $selectedCourseIds,
             'difficulty' => 'mixed'
         ];
 
-        $result = $this->quizService->generateRandomQuiz($user, $questionCount, $options);
+        $result = $this->resolveRandomQuizSession($request, $sessionKey, $user, $questionCount, $options);
 
         if (!$result['success']) {
             return redirect()->back()->with('error', 'Unable to generate random tutor quiz. Please try again.');
@@ -190,6 +191,7 @@ class OptimizedRandomQuizController extends Controller
             // Pass dummy course/topic for unified template
             'course' => $selectedCourses->first() ?? new \App\Models\Course(['id' => 1, 'name' => 'Random Quiz']),
             'topic' => new \App\Models\Topic(['id' => 0, 'name' => 'Mixed Random Questions']),
+            'random_session_key' => $sessionKey,
             'currentUserView' => [
                 'profile_image_url' => auth()->user()->getProfileImageUrl(),
                 'profile_fallback_url' => 'https://ui-avatars.com/api/?name=' . urlencode(auth()->user()->name) . '&size=200&background=007bff&color=ffffff',
@@ -253,7 +255,8 @@ class OptimizedRandomQuizController extends Controller
                 'answers' => 'required|array',
                 'answers.*' => 'nullable|string|max:2000',
                 'time_taken' => 'required|integer|min:0',
-                'mode' => 'nullable|string|in:quiz,tutor,random'
+                'mode' => 'nullable|string|in:quiz,tutor,random',
+                'session_key' => 'nullable|string|max:120',
             ]);
 
             // For random quizzes, we need to handle grading differently since questions come from multiple topics
@@ -321,6 +324,10 @@ class OptimizedRandomQuizController extends Controller
                 ]);
             });
 
+            if (!empty($validated['session_key'])) {
+                $request->session()->forget('active_random_quizzes.' . $validated['session_key']);
+            }
+
             return response()->json($gradingResult);
 
         } catch (\Exception $e) {
@@ -349,6 +356,86 @@ class OptimizedRandomQuizController extends Controller
                 ->where('user_id', $userId)
                 ->count();
         });
+    }
+
+    private function buildRandomSessionKey(
+        int $userId,
+        string $mode,
+        int $questionCount,
+        float $durationMinutes,
+        array $selectedCourseIds,
+        array $selectedSources
+    ): string {
+        $courseIds = array_values(array_map('intval', $selectedCourseIds));
+        sort($courseIds);
+
+        $sources = array_values(array_map('strval', $selectedSources));
+        sort($sources);
+
+        return sha1(json_encode([
+            'user_id' => $userId,
+            'mode' => $mode,
+            'question_count' => $questionCount,
+            'duration_minutes' => $durationMinutes,
+            'course_ids' => $courseIds,
+            'sources' => $sources,
+        ]));
+    }
+
+    private function resolveRandomQuizSession(
+        Request $request,
+        string $sessionKey,
+        $user,
+        int $questionCount,
+        array $options
+    ): array {
+        $storedQuestionIds = collect($request->session()->get("active_random_quizzes.{$sessionKey}.question_ids", []))
+            ->map(fn ($id) => (int) $id)
+            ->filter()
+            ->values()
+            ->all();
+
+        if (!empty($storedQuestionIds)) {
+            $storedQuestions = $this->fetchQuestionsInOrder($storedQuestionIds);
+            if ($storedQuestions->count() === count($storedQuestionIds)) {
+                return [
+                    'success' => true,
+                    'questions' => $storedQuestions,
+                    'questions_by_topic' => $storedQuestions->groupBy('topic_id'),
+                    'total_questions' => $storedQuestions->count(),
+                    'topics_covered' => $storedQuestions->pluck('topic_id')->unique()->values()->all(),
+                ];
+            }
+
+            $request->session()->forget("active_random_quizzes.{$sessionKey}");
+        }
+
+        $result = $this->quizService->generateRandomQuiz($user, $questionCount, $options);
+        if (($result['success'] ?? false) && !empty($result['questions'])) {
+            $request->session()->put("active_random_quizzes.{$sessionKey}", [
+                'question_ids' => collect($result['questions'])->pluck('id')->map(fn ($id) => (int) $id)->values()->all(),
+                'saved_at' => now()->toIso8601String(),
+            ]);
+        }
+
+        return $result;
+    }
+
+    private function fetchQuestionsInOrder(array $questionIds): Collection
+    {
+        $idOrderMap = array_flip($questionIds);
+
+        return Question::query()
+            ->select([
+                'id', 'topic_id', 'question', 'question_type',
+                'option_a', 'option_b', 'option_c', 'option_d',
+                'correct_answer', 'explanation', 'image_url', 'source',
+                'alternative_answers'
+            ])
+            ->whereIn('id', $questionIds)
+            ->get()
+            ->sortBy(fn (Question $question) => $idOrderMap[$question->id] ?? PHP_INT_MAX)
+            ->values();
     }
 
     /**

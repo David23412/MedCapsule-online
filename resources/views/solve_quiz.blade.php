@@ -1587,6 +1587,17 @@
         <source src="/sounds/quiz-wrong.mp3" type="audio/mpeg">
     </audio>
 
+    <script src="{{ asset('js/quiz-session-draft.js') }}"></script>
+    <script>
+        window.SolveQuizPageConfig = {
+            draftKey: @json('solve-quiz:' . request()->fullUrl()),
+            questionIds: @json(($questions ?? collect())->map(function ($question) {
+                $qObj = is_array($question) ? $question['question'] : $question;
+                return $qObj->id ?? null;
+            })->filter()->values()->all())
+        };
+    </script>
+
     <script>
         document.addEventListener("DOMContentLoaded", function () {
             const quizForm = document.getElementById("quiz-form");
@@ -1604,6 +1615,56 @@
             let selectedAnswers = {};
             let latestReviewPayload = null;
             const totalQuestions = {{ $questions->count() }};
+            const solveQuizConfig = window.SolveQuizPageConfig || {};
+            const quizDraft = window.QuizSessionDraft?.create({
+                key: solveQuizConfig.draftKey,
+                questionIds: solveQuizConfig.questionIds || []
+            }) || null;
+            let startTime = new Date();
+
+            function applyDraftAnswers(answers) {
+                if (!answers || typeof answers !== 'object') {
+                    return;
+                }
+
+                Object.entries(answers).forEach(([questionId, answer]) => {
+                    const normalizedAnswer = typeof answer === 'string' ? answer : '';
+                    const radio = document.querySelector(`input[name="answers[${questionId}]"][value="${normalizedAnswer}"]`);
+                    if (radio) {
+                        radio.checked = true;
+                        selectedAnswers[questionId] = normalizedAnswer;
+                        return;
+                    }
+
+                    const textarea = document.querySelector(`.written-answer[data-question-id="${questionId}"]`);
+                    if (textarea) {
+                        textarea.value = normalizedAnswer;
+                        if (normalizedAnswer.trim() !== '') {
+                            selectedAnswers[questionId] = normalizedAnswer;
+                        }
+                    }
+                });
+            }
+
+            function saveQuizDraft() {
+                if (!quizDraft) {
+                    return;
+                }
+
+                quizDraft.save({
+                    answers: selectedAnswers,
+                    startedAt: startTime instanceof Date ? startTime.getTime() : Date.now(),
+                    scrollY: window.scrollY || 0
+                });
+            }
+
+            const savedDraft = quizDraft?.load();
+            if (savedDraft) {
+                applyDraftAnswers(savedDraft.answers);
+                if (Number.isFinite(Number(savedDraft.startedAt)) && Number(savedDraft.startedAt) > 0) {
+                    startTime = new Date(Number(savedDraft.startedAt));
+                }
+            }
 
             // 💀 SIMPLIFIED PROGRESS BAR - NO OVERLAP COMPLEXITY 💀
             const progressBarContainer = document.querySelector('.progress-bar-container');
@@ -1834,6 +1895,7 @@
                         const questionId = this.name.match(/\[(\d+)\]/)[1];
                         selectedAnswers[questionId] = this.value;
                         updateProgress();
+                        saveQuizDraft();
                     });
                 });
 
@@ -1847,6 +1909,7 @@
                             delete selectedAnswers[questionId];
                         }
                         updateProgress();
+                        saveQuizDraft();
                     });
                 });
 
@@ -1866,7 +1929,6 @@
                 }
 
                 // Add timer functionality
-                let startTime = new Date();
                 window.quizStartTime = startTime.getTime(); // LETHAL FIX: Set global quiz start time
                 let timerInterval;
                 const timerElement = document.getElementById('timer');
@@ -2060,6 +2122,10 @@
                 
                 // Start the timer
                 updateTimer();
+                updateProgress();
+                if (savedDraft && Number.isFinite(Number(savedDraft.scrollY))) {
+                    requestAnimationFrame(() => window.scrollTo({ top: Number(savedDraft.scrollY), behavior: 'auto' }));
+                }
 
                 // LETHAL FLAG - Prevent double sound playing
                 let soundPlayed = false;
@@ -2305,6 +2371,7 @@
                         return response.json();
                     })
                     .then(data => {
+                        quizDraft?.clear();
                         latestReviewPayload = data;
 
                         // LOCK SUBMIT BUTTON PERMANENTLY - NO RE-ENABLING
@@ -2515,6 +2582,7 @@
                         popupOverlay.classList.add('show');
                         popup.classList.add('show');
                         setPopupActionsDisabled(false);
+                        saveQuizDraft();
                         if (reviewButton) {
                             reviewButton.disabled = true;
                             reviewButton.style.pointerEvents = 'none';
@@ -2522,6 +2590,15 @@
                         }
                     });
                 });
+
+                window.addEventListener('beforeunload', saveQuizDraft);
+                document.addEventListener('visibilitychange', function () {
+                    if (document.visibilityState === 'hidden') {
+                        saveQuizDraft();
+                    }
+                });
+                window.addEventListener('scroll', saveQuizDraft, { passive: true });
+                saveQuizDraft();
             }
 
             // Add event listeners to popup buttons
@@ -2818,32 +2895,34 @@
         .btn-admin-edit {
             display: inline-flex;
             align-items: center;
-            gap: 0.35rem;
-            padding: 0.3rem 0.75rem;
-            background: linear-gradient(135deg, #f59e0b, #d97706);
-            color: #fff;
-            border: none;
+            gap: 0.3rem;
+            padding: 0.25rem 0.6rem;
+            font-size: 0.72rem;
+            font-weight: 500;
+            color: #6c757d;
+            background: transparent;
+            border: 1px solid #dee2e6;
             border-radius: 6px;
-            font-size: 0.78rem;
-            font-weight: 600;
             cursor: pointer;
             transition: all 0.2s ease;
-            box-shadow: 0 2px 6px rgba(217,119,6,0.35);
             white-space: nowrap;
-            z-index: 10;
             position: relative;
+            z-index: 2;
+            user-select: none;
+            -webkit-user-select: none;
+            touch-action: manipulation;
         }
         .btn-admin-edit:hover {
-            background: linear-gradient(135deg, #d97706, #b45309);
-            transform: translateY(-1px);
-            box-shadow: 0 4px 10px rgba(217,119,6,0.45);
+            color: #007bff;
+            border-color: #007bff;
+            background: rgba(0, 123, 255, 0.05);
         }
+        .btn-admin-edit i { font-size: 0.65rem; }
         /* Reuse edit-question-overlay/modal styles from tutor_mode */
         #sq-edit-overlay {
             position: fixed;
             inset: 0;
             background: rgba(15,23,42,0.55);
-            backdrop-filter: blur(4px);
             display: none;
             justify-content: center;
             align-items: center;
@@ -2853,12 +2932,13 @@
         #sq-edit-overlay.show { display: flex; }
         #sq-edit-modal {
             background: #fff;
-            border-radius: 16px;
+            border-radius: 12px;
+            border: 1px solid #dbe1e8;
             width: 100%;
             max-width: 660px;
             max-height: 90vh;
             overflow-y: auto;
-            box-shadow: 0 25px 60px rgba(0,0,0,0.25);
+            box-shadow: 0 12px 30px rgba(15, 23, 42, 0.12);
             animation: sqEditIn 0.25s cubic-bezier(0.22,1,0.36,1);
         }
         @keyframes sqEditIn {
@@ -2868,68 +2948,80 @@
         #sq-edit-modal .eq-header {
             display:flex; align-items:center; justify-content:space-between;
             padding:1.25rem 1.5rem;
-            background:linear-gradient(135deg,#0f172a,#1e40af);
-            border-radius:16px 16px 0 0;
+            background:#ffffff;
+            border-bottom:1px solid #e2e8f0;
+            border-radius:12px 12px 0 0;
         }
-        #sq-edit-modal .eq-header h5 { color:#fff; margin:0; font-size:1.05rem; font-weight:700; display:flex; align-items:center; gap:.5rem; }
+        #sq-edit-modal .eq-header h5 { color:#0f172a; margin:0; font-size:1.05rem; font-weight:600; display:flex; align-items:center; gap:.5rem; }
         #sq-edit-modal .eq-close {
-            background:rgba(255,255,255,.15); border:1px solid rgba(255,255,255,.25); border-radius:8px;
-            color:#fff; width:32px; height:32px; display:flex; align-items:center; justify-content:center;
-            font-size:1.2rem; cursor:pointer; transition:background .2s;
+            background:#ffffff; border:1px solid #d1d5db; border-radius:8px;
+            color:#475569; width:32px; height:32px; display:flex; align-items:center; justify-content:center;
+            font-size:1.2rem; cursor:pointer; transition:background .2s,border-color .2s,color .2s;
         }
-        #sq-edit-modal .eq-close:hover { background:rgba(255,255,255,.3); }
+        #sq-edit-modal .eq-close:hover { background:#f8fafc; border-color:#cbd5e1; color:#0f172a; }
         #sq-edit-modal .eq-body { padding:1.5rem; }
         .sq-type-row {
             display:flex; align-items:center; gap:.75rem; margin-bottom:1.25rem;
-            padding:.75rem 1rem; background:#f8fafc; border-radius:10px; border:1px solid #e2e8f0;
+            padding:.75rem 1rem; background:#ffffff; border-radius:10px; border:1px solid #e2e8f0;
         }
         .sq-type-label { font-size:.82rem; font-weight:600; color:#64748b; }
         .sq-type-badge {
-            display:inline-flex; align-items:center; gap:.3rem; padding:.3rem .75rem;
-            border-radius:99px; font-size:.8rem; font-weight:700; cursor:pointer;
-            border:2px solid transparent; transition:all .2s;
+            display:inline-flex; align-items:center; gap:.45rem; padding:.1rem 0;
+            border-radius:0; font-size:.8rem; font-weight:600; cursor:pointer;
+            border:none; transition:color .2s ease; position:relative;
         }
-        .sq-type-badge.mcq  { background:#dbeafe; color:#1d4ed8; border-color:#93c5fd; }
-        .sq-type-badge.written { background:#d1fae5; color:#065f46; border-color:#6ee7b7; }
-        .sq-type-badge.mcq.active  { background:#1d4ed8; color:#fff; }
-        .sq-type-badge.written.active { background:#065f46; color:#fff; }
+        .sq-type-badge::before {
+            content:"";
+            width:10px;
+            height:10px;
+            border-radius:50%;
+            border:1.5px solid #94a3b8;
+            background:#ffffff;
+            flex-shrink:0;
+            transition:background-color .2s ease,border-color .2s ease;
+        }
+        .sq-type-badge.mcq,
+        .sq-type-badge.written { background:transparent; color:#475569; }
+        .sq-type-badge.mcq.active,
+        .sq-type-badge.written.active { background:transparent; color:#166534; }
+        .sq-type-badge.active::before { background:#16a34a; border-color:#16a34a; }
         .sq-field { margin-bottom:1.1rem; }
         .sq-field label { display:block; font-size:.82rem; font-weight:600; color:#374151; margin-bottom:.4rem; }
         .sq-input {
-            width:100%; padding:.65rem .9rem; border:1.5px solid #d1d5db; border-radius:8px;
+            width:100%; padding:.65rem .9rem; border:1px solid #d1d5db; border-radius:8px;
             font-size:.95rem; font-family:inherit; transition:border-color .2s,box-shadow .2s;
             box-sizing:border-box; resize:vertical;
         }
-        .sq-input:focus { outline:none; border-color:#3b82f6; box-shadow:0 0 0 3px rgba(59,130,246,.15); }
+        .sq-input:focus { outline:none; border-color:#3b82f6; box-shadow:0 0 0 2px rgba(59,130,246,.12); }
         .sq-opts-section { margin-bottom:1.1rem; }
         .sq-opts-section > label { display:block; font-size:.82rem; font-weight:600; color:#374151; margin-bottom:.6rem; }
         .sq-opt-row { display:flex; align-items:center; gap:.6rem; margin-bottom:.55rem; }
-        .sq-opt-radio { display:flex; align-items:center; gap:.3rem; flex-shrink:0; }
-        .sq-opt-radio input[type="radio"] { width:16px; height:16px; accent-color:#16a34a; cursor:pointer; }
+        .sq-opt-radio { display:flex; align-items:center; gap:.4rem; flex-shrink:0; }
+        .sq-opt-radio input[type="radio"] { width:16px; height:16px; accent-color:#16a34a; cursor:pointer; margin:0; }
         .sq-radio-lbl {
-            font-weight:700; font-size:.9rem; color:#374151;
-            background:#f1f5f9; border-radius:6px; width:28px; height:28px;
-            display:flex; align-items:center; justify-content:center; flex-shrink:0;
+            font-weight:600; font-size:.85rem; color:#475569;
+            background:transparent; border:none; width:auto; height:auto;
+            display:inline-flex; align-items:center; justify-content:center; flex-shrink:0;
         }
         .sq-opt-row .sq-input { margin-bottom:0; flex:1; }
         .sq-footer {
             display:flex; align-items:center; justify-content:space-between;
             padding:1rem 1.5rem; border-top:1px solid #e2e8f0;
-            background:#f8fafc; border-radius:0 0 16px 16px; gap:.75rem; flex-wrap:wrap;
+            background:#ffffff; border-radius:0 0 12px 12px; gap:.75rem; flex-wrap:wrap;
         }
         .sq-footer-left { display:flex; gap:.5rem; }
         .sq-footer-right { display:flex; gap:.5rem; }
         .sq-btn {
-            padding:.6rem 1.25rem; border:none; border-radius:8px; font-size:.9rem; font-weight:600;
-            cursor:pointer; display:inline-flex; align-items:center; gap:.4rem; transition:all .2s ease;
+            padding:.6rem 1.25rem; border:1px solid transparent; border-radius:8px; font-size:.9rem; font-weight:600;
+            cursor:pointer; display:inline-flex; align-items:center; gap:.4rem; transition:background-color .2s ease,border-color .2s ease,color .2s ease;
         }
-        .sq-btn-cancel { background:#e2e8f0; color:#475569; }
-        .sq-btn-cancel:hover { background:#cbd5e1; }
-        .sq-btn-save { background:linear-gradient(135deg,#2563eb,#1d4ed8); color:#fff; }
-        .sq-btn-save:hover { background:linear-gradient(135deg,#1d4ed8,#1e3a8a); transform:translateY(-1px); }
-        .sq-btn-save:disabled { opacity:.6; cursor:not-allowed; transform:none; }
-        .sq-btn-delete { background:linear-gradient(135deg,#dc2626,#b91c1c); color:#fff; }
-        .sq-btn-delete:hover { background:linear-gradient(135deg,#b91c1c,#991b1b); transform:translateY(-1px); }
+        .sq-btn-cancel { background:#ffffff; border-color:#d1d5db; color:#475569; }
+        .sq-btn-cancel:hover { background:#f8fafc; border-color:#cbd5e1; }
+        .sq-btn-save { background:#2563eb; border-color:#2563eb; color:#fff; }
+        .sq-btn-save:hover { background:#1d4ed8; border-color:#1d4ed8; }
+        .sq-btn-save:disabled { opacity:.6; cursor:not-allowed; }
+        .sq-btn-delete { background:#dc2626; border-color:#dc2626; color:#fff; }
+        .sq-btn-delete:hover { background:#b91c1c; border-color:#b91c1c; }
         .sq-status { padding:0 1.5rem 1rem; font-size:.88rem; font-weight:500; min-height:1.5rem; }
         .sq-status.success { color:#16a34a; }
         .sq-status.error   { color:#dc2626; }

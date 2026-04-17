@@ -31,6 +31,46 @@
         }
 
         const selectedAnswers = {};
+        const quizDraft = window.QuizSessionDraft?.create({
+            key: quizPageConfig.draftKey,
+            questionIds: quizPageConfig.questionIds || []
+        }) || null;
+
+        function applyDraftAnswers(answers) {
+            if (!answers || typeof answers !== 'object') {
+                return;
+            }
+
+            Object.entries(answers).forEach(([questionId, answer]) => {
+                const normalizedAnswer = typeof answer === 'string' ? answer : '';
+                const radio = document.querySelector(`input[name="answers[${questionId}]"][value="${normalizedAnswer}"]`);
+                if (radio) {
+                    radio.checked = true;
+                    selectedAnswers[questionId] = normalizedAnswer;
+                    return;
+                }
+
+                const textarea = document.querySelector(`.written-answer[data-question-id="${questionId}"]`);
+                if (textarea) {
+                    textarea.value = normalizedAnswer;
+                    if (normalizedAnswer.trim() !== '') {
+                        selectedAnswers[questionId] = normalizedAnswer;
+                    }
+                }
+            });
+        }
+
+        function saveDraft() {
+            if (!quizDraft) {
+                return;
+            }
+
+            quizDraft.save({
+                answers: selectedAnswers,
+                startedAt: startTime,
+                scrollY: window.scrollY || 0
+            });
+        }
 
         function updateProgress() {
             const totalQuestions = Number(quizPageConfig.totalQuestions || 0);
@@ -57,6 +97,7 @@
                 const questionId = this.name.match(/\[(\d+)\]/)[1];
                 selectedAnswers[questionId] = this.value;
                 updateProgress();
+                saveDraft();
             });
         });
 
@@ -69,12 +110,20 @@
                     delete selectedAnswers[questionId];
                 }
                 updateProgress();
+                saveDraft();
             });
         });
 
         const timeLimit = Number(quizPageConfig.timeLimitSeconds || 0);
         let startTime = Date.now();
         let timerInterval;
+        const savedDraft = quizDraft?.load();
+        if (savedDraft) {
+            applyDraftAnswers(savedDraft.answers);
+            if (Number.isFinite(Number(savedDraft.startedAt)) && Number(savedDraft.startedAt) > 0) {
+                startTime = Number(savedDraft.startedAt);
+            }
+        }
 
         function updateTimer() {
             const now = Date.now();
@@ -108,6 +157,10 @@
 
         updateTimer();
         timerInterval = setInterval(updateTimer, 1000);
+        updateProgress();
+        if (savedDraft && Number.isFinite(Number(savedDraft.scrollY))) {
+            requestAnimationFrame(() => window.scrollTo({ top: Number(savedDraft.scrollY), behavior: 'auto' }));
+        }
 
         const popupOverlay = document.getElementById('popup-overlay');
         const popup = document.getElementById('popup');
@@ -248,6 +301,7 @@
                         throw new Error(data.error || 'An error occurred while grading the quiz');
                     }
 
+                    quizDraft?.clear();
                     window.lastQuizResults = data;
                     setPopupActionsDisabled(false);
 
@@ -349,6 +403,7 @@
                     document.querySelectorAll('input, textarea, button[type="submit"]').forEach(input => {
                         input.disabled = false;
                     });
+                    saveDraft();
                 });
         }
 
@@ -369,6 +424,15 @@
                 }, 300);
             });
         }
+
+        window.addEventListener('beforeunload', saveDraft);
+        document.addEventListener('visibilitychange', function () {
+            if (document.visibilityState === 'hidden') {
+                saveDraft();
+            }
+        });
+        window.addEventListener('scroll', saveDraft, { passive: true });
+        saveDraft();
 
         function showReviewMode() {
             if (typeof lastQuizResults === 'undefined') {

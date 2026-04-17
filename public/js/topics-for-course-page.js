@@ -1016,7 +1016,7 @@
             if (!hasRemaining) {
                 fullRadio.checked = true;
                 if (tutorScopeHint) {
-                    tutorScopeHint.textContent = 'All selected sources are already fully covered. Replay the full source to practice again.';
+                    tutorScopeHint.textContent = 'You already finished these questions. Start again if you want.';
                 }
                 return;
             }
@@ -1026,7 +1026,7 @@
             }
 
             if (tutorScopeHint) {
-                tutorScopeHint.textContent = 'Resume only unanswered questions, or replay the selected source(s) from the start.';
+                tutorScopeHint.textContent = 'Continue where you stopped, or start again.';
             }
         }
 

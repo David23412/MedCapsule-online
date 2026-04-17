@@ -89,6 +89,8 @@ function initializeMistakesLearnPage() {
             const wrongSound = document.getElementById('wrongSound');
             const encouragementSound = document.getElementById('encouragementSound');
             const courseFilter = document.getElementById('course-filter');
+            const topicFilter = document.getElementById('topic-filter');
+            const questionTypeFilter = document.getElementById('question-type-filter');
             const sidebarToggle = document.getElementById('sidebarToggle');
             const sidebarProgressSummary = document.getElementById('sidebarProgressSummary');
             const sidebarProgressPercent = document.getElementById('sidebarProgressPercent');
@@ -117,7 +119,34 @@ function initializeMistakesLearnPage() {
             const autoStartMode = typeof mistakesLearnPageConfig.autoStartMode === 'string'
                 ? mistakesLearnPageConfig.autoStartMode
                 : null;
+            const selectedQuestionType = typeof mistakesLearnPageConfig.selectedQuestionType === 'string'
+                ? mistakesLearnPageConfig.selectedQuestionType
+                : 'all';
             const sidebarStorageKey = 'medcapsule-learn-sidebar-collapsed';
+
+            const appendCurrentLearnFilters = (url) => {
+                if (courseFilter && courseFilter.value) {
+                    url.searchParams.set('course', courseFilter.value);
+                }
+
+                const currentTopicValue = topicFilter ? String(topicFilter.value || '') : '';
+                if (currentTopicValue) {
+                    url.searchParams.append('topic_ids[]', currentTopicValue);
+                } else {
+                    selectedTopicIds.forEach((topicId) => {
+                        url.searchParams.append('topic_ids[]', topicId);
+                    });
+                }
+
+                const currentQuestionTypeValue = questionTypeFilter
+                    ? String(questionTypeFilter.value || 'all')
+                    : selectedQuestionType;
+                if (currentQuestionTypeValue && currentQuestionTypeValue !== 'all') {
+                    url.searchParams.set('question_type', currentQuestionTypeValue);
+                }
+
+                return url;
+            };
 
             const getStoredSidebarState = () => {
                 try {
@@ -720,13 +749,7 @@ function initializeMistakesLearnPage() {
                 const baseUrl = String(mistakesLearnPageConfig.reviewLearnUrl || '');
                 const url = new URL(baseUrl, window.location.origin);
 
-                if (courseFilter && courseFilter.value) {
-                    url.searchParams.set('course', courseFilter.value);
-                }
-
-                selectedTopicIds.forEach((topicId) => {
-                    url.searchParams.append('topic_ids[]', topicId);
-                });
+                appendCurrentLearnFilters(url);
 
                 url.searchParams.set('mode', targetMode);
 
@@ -1908,23 +1931,12 @@ function initializeMistakesLearnPage() {
             }
 
             // BULLETPROOF SMOOTH FILTER - WORKS EVERY FUCKING TIME
-            if (courseFilter) {
-
-
+            if (courseFilter || topicFilter || questionTypeFilter) {
                 const handleFilterChange = function() {
-                    const selectedValue = this.value;
                     const baseUrl = String(window.MistakesLearnPageConfig?.reviewLearnUrl || '');
                     const url = new URL(baseUrl, window.location.origin);
 
-                    if (selectedValue) {
-                        url.searchParams.set('course', selectedValue);
-                    } else {
-                        url.searchParams.delete('course');
-                    }
-
-                    selectedTopicIds.forEach((topicId) => {
-                        url.searchParams.append('topic_ids[]', topicId);
-                    });
+                    appendCurrentLearnFilters(url);
 
                     if (currentMode) {
                         url.searchParams.set('mode', currentMode);
@@ -1933,16 +1945,17 @@ function initializeMistakesLearnPage() {
                     loadLearnFilterInPlace(url.toString());
                 };
 
-                courseFilter.addEventListener('change', handleFilterChange);
-
-                courseFilter.addEventListener('keydown', function(e) {
-                    if (e.key === 'Enter') {
-                        e.preventDefault();
-                        handleFilterChange.call(this);
-                    }
+                [courseFilter, topicFilter, questionTypeFilter].filter(Boolean).forEach((filterElement) => {
+                    filterElement.addEventListener('change', handleFilterChange);
+                    filterElement.addEventListener('keydown', function(e) {
+                        if (e.key === 'Enter') {
+                            e.preventDefault();
+                            handleFilterChange.call(this);
+                        }
+                    });
                 });
             } else {
-                console.error('❌ COURSE FILTER NOT FOUND');
+                console.error('❌ LEARN FILTERS NOT FOUND');
             }
 
             function removeMistake(questionId) {

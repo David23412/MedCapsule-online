@@ -27,14 +27,229 @@ const TUTOR_CONFIG = window.TUTOR_CONFIG || {};
         let correctAnswers = 0;
         let totalAnswers = 0;
         let userAnswers = {};
+        let questionResults = {};
         let timerInterval;
         let answerCache = {};
         let questionData = {};
+        const tutorDraft = window.QuizSessionDraft?.create({
+            key: TUTOR_CONFIG.draftKey,
+            questionIds: Object.keys(TUTOR_CONFIG.questionData || {})
+        }) || null;
+        let isRestoringTutorDraft = false;
 
         // Highlighting system
         let highlights = {};
         let currentSelection = null;
         let highlightToolbar = null;
+
+        function getQuestionIdFromCard(questionCard) {
+            if (!questionCard) {
+                return null;
+            }
+
+            const optionsContainer = questionCard.querySelector('.options-container[data-question-id]');
+            if (optionsContainer?.dataset?.questionId) {
+                return String(optionsContainer.dataset.questionId);
+            }
+
+            const checkAnswerButton = questionCard.querySelector('.check-answer');
+            const onclickValue = checkAnswerButton?.getAttribute('onclick') || '';
+            const match = onclickValue.match(/checkAnswer\(\s*\d+\s*,\s*(\d+)\s*\)/);
+            return match ? String(match[1]) : null;
+        }
+
+        function getQuestionNumberFromCard(questionCard) {
+            const id = questionCard?.id || '';
+            const match = id.match(/^question-(\d+)$/);
+            return match ? Number(match[1]) : null;
+        }
+
+        function collectTutorInputDraft() {
+            const inputs = {};
+
+            document.querySelectorAll('.question-card').forEach((questionCard) => {
+                const questionId = getQuestionIdFromCard(questionCard);
+                if (!questionId) {
+                    return;
+                }
+
+                const writtenAnswer = questionCard.querySelector('.written-answer');
+                if (writtenAnswer) {
+                    inputs[questionId] = writtenAnswer.value || '';
+                    return;
+                }
+
+                const selectedOption = questionCard.querySelector('.option-card.selected');
+                if (selectedOption) {
+                    inputs[questionId] = selectedOption.getAttribute('data-option') || '';
+                }
+            });
+
+            return inputs;
+        }
+
+        function saveTutorDraft() {
+            if (!tutorDraft || isRestoringTutorDraft) {
+                return;
+            }
+
+            tutorDraft.save({
+                startedAt: quizStartTime instanceof Date ? quizStartTime.getTime() : Number(quizStartTime || Date.now()),
+                currentQuestionIndex,
+                correctAnswers,
+                totalAnswers,
+                userAnswers,
+                questionStates,
+                questionResults,
+                pendingInputs: collectTutorInputDraft(),
+                scrollY: window.scrollY || 0
+            });
+        }
+
+        function clearTutorDraft() {
+            tutorDraft?.clear();
+        }
+
+        function applyTutorPendingInputs(pendingInputs) {
+            if (!pendingInputs || typeof pendingInputs !== 'object') {
+                return;
+            }
+
+            Object.entries(pendingInputs).forEach(([questionId, answer]) => {
+                const normalizedAnswer = typeof answer === 'string' ? answer : '';
+                const questionCard = Array.from(document.querySelectorAll('.question-card')).find((card) => {
+                    return getQuestionIdFromCard(card) === String(questionId);
+                });
+
+                if (!questionCard) {
+                    return;
+                }
+
+                const writtenAnswer = questionCard.querySelector('.written-answer');
+                if (writtenAnswer) {
+                    writtenAnswer.value = normalizedAnswer;
+                    return;
+                }
+
+                questionCard.querySelectorAll('.option-card').forEach((optionCard) => {
+                    optionCard.classList.toggle('selected', optionCard.getAttribute('data-option') === normalizedAnswer);
+                });
+            });
+        }
+
+        function renderDontKnowResult(questionNumber, questionId, questionResult) {
+            const qData = questionData[questionId] || questionData[Number(questionId)];
+            const questionCard = document.getElementById(`question-${questionNumber}`);
+            if (!qData || !questionCard) {
+                return;
+            }
+
+            updateSidebarCircleState(questionNumber, false);
+
+            const feedbackDiv = questionCard.querySelector('.answer-feedback');
+            const alertDiv = feedbackDiv.querySelector('.alert');
+            feedbackDiv.style.display = 'block';
+            alertDiv.className = 'alert alert-danger';
+            feedbackDiv.querySelector('.result-text').textContent = "Don't worry! Here's the answer:";
+            feedbackDiv.querySelector('.explanation-content').innerHTML = `
+                <div class="explanation-with-icon">
+                    <div class="answer-header">
+                        <img class="doctor-icon" alt="Doctor character" src="/images/doctor.png">
+                        <strong>Correct Answer: ${qData.correct_answer}</strong>
+                    </div>
+                    <div class="explanation-text">
+                        ${qData.explanation || 'No explanation available.'}
+                    </div>
+                </div>
+            `;
+
+            questionCard.querySelectorAll('.option-card').forEach((opt) => {
+                const optionLetter = opt.getAttribute('data-option');
+                if (optionLetter === qData.correct_answer) {
+                    opt.classList.add('correct');
+                }
+                opt.style.pointerEvents = 'none';
+                opt.style.opacity = '0.6';
+            });
+
+            const checkBtn = questionCard.querySelector('.check-answer');
+            const dontKnowBtn = questionCard.querySelector('.btn-dont-know');
+            const nextBtn = questionCard.querySelector('.next-question');
+            const resultsBtn = questionCard.querySelector('.view-results');
+            if (checkBtn) checkBtn.style.display = 'none';
+            if (dontKnowBtn) dontKnowBtn.style.display = 'none';
+            if (questionResult?.showViewResultsButton || totalAnswers === totalQuestions) {
+                if (resultsBtn) resultsBtn.style.display = 'inline-block';
+            } else if (nextBtn) {
+                nextBtn.style.display = 'inline-block';
+            }
+        }
+
+        function restoreTutorDraftState() {
+            const savedDraft = tutorDraft?.load();
+            if (!savedDraft) {
+                return;
+            }
+
+            isRestoringTutorDraft = true;
+            applyTutorPendingInputs(savedDraft.pendingInputs);
+
+            if (Number.isFinite(Number(savedDraft.startedAt)) && Number(savedDraft.startedAt) > 0) {
+                quizStartTime = new Date(Number(savedDraft.startedAt));
+                window.quizStartTime = quizStartTime;
+            }
+
+            currentQuestionIndex = Math.max(1, Number(savedDraft.currentQuestionIndex || 1));
+            correctAnswers = Math.max(0, Number(savedDraft.correctAnswers || 0));
+            totalAnswers = Math.max(0, Number(savedDraft.totalAnswers || 0));
+            userAnswers = savedDraft.userAnswers && typeof savedDraft.userAnswers === 'object' ? savedDraft.userAnswers : {};
+            questionStates = savedDraft.questionStates && typeof savedDraft.questionStates === 'object' ? savedDraft.questionStates : {};
+            questionResults = savedDraft.questionResults && typeof savedDraft.questionResults === 'object' ? savedDraft.questionResults : {};
+
+            document.querySelectorAll('.question-card').forEach((questionCard) => {
+                questionCard.style.display = 'none';
+            });
+
+            Object.entries(questionResults).forEach(([questionId, questionResult]) => {
+                const questionCard = Array.from(document.querySelectorAll('.question-card')).find((card) => {
+                    return getQuestionIdFromCard(card) === String(questionId);
+                });
+                const questionNumber = getQuestionNumberFromCard(questionCard);
+
+                if (!questionNumber) {
+                    return;
+                }
+
+                if (questionResult?.type === 'dont_know') {
+                    renderDontKnowResult(questionNumber, questionId, questionResult);
+                    return;
+                }
+
+                processAnswerResult[`result_processed_${questionNumber}`] = true;
+                updateQuestionUI(questionNumber, {
+                    correct: Boolean(questionResult?.is_correct),
+                    explanation: questionResult?.explanation || '',
+                    correctAnswer: questionResult?.correct_answer || '',
+                    showNextButton: !(questionResult?.showViewResultsButton),
+                    showViewResultsButton: Boolean(questionResult?.showViewResultsButton)
+                });
+                updateSidebarCircleState(questionNumber, Boolean(questionResult?.is_correct));
+            });
+
+            const activeQuestion = document.getElementById(`question-${currentQuestionIndex}`) || document.getElementById('question-1');
+            if (activeQuestion) {
+                activeQuestion.style.display = 'block';
+            }
+
+            updateSidebarActiveState(currentQuestionIndex);
+            updateProgress(totalAnswers, totalQuestions);
+
+            if (savedDraft.scrollY !== undefined) {
+                requestAnimationFrame(() => window.scrollTo({ top: Number(savedDraft.scrollY || 0), behavior: 'auto' }));
+            }
+
+            isRestoringTutorDraft = false;
+        }
 
         // LIGHTNING FAST FUNCTION DEFINITIONS 🚀
         window.selectOption = function selectOption(element) {
@@ -67,6 +282,7 @@ const TUTOR_CONFIG = window.TUTOR_CONFIG || {};
                 targetQuestion.style.display = 'block';
                 currentQuestionIndex = questionNumber;
                 updateSidebarActiveState(questionNumber);
+                saveTutorDraft();
                 window.scrollTo({ top: 0, behavior: 'smooth' });
             }
         };
@@ -105,6 +321,13 @@ const TUTOR_CONFIG = window.TUTOR_CONFIG || {};
 
             totalAnswers++;
             userAnswers[questionId] = 'dont_know';
+            questionResults[questionId] = {
+                type: 'dont_know',
+                is_correct: false,
+                correct_answer: qData.correct_answer,
+                explanation: qData.explanation || '',
+                showViewResultsButton: totalAnswers === TUTOR_CONFIG.totalQuestions
+            };
 
             updateSidebarCircleState(questionNumber, false);
 
@@ -359,7 +582,7 @@ const TUTOR_CONFIG = window.TUTOR_CONFIG || {};
         }
 
         // Update progress bar
-        function updateProgress(completed, total) {
+        function updateProgressLegacy(completed, total) {
             const progressFill = document.getElementById('progress-fill');
             const progressText = document.getElementById('progress-text');
             const timerElement = document.getElementById('timer');
@@ -387,13 +610,13 @@ const TUTOR_CONFIG = window.TUTOR_CONFIG || {};
         }
 
         // Process answer result
-        function processAnswerResult(questionNumber, questionId, data, checkBtn) {
+        function processAnswerResultLegacy(questionNumber, questionId, data, checkBtn) {
             const resultKey = `result_processed_${questionNumber}`;
-            if (processAnswerResult[resultKey]) {
+            if (processAnswerResultLegacy[resultKey]) {
                 console.log(`🔇 BULLETPROOF: Result already processed for Q${questionNumber}, skipping duplicate`);
                 return;
             }
-            processAnswerResult[resultKey] = true;
+            processAnswerResultLegacy[resultKey] = true;
 
             updateSidebarCircleState(questionNumber, data.is_correct);
 
@@ -422,7 +645,7 @@ const TUTOR_CONFIG = window.TUTOR_CONFIG || {};
         }
 
         // Update question UI after checking answer
-        function updateQuestionUI(questionNumber, data) {
+        function updateQuestionUILegacy(questionNumber, data) {
             const questionCard = document.getElementById(`question-${questionNumber}`);
             const feedbackDiv = questionCard.querySelector('.answer-feedback');
             const optionsContainer = questionCard.querySelector('.options-container');
@@ -519,7 +742,7 @@ const TUTOR_CONFIG = window.TUTOR_CONFIG || {};
         }
 
         // Function to show next question
-        function showNextQuestion(currentNumber) {
+        function showNextQuestionLegacy(currentNumber) {
             const currentQuestion = document.getElementById(`question-${currentNumber}`);
             const nextQuestion = document.getElementById(`question-${currentNumber + 1}`);
 
@@ -542,7 +765,7 @@ const TUTOR_CONFIG = window.TUTOR_CONFIG || {};
         }
 
         // Function to show final results when "View Results" button is clicked
-        function showFinalResults() {
+        function showFinalResultsLegacy() {
             console.log('🎯 VIEW RESULTS: User clicked "View Results" button for final question');
             const percentage = (correctAnswers / totalAnswers) * 100;
 
@@ -554,7 +777,7 @@ const TUTOR_CONFIG = window.TUTOR_CONFIG || {};
         }
 
         // INSTANT RESULTS: Show popup immediately
-        function showQuizResults(results) {
+        function showQuizResultsLegacy(results) {
             console.log('🚀 INSTANT RESULTS: Starting immediate quiz completion process', results);
             const completionStart = performance.now();
 
@@ -730,7 +953,7 @@ const TUTOR_CONFIG = window.TUTOR_CONFIG || {};
         }
 
         // 💀 ULTRA-MEGA INSTANT GRADING SOUND - AUDIO POOL POWERED 💀
-        function playFinalGradingSound(score, total) {
+        function playFinalGradingSoundLegacy(score, total) {
             const funcStart = performance.now();
             console.log('🔥 PLAY FINAL GRADING SOUND - AUDIO POOL EDITION');
 
@@ -1701,171 +1924,8 @@ const TUTOR_CONFIG = window.TUTOR_CONFIG || {};
 
             updateProgress(totalAnswers, TUTOR_CONFIG.totalQuestions);
             playInstantSound(false);
+            saveTutorDraft();
         };
-
-        
-        // 💀 AUDIO ELEMENT SETUP 💀
-        function setupAudioElement(audio) {
-            audio.volume = 0.7;
-            audio.preload = 'auto';
-            
-            // Add event listeners for pool management
-            audio.addEventListener('ended', function() {
-                // Wait a bit longer before returning to pool to ensure full playback
-                setTimeout(() => {
-                    returnToPool(audio);
-                }, 200);
-            });
-            
-            audio.addEventListener('error', function() {
-                console.log('ℹ️ Audio element error, returning to pool');
-                returnToPool(audio);
-            });
-        }
-        
-        // 💀 POOL REPLENISHMENT SYSTEM 💀
-        function startPoolReplenishment() {
-            // Check pool levels every 5 seconds
-            poolReplenishmentInterval = setInterval(() => {
-                replenishPools();
-            }, 5000);
-            
-            // Initial replenishment check
-            setTimeout(() => {
-                replenishPools();
-            }, 1000);
-        }
-        
-        // 💀 POOL REPLENISHMENT 💀
-        function replenishPools() {
-            const minPoolSize = 3;
-            
-            // Replenish correct pool
-            if (audioPool.correct.length < minPoolSize) {
-                const needed = minPoolSize - audioPool.correct.length;
-                for (let i = 0; i < needed; i++) {
-                    createAudioElement('correct');
-                }
-                console.log(`🔥 LETHAL AUDIO POOL: Replenished correct pool with ${needed} elements`);
-            }
-            
-            // Replenish wrong pool
-            if (audioPool.wrong.length < minPoolSize) {
-                const needed = minPoolSize - audioPool.wrong.length;
-                for (let i = 0; i < needed; i++) {
-                    createAudioElement('wrong');
-                }
-                console.log(`🔥 LETHAL AUDIO POOL: Replenished wrong pool with ${needed} elements`);
-            }
-            
-            // Replenish perfect pool
-            if (audioPool.perfect.length < minPoolSize) {
-                const needed = minPoolSize - audioPool.perfect.length;
-                for (let i = 0; i < needed; i++) {
-                    createAudioElement('perfect');
-                }
-                console.log(`🔥 LETHAL AUDIO POOL: Replenished perfect pool with ${needed} elements`);
-            }
-            
-            // Replenish partial pool
-            if (audioPool.partial.length < minPoolSize) {
-                const needed = minPoolSize - audioPool.partial.length;
-                for (let i = 0; i < needed; i++) {
-                    createAudioElement('partial');
-                }
-                console.log(`🔥 LETHAL AUDIO POOL: Replenished partial pool with ${needed} elements`);
-            }
-            
-
-        }
-        
-        // 💀 CREATE FRESH AUDIO ELEMENT 💀
-        function createAudioElement(type) {
-            const audio = new Audio();
-            let sourceUrl = '';
-            
-            switch(type) {
-                case 'correct':
-                    sourceUrl = '/sounds/Single-correct.mp3';
-                    break;
-                case 'wrong':
-                    sourceUrl = '/sounds/quiz-wrong.mp3';
-                    break;
-                case 'perfect':
-                    sourceUrl = '/sounds/quiz-perfect.mp3';
-                    break;
-                case 'partial':
-                    sourceUrl = '/sounds/quiz-partial.mp3';
-                    break;
-            }
-            
-            audio.src = sourceUrl;
-            audio.volume = 0.7;
-            audio.preload = 'auto';
-            
-            // Add to pool
-            audioPool[type].push(audio);
-            
-            // Setup event listeners
-            audio.addEventListener('ended', function() {
-                // Wait a bit longer before returning to pool to ensure full playback
-                setTimeout(() => {
-                    returnToPool(audio, type);
-                }, 200);
-            });
-            
-            audio.addEventListener('error', function() {
-                console.log(`ℹ️ Fresh audio element error for ${type}, removing from pool`);
-                removeFromPool(audio, type);
-            });
-            
-            console.log(`🔥 LETHAL AUDIO POOL: Created fresh ${type} audio element`);
-        }
-        
-        // 💀 RETURN AUDIO TO POOL 💀
-        function returnToPool(audio, type = null) {
-            if (!type) {
-                // Determine type from class or source
-                if (audio.classList.contains('audio-pool-correct') || audio.src.includes('Single-correct')) {
-                    type = 'correct';
-                } else if (audio.classList.contains('audio-pool-wrong') || audio.src.includes('quiz-wrong')) {
-                    type = 'wrong';
-                } else if (audio.classList.contains('audio-pool-perfect') || audio.src.includes('quiz-perfect')) {
-                    type = 'perfect';
-                } else if (audio.classList.contains('audio-pool-partial') || audio.src.includes('quiz-partial')) {
-                    type = 'partial';
-                }
-            }
-            
-            if (type && audioPool[type]) {
-                // Reset audio completely
-                audio.currentTime = 0;
-                audio.pause();
-                
-                // Ensure audio is fully stopped
-                try {
-                    audio.stop && audio.stop();
-                } catch (e) {
-                    // Ignore errors if stop method doesn't exist
-                }
-                
-                // Add back to pool if not already there
-                if (!audioPool[type].includes(audio)) {
-                    audioPool[type].push(audio);
-                    console.log(`🔥 LETHAL AUDIO POOL: Returned ${type} audio to pool (${audioPool[type].length} available)`);
-                }
-            }
-        }
-        
-        // 💀 REMOVE FROM POOL 💀
-        function removeFromPool(audio, type) {
-            if (audioPool[type]) {
-                const index = audioPool[type].indexOf(audio);
-                if (index > -1) {
-                    audioPool[type].splice(index, 1);
-                }
-            }
-        }
 
         // [FIX] REMOVE INFINITE RELOAD LOOP
         // if (window.performance && window.performance.navigation.type === window.performance.navigation.TYPE_RELOAD) {
@@ -1962,6 +2022,9 @@ const TUTOR_CONFIG = window.TUTOR_CONFIG || {};
             formDataObj.answers = {};
             formDataObj.time_taken = Math.floor((Date.now() - quizStartTime) / 1000); // Elapsed time
             formDataObj.quiz_mode = TUTOR_CONFIG.quizMode;
+            if (TUTOR_CONFIG.randomSessionKey) {
+                formDataObj.session_key = TUTOR_CONFIG.randomSessionKey;
+            }
 
             console.log('⏱️ TIME TAKEN:', formDataObj.time_taken);
             console.log('📊 CURRENT ANSWERS BEFORE COLLECTION:', userAnswers);
@@ -2007,6 +2070,7 @@ const TUTOR_CONFIG = window.TUTOR_CONFIG || {};
             })
             .then(data => {
                 if (data.success) {
+                    clearTutorDraft();
                     console.log('✅ AUTO-GRADING SUCCESSFUL:', data);
 
                     // Store quiz results globally for potential review
@@ -2246,6 +2310,13 @@ const TUTOR_CONFIG = window.TUTOR_CONFIG || {};
             
             // Update sidebar circle state
             updateSidebarCircleState(questionNumber, data.is_correct);
+            questionResults[questionId] = {
+                type: 'answered',
+                is_correct: Boolean(data.is_correct),
+                correct_answer: data.correct_answer || '',
+                explanation: data.explanation || '',
+                showViewResultsButton: totalAnswers === totalQuestions
+            };
 
             // 🔥 UPDATE SOURCE PROGRESS IN MODAL IF AVAILABLE
             if (data.source_progress) {
@@ -2279,6 +2350,7 @@ const TUTOR_CONFIG = window.TUTOR_CONFIG || {};
                 correctAnswer: data.correct_answer,
                 showNextButton: true // Flag to show next button for non-last questions
             });
+            saveTutorDraft();
         }
 
         // 🔥 UPDATE SOURCE PROGRESS DISPLAY IN MODAL
@@ -2557,6 +2629,7 @@ const TUTOR_CONFIG = window.TUTOR_CONFIG || {};
                 nextQuestion.style.display = 'block';
                 currentQuestionIndex = currentNumber + 1;
                 updateProgress(currentNumber + 1, totalQuestions);
+                saveTutorDraft();
             } else {
                 // No more questions, show final results
                 const percentage = (correctAnswers / totalAnswers) * 100;
@@ -2710,6 +2783,7 @@ const TUTOR_CONFIG = window.TUTOR_CONFIG || {};
         function showQuizResults(results) {
             console.log('🚀 INSTANT RESULTS: Starting immediate quiz completion process', results);
             const completionStart = performance.now();
+            clearTutorDraft();
 
             // ⚡ INSTANT UI RENDERING - SHOW POPUP IMMEDIATELY
             const popupOverlay = document.getElementById('popup-overlay');
@@ -2971,6 +3045,28 @@ const TUTOR_CONFIG = window.TUTOR_CONFIG || {};
             reviewAnswersButton.addEventListener('click', function () {
                 window.enterTutorReviewMode();
             });
+        });
+
+        document.addEventListener('DOMContentLoaded', function () {
+            document.querySelectorAll('.written-answer').forEach((textarea) => {
+                textarea.addEventListener('input', saveTutorDraft);
+            });
+
+            document.querySelectorAll('.option-card').forEach((optionCard) => {
+                optionCard.addEventListener('click', function () {
+                    requestAnimationFrame(saveTutorDraft);
+                });
+            });
+
+            restoreTutorDraftState();
+            saveTutorDraft();
+        });
+
+        window.addEventListener('beforeunload', saveTutorDraft);
+        document.addEventListener('visibilitychange', function () {
+            if (document.visibilityState === 'hidden') {
+                saveTutorDraft();
+            }
         });
 
 // ============================================================

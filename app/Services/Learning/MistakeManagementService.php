@@ -18,7 +18,13 @@ class MistakeManagementService
     /**
      * Get mistakes for learning with caching
      */
-    public function getMistakesForLearning(int $userId, string $mode, ?string $courseFilter = null, array $topicIds = []): ?array
+    public function getMistakesForLearning(
+        int $userId,
+        string $mode,
+        ?string $courseFilter = null,
+        array $topicIds = [],
+        string $questionType = 'all'
+    ): ?array
     {
         $this->reactivateExpiredSkippedMistakes($userId);
         $deckFingerprint = $this->buildLearningDeckFingerprint($userId);
@@ -27,12 +33,13 @@ class MistakeManagementService
             'mode' => $mode,
             'course_filter' => $courseFilter,
             'topic_ids' => $topicIds,
+            'question_type' => $questionType,
             'deck_fingerprint' => $deckFingerprint,
             'cache_version' => $this->learningCacheVersion($userId),
         ]));
 
-        return Cache::remember($cacheKey, 1800, function () use ($userId, $mode, $courseFilter, $topicIds) {
-            $mistakes = Mistake::where('user_id', $userId)
+        return Cache::remember($cacheKey, 1800, function () use ($userId, $mode, $courseFilter, $topicIds, $questionType) {
+            $baseQuery = Mistake::where('user_id', $userId)
                 ->select(array_merge([
                     'mistakes.id',
                     'mistakes.question_id',
@@ -73,6 +80,11 @@ class MistakeManagementService
                 }])
                 ->with('question.topic:id,name,course_id')
                 ->with('question.topic.course:id,name')
+                ->when($questionType && $questionType !== 'all', function ($query) use ($questionType) {
+                    return $query->whereHas('question', function ($questionQuery) use ($questionType) {
+                        $questionQuery->where('question_type', $questionType);
+                    });
+                })
                 ->when(!empty($topicIds), function ($query) use ($topicIds) {
                     return $query->whereHas('question', function ($questionQuery) use ($topicIds) {
                         $questionQuery->whereIn('topic_id', $topicIds);
@@ -87,7 +99,7 @@ class MistakeManagementService
                     return $query->dueForReview('spaced');
                 });
 
-            $mistakes = $mistakes
+            $mistakes = (clone $baseQuery)
                 ->when($mode === 'spaced' && Mistake::hasColumn('next_review_at'), function ($query) {
                     $query->orderBy('next_review_at');
                 })
@@ -113,28 +125,35 @@ class MistakeManagementService
                 ->mapWithKeys(fn ($count, $courseId) => [(int) $courseId => $count])
                 ->all();
 
-            $totalMistakesCount = Mistake::where('user_id', $userId)
-                ->when(!empty($topicIds), function ($query) use ($topicIds) {
-                    return $query->whereHas('question', function ($questionQuery) use ($topicIds) {
-                        $questionQuery->whereIn('topic_id', $topicIds);
-                    });
-                })
-                ->count();
+            $topics = (clone $baseQuery)
+                ->join('questions', 'questions.id', '=', 'mistakes.question_id')
+                ->join('topics', 'topics.id', '=', 'questions.topic_id')
+                ->select('topics.id', 'topics.name')
+                ->distinct()
+                ->orderBy('topics.name')
+                ->get();
 
-            $skippedCount = Mistake::where('user_id', $userId)
+            $topicCounts = (clone $baseQuery)
+                ->join('questions', 'questions.id', '=', 'mistakes.question_id')
+                ->selectRaw('questions.topic_id as topic_id, COUNT(*) as total')
+                ->groupBy('questions.topic_id')
+                ->pluck('total', 'topic_id')
+                ->mapWithKeys(fn ($count, $topicId) => [(int) $topicId => (int) $count])
+                ->all();
+
+            $totalMistakesCount = (clone $baseQuery)->count();
+
+            $skippedCount = (clone $baseQuery)
                 ->where('skipped', true)
-                ->when(!empty($topicIds), function ($query) use ($topicIds) {
-                    return $query->whereHas('question', function ($questionQuery) use ($topicIds) {
-                        $questionQuery->whereIn('topic_id', $topicIds);
-                    });
-                })
                 ->count();
 
             if ($mistakes->isEmpty()) {
                 return [
                     'mistakes' => collect(),
                     'courses' => collect(),
+                    'topics' => $topics,
                     'course_counts' => [],
+                    'topic_counts' => $topicCounts,
                     'total_mistakes_count' => $totalMistakesCount,
                     'skipped_count' => $skippedCount,
                 ];
@@ -147,7 +166,9 @@ class MistakeManagementService
             return [
                 'mistakes' => $mistakes,
                 'courses' => $courses,
+                'topics' => $topics,
                 'course_counts' => $courseCounts,
+                'topic_counts' => $topicCounts,
                 'total_mistakes_count' => $totalMistakesCount,
                 'skipped_count' => $skippedCount,
             ];

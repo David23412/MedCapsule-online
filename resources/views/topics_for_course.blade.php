@@ -456,21 +456,21 @@
                         </div>
 
                         <div class="px-2 d-none" id="tutorScopeSection">
-                            <div class="small text-muted mb-2">Tutor session</div>
+                            <div class="small text-muted mb-2">Choose how to start</div>
                             <div class="form-check mb-2">
                                 <input class="form-check-input" type="radio" name="tutor_scope" id="tutorScopeRemaining" value="remaining" checked>
                                 <label class="form-check-label" for="tutorScopeRemaining">
-                                    Continue remaining questions
+                                    Continue solving
                                 </label>
                             </div>
                             <div class="form-check">
                                 <input class="form-check-input" type="radio" name="tutor_scope" id="tutorScopeFull" value="full">
                                 <label class="form-check-label" for="tutorScopeFull">
-                                    Solve full source again
+                                    Retry
                                 </label>
                             </div>
                             <div class="small text-muted mt-2" id="tutorScopeHint">
-                                Resume only unanswered questions, or replay the selected source(s) from the start.
+                                Continue where you stopped, or start again.
                             </div>
                         </div>
 
@@ -792,10 +792,18 @@
                     
                     <div class="topic-info">
                         <div class="topic-main">
-                            <h3 class="topic-name">
-                                <i class="fas fa-book-open"></i>
-                                <span class="topic-title-text">{{ $topic->name }}</span>
-                            </h3>
+                            <div class="topic-title-row">
+                                <h3 class="topic-name">
+                                    <i class="fas fa-book-open"></i>
+                                    <span class="topic-title-text">{{ $topic->name }}</span>
+                                </h3>
+                                @if(($topic->mistakes_count ?? 0) > 0)
+                                    <span class="topic-mistakes-badge" title="{{ $topic->mistakes_count }} mistakes in this topic">
+                                        <i class="fas fa-circle"></i>
+                                        {{ $topic->mistakes_count }}
+                                    </span>
+                                @endif
+                            </div>
                             
                             @if($topic->last_attempt_date)
                                 <div class="last-attempt">

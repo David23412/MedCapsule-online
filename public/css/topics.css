@@ -1491,6 +1491,13 @@ body {
     padding-right: 1.5rem;
 }
 
+.topic-title-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+}
+
 .topic-name {
     font-size: 1.3rem;
     font-weight: 600;
@@ -1505,6 +1512,25 @@ body {
 .topic-name i {
     color: #007bff;
     font-size: 1rem;
+}
+
+.topic-mistakes-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    flex-shrink: 0;
+    padding: 0.2rem 0.5rem;
+    border-radius: 999px;
+    background: rgba(220, 53, 69, 0.08);
+    color: #dc3545;
+    font-size: 0.78rem;
+    font-weight: 700;
+    line-height: 1;
+    margin-top: 0.2rem;
+}
+
+.topic-mistakes-badge i {
+    font-size: 0.52rem;
 }
 
 .topic-description {

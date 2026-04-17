@@ -148,9 +148,12 @@
         window.QuizSolvePageConfig = {
             totalQuestions: {{ $questions->count() }},
             timeLimitSeconds: {{ (int) floor($duration_minutes * 60) }},
-            gradeUrl: @json(route('quiz.grade-random'))
+            gradeUrl: @json(route('quiz.grade-random')),
+            draftKey: @json('quiz-solve:' . request()->fullUrl()),
+            questionIds: @json(($questions ?? collect())->pluck('id')->values()->all())
         };
     </script>
+    <script src="{{ asset('js/quiz-session-draft.js') }}" defer></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js" defer></script>
     <script src="{{ asset('js/quiz-solve-page.js') }}" defer></script>
 </body>

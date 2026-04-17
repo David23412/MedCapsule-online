@@ -66,6 +66,50 @@
 
     /* ── helpers ───────────────────────────────────────── */
 
+    function getBodyZoom() {
+        var zoom = 1;
+        try {
+            var computedZoom = parseFloat(window.getComputedStyle(document.body).zoom || '1');
+            if (Number.isFinite(computedZoom) && computedZoom > 0) {
+                zoom = computedZoom;
+            }
+        } catch (error) {
+            zoom = 1;
+        }
+
+        return zoom;
+    }
+
+    function getCanvasCssSize() {
+        var doc = document.documentElement;
+        var body = document.body;
+        var zoom = getBodyZoom();
+
+        var viewportWidth = window.innerWidth / zoom;
+        var viewportHeight = window.innerHeight / zoom;
+
+        var width = Math.max(
+            viewportWidth,
+            doc ? doc.scrollWidth : 0,
+            doc ? doc.clientWidth : 0,
+            body ? body.scrollWidth : 0,
+            body ? body.clientWidth : 0
+        );
+
+        var height = Math.max(
+            viewportHeight,
+            doc ? doc.scrollHeight : 0,
+            doc ? doc.clientHeight : 0,
+            body ? body.scrollHeight : 0,
+            body ? body.clientHeight : 0
+        );
+
+        return {
+            width: Math.ceil(width),
+            height: Math.ceil(height)
+        };
+    }
+
     /** Convert pointer coords to canvas-local coords (handles DPR + CSS sizing). */
     function getCanvasPoint(e) {
         const rect   = canvas.getBoundingClientRect();
@@ -201,8 +245,9 @@
     /** Move the cursor circle to follow the pointer. */
     function positionCursorCircle(clientX, clientY) {
         if (!cursorCircle || cursorCircle.style.display === 'none') return;
-        cursorCircle.style.left = clientX + 'px';
-        cursorCircle.style.top  = clientY + 'px';
+        var zoom = getBodyZoom();
+        cursorCircle.style.left = (clientX / zoom) + 'px';
+        cursorCircle.style.top  = (clientY / zoom) + 'px';
     }
 
     /* ── tap-through helpers ──────────────────────────── */
@@ -497,12 +542,18 @@
 
         // Save current drawing
         var dataURL = canvas.toDataURL('image/png');
+        var size = getCanvasCssSize();
 
         var dpr = window.devicePixelRatio || 1;
-        canvas.width  = window.innerWidth  * dpr;
-        canvas.height = window.innerHeight * dpr;
-        canvas.style.width  = window.innerWidth  + 'px';
-        canvas.style.height = window.innerHeight + 'px';
+        canvas.width  = Math.max(1, Math.floor(size.width * dpr));
+        canvas.height = Math.max(1, Math.floor(size.height * dpr));
+        canvas.style.width  = size.width + 'px';
+        canvas.style.height = size.height + 'px';
+
+        if (overlay) {
+            overlay.style.width = size.width + 'px';
+            overlay.style.height = size.height + 'px';
+        }
 
         // Restore drawing
         var img = new Image();
@@ -821,8 +872,9 @@
         }, { passive: false });
 
         // Hide cursor circle when pointer leaves the canvas area
-        canvas.addEventListener('pointerleave', function (e) {
-            if (cursorCircle) cursorCircle.style.display = 'none';
+        canvas.addEventListener('pointerleave', function () {
+            if (!cursorCircle || isDrawing) return;
+            cursorCircle.style.display = 'none';
         });
         canvas.addEventListener('pointerenter', function () {
             updateCursorCircleVisibility();

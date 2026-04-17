@@ -8,6 +8,7 @@ use App\Models\Topic;
 use App\Models\UserTopicSourceProgress;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Schema;
 
 class TutorSourceProgressService
 {
@@ -17,6 +18,7 @@ class TutorSourceProgressService
      * @var array<string,int>
      */
     private array $totalQuestionsCache = [];
+    private ?bool $progressTableAvailable = null;
 
     /**
      * Get durable tutor coverage for every available source in a topic.
@@ -43,8 +45,13 @@ class TutorSourceProgressService
     public function getSourceProgress(int $userId, Topic $topic, string $source, ?int $totalQuestions = null): array
     {
         $normalizedSource = $this->normalizeSource($source);
-        $record = $this->findOrHydrateRecord($userId, $topic->id, $normalizedSource);
         $availableQuestions = $totalQuestions ?? $this->getTotalQuestionsForSource($topic, $normalizedSource);
+
+        if (!$this->hasProgressTable()) {
+            return $this->getLegacySourceProgress($userId, $topic, $normalizedSource, $availableQuestions);
+        }
+
+        $record = $this->findOrHydrateRecord($userId, $topic->id, $normalizedSource);
 
         if ($record && $record->total_questions !== $availableQuestions) {
             $record->forceFill(['total_questions' => $availableQuestions])->save();
@@ -74,6 +81,19 @@ class TutorSourceProgressService
      */
     public function recordAnsweredQuestion(int $userId, Topic $topic, Question $question, bool $isCorrect, ?Carbon $answeredAt = null): UserTopicSourceProgress
     {
+        if (!$this->hasProgressTable()) {
+            return new UserTopicSourceProgress([
+                'user_id' => $userId,
+                'topic_id' => $topic->id,
+                'source' => $this->normalizeSource((string) ($question->source ?: 'General')),
+                'completed_question_ids' => [],
+                'correct_question_ids' => [],
+                'completed_count' => 0,
+                'correct_count' => 0,
+                'total_questions' => $this->getTotalQuestionsForSource($topic, $this->normalizeSource((string) ($question->source ?: 'General'))),
+            ]);
+        }
+
         $answeredAt = $answeredAt ?? now();
         $source = $this->normalizeSource((string) ($question->source ?: 'General'));
         $record = $this->findOrHydrateRecord($userId, $topic->id, $source)
@@ -119,6 +139,10 @@ class TutorSourceProgressService
      */
     public function recordSessionAnswers(int $userId, Topic $topic, array $sourceGroups, ?Carbon $answeredAt = null): void
     {
+        if (!$this->hasProgressTable()) {
+            return;
+        }
+
         $answeredAt = $answeredAt ?? now();
 
         foreach ($sourceGroups as $source => $group) {
@@ -289,5 +313,62 @@ class TutorSourceProgressService
         $source = trim($source);
 
         return $source !== '' ? $source : 'General';
+    }
+
+    /**
+     * Fallback used before the new progress table exists in the running database.
+     *
+     * @return array<string,int|float|bool|string|array>
+     */
+    private function getLegacySourceProgress(int $userId, Topic $topic, string $source, int $availableQuestions): array
+    {
+        $latestAttempt = QuizAttempt::query()
+            ->where('user_id', $userId)
+            ->where('topic_id', $topic->id)
+            ->where('study_mode', 'tutor')
+            ->where('source', $source)
+            ->latest('id')
+            ->first();
+
+        $completedIds = $this->normalizeQuestionIds(
+            collect($latestAttempt?->question_data ?? [])
+                ->pluck('question_id')
+                ->filter()
+                ->all()
+        );
+        $correctIds = $this->normalizeQuestionIds(
+            collect($latestAttempt?->question_data ?? [])
+                ->filter(fn ($item) => (bool) ($item['is_correct'] ?? false))
+                ->pluck('question_id')
+                ->filter()
+                ->all()
+        );
+
+        $completedCount = count($completedIds);
+        $correctCount = count($correctIds);
+        $remainingCount = max(0, $availableQuestions - $completedCount);
+
+        return [
+            'source' => $source,
+            'completed' => $completedCount,
+            'correct' => $correctCount,
+            'total' => $availableQuestions,
+            'remaining_count' => $remainingCount,
+            'percentage' => $availableQuestions > 0 ? round(($completedCount / $availableQuestions) * 100, 2) : 0,
+            'accuracy_percentage' => $completedCount > 0 ? round(($correctCount / $completedCount) * 100, 2) : 0,
+            'has_attempts' => $completedCount > 0,
+            'completed_question_ids' => $completedIds,
+            'correct_question_ids' => $correctIds,
+            'can_resume_remaining' => $remainingCount > 0,
+        ];
+    }
+
+    private function hasProgressTable(): bool
+    {
+        if ($this->progressTableAvailable === null) {
+            $this->progressTableAvailable = Schema::hasTable('user_topic_source_progress');
+        }
+
+        return $this->progressTableAvailable;
     }
 }

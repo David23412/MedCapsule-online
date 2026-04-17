@@ -31,6 +31,46 @@ document.addEventListener('DOMContentLoaded', function() {
             }
             
             let selectedAnswers = {};
+            const quizDraft = window.QuizSessionDraft?.create({
+                key: randomQuizPageConfig.draftKey,
+                questionIds: randomQuizPageConfig.questionIds || []
+            }) || null;
+
+            function applyDraftAnswers(answers) {
+                if (!answers || typeof answers !== 'object') {
+                    return;
+                }
+
+                Object.entries(answers).forEach(([questionId, answer]) => {
+                    const normalizedAnswer = typeof answer === 'string' ? answer : '';
+                    const radio = document.querySelector(`input[name="answers[${questionId}]"][value="${normalizedAnswer}"]`);
+                    if (radio) {
+                        radio.checked = true;
+                        selectedAnswers[questionId] = normalizedAnswer;
+                        return;
+                    }
+
+                    const textarea = document.querySelector(`.written-answer[data-question-id="${questionId}"]`);
+                    if (textarea) {
+                        textarea.value = normalizedAnswer;
+                        if (normalizedAnswer.trim() !== '') {
+                            selectedAnswers[questionId] = normalizedAnswer;
+                        }
+                    }
+                });
+            }
+
+            function saveDraft() {
+                if (!quizDraft || quizSubmitted) {
+                    return;
+                }
+
+                quizDraft.save({
+                    answers: selectedAnswers,
+                    startedAt: startTime,
+                    scrollY: window.scrollY || 0
+                });
+            }
             
             // Update progress function
             function updateProgress() {
@@ -55,6 +95,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     const questionId = this.name.match(/\[(\d+)\]/)[1];
                     selectedAnswers[questionId] = this.value;
                     updateProgress();
+                    saveDraft();
                 });
             });
             
@@ -68,6 +109,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         delete selectedAnswers[questionId];
                     }
                     updateProgress();
+                    saveDraft();
                 });
             });
 
@@ -78,6 +120,14 @@ document.addEventListener('DOMContentLoaded', function() {
             let timerInterval;
             let startTime = Date.now(); // Initialize start time for timer calculations
             let quizSubmitted = false;
+
+            const savedDraft = quizDraft?.load();
+            if (savedDraft) {
+                applyDraftAnswers(savedDraft.answers);
+                if (Number.isFinite(Number(savedDraft.startedAt)) && Number(savedDraft.startedAt) > 0) {
+                    startTime = Number(savedDraft.startedAt);
+                }
+            }
             
             // NUCLEAR SPEED: Eliminate setTimeout delays in timer
             function updateTimer() {
@@ -141,6 +191,11 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
             } else {
                 console.warn('⚠️ Timer not starting - timeLimit is 0 or negative');
+            }
+
+            updateProgress();
+            if (savedDraft && Number.isFinite(Number(savedDraft.scrollY))) {
+                requestAnimationFrame(() => window.scrollTo({ top: Number(savedDraft.scrollY), behavior: 'auto' }));
             }
 
             const popupOverlay = document.getElementById("popup-overlay");
@@ -239,6 +294,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 const formDataObj = {};
                 formDataObj.answers = {};
                 formDataObj.time_taken = document.getElementById('time-taken').value;
+                if (randomQuizPageConfig.sessionKey) {
+                    formDataObj.session_key = randomQuizPageConfig.sessionKey;
+                }
 
                 // Collect answers from multiple choice questions
                 document.querySelectorAll('.form-check-input').forEach(input => {
@@ -297,6 +355,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 })
                 .then(data => {
                     if (data.success) {
+                        quizDraft?.clear();
                         // Store quiz results globally for review functionality
                         window.lastQuizResults = data;
                         setPopupActionsDisabled(false);
@@ -405,6 +464,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     
                     // Re-enable form elements on error
                     document.querySelectorAll('input, textarea, button[type="submit"]').forEach(input => input.disabled = false);
+                    saveDraft();
                 });
             }
 
@@ -426,6 +486,15 @@ document.addEventListener('DOMContentLoaded', function() {
                     showReviewMode();
                 }, 300);
             });
+
+            window.addEventListener('beforeunload', saveDraft);
+            document.addEventListener('visibilitychange', function () {
+                if (document.visibilityState === 'hidden') {
+                    saveDraft();
+                }
+            });
+            window.addEventListener('scroll', saveDraft, { passive: true });
+            saveDraft();
 
             // Function to show review mode with correct/incorrect answer highlighting
             function showReviewMode() {

@@ -365,18 +365,34 @@
                 <!-- Course filter dropdown -->
                 <div class="course-filter mb-4">
                     <form action="{{ route('review.learn') }}" method="GET" id="filter-form">
-                        @foreach(($selectedTopicIds ?? []) as $selectedTopicId)
-                            <input type="hidden" name="topic_ids[]" value="{{ $selectedTopicId }}">
-                        @endforeach
                         <input type="hidden" name="mode" value="{{ $currentLearnMode ?? 'quiz' }}">
-                        <select id="course-filter" name="course" class="form-select">
-                            <option value="">All Courses ({{ $totalMistakesCount }})</option>
-                            @foreach($courses ?? [] as $course)
-                                <option value="{{ $course->id }}" {{ ($courseFilter ?? '') == $course->id ? 'selected' : '' }}>
-                                    {{ $course->name }} ({{ $courseCounts[$course->id] ?? 0 }})
-                                </option>
-                            @endforeach
-                        </select>
+                        <div class="mb-3">
+                            <select id="course-filter" name="course" class="form-select">
+                                <option value="">All Courses ({{ $totalMistakesCount }})</option>
+                                @foreach($courses ?? [] as $course)
+                                    <option value="{{ $course->id }}" {{ ($courseFilter ?? '') == $course->id ? 'selected' : '' }}>
+                                        {{ $course->name }} ({{ $courseCounts[$course->id] ?? 0 }})
+                                    </option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <select id="topic-filter" name="topic_ids[]" class="form-select">
+                                <option value="">All Topics</option>
+                                @foreach($topics ?? [] as $topicOption)
+                                    <option value="{{ $topicOption->id }}" {{ in_array($topicOption->id, $selectedTopicIds ?? [], true) ? 'selected' : '' }}>
+                                        {{ $topicOption->name }} ({{ $topicCounts[$topicOption->id] ?? 0 }})
+                                    </option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <div>
+                            <select id="question-type-filter" name="question_type" class="form-select">
+                                <option value="all" {{ ($selectedQuestionType ?? 'all') === 'all' ? 'selected' : '' }}>All Questions</option>
+                                <option value="multiple_choice" {{ ($selectedQuestionType ?? 'all') === 'multiple_choice' ? 'selected' : '' }}>MCQ Only</option>
+                                <option value="written" {{ ($selectedQuestionType ?? 'all') === 'written' ? 'selected' : '' }}>Written Only</option>
+                            </select>
+                        </div>
                     </form>
                 </div>
                 
@@ -541,6 +557,7 @@
             saveTimeUrl: @json(secure_url('/learn/save-time')),
             autoSelectEasy: @json(!empty($selectedTopicIds ?? [])),
             selectedTopicIds: @json(array_values($selectedTopicIds ?? [])),
+            selectedQuestionType: @json($selectedQuestionType ?? 'all'),
             currentMode: @json($currentLearnMode ?? 'quiz'),
             currentDeckMode: @json(($currentLearnMode ?? 'quiz') === 'spaced' ? 'spaced' : 'classic'),
             autoStartMode: @json($autoStartLearnMode ?? null)

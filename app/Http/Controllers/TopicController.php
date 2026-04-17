@@ -180,6 +180,41 @@ class TopicController extends Controller
         }
 
         $this->topicProgressService->hydrateTopicsWithFreshQuizProgress($topics, $user->id);
+
+        $topicIds = $topics->pluck('id')->map(fn ($id) => (int) $id)->all();
+        $topicMistakeCounts = array_fill_keys($topicIds, 0);
+
+        if (!empty($topicIds)) {
+            $mistakeQuestions = Question::query()
+                ->select(['questions.id', 'questions.topic_id', 'questions.extra_topic'])
+                ->join('mistakes', 'mistakes.question_id', '=', 'questions.id')
+                ->where('mistakes.user_id', $user->id)
+                ->where(function ($query) use ($topicIds) {
+                    foreach ($topicIds as $topicId) {
+                        $query->orWhere('questions.topic_id', $topicId)
+                            ->orWhereRaw('FIND_IN_SET(?, REPLACE(questions.extra_topic, " ", "")) > 0', [$topicId]);
+                    }
+                })
+                ->distinct('questions.id')
+                ->get();
+
+            foreach ($mistakeQuestions as $mistakeQuestion) {
+                $relatedTopicIds = [(int) $mistakeQuestion->topic_id];
+                $extraTopicIds = array_filter(array_map('intval', explode(',', (string) ($mistakeQuestion->extra_topic ?? ''))));
+                $relatedTopicIds = array_values(array_unique([...$relatedTopicIds, ...$extraTopicIds]));
+
+                foreach ($relatedTopicIds as $relatedTopicId) {
+                    if (array_key_exists($relatedTopicId, $topicMistakeCounts)) {
+                        $topicMistakeCounts[$relatedTopicId]++;
+                    }
+                }
+            }
+        }
+
+        $topics->each(function ($topic) use ($topicMistakeCounts) {
+            $topic->mistakes_count = (int) ($topicMistakeCounts[$topic->id] ?? 0);
+        });
+
         $gamePlan = $this->studyGamePlanService->buildForCourse($user, $course, $topics);
 
             // Load assignments only for students, using integer role constants.
