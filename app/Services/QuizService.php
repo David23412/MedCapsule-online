@@ -11,17 +11,23 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use App\Services\TutorSourceProgressService;
 
 class QuizService
 {
     protected $cacheService;
+    protected TutorSourceProgressService $tutorSourceProgressService;
 
     /** @var bool|null Cached result of Schema::hasColumn('questions', 'difficulty') */
     private static ?bool $hasDifficultyColumn = null;
 
-    public function __construct(Core\UltraConsolidatedCacheService $cacheService)
+    public function __construct(
+        Core\UltraConsolidatedCacheService $cacheService,
+        TutorSourceProgressService $tutorSourceProgressService
+    )
     {
         $this->cacheService = $cacheService;
+        $this->tutorSourceProgressService = $tutorSourceProgressService;
     }
 
     /**
@@ -35,7 +41,14 @@ class QuizService
      * @return array
      * @throws \Exception
      */
-    public function initializeQuiz(User $user, Course $course, Topic $topic, array $sources = ['all'], string $mode = 'quiz'): array
+    public function initializeQuiz(
+        User $user,
+        Course $course,
+        Topic $topic,
+        array $sources = ['all'],
+        string $mode = 'quiz',
+        array $options = []
+    ): array
     {
         try {
             // Validate course-topic relationship
@@ -51,19 +64,20 @@ class QuizService
             $sources = $this->normalizeSources($sources);
 
             // Retrieve questions based on sources
-            $questions = $this->retrieveQuestions($topic, $sources);
+            $questions = $this->retrieveQuestions($user, $topic, $sources, $mode, $options);
 
             // Validate question availability
-            $this->validateQuestionAvailability($questions, $topic, $sources);
+            $this->validateQuestionAvailability($questions, $topic, $sources, $mode, $options);
 
             // Store session data
-            $this->storeQuizSessionData($sources, $mode);
+            $this->storeQuizSessionData($course, $topic, $sources, $mode, $questions, $options);
 
             return [
                 'success' => true,
                 'questions' => $questions,
                 'sources' => $sources,
                 'mode' => $mode,
+                'options' => $options,
                 'topic' => $topic,
                 'course' => $course
             ];
@@ -174,15 +188,20 @@ class QuizService
      * @param array $sources
      * @return \Illuminate\Database\Eloquent\Collection
      */
-    private function retrieveQuestions(Topic $topic, array $sources): \Illuminate\Database\Eloquent\Collection
+    private function retrieveQuestions(User $user, Topic $topic, array $sources, string $mode = 'quiz', array $options = []): \Illuminate\Database\Eloquent\Collection
     {
         // Trim all source values to avoid whitespace issues
         $sources = array_map('trim', $sources);
 
-        $cacheKey = "topic:{$topic->id}:questions:" . md5(serialize($sources));
+        $cacheKey = "topic:{$topic->id}:questions:" . md5(serialize([
+            'sources' => $sources,
+            'mode' => $mode,
+            'tutor_scope' => $options['tutor_scope'] ?? null,
+            'user_id' => $mode === 'tutor' ? $user->id : null,
+        ]));
 
-        $questions = $this->cacheService->remember($cacheKey, function () use ($topic, $sources) {
-            return $this->getQuestionsFromDatabase($topic, $sources);
+        $questions = $this->cacheService->remember($cacheKey, function () use ($user, $topic, $sources, $mode, $options) {
+            return $this->getQuestionsFromDatabase($user, $topic, $sources, $mode, $options);
         }, 1800); // 30 minutes
 
         return $questions;
@@ -191,7 +210,7 @@ class QuizService
     /**
      * OPTIMIZED DATABASE QUERY: Get questions with efficient deletion validation
      */
-    private function getQuestionsFromDatabase(Topic $topic, array $sources): \Illuminate\Database\Eloquent\Collection
+    private function getQuestionsFromDatabase(User $user, Topic $topic, array $sources, string $mode = 'quiz', array $options = []): \Illuminate\Database\Eloquent\Collection
     {
         $query = Question::select([
             'questions.id', 'questions.topic_id', 'questions.question', 'questions.question_type',
@@ -220,6 +239,18 @@ class QuizService
             });
         }
 
+        if ($mode === 'tutor' && ($options['tutor_scope'] ?? 'full') === 'remaining') {
+            $excludedQuestionIds = $this->tutorSourceProgressService->getCompletedQuestionIdsForSources(
+                $user->id,
+                $topic,
+                $sources
+            );
+
+            if (!empty($excludedQuestionIds)) {
+                $query->whereNotIn('questions.id', $excludedQuestionIds);
+            }
+        }
+
         return $query->get();
     }
 
@@ -231,9 +262,13 @@ class QuizService
      * @param array $sources
      * @throws \InvalidArgumentException
      */
-    private function validateQuestionAvailability($questions, Topic $topic, array $sources): void
+    private function validateQuestionAvailability($questions, Topic $topic, array $sources, string $mode = 'quiz', array $options = []): void
     {
         if ($questions->isEmpty()) {
+            if ($mode === 'tutor' && ($options['tutor_scope'] ?? 'full') === 'remaining') {
+                throw new \InvalidArgumentException('No remaining questions available for the selected sources.');
+            }
+
             Log::warning('⚠️ No questions available for topic with selected sources:', [
                 'topic_id' => $topic->id,
                 'sources' => $sources
@@ -248,17 +283,39 @@ class QuizService
      * @param array $sources
      * @param string $mode
      */
-    private function storeQuizSessionData(array $sources, string $mode): void
+    private function storeQuizSessionData(
+        Course $course,
+        Topic $topic,
+        array $sources,
+        string $mode,
+        \Illuminate\Database\Eloquent\Collection $questions,
+        array $options = []
+    ): void
     {
         // Store the selected sources in the session for reference during grading
         session(['selected_sources' => $sources]);
 
         // Store quiz mode
         session(['quiz_mode' => $mode]);
+        session(['current_course_id' => $course->id]);
+        session(['current_topic_id' => $topic->id]);
 
         // Initialize tutor progress if in tutor mode
         if ($mode === 'tutor') {
-            session(['tutor_progress' => ['sources' => []]]);
+            $questionsBySource = $questions
+                ->groupBy(fn ($question) => (string) ($question->source ?: 'General'))
+                ->map(fn ($group) => $group->pluck('id')->map(fn ($id) => (int) $id)->values()->all())
+                ->toArray();
+
+            session([
+                'tutor_progress' => ['sources' => []],
+                'tutor_scope' => ($options['tutor_scope'] ?? 'full'),
+                'tutor_session_questions' => [
+                    'topic_id' => $topic->id,
+                    'course_id' => $course->id,
+                    'sources' => $questionsBySource,
+                ],
+            ]);
         }
     }
 

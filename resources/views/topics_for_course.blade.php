@@ -454,9 +454,25 @@
                                 <label class="form-check-label" for="tutorMode">Tutor Mode</label>
                             </div>
                         </div>
-                        
 
-                        
+                        <div class="px-2 d-none" id="tutorScopeSection">
+                            <div class="small text-muted mb-2">Tutor session</div>
+                            <div class="form-check mb-2">
+                                <input class="form-check-input" type="radio" name="tutor_scope" id="tutorScopeRemaining" value="remaining" checked>
+                                <label class="form-check-label" for="tutorScopeRemaining">
+                                    Continue remaining questions
+                                </label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="tutor_scope" id="tutorScopeFull" value="full">
+                                <label class="form-check-label" for="tutorScopeFull">
+                                    Solve full source again
+                                </label>
+                            </div>
+                            <div class="small text-muted mt-2" id="tutorScopeHint">
+                                Resume only unanswered questions, or replay the selected source(s) from the start.
+                            </div>
+                        </div>
 
                     </form>
                 </div>

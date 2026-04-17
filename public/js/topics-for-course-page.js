@@ -12,6 +12,8 @@
         const sourceCourseId = document.getElementById('source_course_id');
         const csrfToken = document.querySelector('meta[name="csrf-token"]');
         const sourceSelectionForm = document.getElementById('sourceSelectionForm');
+        const tutorScopeSection = document.getElementById('tutorScopeSection');
+        const tutorScopeHint = document.getElementById('tutorScopeHint');
         const randomQuizForm = document.getElementById('randomQuizForm');
         const randomQuizModal = document.getElementById('randomQuizModal');
         const assignmentIconCircle = document.querySelector('.assignment-icon-circle');
@@ -855,6 +857,9 @@
                 const card = document.createElement('div');
                 card.className = 'source-card';
                 card.setAttribute('data-source', source);
+                card.dataset.remainingQuestions = String(progress.remaining_count ?? Math.max(0, (progress.total_questions_available || 0) - (progress.completed || 0)));
+                card.dataset.totalQuestionsAvailable = String(progress.total_questions_available || 0);
+                card.dataset.completedQuestions = String(progress.completed || 0);
 
                 if (progress.total_questions_available > 0) {
                     card.classList.add('selected');
@@ -864,7 +869,21 @@
                 let statusText;
                 let statusIcon;
 
-                if (progress.has_attempts) {
+                if (data.mode === 'tutor') {
+                    if ((progress.remaining_count ?? 0) === 0 && progress.total_questions_available > 0) {
+                        statusClass = 'completed';
+                        statusText = 'Completed';
+                        statusIcon = 'fas fa-check-circle';
+                    } else if ((progress.completed || 0) > 0) {
+                        statusClass = 'in-progress';
+                        statusText = 'In Progress';
+                        statusIcon = 'fas fa-clock';
+                    } else {
+                        statusClass = 'not-started';
+                        statusText = 'Not started yet';
+                        statusIcon = 'fas fa-circle';
+                    }
+                } else if (progress.has_attempts) {
                     if (progress.percentage >= 90) {
                         statusClass = 'completed';
                         statusText = 'Completed';
@@ -903,7 +922,7 @@
                             </div>
                             <div class="source-stats">
                                 <span class="questions-count">
-                                    <i class="fas fa-book-open me-1"></i>${progress.completed}/${progress.total_questions_available} Questions
+                                    <i class="fas fa-book-open me-1"></i>${progress.completed}/${progress.total_questions_available} Questions${data.mode === 'tutor' ? ` covered` : ''}
                                 </span>
                             </div>
                         </div>
@@ -925,6 +944,7 @@
                             e.target.checked = true;
                             this.classList.add('selected');
                         }
+                        syncTutorScopeState();
                         return;
                     }
                     
@@ -949,9 +969,65 @@
                             checkbox.checked = true;
                             this.classList.add('selected');
                         }
+
+                        syncTutorScopeState();
                     }
                 });
             });
+
+            syncTutorScopeState();
+        }
+
+        function getSelectedSourceCards() {
+            return Array.from(sourcesContainer.querySelectorAll('.source-card')).filter(card => {
+                const checkbox = card.querySelector('input[type="checkbox"]');
+                return checkbox && checkbox.checked;
+            });
+        }
+
+        function syncTutorScopeState() {
+            if (!sourceSelectionForm || !tutorScopeSection) {
+                return;
+            }
+
+            const selectedModeInput = sourceSelectionForm.querySelector('input[name="quiz_mode"]:checked');
+            const isTutorMode = selectedModeInput && selectedModeInput.value === 'tutor';
+            tutorScopeSection.classList.toggle('d-none', !isTutorMode);
+
+            const remainingRadio = document.getElementById('tutorScopeRemaining');
+            const fullRadio = document.getElementById('tutorScopeFull');
+            if (!remainingRadio || !fullRadio) {
+                return;
+            }
+
+            if (!isTutorMode) {
+                fullRadio.checked = true;
+                return;
+            }
+
+            const selectedCards = getSelectedSourceCards();
+            const totalRemaining = selectedCards.reduce((sum, card) => {
+                return sum + Number(card.dataset.remainingQuestions || 0);
+            }, 0);
+
+            const hasRemaining = totalRemaining > 0;
+            remainingRadio.disabled = !hasRemaining;
+
+            if (!hasRemaining) {
+                fullRadio.checked = true;
+                if (tutorScopeHint) {
+                    tutorScopeHint.textContent = 'All selected sources are already fully covered. Replay the full source to practice again.';
+                }
+                return;
+            }
+
+            if (!remainingRadio.checked && !fullRadio.checked) {
+                remainingRadio.checked = true;
+            }
+
+            if (tutorScopeHint) {
+                tutorScopeHint.textContent = 'Resume only unanswered questions, or replay the selected source(s) from the start.';
+            }
         }
 
         document.addEventListener('click', function(e) {
@@ -1043,8 +1119,23 @@
             const baseUrl = selectedMode === 'tutor'
                 ? `/quiz/${courseId}/${topicId}/tutor`
                 : `/quiz/${courseId}/${topicId}`;
+            let extraParams = '';
 
-            window.location.href = `${baseUrl}?${sourceParams}`;
+            if (selectedMode === 'tutor') {
+                const tutorScope = this.querySelector('input[name="tutor_scope"]:checked')?.value || 'full';
+                const totalRemaining = getSelectedSourceCards().reduce((sum, card) => {
+                    return sum + Number(card.dataset.remainingQuestions || 0);
+                }, 0);
+
+                if (tutorScope === 'remaining' && totalRemaining === 0) {
+                    alert('There are no remaining tutor questions in the selected source(s). Choose "Solve full source again" to replay them.');
+                    return;
+                }
+
+                extraParams = `&tutor_scope=${encodeURIComponent(tutorScope)}`;
+            }
+
+            window.location.href = `${baseUrl}?${sourceParams}${extraParams}`;
         });
 
         if (randomQuizModal) {

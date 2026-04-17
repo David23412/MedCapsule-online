@@ -3170,6 +3170,7 @@
             courseId: {{ $course->id ?? 1 }},
             initialDuration: {{ isset($duration_minutes) ? $duration_minutes * 60 : 0 }},
             quizMode: '{{ isset($is_random_quiz) && $is_random_quiz ? "random" : "tutor" }}',
+            tutorScope: @json($tutor_scope ?? 'full'),
             selectedSources: @json($selected_sources ?? []),
             questionData: {
                 @foreach($questions as $index => $question)

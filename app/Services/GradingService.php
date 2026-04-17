@@ -15,6 +15,7 @@ use App\Services\UserStatsService;
 use App\Services\NotificationService;
 use App\Services\WrittenAnswerEvaluationService;
 use App\Services\Learning\UserMistakeMasteryService;
+use App\Services\TutorSourceProgressService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
@@ -39,6 +40,7 @@ class GradingService
     protected $notificationService;
     protected $writtenAnswerEvaluationService;
     protected $userMistakeMasteryService;
+    protected TutorSourceProgressService $tutorSourceProgressService;
 
     public function __construct(
         UltraConsolidatedCacheService $cacheService,
@@ -46,6 +48,7 @@ class GradingService
         UserStatsService $userStatsService,
         NotificationService $notificationService,
         WrittenAnswerEvaluationService $writtenAnswerEvaluationService,
+        TutorSourceProgressService $tutorSourceProgressService,
         ?UserMistakeMasteryService $userMistakeMasteryService = null
     ) {
         $this->cacheService = $cacheService;
@@ -53,6 +56,7 @@ class GradingService
         $this->userStatsService = $userStatsService;
         $this->notificationService = $notificationService;
         $this->writtenAnswerEvaluationService = $writtenAnswerEvaluationService;
+        $this->tutorSourceProgressService = $tutorSourceProgressService;
         $this->userMistakeMasteryService = $userMistakeMasteryService ?? app(UserMistakeMasteryService::class);
     }
 
@@ -1072,11 +1076,12 @@ class GradingService
             if (!$isCorrect || $hadExistingMistake) {
                 \App\Http\Controllers\Quiz\QuizMistakeController::clearUserMistakeCaches($user->id);
             }
-            $topic = $question->topic;
+            $topic = Topic::find((int) session('current_topic_id')) ?: $question->topic;
             if (!$topic) {
                 throw new \Exception('Question has no associated topic');
             }
             $isNewAttempt = $this->updateTutorProgress($user, $question, $topic, $isCorrect);
+            $this->tutorSourceProgressService->recordAnsweredQuestion($user->id, $topic, $question, $isCorrect);
             
             if ($isNewAttempt) {
                 // Award XP for correct tutor answers (conservative: 5 XP per correct)
@@ -1179,11 +1184,20 @@ class GradingService
             return;
         }
         
-        // OPTIMIZATION: Get remaining questions count in single query
-        $remainingQuestions = Question::where('topic_id', $topic->id)
-            ->where('source', $source)
-            ->whereNotIn('id', $tutorProgress['sources'][$source]['completed_questions'])
-            ->count();
+        $sessionSourceQuestions = collect(session("tutor_session_questions.sources.{$source}", []))
+            ->map(fn ($id) => (int) $id)
+            ->filter()
+            ->values()
+            ->all();
+
+        if (empty($sessionSourceQuestions)) {
+            return;
+        }
+
+        $remainingQuestions = count(array_diff(
+            $sessionSourceQuestions,
+            array_map('intval', $tutorProgress['sources'][$source]['completed_questions'] ?? [])
+        ));
             
         // Fallback: if this is the last question for the source, always create the attempt
         if ($remainingQuestions === 0) {
@@ -1293,38 +1307,19 @@ private function createTutorAttempt(User $user, Topic $topic, string $source, ar
  */
 private function getTutorSourceProgress(User $user, Topic $topic, string $source): array
 {
-    // LETHAL FIX: Eliminated session dependency - now uses database exclusively
-    $source = $source ?: 'General';
-
-    // Get the latest tutor attempt for this source
-    $latestAttempt = QuizAttempt::where([
-        'user_id' => $user->id,
-        'topic_id' => $topic->id,
-        'study_mode' => 'tutor',
-        'source' => $source
-    ])->orderBy('created_at', 'desc')->first();
-
-    // OPTIMIZATION: Get total questions count in same query batch if possible
-    $totalQuestionsInSource = Question::where('topic_id', $topic->id)
-        ->where('source', $source)
-        ->count();
-
-    if (!$latestAttempt) {
-        return ['completed' => 0, 'total' => $totalQuestionsInSource, 'percentage' => 0];
-    }
-
-    // INSTANT OPTIMIZATION: Cache rounded percentage calculation
-    static $percentageCache = [];
-    $cacheKey = "{$latestAttempt->percentage_grade}_{$latestAttempt->id}";
-    
-    if (!isset($percentageCache[$cacheKey])) {
-        $percentageCache[$cacheKey] = round($latestAttempt->percentage_grade, 2);
-    }
+    $progress = $this->tutorSourceProgressService->getSourceProgress(
+        $user->id,
+        $topic,
+        $source ?: 'General'
+    );
 
     return [
-        'completed' => $latestAttempt->score,
-        'total' => $totalQuestionsInSource,
-        'percentage' => $percentageCache[$cacheKey]
+        'completed' => (int) ($progress['completed'] ?? 0),
+        'correct' => (int) ($progress['correct'] ?? 0),
+        'total' => (int) ($progress['total'] ?? 0),
+        'remaining_count' => (int) ($progress['remaining_count'] ?? 0),
+        'percentage' => (float) ($progress['percentage'] ?? 0),
+        'accuracy_percentage' => (float) ($progress['accuracy_percentage'] ?? 0),
     ];
 }
 

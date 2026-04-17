@@ -21,6 +21,7 @@ use App\Http\Controllers\Topic\TopicViewController;
 use App\Http\Controllers\Topic\TopicActionController;
 use App\Services\TopicProgressService;
 use App\Services\StudyGamePlanService;
+use App\Services\TutorSourceProgressService;
 
 /**
  * 💀 NUCLEAR OPTIMIZED CONTROLLER - DELEGATION PATTERN 💀
@@ -38,8 +39,13 @@ class TopicController extends Controller
     protected $actionController;
     protected TopicProgressService $topicProgressService;
     protected StudyGamePlanService $studyGamePlanService;
+    protected TutorSourceProgressService $tutorSourceProgressService;
 
-    public function __construct(TopicProgressService $topicProgressService, StudyGamePlanService $studyGamePlanService)
+    public function __construct(
+        TopicProgressService $topicProgressService,
+        StudyGamePlanService $studyGamePlanService,
+        TutorSourceProgressService $tutorSourceProgressService
+    )
     {
         $this->middleware('auth');
 
@@ -74,6 +80,7 @@ class TopicController extends Controller
         $this->actionController = new TopicActionController();
         $this->topicProgressService = $topicProgressService;
         $this->studyGamePlanService = $studyGamePlanService;
+        $this->tutorSourceProgressService = $tutorSourceProgressService;
     }
 
     /**
@@ -468,7 +475,12 @@ class TopicController extends Controller
                 ->toArray();
 
             // FIXED: Get progress ONLY for the selected mode (quiz OR tutor, not both)
-            $modeProgress = QuizAttempt::getTopicProgress($userId, $topic->id, $mode);
+            $modeProgress = $mode === 'quiz'
+                ? QuizAttempt::getTopicProgress($userId, $topic->id, $mode)
+                : null;
+            $tutorProgressMap = $mode === 'tutor'
+                ? $this->tutorSourceProgressService->getTopicProgressMap($userId, $topic)
+                : [];
 
             // Format the response, ensuring each source has an entry even if no attempts
             $formattedProgress = [];
@@ -479,23 +491,42 @@ class TopicController extends Controller
                 // SECURITY FIX: Sanitize source name to prevent XSS
                 $sanitizedSource = htmlspecialchars($source, ENT_QUOTES, 'UTF-8');
 
-                // Get data ONLY from the selected mode
-                $modeData = $modeProgress['sources'][$source] ?? null;
+                if ($mode === 'tutor') {
+                    $modeData = $tutorProgressMap[$source] ?? null;
+                    $completed = (int) ($modeData['completed'] ?? 0);
+                    $correct = (int) ($modeData['correct'] ?? 0);
+                    $remainingCount = (int) ($modeData['remaining_count'] ?? max(0, $count - $completed));
 
-                // Use mode-specific stats
-                $completed = $modeData ? $modeData['score'] : 0;
-                $attempted = $modeData ? $modeData['total'] : 0;
+                    $formattedProgress[$sanitizedSource] = [
+                        'completed' => $completed,
+                        'correct' => $correct,
+                        'total' => $completed,
+                        'total_questions_available' => $count,
+                        'remaining_count' => $remainingCount,
+                        'percentage' => $count > 0 ? round(($completed / $count) * 100, 2) : 0,
+                        'accuracy_percentage' => $completed > 0 ? round(($correct / $completed) * 100, 2) : 0,
+                        'has_attempts' => $completed > 0,
+                        'can_resume_remaining' => $remainingCount > 0,
+                    ];
 
-                $formattedProgress[$sanitizedSource] = [
-                    'completed' => $completed,
-                    'total' => $attempted,
-                    'total_questions_available' => $count,
-                    'percentage' => $attempted > 0 ? round(($completed / $attempted) * 100, 2) : 0,
-                    'has_attempts' => $attempted > 0  // CRITICAL: Flag based on actual attempts in this mode
-                ];
+                    $totalCompleted += $completed;
+                } else {
+                    $modeData = $modeProgress['sources'][$source] ?? null;
+                    $completed = $modeData ? $modeData['score'] : 0;
+                    $attempted = $modeData ? $modeData['total'] : 0;
+
+                    $formattedProgress[$sanitizedSource] = [
+                        'completed' => $completed,
+                        'total' => $attempted,
+                        'total_questions_available' => $count,
+                        'percentage' => $attempted > 0 ? round(($completed / $attempted) * 100, 2) : 0,
+                        'has_attempts' => $attempted > 0
+                    ];
+
+                    $totalCompleted += $completed;
+                }
 
                 $totalAvailable += $count;
-                $totalCompleted += $completed;
             }
 
             // Add overall progress (only for quiz mode, tutor mode has no overall)

@@ -8,6 +8,7 @@ use App\Models\Topic;
 use App\Models\Question;
 use App\Services\QuizService;
 use App\Services\GradingService;
+use App\Services\TutorSourceProgressService;
 use App\Services\Core\UltraConsolidatedCacheService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
@@ -22,13 +23,20 @@ class QuizTutorController extends Controller
     protected $quizService;
     protected $cacheService;
     protected $gradingService;
+    protected TutorSourceProgressService $tutorSourceProgressService;
 
-    public function __construct(QuizService $quizService, UltraConsolidatedCacheService $cacheService, GradingService $gradingService)
+    public function __construct(
+        QuizService $quizService,
+        UltraConsolidatedCacheService $cacheService,
+        GradingService $gradingService,
+        TutorSourceProgressService $tutorSourceProgressService
+    )
     {
         $this->middleware(['auth']);
         $this->quizService = $quizService;
         $this->cacheService = $cacheService;
         $this->gradingService = $gradingService;
+        $this->tutorSourceProgressService = $tutorSourceProgressService;
     }
 
     /**
@@ -73,8 +81,15 @@ class QuizTutorController extends Controller
                 $sources = array_map('trim', explode(',', $sources[0]));
             }
 
+            $tutorScope = request()->input('tutor_scope', 'full');
+            if (!in_array($tutorScope, ['full', 'remaining'], true)) {
+                $tutorScope = 'full';
+            }
+
             // Initialize tutor quiz
-            $quizData = $this->quizService->initializeQuiz($user, $course, $topic, $sources, 'tutor');
+            $quizData = $this->quizService->initializeQuiz($user, $course, $topic, $sources, 'tutor', [
+                'tutor_scope' => $tutorScope,
+            ]);
             
             $executionTime = (microtime(true) - $startTime) * 1000;
             
@@ -86,6 +101,7 @@ class QuizTutorController extends Controller
                 'questions' => $quizData['questions'],
                 'course' => $quizData['course'],
                 'selected_sources' => $quizData['sources'],
+                'tutor_scope' => $tutorScope,
                 'mode' => 'tutor',
                 'currentUserView' => [
                     'profile_image_url' => $user->getProfileImageUrl(),
@@ -163,10 +179,24 @@ class QuizTutorController extends Controller
 
 
             // GET QUESTIONS TO EXTRACT SOURCES
-            $questions = [];
+            $questions = collect();
+            $topic = null;
             if ($topicId && $courseId) {
                 $topic = Topic::find($topicId);
-                if ($topic) {
+                $sessionQuestionIds = collect(session('tutor_session_questions.sources', []))
+                    ->flatten()
+                    ->map(fn ($id) => (int) $id)
+                    ->filter()
+                    ->values()
+                    ->all();
+
+                if (!empty($sessionQuestionIds)) {
+                    $questions = Question::query()
+                        ->whereIn('id', $sessionQuestionIds)
+                        ->get()
+                        ->sortBy(fn (Question $question) => array_search($question->id, $sessionQuestionIds, true))
+                        ->values();
+                } elseif ($topic) {
                     $questions = $topic->questions()->get();
                 }
             }
@@ -198,11 +228,13 @@ class QuizTutorController extends Controller
                     $sourceGroups[$source] = [
                         'correct' => 0,
                         'total' => 0,
-                        'question_data' => []
+                        'question_data' => [],
+                        'questions' => collect(),
                     ];
                 }
 
                 if ($userAnswer) {
+                    $sourceGroups[$source]['questions']->push($question);
                     $sourceGroups[$source]['question_data'][] = [
                         'question_id' => $questionId,
                         'user_answer' => $userAnswer,
@@ -243,6 +275,10 @@ class QuizTutorController extends Controller
                     $createdAttempts[] = $result;
 
                 }
+            }
+
+            if ($topic) {
+                $this->tutorSourceProgressService->recordSessionAnswers($user->id, $topic, $sourceGroups);
             }
 
             // UPDATE FRONTEND WITH CORRECT CONTEXT
