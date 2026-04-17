@@ -799,7 +799,6 @@
                                 </h3>
                                 @if(($topic->mistakes_count ?? 0) > 0)
                                     <span class="topic-mistakes-badge" title="{{ $topic->mistakes_count }} mistakes in this topic">
-                                        <i class="fas fa-circle"></i>
                                         {{ $topic->mistakes_count }}
                                     </span>
                                 @endif

@@ -1529,8 +1529,13 @@ body {
     margin-top: 0.2rem;
 }
 
-.topic-mistakes-badge i {
-    font-size: 0.52rem;
+.topic-mistakes-badge::before {
+    content: '';
+    display: block;
+    width: 6px;
+    height: 6px;
+    background: currentColor;
+    border-radius: 50%;
 }
 
 .topic-description {
