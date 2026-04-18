@@ -992,16 +992,13 @@
 
             const selectedModeInput = sourceSelectionForm.querySelector('input[name="quiz_mode"]:checked');
             const isTutorMode = selectedModeInput && selectedModeInput.value === 'tutor';
-            tutorScopeSection.classList.toggle('d-none', !isTutorMode);
-
+            
             const remainingRadio = document.getElementById('tutorScopeRemaining');
             const fullRadio = document.getElementById('tutorScopeFull');
-            if (!remainingRadio || !fullRadio) {
-                return;
-            }
 
             if (!isTutorMode) {
-                fullRadio.checked = true;
+                tutorScopeSection.classList.add('d-none');
+                if (fullRadio) fullRadio.checked = true;
                 return;
             }
 
@@ -1009,6 +1006,21 @@
             const totalRemaining = selectedCards.reduce((sum, card) => {
                 return sum + Number(card.dataset.remainingQuestions || 0);
             }, 0);
+            const totalCompleted = selectedCards.reduce((sum, card) => {
+                return sum + Number(card.dataset.completedQuestions || 0);
+            }, 0);
+
+            if (totalCompleted === 0) {
+                tutorScopeSection.classList.add('d-none');
+                if (remainingRadio) remainingRadio.checked = true;
+                return;
+            }
+
+            tutorScopeSection.classList.remove('d-none');
+
+            if (!remainingRadio || !fullRadio) {
+                return;
+            }
 
             const hasRemaining = totalRemaining > 0;
             remainingRadio.disabled = !hasRemaining;
