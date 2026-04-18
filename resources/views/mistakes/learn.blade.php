@@ -387,11 +387,20 @@
                             </select>
                         </div>
                         <div>
-                            <select id="question-type-filter" name="question_type" class="form-select">
-                                <option value="all" {{ ($selectedQuestionType ?? 'all') === 'all' ? 'selected' : '' }}>All Questions</option>
-                                <option value="multiple_choice" {{ ($selectedQuestionType ?? 'all') === 'multiple_choice' ? 'selected' : '' }}>MCQ Only</option>
-                                <option value="written" {{ ($selectedQuestionType ?? 'all') === 'written' ? 'selected' : '' }}>Written Only</option>
-                            </select>
+                            <div class="question-type-radios" style="display: flex; align-items: center; gap: 18px; padding: 8px 0;">
+                                <label style="display: flex; align-items: center; gap: 6px; cursor: pointer; font-size: 0.95rem; color: #334155; font-weight: 500;">
+                                    <input type="radio" name="question_type" value="all" id="question-type-all" {{ ($selectedQuestionType ?? 'all') === 'all' ? 'checked' : '' }} style="accent-color: #007bff; width: 16px; height: 16px;">
+                                    All
+                                </label>
+                                <label style="display: flex; align-items: center; gap: 6px; cursor: pointer; font-size: 0.95rem; color: #334155; font-weight: 500;">
+                                    <input type="radio" name="question_type" value="multiple_choice" id="question-type-mcq" {{ ($selectedQuestionType ?? 'all') === 'multiple_choice' ? 'checked' : '' }} style="accent-color: #007bff; width: 16px; height: 16px;">
+                                    MCQ
+                                </label>
+                                <label style="display: flex; align-items: center; gap: 6px; cursor: pointer; font-size: 0.95rem; color: #334155; font-weight: 500;">
+                                    <input type="radio" name="question_type" value="written" id="question-type-written" {{ ($selectedQuestionType ?? 'all') === 'written' ? 'checked' : '' }} style="accent-color: #007bff; width: 16px; height: 16px;">
+                                    Written
+                                </label>
+                            </div>
                         </div>
                     </form>
                 </div>

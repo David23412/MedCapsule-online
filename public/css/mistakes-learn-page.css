@@ -804,8 +804,11 @@
 
         .difficulty-option-spaced {
             position: relative;
-            cursor: not-allowed !important;
             overflow: hidden;
+        }
+
+        .difficulty-option-spaced.sidebar-coming-soon {
+            cursor: not-allowed !important;
             border-color: #e2e8f0;
         }
 
@@ -828,7 +831,7 @@
             padding: 0.4rem 0.9rem;
         }
 
-        .difficulty-option-spaced:hover {
+        .difficulty-option-spaced.sidebar-coming-soon:hover {
             transform: none !important;
             box-shadow: 0 8px 18px rgba(15, 23, 42, 0.035) !important;
             border-color: #e2e8f0 !important;

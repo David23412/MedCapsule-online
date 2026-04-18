@@ -90,7 +90,11 @@ function initializeMistakesLearnPage() {
             const encouragementSound = document.getElementById('encouragementSound');
             const courseFilter = document.getElementById('course-filter');
             const topicFilter = document.getElementById('topic-filter');
-            const questionTypeFilter = document.getElementById('question-type-filter');
+            const questionTypeRadios = document.querySelectorAll('input[name="question_type"]');
+            const getQuestionTypeValue = () => {
+                const checked = document.querySelector('input[name="question_type"]:checked');
+                return checked ? checked.value : 'all';
+            };
             const sidebarToggle = document.getElementById('sidebarToggle');
             const sidebarProgressSummary = document.getElementById('sidebarProgressSummary');
             const sidebarProgressPercent = document.getElementById('sidebarProgressPercent');
@@ -138,9 +142,7 @@ function initializeMistakesLearnPage() {
                     });
                 }
 
-                const currentQuestionTypeValue = questionTypeFilter
-                    ? String(questionTypeFilter.value || 'all')
-                    : selectedQuestionType;
+                const currentQuestionTypeValue = getQuestionTypeValue();
                 if (currentQuestionTypeValue && currentQuestionTypeValue !== 'all') {
                     url.searchParams.set('question_type', currentQuestionTypeValue);
                 }
@@ -1382,10 +1384,10 @@ function initializeMistakesLearnPage() {
                 }
             }
 
-            function selectDifficulty(mode) {
+            function preselectDifficulty(mode) {
                 const selectedOption = Array.from(difficultyOptions).find(option => option.dataset.mode === mode);
 
-                if (!selectedOption || selectedOption.classList.contains('difficulty-option-spaced')) {
+                if (!selectedOption || selectedOption.classList.contains('sidebar-coming-soon')) {
                     return;
                 }
 
@@ -1397,20 +1399,28 @@ function initializeMistakesLearnPage() {
                 updateConfidencePanels();
             }
 
+            function selectDifficulty(mode) {
+                preselectDifficulty(mode);
+                if (selectedMode) {
+                    // Instant start — click Start Learning automatically
+                    startButton.click();
+                }
+            }
+
             // Handle difficulty selection
             difficultyOptions.forEach(option => {
                 option.addEventListener('click', function() {
-                    if (this.classList.contains('difficulty-option-spaced')) return;
+                    if (this.classList.contains('sidebar-coming-soon')) return;
                     selectDifficulty(this.dataset.mode);
                 });
             });
 
             if (autoStartMode) {
-                selectDifficulty(autoStartMode);
+                preselectDifficulty(autoStartMode);
             } else if (currentMode) {
-                selectDifficulty(currentMode);
+                preselectDifficulty(currentMode);
             } else if (mistakesLearnPageConfig.autoSelectEasy) {
-                selectDifficulty('practice');
+                preselectDifficulty('practice');
             }
 
             // Handle start button click
@@ -1931,7 +1941,7 @@ function initializeMistakesLearnPage() {
             }
 
             // BULLETPROOF SMOOTH FILTER - WORKS EVERY FUCKING TIME
-            if (courseFilter || topicFilter || questionTypeFilter) {
+            if (courseFilter || topicFilter || questionTypeRadios.length) {
                 const handleFilterChange = function() {
                     const baseUrl = String(window.MistakesLearnPageConfig?.reviewLearnUrl || '');
                     const url = new URL(baseUrl, window.location.origin);
@@ -1945,7 +1955,7 @@ function initializeMistakesLearnPage() {
                     loadLearnFilterInPlace(url.toString());
                 };
 
-                [courseFilter, topicFilter, questionTypeFilter].filter(Boolean).forEach((filterElement) => {
+                [courseFilter, topicFilter].filter(Boolean).forEach((filterElement) => {
                     filterElement.addEventListener('change', handleFilterChange);
                     filterElement.addEventListener('keydown', function(e) {
                         if (e.key === 'Enter') {
@@ -1953,6 +1963,11 @@ function initializeMistakesLearnPage() {
                             handleFilterChange.call(this);
                         }
                     });
+                });
+
+                // Radio buttons fire change on selection
+                questionTypeRadios.forEach((radio) => {
+                    radio.addEventListener('change', handleFilterChange);
                 });
             } else {
                 console.error('❌ LEARN FILTERS NOT FOUND');
