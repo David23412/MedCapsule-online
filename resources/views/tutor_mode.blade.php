@@ -2484,7 +2484,8 @@
 
                             <div class="options-container" data-question-id="{{ $qObj->id ?? '' }}">
                                 @if(($qObj->question_type ?? null) === 'multiple_choice')
-                                    @foreach($cleanedOptions as $letter => $cleanOption)
+                                    @foreach(collect(array_keys($cleanedOptions))->shuffle() as $letter)
+                                        @php $cleanOption = $cleanedOptions[$letter]; @endphp
                                         @if($cleanOption !== '' && $cleanOption !== '-')
                                             <div class="option-card" data-option="{{ $letter }}">
                                                 <span class="option-letter">{{ $letter }}</span>

@@ -84,7 +84,7 @@
                                         <div class="question-text">{{ $question->question }}</div>
 
                                         <div class="options">
-                                            @foreach(['A', 'B', 'C', 'D'] as $option)
+                                            @foreach(collect(['A', 'B', 'C', 'D'])->shuffle() as $option)
                                                 @php
                                                     $optionField = 'option_' . strtolower($option);
                                                 @endphp
