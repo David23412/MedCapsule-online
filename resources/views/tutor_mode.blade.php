@@ -2141,8 +2141,8 @@
         .annot-canvas {
             position: absolute;
             inset: 0;
-            touch-action: manipulation;
             cursor: crosshair;
+            touch-action: none;  /* CRITICAL: let JS handle ALL touches on tablet */
         }
 
         /* ── Toolbar (bottom-center, pill shape) ────────── */
@@ -2164,7 +2164,6 @@
             -webkit-backdrop-filter: blur(16px);
             user-select: none;
             -webkit-user-select: none;
-            touch-action: manipulation;
         }
 
         .annot-section {

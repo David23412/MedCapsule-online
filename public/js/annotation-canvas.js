@@ -110,11 +110,16 @@
         };
     }
 
-    /** Convert pointer coords to canvas-local coords (handles DPR + CSS sizing). */
+    /** Convert pointer coords to canvas-local coords (handles DPR + CSS sizing + body zoom). */
     function getCanvasPoint(e) {
-        const rect   = canvas.getBoundingClientRect();
-        const scaleX = canvas.width  / rect.width;
-        const scaleY = canvas.height / rect.height;
+        var zoom = getBodyZoom();
+        var rect   = canvas.getBoundingClientRect();
+        // On some engines (WebKit) clientX/Y are already in zoomed space,
+        // but getBoundingClientRect returns zoomed values too, so the
+        // subtraction cancels out.  We still need the ratio of canvas
+        // backing-store pixels to the CSS rect size.
+        var scaleX = canvas.width  / rect.width;
+        var scaleY = canvas.height / rect.height;
         return {
             x: (e.clientX - rect.left) * scaleX,
             y: (e.clientY - rect.top)  * scaleY,
@@ -345,7 +350,8 @@
         // Record tap start position for click-through detection
         tapDownPoint = { x: e.clientX, y: e.clientY, time: Date.now() };
 
-        canvas.setPointerCapture(e.pointerId);
+        // Capture the pointer so we keep getting move/up even if finger drifts
+        try { canvas.setPointerCapture(e.pointerId); } catch (_) {}
         e.preventDefault();
     }
 
@@ -675,7 +681,10 @@
         canvas = document.createElement('canvas');
         canvas.id = 'annot-canvas';
         canvas.className = 'annot-canvas';
-        canvas.setAttribute('touch-action', 'manipulation');
+        // touch-action:none is CRITICAL for tablets — it tells the browser
+        // to NOT intercept touches for scrolling/zooming, letting our
+        // pointer event handlers receive every touch.
+        canvas.style.touchAction = 'none';
         overlay.appendChild(canvas);
 
         // Toolbar
@@ -772,13 +781,15 @@
         canvas.addEventListener('pointercancel', onPointerCancel);
         canvas.addEventListener('pointerleave',  onPointerUp);
 
-        // Touch handlers: only block native scroll when actively drawing with pen/mouse
-        // Finger (touch) gestures pass through so the browser can scroll the page
+        // Touch handlers: prevent ALL default touch behaviour on the canvas
+        // when annotation mode is open.  touch-action:none on the canvas
+        // element already tells the browser not to scroll, but Safari/WebKit
+        // sometimes still tries — these listeners are the safety net.
         canvas.addEventListener('touchstart', function (e) {
-            if (isOpen && isDrawing && activePointerType !== 'touch') e.preventDefault();
+            if (isOpen) e.preventDefault();
         }, { passive: false });
         canvas.addEventListener('touchmove',  function (e) {
-            if (isOpen && isDrawing && activePointerType !== 'touch') e.preventDefault();
+            if (isOpen) e.preventDefault();
         }, { passive: false });
 
         // Toggle button
