@@ -405,14 +405,16 @@
                         <h3>Hard</h3>
                         <p>Get each mistake right three times for a deeper review.</p>
                     </div>
-                    <div class="difficulty-option difficulty-option-spaced sidebar-coming-soon" data-mode="spaced">
-                        <div class="sidebar-blur-container">
+                    <div class="difficulty-option difficulty-option-spaced @if(!($currentUserView['is_admin'] ?? Auth::check() && Auth::user()->isAdmin())) sidebar-coming-soon @endif" data-mode="spaced">
+                        <div class="@if(!($currentUserView['is_admin'] ?? Auth::check() && Auth::user()->isAdmin())) sidebar-blur-container @endif">
                             <h3>Spaced Repetition</h3>
                             <p>Focus on the mistakes you're most likely to forget first.</p>
                         </div>
+                        @if(!($currentUserView['is_admin'] ?? Auth::check() && Auth::user()->isAdmin()))
                         <div class="coming-soon-overlay">
                             <i class="fas fa-lock blue-lock-icon"></i>
                         </div>
+                        @endif
                     </div>
                 </div>
                 <p class="difficulty-note">
@@ -489,7 +491,7 @@
                     </div>
                     @else
                     <div class="options">
-                        @foreach(['A', 'B', 'C', 'D'] as $option)
+                        @foreach(collect(['A', 'B', 'C', 'D'])->shuffle() as $option)
                             @php
                                 $optionText = $mistake->question->{'option_' . strtolower($option)};
                                 if (!is_string($optionText)) {
