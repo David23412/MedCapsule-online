@@ -691,6 +691,14 @@ function initializeMistakesLearnPage() {
                 question.lastReviewedAt = Date.now();
                 question.lastAttemptAt = new Date();
 
+                if (payload.success === true && !question.skipped) {
+                    if (payload.is_correct === true) {
+                        question.sessionResolved = question.needsSameDayRelearn !== true && (question.isMastered || !isDueNow(question));
+                    } else if (payload.is_correct === false) {
+                        question.sessionResolved = false;
+                    }
+                }
+
                 renderMemoryState(question);
                 updateQueueSummary();
             };
@@ -901,10 +909,6 @@ function initializeMistakesLearnPage() {
                 });
 
                 let eligibleQuestions = sortSpacedQuestions(getSpacedEligibleQuestions());
-
-                if (eligibleQuestions.length === 0) {
-                    eligibleQuestions = sortSpacedQuestions(getSpacedEligibleQuestions(true));
-                }
 
                 if (excludeQuestionId !== null) {
                     const alternativeQuestion = eligibleQuestions.find(({ question }) => question.id !== excludeQuestionId);

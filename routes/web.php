@@ -184,6 +184,8 @@ Route::group([], function () {
     Route::get('/topics/course/{courseId}', [TopicController::class, 'forCourse'])->name('topics.forCourseLegacy')->where('courseId', '[0-9]+')->middleware('free.course.survey');
     Route::get('/courses/{course}/cases', [TopicController::class, 'casesForCourse'])->name('cases.forCourse')->middleware('free.course.survey');
     Route::get('/courses/{course}/cases-count', [TopicController::class, 'casesCount'])->name('cases.count')->middleware('free.course.survey');
+    Route::get('/courses/{course}/search-questions', [TopicController::class, 'searchCourseQuestions'])->name('courses.search-questions');
+    Route::post('/questions/{question}/add-mistake', [TopicController::class, 'addMistake'])->name('questions.add-mistake');
 
     // 💀 NUCLEAR OPTIMIZED QUIZ ROUTES - SPLIT ARCHITECTURE 💀
     Route::prefix('quiz')->name('quiz.')->group(function () {

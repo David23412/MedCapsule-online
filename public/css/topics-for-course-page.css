@@ -2319,3 +2319,268 @@ body.topics-sidebar-open {
         box-shadow: 0 4px 12px rgba(59, 130, 246, 0.2) !important;
     }
 }
+
+/* Search Questions Modal & Cards */
+/* iPad & Tablet Compatibility for Search Modal */
+#searchQuestionsModal .modal-dialog {
+    max-width: 95% !important;
+    width: 95% !important;
+    margin: 20px auto;
+}
+
+@media (min-width: 992px) {
+    #searchQuestionsModal .modal-dialog {
+        max-width: 90% !important;
+        width: 90% !important;
+    }
+}
+
+@media (min-width: 1400px) {
+    #searchQuestionsModal .modal-dialog {
+        max-width: 75% !important;
+        width: 75% !important;
+    }
+}
+
+.search-modal-content {
+    border-radius: 32px;
+    border: none;
+    background: #ffffff;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+}
+
+.search-modal-content .modal-header {
+    padding: 35px 50px 15px;
+}
+
+.search-modal-content .modal-body {
+    padding: 15px 50px 50px;
+}
+
+.modal-icon-wrapper {
+    width: 42px;
+    height: 42px;
+    background: #eff6ff;
+    color: #2563eb;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.2rem;
+}
+
+.search-input-group {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.search-input-icon {
+    position: absolute;
+    left: 16px;
+    color: #94a3b8;
+    pointer-events: none;
+}
+
+#courseQuestionSearchInput {
+    padding: 14px 14px 14px 44px;
+    border-radius: 16px;
+    border: 2px solid #e2e8f0;
+    transition: all 0.2s ease;
+    font-size: 1rem;
+    background: #fff;
+}
+
+#courseQuestionSearchInput:focus {
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.1);
+    outline: none;
+}
+
+.search-spinner {
+    position: absolute;
+    right: 16px;
+}
+
+.search-results-container {
+    max-height: 700px;
+    overflow-y: auto;
+    padding-right: 12px;
+}
+
+.search-results-container::-webkit-scrollbar {
+    width: 6px;
+}
+
+.search-results-container::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 10px;
+}
+
+.search-results-placeholder {
+    text-align: center;
+    padding: 60px 20px;
+    color: #94a3b8;
+}
+
+.search-results-placeholder i {
+    font-size: 3rem;
+    opacity: 0.2;
+}
+
+.search-result-card {
+    background: #fff;
+    border: 1px solid rgba(0, 0, 0, 0.05);
+    border-radius: 28px;
+    padding: 40px;
+    margin-bottom: 30px;
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    animation: slideUpFade 0.4s ease forwards;
+    box-shadow: 
+        0 4px 6px -1px rgba(0, 0, 0, 0.03), 
+        0 2px 4px -2px rgba(0, 0, 0, 0.02);
+}
+
+.search-result-card:hover {
+    transform: translateY(-2px);
+    border-color: rgba(59, 130, 246, 0.1);
+    box-shadow: 
+        0 20px 25px -5px rgba(0, 0, 0, 0.05), 
+        0 8px 10px -6px rgba(0, 0, 0, 0.03);
+}
+
+@keyframes slideUpFade {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.search-result-content {
+    flex: 1;
+}
+
+.search-result-question {
+    font-size: 1.35rem;
+    font-weight: 700;
+    color: #0f172a;
+    line-height: 1.4;
+}
+
+.search-result-status-action {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 44px;
+}
+
+.mistake-status-pill {
+    color: #10b981;
+    font-size: 1.7rem;
+    line-height: 1;
+}
+
+.add-mistake-minimal-btn {
+    width: 40px;
+    height: 40px;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #3b82f6;
+    color: white !important;
+    border-radius: 50%;
+    border: none;
+    transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+    box-shadow: 0 4px 10px rgba(59, 130, 246, 0.2);
+}
+
+.add-mistake-minimal-btn:hover {
+    background: #2563eb;
+    transform: scale(1.15) rotate(90deg);
+    box-shadow: 0 6px 14px rgba(59, 130, 246, 0.3);
+}
+
+.add-mistake-minimal-btn i {
+    font-size: 1.2rem;
+}
+
+.search-result-answer {
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: #065f46;
+    padding: 20px 28px;
+    background: #f0fdf4;
+    border: 1px solid #dcfce7;
+    border-radius: 18px;
+    margin-bottom: 25px;
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+.search-result-explanation {
+    font-size: 1.2rem;
+    color: #020617;
+    line-height: 1.9;
+    padding: 30px 35px;
+    background: #f8fbff;
+    border-radius: 20px;
+    border: 1px solid #f0f9ff;
+    letter-spacing: -0.012em;
+    font-weight: 450;
+}
+
+.search-result-actions {
+    display: none;
+}
+
+.mistake-status-pill i {
+    filter: drop-shadow(0 2px 4px rgba(16, 185, 129, 0.2));
+}
+
+/* Minimal Search Icon Bubble */
+.search-icon-bubble {
+    width: 42px;
+    height: 42px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #eff6ff;
+    color: #2563eb;
+    border-radius: 50%;
+    text-decoration: none !important;
+    transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+    box-shadow: 0 4px 10px rgba(37, 99, 235, 0.1);
+    cursor: pointer;
+    flex-shrink: 0;
+}
+
+.search-icon-bubble:hover {
+    background: #2563eb;
+    color: #ffffff;
+    transform: scale(1.1) rotate(5deg);
+    box-shadow: 0 8px 20px rgba(37, 99, 235, 0.25);
+}
+
+.search-icon-bubble i {
+    font-size: 1.15rem;
+}
+
+/* Source Tags - Bottom Right */
+.source-tag {
+    font-size: 0.7rem;
+    font-weight: 700;
+    color: #475569;
+    background: #f1f5f9;
+    padding: 4px 12px;
+    border-radius: 6px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    border: 1px solid #e2e8f0;
+    white-space: nowrap;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
+}
+
+.search-result-footer {
+    border-top: 1px dashed #e2e8f0;
+    padding-top: 15px;
+}

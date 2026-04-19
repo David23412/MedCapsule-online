@@ -34,7 +34,7 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" crossorigin="anonymous">
     <link rel="stylesheet" href="{{ asset('css/topics.css') }}?v=1.8">
 
-    <link rel="stylesheet" href="{{ asset('css/topics-for-course-page.css') }}">
+    <link rel="stylesheet" href="{{ asset('css/topics-for-course-page.css') }}?v={{ time() }}">
     
     {{-- Responsive Navigation CSS --}}
     <link rel="stylesheet" href="{{ asset('css/responsive.css') }}">
@@ -418,6 +418,44 @@
         </div>
     </div>
 
+    <div class="modal fade" id="searchQuestionsModal" tabindex="-1" aria-labelledby="searchQuestionsModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-xl modal-dialog-centered">
+            <div class="modal-content search-modal-content">
+                <div class="modal-header border-0 pb-0">
+                    <div class="modal-title-wrapper w-100">
+                        <div class="d-flex align-items-center justify-content-between mb-2">
+                            <div class="d-flex align-items-center">
+                                <div class="modal-icon-wrapper me-3">
+                                    <i class="fas fa-search"></i>
+                                </div>
+                                <div>
+                                    <h5 class="modal-title mb-0" id="searchQuestionsModalLabel">Search Course Questions</h5>
+                                    <p class="modal-subtitle mb-0">Find and bookmark any question instantly</p>
+                                </div>
+                            </div>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        </div>
+                        <div class="search-input-group mt-3">
+                            <i class="fas fa-search search-input-icon"></i>
+                            <input type="text" id="courseQuestionSearchInput" class="form-control" placeholder="Type keywords, concepts, or question text..." autocomplete="off">
+                            <div class="search-spinner" id="searchSpinner" style="display: none;">
+                                <div class="spinner-border spinner-border-sm text-primary" role="status"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-body pt-3">
+                    <div id="searchQuestionsResults" class="search-results-container">
+                        <div class="search-results-placeholder">
+                            <i class="fas fa-keyboard mb-2"></i>
+                            <p>Start typing to search keywords, concepts, or question text</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Source Selection Modal -->
     <div class="modal fade" id="sourceSelectionModal" tabindex="-1">
         <div class="modal-dialog modal-dialog-centered modal-md">
@@ -644,6 +682,9 @@
         <a href="{{ route('review.index') }}" class="mistakes-link" style="order: 99;">
             <i class="fas fa-times-circle"></i>
             Review Mistakes
+        </a>
+        <a href="#" class="search-icon-bubble" data-bs-toggle="modal" data-bs-target="#searchQuestionsModal" title="Search Questions" style="order: 101;">
+            <i class="fas fa-search"></i>
         </a>
         
         {{-- Assignment Icon in Red Circle - Only show if there are assignments --}}
@@ -1023,6 +1064,160 @@
         
         // Initialize button states
         updateSegments();
+    })();
+
+    /* Search Questions Feature */
+    (function() {
+        const searchInput = document.getElementById('courseQuestionSearchInput');
+        const resultsContainer = document.getElementById('searchQuestionsResults');
+        const spinner = document.getElementById('searchSpinner');
+        const courseId = {{ $course->id }};
+        let searchTimeout;
+
+        if (!searchInput || !resultsContainer) return;
+
+        searchInput.addEventListener('input', function() {
+            const query = this.value.trim();
+            clearTimeout(searchTimeout);
+
+            if (query.length < 2) {
+                resultsContainer.innerHTML = `
+                    <div class="search-results-placeholder">
+                        <i class="fas fa-keyboard mb-2"></i>
+                        <p>Start typing to search keywords, concepts, or question text</p>
+                    </div>
+                `;
+                return;
+            }
+
+            spinner.style.display = 'block';
+            searchTimeout = setTimeout(() => performSearch(query), 500);
+        });
+
+        async function performSearch(query) {
+            try {
+                const response = await fetch(`/courses/${courseId}/search-questions?query=${encodeURIComponent(query)}`);
+                const data = await response.json();
+                
+                spinner.style.display = 'none';
+
+                if (!data.success || !data.questions || data.questions.length === 0) {
+                    resultsContainer.innerHTML = `
+                        <div class="search-results-placeholder">
+                            <i class="fas fa-search-minus mb-2"></i>
+                            <p>No questions found matching "${query}"</p>
+                        </div>
+                    `;
+                    return;
+                }
+
+                resultsContainer.innerHTML = data.questions.map(q => `
+                    <div class="search-result-card" data-question-id="${q.id}">
+                        <div class="search-result-content">
+                            <div class="d-flex justify-content-between align-items-start mb-3">
+                                <div class="search-result-question flex-grow-1 me-3">${q.question}</div>
+                                <div class="search-result-status-action">
+                                    ${q.is_already_mistake 
+                                        ? '<div class="mistake-status-pill"><i class="fas fa-check-circle"></i></div>' 
+                                        : `<button class="btn add-mistake-minimal-btn" data-id="${q.id}" title="Add to Mistakes"><i class="fas fa-plus"></i></button>`
+                                    }
+                                </div>
+                            </div>
+                            <div class="search-result-answer mb-3">
+                                <span class="badge bg-success-subtle text-success me-3">Correct Answer</span>
+                                <span class="fw-semibold text-dark">${q.correct_answer}</span>
+                            </div>
+                            <div class="search-result-explanation">
+                                ${q.explanation}
+                            </div>
+                            ${q.topic_titles && q.topic_titles.length > 0 ? `
+                                <div class="search-result-footer d-flex justify-content-end mt-3">
+                                    <div class="search-result-meta d-flex gap-2 flex-wrap justify-content-end">
+                                        ${q.topic_titles.map(title => `<span class="source-tag">${title}</span>`).join('')}
+                                    </div>
+                                </div>
+                            ` : ''}
+                        </div>
+                    </div>
+                `).join('');
+
+                // Attach events to Add to Mistakes buttons
+                resultsContainer.querySelectorAll('.add-mistake-minimal-btn').forEach(btn => {
+                    btn.addEventListener('click', function() {
+                        const qId = this.dataset.id;
+                        addQuestionToMistakes(qId, this);
+                    });
+                });
+
+            } catch (error) {
+                console.error('Search error:', error);
+                spinner.style.display = 'none';
+                resultsContainer.innerHTML = '<div class="alert alert-danger">Search failed. Please try again.</div>';
+            }
+        }
+
+        async function addQuestionToMistakes(qId, button) {
+            const originalContent = button.innerHTML;
+            button.disabled = true;
+            button.innerHTML = '<span class="spinner-border spinner-border-sm" role="status"></span>';
+
+            try {
+                const response = await fetch(`/questions/${qId}/add-mistake`, {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json'
+                    }
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    // Replace minimal button with check icon instantly
+                    const parent = button.parentElement;
+                    parent.innerHTML = '<div class="mistake-status-pill"><i class="fas fa-check-circle"></i></div>';
+                    
+                    showToast('Mistake Added', data.message, 'success');
+                } else {
+                    button.disabled = false;
+                    button.innerHTML = originalContent;
+                    showToast('Error', data.message || 'Failed to add mistake.', 'error');
+                }
+            } catch (error) {
+                console.error('Add mistake error:', error);
+                button.disabled = false;
+                button.innerHTML = originalContent;
+                showToast('Error', 'An error occurred. Please try again.', 'error');
+            }
+        }
+
+        function showToast(title, message, type) {
+            const toastStack = document.getElementById('taskToastStack');
+            if (!toastStack) {
+                alert(message);
+                return;
+            }
+
+            const toast = document.createElement('div');
+            toast.className = `task-toast ${type === 'error' ? 'toast-error' : ''}`;
+            toast.innerHTML = `
+                <div class="task-toast-icon">
+                    <i class="fas ${type === 'error' ? 'fa-exclamation-circle' : 'fa-check'}"></i>
+                </div>
+                <div class="task-toast-copy">
+                    <span class="task-toast-kicker">${title}</span>
+                    <strong class="task-toast-title">${message}</strong>
+                </div>
+            `;
+
+            toastStack.appendChild(toast);
+            requestAnimationFrame(() => toast.classList.add('is-visible'));
+            setTimeout(() => {
+                toast.classList.remove('is-visible');
+                setTimeout(() => toast.remove(), 260);
+            }, 3000);
+        }
     })();
     </script>
 </body>

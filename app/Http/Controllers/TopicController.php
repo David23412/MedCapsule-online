@@ -686,4 +686,163 @@ class TopicController extends Controller
                 ->with('error', 'Unable to load video. Please try again.');
         }
     }
+
+    /**
+     * ✅ Search questions within a specific course - HIGHLY OPTIMIZED
+     * Uses PHP-side fuzzy search on a cached payload to protect the DB.
+     */
+    public function searchCourseQuestions(Course $course, Request $request)
+    {
+        try {
+            $query = trim((string) $request->input('query', ''));
+            if (strlen($query) < 2) {
+                return response()->json(['success' => true, 'questions' => []]);
+            }
+
+            // 🚀 SMART CACHE LAYER: Load all course data with cross-field blobs
+            $questions = Cache::remember("course_{$course->id}_questions_search_payload_v7", 86400, function() use ($course) {
+                $topicNames = \App\Models\Topic::where('course_id', $course->id)->pluck('name', 'id')->toArray();
+
+                return Question::whereHas('topic', function($q) use ($course) {
+                        $q->where('course_id', $course->id);
+                    })
+                    ->select('id', 'question', 'correct_answer', 'explanation', 'topic_id', 'extra_topic', 'question_type', 'option_a', 'option_b', 'option_c', 'option_d')
+                    ->get()
+                    ->map(function($q) use ($topicNames) {
+                        $cleanQ = strip_tags($q->question);
+                        $cleanE = strip_tags($q->explanation ?? '');
+                        
+                        // Resolve Correct Answer text
+                        $actualAnswer = $q->correct_answer;
+                        if ($q->question_type === 'multiple_choice') {
+                            $letter = strtoupper(trim($q->correct_answer));
+                            $optionField = 'option_' . strtolower($letter);
+                            if (isset($q->{$optionField})) {
+                                $actualAnswer = $letter . ': ' . $q->{$optionField};
+                            }
+                        }
+
+                        // Create a normalized search blob for cross-field intelligence
+                        $searchBlob = strtolower(preg_replace('/[^a-z0-9 ]/', '', $cleanQ . ' ' . $actualAnswer . ' ' . $cleanE));
+
+                        $associatedTopicIds = collect([$q->topic_id]);
+                        if (!empty($q->extra_topic)) {
+                            $associatedTopicIds = $associatedTopicIds->concat(explode(',', $q->extra_topic));
+                        }
+                        
+                        $topicTitles = $associatedTopicIds->unique()
+                            ->map(fn($id) => $topicNames[$id] ?? null)
+                            ->filter()
+                            ->values()
+                            ->toArray();
+
+                        return [
+                            'id' => $q->id,
+                            'question' => $cleanQ,
+                            'correct_answer' => $actualAnswer,
+                            'explanation' => $cleanE ?: 'No explanation available.',
+                            'topic_titles' => $topicTitles,
+                            'search_blob' => $searchBlob,
+                            'normalized_question' => strtolower(preg_replace('/[^a-z0-9 ]/', '', $cleanQ))
+                        ];
+                    });
+            });
+
+            // 🚀 SMART SEARCH ENGINE: Weighted Scoring Logic
+            $queryClean = strtolower(preg_replace('/[^a-z0-9 ]/', '', $query));
+            $queryWords = array_filter(explode(' ', $queryClean), fn($w) => strlen($w) > 1);
+
+            if (empty($queryWords)) {
+                return response()->json(['success' => true, 'questions' => []]);
+            }
+
+            $currentMistakeIds = Mistake::where('user_id', auth()->id())->pluck('question_id')->toArray();
+
+            $results = $questions->map(function($q) use ($queryWords, $queryClean) {
+                $score = 0;
+                $blob = $q['search_blob'];
+                $qText = $q['normalized_question'];
+
+                // 1. Exact Phrase Priority (Highest)
+                if (str_contains($qText, $queryClean)) {
+                    $score += 1000;
+                } elseif (str_contains($blob, $queryClean)) {
+                    $score += 500;
+                }
+
+                // 2. Individual Word Weighting
+                foreach ($queryWords as $word) {
+                    $isMedicalTerm = strlen($word) >= 5;
+                    $weight = $isMedicalTerm ? 3 : 1;
+
+                    // Word in Question
+                    if (str_contains($qText, $word)) {
+                        $score += (50 * $weight);
+                    } 
+                    // Word in Answer/Explanation
+                    elseif (str_contains($blob, $word)) {
+                        $score += (15 * $weight);
+                    }
+                    
+                    // Prefix matching (smarter partials)
+                    if (str_starts_with($qText, $word) || str_contains($qText, ' ' . $word)) {
+                        $score += (20 * $weight);
+                    }
+                }
+
+                $q['relevance_score'] = $score;
+                return $q;
+            })
+            ->filter(fn($q) => $q['relevance_score'] > 0)
+            ->sortByDesc('relevance_score')
+            ->take(15)
+            ->values()
+            ->map(function($q) use ($currentMistakeIds) {
+                $q['is_already_mistake'] = in_array($q['id'], $currentMistakeIds);
+                // Clean up payload before sending to frontend
+                unset($q['search_blob']);
+                unset($q['normalized_question']);
+                return $q;
+            });
+
+            return response()->json([
+                'success' => true,
+                'questions' => $results
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Search questions error', ['error' => $e->getMessage()]);
+            return response()->json(['success' => false, 'message' => 'Search failed.'], 500);
+        }
+    }
+
+    /**
+     * ✅ Add a question to student mistakes
+     */
+    public function addMistake(Question $question)
+    {
+        try {
+            $user = auth()->user();
+            
+            // Safety check: is question already a mistake?
+            $exists = Mistake::where('user_id', $user->id)->where('question_id', $question->id)->exists();
+            if ($exists) {
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Question is already in your mistakes!'
+                ]);
+            }
+
+            // Record as a failure (custom submission text to indicate manual bookmarking)
+            Mistake::recordFailure($user->id, $question, "Bookmarked via Search");
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Question added to your mistakes!'
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Add mistake error', ['error' => $e->getMessage()]);
+            return response()->json(['success' => false, 'message' => 'Failed to add question.'], 500);
+        }
+    }
 }
