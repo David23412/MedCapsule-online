@@ -209,11 +209,11 @@ Route::group([], function () {
             ->name('tutor.complete-session');
 
         // Admin inline question editing from tutor/quiz mode
-        Route::put('/quiz/tutor/question/{question}', [App\Http\Controllers\Quiz\QuizTutorController::class, 'updateQuestion'])
+        Route::put('/tutor/question/{question}', [App\Http\Controllers\Quiz\QuizTutorController::class, 'updateQuestion'])
             ->name('tutor.update-question')
             ->where(['question' => '[0-9]+'])
             ->middleware('admin');
-        Route::delete('/quiz/tutor/question/{question}', [App\Http\Controllers\Quiz\QuizTutorController::class, 'deleteQuestion'])
+        Route::delete('/tutor/question/{question}', [App\Http\Controllers\Quiz\QuizTutorController::class, 'deleteQuestion'])
             ->name('tutor.delete-question')
             ->where(['question' => '[0-9]+'])
             ->middleware('admin');
