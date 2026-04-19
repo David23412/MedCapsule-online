@@ -162,7 +162,7 @@ class LearnController extends Controller
             ]);
             
             $mode = $validated['mode'] ?? 'quiz';
-            $selectedAnswer = $validated['selected_answer'];
+            $selectedAnswer = (string) $validated['selected_answer'];
             $timeSpent = (int) ($validated['time_spent'] ?? 0);
             $confidence = $validated['confidence'] ?? null;
             $interactionSignals = [

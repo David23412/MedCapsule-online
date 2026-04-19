@@ -474,6 +474,10 @@ class Mistake extends Model
                 Cache::forget($key);
             }
             
+            // Advance cache version to invalidate primary learning list safely without database scans
+            $versionKey = "mistakes_cache_version_{$this->user_id}";
+            $currentVersion = Cache::get($versionKey, 1);
+            Cache::put($versionKey, $currentVersion + 1, 3600);
             
         } catch (\Exception $e) {
             Log::error("❌ Error clearing mistake caches", [

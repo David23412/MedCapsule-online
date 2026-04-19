@@ -566,13 +566,21 @@ class AdaptiveMistakeScheduler
             );
         }
 
-        // Calculate next review date
-        $nextReviewAt = $now->copy()->addDays($nextIntervalDays);
+        // Calculate next review date, aligned to to start of learning day
+        $nextReviewAt = $now->copy()
+            ->subHours(self::LEARNING_DAY_START_HOUR)
+            ->startOfDay()
+            ->addDays($nextIntervalDays)
+            ->addHours(self::LEARNING_DAY_START_HOUR);
         
         // [GOLD STANDARD IMPROVEMENT #5] Sibling Dispersion
         // Spread related cards across different days to prevent interference/cueing
         if ($nextIntervalDays >= 1) {
-            $nextReviewAt = $this->applySiblingDispersion($mistake, $nextReviewAt);
+            $dispersionDays = $this->applySiblingDispersion($mistake, $nextReviewAt);
+            if ($dispersionDays > 0) {
+                $nextIntervalDays += $dispersionDays;
+                $nextReviewAt = $nextReviewAt->addDays($dispersionDays);
+            }
         }
 
         $mistake->setAdaptiveColumnValue('difficulty', round($nextDifficulty, 2));
@@ -1202,22 +1210,20 @@ class AdaptiveMistakeScheduler
      * 
      * This injects deterministic delay/jitter to force siblings onto different days.
      */
-    private function applySiblingDispersion(Mistake $mistake, Carbon $nextReviewAt): Carbon
+    private function applySiblingDispersion(Mistake $mistake, Carbon $nextReviewAt): int
     {
         // Find sibling cards due on the same day
         $siblings = $this->findSiblingCards($mistake, $nextReviewAt);
         
         if ($siblings->isEmpty()) {
-            return $nextReviewAt;
+            return 0;
         }
         
-        // Apply deterministic dispersion offset
-        $dispersionHours = $this->calculateDispersionOffset(
+        // Apply deterministic dispersion offset in days
+        return $this->calculateDispersionOffset(
             (int) $mistake->id,
             $siblings->count()
         );
-        
-        return $nextReviewAt->copy()->addHours($dispersionHours);
     }
 
     /**
@@ -1256,9 +1262,9 @@ class AdaptiveMistakeScheduler
     }
 
     /**
-     * Calculate deterministic dispersion offset in hours
+     * Calculate deterministic dispersion offset in days
      * 
-     * Uses hash-based seeding to spread siblings across 24 hours deterministically
+     * Uses hash-based seeding to spread siblings across different days deterministically
      */
     private function calculateDispersionOffset(int $mistakeId, int $siblingCount): int
     {
@@ -1266,10 +1272,11 @@ class AdaptiveMistakeScheduler
             return 0;
         }
         
-        // Deterministic hash: spread siblings across up to 12 hours
-        $seed = ($mistakeId * 2654435761) % 24;
-        $maxOffset = min(12, $siblingCount * 2);
+        // Deterministic hash: spread siblings across up to 3 days
+        $seed = ($mistakeId * 2654435761) % 3;
+        $maxOffset = min(3, $siblingCount);
         
-        return min($maxOffset, $seed % ($maxOffset + 1));
+        // Ensure at least 1 day of separation if siblings are found
+        return max(1, min($maxOffset, $seed % ($maxOffset + 1)));
     }
 }

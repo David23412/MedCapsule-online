@@ -26,15 +26,12 @@ class MistakeManagementService
         string $questionType = 'all'
     ): ?array
     {
-        $this->reactivateExpiredSkippedMistakes($userId);
-        $deckFingerprint = $this->buildLearningDeckFingerprint($userId);
         $cacheKey = "learn_mistakes_" . md5(serialize([
             'user_id' => $userId,
             'mode' => $mode,
             'course_filter' => $courseFilter,
             'topic_ids' => $topicIds,
             'question_type' => $questionType,
-            'deck_fingerprint' => $deckFingerprint,
             'cache_version' => $this->learningCacheVersion($userId),
         ]));
 
@@ -126,6 +123,7 @@ class MistakeManagementService
                 ->all();
 
             $topics = (clone $baseQuery)
+                ->withoutEagerLoads()
                 ->join('questions', 'questions.id', '=', 'mistakes.question_id')
                 ->join('topics', 'topics.id', '=', 'questions.topic_id')
                 ->select('topics.id', 'topics.name')
@@ -175,18 +173,7 @@ class MistakeManagementService
         });
     }
 
-    private function buildLearningDeckFingerprint(int $userId): string
-    {
-        $snapshot = Mistake::query()
-            ->where('user_id', $userId)
-            ->selectRaw('COUNT(*) as aggregate_count, MAX(updated_at) as latest_update')
-            ->first();
 
-        $count = (int) ($snapshot->aggregate_count ?? 0);
-        $latestUpdate = $snapshot->latest_update ? strtotime((string) $snapshot->latest_update) : 0;
-
-        return $count . ':' . $latestUpdate;
-    }
 
     private function learningCacheVersion(int $userId): int
     {
@@ -203,7 +190,6 @@ class MistakeManagementService
      */
     public function getUpdatedMistakesCount(int $userId, string $mode = 'quiz'): array
     {
-        $this->reactivateExpiredSkippedMistakes($userId);
         $cacheKey = "mistakes_count_{$userId}_" . md5($mode);
 
         return Cache::remember($cacheKey, 300, function () use ($userId, $mode) {
@@ -263,14 +249,20 @@ class MistakeManagementService
      */
     public function getSkippedMistakes(int $userId): \Illuminate\Support\Collection
     {
-        $this->reactivateExpiredSkippedMistakes($userId);
         $cacheKey = "skipped_mistakes_{$userId}";
 
         return Cache::remember($cacheKey, 600, function () use ($userId) {
             // ✅ ZERO N+1: Enhanced eager loading with all necessary relationships
-            return Mistake::where('user_id', $userId)
-                ->where('skipped', true)
-                ->select(array_merge([
+            $query = Mistake::where('user_id', $userId)
+                ->where('skipped', true);
+                
+            if (Mistake::hasColumn('skip_until')) {
+                $query->where(function($q) {
+                    $q->whereNull('skip_until')->orWhere('skip_until', '>', now());
+                });
+            }
+
+            return $query->select(array_merge([
                     'mistakes.id',
                     'mistakes.question_id',
                     'mistakes.submitted_answer',
@@ -459,8 +451,8 @@ class MistakeManagementService
             $isCorrect = false;
             $writtenFeedback = null;
 
-            if (is_numeric($response) && (int) $response >= 1 && (int) $response <= 5) {
-                $usedRating = (int) $response;
+            if (is_int($response) && $response >= 1 && $response <= 5) {
+                $usedRating = $response;
                 $isCorrect = $usedRating >= 3;
             } else {
                 $selectedAnswer = (string) $response;
@@ -576,26 +568,11 @@ class MistakeManagementService
     {
         return $mode === 'spaced'
             && Mistake::hasColumn('learning_state')
-            && $mistake->learning_state === 'relearn'
+            && in_array($mistake->learning_state, ['relearn', 'learning'], true)
             && ((int) ($mistake->same_day_relearn_step ?? 0)) > 0;
     }
 
-    private function reactivateExpiredSkippedMistakes(int $userId): void
-    {
-        if (!Mistake::hasColumn('skip_until')) {
-            return;
-        }
 
-        Mistake::query()
-            ->where('user_id', $userId)
-            ->where('skipped', true)
-            ->whereNotNull('skip_until')
-            ->where('skip_until', '<=', now())
-            ->update([
-                'skipped' => false,
-                'skip_until' => null,
-            ]);
-    }
 
     /**
      * 🚀 NUCLEAR OPTIMIZED: Get mistakes for review with ZERO N+1 queries
@@ -608,7 +585,6 @@ class MistakeManagementService
      */
     public function getMistakesForReview(int $userId): \Illuminate\Database\Eloquent\Collection
     {
-        $this->reactivateExpiredSkippedMistakes($userId);
         $cacheKey = "review_mistakes_{$userId}";
 
         return Cache::remember($cacheKey, 300, function () use ($userId) {
