@@ -259,6 +259,41 @@ class MedicalKnowledgeService
         return $relatedTerms[$domain][$concept] ?? [];
     }
 
+
+    /**
+     * High-priority concept clusters.
+     * These are fundamental discriminators where a mismatch is fatal.
+     */
+    public function getHighPriorityConceptGroups(): array
+    {
+        return [
+            'autonomic'      => ['sympathetic', 'parasympathetic'],
+            'potentials'     => ['depolarization', 'repolarization', 'hyperpolarization'],
+            'pharmacology'   => ['agonist', 'antagonist'],
+            'metabolism'     => ['aerobic', 'anaerobic', 'anabolism', 'catabolism'],
+            'cardiac'        => ['systole', 'diastole'],
+            'vessels'        => ['artery', 'vein', 'capillary'],
+            'immunity_mode'  => ['active', 'passive'],
+            'immunity_source'=> ['natural', 'artificial'],
+            'respiration'    => ['inspiration', 'expiration', 'inhalation', 'exhalation'],
+            'transport'      => ['active transport', 'passive transport', 'diffusion', 'osmosis'],
+        ];
+    }
+
+    /**
+     * Optional medical descriptors that are standard but not conceptually critical.
+     * Missing these shouldn't tank a score if core concepts are present.
+     */
+    public function getOptionalDescriptors(): array
+    {
+        return [
+            'naturally', 'acquired', 'specifically', 'certain', 'various',
+            'multiple', 'single', 'primarily', 'mainly', 'generally',
+            'usually', 'normally', 'properly', 'actually', 'system',
+            'process', 'mechanism', 'pathway', 'action', 'function'
+        ];
+    }
+
     /**
      * Set cache configuration
      */
@@ -268,3 +303,4 @@ class MedicalKnowledgeService
         $this->cacheTtl = $ttl;
     }
 }
+

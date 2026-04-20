@@ -592,20 +592,22 @@ class WrittenAnswerEvaluationService
     // =========================================================================
 
     /**
-     * Build context that can be cached for a given correct answer + threshold.
-     * Everything in here is independent of the student's submitted answer.
+     *
      */
     private function buildGradingContext(string $correctAnswer, array $alternativeAnswers): array
     {
+        $normCorrect = $this->normalizeForSemanticComparison($correctAnswer);
         return [
-            'normalizedCorrect'      => $this->normalizeForSemanticComparison($correctAnswer),
-            'correctTokens'          => $this->extractMeaningfulTokens($this->normalizeForSemanticComparison($correctAnswer)),
+            'normalizedCorrect'      => $normCorrect,
+            'correctTokens'          => $this->extractMeaningfulTokens($normCorrect),
             'courseTopic'            => $this->identifyCourseTopic($correctAnswer),
             'isPatternCritical'      => $this->isPatternCriticalQuestion($correctAnswer),
             'normalizedAlternatives' => array_map(
                 fn($a) => $this->normalizeForSemanticComparison($a),
                 $alternativeAnswers
             ),
+            // Genius Mode: Extract core semantic concepts
+            'coreConcepts'           => $this->extractCoreConcepts($normCorrect),
         ];
     }
 
@@ -740,6 +742,19 @@ class WrittenAnswerEvaluationService
         if (!$hasAntonyms && $this->isIntelligentConceptMatch($normalizedSubmitted, $normalizedCorrect)) {
             return $this->buildCorrectResult(0.95, 'Intelligent concept match', $courseTopic,
                 'Your answer demonstrates intelligent understanding of the medical concept.');
+        }
+
+        // ── Genius Mode: Core Concept Validation Gate ────────────────────────
+        // If the student captures all core concepts (stemmed and synonym-aware),
+        // we can be much more lenient with the final weighted score.
+        $coreConcepts = $gradingContext['coreConcepts'] ?? [];
+        if (!empty($coreConcepts) && !$hasAntonyms) {
+            $coreResults = $this->verifyCoreConcepts($normalizedSubmitted, $coreConcepts);
+            if ($coreResults['allPresent']) {
+                $baseSimilarity = max(0.85, $coreResults['score']);
+                return $this->buildCorrectResult($baseSimilarity, 'Genius Mode core match', $courseTopic,
+                    'Good job! You captured all the essential medical concepts.');
+            }
         }
         if (!$hasAntonyms && $this->isHeartFunctionMatch($normalizedSubmitted, $normalizedCorrect)) {
             return $this->buildCorrectResult(0.90, 'Correct heart function', 'cardiovascular',
@@ -1889,13 +1904,24 @@ class WrittenAnswerEvaluationService
         $parts = [];
         $normSub = $this->textProcessor->normalizeText($submitted);
         $normCor = $this->textProcessor->normalizeText($correct);
-        $missing = array_filter(
-            array_diff(
-                explode(' ', $this->textProcessor->removeFillerWords($normCor)),
-                explode(' ', $this->textProcessor->removeFillerWords($normSub))
-            ),
-            fn($w) => mb_strlen($w) > 3
-        );
+        $corWords = explode(' ', $this->textProcessor->removeFillerWords($normCor));
+        $subWords = explode(' ', $this->textProcessor->removeFillerWords($normSub));
+        $missing  = [];
+        foreach ($corWords as $cw) {
+            $cw = trim($cw);
+            if (mb_strlen($cw) <= 3) continue;
+            $found = false;
+            foreach ($subWords as $sw) {
+                $sw = trim($sw);
+                // Exact match OR typo-level fuzzy match
+                if ($cw === $sw || $this->textProcessor->getLevenshteinSimilarity($cw, $sw) > 0.75) {
+                    $found = true;
+                    break;
+                }
+            }
+            if (!$found) { $missing[] = $cw; }
+        }
+
         if (!empty($missing)) {
             $list = implode(', ', array_slice(array_values($missing), 0, 3))
                 . (count($missing) > 3 ? ', etc.' : '.');
@@ -1937,5 +1963,77 @@ class WrittenAnswerEvaluationService
         $result = ['isCorrect' => true, 'similarity' => $similarity, 'reason' => $reason, 'feedback' => $feedback];
         if ($topic !== null) { $result['courseTopic'] = $topic; }
         return $result;
+    }
+    // =========================================================================
+    // GENIUS MODE HELPERS
+    // =========================================================================
+
+    /**
+     * Identifies "Core" medical concepts within an answer.
+     * These are terms that are high-priority discriminators.
+     */
+    protected function extractCoreConcepts(string $text): array
+    {
+        $words = $this->textProcessor->extractWords($text);
+        $groups = $this->medicalKnowledge->getHighPriorityConceptGroups();
+        $optional = array_flip($this->medicalKnowledge->getOptionalDescriptors());
+        
+        $cores = [];
+        foreach ($words as $word) {
+            // If it's optional, skip
+            if (isset($optional[$word])) continue;
+            
+            // If it's in a high priority group, it's a core concept
+            $isPriority = false;
+            foreach ($groups as $group) {
+                if (in_array($word, $group)) {
+                    $isPriority = true;
+                    break;
+                }
+            }
+            
+            if ($isPriority || strlen($word) >= 7) { // Longer words are likely specific medical terms
+                $cores[] = $word;
+            }
+        }
+        
+        return array_values(array_unique($cores));
+    }
+
+    /**
+     * Verifies if all core concepts are present in the submitted answer.
+     * Uses medical stemming and fuzzy matching for high adaptability.
+     */
+    protected function verifyCoreConcepts(string $submitted, array $coreConcepts): array
+    {
+        $subWords = $this->textProcessor->extractWords($submitted);
+        $subStems = array_map([$this->textProcessor, 'medicalStem'], $subWords);
+        
+        $matchedCount = 0;
+        $totalCores = count($coreConcepts);
+        
+        foreach ($coreConcepts as $core) {
+            $coreStem = $this->textProcessor->medicalStem($core);
+            $found = false;
+            
+            foreach ($subStems as $i => $subStem) {
+                // Exact stem match OR fuzzy match on original words
+                if ($subStem === $coreStem || $this->textProcessor->getLevenshteinSimilarity($subWords[$i], $core) > 0.8) {
+                    $found = true;
+                    break;
+                }
+            }
+            
+            if ($found) {
+                $matchedCount++;
+            }
+        }
+        
+        return [
+            'allPresent' => ($totalCores > 0 && $matchedCount === $totalCores),
+            'score'      => $totalCores > 0 ? ($matchedCount / $totalCores) : 1.0,
+            'matched'    => $matchedCount,
+            'total'      => $totalCores
+        ];
     }
 }

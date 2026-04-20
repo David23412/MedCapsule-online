@@ -487,6 +487,8 @@ class TextProcessingService
             'adminsitration'  => 'administration',
 
             // Immunology
+            'nautral'         => 'natural',
+            'natuaral'        => 'natural',
             'imuunity'        => 'immunity',
             'imunity'         => 'immunity',
             'antobody'        => 'antibody',
@@ -565,6 +567,13 @@ class TextProcessingService
             '/\bmitochondria\b/i'                 => 'mitochondrion',
             '/\bventricles\b/i'                   => 'ventricle',
             '/\batria\b/i'                        => 'atrium',
+            // Adjective/Adverb → common base normalization
+            '/\bnaturally\b/i'                    => 'natural',
+            '/\bpassively\b/i'                    => 'passive',
+            '/\bartificially\b/i'                 => 'artificial',
+            '/\bnatural\s+acquired\b/i'           => 'natural',
+            '/\bpassive\s+acquired\b/i'           => 'passive',
+            '/\bartificial\s+acquired\b/i'        => 'artificial',
         ];
 
         foreach ($replacements as $pattern => $replacement) {
@@ -822,5 +831,53 @@ class TextProcessingService
 
         $set = array_fill_keys($words, true);
         return $set;
+    }
+    /**
+     * Medical-aware heuristic stemmer.
+     * Reduces medical terms to their semantic roots by stripping common suffixes
+     * while preserving the core meaning for concept matching.
+     */
+    public function medicalStem(string $word): string
+    {
+        $word = strtolower(trim($word));
+        if (strlen($word) <= 3) return $word;
+
+        // Order matters: longer suffixes first
+        $rules = [
+            '/ation$/' => '',    // activation -> activ
+            '/ities$/' => '',    // immunities -> immun
+            '/ness$/'  => '',    // weakness -> weak
+            '/itis$/'  => '',    // gastritis -> gastr
+            '/logy$/'  => '',    // biology -> bio
+            '/ical$/'  => '',    // biological -> biolog
+            '/ally$/'  => '',    // naturally -> natural
+            '/ing$/'   => '',    // secreting -> secret
+            '/ism$/'   => '',    // metabolism -> metabol
+            '/ist$/'   => '',    // agonist -> agon
+            '/ity$/'   => '',    // immunity -> immun
+            '/ive$/'   => '',    // active -> activ
+            '/ion$/'   => '',    // secretion -> secret
+            '/ory$/'   => '',    // secretory -> secret
+            '/ary$/'   => '',    // biliary -> bili
+            '/ed$/'    => '',    // secreted -> secret
+            '/es$/'    => '',    // types -> typ
+            '/ly$/'    => '',    // natural -> natur (wait, handle carefully)
+            '/ic$/'    => '',    // cardiac -> cardi
+            '/al$/'    => '',    // renal -> ren
+            '/us$/'    => '',    // nucleus -> nucle
+            '/ia$/'    => '',    // hypoxemia -> hypoxem
+            '/te$/'    => 't',    // secrete -> secret (matches secretion too)
+            '/s$/'     => '',    // cells -> cell
+            '/e$/'     => '',    // generic e removal for long words
+        ];
+
+        foreach ($rules as $pattern => $replacement) {
+            $stemmed = preg_replace($pattern, $replacement, $word);
+            if ($stemmed !== $word && strlen($stemmed) >= 3) {
+                return $stemmed;
+            }
+        }
+
+        return $word;
     }
 }

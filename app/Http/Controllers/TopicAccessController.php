@@ -163,7 +163,7 @@ use Illuminate\Http\Response;
             }
         } catch (\Exception $e) {
             \Log::error('Method execution failed', ['error' => $e->getMessage()]);
-            return response()->json(['success' => false, 'message' => 'Operation failed'], 500);
+            return []; // Reverted JsonResponse to match array return type hint
         }
         
         $accessResult = $this->checkAccess($topic, $user);
