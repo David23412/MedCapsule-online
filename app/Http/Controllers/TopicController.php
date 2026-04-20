@@ -700,7 +700,7 @@ class TopicController extends Controller
             }
 
             // 🚀 SMART CACHE LAYER: Load all course data with cross-field blobs
-            $questions = Cache::remember("course_{$course->id}_questions_search_payload_v7", 86400, function() use ($course) {
+            $questions = Cache::remember("course_{$course->id}_questions_search_payload_v8", 86400, function() use ($course) {
                 $topicNames = \App\Models\Topic::where('course_id', $course->id)->pluck('name', 'id')->toArray();
 
                 return Question::whereHas('topic', function($q) use ($course) {
@@ -713,7 +713,7 @@ class TopicController extends Controller
                         $cleanE = strip_tags($q->explanation ?? '');
                         
                         // Resolve Correct Answer text
-                        $actualAnswer = $q->correct_answer;
+                        $actualAnswer = trim($q->correct_answer ?? '');
                         if ($q->question_type === 'multiple_choice') {
                             $letter = strtoupper(trim($q->correct_answer));
                             $optionField = 'option_' . strtolower($letter);

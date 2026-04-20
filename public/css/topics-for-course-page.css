@@ -2513,8 +2513,10 @@ body.topics-sidebar-open {
     border-radius: 18px;
     margin-bottom: 25px;
     display: flex;
+    flex-wrap: wrap;
     align-items: center;
     gap: 15px;
+    white-space: pre-wrap;
 }
 
 .search-result-explanation {

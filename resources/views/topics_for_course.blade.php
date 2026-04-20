@@ -1124,8 +1124,8 @@
                                 </div>
                             </div>
                             <div class="search-result-answer mb-3">
-                                <span class="badge bg-success-subtle text-success me-3">Correct Answer</span>
-                                <span class="fw-semibold text-dark">${q.correct_answer}</span>
+                                <span class="badge bg-success-subtle text-success me-3" style="align-self: flex-start; margin-top: 5px;">Correct Answer</span>
+                                <div class="fw-semibold text-dark search-result-answer-text">${q.correct_answer}</div>
                             </div>
                             <div class="search-result-explanation">
                                 ${q.explanation}
