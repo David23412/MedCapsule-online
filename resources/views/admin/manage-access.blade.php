@@ -88,22 +88,22 @@
         
         .notification.success {
             border-left: 4px solid #198754;
-            background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);
+            background-color: #f0fdf4;
         }
         
         .notification.error {
             border-left: 4px solid #dc3545;
-            background: linear-gradient(135deg, #fef2f2 0%, #fecaca 100%);
+            background-color: #fef2f2;
         }
 
         .notification.warning {
             border-left: 4px solid #f59e0b;
-            background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%);
+            background-color: #fffbeb;
         }
 
         .notification.info {
             border-left: 4px solid #0ea5e9;
-            background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
+            background-color: #f0f9ff;
         }
         
         .notification-icon {
@@ -124,23 +124,23 @@
         
         .notification.success .notification-icon {
             color: #fff;
-            background: linear-gradient(135deg, #198754, #20c997);
-            box-shadow: 0 2px 8px rgba(25,135,84,0.3);
+            background-color: #198754;
+            box-shadow: 0 2px 8px rgba(25,135,84,0.15);
         }
         .notification.error .notification-icon {
             color: #fff;
-            background: linear-gradient(135deg, #dc3545, #e8616d);
-            box-shadow: 0 2px 8px rgba(220,53,69,0.3);
+            background-color: #dc3545;
+            box-shadow: 0 2px 8px rgba(220,53,69,0.15);
         }
         .notification.warning .notification-icon {
             color: #fff;
-            background: linear-gradient(135deg, #f59e0b, #fbbf24);
-            box-shadow: 0 2px 8px rgba(245,158,11,0.3);
+            background-color: #f59e0b;
+            box-shadow: 0 2px 8px rgba(245,158,11,0.15);
         }
         .notification.info .notification-icon {
             color: #fff;
-            background: linear-gradient(135deg, #0ea5e9, #38bdf8);
-            box-shadow: 0 2px 8px rgba(14,165,233,0.3);
+            background-color: #0ea5e9;
+            box-shadow: 0 2px 8px rgba(14,165,233,0.15);
         }
         
         .notification-content {
@@ -314,47 +314,51 @@
         }
 
         .btn-primary {
-            background: linear-gradient(135deg, #0d6efd 0%, #0056b3 100%);
+            background-color: #0d6efd;
             color: white;
             border: 2px solid #0d6efd;
         }
 
         .btn-primary:hover {
-            background: linear-gradient(135deg, #0056b3 0%, #004085 100%);
+            background-color: #0056b3;
+            border-color: #0056b3;
             color: white;
         }
 
         .btn-success {
-            background: linear-gradient(135deg, #198754 0%, #146c43 100%);
+            background-color: #198754;
             color: white;
             border: 2px solid #198754;
         }
 
         .btn-success:hover {
-            background: linear-gradient(135deg, #146c43 0%, #0f5132 100%);
+            background-color: #146c43;
+            border-color: #146c43;
             color: white;
         }
 
         .btn-warning {
-            background: linear-gradient(135deg, #ffc107 0%, #ffb300 100%);
+            background-color: #ffc107;
             color: #000;
             border: 2px solid #ffc107;
             font-weight: 700;
         }
 
         .btn-warning:hover {
-            background: linear-gradient(135deg, #ffb300 0%, #ff8f00 100%);
+            background-color: #ffb300;
+            border-color: #ffb300;
             color: #000;
         }
 
         .btn-danger {
-            background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
+            background-color: #dc3545;
             color: white;
             border: 2px solid #dc3545;
         }
 
         .btn-danger:hover {
-            background: linear-gradient(135deg, #c82333 0%, #a71e2a 100%);
+            background-color: #c82333;
+            border-color: #c82333;
             color: white;
         }
 
@@ -384,25 +388,15 @@
         .table th {
             font-weight: 700;
             color: var(--header-color);
-            border-bottom: 3px solid var(--primary-color);
+            border-bottom: 2px solid var(--border-color);
             padding: 1rem 0.75rem;
-            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+            background-color: #f8f9fa;
             white-space: nowrap;
-            font-size: 0.95rem;
+            font-size: 0.9rem;
         }
-
-        .table td {
-            padding: 1rem 0.75rem;
-            vertical-align: middle;
-            border-bottom: 1px solid #e9ecef;
-            color: #495057;
-            font-weight: 500;
-        }
-
+        
         .table tbody tr:hover {
-            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
-            transform: translateY(-1px);
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            background-color: #f8f9fa;
         }
         
         /* FIXED: Keep yellow background on completed payments even on hover */
@@ -553,8 +547,8 @@
             top: 0;
             left: 0;
             right: 0;
-            height: 5px;
-            background: linear-gradient(90deg, var(--primary-color), var(--info-color));
+            height: 4px;
+            background-color: var(--primary-color);
             border-radius: 8px 8px 0 0;
         }
 
@@ -2000,6 +1994,11 @@
                 </button>
             </li>
             <li class="nav-item" role="presentation">
+                <button class="nav-link" id="mentorship-tab" data-bs-toggle="tab" data-bs-target="#mentorship" type="button" role="tab">
+                    <i class="fas fa-user-graduate me-2"></i>Mentorship
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
                 <button class="nav-link {{ $activeTab === 'scheduler-quality' ? 'active' : '' }}" id="scheduler-quality-tab" data-bs-toggle="tab" data-bs-target="#scheduler-quality" type="button" role="tab">
                     <i class="fas fa-brain me-2"></i>Scheduler Quality
                 </button>
@@ -2041,7 +2040,7 @@
                                         <option value="">Type to search for user...</option>
                                         @if(isset($users) && $users->count() > 0)
                                             @foreach($users as $user)
-                                                <option value="{{ $user->id }}" {{ old('user_id') == $user->id ? 'selected' : '' }} data-email="{{ $user->email ?? '' }}" data-number="{{ $user->number ?? '' }}" data-role="{{ $user->role ?? 0 }}" data-name="{{ $user->name ?? '' }}">
+                                                <option value="{{ $user->id }}" {{ old('user_id') == $user->id ? 'selected' : '' }} data-email="{{ $user->email ?? '' }}" data-number="{{ $user->number ?? '' }}" data-role="{{ $user->role ?? 0 }}" data-name="{{ $user->name ?? '' }}" data-mentored="{{ $user->is_mentored ? '1' : '0' }}">
                                                     {{ $user->name ?? 'Unknown' }} ({{ $user->email ?? 'No Email' }})
                                                 </option>
                                             @endforeach
@@ -2077,12 +2076,23 @@
                                     </div>
                                 </div>
 
-                                <div class="quick-actions">
-                                    <button type="button" class="btn btn-success" id="grantAccessBtn">
-                                        <i class="fas fa-user-plus me-2"></i>Grant Access
+                                <div class="mt-2 d-flex align-items-center justify-content-between p-2 border rounded bg-light mb-3" id="mentorshipToggleWrapper" style="display: none;">
+                                    <div>
+                                        <i class="fas fa-user-graduate me-2 text-primary"></i>
+                                        <strong>Mentorship Program</strong>
+                                        <div class="small text-muted">Direct Enrollment Status (0/1)</div>
+                                    </div>
+                                    <div class="form-check form-switch">
+                                        <input class="form-check-input" type="checkbox" id="mentorshipStatusToggle" style="transform: scale(1.4); cursor: pointer;">
+                                    </div>
+                                </div>
+
+                                <div class="quick-actions mb-3">
+                                    <button type="button" class="btn btn-primary w-100 mb-2" id="grantAccessBtn">
+                                        <i class="fas fa-user-plus me-2"></i>Grant Course Access
                                     </button>
-                                    <button type="button" class="btn btn-danger" id="revokeAccessBtn">
-                                        <i class="fas fa-user-times me-2"></i>Revoke Access
+                                    <button type="button" class="btn btn-outline-danger w-100" id="revokeAccessBtn">
+                                        <i class="fas fa-user-times me-2"></i>Revoke Course Access
                                     </button>
                                 </div>
 
@@ -2100,7 +2110,9 @@
                                             <div class="small text-muted" id="selectedUserEmail"></div>
                                             <div class="small text-muted" id="selectedUserNumber"></div>
                                         </div>
-                                        <span class="badge" id="selectedUserRole"></span>
+                                        <div class="ms-auto" id="userMentorshipBadge" style="display: none;">
+                                            <span class="badge bg-success">MENTORED</span>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -2185,6 +2197,7 @@
                                 <div class="d-flex gap-2">
                                     <select class="form-select form-select-sm" id="enrollmentFilter" style="width: auto;">
                                         <option value="all">All Users</option>
+                                        <option value="mentored">Mentorship Only</option>
                                         <option value="has_active">With Active Courses</option>
                                         <option value="has_revoked">With Revoked Courses</option>
                                     </select>
@@ -2199,6 +2212,7 @@
                                         <thead>
                                             <tr>
                                                 <th>User</th>
+                                                <th>Mentorship</th>
                                                 <th>Courses</th>
                                                 <th>Status</th>
                                                 <th>Last Activity</th>
@@ -2206,7 +2220,7 @@
                                         </thead>
                                         <tbody>
                                             @forelse($enrolledUsers ?? [] as $userRow)
-                                                <tr data-active-count="{{ $userRow->active_count }}" data-revoked-count="{{ $userRow->revoked_count }}">
+                                                <tr data-active-count="{{ $userRow->active_count }}" data-revoked-count="{{ $userRow->revoked_count }}" data-is-mentored="{{ $userRow->is_mentored ? '1' : '0' }}">
                                                     <td>
                                                         <div class="d-flex align-items-center">
                                                             <div class="me-2">
@@ -2215,16 +2229,25 @@
                                                                 </div>
                                                             </div>
                                                             <div>
-                                                                <div class="fw-medium">{{ $userRow->name ?? 'Unknown' }}</div>
+                                                                <div class="fw-medium">
+                                                                    {{ $userRow->name ?? 'Unknown' }}
+                                                                </div>
                                                                 <small class="text-muted">{{ $userRow->email }}</small>
                                                             </div>
                                                         </div>
                                                     </td>
+                                                    <td class="text-center">
+                                                        @if($userRow->is_mentored)
+                                                            <span class="badge bg-success" style="font-size: 0.9rem; padding: 0.4em 0.8em;">1</span>
+                                                        @else
+                                                            <span class="badge bg-light text-muted border" style="font-size: 0.9rem; padding: 0.4em 0.8em;">0</span>
+                                                        @endif
+                                                    </td>
                                                     <td>
-                                                        <div class="d-flex flex-wrap gap-1" style="max-width: 280px;">
+                                                        <div class="d-flex flex-wrap gap-1" style="max-width: 250px;">
                                                             @foreach($userRow->courses as $course)
                                                                 @php $c = (object) $course; @endphp
-                                                                <span class="badge {{ $c->is_enrolled ? 'bg-success' : 'bg-secondary text-decoration-line-through' }}" style="font-size: 0.72rem;" title="{{ $c->is_enrolled ? 'Active' : 'Revoked' }}">
+                                                                <span class="badge {{ $c->is_enrolled ? 'bg-primary' : 'bg-secondary text-decoration-line-through' }}" style="font-size: 0.72rem;" title="{{ $c->is_enrolled ? 'Active' : 'Revoked' }}">
                                                                     {{ $c->course_name }}
                                                                 </span>
                                                             @endforeach
@@ -2387,6 +2410,77 @@
                                     </div>
                                 </div>
                             </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Mentorship Tab -->
+            <div class="tab-pane fade" id="mentorship" role="tabpanel">
+                <!-- Mentorship Stats -->
+                <div class="row g-3 mb-4" id="mentorship-stats-container">
+                    <div class="col-md-3">
+                        <div class="stat-card">
+                            <div class="stat-number text-primary" id="mentorship-total-students">0</div>
+                            <div class="stat-label">Total Mentored</div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="stat-card">
+                            <div class="stat-number text-danger" id="mentorship-struggling-students">0</div>
+                            <div class="stat-label">Struggling</div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="stat-card">
+                            <div class="stat-number text-success" id="mentorship-avg-task-progress">0%</div>
+                            <div class="stat-label">Avg Task Progress</div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="stat-card">
+                            <div class="stat-number text-info" id="mentorship-total-quizzes">0</div>
+                            <div class="stat-label">Cumulative Quizzes</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Mentorship Table -->
+                <div class="card">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <div>
+                            <i class="fas fa-user-graduate me-2"></i>Mentorship Program Performance
+                        </div>
+                        <button class="btn btn-outline-secondary btn-sm" id="refreshMentorshipData">
+                            <i class="fas fa-sync-alt"></i>
+                        </button>
+                    </div>
+                    <div class="card-body p-0">
+                        <div class="table-responsive">
+                            <table class="table table-hover mb-0" id="mentorship-table">
+                                <thead>
+                                    <tr>
+                                        <th>Student</th>
+                                        <th>Avg Score</th>
+                                        <th>Task Progress</th>
+                                        <th>Coverage</th>
+                                        <th>Discipline</th>
+                                        <th>Trend</th>
+                                        <th>Last Active</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="mentorship-table-body">
+                                    <tr>
+                                        <td colspan="6" class="text-center py-5">
+                                            <div class="spinner-border text-primary" role="status">
+                                                <span class="visually-hidden">Loading...</span>
+                                            </div>
+                                            <div class="mt-2 text-muted">Loading mentorship data...</div>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
                         </div>
                     </div>
                 </div>
@@ -2932,6 +3026,138 @@
         };
     </script>
     <script src="{{ asset('js/admin-manage-access.js') }}"></script>
+
+    <script>
+        $(document).ready(function() {
+            // Mentorship Tab Logic
+            $('#mentorship-tab').on('shown.bs.tab', function (e) {
+                loadMentorshipData();
+            });
+
+            $('#refreshMentorshipData').on('click', function() {
+                const $btn = $(this);
+                $btn.find('i').addClass('fa-spin');
+                loadMentorshipData(function() {
+                    $btn.find('i').removeClass('fa-spin');
+                });
+            });
+
+            function loadMentorshipData(callback) {
+                const $tbody = $('#mentorship-table-body');
+                
+                $.ajax({
+                    url: '/manage-access/mentorship-data',
+                    method: 'GET',
+                    success: function(response) {
+                        if (response.success) {
+                            // Update summary stats
+                            $('#mentorship-total-students').text(response.summary.total_students);
+                            $('#mentorship-avg-task-progress').text(response.summary.average_task_progress + '%');
+                            $('#mentorship-struggling-students').text(response.summary.struggling_students);
+                            
+                            const cumulativeQuizzes = response.students.reduce((acc, s) => acc + (s.enhanced_metrics.total_quizzes || 0), 0);
+                            $('#mentorship-total-quizzes').text(cumulativeQuizzes);
+
+                            // Render table
+                            let html = '';
+                            if (!response.students || response.students.length === 0) {
+                                html = '<tr><td colspan="8" class="text-center py-4 text-muted">No mentored students found.</td></tr>';
+                            } else {
+                                response.students.forEach(function(student) {
+                                    const metrics = student.enhanced_metrics;
+                                    const discipline = metrics.discipline;
+                                    const taskProgress = metrics.task_progress || 0;
+                                    const coverage = metrics.topic_coverage;
+                                    
+                                    // Color coding for score
+                                    const scoreClass = metrics.score_class === 'excellent' ? 'bg-success' : 
+                                                      (metrics.score_class === 'good' ? 'bg-info' : 'bg-danger');
+                                    
+                                    // Trend display
+                                    let trendIcon = '<i class="fas fa-minus text-muted"></i> Minimal';
+                                    if (metrics.performance_trend === 'improving') trendIcon = '<i class="fas fa-arrow-up text-success"></i> Improving';
+                                    else if (metrics.performance_trend === 'declining') trendIcon = '<i class="fas fa-arrow-down text-danger"></i> Declining';
+
+                                    // Task Progress Badge
+                                    const taskColor = taskProgress >= 80 ? 'success' : (taskProgress >= 50 ? 'warning' : 'danger');
+                                    const taskHtml = `
+                                        <div class="d-flex align-items-center">
+                                            <div class="progress flex-grow-1 me-2" style="height: 6px; min-width: 60px;">
+                                                <div class="progress-bar bg-${taskColor}" role="progressbar" style="width: ${taskProgress}%"></div>
+                                            </div>
+                                            <span class="small fw-bold">${taskProgress}%</span>
+                                        </div>
+                                    `;
+
+                                    // Topic Coverage Badge
+                                    const coverageHtml = `
+                                        <div class="text-nowrap">
+                                            <span class="badge bg-light text-dark border">
+                                                <i class="fas fa-book-open me-1 text-primary"></i> ${coverage.attempted} / ${coverage.total}
+                                            </span>
+                                            <div class="small text-muted mt-1" style="font-size: 0.7rem;">${coverage.percentage}% Coverage</div>
+                                        </div>
+                                    `;
+
+                                    // Discipline display
+                                    const disciplineBadge = `<span class="badge bg-${discipline.color}">${discipline.status.replace('_', ' ').toUpperCase()}</span>`;
+                                    
+                                    // Formatting date
+                                    const lastActive = student.last_active_at ? new Date(student.last_active_at).toLocaleDateString() : 'Never';
+
+                                    html += `
+                                        <tr class="${metrics.score_class === 'poor' || discipline.status === 'inactive' ? 'table-warning' : ''}">
+                                            <td>
+                                                <div class="fw-bold">${student.name}</div>
+                                                <div class="small text-muted">${student.email}</div>
+                                            </td>
+                                            <td>
+                                                <span class="badge ${scoreClass}" style="font-size: 0.85rem;">${metrics.average_score}%</span>
+                                                <div class="small text-muted mt-1">${metrics.total_quizzes} quizzes</div>
+                                            </td>
+                                            <td>${taskHtml}</td>
+                                            <td>${coverageHtml}</td>
+                                            <td>
+                                                ${disciplineBadge}
+                                                <div class="small text-muted mt-1" style="max-width: 150px; font-size: 0.75rem;">${discipline.reason}</div>
+                                            </td>
+                                            <td>${trendIcon}</td>
+                                            <td style="font-size: 0.8rem;">${lastActive}</td>
+                                            <td>
+                                                <div class="btn-group btn-group-sm">
+                                                    <a href="/tutor/student/${student.id}" class="btn btn-outline-primary" title="Details">
+                                                        <i class="fas fa-chart-line"></i>
+                                                    </a>
+                                                    <a href="${discipline.whatsapp_link}" target="_blank" class="btn btn-outline-success" title="WhatsApp Member">
+                                                        <i class="fab fa-whatsapp"></i>
+                                                    </a>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    `;
+                                });
+                            }
+                            $tbody.html(html);
+                        } else {
+                            $tbody.html('<tr><td colspan="6" class="text-center py-4 text-danger">Error: ' + response.message + '</td></tr>');
+                        }
+                    },
+                    error: function(xhr) {
+                        $tbody.html('<tr><td colspan="6" class="text-center py-4 text-danger">Failed to connect to the server.</td></tr>');
+                    },
+                    complete: function() {
+                        if (typeof callback === 'function') callback();
+                    }
+                });
+            }
+
+            // Auto-load if tab is already active (via URL)
+            if (MANAGE_ACCESS_CONFIG.activeTab === 'mentorship' || window.location.hash === '#mentorship') {
+                $('#mentorship-tab').tab('show');
+                loadMentorshipData();
+            }
+        });
+    </script>
 
 
     <!-- Bootstrap JS -->

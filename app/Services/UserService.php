@@ -88,6 +88,7 @@ class UserService
 
             // PERFORMANCE OPTIMIZATION: Get users with pagination
             $users = User::select('id', 'name', 'email', 'number', 'role')
+                ->withExists('assignedTutors as is_mentored')
                 ->orderBy('name', 'asc')
                 ->paginate($perPage);
 
@@ -100,6 +101,7 @@ class UserService
             $enrolledUsersData = DB::table('course_user')
                 ->join('users', 'course_user.user_id', '=', 'users.id')
                 ->join('courses', 'course_user.course_id', '=', 'courses.id')
+                ->leftJoin('tutor_student_relationships', 'users.id', '=', 'tutor_student_relationships.user_id')
                 ->select(
                     'users.id as user_id',
                     'users.name',
@@ -108,7 +110,8 @@ class UserService
                     'course_user.enrolled_at as created_at',
                     'course_user.course_id',
                     'course_user.is_enrolled',
-                    'course_user.updated_at'
+                    'course_user.updated_at',
+                    DB::raw('CASE WHEN tutor_student_relationships.id IS NOT NULL THEN 1 ELSE 0 END as is_mentored')
                 )
                 ->orderBy('course_user.updated_at', 'desc')
                 ->limit(100) // Fetch more rows to group into ~50 unique users
@@ -140,6 +143,7 @@ class UserService
                     'revoked_count' => $revokedCount,
                     'total_courses' => count($courses),
                     'last_activity' => $lastActivity,
+                    'is_mentored' => (bool) $first->is_mentored,
                 ];
             })->sortByDesc('last_activity')->values()->take(50);
 
@@ -248,6 +252,7 @@ class UserService
             // If query is empty, return all users
             if ($query === '') {
                 $users = User::select('id', 'name', 'email', 'number', 'role')
+                    ->withExists('assignedTutors as is_mentored')
                     ->orderBy('name', 'asc')
                     ->limit(100) // Limit to prevent overwhelming the dropdown
                     ->get();
@@ -257,6 +262,7 @@ class UserService
                 $containsSearch = '%' . $query . '%';
 
                 $users = User::select('id', 'name', 'email', 'number', 'role')
+                    ->withExists('assignedTutors as is_mentored')
                     ->where(function ($builder) use ($prefixSearch) {
                         $builder->where('email', 'like', $prefixSearch)
                             ->orWhere('number', 'like', $prefixSearch)
@@ -280,6 +286,7 @@ class UserService
 
                 if ($users->count() < $limit) {
                     $fallbackUsers = User::select('id', 'name', 'email', 'number', 'role')
+                        ->withExists('assignedTutors as is_mentored')
                         ->whereNotIn('id', $users->pluck('id'))
                         ->where(function ($builder) use ($containsSearch) {
                             $builder->where('name', 'like', $containsSearch)

@@ -140,6 +140,8 @@
             border-radius: 12px;
             box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
             margin-bottom: 100px; /* Space for fixed progress bar */
+            max-width: 1400px; /* Increased from default for desktop */
+            width: 100%;
         }
 
         h1 {
@@ -854,7 +856,7 @@
             padding: 2.5rem;
             border-radius: 20px;
             text-align: center;
-            max-width: 600px;
+            max-width: 1100px; /* Increased for desktop stretching */
             width: 90%;
             position: relative;
             transform: translateY(20px);
@@ -2935,7 +2937,7 @@
             border-radius: 12px;
             border: 1px solid #dbe1e8;
             width: 100%;
-            max-width: 660px;
+            max-width: 1100px; /* Wider for desktop edit convenience */
             max-height: 90vh;
             overflow-y: auto;
             box-shadow: 0 12px 30px rgba(15, 23, 42, 0.12);

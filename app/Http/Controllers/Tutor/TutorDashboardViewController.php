@@ -10,9 +10,12 @@ use App\Models\User;
 
 class TutorDashboardViewController extends Controller
 {
-    public function __construct()
+    protected $analyticsService;
+
+    public function __construct(\App\Services\StudentAnalyticsService $analyticsService)
     {
         $this->middleware(['auth', 'tutor']);
+        $this->analyticsService = $analyticsService;
     }
 
     /**
@@ -129,7 +132,7 @@ class TutorDashboardViewController extends Controller
             ->get();
 
         // Calculate Discipline Status
-        $discipline = $this->calculateDisciplineStatus($student, $plannerOutcomes);
+        $discipline = $this->analyticsService->calculateDisciplineStatus($student, $plannerOutcomes);
 
         // Build Topic Timeline (Consolidated view of Quizzes + Videos)
         $timeline = $this->buildTopicTimeline($student->quizAttempts, $videoProgress);
@@ -152,43 +155,6 @@ class TutorDashboardViewController extends Controller
         ];
     }
 
-    /**
-     * Calculate Discipline Status (Green/Yellow/Red)
-     */
-    private function calculateDisciplineStatus($student, $plannerOutcomes): array
-    {
-        $lastActive = $student->last_active_at;
-        $daysSinceActive = $lastActive ? now()->diffInDays($lastActive) : 99;
-        
-        $recentTasks = $plannerOutcomes->where('plan_date', '>=', now()->subDays(3));
-        $missingTasks = $recentTasks->where('is_completed', false)->count();
-        $totalTasks = $recentTasks->count();
-        
-        $status = 'active';
-        $reason = 'Student is following the plan.';
-        $color = 'success';
-
-        if ($daysSinceActive >= 3 || ($totalTasks > 0 && ($missingTasks / $totalTasks) > 0.5)) {
-            $status = 'inactive';
-            $reason = $daysSinceActive >= 3 ? 'No activity for 3+ days.' : 'More than 50% of recent tasks missed.';
-            $color = 'danger';
-        } elseif ($daysSinceActive >= 1 || $missingTasks > 0) {
-            $status = 'at_risk';
-            $reason = $daysSinceActive >= 1 ? 'No activity in 24h.' : 'Some tasks were missed recently.';
-            $color = 'warning';
-        }
-
-        // Prepare WhatsApp message
-        $waMessage = "Hi {$student->name}, this is your mentor from MedCapsule. I noticed that [REASON]. Is everything okay? How can I help you get back to your study schedule?";
-        $waMessage = str_replace('[REASON]', str_replace('.', '', strtolower($reason)), $waMessage);
-        
-        return [
-            'status' => $status,
-            'reason' => $reason,
-            'color' => $color,
-            'whatsapp_link' => "https://wa.me/" . preg_replace('/[^0-9]/', '', $student->number) . "?text=" . urlencode($waMessage)
-        ];
-    }
 
     /**
      * Build a consolidated topic-by-topic progress view
@@ -274,9 +240,9 @@ class TutorDashboardViewController extends Controller
             'last_quiz_date' => $quizAttempts->first()?->created_at,
             'total_study_time' => $quizAttempts->sum('duration_seconds') / 60, // in minutes
             'average_session_time' => $quizAttempts->count() > 0 ? round($quizAttempts->avg('duration_seconds') / 60, 1) : 0,
-            'improvement_rate' => $this->calculateImprovementRate($quizAttempts),
-            'strength_areas' => $this->getStrengthAreas($quizAttempts),
-            'weakness_areas' => $this->getWeaknessAreas($quizAttempts)
+            'improvement_rate' => $this->analyticsService->calculateImprovementRate($quizAttempts),
+            'strength_areas' => $this->analyticsService->getStrengthAreas($quizAttempts),
+            'weakness_areas' => $this->analyticsService->getWeaknessAreas($quizAttempts)
         ];
 
         return [
@@ -321,8 +287,8 @@ class TutorDashboardViewController extends Controller
         return [
             'recent_activity' => $recentAttempts->count(),
             'average_session_time' => round($recentAttempts->avg('duration_seconds') / 60, 1),
-            'most_active_day' => $this->getMostActiveDay($recentAttempts),
-            'improvement_trend' => $this->calculatePerformanceTrend($recentAttempts->take(10))
+            'most_active_day' => $this->analyticsService->getMostActiveDay($recentAttempts),
+            'improvement_trend' => $this->analyticsService->calculatePerformanceTrend($recentAttempts->take(10))
         ];
     }
 
@@ -420,20 +386,7 @@ class TutorDashboardViewController extends Controller
         return $students->map(function ($student) use ($allOutcomes) {
             $outcomes = $allOutcomes->get($student->id, collect());
             
-            // Calculate discipline for dashboard view
-            $discipline = $this->calculateDisciplineStatus($student, $outcomes);
-            
-            // Calculate basic metrics for the card
-            $recentQuizzes = $student->quizAttempts->take(10);
-            $avgScore = $recentQuizzes->avg('percentage_grade') ?? 0;
-            
-            $student->enhanced_metrics = [
-                'average_score' => $avgScore,
-                'total_quizzes' => $student->quizAttempts->count(),
-                'performance_trend' => $this->calculatePerformanceTrend($recentQuizzes),
-                'score_class' => $avgScore >= 80 ? 'excellent' : ($avgScore >= 65 ? 'good' : 'poor'),
-                'discipline' => $discipline
-            ];
+            $student = $this->analyticsService->enhanceStudentMetrics($student, $outcomes);
             
             return $student;
         });
@@ -444,29 +397,7 @@ class TutorDashboardViewController extends Controller
      */
     private function getBasicAnalytics($students): array
     {
-        $total = $students->count();
-        if ($total === 0) {
-            return [
-                'total_students' => 0,
-                'active_students' => 0,
-                'average_score' => 0,
-                'struggling_students' => 0
-            ];
-        }
-
-        $active = $students->filter(fn($s) => $s->last_active_at && $s->last_active_at->gte(now()->subDays(3)))->count();
-        $avgScore = $students->avg('enhanced_metrics.average_score') ?? 0;
-        $struggling = $students->filter(fn($s) => 
-            $s->enhanced_metrics['score_class'] === 'poor' || 
-            $s->enhanced_metrics['discipline']['status'] === 'inactive'
-        )->count();
-
-        return [
-            'total_students' => $total,
-            'active_students' => $active,
-            'average_score' => $avgScore,
-            'struggling_students' => $struggling
-        ];
+        return $this->analyticsService->getSummaryAnalytics($students);
     }
 
     /**
@@ -483,40 +414,11 @@ class TutorDashboardViewController extends Controller
     }
 
     /**
-     * Determine performance trend (improving/declining/stable).
-     */
-    private function calculatePerformanceTrend($recentAttempts)
-    {
-        if ($recentAttempts->count() < 4) return 'stable';
-
-        $sorted = $recentAttempts->sortBy('created_at')->values();
-        $mid = floor($sorted->count() / 2);
-        
-        $olderAvg = $sorted->take($mid)->avg('percentage_grade') ?? 0;
-        $newerAvg = $sorted->skip($mid)->avg('percentage_grade') ?? 0;
-
-        if ($newerAvg > $olderAvg + 5) return 'improving';
-        if ($newerAvg < $olderAvg - 5) return 'declining';
-        
-        return 'stable';
-    }
-
-    /**
-     * Get the most active day of the week from recent attempts.
-     */
-    private function getMostActiveDay($recentAttempts): string
-    {
-        if ($recentAttempts->isEmpty()) return 'N/A';
-
-        return $recentAttempts->groupBy(fn($a) => $a->created_at->format('l'))
-            ->map->count()
-            ->sortDesc()
-            ->keys()
-            ->first() ?? 'N/A';
-    }
-
-    /**
      * Helper to format assignments (already implemented above, but ensuring consistency)
      */
-    // ... (formatAssignmentsData and others are already there)
+    private function getTimeRemaining(\Carbon\Carbon $deadline)
+    {
+        if ($deadline->isPast()) return 'Overdue';
+        return $deadline->diffForHumans();
+    }
 }

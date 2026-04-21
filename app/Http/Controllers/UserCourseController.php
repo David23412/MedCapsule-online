@@ -25,13 +25,20 @@ class UserCourseController extends Controller
     protected $paymentService;
     protected $userService;
     protected $freeCourseSurveyService;
+    protected $analyticsService;
 
-    public function __construct(UserCourseService $userCourseService, PaymentService $paymentService, UserService $userService, FreeCourseSurveyService $freeCourseSurveyService)
-    {
+    public function __construct(
+        UserCourseService $userCourseService, 
+        PaymentService $paymentService, 
+        UserService $userService, 
+        FreeCourseSurveyService $freeCourseSurveyService,
+        \App\Services\StudentAnalyticsService $analyticsService
+    ) {
         $this->userCourseService = $userCourseService;
         $this->paymentService = $paymentService;
         $this->userService = $userService;
         $this->freeCourseSurveyService = $freeCourseSurveyService;
+        $this->analyticsService = $analyticsService;
     }
 
     public function index()
@@ -88,6 +95,55 @@ class UserCourseController extends Controller
     }
 
 
+
+    public function toggleMentorship(Request $request)
+    {
+        $request->validate([
+            'user_id' => 'required|exists:users,id',
+            'action' => 'required|in:grant,revoke'
+        ]);
+
+        $user = User::findOrFail($request->user_id);
+        
+        try {
+            if ($request->action === 'grant') {
+                // Check if already mentored
+                $exists = DB::table('tutor_student_relationships')
+                    ->where('user_id', $user->id)
+                    ->exists();
+                
+                if (!$exists) {
+                    // Assign the current admin as the mentor
+                    DB::table('tutor_student_relationships')->insert([
+                        'tutor_id' => auth()->id(),
+                        'user_id' => $user->id,
+                        'assigned_at' => now(),
+                        'created_at' => now(),
+                        'updated_at' => now()
+                    ]);
+                }
+                
+                return response()->json([
+                    'success' => true,
+                    'message' => "{$user->name} has been enrolled in the Mentorship Program."
+                ]);
+            } else {
+                DB::table('tutor_student_relationships')
+                    ->where('user_id', $user->id)
+                    ->delete();
+                
+                return response()->json([
+                    'success' => true,
+                    'message' => "{$user->name} has been removed from the Mentorship Program."
+                ]);
+            }
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to update mentorship status: ' . $e->getMessage()
+            ], 500);
+        }
+    }
 
     public function searchUsers(SearchUsersRequest $request)
     {
@@ -232,5 +288,64 @@ class UserCourseController extends Controller
         $result = $this->userService->getSystemStats();
 
         return response()->json($result, $result['success'] ? 200 : 500);
+    }
+
+    /**
+     * Get students in the mentorship program with their performance metrics for admin.
+     */
+    public function getMentorshipData()
+    {
+        try {
+            // 1. Fetch Students who are in the mentorship program
+            // Criteria: They must exist in the tutor_student_relationships table
+            $students = User::where('role', User::ROLE_STUDENT)
+                ->whereExists(function ($query) {
+                    $query->select(DB::raw(1))
+                        ->from('tutor_student_relationships')
+                        ->whereColumn('tutor_student_relationships.user_id', 'users.id');
+                })
+                ->with([
+                    'quizAttempts' => function ($q) {
+                        $q->select(['quiz_attempts.id', 'quiz_attempts.user_id', 'quiz_attempts.percentage_grade', 'quiz_attempts.created_at'])
+                          ->orderBy('quiz_attempts.created_at', 'desc');
+                    }
+                ])
+                ->get();
+
+            // 2. Fetch recent planner outcomes for all these students
+            $studentIds = $students->pluck('id');
+            $allOutcomes = DB::table('planner_task_outcomes')
+                ->whereIn('planner_task_outcomes.user_id', $studentIds)
+                ->where('planner_task_outcomes.plan_date', '>=', now()->subDays(7))
+                ->get()
+                ->groupBy('user_id');
+
+            // 3. Enhance students with analytics
+            $enhancedStudents = $students->map(function ($student) use ($allOutcomes) {
+                $outcomes = $allOutcomes->get($student->id, collect());
+                return $this->analyticsService->enhanceStudentMetrics($student, $outcomes);
+            });
+
+            // 4. Calculate summary stats
+            $summary = $this->analyticsService->getSummaryAnalytics($enhancedStudents);
+
+            return response()->json([
+                'success' => true,
+                'summary' => $summary,
+                'students' => $enhancedStudents
+            ]);
+
+        } catch (\Exception $e) {
+            \Log::error('Mentorship data endpoint error', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'An error occurred while loading mentorship data.',
+                'error' => $e->getMessage()
+            ], 500);
+        }
     }
 }

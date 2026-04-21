@@ -407,6 +407,59 @@ const MANAGE_ACCESS_CONFIG = window.MANAGE_ACCESS_CONFIG || {};
                 }
             });
             
+            });
+            
+            // MENTORSHIP STATUS TOGGLE HANDLER (0/1)
+            $('#mentorshipStatusToggle').on('change', function() {
+                const userId = $('#user_id').val();
+                if (!userId) return;
+
+                const isChecked = $(this).is(':checked');
+                const action = isChecked ? 'grant' : 'revoke';
+                const $toggle = $(this);
+                
+                // Disable toggle during animated state
+                $toggle.prop('disabled', true);
+                
+                $.ajax({
+                    url: '/manage-access/toggle-mentorship',
+                    method: 'POST',
+                    data: {
+                        user_id: userId,
+                        action: action,
+                        _token: MANAGE_ACCESS_CONFIG.csrfToken
+                    },
+                    success: function(response) {
+                        if (response.success) {
+                            showNotification(isChecked ? 'success' : 'warning', 'Mentorship Updated', response.message);
+                            
+                            // Update the badge
+                            if (isChecked) {
+                                $('#userMentorshipBadge').fadeIn(300);
+                            } else {
+                                $('#userMentorshipBadge').fadeOut(300);
+                            }
+
+                            // Update the data-mentored attribute on the option so it persists during current session
+                            $('#user_id option:selected').data('mentored', isChecked ? '1' : '0');
+                            
+                            // Refresh the table to show the new 0/1 status
+                            refreshEnrollmentData();
+                        } else {
+                            showNotification('error', 'Update Failed', response.message);
+                            $toggle.prop('checked', !isChecked); // Revert
+                        }
+                    },
+                    error: function(xhr) {
+                        showNotification('error', 'Server Error', 'Failed to update mentorship status.');
+                        $toggle.prop('checked', !isChecked); // Revert
+                    },
+                    complete: function() {
+                        $toggle.prop('disabled', false);
+                    }
+                });
+            });
+            
             // Promote to Admin button handler
             $('#promoteToAdminBtn').on('click', function(e) {
                 e.preventDefault();
@@ -512,8 +565,11 @@ const MANAGE_ACCESS_CONFIG = window.MANAGE_ACCESS_CONFIG || {};
                     const row = $(this);
                     const activeCount = parseInt(row.data('active-count') || 0);
                     const revokedCount = parseInt(row.data('revoked-count') || 0);
+                    const isMentored = row.data('is-mentored') == '1';
                     
                     if (filter === 'all') {
+                        row.show();
+                    } else if (filter === 'mentored' && isMentored) {
                         row.show();
                     } else if (filter === 'has_active' && activeCount > 0) {
                         row.show();
@@ -619,8 +675,13 @@ const MANAGE_ACCESS_CONFIG = window.MANAGE_ACCESS_CONFIG || {};
                         var safeEmail = escHtml(userRow.email || '');
                         var initial = safeName.charAt(0).toUpperCase() || 'U';
 
+                        var isMentored = userRow.is_mentored == 1 || userRow.is_mentored === true;
+                        var mentorshipHtml = isMentored ? 
+                            '<span class="badge bg-success" style="font-size: 0.9rem; padding: 0.4em 0.8em;">1</span>' : 
+                            '<span class="badge bg-light text-muted border" style="font-size: 0.9rem; padding: 0.4em 0.8em;">0</span>';
+
                         tbody.append(
-                            '<tr data-active-count="' + userRow.active_count + '" data-revoked-count="' + userRow.revoked_count + '">' +
+                            '<tr data-active-count="' + userRow.active_count + '" data-revoked-count="' + userRow.revoked_count + '" data-is-mentored="' + (isMentored ? '1' : '0') + '">' +
                             '<td>' +
                                 '<div class="d-flex align-items-center">' +
                                     '<div class="me-2">' +
@@ -634,6 +695,7 @@ const MANAGE_ACCESS_CONFIG = window.MANAGE_ACCESS_CONFIG || {};
                                     '</div>' +
                                 '</div>' +
                             '</td>' +
+                            '<td class="text-center">' + mentorshipHtml + '</td>' +
                             '<td><div class="d-flex flex-wrap gap-1" style="max-width:280px;">' + courseBadges + '</div></td>' +
                             '<td>' + statusHtml + '</td>' +
                             '<td>' + dateHtml + '</td>' +

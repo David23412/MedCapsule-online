@@ -149,6 +149,8 @@ Route::group([], function () {
 
         // Real-time system stats endpoint
         Route::get('/manage-access/system-stats', [UserCourseController::class, 'getSystemStats'])->name('admin.system-stats');
+        Route::get('/manage-access/mentorship-data', [UserCourseController::class, 'getMentorshipData'])->name('admin.mentorship-data');
+        Route::post('/manage-access/toggle-mentorship', [UserCourseController::class, 'toggleMentorship'])->name('admin.toggle-mentorship');
 
         // Course Management Resource Routes
         Route::resource('admin/courses', \App\Http\Controllers\Admin\CourseController::class)->names('admin.courses');
