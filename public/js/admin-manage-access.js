@@ -407,7 +407,7 @@ const MANAGE_ACCESS_CONFIG = window.MANAGE_ACCESS_CONFIG || {};
                 }
             });
             
-            });
+
             
             // MENTORSHIP STATUS TOGGLE HANDLER (0/1)
             $('#mentorshipStatusToggle').on('change', function() {

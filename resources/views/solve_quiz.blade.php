@@ -2631,6 +2631,42 @@
                 window.location.reload();
             });
 
+
+            // ============================================================================
+            // 💀 INACTIVITY WATCHDOG - 30 MIN TERMINATION 💀
+            // ============================================================================
+            let lastInactivityReset = Date.now();
+            const INACTIVITY_LIMIT_MS = 30 * 60 * 1000; // 30 minutes
+            
+            function resetInactivityWatchdog() {
+                lastInactivityReset = Date.now();
+            }
+
+            // Listen for any user presence indicators
+            ['mousedown', 'mousemove', 'keypress', 'scroll', 'touchstart'].forEach(event => {
+                document.addEventListener(event, resetInactivityWatchdog, { passive: true });
+            });
+
+            // Check every minute if the session has timed out
+            const inactivityInterval = setInterval(() => {
+                const now = Date.now();
+                if (now - lastInactivityReset > INACTIVITY_LIMIT_MS) {
+                    console.warn('⚠️ Session terminated due to 30 minutes of inactivity');
+                    
+                    // Kill the interval
+                    clearInterval(inactivityInterval);
+                    
+                    // Nuclear draft clear
+                    if (quizDraft) {
+                        quizDraft.clear();
+                    }
+                    
+                    // Show lethal alert and force reload
+                    alert('Your session has expired due to 30 minutes of inactivity. To ensure server efficiency, the page will now reload with a fresh session.');
+                    window.location.reload();
+                }
+            }, 60000); // 1 minute check resolution
+
             viewProgressButton.addEventListener("click", function () {
                 window.location.href = "{{ route('topics.forCourse', $course->id) }}";
             });

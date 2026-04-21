@@ -52,8 +52,8 @@ class QuizExecutionRequest extends FormRequest
                     $this->validateAnswerContent($value, $fail);
                 },
             ],
-            'time_taken' => 'nullable|integer|min:0|max:7200', // Max 2 hours
-            'duration_seconds' => 'nullable|integer|min:0|max:7200',
+            'time_taken' => 'nullable|integer|min:0|max:86400', // Max 24 hours
+            'duration_seconds' => 'nullable|integer|min:0|max:86400',
             'quiz_mode' => 'nullable|string|in:practice,exam,quiz,tutor,random',
             'question_ids' => 'nullable|array',
             'question_ids.*' => 'integer|exists:questions,id',

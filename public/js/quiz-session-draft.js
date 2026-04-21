@@ -1,6 +1,6 @@
 (function () {
     const STORAGE_PREFIX = 'medcapsule.quiz-draft.';
-    const MAX_DRAFT_AGE_MS = 1000 * 60 * 60 * 24 * 7;
+    const MAX_DRAFT_AGE_MS = 1000 * 60 * 30; // 30 minutes of inactivity
 
     function normalizeQuestionIds(questionIds) {
         return Array.isArray(questionIds)

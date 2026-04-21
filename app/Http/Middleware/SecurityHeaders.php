@@ -33,7 +33,7 @@ class SecurityHeaders
      * Note: These are base directives. Dynamic domains (like ngrok) are added in applyCSPHeaders()
      */
     private const CSP_BASE_DIRECTIVES = [
-        "default-src 'self' blob:",
+        "default-src 'self' blob: https://cdn.jsdelivr.net",
         "font-src 'self' https://fonts.gstatic.com data: https://cdnjs.cloudflare.com",
         "img-src 'self' data: https: blob:",
         "media-src 'self' https: blob:",
@@ -74,6 +74,7 @@ class SecurityHeaders
         'https://www.googleapis.com',
         'https://fonts.googleapis.com',
         'https://fonts.gstatic.com',
+        'https://cdn.jsdelivr.net',
     ];
 
     /**
